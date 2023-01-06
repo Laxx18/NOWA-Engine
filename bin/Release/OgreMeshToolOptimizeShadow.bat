@@ -1,1 +1,0 @@
-for %%f in (*.mesh) do .\OgreMeshTool.exe -v1 -e -t -ts 4 -O puqs %%f
