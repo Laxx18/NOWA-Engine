@@ -1,0 +1,12 @@
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/OpenAL.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/common.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/native-tools.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/openal-info.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/ex-common.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/altonegen.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/alrecord.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/INSTALL.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/ALL_BUILD.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/ZERO_CHECK.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/utils/alsoft-config/CMakeFiles/INSTALL.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/utils/alsoft-config/CMakeFiles/ALL_BUILD.dir

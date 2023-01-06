@@ -1,0 +1,36 @@
+^C:\USERS\LUKAS\DOCUMENTS\GAMEENGINEDEVELOPMENT\EXTERNAL\OPENAL-SOFT-MASTER\CMAKEFILES\847340F76DB1BC1ECDFBFB05543D5AE1\BIN2H.RULE
+setlocal
+cd C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\native-tools
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+D:\Programme\CMake\bin\cmake.exe -G "Visual Studio 16 2019" C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools
+if %errorlevel% neq 0 goto :cmEnd
+D:\Programme\CMake\bin\cmake.exe -E remove C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/bin2h C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/bsincgen
+if %errorlevel% neq 0 goto :cmEnd
+D:\Programme\CMake\bin\cmake.exe --build . --config Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\LUKAS\DOCUMENTS\GAMEENGINEDEVELOPMENT\EXTERNAL\OPENAL-SOFT-MASTER\CMAKEFILES\FDCECDBBC61C2BE2EBC6827C73381ED3\NATIVE-TOOLS.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\LUKAS\DOCUMENTS\GAMEENGINEDEVELOPMENT\EXTERNAL\OPENAL-SOFT-MASTER\CMAKELISTS.TXT
+setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master --check-stamp-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

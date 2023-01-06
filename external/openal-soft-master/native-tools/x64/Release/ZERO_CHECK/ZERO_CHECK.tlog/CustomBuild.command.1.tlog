@@ -1,0 +1,10 @@
+^C:\USERS\LUKAS\DOCUMENTS\GAMEENGINEDEVELOPMENT\EXTERNAL\OPENAL-SOFT-MASTER\NATIVE-TOOLS\CMAKEFILES\471A51360D309A4B3C3BAE5FDBD4ECF1\GENERATE.STAMP.RULE
+setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/native-tools.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

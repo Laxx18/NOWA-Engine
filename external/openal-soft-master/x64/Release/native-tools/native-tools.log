@@ -1,0 +1,94 @@
+﻿  Generating native-tools/bin2h, native-tools/bsincgen
+  -- Selecting Windows SDK version 10.0.18362.0 to target Windows 10.0.18363.
+  -- Configuring done
+  -- Generating done
+  -- Build files have been written to: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools
+  Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  
+    Checking Build System
+    Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeLists.txt
+    bin2h.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\native-tools\bin2h.exe
+    Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeLists.txt
+    bsincgen.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\native-tools\bsincgen.exe
+    Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeLists.txt
+  Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeLists.txt
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(231,5): warning MSB8065: Custom build for item "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\847340f76db1bc1ecdfbfb05543d5ae1\bin2h.rule" succeeded, but specified output "c:\users\lukas\documents\gameenginedevelopment\external\openal-soft-master\native-tools\bin2h" has not been created. This may cause incremental build to work incorrectly.
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(231,5): warning MSB8065: Custom build for item "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\847340f76db1bc1ecdfbfb05543d5ae1\bin2h.rule" succeeded, but specified output "c:\users\lukas\documents\gameenginedevelopment\external\openal-soft-master\native-tools\bsincgen" has not been created. This may cause incremental build to work incorrectly.
+
+Leistungszusammenfassung für das Projekt:
+        0 ms C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\ZERO_CHECK.vcxproj   2 Aufrufe
+                  0 ms GetTargetPath                              1 Aufrufe
+                  0 ms GetNativeManifest                          1 Aufrufe
+      846 ms C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\native-tools.vcxproj   1 Aufrufe
+                846 ms Build                                      1 Aufrufe
+
+Leistungszusammenfassung für das Ziel:
+        0 ms BuildGenerateSourcesTraverse               1 Aufrufe
+        0 ms PreBuildEvent                              1 Aufrufe
+        0 ms _SelectedFiles                             1 Aufrufe
+        0 ms SelectCustomBuild                          1 Aufrufe
+        0 ms ComputeCustomBuildOutput                   1 Aufrufe
+        0 ms CopyFileToFolders                          1 Aufrufe
+        0 ms _Xsd                                       1 Aufrufe
+        0 ms MakeDirsForMidl                            1 Aufrufe
+        0 ms ComputeMIDLGeneratedCompileInputs          1 Aufrufe
+        0 ms AfterMidl                                  1 Aufrufe
+        0 ms _Midl                                      1 Aufrufe
+        0 ms BeforeBuildGenerateSources                 1 Aufrufe
+        0 ms AfterBuildGenerateSources                  1 Aufrufe
+        0 ms _BuildGenerateSourcesAction                1 Aufrufe
+        0 ms BuildGenerateSources                       1 Aufrufe
+        0 ms BuildCompileTraverse                       1 Aufrufe
+        0 ms _BuildCompileAction                        1 Aufrufe
+        0 ms BuildCompile                               1 Aufrufe
+        0 ms BuildLinkTraverse                          1 Aufrufe
+        0 ms PostBuildEvent                             1 Aufrufe
+        0 ms _BuildLinkAction                           1 Aufrufe
+        0 ms BuildLink                                  1 Aufrufe
+        0 ms AfterBuild                                 1 Aufrufe
+        0 ms AfterBuildGenerateSourcesEvent             1 Aufrufe
+        0 ms FinalizeBuildStatus                        1 Aufrufe
+        0 ms Build                                      1 Aufrufe
+        0 ms ResolveReferences                          1 Aufrufe
+        0 ms SetTelemetryEnvironmentVariables           1 Aufrufe
+        0 ms _PrepareForBuild                           1 Aufrufe
+        0 ms BeforeResolveReferences                    1 Aufrufe
+        0 ms AssignProjectConfiguration                 1 Aufrufe
+        0 ms _SplitProjectReferencesByFileExistence     1 Aufrufe
+        0 ms PrepareProjectReferences                   1 Aufrufe
+        0 ms _RemoveNameMetadataFromProjectReferenceItems   1 Aufrufe
+        0 ms GetFrameworkPaths                          1 Aufrufe
+        0 ms GetResolvedWinMD                           1 Aufrufe
+        0 ms GetReferenceAssemblyPaths                  1 Aufrufe
+        0 ms SetCABuildNativeEnvironmentVariables       1 Aufrufe
+        0 ms ResolveSDKReferences                       1 Aufrufe
+        0 ms ExpandSDKReferences                        1 Aufrufe
+        0 ms _HandlePackageFileConflicts                1 Aufrufe
+        0 ms ResolveAssemblyReferences                  1 Aufrufe
+        0 ms AfterResolveReferences                     1 Aufrufe
+        0 ms _CheckWindowsSDKInstalled                  1 Aufrufe
+        1 ms _GetProjectReferenceTargetFrameworkProperties   1 Aufrufe
+        1 ms _PrepareForReferenceResolution             1 Aufrufe
+        1 ms SetBuildDefaultEnvironmentVariables        1 Aufrufe
+        2 ms PrepareForBuild                            1 Aufrufe
+        2 ms ResolveProjectReferences                   1 Aufrufe
+        2 ms _CheckForInvalidConfigurationAndPlatform   1 Aufrufe
+        2 ms InitializeBuildStatus                      1 Aufrufe
+      833 ms CustomBuild                                1 Aufrufe
+
+Leistungszusammenfassung für die Aufgabe:
+        0 ms Message                                    2 Aufrufe
+        0 ms SetEnv                                     8 Aufrufe
+        0 ms AssignProjectConfiguration                 1 Aufrufe
+        0 ms ResolveNonMSBuildProjectOutput             1 Aufrufe
+        0 ms CheckVCToolsetVersion                      1 Aufrufe
+        0 ms ResolvePackageFileConflicts                1 Aufrufe
+        0 ms WriteLinesToFile                           1 Aufrufe
+        0 ms Delete                                     1 Aufrufe
+        1 ms MakeDir                                    4 Aufrufe
+        1 ms ReadLinesFromFile                          1 Aufrufe
+        1 ms Touch                                      2 Aufrufe
+        2 ms MSBuild                                    2 Aufrufe
+        4 ms GetOutOfDateItems                          3 Aufrufe
+      828 ms CustomBuild                                1 Aufrufe

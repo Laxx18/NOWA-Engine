@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FParser", "FParser.vcxproj", "{A287B674-95C7-41CA-B4E6-6E28B85B7DFD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FparserExample", "..\FparserExample\FparserExample.vcxproj", "{0EBE8B58-176B-405C-8384-6B69D48D5E8F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A287B674-95C7-41CA-B4E6-6E28B85B7DFD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A287B674-95C7-41CA-B4E6-6E28B85B7DFD}.Debug|Win32.Build.0 = Debug|Win32
+		{A287B674-95C7-41CA-B4E6-6E28B85B7DFD}.Release|Win32.ActiveCfg = Release|Win32
+		{A287B674-95C7-41CA-B4E6-6E28B85B7DFD}.Release|Win32.Build.0 = Release|Win32
+		{0EBE8B58-176B-405C-8384-6B69D48D5E8F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0EBE8B58-176B-405C-8384-6B69D48D5E8F}.Debug|Win32.Build.0 = Debug|Win32
+		{0EBE8B58-176B-405C-8384-6B69D48D5E8F}.Release|Win32.ActiveCfg = Release|Win32
+		{0EBE8B58-176B-405C-8384-6B69D48D5E8F}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

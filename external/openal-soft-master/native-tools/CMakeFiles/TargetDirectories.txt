@@ -1,0 +1,4 @@
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeFiles/bin2h.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeFiles/bsincgen.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeFiles/ALL_BUILD.dir
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/native-tools/CMakeFiles/ZERO_CHECK.dir

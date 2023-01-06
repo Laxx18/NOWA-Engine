@@ -1,0 +1,26 @@
+OgreAL Changelog
+-----------------
+
+0.2
+* Conformed to Ogre coding guidelines
+* Seperated Sounds and SoundStreams
+* Added X-RAM support !! Completely Untested !!
+* Added Multi-Channel support
+* Exposed all OpenAL options and states
+* Grouped similar state setting method calls
+* Cleaned up the shutdown procedure to remove leaks
+* Updated Package structure and dependencies
+* Updated API documentation
+* Added Code::Blocks project files
+* Added licensing info
+* Added Directional Sound Demo
+* Added Doppler Demo
+* Added Multi-Channel Demo
+
+0.1.1
+* Added Linux makefiles
+* Added Visual Studio 7.1 project files
+* Tweaked code to build under Linux
+
+0.1
+* Initial Release

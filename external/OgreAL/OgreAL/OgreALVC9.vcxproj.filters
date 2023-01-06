@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="AudioProcessing">
+      <UniqueIdentifier>{ebfcfcac-93c1-4ce6-9037-6d6429482ac2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="kiss_fft">
+      <UniqueIdentifier>{6e164c2a-f424-4fb3-91cc-f7a5ff01e855}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\OgreALException.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OgreALListener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OgreALOggSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OgreALSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OgreALSoundManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\OgreALWavSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\audio_processing\AudioProcessor.cpp">
+      <Filter>AudioProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\audio_processing\MathWindows.cpp">
+      <Filter>AudioProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kiss_fft130\kiss_fft.c">
+      <Filter>kiss_fft</Filter>
+    </ClCompile>
+    <ClCompile Include="..\audio_processing\SpectrumPreparation.cpp">
+      <Filter>AudioProcessing</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\OgreAL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALListener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALOggSound.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALPrereqs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALSound.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALSoundManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALWavSound.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OgreALMemberFunctionPointer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\audio_processing\AudioProcessor.h">
+      <Filter>AudioProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\audio_processing\MathWindows.h">
+      <Filter>AudioProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kiss_fft130\_kiss_fft_guts.h">
+      <Filter>kiss_fft</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kiss_fft130\kiss_fft.h">
+      <Filter>kiss_fft</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kiss_fft130\kissfft.hh">
+      <Filter>kiss_fft</Filter>
+    </ClInclude>
+    <ClInclude Include="..\audio_processing\SpectrumPreparation.h">
+      <Filter>AudioProcessing</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

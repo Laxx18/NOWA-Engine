@@ -1,0 +1,291 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{CE9FF1CB-798C-4300-BAB4-3071B020A980}</ProjectGuid>
+    <RootNamespace>OgreProcedural</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)_d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>
+      </SDLCheck>
+      <AdditionalIncludeDirectories>library/include;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;PROCEDURAL_SHARED;OgreProcedural_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>
+      </SDLCheck>
+      <AdditionalIncludeDirectories>library/include;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>MBSC;_DEBUG;PROCEDURAL_SHARED;OgreProcedural_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <OmitFramePointers>false</OmitFramePointers>
+      <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
+      <FloatingPointModel>Fast</FloatingPointModel>
+    </ClCompile>
+    <Link>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>
+      </SDLCheck>
+      <AdditionalIncludeDirectories>library/include;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;PROCEDURAL_SHARED;OgreProcedural_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain.lib;OIS.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>
+      </SDLCheck>
+      <AdditionalIncludeDirectories>library/include;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>MBSC;NDEBUG;PROCEDURAL_SHARED;OgreProcedural_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain.lib;OIS.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="library\include\Procedural.h" />
+    <ClInclude Include="library\include\ProceduralBoolean.h" />
+    <ClInclude Include="library\include\ProceduralBoxGenerator.h" />
+    <ClInclude Include="library\include\ProceduralCapsuleGenerator.h" />
+    <ClInclude Include="library\include\ProceduralConeGenerator.h" />
+    <ClInclude Include="library\include\ProceduralCylinderGenerator.h" />
+    <ClInclude Include="library\include\ProceduralDebugRendering.h" />
+    <ClInclude Include="library\include\ProceduralExtruder.h" />
+    <ClInclude Include="library\include\ProceduralGeometryHelpers.h" />
+    <ClInclude Include="library\include\ProceduralIcoSphereGenerator.h" />
+    <ClInclude Include="library\include\ProceduralLathe.h" />
+    <ClInclude Include="library\include\ProceduralMeshGenerator.h" />
+    <ClInclude Include="library\include\ProceduralMeshModifiers.h" />
+    <ClInclude Include="library\include\ProceduralMultiShape.h" />
+    <ClInclude Include="library\include\ProceduralMultiShapeGenerators.h" />
+    <ClInclude Include="library\include\ProceduralNoise.h" />
+    <ClInclude Include="library\include\ProceduralPath.h" />
+    <ClInclude Include="library\include\ProceduralPathGenerators.h" />
+    <ClInclude Include="library\include\ProceduralPathGeneratorsBase.h" />
+    <ClInclude Include="library\include\ProceduralPlaneGenerator.h" />
+    <ClInclude Include="library\include\ProceduralPlatform.h" />
+    <ClInclude Include="library\include\ProceduralPrismGenerator.h" />
+    <ClInclude Include="library\include\ProceduralRoundedBoxGenerator.h" />
+    <ClInclude Include="library\include\ProceduralShape.h" />
+    <ClInclude Include="library\include\ProceduralShapeGenerators.h" />
+    <ClInclude Include="library\include\ProceduralShapeGeneratorsBase.h" />
+    <ClInclude Include="library\include\ProceduralSphereGenerator.h" />
+    <ClInclude Include="library\include\ProceduralSplines.h" />
+    <ClInclude Include="library\include\ProceduralSpringGenerator.h" />
+    <ClInclude Include="library\include\ProceduralStableHeaders.h" />
+    <ClInclude Include="library\include\ProceduralSVG.h" />
+    <ClInclude Include="library\include\ProceduralTextureBuffer.h" />
+    <ClInclude Include="library\include\ProceduralTextureGenerator.h" />
+    <ClInclude Include="library\include\ProceduralTextureModifiers.h" />
+    <ClInclude Include="library\include\ProceduralTorusGenerator.h" />
+    <ClInclude Include="library\include\ProceduralTorusKnotGenerator.h" />
+    <ClInclude Include="library\include\ProceduralTrack.h" />
+    <ClInclude Include="library\include\ProceduralTriangleBuffer.h" />
+    <ClInclude Include="library\include\ProceduralTriangulator.h" />
+    <ClInclude Include="library\include\ProceduralTubeGenerator.h" />
+    <ClInclude Include="library\include\ProceduralUtils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="library\src\ProceduralBoolean.cpp" />
+    <ClCompile Include="library\src\ProceduralBoxGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralCapsuleGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralConeGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralCylinderGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralDebugRendering.cpp" />
+    <ClCompile Include="library\src\ProceduralExtruder.cpp" />
+    <ClCompile Include="library\src\ProceduralGeometryHelpers.cpp" />
+    <ClCompile Include="library\src\ProceduralIcoSphereGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralLathe.cpp" />
+    <ClCompile Include="library\src\ProceduralMeshModifiers.cpp" />
+    <ClCompile Include="library\src\ProceduralMultiShape.cpp" />
+    <ClCompile Include="library\src\ProceduralMultiShapeGenerators.cpp" />
+    <ClCompile Include="library\src\ProceduralNoise.cpp" />
+    <ClCompile Include="library\src\ProceduralPath.cpp" />
+    <ClCompile Include="library\src\ProceduralPathGenerators.cpp" />
+    <ClCompile Include="library\src\ProceduralPlaneGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralPrecompiledHeaders.cpp" />
+    <ClCompile Include="library\src\ProceduralPrismGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralRoundedBoxGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralShape.cpp" />
+    <ClCompile Include="library\src\ProceduralShapeGenerators.cpp" />
+    <ClCompile Include="library\src\ProceduralSphereGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralSpringGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralSVG.cpp" />
+    <ClCompile Include="library\src\ProceduralTextureBuffer.cpp" />
+    <ClCompile Include="library\src\ProceduralTextureGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralTextureModifiers.cpp" />
+    <ClCompile Include="library\src\ProceduralTorusGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralTorusKnotGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralTrack.cpp" />
+    <ClCompile Include="library\src\ProceduralTriangleBuffer.cpp" />
+    <ClCompile Include="library\src\ProceduralTriangulator.cpp" />
+    <ClCompile Include="library\src\ProceduralTubeGenerator.cpp" />
+    <ClCompile Include="library\src\ProceduralUtils.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

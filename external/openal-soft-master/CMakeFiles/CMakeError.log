@@ -1,0 +1,321 @@
+Performing C++ SOURCE FILE Test HAVE_LIBATOMIC failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_7302c.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.cxx
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_LIBATOMIC /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_7302c.dir\Debug\\" /Fd"cmTC_7302c.dir\Debug\vc142.pdb" /Gd /TP /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.cxx"
+LINK : fatal error LNK1104: Datei "atomic.lib" kann nicht ge÷ffnet werden. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_7302c.vcxproj]
+
+
+Source file was:
+#include <atomic>
+std::atomic<int> foo{0};
+int main() { return foo.fetch_add(2); }
+Determining if the function __android_log_print exists in the log failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_1cbb7.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckFunctionExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=__android_log_print /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_1cbb7.dir\Debug\\" /Fd"cmTC_1cbb7.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c"
+LINK : fatal error LNK1104: Datei "log.lib" kann nicht ge÷ffnet werden. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_1cbb7.vcxproj]
+
+
+
+Performing C SOURCE FILE Test HAVE_MSSE2_SWITCH failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_b7fe4.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_MSSE2_SWITCH /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_b7fe4.dir\Debug\\" /Fd"cmTC_b7fe4.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue  -msse2 "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c"
+cl : befehlszeile warning D9002: Unbekannte Option "-msse2" wird ignoriert. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_b7fe4.vcxproj]
+  cmTC_b7fe4.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\Debug\cmTC_b7fe4.exe
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C SOURCE FILE Test HAVE_MSSE3_SWITCH failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_71d91.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_MSSE3_SWITCH /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_71d91.dir\Debug\\" /Fd"cmTC_71d91.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue  -msse3 "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c"
+cl : befehlszeile warning D9002: Unbekannte Option "-msse3" wird ignoriert. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_71d91.vcxproj]
+  cmTC_71d91.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\Debug\cmTC_71d91.exe
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C SOURCE FILE Test HAVE_MSSE4_1_SWITCH failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_dfa56.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_MSSE4_1_SWITCH /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_dfa56.dir\Debug\\" /Fd"cmTC_dfa56.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue  -msse4.1 "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c"
+cl : befehlszeile warning D9002: Unbekannte Option "-msse4.1" wird ignoriert. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_dfa56.vcxproj]
+  cmTC_dfa56.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\Debug\cmTC_dfa56.exe
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C SOURCE FILE Test HAVE_MFPU_NEON_SWITCH failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_044fa.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_MFPU_NEON_SWITCH /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_044fa.dir\Debug\\" /Fd"cmTC_044fa.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue  -mfpu=neon "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c"
+cl : befehlszeile warning D9002: Unbekannte Option "-mfpu=neon" wird ignoriert. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_044fa.vcxproj]
+  cmTC_044fa.vcxproj -> C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\Debug\cmTC_044fa.exe
+
+
+Source file was:
+int main(void) { return 0; }
+Determining if the include file arm_neon.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_de351.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_de351.dir\Debug\\" /Fd"cmTC_de351.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.24.28314\include\arm_neon.h(21,1): fatal error C1189: #error:  This header is specific to ARM targets [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_de351.vcxproj]
+
+
+
+Performing C SOURCE FILE Test HAVE_GCC_FORMAT failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_63a5b.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  src.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D HAVE_GCC_FORMAT /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_63a5b.dir\Debug\\" /Fd"cmTC_63a5b.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c(1,31): error C2061: Syntaxfehler: Bezeichner "__attribute__" [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_63a5b.vcxproj]
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c(1,31): error C2059: Syntaxfehler: ";" [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_63a5b.vcxproj]
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c(1,61): error C2059: Syntaxfehler: "Konstante" [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_63a5b.vcxproj]
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\src.c(1,64): error C2059: Syntaxfehler: "Konstante" [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_63a5b.vcxproj]
+
+
+Source file was:
+int foo(const char *str, ...) __attribute__((format(printf, 1, 2)));
+                         int main() {return 0;}
+Determining if the include file dirent.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_0c138.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_0c138.dir\Debug\\" /Fd"cmTC_0c138.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "dirent.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_0c138.vcxproj]
+
+
+
+Determining if the include file cpuid.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_b264d.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_b264d.dir\Debug\\" /Fd"cmTC_b264d.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "cpuid.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_b264d.vcxproj]
+
+
+
+Determining if the include file sys/sysconf.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_d85e5.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_d85e5.dir\Debug\\" /Fd"cmTC_d85e5.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "sys/sysconf.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_d85e5.vcxproj]
+
+
+
+Determining if the function pow exists in the m failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_8db18.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckFunctionExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pow /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_8db18.dir\Debug\\" /Fd"cmTC_8db18.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c"
+LINK : fatal error LNK1104: Datei "m.lib" kann nicht ge÷ffnet werden. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_8db18.vcxproj]
+
+
+
+Determining if the function clock_gettime exists in the rt failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_9d482.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckFunctionExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=clock_gettime /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_9d482.dir\Debug\\" /Fd"cmTC_9d482.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c"
+LINK : fatal error LNK1104: Datei "rt.lib" kann nicht ge÷ffnet werden. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_9d482.vcxproj]
+
+
+
+Determining if the include file dlfcn.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_18021.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_18021.dir\Debug\\" /Fd"cmTC_18021.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "dlfcn.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_18021.vcxproj]
+
+
+
+Determining if the function dlopen exists in the dl failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_c346d.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckFunctionExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=dlopen /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_c346d.dir\Debug\\" /Fd"cmTC_c346d.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c"
+LINK : fatal error LNK1104: Datei "dl.lib" kann nicht ge÷ffnet werden. [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_c346d.vcxproj]
+
+
+
+Determining if the posix_memalign exist failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_a2302.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckSymbolExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_a2302.dir\Debug\\" /Fd"cmTC_a2302.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c(8,33): error C2065: "posix_memalign": nichtdeklarierter Bezeichner [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_a2302.vcxproj]
+
+
+File C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <stdlib.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef posix_memalign
+  return ((int*)(&posix_memalign))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the proc_pidpath exist failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_17f2d.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckSymbolExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_17f2d.dir\Debug\\" /Fd"cmTC_17f2d.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c(2,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "libproc.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_17f2d.vcxproj]
+
+
+File C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <libproc.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef proc_pidpath
+  return ((int*)(&proc_pidpath))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the getopt exist failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_94672.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckSymbolExists.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_94672.dir\Debug\\" /Fd"cmTC_94672.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckSymbolExists.c(2,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "unistd.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_94672.vcxproj]
+
+
+File C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <unistd.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef getopt
+  return ((int*)(&getopt))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the include file pthread.h exists failed with the following output:
+Change Dir: C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe cmTC_0e6cf.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=16.0 /v:m && Microsoft (R)-Build-Engine, Version 16.4.0+e901037fe für .NET Framework
+Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+
+  Microsoft (R) C/C++-Optimierungscompiler Version 19.24.28316 für x64
+  CheckIncludeFile.c
+  Copyright (C) Microsoft Corporation. Alle Rechte vorbehalten.
+  cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_0e6cf.dir\Debug\\" /Fd"cmTC_0e6cf.dir\Debug\vc142.pdb" /Gd /TC /errorReport:queue "C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c"
+C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\CheckIncludeFile.c(1,10): fatal error C1083: Datei (Include) kann nicht geöffnet werden: "pthread.h": No such file or directory [C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CMakeTmp\cmTC_0e6cf.vcxproj]
+
+
+

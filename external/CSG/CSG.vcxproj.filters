@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="inc">
+      <UniqueIdentifier>{7f735e14-e683-4916-84a2-88c06bfe30db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{8985a526-2ee9-4696-b22f-34966d6ce200}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\BooleanModeller.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Bound.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ColorSet.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\cvCSGConverter.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\cvCSGOgreWrapper.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Face.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\FaceSet.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\GX_Color.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\IntSet.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Line.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Line.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Maths.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Matrix.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Quaternion.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Transform.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_TransformTest.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Triangle.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Types.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ML_Vector.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Object3D.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Segment.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Solid.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UT_Intersection.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VectorSet.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Vertex.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\VertexSet.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="include\defines.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\BooleanModeller.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Bound.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ColorSet.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cvCSGConverter.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cvCSGOgreWrapper.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Face.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FaceSet.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GX_Color.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\IntSet.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Line.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Line.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Maths.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Matrix.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Quaternion.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Transform.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_TransformTest.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Triangle.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ML_Vector.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Object3D.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Segment.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Solid.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UT_Intersection.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VectorSet.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Vertex.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VertexSet.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

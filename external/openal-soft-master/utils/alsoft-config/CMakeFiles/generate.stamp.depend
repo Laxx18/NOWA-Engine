@@ -1,0 +1,9 @@
+# CMake generation dependency list for this directory.
+C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/utils/alsoft-config/CMakeLists.txt
+D:/Programme/CMake/share/cmake-3.16/Modules/CMakePushCheckState.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/CheckCXXSymbolExists.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/CheckSymbolExists.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/FindPackageHandleStandardArgs.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/FindPackageMessage.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/FindQt4.cmake
+D:/Programme/CMake/share/cmake-3.16/Modules/MacroAddFileDependencies.cmake

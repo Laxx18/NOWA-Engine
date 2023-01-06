@@ -1,0 +1,348 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{511991B2-59D0-3598-8ADD-A1CA7E62896A}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>x64</Platform>
+    <ProjectName>alrecord</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">alrecord.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">alrecord</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">alrecord.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">alrecord</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">alrecord.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">alrecord</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">alrecord.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">alrecord</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /w14640</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4065;4268;4324</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>Debug\ex-common.lib;Debug\OpenAL32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/Debug/alrecord.lib</ImportLibrary>
+      <ProgramDataBaseFile>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/Debug/alrecord.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /w14640</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <DisableSpecificWarnings>4065;4268;4324</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>Release\ex-common.lib;Release\OpenAL32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/Release/alrecord.lib</ImportLibrary>
+      <ProgramDataBaseFile>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/Release/alrecord.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /w14640</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <DisableSpecificWarnings>4065;4268;4324</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR=\"MinSizeRel\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>MinSizeRel\ex-common.lib;MinSizeRel\OpenAL32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/MinSizeRel/alrecord.lib</ImportLibrary>
+      <ProgramDataBaseFile>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/MinSizeRel/alrecord.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /w14640</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4065;4268;4324</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_WIN32;_WIN32_WINNT=0x0502;_CRT_SECURE_NO_WARNINGS;NOMINMAX;CMAKE_INTDIR=\"RelWithDebInfo\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\common;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>RelWithDebInfo\ex-common.lib;RelWithDebInfo\OpenAL32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/RelWithDebInfo/alrecord.lib</ImportLibrary>
+      <ProgramDataBaseFile>C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/RelWithDebInfo/alrecord.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master --check-stamp-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeSystem.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckIncludeFiles\HAVE_MMSYSTEM_H.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckTypeSize\SIZEOF_LONG.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindALSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindAudioIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindDSound.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindJACK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindMySOFA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOSS.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOpenSL.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPortAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPulseAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindQSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSDL2.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSoundIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindWindowsSDK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\config.h.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\openal.pc.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\version.h.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompilerABI.c;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompilerABI.cpp;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCompilerIdDetection.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeConfigurableFile.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompileFeatures.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerABI.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerId.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeFindBinUtils.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitIncludeInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitLinkInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystem.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCompilerCommon.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckLibraryExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckStructHasMember.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckSymbolExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ADSP-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMCC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\AppleClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Borland-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Bruce-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Cray-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GHS-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IAR-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-C-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Intel-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PGI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PathScale-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SCO-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SDCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TinyCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Watcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CompilerId\VS-10.vcxproj.in;D:\Programme\CMake\share\cmake-3.16\Modules\FindGit.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageHandleStandardArgs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageMessage.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindThreads.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindZLIB.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Internal\FeatureTesting.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-Determine-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\SelectLibraryConfigurations.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master --check-stamp-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeSystem.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckIncludeFiles\HAVE_MMSYSTEM_H.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckTypeSize\SIZEOF_LONG.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindALSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindAudioIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindDSound.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindJACK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindMySOFA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOSS.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOpenSL.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPortAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPulseAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindQSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSDL2.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSoundIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindWindowsSDK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\config.h.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\openal.pc.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\version.h.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompilerABI.c;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompilerABI.cpp;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCompilerIdDetection.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeConfigurableFile.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompileFeatures.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerABI.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerId.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeFindBinUtils.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitIncludeInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitLinkInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystem.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCompilerCommon.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckLibraryExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckStructHasMember.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckSymbolExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ADSP-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMCC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\AppleClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Borland-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Bruce-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Cray-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GHS-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IAR-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-C-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Intel-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PGI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PathScale-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SCO-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SDCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TinyCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Watcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CompilerId\VS-10.vcxproj.in;D:\Programme\CMake\share\cmake-3.16\Modules\FindGit.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageHandleStandardArgs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageMessage.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindThreads.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindZLIB.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Internal\FeatureTesting.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-Determine-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\SelectLibraryConfigurations.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master --check-stamp-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeSystem.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckIncludeFiles\HAVE_MMSYSTEM_H.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckTypeSize\SIZEOF_LONG.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindALSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindAudioIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindDSound.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindJACK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindMySOFA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOSS.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOpenSL.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPortAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPulseAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindQSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSDL2.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSoundIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindWindowsSDK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\config.h.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\openal.pc.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\version.h.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompilerABI.c;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompilerABI.cpp;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCompilerIdDetection.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeConfigurableFile.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompileFeatures.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerABI.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerId.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeFindBinUtils.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitIncludeInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitLinkInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystem.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCompilerCommon.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckLibraryExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckStructHasMember.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckSymbolExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ADSP-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMCC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\AppleClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Borland-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Bruce-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Cray-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GHS-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IAR-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-C-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Intel-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PGI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PathScale-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SCO-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SDCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TinyCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Watcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CompilerId\VS-10.vcxproj.in;D:\Programme\CMake\share\cmake-3.16\Modules\FindGit.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageHandleStandardArgs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageMessage.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindThreads.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindZLIB.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Internal\FeatureTesting.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-Determine-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\SelectLibraryConfigurations.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master -BC:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master --check-stamp-file C:/Users/lukas/Documents/GameEngineDevelopment/external/openal-soft-master/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\3.16.1\CMakeSystem.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckIncludeFiles\HAVE_MMSYSTEM_H.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\CheckTypeSize\SIZEOF_LONG.c;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindALSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindAudioIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindDSound.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindJACK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindMySOFA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOSS.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindOpenSL.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPortAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindPulseAudio.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindQSA.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSDL2.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindSoundIO.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\cmake\FindWindowsSDK.cmake;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\config.h.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\openal.pc.in;C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\version.h.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCCompilerABI.c;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXCompilerABI.cpp;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeCompilerIdDetection.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeConfigurableFile.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompileFeatures.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerABI.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineCompilerId.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeDetermineSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeFindBinUtils.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitIncludeInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeParseImplicitLinkInfo.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCCompiler.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystem.cmake.in;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCXXCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestCompilerCommon.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CMakeTestRCCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXCompilerFlag.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckCXXSourceCompiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.c;D:\Programme\CMake\share\cmake-3.16\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckIncludeFiles.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckLibraryExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckStructHasMember.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckSymbolExists.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.c.in;D:\Programme\CMake\share\cmake-3.16\Modules\CheckTypeSize.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ADSP-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMCC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\ARMClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\AppleClang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Borland-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Bruce-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Comeau-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Cray-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GHS-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IAR-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-C-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Intel-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\MSVC-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PGI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\PathScale-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SCO-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SDCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TI-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\TinyCC-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\Watcom-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-C-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\CompilerId\VS-10.vcxproj.in;D:\Programme\CMake\share\cmake-3.16\Modules\FindGit.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageHandleStandardArgs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindPackageMessage.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindThreads.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\FindZLIB.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Internal\FeatureTesting.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-Determine-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.16\Modules\SelectLibraryConfigurations.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\examples\alrecord.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\ZERO_CHECK.vcxproj">
+      <Project>{351D19C7-A565-3C40-9707-D8586C66C7C4}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\OpenAL.vcxproj">
+      <Project>{502C47AA-E5E6-3A6C-8B91-17D643EAEFEB}</Project>
+      <Name>OpenAL</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\ex-common.vcxproj">
+      <Project>{AFD38480-E4E2-32A2-9B9E-E6620464CB69}</Project>
+      <Name>ex-common</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

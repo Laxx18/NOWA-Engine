@@ -1,0 +1,73 @@
+﻿  Checking Build System
+
+Leistungszusammenfassung für das Projekt:
+       58 ms C:\Users\lukas\Documents\GameEngineDevelopment\external\openal-soft-master\ZERO_CHECK.vcxproj   1 Aufrufe
+                 58 ms Build                                      1 Aufrufe
+
+Leistungszusammenfassung für das Ziel:
+        0 ms BeforeBuildGenerateSources                 1 Aufrufe
+        0 ms _SelectedFiles                             1 Aufrufe
+        0 ms SelectCustomBuild                          1 Aufrufe
+        0 ms _Xsd                                       1 Aufrufe
+        0 ms MakeDirsForMidl                            1 Aufrufe
+        0 ms ComputeMIDLGeneratedCompileInputs          1 Aufrufe
+        0 ms AfterMidl                                  1 Aufrufe
+        0 ms _Midl                                      1 Aufrufe
+        0 ms AfterBuildGenerateSources                  1 Aufrufe
+        0 ms AfterBuildGenerateSourcesEvent             1 Aufrufe
+        0 ms _BuildGenerateSourcesAction                1 Aufrufe
+        0 ms BuildGenerateSources                       1 Aufrufe
+        0 ms BuildCompileTraverse                       1 Aufrufe
+        0 ms _BuildCompileAction                        1 Aufrufe
+        0 ms BuildCompile                               1 Aufrufe
+        0 ms BuildLinkTraverse                          1 Aufrufe
+        0 ms PostBuildEvent                             1 Aufrufe
+        0 ms _BuildLinkAction                           1 Aufrufe
+        0 ms BuildLink                                  1 Aufrufe
+        0 ms AfterBuild                                 1 Aufrufe
+        0 ms PreBuildEvent                              1 Aufrufe
+        0 ms BuildGenerateSourcesTraverse               1 Aufrufe
+        0 ms Build                                      1 Aufrufe
+        0 ms GetResolvedWinMD                           1 Aufrufe
+        0 ms _GetProjectReferenceTargetFrameworkProperties   1 Aufrufe
+        0 ms PrepareProjectReferences                   1 Aufrufe
+        0 ms GetFrameworkPaths                          1 Aufrufe
+        0 ms GetReferenceAssemblyPaths                  1 Aufrufe
+        0 ms SetBuildDefaultEnvironmentVariables        1 Aufrufe
+        0 ms ResolveReferences                          1 Aufrufe
+        0 ms _CheckWindowsSDKInstalled                  1 Aufrufe
+        0 ms SetCABuildNativeEnvironmentVariables       1 Aufrufe
+        0 ms _SplitProjectReferencesByFileExistence     1 Aufrufe
+        0 ms BeforeResolveReferences                    1 Aufrufe
+        0 ms _PrepareForReferenceResolution             1 Aufrufe
+        0 ms ExpandSDKReferences                        1 Aufrufe
+        0 ms _HandlePackageFileConflicts                1 Aufrufe
+        0 ms SetTelemetryEnvironmentVariables           1 Aufrufe
+        0 ms AfterResolveReferences                     1 Aufrufe
+        0 ms ResolveSDKReferences                       1 Aufrufe
+        0 ms AssignProjectConfiguration                 1 Aufrufe
+        1 ms CopyFileToFolders                          1 Aufrufe
+        1 ms _PrepareForBuild                           1 Aufrufe
+        1 ms ResolveAssemblyReferences                  1 Aufrufe
+        1 ms ResolveProjectReferences                   1 Aufrufe
+        1 ms InitializeBuildStatus                      1 Aufrufe
+        1 ms FinalizeBuildStatus                        1 Aufrufe
+        1 ms _CheckForInvalidConfigurationAndPlatform   1 Aufrufe
+        1 ms PrepareForBuild                            1 Aufrufe
+        1 ms ComputeCustomBuildOutput                   1 Aufrufe
+       48 ms CustomBuild                                1 Aufrufe
+
+Leistungszusammenfassung für die Aufgabe:
+        0 ms Message                                    2 Aufrufe
+        0 ms SetEnv                                     8 Aufrufe
+        0 ms AssignProjectConfiguration                 1 Aufrufe
+        0 ms MSBuild                                    1 Aufrufe
+        0 ms MakeDir                                    4 Aufrufe
+        0 ms CheckVCToolsetVersion                      1 Aufrufe
+        0 ms ResolvePackageFileConflicts                1 Aufrufe
+        0 ms ReadLinesFromFile                          1 Aufrufe
+        0 ms WriteLinesToFile                           1 Aufrufe
+        1 ms Touch                                      2 Aufrufe
+        1 ms Delete                                     1 Aufrufe
+        3 ms GetOutOfDateItems                          3 Aufrufe
+       46 ms CustomBuild                                1 Aufrufe
