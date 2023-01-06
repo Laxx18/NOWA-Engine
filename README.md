@@ -1,5 +1,7 @@
 # NOWA-Engine
 
+![](images/NOWA_1.png))
+
 Games fascinated me even as a child. I was keen on understanding how a game does work behind the scenes. So I started to study media and computing to lay the foundations.
 
 During my study, I started to develop an application in C++ to ease the creation of graphical simulations.
@@ -16,6 +18,9 @@ The NOWA-Engine became a hobby project and will be extended in future.
 For more information see [http://www.lukas-kalinowski.com/Homepage/?page_id=1631](http://www.lukas-kalinowski.com/Homepage/?page_id=1631)
 
 # NOWA-Design
+
+![](images/NOWA_Design_1.png))
+
 The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used to create complex virtual environments. The speciality is its ability to test everything at runtime. The user may create a world add some GameObjects arm the GameObjects with some components to obtain some abilities like physics behaviors or particle effects, sounds etc. When the user presses the “Play” button. Everything will be rendered in realtime and the user may interact with the GameObjects. By pressing the “Stop” button everything will be placed in an “undo”-step to its stage before the simulation has happened. The biggest feature is that the LuaScriptComponent, that can be used for any game object, adding custom behavior at runtime, which is demonstrated in the video below “NOWA Design LuaScript AreaOfInterest”. The NOWA-Design editor has a lot of functionalities. Some will be listed below:
 
 - Ogre-Next workspace management to create and change workspaces for “Physically Based Shading” (PBS), skies and sky-reflections at realtime
