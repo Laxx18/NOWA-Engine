@@ -37,4 +37,5 @@ The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used 
 # Demos
 See: [http://www.lukas-kalinowski.com/Homepage/?page_id=1787](http://www.lukas-kalinowski.com/Homepage/?page_id=1787)
 
-# License GPL v3
+# License
+GPL v3
