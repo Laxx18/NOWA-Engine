@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="code">
+      <UniqueIdentifier>{ffa9f3ee-f112-4d19-a013-b79fcf77b7f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="res">
+      <UniqueIdentifier>{34dcfd8b-8188-4e34-b53c-3199c4192d4f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="code\main.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\MainApplication.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\DesignState.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\NOWAPrecompiled.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\PropertiesPanel.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\ResourcesPanel.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\MainMenuBar.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\ConfigPanel.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\ProjectManager.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\ColourPanelManager.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\RecentFilesManager.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\ComponentsPanel.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\OpenSaveFileDialogExtended.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="code\MainApplication.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\DesignState.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="res\resource.h">
+      <Filter>res</Filter>
+    </ClInclude>
+    <ClInclude Include="code\NOWAPrecompiled.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\PropertiesPanel.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\GuiEvents.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\ResourcesPanel.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\MainMenuBar.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\ConfigPanel.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\ProjectManager.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\ColourPanelManager.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\RecentFilesManager.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\ComponentsPanel.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\OpenSaveFileDialogExtended.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\MyGUIHelper.h">
+      <Filter>code</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\NOWA.ico">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\Resource.aps">
+      <Filter>res</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\Resource.rc">
+      <Filter>res</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
