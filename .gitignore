@@ -75,5 +75,8 @@ external/terra/obj/
 external/tinyxml_2_6_2/obj/
 bin/Release/libs/tinyxml.lib
 bin/Release/libs/tinyxml.pdb
+bin/Release/OgreNewt3_0.dll
+bin/Release/libs/OgreNewt3_0.lib
+
 
 
