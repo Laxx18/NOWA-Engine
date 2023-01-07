@@ -172,6 +172,27 @@ bin/Debug/plugins/VegetationComponent_d.pdb
 bin/Debug/plugins/
 bin/Release/plugins/
 
+# Ogre-Next ignore
+external/Ogre2.2SDK/.github/
+external/Ogre2.2SDK/CMake/
+external/Ogre2.2SDK/CMakeLists.txt
+external/Ogre2.2SDK/CTestConfig.cmake
+external/Ogre2.2SDK/Components/
+external/Ogre2.2SDK/Dependencies/
+external/Ogre2.2SDK/Docs/
+external/Ogre2.2SDK/OgreMain/CMakeLists.txt
+external/Ogre2.2SDK/Other/
+external/Ogre2.2SDK/PlugIns/CMakeLists.txt
+external/Ogre2.2SDK/PlugIns/ParticleFX/CMakeLists.txt
+external/Ogre2.2SDK/RenderSystems/
+external/Ogre2.2SDK/Samples/
+external/Ogre2.2SDK/Scripts/
+external/Ogre2.2SDK/Tests/
+external/Ogre2.2SDK/Tools/
+external/Ogre2.2SDK/VCBuild/
+external/newton-dynamics/applications/
+external/newton-dynamics/sdk/
+		 
 
 
 
