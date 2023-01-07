@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource">
+	<Resource type="ResourceImageSet" name="pic_ItemBackImage">
+		<Group name="States" texture="Selection.png" size="68 68">
+			<Index name="None">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="Active">
+				<Frame point="0 68"/>
+			</Index>
+			<Index name="Pressed">
+				<Frame point="0 136"/>
+			</Index>
+			<Index name="Select">
+				<Frame point="0 204"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="AllWhite.png">
+		<Group name="States" texture="AllWhite.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Circular.png">
+		<Group name="States" texture="Circular.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="flat_circular.png">
+		<Group name="States" texture="flat_circular.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="noisy_circular1.png">
+		<Group name="States" texture="noisy_circular1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="noisy_circular2.png">
+		<Group name="States" texture="noisy_circular2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="sharp_circular.png">
+		<Group name="States" texture="sharp_circular.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Square.png">
+		<Group name="States" texture="Square.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+</MyGUI>

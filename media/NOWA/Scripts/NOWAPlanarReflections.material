@@ -1,0 +1,11 @@
+hlms NOWAGlassRoughness pbs
+{
+	roughness	1
+	roughness_map	GlassRoughness.png
+}
+
+hlms NOWAGlassRoughness2 pbs
+{
+	roughness	1
+	roughness_map	GlassRoughness2.png
+}

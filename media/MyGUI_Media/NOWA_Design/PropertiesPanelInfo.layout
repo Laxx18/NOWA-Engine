@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 208 200" align="HStretch Top" layer="Overlapped" name="_Main">
+        <Widget type="EditBox" skin="EditBox" position="8 8 192 180" name="propertyInfo" align="HStretch Top">
+            <Property key="Caption"/>
+        </Widget>
+    </Widget>
+</MyGUI>

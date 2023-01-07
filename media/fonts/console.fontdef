@@ -1,0 +1,7 @@
+LuaConsole
+{
+	type 		truetype
+	source 		clacon.ttf
+	size 		32
+	resolution 	100
+}

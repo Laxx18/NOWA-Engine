@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Window" skin="Window" position="295 270 300 100" layer="Main" name="buyAmountWindow">
+        <Property key="Movable" value="true"/>
+        <Property key="Caption" value="#{Buy}"/>
+        <Property key="Visible" value="false"/>
+        <Widget type="EditBox" skin="EditBox" position="15 10 390 25" name="gameObjectsCountLabel">
+            <Property key="Caption" value="#{Amount}:"/>
+            <Property key="ReadOnly" value="true"/>
+            <Property key="Static" value="true"/>
+        </Widget>
+		<Widget type="ScrollBar" skin="SliderH" position="15 35 201 15" align="HStretch Top" name="amountSlider">
+			<Property key="Range" value="256"/>
+			<Property key="RangePosition" value="1"/>
+        </Widget>
+		<Widget type="EditBox" skin="EditBox" position="220 35 100 25" name="amountEdit">
+            <Property key="ReadOnly" value="true"/>
+            <Property key="Static" value="true"/>
+        </Widget>
+		
+		<Widget type="Button" skin="Button" position="185 70 50 25" name="okButton">
+            <Property key="Caption" value="Ok"/>
+        </Widget>
+    </Widget>
+</MyGUI>

@@ -1,0 +1,5 @@
+@piece( custom_passBuffer )
+	//Fog
+	midf4 fogParams;
+	midf4 fogColor;
+@end

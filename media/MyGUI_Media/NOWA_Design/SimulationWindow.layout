@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Window" skin="WindowC" position="500 260 300 70" align="Left Top" layer="Main" name="simulationWindow">
+        <Property key="Movable" value="false"/>
+        <Property key="Caption" value="Simulation"/>
+        <Property key="Visible" value="true"/>
+		<Widget type="Button" skin="ButtonImage" position="10 5 29 26" name="playButton">
+            <Property key="StateSelected" value="true"/>
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="PlayImage"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+        <Widget type="Button" skin="ButtonImage" position="45 5 29 26" name="undoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="UndoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+        <Widget type="Button" skin="ButtonImage" position="75 5 29 26" name="redoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="RedoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+		
+		<Widget type="Button" skin="ButtonImage" position="105 5 29 26" name="cameraUndoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="CameraUndoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+        <Widget type="Button" skin="ButtonImage" position="135 5 29 26" name="cameraRedoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="CameraRedoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+	   <Widget type="Button" skin="ButtonImage" position="165 5 29 26" name="selectUndoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="SelectUndoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+        <Widget type="Button" skin="ButtonImage" position="195 5 29 26" name="selectRedoButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="SelectRedoImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+		
+    </Widget>
+    <CodeGeneratorSettings/>
+</MyGUI>

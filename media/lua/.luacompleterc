@@ -1,0 +1,32 @@
+{
+    "luaVersion": "5.3",
+    "packagePath": "./?.lua",
+    "global": {
+		"GameObjectController": {
+			"type": "table",
+			"fields": {
+				"getGameObjectFromId": {
+					"type": "function",
+					"returnTypes": [
+						{
+							"type": "ref",
+							"name": "GameObject"
+						}
+					],
+					"variants": [
+						{
+							"args": [
+								{
+									"id": "id"
+								}
+							]
+						},
+						{
+							"args": []
+						}
+					]
+				}
+			}
+		}
+    }
+}

@@ -1,0 +1,67 @@
+{
+
+	"macroblocks" :
+	{
+		"Macroblock_0" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"Blendblock_3" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "one",
+			"dst_blend_factor" : "one_minus_src_alpha",
+			"blend_operation" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+
+		"Glass1" :
+		{
+			"macroblock" : "Macroblock_0",
+			"blendblock" : "Blendblock_3",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "specular_fresnel",
+			"brdf" : "blinn_phong_legacy_math",
+			"transparency" :
+			{
+				"value" : 0.66,
+				"mode" : "Transparent",
+				"use_alpha_from_textures" : true
+			},
+			"diffuse" :
+			{
+				"value" : [1, 1, 1],
+				"background" : [1, 1, 1, 1]
+			},
+			"specular" :
+			{
+				"value" : [1, 1, 1]
+			},
+			"fresnel" :
+			{
+				"value" : [0, 0.17, 0.48],
+				"mode" : "coloured"
+			},
+			"roughness" :
+			{
+				"value" : 0.5
+			}
+		}
+	}
+}

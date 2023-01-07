@@ -1,0 +1,113 @@
+{
+	"macroblocks" :
+	{
+		"Macroblock_64" :
+		{
+			"scissor_test" : false,
+			"depth_check" : false,
+			"depth_write" : true,
+			"depth_function" : "always",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "none",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"Blendblock_64" :
+		{
+			"alpha_to_coverage" : true,
+			"blendmask" : "rgba",
+			"separate_blend" : true,
+			"transparent" : true,
+			"src_blend_factor" : "src_alpha",
+			"dst_blend_factor" : "one_minus_src_alpha",
+			"blend_operation" : "add"
+		}
+	},
+
+	"unlit" : 
+	{
+		"WhiteNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 1, 1, 1]
+		},
+		
+		"GreyNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [0.2, 0.2, 0.2, 1]
+		},
+		
+		"RedNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 0, 0, 1]
+		},
+		
+		"GreenNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [0, 1, 0, 1]
+		},
+		
+		"BlueNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [0, 0, 1, 1]
+		},
+		
+		"YellowNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 1, 0, 1]
+		},
+		
+		"TransparentRedNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 0, 0, 0.7]
+		},
+		
+		"TransparentGreenNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [0, 1, 0, 0.7]
+		},
+		
+		"TransparentBlueNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [0, 0, 1, 0.7]
+		},
+		
+		"TransparentYellowNoLighting" :
+		{
+			"macroblock" : "Macroblock_64",
+			"blendblock" : "Blendblock_64",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 1, 0, 0.7]
+		}
+	}
+}

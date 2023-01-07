@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Window" skin="Window" position="235 145 380 205" layer="Main" name="deployWindow">
+		<Property key="Caption" value="#{Deploy}"/>
+        <Widget type="Button" skin="Button" position="15 20 170 35" name="encryptButton">
+            <Property key="Caption" value="#{EncryptFiles}"/>
+        </Widget>
+        <Widget type="Button" skin="Button" position="15 70 170 35" name="decryptButton">
+            <Property key="Caption" value="#{DecryptFiles}"/>
+        </Widget>
+        <Widget type="EditBox" skin="EditBox" position="205 70 150 35" name="keyEdit">
+            <Property key="Password" value="true"/>
+            <Property key="TextAlign" value="Center"/>
+        </Widget>
+		<Widget type="TextBox" skin="TextBox" position="205 105 150 35" name="resultLabel">
+                <Property key="Colour" value="1 0 0"/>
+                <Property key="TextAlign" value="Left Top"/>
+        </Widget>
+        <Widget type="TextBox" skin="TextBox" position="205 40 150 30" name="decryptLabel">
+            <Property key="Caption" value="#{DecryptKey}:"/>
+            <Property key="TextAlign" value="Left VCenter"/>
+        </Widget>
+		<Widget type="Button" skin="Button" position="130 130 120 30" name="deployCloseButton">
+            <Property key="Caption" value="#{Close}"/>
+        </Widget>
+    </Widget>
+</MyGUI>

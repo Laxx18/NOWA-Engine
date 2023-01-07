@@ -1,0 +1,567 @@
+abstract target CubemapTargetPbs
+{
+	pass render_scene
+	{
+		load
+		{
+			all				clear
+			clear_colour	0 0 0 1
+		}
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		
+		expose cubemap
+
+		//Filter stuff that shouldn't be reflected (vampires?)
+		visibility_mask		0x00000005
+		overlays			off
+		camera_cubemap_reorient true
+
+		rq_first 	0
+		rq_last 	2
+	}
+	
+	pass render_scene
+	{
+		overlays	off
+		shadows		NOWAShadowNode
+		
+		rq_first 	2
+	}
+}
+
+abstract target CubemapTargetSky
+{
+	pass render_scene
+	{
+		load
+		{
+			all				clear
+			clear_colour	0 0 0 1
+		}
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		
+		expose cubemap
+
+		//Filter stuff that shouldn't be reflected (vampires?)
+		visibility_mask		0x00000005
+		overlays			off
+		camera_cubemap_reorient true
+		
+		rq_first 	0
+		rq_last 	2
+	}
+
+	//Render sky (see TutorialSky_Postprocess)
+	pass render_quad
+	{
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+
+		quad_normals	camera_direction
+		material NOWASkyPostprocess
+		camera_cubemap_reorient true
+	}
+	
+	pass render_scene
+	{
+		overlays	off
+		shadows		NOWAShadowNode
+		
+		rq_first 	2
+	}
+}
+
+abstract target CubemapTargetBackground
+{
+	pass render_scene
+	{
+		load
+		{
+			all				clear
+			clear_colour	0 0 0 1
+		}
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		
+		expose cubemap
+
+		//Filter stuff that shouldn't be reflected (vampires?)
+		visibility_mask		0x00000005
+		overlays			off
+		camera_cubemap_reorient true
+
+		rq_first 	0
+		rq_last 	2
+	}
+	
+	pass render_quad
+	{
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		material NOWABackgroundPostprocess
+		camera_cubemap_reorient true
+	}
+	
+	pass render_quad
+	{
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		material NOWABackgroundPostprocess2
+		camera_cubemap_reorient true
+	}
+	
+	pass render_quad
+	{
+		store
+		{
+			//We only care about the contents of the colour target
+			depth			dont_care
+			stencil			dont_care
+		}
+		material NOWABackgroundPostprocess3
+		camera_cubemap_reorient true
+		
+		// rq_first 	2
+	}
+	
+	pass render_scene
+	{
+		overlays	off
+		shadows		NOWAShadowNode
+	}
+}
+
+compositor_node NOWAPbsDynamicCubemapProbeRendererNode
+{
+	in 0 cubemap
+
+	texture tmpCubemap target_width target_height target_format cubemap mipmaps 0
+
+	target tmpCubemap +X : CubemapTargetPbs { }
+	target tmpCubemap -X : CubemapTargetPbs { }
+	target tmpCubemap +Y : CubemapTargetPbs { }
+	target tmpCubemap -Y : CubemapTargetPbs { }
+	target tmpCubemap +Z : CubemapTargetPbs { }
+	target tmpCubemap -Z : CubemapTargetPbs
+	{
+		pass ibl_specular
+		{
+			input tmpCubemap
+			output cubemap
+		}
+	}
+}
+
+compositor_node NOWASkyDynamicCubemapProbeRendererNode
+{
+	in 0 cubemap
+
+	texture tmpCubemap target_width target_height target_format cubemap mipmaps 0
+
+	target tmpCubemap +X : CubemapTargetSky { }
+	target tmpCubemap -X : CubemapTargetSky { }
+	target tmpCubemap +Y : CubemapTargetSky { }
+	target tmpCubemap -Y : CubemapTargetSky { }
+	target tmpCubemap +Z : CubemapTargetSky { }
+	target tmpCubemap -Z : CubemapTargetSky
+	{
+		pass ibl_specular
+		{
+			input tmpCubemap
+			output cubemap
+		}
+	}
+}
+
+// MSAA Cubemaps do not exist. Therefore we have to manually define the RTV (RenderTextureView)
+// To render to a temporary MSAA surface and tell Ogre to resolve the MSAA contents into a cubemap
+compositor_node NOWASkyDynamicCubemapProbeRendererNodeMsaa
+{
+	in 0 cubemap
+
+	// Note: IF you wish to preserve the MSAA contents of all 6 faces, then use
+	//	'texture tmpMsaa target_width target_height 6 target_format 2d_array msaa 4 explicit_resolve'
+	// instead
+	texture tmpMsaa		target_width target_height target_format msaa 4 explicit_resolve
+	texture tmpCubemap	target_width target_height target_format cubemap mipmaps 0
+
+	rtv mixedCubemapRtv
+	{
+		// Specify we want to render to tmpMsaa at slot[0] but we want to resolve to tmpCubemap
+		colour	0 tmpMsaa resolve tmpCubemap
+	}
+
+	target mixedCubemapRtv +X : CubemapTargetSky { }
+	target mixedCubemapRtv -X : CubemapTargetSky { }
+	target mixedCubemapRtv +Y : CubemapTargetSky { }
+	target mixedCubemapRtv -Y : CubemapTargetSky { }
+	target mixedCubemapRtv +Z : CubemapTargetSky { }
+	target mixedCubemapRtv -Z : CubemapTargetSky
+	{
+		pass ibl_specular
+		{
+			input tmpCubemap
+			output cubemap
+		}
+	}
+}
+
+compositor_node NOWABackgroundDynamicCubemapProbeRendererNode
+{
+	in 0 cubemap
+
+	texture tmpCubemap target_width target_height target_format cubemap mipmaps 0
+
+	target tmpCubemap +X : CubemapTargetBackground { }
+	target tmpCubemap -X : CubemapTargetBackground { }
+	target tmpCubemap +Y : CubemapTargetBackground { }
+	target tmpCubemap -Y : CubemapTargetBackground { }
+	target tmpCubemap +Z : CubemapTargetBackground { }
+	target tmpCubemap -Z : CubemapTargetBackground
+	{
+		pass ibl_specular
+		{
+			input tmpCubemap
+			output cubemap
+		}
+	}
+}
+
+compositor_node NOWALocalCubemapProbeRendererNode
+{
+	in 0 cubemap
+
+	texture tmpCubemap target_width target_height target_format cubemap mipmaps 0
+
+	target tmpCubemap +X : CubemapTargetPbs { }
+	target tmpCubemap -X : CubemapTargetPbs { }
+	target tmpCubemap +Y : CubemapTargetPbs { }
+	target tmpCubemap -Y : CubemapTargetPbs { }
+	target tmpCubemap +Z : CubemapTargetPbs { }
+	target tmpCubemap -Z : CubemapTargetPbs
+	{
+		pass ibl_specular
+		{
+			input tmpCubemap
+			output cubemap
+		}
+	}
+}
+
+compositor_node NOWASkyHdrReflectionRenderingNode
+{
+	//Temporary textures one of them that we don't use, but the rest of simple compositors (Bloom,
+	//Invert, Glass, etc) will take as 2nd input, and then ping pong between rt0 and rt1 to avoid creating
+	//more than 2 RTs. In Ogre 1.x; each compositor created an implicit RT, which could quickly
+	//turn very VRAM intensive.
+	//
+	//Another advantage from this approach (besides saving tons of VRAM) is that HDR renderers can
+	//pass RTs with floating point formats, thus for example, a simple compositor wouldn't lose
+	//precision converting from FP16 to PFG_RGBA8_UNORM_SRGB.
+	// texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// For hdr
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+			rq_first 	0
+			rq_last 	2
+			overlays	off
+			shadows		NOWAShadowNode
+		}
+
+		//Render sky (see TutorialSky_Postprocess)
+		pass render_quad
+		{
+			quad_normals	camera_direction
+			material NOWASkyPostprocess
+		}
+
+		//Render transparent stuff after sky
+		pass render_scene
+		{
+			overlays	off
+			shadows		NOWAShadowNode reuse
+		}
+	}
+	
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	target oldLumRt
+	{
+		pass clear
+		{
+			num_initial 1
+			colour_value 0.01 0.01 0.01 1
+		}
+	}
+	
+	out 0 rt0
+	out 1 rt1
+	out 2 oldLumRt
+}
+
+compositor_node NOWASkyReflectionRenderingNode
+{
+	//Temporary textures one of them that we don't use, but the rest of simple compositors (Bloom,
+	//Invert, Glass, etc) will take as 2nd input, and then ping pong between rt0 and rt1 to avoid creating
+	//more than 2 RTs. In Ogre 1.x; each compositor created an implicit RT, which could quickly
+	//turn very VRAM intensive.
+	//
+	//Another advantage from this approach (besides saving tons of VRAM) is that HDR renderers can
+	//pass RTs with floating point formats, thus for example, a simple compositor wouldn't lose
+	//precision converting from FP16 to PFG_RGBA8_UNORM_SRGB.
+	// texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// For hdr
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	// texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+	
+	// in 0 rt_renderwindow
+	// in 1 demo_dynamic_cubemap
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+			rq_first 	0
+			rq_last 	2
+			overlays	off
+
+			//Our materials in this pass will be using this cubemap,
+			//so we need to expose it to the pass.
+			//Note: Even if it "just works" without exposing, the reason for
+			//exposing is to ensure compatibility with Vulkan & D3D12.
+			expose rt1
+			
+			shadows		NOWAShadowNode
+		}
+
+		//Render sky (see TutorialSky_Postprocess)
+		pass render_quad
+		{
+			quad_normals	camera_direction
+			material NOWASkyPostprocess
+		}
+
+		//Render transparent stuff after sky
+		pass render_scene
+		{
+			overlays	off
+			
+			shadows		NOWAShadowNode reuse
+		}
+		
+		// Render MYGUI in pass here, so that no effect will be placed on the GUI!
+		pass custom MYGUI
+		{
+		   
+		}
+		
+	}
+	
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	// target oldLumRt
+	// {
+		// pass clear
+		// {
+			// num_initial 1
+			// colour_value 0.01 0.01 0.01 1
+		// }
+	// }
+	
+	out 0 rt0
+	out 1 rt1
+	// out 2 oldLumRt
+}
+
+workspace NOWASkyReflectionWorkspace
+{
+	//Connect RenderWindow to NOWAPbsFinalCompositionNode's input channel #0
+	connect_output NOWAPbsFinalCompositionNode 0
+	
+	connect NOWASkyReflectionRenderingNode 0 NOWAPbsFinalCompositionNode 1
+	
+	//Render Window on channel #0
+	// connect_external 0 NOWASkyReflectionRenderingNode 0
+	//Cubemap on channel #1
+	// connect_external 1 NOWASkyReflectionRenderingNode 1
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Working Reflection
+compositor_node NOWASkyReflectionRenderingNodeTest
+{
+	//Temporary textures one of them that we don't use, but the rest of simple compositors (Bloom,
+	//Invert, Glass, etc) will take as 2nd input, and then ping pong between rt0 and rt1 to avoid creating
+	//more than 2 RTs. In Ogre 1.x; each compositor created an implicit RT, which could quickly
+	//turn very VRAM intensive.
+	//
+	//Another advantage from this approach (besides saving tons of VRAM) is that HDR renderers can
+	//pass RTs with floating point formats, thus for example, a simple compositor wouldn't lose
+	//precision converting from FP16 to PFG_RGBA8_UNORM_SRGB.
+	// texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// For hdr
+	// texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	// texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	// texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+	
+	in 0 rt_renderwindow
+	in 1 demo_dynamic_cubemap
+
+	target rt_renderwindow
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+			rq_first 	0
+			rq_last 	2
+			overlays	off
+			
+			//Our materials in this pass will be using this cubemap,
+			//so we need to expose it to the pass.
+			//Note: Even if it "just works" without exposing, the reason for
+			//exposing is to ensure compatibility with Vulkan & D3D12.
+			expose demo_dynamic_cubemap
+			
+			shadows		NOWAShadowNode
+		}
+
+		//Render sky (see TutorialSky_Postprocess)
+		pass render_quad
+		{
+			quad_normals	camera_direction
+			material NOWASkyPostprocess
+		}
+
+		//Render transparent stuff after sky
+		pass render_scene
+		{
+			overlays	off
+			shadows		NOWAShadowNode reuse
+		}
+// Attention:
+		// Render MYGUI in pass here, so that no effect will be placed on the GUI!
+		pass custom MYGUI
+		{
+		   
+		}
+	}
+	
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	// target oldLumRt
+	// {
+		// pass clear
+		// {
+			// num_initial 1
+			// colour_value 0.01 0.01 0.01 1
+		// }
+	// }
+	
+	// out 0 rt0
+	// out 1 rt1
+	// out 2 oldLumRt
+}
+
+workspace NOWASkyReflectionWorkspaceTest
+{
+	// //Render Window on channel #0
+	connect_output NOWASkyReflectionRenderingNodeTest 0
+	// //Cubemap on channel #1
+	connect_output NOWASkyReflectionRenderingNodeTest 1
+	
+	//Connect RenderWindow to NOWAPbsFinalCompositionNode's input channel #0
+	// connect_output NOWAPbsFinalCompositionNode 0
+	
+	// connect NOWASkyReflectionRenderingNode 0 NOWAPbsFinalCompositionNode 1
+}

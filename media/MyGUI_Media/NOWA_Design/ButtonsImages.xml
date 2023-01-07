@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+	<Resource type="ResourceImageSet" name="StopImage">
+		<Group name="States" texture="stopButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="PlayImage">
+		<Group name="States" texture="playButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="UndoImage">
+		<Group name="States" texture="undoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="RedoImage">
+		<Group name="States" texture="redoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="CameraUndoImage">
+		<Group name="States" texture="cameraUndoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="CameraRedoImage">
+		<Group name="States" texture="cameraRedoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="SelectUndoImage">
+		<Group name="States" texture="selectUndoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="SelectRedoImage">
+		<Group name="States" texture="selectRedoButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="GridImage">
+		<Group name="States" texture="gridButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="FocusImage">
+		<Group name="States" texture="focusButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="CameraResetImage">
+		<Group name="States" texture="cameraResetButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="SelectImage"> <!-- For Radio button, there are other states! -->
+		<Group name="States" texture="selectButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="PlaceImage"> <!-- For Radio button, there are other states! -->
+		<Group name="States" texture="placeButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="TranslateImage">
+		<Group name="States" texture="translateButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="ScaleImage">
+		<Group name="States" texture="scaleButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="Rotate1Image">
+		<Group name="States" texture="rotate1Button.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="Rotate2Image">
+		<Group name="States" texture="rotate2Button.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="PickImage">
+		<Group name="States" texture="pickButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="ModifyTerrainImage">
+		<Group name="States" texture="modifyTerrainButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="SmoothTerrainImage">
+		<Group name="States" texture="smoothTerrainButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="PaintTerrainImage">
+		<Group name="States" texture="paintTerrainButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="WakeImage">
+		<Group name="States" texture="wakeButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="SleepImage">
+		<Group name="States" texture="sleepButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="RemoveImage">
+		<Group name="States" texture="removeButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+	<Resource type="ResourceImageSet" name="CopyImage">
+		<Group name="States" texture="copyButton.png" size="29 26">
+			<Index name="normal">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="highlighted">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="pushed">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="disabled">
+				<Frame point="0 78"/>
+			</Index>
+			<Index name="pushed_checked">
+				<Frame point="0 0"/>
+			</Index>
+			<Index name="disabled_checked">
+				<Frame point="0 26"/>
+			</Index>
+			<Index name="highlighted_checked">
+				<Frame point="0 52"/>
+			</Index>
+			<Index name="normal_checked">
+				<Frame point="0 78"/>
+			</Index>
+		</Group>
+	</Resource>
+</MyGUI>

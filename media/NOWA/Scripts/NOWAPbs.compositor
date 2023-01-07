@@ -1,0 +1,126 @@
+compositor_node NOWAPbsRenderingNode
+{
+	//Temporary textures one of them that we don't use, but the rest of simple compositors (Bloom,
+	//Invert, Glass, etc) will take as 2nd input, and then ping pong between rt0 and rt1 to avoid creating
+	//more than 2 RTs. In Ogre 1.x; each compositor created an implicit RT, which could quickly
+	//turn very VRAM intensive.
+	//
+	//Another advantage from this approach (besides saving tons of VRAM) is that HDR renderers can
+	//pass RTs with floating point formats, thus for example, a simple compositor wouldn't lose
+	//precision converting from FP16 to PFG_RGBA8_UNORM_SRGB.
+	// texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// For hdr
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+
+			//lod_update_list	off					//Turn Lod off?
+			overlays			off
+			shadows				NOWAShadowNode
+		}
+		
+		// Here not MYGUI pass rendering but in the final composition, because here, the effect would be appled also on the GUI
+	}
+	
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	target oldLumRt
+	{
+		pass clear
+		{
+			num_initial 1
+			colour_value 0.01 0.01 0.01 1
+		}
+	}
+	
+	out 0 rt0
+	out 1 rt1
+	out 2 oldLumRt
+}
+
+compositor_node NOWAPbsRenderingNodeVR
+{
+	//Temporary textures one of them that we don't use, but the rest of simple compositors (Bloom,
+	//Invert, Glass, etc) will take as 2nd input, and then ping pong between rt0 and rt1 to avoid creating
+	//more than 2 RTs. In Ogre 1.x; each compositor created an implicit RT, which could quickly
+	//turn very VRAM intensive.
+	//
+	//Another advantage from this approach (besides saving tons of VRAM) is that HDR renderers can
+	//pass RTs with floating point formats, thus for example, a simple compositor wouldn't lose
+	//precision converting from FP16 to PFG_RGBA8_UNORM_SRGB.
+	// texture rt0 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// texture rt1 target_width target_height PFG_RGBA8_UNORM_SRGB msaa_auto
+	// For hdr
+	texture rt0 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	texture rt1 target_width target_height PFG_RGBA16_FLOAT msaa_auto explicit_resolve
+	
+	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
+
+	target rt0
+	{
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0 0 0 1
+			}
+			store
+			{
+				colour	store_or_resolve
+				depth	dont_care
+				stencil	dont_care
+			}
+
+			//lod_update_list	off					//Turn Lod off?
+			overlays			off
+			shadows				NOWAShadowNode
+			
+			instanced_stereo true
+			viewport 0 0.0 0.0 0.5 1.0
+			viewport 1 0.5 0.0 0.5 1.0
+		}
+		
+		// Here not MYGUI pass rendering but in the final composition, because here, the effect would be appled also on the GUI
+	}
+	
+	//Initialize lumRt1 at startup, to avoid NaNs.
+	target oldLumRt
+	{
+		pass clear
+		{
+			num_initial 1
+			colour_value 0.01 0.01 0.01 1
+		}
+	}
+	
+	out 0 rt0
+	out 1 rt1
+	out 2 oldLumRt
+}
+
+workspace NOWAPbsWorkspace
+{
+	//Connect RenderWindow to NOWAPbsFinalCompositionNode's input channel #0
+	connect_output NOWAPbsFinalCompositionNode 0
+	
+	//Connect NOWAPbsRenderingNode's output #0 to NOWAPbsFinalCompositionNode's input #1
+	connect NOWAPbsRenderingNode 0 NOWAPbsFinalCompositionNode 1
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Resource" version="1.1">
+	<Resource type="ResourceImageSet" name="pic_NOWA">
+		<Group name="States" texture="NOWA_Logo.png" size="260 159">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+</MyGUI>

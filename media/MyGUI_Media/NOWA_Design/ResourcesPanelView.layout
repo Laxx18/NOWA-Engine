@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Window" skin="WindowCS" position="0 88 400 544" layer="Main" name="_Main">
+        <Property key="Caption" value="#{Resources}"/>
+        <Property key="MinSize" value="200 150"/>
+        <Widget type="TabControl" skin="TabControl" position="5 5 383 500" align="Stretch" name="resourcesTab">
+            <Widget type="TabItem" skin="" position="2 24 209 472" align="Stretch" name="resourcesTabItem">
+                <Property key="Caption" value="#{Resources}"/>
+                <Widget type="ScrollView" skin="ScrollView" position="0 10 373 460" align="Stretch" name="resources1ScrollView">
+                    <Property key="VisibleHScroll" value="false"/>
+                </Widget>
+            </Widget>
+            <Widget type="TabItem" skin="" position="2 24 209 472">
+                <Property key="Caption" value="#{Resources} 2"/>
+                <Widget type="ScrollView" skin="ScrollView" position="5 5 368 465" align="Stretch" name="resources2ScrollView">
+					<Property key="VisibleHScroll" value="false"/>
+				</Widget>
+            </Widget>
+        </Widget>
+    </Widget>
+</MyGUI>

@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+  <Widget type="Widget" skin="PanelEmpty" position="0 0 400 30" layer="Overlapped" name="_Main">
+    <!--<UserString key="SnapTo" value="Stretch"/>-->
+    <Widget type="MenuBar" skin="MenuBar" position="0 0 400 30" name="mainMenuBar">
+        <Widget type="MenuItem" position="0 0 54 21" name="fileMenuItem">
+            <Property key="Caption" value="#{File}"/>
+			<Property key="MenuItemType" value="Popup"/>
+            <Property key="MenuItemId" value="File"/>
+			<Widget type="PopupMenu" position="0 0 193 230" style="Popup" layer="Popup">
+				<Widget type="MenuItem" position="0 0 185 19">
+					<Property key="Caption" value="#{New}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 19 185 19">
+					<Property key="Caption" value="#{Open}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 38 185 19">
+					<Property key="Caption" value="#{Save}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 57 185 19">
+					<Property key="Caption" value="#{SaveAs}"/>
+				</Widget>
+				<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 76 185 10">
+					<Property key="MenuItemType" value="Separator"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 86 185 19">
+					<Property key="Caption" value="#{Settings}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 105 185 19">
+					<Property key="Caption" value="#{CreateComponentPlugin}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 134 185 19">
+					<Property key="Caption" value="#{OpenLog}"/>
+				</Widget>
+				<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 105 185 10">
+					<Property key="MenuItemType" value="Separator"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 115 185 19" name="recentFileMenuItem1">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 134 185 19" name="recentFileMenuItem2">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 153 185 19" name="recentFileMenuItem3">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 172 185 19" name="recentFileMenuItem4">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 191 185 19" name="recentFileMenuItem5">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 201 185 10">
+					<Property key="MenuItemType" value="Separator"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 220 185 19">
+					<Property key="Caption" value="#{Exit}"/>
+					<Property key="MenuItemId" value="commandExit"/>
+				</Widget>
+		 </Widget>
+     </Widget>
+	<Widget type="MenuItem" skin="" position="45 0 42 19" name="editMenuItem">
+		<Property key="Caption" value="#{Edit}"/>
+		<Property key="MenuItemType" value="Popup"/>
+            <Property key="MenuItemId" value="Edit"/>
+			<Widget type="PopupMenu" position="50 0 193 230" style="Popup" layer="Popup">
+				<Widget type="MenuItem" position="0 0 185 19">
+					<Property key="Caption" value="#{SaveGroup}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 19 185 19">
+					<Property key="Caption" value="#{LoadGroup}"/>
+				</Widget>
+				<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 38 185 10">
+					<Property key="MenuItemType" value="Separator"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 57 185 19">
+					<Property key="Caption" value="#{Undo}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 76 185 19">
+					<Property key="Caption" value="#{Redo}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 95 185 19">
+					<Property key="Caption" value="#{SelectionUndo}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 114 185 19">
+					<Property key="Caption" value="#{SelectionRedo}"/>
+				</Widget>
+			</Widget>	
+		</Widget>
+		<Widget type="MenuItem" skin="" position="93 0 42 19" name="cameraMenuItem">
+			<Property key="Caption" value="#{Camera}"/>
+			<Property key="MenuItemType" value="Popup"/>
+				<Property key="MenuItemId" value="Edit"/>
+				<Widget type="PopupMenu" position="50 0 193 230" style="Popup" layer="Popup">
+					<Widget type="MenuItem" position="0 0 185 19">
+						<Property key="Caption" value="#{FrontView}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 19 185 19">
+						<Property key="Caption" value="#{TopView}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 38 185 19">
+						<Property key="Caption" value="#{BackView}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 57 185 19">
+						<Property key="Caption" value="#{BottomView}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 76 185 19">
+						<Property key="Caption" value="#{LeftView}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 95 185 19">
+						<Property key="Caption" value="#{RightView}"/>
+					</Widget>
+					<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 114 185 10">
+						<Property key="MenuItemType" value="Separator"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 132 185 19">
+						<Property key="Caption" value="#{CameraUndo}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 151 185 19">
+						<Property key="Caption" value="#{CameraRedo}"/>
+					</Widget>
+					<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 170 185 10">
+						<Property key="MenuItemType" value="Separator"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 189 185 19">
+						<Property key="Caption" value="#{RenderSolid}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 208 185 19">
+						<Property key="Caption" value="#{RenderWireframe}"/>
+					</Widget>
+					<Widget type="MenuItem" position="0 227 185 19">
+						<Property key="Caption" value="#{RenderPoints}"/>
+					</Widget>
+				</Widget>	
+		</Widget>
+		<Widget type="MenuItem" skin="" position="160 0 61 19" name="utilitiesMenuItem">
+			<Property key="Caption" value="#{Utilities}"/>
+			<Property key="MenuItemId" value="Edit"/>
+			<Property key="MenuItemType" value="Popup"/>
+			<Widget type="PopupMenu" position="50 0 193 230" style="Popup" layer="Popup">
+				<Widget type="MenuItem" position="0 0 185 19">
+					<Property key="Caption" value="#{SceneAnalysis}"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 0 185 38">
+					<Property key="Caption" value="#{DrawNavigationMesh}"/>
+				</Widget>
+			</Widget>	
+		</Widget>
+		<Widget type="MenuItem" skin="" position="231 0 65 19" name="simulationMenuItem">
+			<Property key="Caption" value="Simulation"/>
+			<Property key="MenuItemId" value="Edit"/>
+			<Property key="MenuItemType" value="Popup"/>
+			<Widget type="PopupMenu" position="50 0 193 230" style="Popup" layer="Popup">
+				<Widget type="MenuItem" position="0 0 185 19">
+					<Property key="Caption" value="#{ControlSelectedPlayer}"/>
+				</Widget>
+			</Widget>
+		</Widget>
+		<Widget type="MenuItem" skin="" position="300 0 47 19" name="helpMenuItem">
+			<Property key="Caption" value="#{Help}"/>
+			<Property key="MenuItemId" value="Edit"/>
+			<Property key="MenuItemType" value="Popup"/>
+			<Widget type="PopupMenu" position="50 0 193 230" style="Popup" layer="Popup">
+				<Widget type="MenuItem" position="0 0 185 19">
+					<Property key="Caption" value="#{About}"/>
+				</Widget>
+			</Widget>
+		</Widget>
+	</Widget>
+  </Widget>
+</MyGUI>

@@ -1,0 +1,10 @@
+@piece( custom_passBuffer )
+	//Fog
+	midf4 fogParams;
+	midf4 fogColor;
+	//wind
+	midf windStrength;
+	midf globalTime;
+	midf padding0;
+	midf padding1;
+@end

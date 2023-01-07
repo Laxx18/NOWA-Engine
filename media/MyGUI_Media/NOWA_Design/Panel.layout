@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 208 380" align="HStretch Top" layer="Main" name="_Main">
+        
+    </Widget>
+</MyGUI>

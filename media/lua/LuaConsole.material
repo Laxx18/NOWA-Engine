@@ -1,0 +1,5 @@
+hlms Console/background unlit
+{
+	//  scene_blend modulate
+    detail_map0 Gear.png console_texture.png
+}

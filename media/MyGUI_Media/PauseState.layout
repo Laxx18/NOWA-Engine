@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Window" skin="WindowC" position="345 290 230 220" layer="Overlapped" name="PauseState">
+        <Property key="Movable" value="false"/>
+        <Property key="Caption" value="Pause"/>
+        <Property key="TextShadow" value="false"/>
+        <Widget type="Button" skin="Button" position="40 35 145 30" name="ContinueButton">
+            <Property key="Caption" value="#{Continue}"/>
+        </Widget>
+        <Widget type="Button" skin="Button" position="40 80 145 30" name="BackToMenueButton">
+            <Property key="Caption" value="#{Back_To_Menue}"/>
+        </Widget>
+        <Widget type="Button" skin="Button" position="40 125 145 30" name="QuitButton">
+            <Property key="Caption" value="#{Quit}"/>
+        </Widget>
+    </Widget>
+    <CodeGeneratorSettings/>
+</MyGUI>

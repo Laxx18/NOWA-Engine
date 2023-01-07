@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 208 40" align="HStretch Top" layer="Overlapped" name="_Main">
+		<Widget type="TextBox" skin="TextBox" position="4 9 20 20">
+            <Property key="Caption" value=">>"/>
+        </Widget>
+        <Widget type="EditBox" skin="EditBox" position="30 8 160 26" name="componentSearchEdit" align="HStretch Top">
+            <Property key="Caption"/>
+        </Widget>
+    </Widget>
+</MyGUI>

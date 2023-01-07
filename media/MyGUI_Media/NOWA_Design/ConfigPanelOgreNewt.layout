@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout" version="3.2.0">
+    <Widget type="Widget" skin="PanelEmpty" position="450 145 490 380" align="HStretch Top" layer="Main" name="_Main">
+	
+        <Widget type="TextBox" skin="TextBox" position="10 20 260 20" name="updateRateText">
+            <Property key="Caption" value="#{UpdateRate}:"/>
+        </Widget>
+        <Widget type="EditBox" skin="EditBox" position="280 20 175 20" name="updateRateEdit">
+			<Property key="Caption" value="120"/>
+		</Widget>
+		
+		<Widget type="TextBox" skin="TextBox" position="10 52 260 20" name="solverModelText">
+            <Property key="Caption" value="#{SolverModel}:"/>
+        </Widget>
+		<Widget type="ComboBox" skin="ComboBox" position="280 52 175 20" name="solverModelCombo">
+		    <Property key="Caption" value="SM_MEDIUM"/>
+			<Property key="ReadOnly" value="true"/>
+            <Property key="AddItem" value="SM_FASTEST"/>
+            <Property key="AddItem" value="SM_MEDIUM"/>
+            <Property key="AddItem" value="SM_FINE"/>
+            <Property key="AddItem" value="SM_ACCURATE"/>
+			<Property key="AddItem" value="SM_BEST"/>
+			<Property key="AddItem" value="SM_BEST_1"/>
+			<Property key="AddItem" value="SM_BEST_2"/>
+			<Property key="AddItem" value="SM_BEST_3"/>
+			<Property key="AddItem" value="SM_BEST_4"/>
+			<Property key="AddItem" value="SM_BEST_5"/>
+			<Property key="AddItem" value="SM_BEST_6"/>
+			<Property key="AddItem" value="SM_BEST_7"/>
+			<Property key="AddItem" value="SM_BEST_8"/>
+			<Property key="AddItem" value="SM_BEST_9"/>
+			<Property key="AddItem" value="SM_BEST_10"/>
+			<Property key="AddItem" value="SM_BEST_11"/>
+			<Property key="AddItem" value="SM_BEST_12"/>
+			<Property key="AddItem" value="SM_BEST_13"/>
+			<Property key="AddItem" value="SM_BEST_14"/>
+			<Property key="AddItem" value="SM_BEST_15"/>
+		 </Widget>
+		 <Widget type="Button" skin="CheckBox" position="280 84 260 20" name="solverForSingleIslandCheck">
+			<Property key="Caption" value="#{SolverForSingleIsland}:"/>
+			<Property key="StateSelected" value="false"/>
+		</Widget>
+		
+		<Widget type="TextBox" skin="TextBox" position="10 116 260 20" name="broadPhaseAlgorithmText">
+            <Property key="Caption" value="#{BroadPhaseAlgorithm}:"/>
+        </Widget>
+		<Widget type="ComboBox" skin="ComboBox" position="280 116 175 20" name="broadPhaseAlgorithmCombo">
+		    <Property key="Caption" value="Default"/>
+			<Property key="ReadOnly" value="true"/>
+            <Property key="AddItem" value="DEFAULT"/>
+            <Property key="AddItem" value="PERSISTENCE"/>
+		 </Widget>
+		<Widget type="TextBox" skin="TextBox" position="10 148 260 20" name="threadCountText">
+            <Property key="Caption" value="#{ThreadCount}:"/>
+        </Widget>
+		<Widget type="ComboBox" skin="ComboBox" position="280 148 175 20" name="threadCountCombo">
+		    <Property key="Caption" value="4"/>
+			<Property key="ReadOnly" value="true"/>
+            <Property key="AddItem" value="1"/>
+            <Property key="AddItem" value="2"/>
+            <Property key="AddItem" value="4"/>
+		 </Widget>
+		 <Widget type="TextBox" skin="TextBox" position="10 180 260 20" name="linearDampingText">
+            <Property key="Caption" value="#{LinearDamping}:"/>
+         </Widget>
+		 <Widget type="EditBox" skin="EditBox" position="280 180 175 20" name="linearDampingEdit">
+			<Property key="Caption" value="0.1"/>
+		</Widget>
+		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="angularDampingText">
+            <Property key="Caption" value="#{AngularDamping}:"/>
+         </Widget>
+		 <Widget type="EditBox" skin="EditBox" position="280 212 175 20" name="angularDampingEdit">
+			<Property key="Caption" value="0.1 0.1 0.1"/>
+		</Widget>
+		<Widget type="TextBox" skin="TextBox" position="10 244 260 20" name="gravityText">
+            <Property key="Caption" value="#{Gravity}:"/>
+         </Widget>
+		<Widget type="EditBox" skin="EditBox" position="280 244 175 20" name="gravityEdit">
+			<Property key="Caption" value="0 -19.8 0"/>
+		</Widget>
+    </Widget>
+</MyGUI>

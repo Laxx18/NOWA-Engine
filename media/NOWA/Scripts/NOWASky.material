@@ -1,0 +1,118 @@
+
+// GLSL shaders
+vertex_program NOWASkyPostprocess_vs_GLSL glsl
+{
+	source NOWASkyPostprocess_vs.glsl
+    // default_params
+    // {
+    //     param_named_auto worldViewProj worldviewproj_matrix
+    // }
+}
+
+fragment_program NOWASkyPostprocess_ps_GLSL glsl
+{
+	source NOWASkyPostprocess_ps.glsl
+	default_params
+	{
+		param_named skyCubemap int 0
+	}
+}
+
+// GLSL (Vulkan) shaders
+vertex_program NOWASkyPostprocess_vs_VK glslvk
+{
+	source NOWASkyPostprocess_vs.glsl
+}
+
+fragment_program NOWASkyPostprocess_ps_VK glslvk
+{
+	source NOWASkyPostprocess_ps.glsl
+}
+
+// HLSL shaders
+vertex_program NOWASkyPostprocess_vs_HLSL hlsl
+{
+    source NOWASkyPostprocess_vs.hlsl
+    entry_point main
+    target vs_5_0 vs_4_0 vs_4_0_level_9_1 vs_4_0_level_9_3
+
+    // default_params
+    // {
+    //     param_named_auto worldViewProj worldviewproj_matrix
+    // }
+}
+
+fragment_program NOWASkyPostprocess_ps_HLSL hlsl
+{
+	source NOWASkyPostprocess_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+// Metal shaders
+vertex_program SkyPostprocess_vs_Metal metal
+{
+	source NOWASkyPostprocess_vs.metal
+	// default_params
+	// {
+	// 	param_named_auto worldViewProj worldviewproj_matrix
+	// }
+}
+
+fragment_program SkyPostprocess_ps_Metal metal
+{
+	source NOWASkyPostprocess_ps.metal
+	shader_reflection_pair_hint SkyPostprocess_vs_Metal
+}
+
+// Unified definitions
+vertex_program NOWASkyPostprocess_vs unified
+{
+	delegate NOWASkyPostprocess_vs_HLSL
+	delegate NOWASkyPostprocess_vs_GLSL
+	delegate NOWASkyPostprocess_vs_VK
+	delegate NOWASkyPostprocess_vs_Metal
+	
+	default_params
+	{
+		param_named_auto worldViewProj worldviewproj_matrix
+	}
+}
+
+fragment_program NOWASkyPostprocess_ps unified
+{
+	delegate NOWASkyPostprocess_ps_HLSL
+	delegate NOWASkyPostprocess_ps_GLSL
+	delegate NOWASkyPostprocess_ps_VK
+	delegate NOWASkyPostprocess_ps_Metal
+}
+
+// Material definition
+material NOWASkyPostprocess
+{
+	technique
+	{
+		pass
+		{
+			depth_check on
+			depth_write off
+
+			cull_hardware none
+
+			vertex_program_ref NOWASkyPostprocess_vs
+			{
+			}
+
+			fragment_program_ref NOWASkyPostprocess_ps
+			{
+			}
+
+			texture_unit
+			{
+				texture bones_of_earth_cube.dds cubic gamma
+				filtering			trilinear
+				tex_address_mode	clamp
+			}
+		}
+	}
+}

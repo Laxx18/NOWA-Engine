@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Widget" skin="PanelSkin" position="544 232 190 210" layer="ToolTip" name="_Main">
+        <Widget type="ImageBox" skin="ImageBox" position="112 37 32 32" align="Right Top" name="image_Info"/>
+        <Widget type="TextBox" skin="TextBox" position="8 8 142 16" name="text_Name">
+            <Property key="TextAlign" value="Center"/>
+            <Property key="Caption" value="Name"/>
+        </Widget>
+        <Widget type="TextBox" skin="TextBox" position="8 40 72 16">
+            <Property key="Caption" value="Count:"/>
+        </Widget>
+        <Widget type="TextBox" skin="TextBox" position="91 40 45 16" name="text_Count">
+            <Property key="Caption" value="-"/>
+        </Widget>
+		<Widget type="TextBox" skin="TextBox" position="8 72 72 16">
+            <Property key="Caption" value="Sell Value:"/>
+        </Widget>
+		<Widget type="TextBox" skin="TextBox" position="91 72 45 16" name="text_SellValue">
+            <Property key="Caption" value="-"/>
+        </Widget>
+		<Widget type="TextBox" skin="TextBox" position="8 104 72 16">
+            <Property key="Caption" value="Buy Value:"/>
+        </Widget>
+		<Widget type="TextBox" skin="TextBox" position="91 104 45 16" name="text_BuyValue">
+            <Property key="Caption" value="-"/>
+        </Widget>
+        <Widget type="EditBox" skin="WordWrapEmpty" position="8 136 145 68" align="Stretch" name="text_Desc"/>
+    </Widget>
+</MyGUI>

@@ -1,0 +1,16 @@
+
+@piece( custom_vs_uniformDeclaration)
+	Texture3D texPerlinNoise : register(t14);
+	SamplerState texPerlinNoiseSampler : register(s14);
+@end
+
+
+@piece( custom_vs_preTransform  )
+	@property(wind_enabled)
+
+		midf windFactor = 1.0 - input.uv0.y; 
+		midf random = texPerlinNoise.SampleLevel(texPerlinNoiseSampler, 0.2 * worldPos.xyz + midf3_c(0.3, 0.3, 0.3) * passBuf.globalTime, 0).xyz - midf3_c(0.2, 0.2, 0.2);
+		worldPos.xyz += random * windFactor * passBuf.windStrength;
+
+	@end
+@end

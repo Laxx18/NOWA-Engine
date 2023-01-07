@@ -1,0 +1,10 @@
+@piece(custom_ps_posExecution)
+	@property(has_planar_reflections || !hlms_shadowcaster)
+
+		// Linear Fog
+		midf fogDistance = length(inPs.pos);
+		midf fogFactor = 1.0 - clamp((passBuf.fogParams.y - fogDistance) / (passBuf.fogParams.y - passBuf.fogParams.x), 0.0, 1.0);
+		outPs_colour0.xyz = lerp(finalColour, passBuf.fogColor, fogFactor);
+
+	@end
+@end

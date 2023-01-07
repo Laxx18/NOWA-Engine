@@ -1,0 +1,57 @@
+{
+	"macroblocks" :
+	{
+		"Macroblock_6534" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "always",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"Blendblock_6534" :
+		{
+			"alpha_to_coverage" : true,
+			"blendmask" : "rgba",
+			"separate_blend" : true,
+			"transparent" : true,
+			"src_blend_factor" : "src_alpha",
+			"dst_blend_factor" : "one_minus_src_alpha",
+			"blend_operation" : "add"
+		}
+	},
+
+	"unlit" : 
+	{
+		"WhiteNoLightingBackground" :
+		{
+			"macroblock" : "Macroblock_6534",
+			"blendblock" : "Blendblock_6534",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 1, 1, 1],
+			"useColour": true
+		},
+		
+		"recastdebug" :
+		{
+			"macroblock" : "Macroblock_6534",
+			"blendblock" : "Blendblock_6534",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 0, 0, 1]
+		},
+		"recastdebug1" :
+		{
+			"macroblock" : "Macroblock_6534",
+			"blendblock" : "Blendblock_6534",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 1, 1, 1]
+		}
+	}
+}

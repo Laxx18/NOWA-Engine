@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <Widget type="Window" skin="WindowCX" position="0 88 500 544" layer="Popup" name="_Main">
+        <Property key="Caption" value="Settings"/>
+        <Property key="MinSize" value="500 150"/>
+        <Widget type="ScrollView" skin="ScrollView" position="2 2 488 444" align="Stretch" name="scrollView">
+            <Property key="VisibleHScroll" value="false"/>
+        </Widget>
+    </Widget>
+</MyGUI>
