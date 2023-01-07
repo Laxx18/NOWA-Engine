@@ -323,7 +323,6 @@
     <ClInclude Include="include\Recast\RecastAlloc.h" />
     <ClInclude Include="include\Recast\RecastAssert.h" />
     <ClInclude Include="include\SettingsFileParser.h" />
-    <ClInclude Include="res\Resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\DebugUtils\DebugDraw.cpp" />
@@ -368,10 +367,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\ReadMe.txt" />
-    <None Include="res\OgreRecast.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="res\OgreRecast.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
