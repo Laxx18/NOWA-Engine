@@ -142,6 +142,7 @@ bin/Debug/libs/terra_d.lib
 bin/Debug/libs/terra_d.pdb
 bin/Debug/libs/tinyxml.bsc
 bin/Debug/libs/tinyxml.pdb
+bin/Debug/libs/tinyxml.lib
 bin/Debug/NOWA_Api.lua
 bin/Debug/ogre.cfg
 
@@ -166,6 +167,9 @@ bin/Debug/plugins/ParticleFxComponent_d.pdb
 bin/Debug/plugins/SelectGameObjectsComponent_d.pdb
 bin/Debug/plugins/SpeechBubbleComponent_d.pdb
 bin/Debug/plugins/VegetationComponent_d.pdb
+bin/Debug/plugins/
+bin/Release/plugins/
+
 
 
 
