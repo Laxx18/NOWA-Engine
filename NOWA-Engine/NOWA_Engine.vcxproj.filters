@@ -1,0 +1,1192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="res">
+      <UniqueIdentifier>{8b3e7441-69be-4a7c-a1f6-031cd38ed422}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="console">
+      <UniqueIdentifier>{857481b1-d75a-40eb-b02f-ea433a4d4a52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="decorators">
+      <UniqueIdentifier>{9f761185-0be0-423e-aad8-4f14e2029512}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gameobject">
+      <UniqueIdentifier>{9d6473b8-e7cc-4695-8521-fee94d17ae63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ki">
+      <UniqueIdentifier>{098ceb0f-6030-4b26-b980-720887e78113}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="main">
+      <UniqueIdentifier>{d5d6aab0-ffe6-4204-bf2a-7932c9faedb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="modules">
+      <UniqueIdentifier>{ee5a91a5-639c-45f1-b57f-431593cc1bc3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="network">
+      <UniqueIdentifier>{60935758-af39-4a42-b73b-2b8d15845a2d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader">
+      <UniqueIdentifier>{61c1a076-5479-473e-b14f-bb7490764748}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utilities">
+      <UniqueIdentifier>{523bd0df-6e4b-4021-a61c-a802974a6ea5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="camera">
+      <UniqueIdentifier>{02efda0c-6eb2-4e69-9b04-e1eb3dd56a04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="editor">
+      <UniqueIdentifier>{1d310fd2-13e4-4675-b879-a38c48796c7a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="deferred">
+      <UniqueIdentifier>{3e556c9f-82ea-4b79-8119-0248a6d4b88b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ocean">
+      <UniqueIdentifier>{7b0e6637-c9b9-4c13-b409-59899a4053e7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="console\EditString.h">
+      <Filter>console</Filter>
+    </ClInclude>
+    <ClInclude Include="console\LuaConsole.h">
+      <Filter>console</Filter>
+    </ClInclude>
+    <ClInclude Include="console\LuaConsoleInterpreter.h">
+      <Filter>console</Filter>
+    </ClInclude>
+    <ClInclude Include="decorators\Decorator.h">
+      <Filter>decorators</Filter>
+    </ClInclude>
+    <ClInclude Include="decorators\PhysicsObjectDecorator.h">
+      <Filter>decorators</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\AiLuaComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\AnimationComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\AttributesComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\DistributedComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ExitComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObject.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObjectComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObjectController.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObjectFactory.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObjectGuide.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GameObjectTitleComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\GenericFactory.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\NavMeshComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsActiveComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsActiveCompoundComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsActiveDestructableComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsArtifactComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsExplosionComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsRagDollComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsTerrainComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\SimpleSoundComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\SoundComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\SpawnComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\Tire.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\Vehicle.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\Edge.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\MovingBehavior.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\Node.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\Path.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\PathFinding.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\StateMachine.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="main\AppState.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\AppStateManager.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ClientConfigurationStateMyGui.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\Core.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\EngineResourceListener.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\EventManager.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\Events.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\MainConfigurationStateMyGui.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\MenuStateMyGui.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\PauseStateMyGui.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\PluginFactory.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\Process.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ProcessManager.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ServerConfigurationStateMyGui.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\CommandModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\GameProgressModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\LuaScript.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\OgreALModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\OgreNewtModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\OgreRecastModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\RakNetModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\SingletonModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="network\AppConnectionRM3.h">
+      <Filter>network</Filter>
+    </ClInclude>
+    <ClInclude Include="network\Client.h">
+      <Filter>network</Filter>
+    </ClInclude>
+    <ClInclude Include="network\ConnectionType.h">
+      <Filter>network</Filter>
+    </ClInclude>
+    <ClInclude Include="network\GameObjectStateHistory.h">
+      <Filter>network</Filter>
+    </ClInclude>
+    <ClInclude Include="network\Server.h">
+      <Filter>network</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\AnimationBlender.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\AnimationSerializer.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\C2DMatrix.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\ConcurrentQueue.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\FastDelegate.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\FastDelegateBind.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\LensFlare.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MathHelper.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MeshDecal.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MeshScissor.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MiniDump.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MovableText.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\ObjectTextDisplay.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\ObjectTitle.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\Outline.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\rapidxml.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\SkeletonVisualizer.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\Timer.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\Variant.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\VariantValue.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\XMLConverter.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="defines.h" />
+    <ClInclude Include="editor\ViewportGrid.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\EditorManager.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\Gizmo.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\SelectionManager.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\SelectionRectangle.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\BaseCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\Camcorder.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\CameraManager.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\FirstPersonCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\FollowCamera2D.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\NullCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\ThirdPersonCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\DotSceneExportModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="NOWA.h" />
+    <ClInclude Include="NOWAPrecompiled.h" />
+    <ClInclude Include="camera\BasePhysicsCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\Picker.h">
+      <Filter>editor</Filter>
+    </ClInclude>
+    <ClInclude Include="res\resource.h">
+      <Filter>res</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\HLMSModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\DrawDynamicLines.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\GeometryDrawer.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\DrawRenderer.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\DynamicLines.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\DynamicRenderable.hpp">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\BoundingBoxDraw.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\FaderProcess.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PlaneComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LightDirectionalComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LightSpotComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LightPointComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\DotSceneImportModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\JointComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\NodeComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\WorkspaceModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsMaterialComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="main\IntroState.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TimeTriggerComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\CameraComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsCompoundConnectionComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TagPointComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\AiComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PlayerControllerComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\CameraBehaviorComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LookAfterComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ProceduralComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TagChildNodeComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\BillboardComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\RibbonTrailComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\NodeTrackComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LuaScriptComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\VehicleComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsPlayerControllerComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsActiveKinematicComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsBuoyancyComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PhysicsTriggerComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="ocean\Ocean.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="ocean\OceanCell.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="ocean\OgreHlmsOcean.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="ocean\OgreHlmsOceanDatablock.h">
+      <Filter>ocean</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\OceanComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TerraComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MeshDecalComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MoveMathFunctionComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MyGUIComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TransformComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\DeployResourceModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LightAreaComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LensFlareComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\AutoCompleteSearch.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\Goal.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\GoalComposite.h">
+      <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\BackgroundScrollComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MyGUIControllerComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\DecalComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\InputDeviceModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\PlanarReflectionComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\DatablockPbsComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\DatablockTerraComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\DatablockUnlitComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\InventoryItemComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MyGUIItemBoxComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MeshDecalUtility.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\MeshDecalGeneratorModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\TimeLineComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\AttributeEffectComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="camera\ZoomCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\LineComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ParticleUniverseComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\ParticleUniverseModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\CompositorEffectComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ActivationComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\MyGUIMiniMapComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\MiniMapModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ProjectParameter.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\HdrEffectComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\WorkspaceComponents.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ReflectionCameraComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="Api.h" />
+    <ClInclude Include="gameobject\LinesComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ManualObjectComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\RectangleComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\NavMeshTerraComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\HlmsWind.h">
+      <Filter>shader</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\FogComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ScriptEvent.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="main\ScriptEventManager.h">
+      <Filter>main</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\MyGUIUtilities.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\LuaScriptApi.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\LuaScriptModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\FadeComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\ValueBarComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\HlmsFog.h">
+      <Filter>shader</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\HlmsBaseListenerContainer.h">
+      <Filter>shader</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\LuaObserver.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject\CrowdComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="main\InputDeviceCore.h">
+      <Filter>main</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\NOWA.ico">
+      <Filter>res</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\Resource.rc">
+      <Filter>res</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="console\EditString.cpp">
+      <Filter>console</Filter>
+    </ClCompile>
+    <ClCompile Include="console\LuaConsole.cpp">
+      <Filter>console</Filter>
+    </ClCompile>
+    <ClCompile Include="console\LuaConsoleInterpreter.cpp">
+      <Filter>console</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\BaseCamera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\BasePhysicsCamera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\Camcorder.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\CameraManager.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\FirstPersonCamera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\FollowCamera2D.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\ThirdPersonCamera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AiLuaComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AnimationComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AttributesComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DistributedComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ExitComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GameObject.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GameObjectComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GameObjectController.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GameObjectFactory.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsActiveComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsActiveCompoundComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsActiveDestructableComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsArtifactComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsExplosionComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsRagDollComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsTerrainComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\SimpleSoundComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\SoundComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\SpawnComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\Tire.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\Vehicle.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\EditorManager.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\Gizmo.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\Picker.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\SelectionManager.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\SelectionRectangle.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\Edge.cpp">
+      <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\MovingBehavior.cpp">
+      <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\Node.cpp">
+      <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\Path.cpp">
+      <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\PathFinding.cpp">
+      <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="main\AppState.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\AppStateManager.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ClientConfigurationStateMyGui.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\Core.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\EngineResourceListener.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\EventManager.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\Events.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\MainConfigurationStateMyGui.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\MenuStateMyGui.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\PauseStateMyGui.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\PluginFactory.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\Process.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ProcessManager.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ServerConfigurationStateMyGui.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\GameProgressModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\LuaScript.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\OgreALModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\OgreNewtModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\OgreRecastModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\RakNetModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="network\Client.cpp">
+      <Filter>network</Filter>
+    </ClCompile>
+    <ClCompile Include="network\ConnectionType.cpp">
+      <Filter>network</Filter>
+    </ClCompile>
+    <ClCompile Include="network\GameObjectStateHistory.cpp">
+      <Filter>network</Filter>
+    </ClCompile>
+    <ClCompile Include="network\Server.cpp">
+      <Filter>network</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\AnimationBlender.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\AnimationSerializer.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\LensFlare.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MathHelper.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MeshDecal.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MeshScissor.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MiniDump.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MovableText.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\ObjectTextDisplay.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\ObjectTitle.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\SkeletonVisualizer.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\Timer.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\ViewportGrid.cpp">
+      <Filter>editor</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\DotSceneExportModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="NOWAPrecompiled.cpp" />
+    <ClCompile Include="modules\HLMSModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\DrawDynamicLines.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\GeometryDrawer.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\DrawRenderer.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\DynamicLines.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\DynamicRenderable.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\BoundingBoxDraw.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\FaderProcess.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PlaneComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LightDirectionalComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LightSpotComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LightPointComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\DotSceneImportModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\JointComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\NodeComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\WorkspaceModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsMaterialComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="main\IntroState.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TimeTriggerComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\CameraComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsCompoundConnectionComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TagPointComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AiComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\NavMeshComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PlayerControllerComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\CameraBehaviorComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LookAfterComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ProceduralComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TagChildNodeComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\BillboardComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\RibbonTrailComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\NodeTrackComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LuaScriptComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\VehicleComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsPlayerControllerComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsActiveKinematicComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsBuoyancyComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PhysicsTriggerComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\Ocean.cpp">
+      <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\OceanCell.cpp">
+      <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\OgreHlmsOcean.cpp">
+      <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp">
+      <Filter>ocean</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\OceanComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TerraComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MeshDecalComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MoveMathFunctionComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MyGUIComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TransformComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\DeployResourceModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LightAreaComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LensFlareComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\AutoCompleteSearch.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\BackgroundScrollComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MyGUIControllerComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DecalComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\InputDeviceModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\PlanarReflectionComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DatablockPbsComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DatablockTerraComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DatablockUnlitComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\GameObjectTitleComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\InventoryItemComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MyGUIItemBoxComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MeshDecalUtility.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\MeshDecalGeneratorModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\TimeLineComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AttributeEffectComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\ZoomCamera.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\LineComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ParticleUniverseComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\ParticleUniverseModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\CompositorEffectComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ActivationComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\MyGUIMiniMapComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\MiniMapModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ProjectParameter.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\HdrEffectComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\WorkspaceComponents.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ReflectionCameraComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="Api.cpp" />
+    <ClCompile Include="gameobject\LinesComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ManualObjectComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\RectangleComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\NavMeshTerraComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="shader\HlmsWind.cpp">
+      <Filter>shader</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\FogComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ScriptEvent.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="main\ScriptEventManager.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\MyGUIUtilities.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\LuaScriptApi.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\LuaScriptModule.cpp">
+      <Filter>modules</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\FadeComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\ValueBarComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="shader\HlmsFog.cpp">
+      <Filter>shader</Filter>
+    </ClCompile>
+    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
+      <Filter>shader</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\LuaObserver.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\CrowdComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="main\InputDeviceCore.cpp">
+      <Filter>main</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FaderPlugin\inc\FaderPlugin.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FaderPlugin\src\FaderPlugin.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{4208092B-A391-49CC-8EB6-7D3B34853EE1}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>FaderPlugin</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <TargetExt>.dll</TargetExt>
+    <TargetName>$(ProjectName)_d</TargetName>
+    <IntDir>obj/$(Configuration)</IntDir>
+    <ExecutablePath>$(ExecutablePath);$(MSBuildFrameworkToolsPath32);$(MSBuildProgramFiles32)\Windows Kits\8.0\bin\x86;</ExecutablePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <TargetExt>.dll</TargetExt>
+    <IntDir>obj/$(Configuration)</IntDir>
+    <ExecutablePath>$(ExecutablePath);$(MSBuildFrameworkToolsPath32);$(MSBuildProgramFiles32)\Windows Kits\8.0\bin\x86;</ExecutablePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine;$(NOWA)/external/Ogre2.1SDK/include;$(NOWA)/external/Ogre2.1SDK/OgreMain/include;$(NOWA)/external/Ogre2.1SDK/Components/Overlay/Include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.1SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.1SDK/boost;$(NOWA)/external/newton-dynamics-2.32/coreLibrary_200/source/newton;$(NOWA)/external/Newton_2_3_2/packages/dContainers;$(NOWA)/external/OgreNewt2_0/inc;$(NOWA)/external/wiiuse_v0.12_win;$(NOWA)/external/Kinect/include;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/lua-5_1/boost_1_32_0;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/OgrePlatform/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
+      <ShowIncludes>false</ShowIncludes>
+      <UseFullPaths>false</UseFullPaths>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <MinimalRebuild>false</MinimalRebuild>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain_d.lib;OgreOverlay_d.lib;OgreHLMS_d.lib;OgreHlmsUnlit_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine;$(NOWA)/external/Ogre2.1SDK/include;$(NOWA)/external/Ogre2.1SDK/OgreMain/include;$(NOWA)/external/Ogre2.1SDK/Components/Overlay/Include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.1SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.1SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.1SDK/boost;$(NOWA)/external/newton-dynamics-2.32/coreLibrary_200/source/newton;$(NOWA)/external/Newton_2_3_2/packages/dContainers;$(NOWA)/external/OgreNewt2_0/inc;$(NOWA)/external/wiiuse_v0.12_win;$(NOWA)/external/Kinect/include;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/lua-5_1/boost_1_32_0;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/OgrePlatform/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>
+      </MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain.lib;OgreOverlay.lib;OgreHLMS.lib;OgreHlmsUnlit.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ProgramDatabaseFile />
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

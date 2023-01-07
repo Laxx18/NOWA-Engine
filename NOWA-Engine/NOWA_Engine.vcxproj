@@ -1,0 +1,754 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8A0D4D0F-8B4D-4E97-A68D-24B5E391C966}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>NOWA_Engine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="NOWA_Engine.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="NOWA_Engine.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="NOWA_Engine.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="NOWA_Engine.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>$(ProjectName)_d</TargetName>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>$(ProjectName)_d</TargetName>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir>obj/$(Configuration)/</IntDir>
+    <TargetName>$(ProjectName)</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>$(ProjectName)</TargetName>
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OpenAL11CoreSDK/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/Gist/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>
+      </FloatingPointExceptions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <ShowIncludes>false</ShowIncludes>
+      <UseFullPaths>false</UseFullPaths>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
+      <EnableParallelCodeGeneration>
+      </EnableParallelCodeGeneration>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreNewt3_0_d.lib;RakNet_vc9_d.lib;Lua_d.lib;LuaBind_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;tinyxml.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;ParticleUniverse_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;LUABIND_DYNAMIC_LINK;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Components/Atmosphere/include;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/openal-soft-master/include/AL;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/terra;$(NOWA)/NOWA_Engine/plugins;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>
+      </FloatingPointExceptions>
+      <ShowIncludes>false</ShowIncludes>
+      <UseFullPaths>false</UseFullPaths>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <EnableParallelCodeGeneration>
+      </EnableParallelCodeGeneration>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;OgreAtmosphere_d.lib;dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreNewt3_0_d.lib;RakNet_vc9_d.lib;LuaBind_d.lib;Lua_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;tinyxml.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;ParticleUniverse_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;terra_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <ImageHasSafeExceptionHandlers>
+      </ImageHasSafeExceptionHandlers>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OpenAL11CoreSDK/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/Gist/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <EnableParallelCodeGeneration>
+      </EnableParallelCodeGeneration>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat />
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain.lib;OIS.lib;OgreMeshLodGenerator.lib;OgreHlmsPbs.lib;OgreHlmsUnlit.lib;OgrePlanarReflections.lib;dMath.lib;newton.lib;dScene.lib;dCustomJoints.lib;dNewton.lib;dContainers.lib;dVehicle.lib;OgreNewt3_0.lib;RakNet_vc9.lib;Lua.lib;LuaBind.lib;OgreRecast.lib;OgreProcedural.lib;OgreALVC9.lib;tinyxml.lib;OgreOverlay.lib;FParser.lib;ParticleUniverse.lib;MeshSplitter.lib;MyGuiEngine.lib;Ogre2Platform.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+      <AssemblyDebug>
+      </AssemblyDebug>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>Disabled</Optimization>
+      <FunctionLevelLinking>
+      </FunctionLevelLinking>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;LUABIND_DYNAMIC_LINK;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/Ogre2.2SDK/Components/Atmosphere/include;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/ois/includes;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/openal-soft-master/include/AL;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/terra;$(NOWA)/NOWA_Engine/plugins;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <EnableParallelCodeGeneration>
+      </EnableParallelCodeGeneration>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OgreMain.lib;OIS.lib;OgreMeshLodGenerator.lib;OgreHlmsPbs.lib;OgreHlmsUnlit.lib;OgrePlanarReflections.lib;OgreAtmosphere.lib;dMath.lib;newton.lib;dScene.lib;dCustomJoints.lib;dNewton.lib;dContainers.lib;dVehicle.lib;OgreNewt3_0.lib;RakNet_vc9.lib;LuaBind.lib;lua.lib;OgreRecast.lib;OgreProcedural.lib;OgreALVC9.lib;tinyxml.lib;OgreOverlay.lib;FParser.lib;ParticleUniverse.lib;MeshSplitter.lib;MyGuiEngine.lib;Ogre2Platform.lib;Rpcrt4.lib;terra.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+      <AssemblyDebug>
+      </AssemblyDebug>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Api.h" />
+    <ClInclude Include="camera\BaseCamera.h" />
+    <ClInclude Include="camera\Camcorder.h" />
+    <ClInclude Include="camera\CameraManager.h" />
+    <ClInclude Include="camera\FirstPersonCamera.h" />
+    <ClInclude Include="camera\FollowCamera2D.h" />
+    <ClInclude Include="camera\NullCamera.h" />
+    <ClInclude Include="camera\ThirdPersonCamera.h" />
+    <ClInclude Include="camera\ZoomCamera.h" />
+    <ClInclude Include="console\EditString.h" />
+    <ClInclude Include="console\LuaConsole.h" />
+    <ClInclude Include="console\LuaConsoleInterpreter.h" />
+    <ClInclude Include="defines.h" />
+    <ClInclude Include="editor\EditorManager.h" />
+    <ClInclude Include="editor\Gizmo.h" />
+    <ClInclude Include="editor\SelectionManager.h" />
+    <ClInclude Include="editor\SelectionRectangle.h" />
+    <ClInclude Include="editor\ViewportGrid.h" />
+    <ClInclude Include="gameobject\ActivationComponent.h" />
+    <ClInclude Include="gameobject\AiComponents.h" />
+    <ClInclude Include="gameobject\AiLuaComponent.h" />
+    <ClInclude Include="gameobject\AnimationComponent.h" />
+    <ClInclude Include="gameobject\AttributeEffectComponent.h" />
+    <ClInclude Include="gameobject\BackgroundScrollComponent.h" />
+    <ClInclude Include="gameobject\BillboardComponent.h" />
+    <ClInclude Include="gameobject\CameraBehaviorComponents.h" />
+    <ClInclude Include="gameobject\CameraComponent.h" />
+    <ClInclude Include="gameobject\CompositorEffectComponents.h" />
+    <ClInclude Include="gameobject\CrowdComponent.h" />
+    <ClInclude Include="gameobject\DatablockPbsComponent.h" />
+    <ClInclude Include="gameobject\DatablockTerraComponent.h" />
+    <ClInclude Include="gameobject\DatablockUnlitComponent.h" />
+    <ClInclude Include="gameobject\DecalComponent.h" />
+    <ClInclude Include="gameobject\DistributedComponent.h" />
+    <ClInclude Include="gameobject\ValueBarComponent.h" />
+    <ClInclude Include="gameobject\ExitComponent.h" />
+    <ClInclude Include="gameobject\FadeComponent.h" />
+    <ClInclude Include="gameobject\FogComponent.h" />
+    <ClInclude Include="gameobject\GameObjectComponent.h" />
+    <ClInclude Include="gameobject\GameObjectTitleComponent.h" />
+    <ClInclude Include="gameobject\GenericFactory.h" />
+    <ClInclude Include="gameobject\HdrEffectComponent.h" />
+    <ClInclude Include="gameobject\InventoryItemComponent.h" />
+    <ClInclude Include="gameobject\JointComponents.h" />
+    <ClInclude Include="gameobject\LensFlareComponent.h" />
+    <ClInclude Include="gameobject\LightAreaComponent.h" />
+    <ClInclude Include="gameobject\LightDirectionalComponent.h" />
+    <ClInclude Include="gameobject\LightPointComponent.h" />
+    <ClInclude Include="gameobject\LightSpotComponent.h" />
+    <ClInclude Include="gameobject\LineComponent.h" />
+    <ClInclude Include="gameobject\LinesComponent.h" />
+    <ClInclude Include="gameobject\LookAfterComponent.h" />
+    <ClInclude Include="gameobject\LuaScriptComponent.h" />
+    <ClInclude Include="gameobject\ManualObjectComponent.h" />
+    <ClInclude Include="gameobject\MeshDecalComponent.h" />
+    <ClInclude Include="gameobject\MoveMathFunctionComponent.h" />
+    <ClInclude Include="gameobject\MyGUIComponents.h" />
+    <ClInclude Include="gameobject\MyGUIControllerComponents.h" />
+    <ClInclude Include="gameobject\MyGUIItemBoxComponent.h" />
+    <ClInclude Include="gameobject\MyGUIMiniMapComponent.h" />
+    <ClInclude Include="gameobject\NavMeshComponent.h" />
+    <ClInclude Include="gameobject\NavMeshTerraComponent.h" />
+    <ClInclude Include="gameobject\NodeComponent.h" />
+    <ClInclude Include="gameobject\NodeTrackComponent.h" />
+    <ClInclude Include="gameobject\OceanComponent.h" />
+    <ClInclude Include="gameobject\ParticleUniverseComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveCompoundComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveDestructableComponent.h" />
+    <ClInclude Include="gameobject\PhysicsActiveKinematicComponent.h" />
+    <ClInclude Include="gameobject\PhysicsArtifactComponent.h" />
+    <ClInclude Include="gameobject\GameObjectGuide.h" />
+    <ClInclude Include="gameobject\GameObjectController.h" />
+    <ClInclude Include="gameobject\GameObjectFactory.h" />
+    <ClInclude Include="gameobject\AttributesComponent.h" />
+    <ClInclude Include="gameobject\PhysicsBuoyancyComponent.h" />
+    <ClInclude Include="gameobject\PhysicsComponent.h" />
+    <ClInclude Include="gameobject\PhysicsCompoundConnectionComponent.h" />
+    <ClInclude Include="gameobject\PhysicsExplosionComponent.h" />
+    <ClInclude Include="gameobject\PhysicsMaterialComponent.h" />
+    <ClInclude Include="gameobject\PhysicsPlayerControllerComponent.h" />
+    <ClInclude Include="gameobject\PhysicsRagDollComponent.h" />
+    <ClInclude Include="gameobject\PhysicsTerrainComponent.h" />
+    <ClInclude Include="gameobject\PhysicsTriggerComponent.h" />
+    <ClInclude Include="gameobject\PlanarReflectionComponent.h" />
+    <ClInclude Include="gameobject\PlaneComponent.h" />
+    <ClInclude Include="gameobject\PlayerControllerComponents.h" />
+    <ClInclude Include="gameobject\ProceduralComponents.h" />
+    <ClInclude Include="gameobject\RectangleComponent.h" />
+    <ClInclude Include="gameobject\ReflectionCameraComponent.h" />
+    <ClInclude Include="gameobject\RibbonTrailComponent.h" />
+    <ClInclude Include="gameobject\SimpleSoundComponent.h" />
+    <ClInclude Include="gameobject\SoundComponent.h" />
+    <ClInclude Include="gameobject\SpawnComponent.h" />
+    <ClInclude Include="gameobject\TagChildNodeComponent.h" />
+    <ClInclude Include="gameobject\TagPointComponent.h" />
+    <ClInclude Include="gameobject\TerraComponent.h" />
+    <ClInclude Include="gameobject\TimeLineComponent.h" />
+    <ClInclude Include="gameobject\TimeTriggerComponent.h" />
+    <ClInclude Include="gameobject\Tire.h" />
+    <ClInclude Include="gameobject\TransformComponent.h" />
+    <ClInclude Include="gameobject\Vehicle.h" />
+    <ClInclude Include="gameobject\VehicleComponent.h" />
+    <ClInclude Include="gameobject\WorkspaceComponents.h" />
+    <ClInclude Include="ki\Edge.h" />
+    <ClInclude Include="ki\Goal.h" />
+    <ClInclude Include="ki\GoalComposite.h" />
+    <ClInclude Include="ki\MovingBehavior.h" />
+    <ClInclude Include="ki\Node.h" />
+    <ClInclude Include="ki\PathFinding.h" />
+    <ClInclude Include="ki\StateMachine.h" />
+    <ClInclude Include="ki\Path.h" />
+    <ClInclude Include="main\AppState.h" />
+    <ClInclude Include="main\AppStateManager.h" />
+    <ClInclude Include="main\ClientConfigurationStateMyGui.h" />
+    <ClInclude Include="main\Core.h" />
+    <ClInclude Include="main\EngineResourceListener.h" />
+    <ClInclude Include="main\EventManager.h" />
+    <ClInclude Include="main\Events.h" />
+    <ClInclude Include="main\InputDeviceCore.h" />
+    <ClInclude Include="main\IntroState.h" />
+    <ClInclude Include="main\MainConfigurationStateMyGui.h" />
+    <ClInclude Include="main\MenuStateMyGui.h" />
+    <ClInclude Include="main\PauseStateMyGui.h" />
+    <ClInclude Include="main\PluginFactory.h" />
+    <ClInclude Include="main\Process.h" />
+    <ClInclude Include="main\ProcessManager.h" />
+    <ClInclude Include="main\ProjectParameter.h" />
+    <ClInclude Include="main\ScriptEvent.h" />
+    <ClInclude Include="main\ScriptEventManager.h" />
+    <ClInclude Include="main\ServerConfigurationStateMyGui.h" />
+    <ClInclude Include="decorators\Decorator.h" />
+    <ClInclude Include="decorators\PhysicsObjectDecorator.h" />
+    <ClInclude Include="gameobject\GameObject.h" />
+    <ClInclude Include="modules\CommandModule.h" />
+    <ClInclude Include="modules\DeployResourceModule.h" />
+    <ClInclude Include="modules\DotSceneExportModule.h" />
+    <ClInclude Include="modules\DotSceneImportModule.h" />
+    <ClInclude Include="modules\GameProgressModule.h" />
+    <ClInclude Include="modules\HLMSModule.h" />
+    <ClInclude Include="modules\InputDeviceModule.h" />
+    <ClInclude Include="modules\LuaScript.h" />
+    <ClInclude Include="modules\LuaScriptApi.h" />
+    <ClInclude Include="modules\LuaScriptModule.h" />
+    <ClInclude Include="modules\MeshDecalGeneratorModule.h" />
+    <ClInclude Include="modules\MiniMapModule.h" />
+    <ClInclude Include="modules\OgreALModule.h" />
+    <ClInclude Include="modules\OgreNewtModule.h" />
+    <ClInclude Include="modules\OgreRecastModule.h" />
+    <ClInclude Include="modules\ParticleUniverseModule.h" />
+    <ClInclude Include="modules\RakNetModule.h" />
+    <ClInclude Include="modules\SingletonModule.h" />
+    <ClInclude Include="modules\WorkspaceModule.h" />
+    <ClInclude Include="network\Client.h" />
+    <ClInclude Include="network\ConnectionType.h" />
+    <ClInclude Include="network\GameObjectStateHistory.h" />
+    <ClInclude Include="network\AppConnectionRM3.h" />
+    <ClInclude Include="network\Server.h" />
+    <ClInclude Include="NOWA.h" />
+    <ClInclude Include="NOWAPrecompiled.h" />
+    <ClInclude Include="ocean\Ocean.h" />
+    <ClInclude Include="ocean\OceanCell.h" />
+    <ClInclude Include="ocean\OgreHlmsOcean.h" />
+    <ClInclude Include="ocean\OgreHlmsOceanDatablock.h" />
+    <ClInclude Include="res\resource.h" />
+    <ClInclude Include="shader\HlmsBaseListenerContainer.h" />
+    <ClInclude Include="shader\HlmsFog.h" />
+    <ClInclude Include="shader\HlmsWind.h" />
+    <ClInclude Include="utilities\AnimationBlender.h" />
+    <ClInclude Include="utilities\AnimationSerializer.h" />
+    <ClInclude Include="camera\BasePhysicsCamera.h" />
+    <ClInclude Include="utilities\AutoCompleteSearch.h" />
+    <ClInclude Include="utilities\BoundingBoxDraw.h" />
+    <ClInclude Include="utilities\C2DMatrix.h" />
+    <ClInclude Include="utilities\DrawRenderer.hpp" />
+    <ClInclude Include="utilities\DynamicLines.hpp" />
+    <ClInclude Include="utilities\DynamicRenderable.hpp" />
+    <ClInclude Include="utilities\FaderProcess.h" />
+    <ClInclude Include="utilities\GeometryDrawer.hpp" />
+    <ClInclude Include="utilities\DrawDynamicLines.hpp" />
+    <ClInclude Include="utilities\ConcurrentQueue.h" />
+    <ClInclude Include="utilities\FastDelegate.h" />
+    <ClInclude Include="utilities\FastDelegateBind.h" />
+    <ClInclude Include="utilities\LensFlare.h" />
+    <ClInclude Include="utilities\LuaObserver.h" />
+    <ClInclude Include="utilities\MathHelper.h" />
+    <ClInclude Include="utilities\MeshDecal.h" />
+    <ClInclude Include="utilities\MeshDecalUtility.h" />
+    <ClInclude Include="utilities\MeshScissor.h" />
+    <ClInclude Include="utilities\MiniDump.h" />
+    <ClInclude Include="utilities\MovableText.h" />
+    <ClInclude Include="utilities\MyGUIUtilities.h" />
+    <ClInclude Include="utilities\ObjectTextDisplay.h" />
+    <ClInclude Include="utilities\ObjectTitle.h" />
+    <ClInclude Include="utilities\Outline.h" />
+    <ClInclude Include="editor\Picker.h" />
+    <ClInclude Include="utilities\rapidxml.hpp" />
+    <ClInclude Include="utilities\SkeletonVisualizer.h" />
+    <ClInclude Include="utilities\Timer.h" />
+    <ClInclude Include="utilities\Variant.h" />
+    <ClInclude Include="utilities\VariantValue.h" />
+    <ClInclude Include="utilities\XMLConverter.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="res\Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\NOWA.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Api.cpp" />
+    <ClCompile Include="camera\BaseCamera.cpp" />
+    <ClCompile Include="camera\BasePhysicsCamera.cpp" />
+    <ClCompile Include="camera\Camcorder.cpp" />
+    <ClCompile Include="camera\CameraManager.cpp" />
+    <ClCompile Include="camera\FirstPersonCamera.cpp" />
+    <ClCompile Include="camera\FollowCamera2D.cpp" />
+    <ClCompile Include="camera\ThirdPersonCamera.cpp" />
+    <ClCompile Include="camera\ZoomCamera.cpp" />
+    <ClCompile Include="console\EditString.cpp" />
+    <ClCompile Include="console\LuaConsole.cpp" />
+    <ClCompile Include="console\LuaConsoleInterpreter.cpp" />
+    <ClCompile Include="editor\EditorManager.cpp" />
+    <ClCompile Include="editor\Gizmo.cpp" />
+    <ClCompile Include="editor\Picker.cpp" />
+    <ClCompile Include="editor\SelectionManager.cpp" />
+    <ClCompile Include="editor\SelectionRectangle.cpp" />
+    <ClCompile Include="editor\ViewportGrid.cpp" />
+    <ClCompile Include="gameobject\ActivationComponent.cpp" />
+    <ClCompile Include="gameobject\AiComponents.cpp" />
+    <ClCompile Include="gameobject\AiLuaComponent.cpp" />
+    <ClCompile Include="gameobject\AnimationComponent.cpp" />
+    <ClCompile Include="gameobject\AttributeEffectComponent.cpp" />
+    <ClCompile Include="gameobject\AttributesComponent.cpp" />
+    <ClCompile Include="gameobject\BackgroundScrollComponent.cpp" />
+    <ClCompile Include="gameobject\BillboardComponent.cpp" />
+    <ClCompile Include="gameobject\CameraBehaviorComponents.cpp" />
+    <ClCompile Include="gameobject\CameraComponent.cpp" />
+    <ClCompile Include="gameobject\CompositorEffectComponents.cpp" />
+    <ClCompile Include="gameobject\CrowdComponent.cpp" />
+    <ClCompile Include="gameobject\DatablockPbsComponent.cpp" />
+    <ClCompile Include="gameobject\DatablockTerraComponent.cpp" />
+    <ClCompile Include="gameobject\DatablockUnlitComponent.cpp" />
+    <ClCompile Include="gameobject\DecalComponent.cpp" />
+    <ClCompile Include="gameobject\DistributedComponent.cpp" />
+    <ClCompile Include="gameobject\ValueBarComponent.cpp" />
+    <ClCompile Include="gameobject\ExitComponent.cpp" />
+    <ClCompile Include="gameobject\FadeComponent.cpp" />
+    <ClCompile Include="gameobject\FogComponent.cpp" />
+    <ClCompile Include="gameobject\GameObject.cpp" />
+    <ClCompile Include="gameobject\GameObjectComponent.cpp" />
+    <ClCompile Include="gameobject\GameObjectController.cpp" />
+    <ClCompile Include="gameobject\GameObjectFactory.cpp" />
+    <ClCompile Include="gameobject\GameObjectTitleComponent.cpp" />
+    <ClCompile Include="gameobject\HdrEffectComponent.cpp" />
+    <ClCompile Include="gameobject\InventoryItemComponent.cpp" />
+    <ClCompile Include="gameobject\JointComponents.cpp" />
+    <ClCompile Include="gameobject\LensFlareComponent.cpp" />
+    <ClCompile Include="gameobject\LightAreaComponent.cpp" />
+    <ClCompile Include="gameobject\LightDirectionalComponent.cpp" />
+    <ClCompile Include="gameobject\LightPointComponent.cpp" />
+    <ClCompile Include="gameobject\LightSpotComponent.cpp" />
+    <ClCompile Include="gameobject\LineComponent.cpp" />
+    <ClCompile Include="gameobject\LinesComponent.cpp" />
+    <ClCompile Include="gameobject\LookAfterComponent.cpp" />
+    <ClCompile Include="gameobject\LuaScriptComponent.cpp" />
+    <ClCompile Include="gameobject\ManualObjectComponent.cpp" />
+    <ClCompile Include="gameobject\MeshDecalComponent.cpp" />
+    <ClCompile Include="gameobject\MoveMathFunctionComponent.cpp" />
+    <ClCompile Include="gameobject\MyGUIComponents.cpp" />
+    <ClCompile Include="gameobject\MyGUIControllerComponents.cpp" />
+    <ClCompile Include="gameobject\MyGUIItemBoxComponent.cpp" />
+    <ClCompile Include="gameobject\MyGUIMiniMapComponent.cpp" />
+    <ClCompile Include="gameobject\NavMeshComponent.cpp" />
+    <ClCompile Include="gameobject\NavMeshTerraComponent.cpp" />
+    <ClCompile Include="gameobject\NodeComponent.cpp" />
+    <ClCompile Include="gameobject\NodeTrackComponent.cpp" />
+    <ClCompile Include="gameobject\OceanComponent.cpp" />
+    <ClCompile Include="gameobject\ParticleUniverseComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveCompoundComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveDestructableComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsActiveKinematicComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsArtifactComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsBuoyancyComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsCompoundConnectionComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsExplosionComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsMaterialComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsPlayerControllerComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsRagDollComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsTerrainComponent.cpp" />
+    <ClCompile Include="gameobject\PhysicsTriggerComponent.cpp" />
+    <ClCompile Include="gameobject\PlanarReflectionComponent.cpp" />
+    <ClCompile Include="gameobject\PlaneComponent.cpp" />
+    <ClCompile Include="gameobject\PlayerControllerComponents.cpp" />
+    <ClCompile Include="gameobject\ProceduralComponents.cpp" />
+    <ClCompile Include="gameobject\RectangleComponent.cpp" />
+    <ClCompile Include="gameobject\ReflectionCameraComponent.cpp" />
+    <ClCompile Include="gameobject\RibbonTrailComponent.cpp" />
+    <ClCompile Include="gameobject\SimpleSoundComponent.cpp" />
+    <ClCompile Include="gameobject\SoundComponent.cpp" />
+    <ClCompile Include="gameobject\SpawnComponent.cpp" />
+    <ClCompile Include="gameobject\TagChildNodeComponent.cpp" />
+    <ClCompile Include="gameobject\TagPointComponent.cpp" />
+    <ClCompile Include="gameobject\TerraComponent.cpp" />
+    <ClCompile Include="gameobject\TimeLineComponent.cpp" />
+    <ClCompile Include="gameobject\TimeTriggerComponent.cpp" />
+    <ClCompile Include="gameobject\Tire.cpp" />
+    <ClCompile Include="gameobject\TransformComponent.cpp" />
+    <ClCompile Include="gameobject\Vehicle.cpp" />
+    <ClCompile Include="gameobject\VehicleComponent.cpp" />
+    <ClCompile Include="gameobject\WorkspaceComponents.cpp" />
+    <ClCompile Include="ki\Edge.cpp" />
+    <ClCompile Include="ki\MovingBehavior.cpp" />
+    <ClCompile Include="ki\Node.cpp" />
+    <ClCompile Include="ki\Path.cpp" />
+    <ClCompile Include="ki\PathFinding.cpp" />
+    <ClCompile Include="main\AppState.cpp" />
+    <ClCompile Include="main\AppStateManager.cpp" />
+    <ClCompile Include="main\ClientConfigurationStateMyGui.cpp" />
+    <ClCompile Include="main\Core.cpp" />
+    <ClCompile Include="main\EngineResourceListener.cpp" />
+    <ClCompile Include="main\EventManager.cpp" />
+    <ClCompile Include="main\Events.cpp" />
+    <ClCompile Include="main\InputDeviceCore.cpp" />
+    <ClCompile Include="main\IntroState.cpp" />
+    <ClCompile Include="main\MainConfigurationStateMyGui.cpp" />
+    <ClCompile Include="main\MenuStateMyGui.cpp" />
+    <ClCompile Include="main\PauseStateMyGui.cpp" />
+    <ClCompile Include="main\PluginFactory.cpp" />
+    <ClCompile Include="main\Process.cpp" />
+    <ClCompile Include="main\ProcessManager.cpp" />
+    <ClCompile Include="main\ProjectParameter.cpp" />
+    <ClCompile Include="main\ScriptEvent.cpp" />
+    <ClCompile Include="main\ScriptEventManager.cpp" />
+    <ClCompile Include="main\ServerConfigurationStateMyGui.cpp" />
+    <ClCompile Include="modules\DeployResourceModule.cpp" />
+    <ClCompile Include="modules\DotSceneExportModule.cpp" />
+    <ClCompile Include="modules\DotSceneImportModule.cpp" />
+    <ClCompile Include="modules\GameProgressModule.cpp" />
+    <ClCompile Include="modules\HLMSModule.cpp" />
+    <ClCompile Include="modules\InputDeviceModule.cpp" />
+    <ClCompile Include="modules\LuaScript.cpp" />
+    <ClCompile Include="modules\LuaScriptApi.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <ShowIncludes Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ShowIncludes>
+      <UseFullPaths Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</UseFullPaths>
+      <ShowIncludes Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ShowIncludes>
+      <UseFullPaths Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</UseFullPaths>
+    </ClCompile>
+    <ClCompile Include="modules\LuaScriptModule.cpp" />
+    <ClCompile Include="modules\MeshDecalGeneratorModule.cpp" />
+    <ClCompile Include="modules\MiniMapModule.cpp" />
+    <ClCompile Include="modules\OgreALModule.cpp" />
+    <ClCompile Include="modules\OgreNewtModule.cpp" />
+    <ClCompile Include="modules\OgreRecastModule.cpp" />
+    <ClCompile Include="modules\ParticleUniverseModule.cpp" />
+    <ClCompile Include="modules\RakNetModule.cpp" />
+    <ClCompile Include="modules\WorkspaceModule.cpp" />
+    <ClCompile Include="network\Client.cpp" />
+    <ClCompile Include="network\ConnectionType.cpp" />
+    <ClCompile Include="network\GameObjectStateHistory.cpp" />
+    <ClCompile Include="network\Server.cpp" />
+    <ClCompile Include="NOWAPrecompiled.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ocean\Ocean.cpp" />
+    <ClCompile Include="ocean\OceanCell.cpp" />
+    <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
+    <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
+    <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="shader\HlmsFog.cpp" />
+    <ClCompile Include="shader\HlmsWind.cpp" />
+    <ClCompile Include="utilities\AnimationBlender.cpp" />
+    <ClCompile Include="utilities\AnimationSerializer.cpp" />
+    <ClCompile Include="utilities\AutoCompleteSearch.cpp" />
+    <ClCompile Include="utilities\BoundingBoxDraw.cpp" />
+    <ClCompile Include="utilities\DrawRenderer.cpp" />
+    <ClCompile Include="utilities\DynamicLines.cpp" />
+    <ClCompile Include="utilities\DynamicRenderable.cpp" />
+    <ClCompile Include="utilities\FaderProcess.cpp" />
+    <ClCompile Include="utilities\GeometryDrawer.cpp" />
+    <ClCompile Include="utilities\DrawDynamicLines.cpp" />
+    <ClCompile Include="utilities\LensFlare.cpp" />
+    <ClCompile Include="utilities\LuaObserver.cpp" />
+    <ClCompile Include="utilities\MathHelper.cpp" />
+    <ClCompile Include="utilities\MeshDecal.cpp" />
+    <ClCompile Include="utilities\MeshDecalUtility.cpp" />
+    <ClCompile Include="utilities\MeshScissor.cpp" />
+    <ClCompile Include="utilities\MiniDump.cpp" />
+    <ClCompile Include="utilities\MovableText.cpp" />
+    <ClCompile Include="utilities\MyGUIUtilities.cpp" />
+    <ClCompile Include="utilities\ObjectTextDisplay.cpp" />
+    <ClCompile Include="utilities\ObjectTitle.cpp" />
+    <ClCompile Include="utilities\SkeletonVisualizer.cpp" />
+    <ClCompile Include="utilities\Timer.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

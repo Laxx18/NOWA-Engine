@@ -1,0 +1,250 @@
+#ifndef DOT_SCENE_IMPORT_MODULE_H
+#define DOT_SCENE_IMPORT_MODULE_H
+
+// #include "modules/CaelumModule.h"
+// #include "modules/PagedGeometryModule.h"
+#include "modules/OgreRecastModule.h"
+// #include "modules/HydraxModule.h"
+#include "utilities/rapidxml.hpp"
+#include "main/Events.h"
+
+namespace NOWA
+{
+	/**
+	* @class DotSceneImportModule
+	* @brief This class is responsible for loading an external virtual environment
+	*/
+	class EXPORTED DotSceneImportModule
+	{
+	public:
+		friend class MiniMapModule;
+
+		/**
+		* @class IWorldLoaderCallback
+		* @brief This interface can be implemented to react each time a scenenode or entity will be loaded
+		*/
+		class EXPORTED IWorldLoaderCallback
+		{
+		public:
+			virtual ~IWorldLoaderCallback()
+			{
+			}
+
+			/**
+			* @brief		Called when a scene node gets loaded
+			* @param[in]	node		The scene node to react on
+			*/
+			virtual void onPostLoadSceneNode(Ogre::SceneNode* node)
+			{
+			}
+
+			// Param: Ogre::MovableObject*
+			/**
+			* @brief		Called when an entity gets loaded
+			* @param[in]	movableObject		The movable object to react on
+			* @note			An entity or sub entity can be manipulated. In order to manipulate a sub movable object query the movable object over a name etc. and get the appropriate sub movable object index
+			*/
+			virtual void onPostLoadMovableObject(Ogre::MovableObject* movableObject)
+			{
+			}
+
+			// Param: greNewt::Body
+			//        OgreNewt (Physics settings) to manipulate
+			// virtual void onPostLoadOgreNewtBody(PhysicsObject* pPhysicsObject) { }
+		};
+	public:
+		/**
+		 * @brief		Initializes thedot scene import module with minimal data
+		 * @Note		Only for usage if just snippets of XML must be loaded
+		 */
+		DotSceneImportModule(Ogre::SceneManager* sceneManager);
+
+		/**
+		* @brief		Initializes the dot scene import module
+		* @param[in]	sceneManager	The ogre scene manager to use
+		* @param[in]	mainCamera		The main camera to use.
+		* @param[in]	ogreNewt		The ogre newt physics to use			Hence, when a main camera is not specified here, a new one will be created from the given virtial environment with setting provided there.
+		*/
+		DotSceneImportModule(Ogre::SceneManager* sceneManager, Ogre::Camera* mainCamera, OgreNewt::World* ogreNewt);
+
+		virtual ~DotSceneImportModule();
+
+		/**
+		* @brief		Parses a scene XML to create the virtual environment for the game engine
+		* @param[in]	projectName			The project name
+		* @param[in]	sceneName			The scene name
+		* @param[in]	resourceGroupName	The group name which leads to the scene name. The group name must be declared in a resource cfg file.
+		*									FileSystem=../../media/Worlds/JumpNRun1
+		* @param[in]	sunLight			The outside configured sun light to use for terrain shading. If the sun light does not exist, when a terrain gets created a default configured sun light
+		*									will be used.
+		* @param[in]	worldLoaderCallback	The world loader callback that can be used to react when objects are loaded.
+		* @note								A newly created world loader callback heap pointer must be passed for the IWorldLoaderCallback. It will be deleted internally,
+		*									if the object is not required anymore.
+		* @param[in]	showProgress		If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
+		* @return		success				True, if scene could be parsed, else false
+		*/
+		bool parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight = nullptr,
+			IWorldLoaderCallback* worldLoaderCallback = nullptr, bool showProgress = true);
+
+		bool loadSceneSnapshot(const Ogre::String& filePathName);
+
+		std::vector<unsigned long> parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName);
+
+		/**
+		* @brief		Parses a game object manually
+		* @param[in]	name The game object name to parse.
+		* @note			This function can called when e.g. a game object should be loaded again, or delayed or whatever.
+		*/
+		bool parseGameObject(const Ogre::String& name);
+
+		/**
+		* @brief		Parses all game objects that are controlled by a certain client
+		* @param[in]	controlledByClientID The id of the client.
+		* @note			This function can called when e.g. a game objects should be loaded again, or delayed or whatever.
+		*/
+		bool parseGameObjects(unsigned int controlledByClientID);
+
+		/**
+		* @brief		Parses the bounds of the world
+		* @return		mostLeftNearVector	The most left near position (3x Ogre::Math::POS_INFINITY if so far never calculated)
+		*				mostRightFarVector	The most right far position (3x Ogre::Math::NEG_INFINITY if so far never calculated)
+		*/
+		std::pair<Ogre::Vector3, Ogre::Vector3> parseBounds(void);
+
+		/**
+		 * @brief		Parses the exit directions for this world and the target scene to reach for that exit direction
+		 * @note		Each world can have seveal exit directions.
+		 * @return		a list of vector2 for the exit direction and the target scene name to reach
+		 */
+		std::vector<std::pair<Ogre::Vector2, Ogre::String>> parseExitDirectionsNextWorlds(void);
+
+		std::pair<bool, Ogre::Vector3> parseGameObjectPosition(unsigned long id);
+
+		void processNodes(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent = nullptr, bool justSetValues = false);
+
+		void processNode(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent = nullptr, bool justSetValues = false);
+
+		void setMissingGameObjectIds(const std::vector<unsigned long>& missingGameObjectIds);
+
+
+#ifndef CAELUM_NOT_PORTED
+		/**
+		* @brief		Gets the caelum module to adapt the dynamic sky
+		* @return		caelumModule	The caelum sky module
+		*/
+		// CaelumModule* getCaelumModule(void) const;
+#endif
+
+#ifndef PAGEDGEOMETRY_NOT_PORTED
+		/**
+		* @brief		Gets the paged geometry module to adapt the instanced objects
+		* @return		pagedGeometryModule	The paged geometry module
+		*/
+		// PagedGeometryModule* getPagedGeometryModule(void) const;
+#endif
+
+#ifndef HYDRAX_NOT_PORTED
+		/**
+		* @brief		Gets the hydrax module to adapt water effects and visualization
+		* @return		hydraxModule	The hydrax module
+		*/
+		// HydraxModule* getHydraxModule(void) const;
+#endif
+		Ogre::SceneManager* getSceneManager(void) const;
+
+		Ogre::Camera* getMainCamera(void) const;
+
+		/**
+		 * @brief		Gets the main sun light (if specified in world editor)
+		 * @return		sunLight	The sun light to get
+		 * @Note		Attention: If no sun light has been specified, nullptr will be returned
+		 */
+		Ogre::Light* getSunLight(void) const;
+
+		/**
+		 * @brief		Gets whole project parameter (lights, scene, ogre newt, recast etc.)
+		 * @return		ProjectParameter	The project parameter to get
+		 */
+		const ProjectParameter& getProjectParameter(void) const;
+	protected:
+		/**
+		* @brief		Parses a scene XML to create the virtual environment for the game engine
+		* @param[in]	sceneManager		The ogre scene manager to use
+		* @param[in]	projectName			The project name
+		* @param[in]	sceneName			The scene name
+		* @param[in]	resourceGroupName	The group name which leads to the scene name. The group name must be declared in a resource cfg file.
+		* @note			Only for MiniMapModule, because it knows, what it does
+		*/
+		DotSceneImportModule(Ogre::SceneManager* sceneManager, const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName);
+
+		void postInitData(void);
+		
+		/**
+		 * @brief		Parses a global scene to create the virtual environment for the game engine
+		 */
+		bool parseGlobalScene(bool justSetValues = false);
+	
+		void processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues = false);
+		void processResourceLocations(rapidxml::xml_node<>* xmlNode);
+		void processEnvironment(rapidxml::xml_node<>* xmlNode);
+		void processTerrainPage(rapidxml::xml_node<>* xmlNode);
+		void processGrassLayers(rapidxml::xml_node<>* xmlNode);
+		void processPagedGeometry(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent);
+		void processCaelum(rapidxml::xml_node<>* xmlNode);
+		void processHydrax(rapidxml::xml_node<>* xmlNode);
+		void processOgreNewt(rapidxml::xml_node<>* xmlNode);
+		void processOgreRecast(rapidxml::xml_node<>* xmlNode);
+
+		void findGameObjectId(rapidxml::xml_node<>*& propertyElement, unsigned long& missingGameObjectId);
+		void processEntity(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
+		void processItem(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
+		void processManualObject(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent);
+		void processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
+		void processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
+
+		void acceptTerrainShadows(void);
+	private:
+		void parseGameObjectDelegate(EventDataPtr eventData);
+	protected:
+		Ogre::SceneManager* sceneManager;
+		Ogre::Camera* mainCamera;
+		Ogre::String resourceGroupName;
+		IWorldLoaderCallback* worldLoaderCallback;
+
+		//Physics
+		OgreNewt::World* ogreNewt;
+
+		Ogre::String worldPath;
+		std::list<Ogre::Vector2> pages;
+		int	pagesCount;
+		bool needCollisionRebuild;
+		Ogre::Light* sunLight;
+		bool hasCaelumSystem;
+		bool showProgress;
+		bool forceCreation;
+		bool bSceneParsed;
+		std::vector<unsigned long> parsedGameObjectIds;
+
+#ifndef CAELUM_NOT_PORTED
+		// CaelumModule* caelumModule;
+#endif
+#ifndef PAGEDGEOMETRY_NOT_PORTED
+		// PagedGeometryModule* pagedGeometryModule;
+#endif
+		OgreRecastConfigParams ogreRecastConfigParams;
+#ifndef HYDRAX_NOT_PORTED
+		// HydraxModule* hydraxModule;
+#endif
+		
+		ProjectParameter projectParameter;
+		
+		Ogre::Vector3 mostLeftNearPosition;
+		Ogre::Vector3 mostRightFarPosition;
+
+		std::vector<unsigned long> missingGameObjectIds;
+	};
+
+}; // namespace end
+
+#endif
+

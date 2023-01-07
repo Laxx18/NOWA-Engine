@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="code">
+      <UniqueIdentifier>{52E55CE6-723A-43F1-8473-43754A5E5074}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="code\AtmosphereComponent.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+    <ClCompile Include="code\NOWAPrecompiled.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+	<ClCompile Include="code\startDll.cpp">
+      <Filter>code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="code\AtmosphereComponent.h">
+      <Filter>code</Filter>
+    </ClInclude>
+    <ClInclude Include="code\NOWAPrecompiled.h">
+      <Filter>code</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

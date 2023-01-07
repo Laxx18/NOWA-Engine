@@ -1,0 +1,303 @@
+#include "NOWAPrecompiled.h"
+#include "TimeTriggerComponent.h"
+#include "GameObjectController.h"
+#include "utilities/XMLConverter.h"
+
+namespace NOWA
+{
+	using namespace rapidxml;
+	using namespace luabind;
+
+	TimeTriggerComponent::TimeTriggerComponent()
+		: GameObjectComponent(),
+		timeDt(0.0f),
+		startCounting(false),
+		firstTimeActivated(true),
+		activated(new Variant(TimeTriggerComponent::AttrActivated(), true, this->attributes)),
+		startTime(new Variant(TimeTriggerComponent::AttrStartTime(), 10.0f, this->attributes)),
+		duration(new Variant(TimeTriggerComponent::AttrDuration(), 10.0f, this->attributes)),
+		repeat(new Variant(TimeTriggerComponent::AttrRepeat(), false, this->attributes)),
+		deactivateAfterwards(new Variant(TimeTriggerComponent::AttrDeactivateAfterwards(), true, this->attributes))
+	{
+		startTime->setDescription("Sets the start time in Seconds, at which the component immediately above should be activated.");
+		duration->setDescription("Sets the duration in Seconds, for which the component immediately above should remain activated.");
+		repeat->setDescription("Sets whether time triggering the component immediately above should be repeated.");
+		deactivateAfterwards->setDescription("Sets whether to deactivate the component above after the time is over or let the component remain activated.");
+	}
+
+	TimeTriggerComponent::~TimeTriggerComponent()
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TimeTriggerComponent] Destructor time trigger component for game object: " + this->gameObjectPtr->getName());
+	}
+
+	bool TimeTriggerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		GameObjectComponent::init(propertyElement, filename);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+		{
+			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartTime")
+		{
+			this->startTime->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Duration")
+		{
+			this->duration->setValue(XMLConverter::getAttribReal(propertyElement, "data", 10.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Repeat")
+		{
+			this->repeat->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DeactivateAfterwards")
+		{
+			this->deactivateAfterwards->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
+		return true;
+	}
+
+	GameObjectCompPtr TimeTriggerComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		TimeTriggerCompPtr clonedCompPtr(boost::make_shared<TimeTriggerComponent>());
+
+		
+		clonedCompPtr->setActivated(this->activated->getBool());
+		clonedCompPtr->setStartTime(this->startTime->getReal());
+		clonedCompPtr->setDuration(this->duration->getReal());
+		clonedCompPtr->setRepeat(this->repeat->getBool());
+		clonedCompPtr->setDeactivateAfterwards(this->deactivateAfterwards->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
+	bool TimeTriggerComponent::postInit(void)
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TimeTriggerComponent] Init node component for game object: " + this->gameObjectPtr->getName());
+
+		return true;
+	}
+
+	void TimeTriggerComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		if (false == notSimulating)
+		{
+			if (false == this->activated->getBool())
+			{
+				return;
+			}
+
+			if (true == this->startCounting)
+			{
+				this->timeDt += dt;
+				if (this->timeDt >= this->startTime->getReal())
+				{
+					if (true == this->firstTimeActivated)
+					{
+						this->activateComponent(true);
+						this->firstTimeActivated = false;
+					}
+					if (this->timeDt >= this->startTime->getReal() + this->duration->getReal())
+					{
+						if (true == this->deactivateAfterwards->getBool())
+						{
+							this->activateComponent(false);
+						}
+						this->timeDt = 0.0f;
+						this->firstTimeActivated = true;
+						if (false == this->repeat->getBool())
+						{
+							this->startCounting = false;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	void TimeTriggerComponent::activateComponent(bool bActivate)
+	{
+		for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+		{
+			// Working here with shared_ptrs is evil, because of bidirectional referecing
+			auto component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i)).get();
+			// Seek for this component and go to the previous one to process
+			if (component == this)
+			{
+				if (i > 0)
+				{
+					component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i - 1)).get();
+					component->setActivated(bActivate);
+					break;
+				}
+			}
+		}
+	}
+
+	void TimeTriggerComponent::actualizeValue(Variant* attribute)
+	{
+		GameObjectComponent::actualizeValue(attribute);
+
+		if (TimeTriggerComponent::AttrActivated() == attribute->getName())
+		{
+			this->setActivated(attribute->getBool());
+		}
+		else if (TimeTriggerComponent::AttrStartTime() == attribute->getName())
+		{
+			this->setStartTime(attribute->getReal());
+		}
+		else if (TimeTriggerComponent::AttrDuration() == attribute->getName())
+		{
+			this->setDuration(attribute->getReal());
+		}
+		else if (TimeTriggerComponent::AttrRepeat() == attribute->getName())
+		{
+			this->setRepeat(attribute->getBool());
+		}
+		else if (TimeTriggerComponent::AttrDeactivateAfterwards() == attribute->getName())
+		{
+			this->setDeactivateAfterwards(attribute->getBool());
+		}
+	}
+
+	void TimeTriggerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->activated->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "StartTime"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->startTime->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Duration"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->duration->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Repeat"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->repeat->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "DeactivateAfterwards"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->deactivateAfterwards->getBool())));
+		propertiesXML->append_node(propertyXML);
+	}
+
+	bool TimeTriggerComponent::connect(void)
+	{
+		// First always deactivate
+		this->activateComponent(false);
+		this->startCounting = true;
+		this->timeDt = 0.0f;
+		return true;
+	}
+
+	bool TimeTriggerComponent::disconnect(void)
+	{
+		this->startCounting = false;
+		this->timeDt = 0.0f;
+		this->firstTimeActivated = true;
+		// Activate, when simulation is not active, else maybe nothing would be visible
+		if (false == this->deactivateAfterwards->getBool())
+		{
+			this->activateComponent(true);
+		}
+		return true;
+	}
+
+	Ogre::String TimeTriggerComponent::getClassName(void) const
+	{
+		return "TimeTriggerComponent";
+	}
+
+	Ogre::String TimeTriggerComponent::getParentClassName(void) const
+	{
+		return "GameObjectComponent";
+	}
+
+	void TimeTriggerComponent::setActivated(bool activated)
+	{
+		this->activated->setValue(activated);
+		if (false == activated)
+		{
+			this->timeDt = 0.0f;
+			this->firstTimeActivated = true;
+			this->startCounting = true;
+		}
+	}
+
+	bool TimeTriggerComponent::isActivated(void) const
+	{
+		return this->activated->getBool();
+	}
+
+	void TimeTriggerComponent::setStartTime(Ogre::Real startTime)
+	{
+		this->startTime->setValue(startTime);
+	}
+
+	Ogre::Real TimeTriggerComponent::getStartTime(void) const
+	{
+		return this->startTime->getReal();
+	}
+
+	void TimeTriggerComponent::setDuration(Ogre::Real duration)
+	{
+		this->duration->setValue(duration);
+	}
+
+	Ogre::Real TimeTriggerComponent::getDuration(void) const
+	{
+		return this->duration->getReal();
+	}
+
+	void TimeTriggerComponent::setRepeat(bool repeat)
+	{
+		this->repeat->setValue(repeat);
+	}
+
+	bool TimeTriggerComponent::getRepeat(void) const
+	{
+		return this->repeat->getBool();
+	}
+
+	void TimeTriggerComponent::setDeactivateAfterwards(bool deactivateAfterwards)
+	{
+		this->deactivateAfterwards->setValue(deactivateAfterwards);
+	}
+
+	bool TimeTriggerComponent::getDeactivateAfterwards(void) const
+	{
+		return this->deactivateAfterwards->getBool();
+	}
+
+}; // namespace end
