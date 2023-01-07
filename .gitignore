@@ -146,6 +146,7 @@ bin/Debug/libs/tinyxml.pdb
 bin/Debug/libs/tinyxml.lib
 bin/Debug/NOWA_Api.lua
 bin/Debug/ogre.cfg
+bin/resources/NOWA_Design_Settings.xml
 
 cache/
 NOWA_Engine/plugins/AiLuaGoalComponent/obj/
