@@ -73,4 +73,7 @@ external/lua-5_2/LuaBind/obj/
 external/lua-5_2/obj/
 external/terra/obj/
 external/tinyxml_2_6_2/obj/
+bin/Release/libs/tinyxml.lib
+bin/Release/libs/tinyxml.pdb
+
 
