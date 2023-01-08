@@ -26,6 +26,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
+    - name: Add NOWA Path variable
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        SET NOWA="$env.GITHUB_WORKSPACE"
+        echo $env:NOWA
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
@@ -33,12 +39,6 @@ jobs:
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
-
-    - name: Add NOWA Path variable
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: |
-        SET NOWA=$env.GITHUB_WORKSPACE
-        echo $env:NOWA
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
