@@ -1,6 +1,6 @@
 # NOWA-Engine
 
-![](images/NOWA_1.png))
+![](images/NOWA_1.png)
 
 Games fascinated me even as a child. I was keen on understanding how a game does work behind the scenes. So I started to study media and computing to lay the foundations.
 
@@ -19,7 +19,7 @@ For more information see [http://www.lukas-kalinowski.com/Homepage/?page_id=1631
 
 # NOWA-Design
 
-![](images/NOWA_Design_1.png))
+![](images/NOWA_Design_1.png)
 
 The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used to create complex virtual environments. The speciality is its ability to test everything at runtime. The user may create a world add some GameObjects arm the GameObjects with some components to obtain some abilities like physics behaviors or particle effects, sounds etc. When the user presses the “Play” button. Everything will be rendered in realtime and the user may interact with the GameObjects. By pressing the “Stop” button everything will be placed in an “undo”-step to its stage before the simulation has happened. The biggest feature is that the LuaScriptComponent, that can be used for any game object, adding custom behavior at runtime, which is demonstrated in the video below “NOWA Design LuaScript AreaOfInterest”. The NOWA-Design editor has a lot of functionalities. Some will be listed below:
 
@@ -41,6 +41,8 @@ The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used 
 
 # Demos
 See: [http://www.lukas-kalinowski.com/Homepage/?page_id=1787](http://www.lukas-kalinowski.com/Homepage/?page_id=1787)
+
+![](images/example1.png)
 
 # How to get and build
 - You need visual studio
