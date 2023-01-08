@@ -53,7 +53,7 @@
 		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="shadowQualityText">
             <Property key="Caption" value="#{ShadowQuality}:"/>
         </Widget>
-        <Widget type="ComboBox" skin="ComboBox" position="280 212 175 20" name="shadowQualityCombo">
+        <Widget type="ComboBox" skin="ComboBox" position="280 212 175 20" layer="Overlapped" name="shadowQualityCombo">
 		    <Property key="Caption" value="PCF_6x6"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="PCF_2x2"/>
@@ -67,7 +67,7 @@
 		 <Widget type="TextBox" skin="TextBox" position="10 244 260 20" name="ambientLightModeText">
             <Property key="Caption" value="#{AmbientLightMode}:"/>
         </Widget>
-		 <Widget type="ComboBox" skin="ComboBox" position="280 244 175 20" name="ambientLightModeCombo">
+		 <Widget type="ComboBox" skin="ComboBox" position="280 244 175 20" layer="Overlapped" name="ambientLightModeCombo">
 		    <Property key="Caption" value="AmbientAuto"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="AmbientAuto"/>
@@ -79,7 +79,7 @@
 		 <Widget type="TextBox" skin="TextBox" position="10 276 260 20" name="forwardMode">
             <Property key="Caption" value="#{ForwardMode}:"/>
          </Widget>
-		 <Widget type="ComboBox" skin="ComboBox" position="280 276 175 20" name="forwardModeCombo">
+		 <Widget type="ComboBox" skin="ComboBox" position="280 276 175 20" layer="Overlapped" name="forwardModeCombo">
 		    <Property key="Caption" value="ForwardClustered"/>
 			<Property key="ReadOnly" value="true"/>
             <Property key="AddItem" value="None"/>

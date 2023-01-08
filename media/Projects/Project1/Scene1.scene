@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.00953589" g="0.0331086" b="0.0834809"/>
 			<ambientLightLowerHemisphere r="0.0089358" g="0.0129864" b="0.0182958" a="1"/>
-			<hemisphereDir x="0.503498" y="0.860066" z="-0.0823246"/>
+			<hemisphereDir x="0" y="0.707107" z="0.707107"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -41,8 +41,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-4.89999" y="5" z="0.799999"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<position x="-1.75245" y="4.16039" z="-3.3474"/>
+			<rotation qw="0.996426" qx="-0.0840222" qy="-0.0086962" qz="-0.000733295"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -112,7 +112,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="0.551552" qx="-0.653155" qy="-0.224988" qz="0.467503"/>
+			<rotation qw="0.841229" qx="-0.348449" qy="0.158209" qz="0.381951"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -156,7 +156,7 @@
 					<property type="2" name="PresetsCount" data="6"/>
 					<property type="7" name="Time0" data="06:30"/>
 					<property type="6" name="DensityCoefficient0" data="0.37"/>
-					<property type="6" name="DensityDiffusion0" data="2"/>
+					<property type="6" name="DensityDiffusion0" data="1"/>
 					<property type="6" name="HorizonLimit0" data="0.035"/>
 					<property type="6" name="SunPower0" data="1"/>
 					<property type="6" name="SkyPower0" data="1"/>
@@ -170,7 +170,7 @@
 					<property type="6" name="EnvmapScale0" data="1"/>
 					<property type="7" name="Time1" data="12:00"/>
 					<property type="6" name="DensityCoefficient1" data="0.58"/>
-					<property type="6" name="DensityDiffusion1" data="2"/>
+					<property type="6" name="DensityDiffusion1" data="1"/>
 					<property type="6" name="HorizonLimit1" data="0.025"/>
 					<property type="6" name="SunPower1" data="1"/>
 					<property type="6" name="SkyPower1" data="1"/>
@@ -184,7 +184,7 @@
 					<property type="6" name="EnvmapScale1" data="1"/>
 					<property type="7" name="Time2" data="20:00"/>
 					<property type="6" name="DensityCoefficient2" data="0.58"/>
-					<property type="6" name="DensityDiffusion2" data="2"/>
+					<property type="6" name="DensityDiffusion2" data="1"/>
 					<property type="6" name="HorizonLimit2" data="0.025"/>
 					<property type="6" name="SunPower2" data="1"/>
 					<property type="6" name="SkyPower2" data="1"/>
@@ -198,7 +198,7 @@
 					<property type="6" name="EnvmapScale2" data="1"/>
 					<property type="7" name="Time3" data="22:00"/>
 					<property type="6" name="DensityCoefficient3" data="0.08"/>
-					<property type="6" name="DensityDiffusion3" data="2"/>
+					<property type="6" name="DensityDiffusion3" data="1"/>
 					<property type="6" name="HorizonLimit3" data="0.025"/>
 					<property type="6" name="SunPower3" data="0.01"/>
 					<property type="6" name="SkyPower3" data="0.2"/>
@@ -207,12 +207,12 @@
 					<property type="6" name="FogBreakMinBrightness3" data="0.25"/>
 					<property type="6" name="FogBreakFalloff3" data="0.1"/>
 					<property type="6" name="LinkedLightPower3" data="0.01"/>
-					<property type="6" name="LinkedAmbientUpperPower3" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower3" data="3.14159e-05"/>
+					<property type="6" name="LinkedAmbientUpperPower3" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower3" data="0.01"/>
 					<property type="6" name="EnvmapScale3" data="1"/>
 					<property type="7" name="Time4" data="00:00"/>
 					<property type="6" name="DensityCoefficient4" data="0.021"/>
-					<property type="6" name="DensityDiffusion4" data="2"/>
+					<property type="6" name="DensityDiffusion4" data="1"/>
 					<property type="6" name="HorizonLimit4" data="0.025"/>
 					<property type="6" name="SunPower4" data="0.005"/>
 					<property type="6" name="SkyPower4" data="0.2"/>
@@ -220,13 +220,13 @@
 					<property type="6" name="FogDensity4" data="0.0001"/>
 					<property type="6" name="FogBreakMinBrightness4" data="0.25"/>
 					<property type="6" name="FogBreakFalloff4" data="0.1"/>
-					<property type="6" name="LinkedLightPower4" data="0.005"/>
-					<property type="6" name="LinkedAmbientUpperPower4" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower4" data="3.14159e-05"/>
+					<property type="6" name="LinkedLightPower4" data="0.01"/>
+					<property type="6" name="LinkedAmbientUpperPower4" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower4" data="0.01"/>
 					<property type="6" name="EnvmapScale4" data="1"/>
 					<property type="7" name="Time5" data="05:00"/>
 					<property type="6" name="DensityCoefficient5" data="0.08"/>
-					<property type="6" name="DensityDiffusion5" data="2"/>
+					<property type="6" name="DensityDiffusion5" data="1"/>
 					<property type="6" name="HorizonLimit5" data="0.025"/>
 					<property type="6" name="SunPower5" data="0.01"/>
 					<property type="6" name="SkyPower5" data="0.2"/>
@@ -235,8 +235,8 @@
 					<property type="6" name="FogBreakMinBrightness5" data="0.25"/>
 					<property type="6" name="FogBreakFalloff5" data="0.1"/>
 					<property type="6" name="LinkedLightPower5" data="0.01"/>
-					<property type="6" name="LinkedAmbientUpperPower5" data="0.000314159"/>
-					<property type="6" name="LinkedAmbientLowerPower5" data="3.14159e-05"/>
+					<property type="6" name="LinkedAmbientUpperPower5" data="0.01"/>
+					<property type="6" name="LinkedAmbientLowerPower5" data="0.01"/>
 					<property type="6" name="EnvmapScale5" data="1"/>
 				</userData>
 			</entity>
@@ -337,7 +337,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
