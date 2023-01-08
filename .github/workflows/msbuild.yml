@@ -37,7 +37,7 @@ jobs:
     - name: Add NOWA Path variable
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        SET NOWA=$env:GITHUB_WORKSPACE
+        SET NOWA=$env.GITHUB_WORKSPACE
         echo $env:NOWA
 
     - name: Build
