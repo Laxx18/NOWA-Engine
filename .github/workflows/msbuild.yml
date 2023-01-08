@@ -36,6 +36,11 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Add NOWA Path variable
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        $env:NOWA=${{env.GITHUB_WORKSPACE}}
+
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
