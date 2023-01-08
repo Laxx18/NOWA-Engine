@@ -3116,24 +3116,21 @@ namespace NOWA
 		if (keyEventRef.key == OIS::KC_SYSRQ)
 		{
 			// Screenshot
-			Ogre::TextureGpuManager* textureManager = this->root->getRenderSystem()->getTextureGpuManager();
-			Ogre::TextureGpu* screenShotTexture = textureManager->createTexture("captureScreenShotTexture", Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::RenderToTexture, Ogre::TextureTypes::Type2D);
 
-			screenShotTexture->setResolution(this->renderWindow->getWidth(), this->renderWindow->getHeight());
-			screenShotTexture->setNumMipmaps(1u);
-			screenShotTexture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-			// screenShotTexture->setMsaa(1u);
-			screenShotTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-			screenShotTexture->waitForData();
+			Ogre::Image2 img;
+			Ogre::TextureGpu* texture = renderWindow->getTexture();
+			img.convertFromTexture(texture, 0u, texture->getNumMipmaps() - 1u);
 
 			std::time_t t = std::time(0);   // get time now
 			std::tm* now = std::localtime(&t);
 			Ogre::String date = Ogre::StringConverter::toString(now->tm_year + 1900) + "-" + Ogre::StringConverter::toString(now->tm_mon + 1) + "-" +
 				Ogre::StringConverter::toString(now->tm_mday) + "_" + Ogre::StringConverter::toString(now->tm_min) + "_" + Ogre::StringConverter::toString(now->tm_sec);
 
-			screenShotTexture->writeContentsToFile(date + ".png", 0, 0);
+			img.save(date + ".png", 0u, texture->getNumMipmaps());
 
-			textureManager->destroyTexture(screenShotTexture);
+			renderWindow->setWantsToDownload(true);
+			renderWindow->setManualSwapRelease(true);
+			renderWindow->performManualRelease();
 
 			return true;
 		}
@@ -3542,14 +3539,18 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 		{
 			//Check each texture from the material
 			Ogre::TextureGpu* tex = derivedDatablock->getTexture(texUnit);
-			if (tex)
+			if (nullptr != tex)
 			{
 				//If getLinkedRenderables is empty, then the material is not in use,
 				//and thus so is potentially the texture
 				if (!datablock->getLinkedRenderables().empty())
+				{
 					usedTex.insert(tex);
+				}
 				else
+				{
 					unusedTex.insert(tex);
+				}
 			}
 		}
 	}
