@@ -27,14 +27,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-    
     - name: Add NOWA Path variable
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
         $env:NOWA="${{ github.workspace }}"
         echo $env:NOWA
-        dir env:
+    - uses: actions/checkout@v3
+      with:
+        path: "$env:NOWA"
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
