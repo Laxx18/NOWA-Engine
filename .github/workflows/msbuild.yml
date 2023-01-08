@@ -16,6 +16,8 @@ env:
   BUILD_CONFIGURATION: Release
   
   BUILD_PLATFORM: x64
+  
+  NOWA: ${{env.GITHUB_WORKSPACE}}
 
 permissions:
   contents: read
