@@ -17,7 +17,7 @@ env:
   
   BUILD_PLATFORM: x64
   
-  NOWA: ""
+  NOWA: "${{ github.workspace }}"
 
 permissions:
   contents: read
