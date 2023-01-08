@@ -94,7 +94,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>
       </SDLCheck>
-      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>LUA_COMPAT_ALL;LUABIND_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
       <UndefinePreprocessorDefinitions>_XSTDDEF_</UndefinePreprocessorDefinitions>
@@ -129,7 +129,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>
       </SDLCheck>
-      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;LUABIND_BUILDING</PreprocessorDefinitions>
       <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
       <UndefinePreprocessorDefinitions>_XSTDDEF_;LUA_CORE;LUA_LIB</UndefinePreprocessorDefinitions>
@@ -166,7 +166,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>
       </SDLCheck>
-      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>LUA_COMPAT_ALL;LUABIND_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>_XSTDDEF_</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -202,7 +202,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>
       </SDLCheck>
-      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/Ogre2.2SDK/Dependencies/src/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/lua-5_2/src;$(NOWA)/external/boost;$(ProjectDir);luabind/</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);LUABIND_DYNAMIC_LINK;LUABIND_BUILDING</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>_XSTDDEF_;LUA_CORE;LUA_LIB</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>

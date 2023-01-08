@@ -60,6 +60,7 @@ bin/Release/MeshSplitter.dll
 bin/Release/MeshSplitterExec.pdb
 bin/Release/MyGuiEngine.dll
 bin/Release/Ogre2Platform.dll
+bin/Release/OgreALVC9.dll
 bin/Release/OgreProcedural.dll
 bin/Release/ParticleUniverse.dll
 bin/Release/RakNet_vc9.dll
