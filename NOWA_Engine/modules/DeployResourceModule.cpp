@@ -909,7 +909,7 @@ namespace NOWA
 		Ogre::String command = "CD C:/Windows/Microsoft.NET/Framework64/v4.0.30319";
 		system(command.data());
 
-		command = "msbuild " + destinationFilePathName + "/p:configuration=release /p:platform=win64 /t:rebuild";
+		command = "msbuild " + destinationFilePathName + "/p:configuration=release /p:platform=x64 /t:rebuild";
 		// /p:PlatformToolset=v110_xp
 		system(command.data());
 
