@@ -27,11 +27,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Add NOWA Path variable
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: |
-        $env:NOWA="${{ github.workspace }}"
-        echo $env:NOWA
     - uses: actions/checkout@v3
 
     - name: Add MSBuild to PATH
@@ -45,5 +40,10 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild -maxCpuCount -verbosity:minimal /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} ${{env.SOLUTION_FILE_PATH}}
       
+    - name: BuildPlugins
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild -maxCpuCount -verbosity:minimal /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} NOWA_ENGINE\plugins\plugins.sln
