@@ -30,7 +30,7 @@ jobs:
     - name: Add NOWA Path variable
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        SET NOWA="${{ github.workspace }}"
+        $env:NOWA="${{ github.workspace }}"
         echo $env:NOWA
 
     - name: Add MSBuild to PATH
