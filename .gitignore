@@ -7,6 +7,7 @@
 *.lo
 *.o
 *.obj
+obj
 
 # Precompiled Headers
 *.gch
@@ -172,6 +173,20 @@ bin/Debug/plugins/ParticleFxComponent_d.pdb
 bin/Debug/plugins/SelectGameObjectsComponent_d.pdb
 bin/Debug/plugins/SpeechBubbleComponent_d.pdb
 bin/Debug/plugins/VegetationComponent_d.pdb
+bin/Debug/OgreAtmosphere_d.pdb
+bin/Debug/OgreHlmsPbs_d.pdb
+bin/Debug/OgreHlmsUnlit_d.pdb
+bin/Debug/OgreMain_d.pdb
+bin/Debug/OgreMeshLodGenerator_d.pdb
+bin/Debug/OgreOverlay_d.pdb
+bin/Debug/OgrePlanarReflections_d.pdb
+bin/Debug/Plugin_ParticleFX_d.pdb
+bin/Debug/Remotery_d.pdb
+bin/Debug/RenderSystem_Direct3D11_d.pdb
+bin/Debug/RenderSystem_GL3Plus_d.pdb
+bin/Debug/RenderSystem_NULL_d.pdb
+bin/Debug/libs/MeshSplitterExec_d.lib
+
 bin/Debug/plugins/
 bin/Release/plugins/
 
