@@ -47,6 +47,7 @@ namespace NOWA
 	{
 		RENDER_QUEUE_V2_MESH = 10, // E.g. Ogre::ManualObject, Item
 		RENDER_QUEUE_TERRA = 11, // Terra v2
+		RENDER_QUEUE_DISTORTION = 16, // fast
 		RENDER_QUEUE_V1_MESH = 110, // E.g. Ogre::Entity
 		RENDER_QUEUE_PARTICLE_STUFF = 155,
 		RENDER_QUEUE_LEGACY = 156,

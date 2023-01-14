@@ -12,7 +12,7 @@ fragment_program SSAO_HS_ps_GLSL glsl
 	{
 		param_named depthTexture int 0
 		param_named gBuf_normals int 1
-		param_named noiseTexture int 2
+		param_named noiseTextureSSAO int 2
 	}
 }
 
@@ -108,7 +108,7 @@ material SSAO/HS
 				tex_address_mode	clamp
 			}
 			
-			texture_unit noiseTexture
+			texture_unit noiseTextureSSAO
 			{
 				filtering			none
 				tex_address_mode	wrap

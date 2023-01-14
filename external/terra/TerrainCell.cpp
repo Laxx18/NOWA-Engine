@@ -68,8 +68,8 @@ namespace Ogre
 
         //Setup bufferless vao
         VertexBufferPackedVec vertexBuffers;
-        VertexArrayObject *vao = vaoManager->createVertexArrayObject(
-                    vertexBuffers, 0, OT_TRIANGLE_STRIP );
+        VertexArrayObject *vao =
+            vaoManager->createVertexArrayObject( vertexBuffers, 0, OT_TRIANGLE_STRIP );
         mVaoPerLod[VpNormal].push_back( vao );
         mVaoPerLod[VpShadow].push_back( vao );
     }
@@ -81,8 +81,10 @@ namespace Ogre
         m_gridZ             = gridPos.z;
         m_lodLevel          = lodLevel;
 
-        horizontalPixelDim  = std::min( horizontalPixelDim, m_parentTerra->m_width - m_gridX );
-        verticalPixelDim    = std::min( verticalPixelDim, m_parentTerra->m_depth - m_gridZ );
+        horizontalPixelDim =
+            std::min( horizontalPixelDim, m_parentTerra->m_width - static_cast<uint32>( m_gridX ) );
+        verticalPixelDim =
+            std::min( verticalPixelDim, m_parentTerra->m_depth - static_cast<uint32>( m_gridZ ) );
 
         m_sizeX = horizontalPixelDim;
         m_sizeZ = verticalPixelDim;

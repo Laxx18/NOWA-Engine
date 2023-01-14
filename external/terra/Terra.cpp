@@ -691,8 +691,8 @@ namespace Ogre
 
         const float fX = floorf( ((vPos.x - m_terrainOrigin.x) * m_xzInvDimensions.x) * fWidth );
         const float fZ = floorf( ((vPos.z - m_terrainOrigin.z) * m_xzInvDimensions.y) * fDepth );
-        retVal.x = fX >= 0.0f ? static_cast<uint32>( fX ) : 0xffffffff;
-        retVal.z = fZ >= 0.0f ? static_cast<uint32>( fZ ) : 0xffffffff;
+        retVal.x = fX >= 0.0f ? static_cast<int32>( fX ) : -1;
+        retVal.z = fZ >= 0.0f ? static_cast<int32>( fZ ) : -1;
 
         return retVal;
     }
@@ -703,18 +703,16 @@ namespace Ogre
         const float fWidth = static_cast<float>( m_width );
         const float fDepth = static_cast<float>( m_depth );
 
-        retVal.x = (gPos.x / fWidth) * m_xzDimensions.x + m_terrainOrigin.x;
-        retVal.y = (gPos.z / fDepth) * m_xzDimensions.y + m_terrainOrigin.z;
+        retVal.x = ( float( gPos.x ) / fWidth ) * m_xzDimensions.x + m_terrainOrigin.x;
+        retVal.y = ( float( gPos.z ) / fDepth ) * m_xzDimensions.y + m_terrainOrigin.z;
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
     bool Terra::isVisible( const GridPoint &gPos, const GridPoint &gSize ) const
     {
-        if( gPos.x >= static_cast<int32>( m_width ) ||
-            gPos.z >= static_cast<int32>( m_depth ) ||
-            gPos.x + gSize.x <= 0 ||
-            gPos.z + gSize.z <= 0 )
+        if( gPos.x >= static_cast<int32>( m_width ) || gPos.z >= static_cast<int32>( m_depth ) ||
+            gPos.x + gSize.x <= 0 || gPos.z + gSize.z <= 0 )
         {
             //Outside terrain bounds.
             return false;
@@ -723,8 +721,8 @@ namespace Ogre
 //        return true;
 
         const Vector2 cellPos = gridToWorld( gPos );
-        const Vector2 cellSize( (gSize.x + 1u) * m_xzRelativeSize.x,
-                                (gSize.z + 1u) * m_xzRelativeSize.y );
+        const Vector2 cellSize( Real( gSize.x + 1 ) * m_xzRelativeSize.x,
+                                Real( gSize.z + 1 ) * m_xzRelativeSize.y );
 
         const Vector3 vHalfSizeYUp = Vector3( cellSize.x, m_height, cellSize.y ) * 0.5f;
         const Vector3 vCenter =
@@ -737,7 +735,7 @@ namespace Ogre
             if( i == FRUSTUM_PLANE_FAR && m_camera->getFarClipDistance() == 0 )
                 continue;
 
-            Plane::Side side = m_camera->getFrustumPlane(i).getSide( vCenter, vHalfSize );
+            Plane::Side side = m_camera->getFrustumPlane( (uint16)i ).getSide( vCenter, vHalfSize );
 
             //We only need one negative match to know the obj is outside the frustum
             if( side == Plane::NEGATIVE_SIDE )
@@ -1132,16 +1130,19 @@ namespace Ogre
 
         GridPoint pos2D = worldToGrid( vPos );
 
-        if( pos2D.x < m_width-1 && pos2D.z < m_depth-1 )
+        const int32 iWidth = static_cast<int32>( m_width );
+        const int32 iDepth = static_cast<int32>( m_depth );
+
+        if( pos2D.x < iWidth - 1 && pos2D.z < iDepth - 1 )
         {
             const Vector2 vPos2D = gridToWorld( pos2D );
 
-            const float dx = (vPos.x - vPos2D.x) * m_width * m_xzInvDimensions.x;
-            const float dz = (vPos.z - vPos2D.y) * m_depth * m_xzInvDimensions.y;
+            const float dx = ( vPos.x - vPos2D.x ) * float( m_width ) * m_xzInvDimensions.x;
+            const float dz = ( vPos.z - vPos2D.y ) * float( m_depth ) * m_xzInvDimensions.y;
 
             float a, b, c;
-            const float h00 = m_heightMap[ pos2D.z * m_width + pos2D.x ];
-            const float h11 = m_heightMap[ (pos2D.z+1) * m_width + pos2D.x + 1 ];
+            const float h00 = m_heightMap[size_t( pos2D.z * iWidth + pos2D.x )];
+            const float h11 = m_heightMap[size_t( ( pos2D.z + 1 ) * iWidth + pos2D.x + 1 )];
 
             c = h00;
             if( dx < dz )
@@ -1150,7 +1151,7 @@ namespace Ogre
                 //x=0 z=0 -> c		= h00
                 //x=0 z=1 -> b + c	= h01 -> b = h01 - c
                 //x=1 z=1 -> a + b + c  = h11 -> a = h11 - b - c
-                const float h01 = m_heightMap[ (pos2D.z+1) * m_width + pos2D.x ];
+                const float h01 = m_heightMap[size_t( ( pos2D.z + 1 ) * iWidth + pos2D.x )];
 
                 b = h01 - c;
                 a = h11 - b - c;
@@ -1161,7 +1162,7 @@ namespace Ogre
                 //x=0 z=0 -> c		= h00
                 //x=1 z=0 -> a + c	= h10 -> a = h10 - c
                 //x=1 z=1 -> a + b + c  = h11 -> b = h11 - a - c
-                const float h10 = m_heightMap[ pos2D.z * m_width + pos2D.x + 1 ];
+                const float h10 = m_heightMap[size_t( pos2D.z * iWidth + pos2D.x + 1 )];
 
                 a = h10 - c;
                 b = h11 - a - c;

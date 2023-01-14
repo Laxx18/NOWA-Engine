@@ -301,6 +301,8 @@ namespace NOWA
 			this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V2_MESH, Ogre::RenderQueue::Modes::FAST);
 			this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V2_MESH, sortMode);
 
+			this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_DISTORTION, Ogre::RenderQueue::Modes::FAST);
+
 			this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_V1_MESH, Ogre::RenderQueue::Modes::V1_FAST);
 			this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_V1_MESH, sortMode);
 

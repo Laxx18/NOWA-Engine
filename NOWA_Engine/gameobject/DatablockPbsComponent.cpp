@@ -572,7 +572,7 @@ namespace NOWA
 	
 	Ogre::PbsBrdf::PbsBrdf DatablockPbsComponent::mapStringToBrdf(const Ogre::String& strBrdf)
 	{
-		Ogre::PbsBrdf::PbsBrdf brdf = Ogre::PbsBrdf::Default;
+		uint32_t brdf = Ogre::PbsBrdf::Default;
 		if ("CookTorrance" == strBrdf)
 			brdf = Ogre::PbsBrdf::CookTorrance;
 		else if ("BlinnPhong" == strBrdf)
@@ -580,17 +580,29 @@ namespace NOWA
 		else if ("DefaultUncorrelated" == strBrdf)
 			brdf = Ogre::PbsBrdf::DefaultUncorrelated;
 		else if ("DefaultSeparateDiffuseFresnel" == strBrdf)
+		{
 			brdf = Ogre::PbsBrdf::DefaultSeparateDiffuseFresnel;
+			brdf |= Ogre::PbsBrdf::FLAG_HAS_DIFFUSE_FRESNEL |
+				Ogre::PbsBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+		}
 		else if ("CookTorranceSeparateDiffuseFresnel" == strBrdf)
+		{
 			brdf = Ogre::PbsBrdf::CookTorranceSeparateDiffuseFresnel;
+			brdf |= Ogre::PbsBrdf::FLAG_HAS_DIFFUSE_FRESNEL |
+				Ogre::PbsBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+		}
 		else if ("BlinnPhongSeparateDiffuseFresnel" == strBrdf)
+		{
 			brdf = Ogre::PbsBrdf::BlinnPhongSeparateDiffuseFresnel;
+			brdf |= Ogre::PbsBrdf::FLAG_HAS_DIFFUSE_FRESNEL |
+				Ogre::PbsBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL;
+		}
 		else if ("BlinnPhongLegacyMath" == strBrdf)
 			brdf = Ogre::PbsBrdf::BlinnPhongLegacyMath;
 		else if ("BlinnPhongFullLegacy" == strBrdf)
 			brdf = Ogre::PbsBrdf::BlinnPhongFullLegacy;
 
-		return brdf;
+		return static_cast<Ogre::PbsBrdf::PbsBrdf>(brdf);
 	}
 	
 	Ogre::String DatablockPbsComponent::mapBlendModeToString(Ogre::PbsBlendModes blendMode)
@@ -739,7 +751,9 @@ namespace NOWA
 		bool success = true;
 
 		if (nullptr == this->gameObjectPtr)
+		{
 			return false;
+		}
 
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)

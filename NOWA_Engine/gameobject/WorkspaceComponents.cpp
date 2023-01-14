@@ -117,6 +117,8 @@ namespace NOWA
 		useReflection(new Variant(WorkspaceBaseComponent::AttrUseReflection(), false, this->attributes)),
 		reflectionCameraGameObjectId(new Variant(WorkspaceBaseComponent::AttrReflectionCameraGameObjectId(), static_cast<unsigned long>(0), this->attributes, true)),
 		usePlanarReflection(new Variant(WorkspaceBaseComponent::AttrUsePlanarReflection(), false, this->attributes)),
+		useSSAO(new Variant(WorkspaceBaseComponent::AttrUseSSAO(), false, this->attributes)),
+		useDistortion(new Variant(WorkspaceBaseComponent::AttrUseDistortion(), false, this->attributes)),
 		shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(1.0f), this->attributes)),
 		shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(168.0f), this->attributes)),
 		shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.95f), this->attributes)),
@@ -156,8 +158,10 @@ namespace NOWA
 
 		this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
 		this->superSampling->setDescription("Sets the supersampling for whole scene texture rendering. E.g. a value of 0.25 will pixelize the scene for retro Game experience.");
-		this->useReflection->setDescription("Activates reflection, which is rendered by a dynamic cubemap. This component works in conjunction with a ReflectionCameraComponent. Attention: Acitvating this mode decreases the application's performance considerably!");
+		this->useReflection->setDescription("Activates reflection, which is rendered by a dynamic cubemap. This component works in conjunction with a ReflectionCameraComponent. Attention: Activating this mode decreases the application's performance considerably!");
 		this->usePlanarReflection->setDescription("Activates planar reflection, which is used for mirror planes in conjunction with a PlanarReflectionComponent.");
+		this->useDistortion->setDescription("Activates distortion. Distortion setup can be used to create blastwave effects, mix with fire particle effects "
+            "to get heat distortion etc. This component works in conjunction with a DistortionComponent.");
 		this->referenceId->setVisible(false);
 		this->reflectionCameraGameObjectId->setVisible(false);
 
@@ -221,6 +225,16 @@ namespace NOWA
 			}
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseSSAO")
+		{
+			this->useSSAO->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseDistortion")
+		{
+			this->useDistortion->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseTerra")
 		{
 			this->useTerra = XMLConverter::getAttribBool(propertyElement, "data");
@@ -271,9 +285,7 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::postInit(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Init workspace base component for game object: " + this->gameObjectPtr->getName());
-		
-		this->msaaLevel = this->getMSAA();
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Init workspace base component for game object: " + this->gameObjectPtr->getName());		
 		
 		// Get hlms data
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -299,6 +311,11 @@ namespace NOWA
 
 		this->usePlanarReflection->setValue(hasAnyMirror);
 
+		if (true == this->useSSAO->getBool())
+		{
+			this->createSSAONoiseTexture();
+		}
+
 		return this->createWorkspace();
 	}
 
@@ -319,6 +336,11 @@ namespace NOWA
 		{
 			this->planarReflectionReflectiveRenderingNode = "PlanarReflectionsReflectiveRenderingNode" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 			this->planarReflectionReflectiveWorkspaceName = "NOWAPlanarReflectionsReflectiveWorkspace" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+		}
+
+		if (true == this->useDistortion->getBool())
+		{
+			this->distortionNode = "DistortionNode" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 		}
 	}
 
@@ -545,44 +567,14 @@ namespace NOWA
 
 			if (false == this->canUseReflection)
 			{
-#ifdef TERRA_OLD
-				this->externalChannels.resize(2);
-#else
 				this->externalChannels.resize(1);
-#endif
 			}
 			else
 			{
-#ifdef TERRA_OLD
-				this->externalChannels.resize(3);
-				externalInputTextureId = 2;
-#else
 				this->externalChannels.resize(2);
 				externalInputTextureId = 1;
-#endif
 			}
-#ifdef TERRA_OLD
-			//Terra's Shadow texture
-			if (nullptr != terra)
-			{
-				//Terra is initialized
-				const Ogre::ShadowMapper* shadowMapper = terra->getShadowMapper();
-				// shadowMapper->fillUavDataForCompositorChannel(&this->externalChannels[externalInputTextureId], this->initialCubemapLayouts, this->initialCubemapUavAccess);
-				shadowMapper->fillUavDataForCompositorChannel(&this->externalChannels[externalInputTextureId]);
-			}
-			else
-			{
-				//The texture is not available. Create a dummy dud.
-				Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-				Ogre::TextureGpu* nullTex = textureManager->createOrRetrieveTexture("DummyTerraNull", Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::ManualTexture, Ogre::TextureTypes::Type2D);
-				nullTex->setResolution(1u, 1u);
-				nullTex->setPixelFormat(Ogre::PFG_R10G10B10A2_UNORM);
-				nullTex->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-				this->externalChannels[externalInputTextureId] = nullTex;
-			}
-#endif
 		}
-
 
 		if (true == this->usePlanarReflection->getBool())
 		{
@@ -731,6 +723,10 @@ namespace NOWA
 			{
 				this->compositorManager->removeNodeDefinition(this->planarReflectionReflectiveRenderingNode);
 			}
+			if (true == this->compositorManager->hasNodeDefinition(this->distortionNode))
+			{
+				this->compositorManager->removeNodeDefinition(this->distortionNode);
+			}
 			if (true == this->compositorManager->hasNodeDefinition("AutoGen " + Ogre::IdString(this->planarReflectionReflectiveWorkspaceName + "/Node").getReleaseText()))
 			{
 				this->compositorManager->removeNodeDefinition("AutoGen " + Ogre::IdString(this->planarReflectionReflectiveWorkspaceName + "/Node").getReleaseText());
@@ -815,6 +811,14 @@ namespace NOWA
 		{
 			this->setUsePlanarReflection(attribute->getBool());
 		}
+		else if (WorkspaceBaseComponent::AttrUseSSAO() == attribute->getName())
+		{
+			this->setUseSSAO(attribute->getBool());
+		}
+		else if (WorkspaceBaseComponent::AttrUseDistortion() == attribute->getName())
+		{
+			this->setUseDistortion(attribute->getBool());
+		}
 		else if (WorkspaceBaseComponent::AttrShadowGlobalBias() == attribute->getName())
 		{
 			this->setShadowGlobalBias(attribute->getReal());
@@ -896,6 +900,18 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSSAO"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useSSAO->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseDistortion"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useDistortion->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseTerra"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useTerra)));
 		propertiesXML->append_node(propertyXML);
@@ -959,6 +975,122 @@ namespace NOWA
 		{
 			this->hlmsWind->addTime(dt);
 		}
+	}
+
+	void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
+	{
+		// Example:
+		// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
+		// workspaceDef->connect("NOWASkyRenderingNode", 1, "Glass", 1);
+		// workspaceDef->connect("NOWASkyRenderingNode", 2, "NOWAHdrPostprocessingNode", 1);
+		// workspaceDef->connect("Glass", 0, "NOWAHdrPostprocessingNode", 0);
+		// workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+		// workspaceDef->connect("NOWAHdrPostprocessingNode", 0, "NOWAHdrFinalCompositionNode", 0);
+
+		if (true == this->useDistortion->getBool())
+		{
+			// 0 is out rt0
+			workspaceDef->connect(this->renderingNodeName, 0, this->distortionNode, 0);
+
+			unsigned int distortionOutput = 2;
+			if (true == this->useHdr->getBool())
+			{
+				distortionOutput = 3;
+			}
+			// 3 is out rt_distortion
+			workspaceDef->connect(this->renderingNodeName, distortionOutput, this->distortionNode, 1);
+		}
+
+		// Without Hdr
+		if (false == this->useHdr->getBool())
+		{
+			workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
+			if (true == this->useDistortion->getBool())
+			{
+				//			  out 0 of rendering outNode        , will be passed to channel 2
+				workspaceDef->connect(this->renderingNodeName, 0, this->distortionNode, 2);
+			}
+			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
+		}
+		else
+		{
+			if (1u == this->msaaLevel)
+			{
+				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
+				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
+
+				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
+
+				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+			}
+			else
+			{
+				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
+				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
+
+				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
+				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
+
+				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
+
+				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+			}
+		}
+	}
+
+	void WorkspaceBaseComponent::createDistortionNode(void)
+	{
+		if (true == this->useDistortion->getBool())
+		{
+			if (false == this->compositorManager->hasNodeDefinition(this->distortionNode))
+			{
+				Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->distortionNode);
+
+				// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
+				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
+				distortionTexDef->width = 0; // target_width
+				distortionTexDef->height = 0; // target_height
+				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				distortionTexDef->preferDepthTexture = true;
+				// Attention depth_pool?
+				distortionTexDef->depthBufferId = 2;
+				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				compositorNodeDefinition->addTextureSourceName("rt_distortion", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+				Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt_output");
+				Ogre::RenderTargetViewEntry attachment;
+				attachment.textureName = "rt_output";
+				rtv->colourAttachments.push_back(attachment);
+
+				unsigned short numTargetPass = 1;
+				compositorNodeDefinition->setNumTargetPass(numTargetPass);
+
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_output");
+
+					// Render Quad
+					{
+						Ogre::CompositorPassQuadDef* passQuad;
+						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->mMaterialName = "Distortion/Quad";
+						passQuad->addQuadTextureSource(0, "rt0");
+						passQuad->addQuadTextureSource(1, "rt_distortion");
+					}
+				}
+
+				compositorNodeDefinition->mapOutputChannel(0, "rt_output");
+				compositorNodeDefinition->mapOutputChannel(1, "rt0");
+			}
+		}
+	}
+
+	Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
+	{
+		return this->distortionNode;
 	}
 
 	void WorkspaceBaseComponent::changeBackgroundColor(const Ogre::ColourValue& backgroundColor)
@@ -1050,8 +1182,11 @@ namespace NOWA
 		// If MSAA is set more than default in ogre.cfg and graphics card has (MultiSampleAntiAliasing) support, use it!
 		// Possible values are 1,2,4,8
 		// 1 is used when its disabled
-		if (Core::getSingletonPtr()->getOgreRenderWindow()->isMultisample() > 1u && caps->hasCapability(Ogre::RSC_EXPLICIT_FSAA_RESOLVE))
+		unsigned int multiSample = Core::getSingletonPtr()->getOgreRenderWindow()->isMultisample();
+		if (multiSample > 1u && caps->hasCapability(Ogre::RSC_EXPLICIT_FSAA_RESOLVE))
+		{
 			return Core::getSingletonPtr()->getOgreRenderWindow()->isMultisample();
+		}
 
 		return 1u;
 	}
@@ -1183,7 +1318,7 @@ namespace NOWA
 				}
 			}
 
-			//Output channels
+			// Output channels
 			bloomDef->setNumOutputChannels(2);
 			bloomDef->mapOutputChannel(0, "rt_output");
 			bloomDef->mapOutputChannel(1, "rt_input");
@@ -1214,7 +1349,7 @@ namespace NOWA
 				}
 			}
 
-			//Output channels
+			// Output channels
 			glassDef->setNumOutputChannels(2);
 			glassDef->mapOutputChannel(0, "rt_output");
 			glassDef->mapOutputChannel(1, "rt_input");
@@ -1287,127 +1422,11 @@ namespace NOWA
 				}
 			}
 
-			//Output channels
+			// Output channels
 			motionBlurDef->setNumOutputChannels(2);
 			motionBlurDef->mapOutputChannel(0, "rt_output");
 			motionBlurDef->mapOutputChannel(1, "rt_input");
 		}
-	}
-
-	void WorkspaceBaseComponent::createSSAONoiseTexture(void)
-	{
-		//We need to create SSAO kernel samples and noise texture
-		//Generate kernel samples first
-		float kernelSamples[64][4];
-		for (size_t i = 0; i < 64u; ++i)
-		{
-			//            Ogre::Vector3 sample( 10, 10, 10 );
-			//            while( sample.squaredLength() > 1.0f )
-			//            {
-			//                sample = Ogre::Vector3( Ogre::Math::RangeRandom(  -1.0f, 1.0f ),
-			//                                        Ogre::Math::RangeRandom(  -1.0f, 1.0f ),
-			//                                        Ogre::Math::RangeRandom(  0.01f, 1.0f ) );
-			////                sample = Ogre::Vector3( Ogre::Math::RangeRandom(  -0.1f, 0.1f ),
-			////                                        Ogre::Math::RangeRandom(  -0.1f, 0.1f ),
-			////                                        Ogre::Math::RangeRandom(  0.5f, 1.0f ) );
-			//            }
-			Ogre::Vector3 sample = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(0.0f, 1.0f));
-
-			sample.normalise();
-
-			float scale = (float)i / 64.0f;
-			scale = Ogre::Math::lerp(0.3f, 1.0f, scale * scale);
-			sample = sample * scale;
-
-			kernelSamples[i][0] = sample.x;
-			kernelSamples[i][1] = sample.y;
-			kernelSamples[i][2] = sample.z;
-			kernelSamples[i][3] = 1.0f;
-		}
-
-		//Next generate noise texture
-		Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
-		Ogre::TextureGpuManager* textureManager = root->getRenderSystem()->getTextureGpuManager();
-		Ogre::TextureGpu* noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
-		noiseTexture->setResolution(2u, 2u);
-		noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
-		noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
-		noiseTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-
-		Ogre::StagingTexture* stagingTexture = textureManager->getStagingTexture(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-		stagingTexture->startMapRegion();
-		Ogre::TextureBox texBox = stagingTexture->mapRegion(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
-
-		for (size_t j = 0; j < texBox.height; ++j)
-		{
-			for (size_t i = 0; i < texBox.width; ++i)
-			{
-				Ogre::Vector3 noise = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), 0.0f);
-				noise.normalise();
-
-				Ogre::uint8* pixelData = reinterpret_cast<Ogre::uint8*>(texBox.at(i, j, 0));
-				pixelData[0] = Ogre::Bitwise::floatToSnorm8(noise.x);
-				pixelData[1] = Ogre::Bitwise::floatToSnorm8(noise.y);
-				pixelData[2] = Ogre::Bitwise::floatToSnorm8(noise.z);
-				pixelData[3] = Ogre::Bitwise::floatToSnorm8(1.0f);
-			}
-		}
-
-		stagingTexture->stopMapRegion();
-		stagingTexture->upload(texBox, noiseTexture, 0, 0, 0);
-		textureManager->removeStagingTexture(stagingTexture);
-		stagingTexture = 0;
-		noiseTexture->notifyDataIsReady();
-
-		//---------------------------------------------------------------------------------
-		//Get GpuProgramParametersSharedPtr to set uniforms that we need
-		Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-
-		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
-		// this->ssaoPass = pass;
-		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
-
-		//Lets set uniforms for shader
-		//Set texture uniform for noise
-		Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTexture");
-		noiseTextureState->setTexture(noiseTexture);
-
-		//Reconstruct position from depth. Position is needed in SSAO
-		//We need to set the parameters based on camera to the
-		//shader so that the un-projection works as expected
-		Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
-		//The division will keep "linearDepth" in the shader in the [0; 1] range.
-		projectionAB.y /= this->cameraComponent->getCamera()->getFarClipDistance();
-		psParams->setNamedConstant("projectionParams", projectionAB);
-
-		//Set other uniforms
-		psParams->setNamedConstant("kernelRadius", /*mKernelRadius*/1.0f);
-
-		psParams->setNamedConstant("noiseScale", Ogre::Vector2((Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) / 2.0f,
-			(Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 0.5f) / 2.0f));
-		psParams->setNamedConstant("invKernelSize", 1.0f / 64.0f);
-		psParams->setNamedConstant("sampleDirs", (float*)kernelSamples, 64, 4);
-
-		//Set blur shader uniforms
-		Ogre::MaterialPtr materialBlurH = Ogre::MaterialManager::getSingleton().load("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-
-		Ogre::Pass* passBlurH = materialBlurH->getTechnique(0)->getPass(0);
-		Ogre::GpuProgramParametersSharedPtr psParamsBlurH = passBlurH->getFragmentProgramParameters();
-		psParamsBlurH->setNamedConstant("projectionParams", projectionAB);
-
-		Ogre::MaterialPtr materialBlurV = Ogre::MaterialManager::getSingleton().load("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-
-		Ogre::Pass* passBlurV = materialBlurV->getTechnique(0)->getPass(0);
-		Ogre::GpuProgramParametersSharedPtr psParamsBlurV = passBlurV->getFragmentProgramParameters();
-		psParamsBlurV->setNamedConstant("projectionParams", projectionAB);
-
-		//Set apply shader uniforms
-		Ogre::MaterialPtr materialApply = Ogre::MaterialManager::getSingleton().load("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-
-		Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
-		// this->ssaoApplyPass = passApply;
-		Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
-		psParamsApply->setNamedConstant("powerScale", /*mPowerScale*/ 1.5f);
 	}
 
 	void WorkspaceBaseComponent::initializeSmaa(PresetQuality quality, EdgeDetectionMode edgeDetectionMode)
@@ -1764,6 +1783,35 @@ namespace NOWA
 		return this->useReflection->getBool();
 	}
 
+	void WorkspaceBaseComponent::setUseSSAO(bool useSSAO)
+	{
+		this->useSSAO->setValue(useSSAO);
+
+		if (true == useSSAO)
+		{
+			this->createSSAONoiseTexture();
+		}
+		
+		this->createWorkspace();
+	}
+
+	bool WorkspaceBaseComponent::getUseSSAO(void) const
+	{
+		return this->useSSAO->getBool();
+	}
+
+	void WorkspaceBaseComponent::setUseDistortion(bool useDistortion)
+	{
+		this->useDistortion->setValue(useDistortion);
+
+		this->createWorkspace();
+	}
+
+	bool WorkspaceBaseComponent::getUseDistortion(void) const
+	{
+		return this->useDistortion->getBool();
+	}
+
 	void WorkspaceBaseComponent::setUsePlanarReflection(bool usePlanarReflection)
 	{
 		this->usePlanarReflection->setValue(usePlanarReflection);
@@ -1803,6 +1851,119 @@ namespace NOWA
 		this->useOcean = useOcean;
 
 		this->createWorkspace();
+	}
+
+	void WorkspaceBaseComponent::createSSAONoiseTexture(void)
+	{
+		//We need to create SSAO kernel samples and noise texture
+		//Generate kernel samples first
+		float kernelSamples[64][4];
+		for (size_t i = 0; i < 64u; ++i)
+		{
+			Ogre::Vector3 sample = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(0.0f, 1.0f));
+
+			sample.normalise();
+
+			float scale = (float)i / 64.0f;
+			scale = Ogre::Math::lerp(0.3f, 1.0f, scale * scale);
+			sample = sample * scale;
+
+			kernelSamples[i][0] = sample.x;
+			kernelSamples[i][1] = sample.y;
+			kernelSamples[i][2] = sample.z;
+			kernelSamples[i][3] = 1.0f;
+		}
+
+		//Next generate noise texture
+		Ogre::Root* root = Core::getSingletonPtr()->getOgreRoot();
+		Ogre::TextureGpuManager* textureManager = root->getRenderSystem()->getTextureGpuManager();
+
+		Ogre::TextureGpu* noiseTexture = nullptr;
+
+		if (false == textureManager->hasTextureResource("noiseTextureSSAO", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
+		{
+			noiseTexture = textureManager->createTexture("noiseTextureSSAO", Ogre::GpuPageOutStrategy::SaveToSystemRam, 0, Ogre::TextureTypes::Type2D);
+			noiseTexture->setResolution(2u, 2u);
+			noiseTexture->setPixelFormat(Ogre::PFG_RGBA8_SNORM);
+			noiseTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
+			noiseTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
+
+			Ogre::StagingTexture* stagingTexture = textureManager->getStagingTexture(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
+			stagingTexture->startMapRegion();
+			Ogre::TextureBox texBox = stagingTexture->mapRegion(2u, 2u, 1u, 1u, Ogre::PFG_RGBA8_SNORM);
+
+			for (size_t j = 0; j < texBox.height; ++j)
+			{
+				for (size_t i = 0; i < texBox.width; ++i)
+				{
+					Ogre::Vector3 noise = Ogre::Vector3(Ogre::Math::RangeRandom(-1.0f, 1.0f), Ogre::Math::RangeRandom(-1.0f, 1.0f), 0.0f);
+					noise.normalise();
+
+					Ogre::uint8* pixelData = reinterpret_cast<Ogre::uint8*>(texBox.at(i, j, 0));
+					pixelData[0] = Ogre::Bitwise::floatToSnorm8(noise.x);
+					pixelData[1] = Ogre::Bitwise::floatToSnorm8(noise.y);
+					pixelData[2] = Ogre::Bitwise::floatToSnorm8(noise.z);
+					pixelData[3] = Ogre::Bitwise::floatToSnorm8(1.0f);
+				}
+			}
+
+			stagingTexture->stopMapRegion();
+			stagingTexture->upload(texBox, noiseTexture, 0, 0, 0);
+			textureManager->removeStagingTexture(stagingTexture);
+			stagingTexture = 0;
+		}
+		else
+		{
+			noiseTexture = textureManager->findTextureNoThrow("noiseTextureSSAO");
+		}
+
+		//---------------------------------------------------------------------------------
+		//Get GpuProgramParametersSharedPtr to set uniforms that we need
+		Ogre::MaterialPtr material = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/HS", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+
+		//Lets set uniforms for shader
+		//Set texture uniform for noise
+		Ogre::TextureUnitState* noiseTextureState = pass->getTextureUnitState("noiseTextureSSAO");
+		noiseTextureState->setTexture(noiseTexture);
+
+		//Reconstruct position from depth. Position is needed in SSAO
+		//We need to set the parameters based on camera to the
+		//shader so that the un-projection works as expected
+		Ogre::Vector2 projectionAB = this->cameraComponent->getCamera()->getProjectionParamsAB();
+		//The division will keep "linearDepth" in the shader in the [0; 1] range.
+		projectionAB.y /= this->cameraComponent->getFarClipDistance();
+		psParams->setNamedConstant("projectionParams", projectionAB);
+
+		//Set other uniforms
+		psParams->setNamedConstant("kernelRadius", 3.0f);
+
+		psParams->setNamedConstant("noiseScale", Ogre::Vector2((Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) / 2.0f,
+								   (Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 0.5f) / 2.0f));
+		psParams->setNamedConstant("invKernelSize", 1.0f / 64.0f);
+		psParams->setNamedConstant("sampleDirs", (float*)kernelSamples, 64, 4);
+
+		//Set blur shader uniforms
+		Ogre::MaterialPtr materialBlurH = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurH", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+		Ogre::Pass* passBlurH = materialBlurH->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParamsBlurH = passBlurH->getFragmentProgramParameters();
+		psParamsBlurH->setNamedConstant("projectionParams", projectionAB);
+
+		Ogre::MaterialPtr materialBlurV = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/BlurV", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+		Ogre::Pass* passBlurV = materialBlurV->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParamsBlurV = passBlurV->getFragmentProgramParameters();
+		psParamsBlurV->setNamedConstant("projectionParams", projectionAB);
+
+		//Set apply shader uniforms
+		Ogre::MaterialPtr materialApply = std::static_pointer_cast<Ogre::Material>(Ogre::MaterialManager::getSingleton().load("SSAO/Apply", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+
+		Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
+		Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
+		psParamsApply->setNamedConstant("powerScale", 3.0f);
 	}
 
 	bool WorkspaceBaseComponent::getUseOcean(void) const
@@ -2045,24 +2206,19 @@ namespace NOWA
 		if (!this->compositorManager->hasNodeDefinition(this->renderingNodeName))
 		{
 			Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->renderingNodeName);
-#ifdef TERRA_OLD
-			if (true == this->useTerra)
-			{
-				compositorNodeDefinition->addTextureSourceName("TerraShadowTexture", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			}
-#endif
 
-			unsigned short numTexturesDefinitions = 0;
+			unsigned short numTexturesDefinitions = 2;
 			
-			if (false == this->useHdr->getBool())
+			if (true == this->useHdr->getBool())
 			{
-				numTexturesDefinitions = 2;
-			}
-			else
-			{
-				numTexturesDefinitions = 3;
+				numTexturesDefinitions++;
 			}
 
+			if (true == this->useDistortion->getBool())
+			{
+				numTexturesDefinitions++;
+			}
+			
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
@@ -2070,19 +2226,124 @@ namespace NOWA
 			texDef->height = 0; // target_height
 
 			if (this->superSampling->getReal() <= 0.0f)
+			{
 				this->superSampling->setValue(1.0f);
+			}
 
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
-			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			// For SSAO necessary?
+			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+			texDef->format = Ogre::PFG_RGBA16_FLOAT;
+
+			if (true == this->useSSAO->getBool())
+			{
+				texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+				// texDef->fsaa = this->msaaLevel; ?
+
+				// Add all necessary textures
+				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
+				gBufferNormalsTexDef->width = 0; // target_width
+				gBufferNormalsTexDef->height = 0; // target_height
+				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
+				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
+				depthTextureTexDef->width = 0; // target_width
+				depthTextureTexDef->height = 0; // target_height
+				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
+				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureCopyTexDef = compositorNodeDefinition->addTextureDefinition("depthTextureCopy");
+				depthTextureCopyTexDef->width = 0; // target_width
+				depthTextureCopyTexDef->height = 0; // target_height
+				depthTextureCopyTexDef->format = Ogre::PFG_D32_FLOAT;
+				depthTextureCopyTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+				// Attention: Just a test
+				depthTextureCopyTexDef->preferDepthTexture = true;
+				depthTextureCopyTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* ssaoTextureTexDef = compositorNodeDefinition->addTextureDefinition("ssaoTexture");
+				ssaoTextureTexDef->width = 0; // target_width
+				ssaoTextureTexDef->height = 0; // target_height
+				ssaoTextureTexDef->widthFactor = 0.5f;
+				ssaoTextureTexDef->heightFactor = 0.5f;
+				ssaoTextureTexDef->format = Ogre::PFG_R16_FLOAT;
+				ssaoTextureTexDef->depthBufferId = 0;
+				ssaoTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureHorizontalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureHorizontal");
+				blurTextureHorizontalTexDef->width = 0; // target_width
+				blurTextureHorizontalTexDef->height = 0; // target_height
+				blurTextureHorizontalTexDef->widthFactor = 0.5f;
+				blurTextureHorizontalTexDef->heightFactor = 0.5f;
+				blurTextureHorizontalTexDef->format = Ogre::PFG_R16_FLOAT;
+				blurTextureHorizontalTexDef->depthBufferId = 0;
+				blurTextureHorizontalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureVerticalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureVertical");
+				blurTextureVerticalTexDef->width = 0; // target_width
+				blurTextureVerticalTexDef->height = 0; // target_height
+				blurTextureVerticalTexDef->widthFactor = 0.5f;
+				blurTextureVerticalTexDef->heightFactor = 0.5f;
+				blurTextureVerticalTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+				blurTextureVerticalTexDef->depthBufferId = 0;
+				blurTextureVerticalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				// texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				// texDef->depthBufferId = 2;
+				// texDef->preferDepthTexture = true;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
+				distortionTexDef->width = 0; // target_width
+				distortionTexDef->height = 0; // target_height
+				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				distortionTexDef->preferDepthTexture = true;
+				// Attention depth_pool?
+				distortionTexDef->depthBufferId = 2;
+				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
+
+			//if (true == this->useSSAO->getBool())
+			//{
+			//	// rtv rt0
+			//	{
+			//		Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
+			//		Ogre::RenderTargetViewEntry attachment1;
+			//		attachment1.textureName = "rt0";
+			//		rtv->colourAttachments.push_back(attachment1);
+
+			//		Ogre::RenderTargetViewEntry attachment2;
+			//		attachment2.textureName = "gBufferNormals";
+			//		rtv->colourAttachments.push_back(attachment2);
+
+			//		rtv->stencilAttachment.textureName = "depthTexture";
+			//	}
+			//}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
 			attachment.textureName = "rt0";
 			rtv->colourAttachments.push_back(attachment);
-			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+			// rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+			if (true == this->useSSAO->getBool())
+			{
+				// rtv rt0
+				{
+					Ogre::RenderTargetViewEntry attachment2;
+					attachment2.textureName = "gBufferNormals";
+					rtv->colourAttachments.push_back(attachment2);
+
+					rtv->stencilAttachment.textureName = "depthTexture";
+				}
+			}
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
 			texDef->width = 0; // target_width
@@ -2096,8 +2357,43 @@ namespace NOWA
 			rtv = compositorNodeDefinition->addRenderTextureView("rt1");
 			attachment.textureName = "rt1";
 			rtv->colourAttachments.push_back(attachment);
-			// Note: When set to POOL_NO_DEPTH, no renderqueues are used, everything is rendered without death!
+			// Note: When set to POOL_NO_DEPTH, no renderqueues are used, everything is rendered without depth!
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+			if (true == this->useSSAO->getBool())
+			{
+				// RenderTargetView depthTextureCopy
+				{
+					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("depthTextureCopy");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "depthTextureCopy";
+					rtv->colourAttachments.push_back(attachment);
+				}
+
+				// RenderTargetView ssaoTexture
+				{
+					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("ssaoTexture");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "ssaoTexture";
+					rtv->colourAttachments.push_back(attachment);
+				}
+
+				// RenderTargetView blurTextureHorizontal
+				{
+					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("blurTextureHorizontal");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "blurTextureHorizontal";
+					rtv->colourAttachments.push_back(attachment);
+				}
+
+				// RenderTargetView blurTextureVertical
+				{
+					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("blurTextureVertical");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "blurTextureVertical";
+					rtv->colourAttachments.push_back(attachment);
+				}
+			}
 
 			if (true == this->useHdr->getBool())
 			{
@@ -2116,19 +2412,31 @@ namespace NOWA
 				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 			}
 
-			unsigned short numTargetPass = 0;
-
-			if (false == this->useHdr->getBool())
+			if (true == this->useDistortion->getBool())
 			{
-				numTargetPass = 1;
-				compositorNodeDefinition->setNumTargetPass(numTargetPass);
-			}
-			else
-			{
-				numTargetPass = 2;
-				compositorNodeDefinition->setNumTargetPass(numTargetPass);
+				rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
+				Ogre::RenderTargetViewEntry attachment;
+				attachment.textureName = "rt_distortion";
+				rtv->colourAttachments.push_back(attachment);
+				rtv->depthBufferId = 2;
 			}
 
+			unsigned short numTargetPass = 1;
+			if (true == this->useHdr->getBool())
+			{
+				numTargetPass++;
+			}
+			if (true == this->useDistortion->getBool())
+			{
+				numTargetPass++;
+			}
+			if (true == this->useSSAO->getBool())
+			{
+				numTargetPass += 4;
+			}
+			compositorNodeDefinition->setNumTargetPass(numTargetPass);
+
+			// rt0 target
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
@@ -2137,7 +2445,6 @@ namespace NOWA
 					{
 						Ogre::CompositorPassSceneDef* passScene;
 						passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
-
 						if (true == this->canUseReflection)
 						{
 							//Our materials in this pass will be using this cubemap,
@@ -2147,12 +2454,7 @@ namespace NOWA
 
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
-#ifdef TERRA_OLD
-						if (true == this->useTerra)
-						{
-							passScene->mExposedTextures.emplace_back(Ogre::IdString("TerraShadowTexture"));
-						}
-#endif
+
 						Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
 						// passScene->setAllClearColours(color);
 						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
@@ -2179,44 +2481,183 @@ namespace NOWA
 
 						// Note: Terra uses also this shadow node, so it works for all kinds of lights
 						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
-					}
-				}
 
-				if (true == this->useHdr->getBool())
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
-
-					{
-						Ogre::CompositorPassClearDef* passClear;
-						passClear = static_cast<Ogre::CompositorPassClearDef*>(targetDef->addPass(Ogre::PASS_CLEAR));
-						passClear->mNumInitialPasses = 1;
-						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
+						if (true == this->useSSAO->getBool())
+						{
+							passScene->mGenNormalsGBuf = true;
+						}
 					}
 				}
 			}
 
-			//Output channels
+			if (true == this->useSSAO->getBool())
+			{
+				// depthTextureCopy target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("depthTextureCopy");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+							passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
+							passQuad->addQuadTextureSource(0, "depthTexture");
+						}
+					}
+				}
+
+				// ssaoTexture target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("ssaoTexture");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+							passQuad->mClearColour[0] = Ogre::ColourValue::White;
+
+							passQuad->mMaterialName = "SSAO/HS";
+							passQuad->addQuadTextureSource(0, "depthTextureCopy");
+							passQuad->addQuadTextureSource(1, "gBufferNormals");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// blurTextureHorizontal target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureHorizontal");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/BlurH";
+							passQuad->addQuadTextureSource(0, "ssaoTexture");
+							passQuad->addQuadTextureSource(1, "depthTextureCopy");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// blurTextureVertical target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureVertical");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/BlurV";
+							passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
+							passQuad->addQuadTextureSource(1, "depthTextureCopy");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// Add also a target to final composition
+				Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst("NOWAPbsFinalCompositionNode");
+				if (nullptr != nodeDef)
+				{
+					auto targetDef = compositorNodeDefinition->getTargetPass(0);
+					if (nullptr != targetDef)
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/Apply";
+							passQuad->addQuadTextureSource(0, "blurTextureVertical");
+							passQuad->addQuadTextureSource(1, "rt0");
+							// If does not work, test this one: "rt_output"
+						}
+					}
+				}
+			}
+
+			if (true == this->useHdr->getBool())
+			{
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
+
+				{
+					Ogre::CompositorPassClearDef* passClear;
+					passClear = static_cast<Ogre::CompositorPassClearDef*>(targetDef->addPass(Ogre::PASS_CLEAR));
+					passClear->mNumInitialPasses = 1;
+					passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
+				}
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
+
+				// Render Scene for distortion
+				{
+					Ogre::CompositorPassSceneDef* passScene;
+					passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+					passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+					passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
+
+					passScene->mUpdateLodLists = false;
+
+					passScene->mIncludeOverlays = false;
+					passScene->mFirstRQ = 16;
+					passScene->mLastRQ = 17;
+				}
+
+				this->createDistortionNode();
+			}
+
+			// Output channels
 			unsigned short outputChannel = 0;
 
 			if (false == this->useHdr->getBool())
 			{
 				outputChannel = 2;
-				compositorNodeDefinition->setNumOutputChannels(outputChannel);
 			}
 			else
 			{
 				outputChannel = 3;
-				compositorNodeDefinition->setNumOutputChannels(outputChannel);
 			}
 
-			compositorNodeDefinition->mapOutputChannel(0, "rt0");
-			compositorNodeDefinition->mapOutputChannel(1, "rt1");
+			if (true == this->useDistortion->getBool())
+			{
+				outputChannel++;
+			}
+
+			compositorNodeDefinition->setNumOutputChannels(outputChannel);
+
+			outputChannel = 0;
+
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
 
 			if (true == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->mapOutputChannel(2, "oldLumRt");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
 			}
-
+			if (true == this->useDistortion->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+			}
 		}
 
 		this->setBackgroundColor(this->backgroundColor->getVector3());
@@ -2286,49 +2727,14 @@ namespace NOWA
 
 	bool WorkspacePbsComponent::internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		// Without Hdr
-		if (false == this->useHdr->getBool())
-		{
-			workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
-			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
-		}
-		else
-		{
-			if (1u == this->msaaLevel)
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+		// Call base workspace creation, which does already main node connections
+		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-			else
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
-
-				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-		}
-#ifdef TERRA_OLD
-		if (true == this->useTerra)
-		{
-			workspaceDef->connectExternal(1, this->renderingNodeName, 0);
-		}
-#endif
 		if (true == this->externalChannels.empty())
 		{
-			this->externalChannels.resize(1);
+			this->externalChannels.resize(2);
 			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 		}
-
-		/*this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-			this->cameraComponent->getCamera(), this->workspaceName, true, -1, (Ogre::UavBufferPackedVec*)0,
-			&this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
 
 		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
 			this->cameraComponent->getCamera(), this->workspaceName, true);
@@ -2337,14 +2743,10 @@ namespace NOWA
 		// For VR: disable this line and use NOWAPbsRenderingNodeVR
 		this->changeViewportRect(0, this->viewportRect->getVector4());
 
-		// WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
-
 		if (true == this->useHdr->getBool())
 		{
 			this->initializeHdr(this->msaaLevel);
-		}
-
-		// this->createSSAONoiseTexture();
+		}		
 
 		return nullptr != this->workspace;
 	}
@@ -2436,43 +2838,49 @@ namespace NOWA
 		{
 			Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->addNodeDefinition(this->renderingNodeName);
 
-			//Input channels (has none)
-			// compositorNodeDefinition->addTextureSourceName("rt0", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			// compositorNodeDefinition->addTextureSourceName("rt1", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				/*{
-					Ogre::CompositorPassQuadDef* passQuad;
-					passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-					passQuad->mMaterialName = "Postprocess/Glass";
-					passQuad->addQuadTextureSource(0, "rt_input");
-				}*/
-#ifdef TERRA_OLD
-			if (true == this->useTerra)
-			{
-				compositorNodeDefinition->addTextureSourceName("TerraShadowTexture", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			}
-#endif
+			unsigned short numTexturesDefinitions = 0;
 			if (false == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->setNumLocalTextureDefinitions(2);
+				numTexturesDefinitions = 2;
 			}
 			else
 			{
-				compositorNodeDefinition->setNumLocalTextureDefinitions(3);
+				numTexturesDefinitions = 3;
 			}
+			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
 
 			if (this->superSampling->getReal() <= 0.0f)
+			{
 				this->superSampling->setValue(1.0f);
+			}
 
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
-			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
-			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			// For SSAO necessary?
+			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+			texDef->format = Ogre::PFG_RGBA16_FLOAT;
+
+			if (true == this->useDistortion->getBool())
+			{
+				texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				// texDef->depthBufferId = 2;
+				// texDef->preferDepthTexture = true;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
+				distortionTexDef->width = 0; // target_width
+				distortionTexDef->height = 0; // target_height
+				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				distortionTexDef->preferDepthTexture = true;
+				// Attention depth_pool?
+				distortionTexDef->depthBufferId = 2;
+				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+
+			}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
@@ -2510,14 +2918,25 @@ namespace NOWA
 				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 			}
 
-			if (false == this->useHdr->getBool())
+			if (true == this->useDistortion->getBool())
 			{
-				compositorNodeDefinition->setNumTargetPass(1);
+				rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
+				Ogre::RenderTargetViewEntry attachment;
+				attachment.textureName = "rt_distortion";
+				rtv->colourAttachments.push_back(attachment);
+				// rtv->depthBufferId = 2;
 			}
-			else
+
+			unsigned short numTargetPass = 1;
+			if (true == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->setNumTargetPass(2);
+				numTargetPass++;
 			}
+			if (true == this->useDistortion->getBool())
+			{
+				numTargetPass++;
+			}
+			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
@@ -2562,12 +2981,6 @@ namespace NOWA
 
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
-#ifdef TERRA_OLD
-						if (true == this->useTerra)
-						{
-							passScene->mExposedTextures.emplace_back(Ogre::IdString("TerraShadowTexture"));
-						}
-#endif
 						passScene->mIncludeOverlays = false;
 					}
 
@@ -2604,25 +3017,61 @@ namespace NOWA
 						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 					}
 				}
+
+				if (true == this->useDistortion->getBool())
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
+
+					// Render Scene for distortion
+					{
+						Ogre::CompositorPassSceneDef* passScene;
+						passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
+
+						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+						passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
+
+						passScene->mUpdateLodLists = false;
+
+						passScene->mIncludeOverlays = false;
+						passScene->mFirstRQ = 16;
+						passScene->mLastRQ = 17;
+					}
+
+					this->createDistortionNode();
+				}
 			}
 
-			//Output channels
+			// Output channels
+			unsigned short outputChannel = 0;
 
 			if (false == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->setNumOutputChannels(2);
+				outputChannel = 2;
 			}
 			else
 			{
-				compositorNodeDefinition->setNumOutputChannels(3);
+				outputChannel = 3;
 			}
 
-			compositorNodeDefinition->mapOutputChannel(0, "rt0");
-			compositorNodeDefinition->mapOutputChannel(1, "rt1");
+			if (true == this->useDistortion->getBool())
+			{
+				outputChannel++;
+			}
+
+			compositorNodeDefinition->setNumOutputChannels(outputChannel);
+
+			outputChannel = 0;
+
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
 
 			if (true == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->mapOutputChannel(2, "oldLumRt");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
+			}
+			if (true == this->useDistortion->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
 			}
 
 			// For VR: disable this line and use NOWAPbsRenderingNodeVR
@@ -2710,90 +3159,14 @@ namespace NOWA
 
 	bool WorkspaceSkyComponent::internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		// Normal
+		// Call base workspace creation, which does already main node connections
+		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
-#if 0
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "NOWAPbsFinalCompositionNode", 1);
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-#endif
-
-		// Normal with glass
-
-#if 0
-		// Note: Glass must be enabled: it->second->setStartEnabled(true);
-		workspaceDef->connect("NOWASkyRenderingNode", "Glass");
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("Glass", 0, "NOWAPbsFinalCompositionNode", 1);
-#endif
-
-#if 0
-		// SMAA
-		// Later set for all workspaces and set for configuration via component?
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "SmaaNode", 0);
-		workspaceDef->connect("NOWASkyRenderingNode", 1, "SmaaNode", 1);
-
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("SmaaNode", 0, "NOWAPbsFinalCompositionNode", 1);
-
-		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, workspaceName, true);
-
-		this->initializeSmaa(WorkspaceModule::SMAA_PRESET_ULTRA, WorkspaceModule::EdgeDetectionColour);
-#endif
-
-		this->changeViewportRect(0, this->viewportRect->getVector4());
-
-		if (false == this->useHdr->getBool())
-		{
-			workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
-			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
-		}
-		else
-		{
-			// Hdr with sky
-			if (1 == this->msaaLevel)
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-			else
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
-
-				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-
-			// Example Hdr with glass
-			// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
-			// workspaceDef->connect("NOWASkyRenderingNode", 1, "Glass", 1);
-			// workspaceDef->connect("NOWASkyRenderingNode", 2, "NOWAHdrPostprocessingNode", 1);
-			// workspaceDef->connect("Glass", 0, "NOWAHdrPostprocessingNode", 0);
-			// workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-			// workspaceDef->connect("NOWAHdrPostprocessingNode", 0, "NOWAHdrFinalCompositionNode", 0);
-		}
-#ifdef TERRA_OLD
-		if (true == this->useTerra)
-		{
-			workspaceDef->connectExternal(1, this->renderingNodeName, 0);
-		}
-#endif
-		// If prior ws component has some channels defined
 		if (true == this->externalChannels.empty())
 		{
 			this->externalChannels.resize(1);
 			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 		}
-
-		/*this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-			this->cameraComponent->getCamera(), this->workspaceName, true, -1, (Ogre::UavBufferPackedVec*)0,
-			&this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
 
 		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
 			this->cameraComponent->getCamera(), this->workspaceName, true);
@@ -2811,8 +3184,6 @@ namespace NOWA
 		{
 			this->initializeHdr(this->msaaLevel);
 		}
-
-		// this->createSSAONoiseTexture(camera);
 
 		return nullptr != this->workspace;
 	}
@@ -2912,34 +3283,50 @@ namespace NOWA
 	{
 		if (!this->compositorManager->hasNodeDefinition(this->renderingNodeName))
 		{
-			Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->renderingNodeName);
-#ifdef TERRA_OLD
-			if (true == this->useTerra)
-			{
-				compositorNodeDefinition->addTextureSourceName("TerraShadowTexture", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			}
-#endif
+			Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->addNodeDefinition(this->renderingNodeName);
+
+			unsigned short numTexturesDefinitions = 0;
 			if (false == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->setNumLocalTextureDefinitions(2);
+				numTexturesDefinitions = 2;
 			}
 			else
 			{
-				compositorNodeDefinition->setNumLocalTextureDefinitions(3);
+				numTexturesDefinitions = 3;
 			}
+			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
 
 			if (this->superSampling->getReal() <= 0.0f)
+			{
 				this->superSampling->setValue(1.0f);
+			}
 
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
-			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-			// texDef->msaa = this->msaaLevel;
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
+
+			// For SSAO necessary?
+			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+			texDef->format = Ogre::PFG_RGBA16_FLOAT;
+
+			if (true == this->useDistortion->getBool())
+			{
+				// texDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				// texDef->depthBufferId = 2;
+				// texDef->preferDepthTexture = true;
+
+				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
+				distortionTexDef->width = 0; // target_width
+				distortionTexDef->height = 0; // target_height
+				distortionTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
+				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+				distortionTexDef->preferDepthTexture = true;
+				// Attention depth_pool?
+				distortionTexDef->depthBufferId = 2;
+				distortionTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+			}
 
 			Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
 			Ogre::RenderTargetViewEntry attachment;
@@ -2976,14 +3363,25 @@ namespace NOWA
 				rtv->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
 			}
 
-			if (false == this->useHdr->getBool())
+			if (true == this->useDistortion->getBool())
 			{
-				compositorNodeDefinition->setNumTargetPass(1);
+				rtv = compositorNodeDefinition->addRenderTextureView("rt_distortion");
+				Ogre::RenderTargetViewEntry attachment;
+				attachment.textureName = "rt_distortion";
+				rtv->colourAttachments.push_back(attachment);
+				// rtv->depthBufferId = 2;
 			}
-			else
+
+			unsigned short numTargetPass = 1;
+			if (true == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->setNumTargetPass(2);
+				numTargetPass++;
 			}
+			if (true == this->useDistortion->getBool())
+			{
+				numTargetPass++;
+			}
+			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
@@ -3027,12 +3425,7 @@ namespace NOWA
 
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
-#ifdef TERRA_OLD
-						if (true == this->useTerra)
-						{
-							passScene->mExposedTextures.emplace_back(Ogre::IdString("TerraShadowTexture"));
-						}
-#endif
+
 						passScene->mIncludeOverlays = false;
 					}
 
@@ -3113,28 +3506,6 @@ namespace NOWA
 					}
 				}
 
-				//targetDef = compositorNodeDefinition->addTargetPass("rt1");
-
-				//{
-				//	//Play nice with Multi-GPU setups by telling the API there is no inter-frame dependency.
-				//	//On APIs that support discard_only (e.g. DX11) the driver may just ignore the color value,
-				//	//and use a different memory region (i.e. the value read from a pixel of a discarded buffer
-				//	//without having written to it is undefined)
-
-				//	// Render Clear
-				//	{
-				//		Ogre::CompositorPassClearDef* passClear;
-				//		passClear = static_cast<Ogre::CompositorPassClearDef*>(targetDef->addPass(Ogre::PASS_CLEAR));
-
-				//		Ogre::ColourValue color(0.0f, 1.0f, 0.0f, 1.0f);
-				//		passClear->mClearColour[0] = color;
-
-				//		passClear->setAllLoadActions(Ogre::LoadAction::)
-
-				//		passClear->mIncludeOverlays = false;
-				//	}
-				//}
-
 				if (true == this->useHdr->getBool())
 				{
 					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
@@ -3146,25 +3517,70 @@ namespace NOWA
 						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 					}
 				}
-			}
 
-			//Output channels
+				if (true == this->useDistortion->getBool())
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt_distortion");
 
-			if (false == this->useHdr->getBool())
-			{
-				compositorNodeDefinition->setNumOutputChannels(2);
-			}
-			else
-			{
-				compositorNodeDefinition->setNumOutputChannels(3);
-			}
+					// Render Scene for distortion
+					{
+						Ogre::CompositorPassSceneDef* passScene;
+						passScene = static_cast<Ogre::CompositorPassSceneDef*>(targetDef->addPass(Ogre::PASS_SCENE));
 
-			compositorNodeDefinition->mapOutputChannel(0, "rt0");
-			compositorNodeDefinition->mapOutputChannel(1, "rt1");
+						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+						passScene->mClearColour[0] = Ogre::ColourValue(0.5f, 0.5f, 0.0f, 0.0f);
 
-			if (true == this->useHdr->getBool())
-			{
-				compositorNodeDefinition->mapOutputChannel(2, "oldLumRt");
+						passScene->mUpdateLodLists = false;
+
+						passScene->mIncludeOverlays = false;
+						passScene->mFirstRQ = 16;
+						passScene->mLastRQ = 17;
+					}
+
+					this->createDistortionNode();
+				}
+
+				// Output channels
+				unsigned short outputChannel = 0;
+
+				if (false == this->useHdr->getBool())
+				{
+					outputChannel = 2;
+				}
+				else
+				{
+					outputChannel = 3;
+				}
+
+				if (true == this->useDistortion->getBool())
+				{
+					outputChannel++;
+				}
+
+				compositorNodeDefinition->setNumOutputChannels(outputChannel);
+
+				outputChannel = 0;
+
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
+
+				if (true == this->useHdr->getBool())
+				{
+					compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
+				}
+				if (true == this->useDistortion->getBool())
+				{
+					compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+				}
+
+				// For VR: disable this line and use NOWAPbsRenderingNodeVR
+				this->changeViewportRect(0, this->viewportRect->getVector4());
+
+				if (true == this->externalChannels.empty())
+				{
+					this->externalChannels.resize(1);
+					this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
+				}
 			}
 
 			if (true == this->usePlanarReflection->getBool())
@@ -3263,45 +3679,18 @@ namespace NOWA
 			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
 			this->passBackground[i] = material->getTechnique(0)->getPass(0);
 		}
-
-		// For VR: disable this line and use NOWAPbsRenderingNodeVR
-		this->changeViewportRect(0, this->viewportRect->getVector4());
-
-		this->externalChannels.resize(1);
-		this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 	}
 
 	bool WorkspaceBackgroundComponent::internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		// Normal
+		// Call base workspace creation, which does already main node connections
+		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
-#if 0
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "NOWAPbsFinalCompositionNode", 1);
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-#endif
-
-		// Normal with glass
-
-#if 0
-		// Note: Glass must be enabled: it->second->setStartEnabled(true);
-		workspaceDef->connect("NOWASkyRenderingNode", "Glass");
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("Glass", 0, "NOWAPbsFinalCompositionNode", 1);
-#endif
-
-#if 0
-		// SMAA
-		// Later set for all workspaces and set for configuration via component?
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "SmaaNode", 0);
-		workspaceDef->connect("NOWASkyRenderingNode", 1, "SmaaNode", 1);
-
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("SmaaNode", 0, "NOWAPbsFinalCompositionNode", 1);
-
-		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, workspaceName, true);
-
-		this->initializeSmaa(WorkspaceModule::SMAA_PRESET_ULTRA, WorkspaceModule::EdgeDetectionColour);
-#endif
+		if (true == this->externalChannels.empty())
+		{
+			this->externalChannels.resize(1);
+			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
+		}
 
 		for (size_t i = 0; i < 9; i++)
 		{
@@ -3325,73 +3714,13 @@ namespace NOWA
 
 		this->changeViewportRect(0, this->viewportRect->getVector4());
 
-		if (false == this->useHdr->getBool())
-		{
-			workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
-			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
-		}
-		else
-		{
-			// Hdr with sky
-			if (1 == this->msaaLevel)
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-			else
-			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
-
-				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-			}
-
-			// Example Hdr with glass
-			// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
-			// workspaceDef->connect("NOWASkyRenderingNode", 1, "Glass", 1);
-			// workspaceDef->connect("NOWASkyRenderingNode", 2, "NOWAHdrPostprocessingNode", 1);
-			// workspaceDef->connect("Glass", 0, "NOWAHdrPostprocessingNode", 0);
-			// workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-			// workspaceDef->connect("NOWAHdrPostprocessingNode", 0, "NOWAHdrFinalCompositionNode", 0);
-		}
-#ifdef TERRA_OLD
-		if (true == this->useTerra)
-		{
-			workspaceDef->connectExternal(1, this->renderingNodeName, 0);
-		}
-#endif
-		// If prior ws component has some channels defined
-		if (true == this->externalChannels.empty())
-		{
-			this->externalChannels.resize(1);
-			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
-		}
-
 		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-			this->cameraComponent->getCamera(), this->workspaceName, true);
-
-		/*this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-			this->cameraComponent->getCamera(), this->workspaceName, true, -1, (Ogre::UavBufferPackedVec*)0,
-			&this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
-		// this->initializeSmaa(WorkspaceBaseComponent::SMAA_PRESET_ULTRA, WorkspaceBaseComponent::EdgeDetectionColour);
-
-		// this->initializeHdr(msaaLevel);
-
-		// WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
+																							   this->cameraComponent->getCamera(), this->workspaceName, true);
 
 		if (true == this->useHdr->getBool())
 		{
 			this->initializeHdr(this->msaaLevel);
 		}
-
-		// this->createSSAONoiseTexture(camera);
 
 		return nullptr != this->workspace;
 	}
@@ -3566,35 +3895,8 @@ namespace NOWA
 
 	bool WorkspaceCustomComponent::internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		// Normal
-
-#if 0
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "NOWAPbsFinalCompositionNode", 1);
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-#endif
-
-		// Normal with glass
-
-#if 0
-		// Note: Glass must be enabled: it->second->setStartEnabled(true);
-		workspaceDef->connect("NOWASkyRenderingNode", "Glass");
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("Glass", 0, "NOWAPbsFinalCompositionNode", 1);
-#endif
-
-#if 0
-		// SMAA
-		// Later set for all workspaces and set for configuration via component?
-		workspaceDef->connect("NOWASkyRenderingNode", 0, "SmaaNode", 0);
-		workspaceDef->connect("NOWASkyRenderingNode", 1, "SmaaNode", 1);
-
-		workspaceDef->connectExternal(0, "NOWAPbsFinalCompositionNode", 0);
-		workspaceDef->connect("SmaaNode", 0, "NOWAPbsFinalCompositionNode", 1);
-
-		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(sceneManager, Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), camera, workspaceName, true);
-
-		this->initializeSmaa(WorkspaceModule::SMAA_PRESET_ULTRA, WorkspaceModule::EdgeDetectionColour);
-#endif
+		// Do not call base workspace creation, which does already main node connections, because just a custom script is used
+		// WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
 		if (false == this->customWorkspaceName->getString().empty())
 		{
@@ -3606,9 +3908,6 @@ namespace NOWA
 				this->compositorManager->createBasicWorkspaceDef(this->customWorkspaceName->getString(), color, Ogre::IdString());
 			}
 
-			// Will crash, no node name
-			// this->changeViewportRect(0, this->viewportRect->getVector4());
-
 			// If prior ws component has some channels defined
 			if (true == this->externalChannels.empty())
 			{
@@ -3616,15 +3915,9 @@ namespace NOWA
 				this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 			}
 
-			/*this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-				this->cameraComponent->getCamera(), this->customWorkspaceName->getString(), true, -1, (Ogre::UavBufferPackedVec*)0,
-				&this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
-
 			this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), this->cameraComponent->getCamera(),
                                                     this->customWorkspaceName->getString(), true );
 		}
-
-		// WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
 
 		return nullptr != this->workspace;
 	}

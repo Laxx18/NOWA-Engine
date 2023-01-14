@@ -21,21 +21,17 @@ namespace NOWA
 	{
 		this->activated->setDescription("Activates the effect.");
 		// "Bloom, Glass, Old TV, Keyhole, B&W, Embossed, Sharpen Edges, Invert, Posterize, Laplace, Tiling, Old Movie, Radial Blur, ASCII, Halftone, Night Vision, Dither"
-
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
 	}
 
 	CompositorEffectBaseComponent::~CompositorEffectBaseComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectBaseComponent] Destructor compositor base effect component for game object: " + this->gameObjectPtr->getName());
-		
-		this->workspaceBaseComponent = nullptr;
 
-		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
 	}
 
 	bool CompositorEffectBaseComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
+
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -56,6 +52,11 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectBaseComponent] Init compositor effect base component for game object: " + this->gameObjectPtr->getName());
 
 		return true;
+	}
+
+	void CompositorEffectBaseComponent::onRemoveComponent(void)
+	{
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
 	}
 
 	bool CompositorEffectBaseComponent::connect(void)
@@ -252,14 +253,19 @@ namespace NOWA
 		workspaceDef->clearAllInterNodeConnections();
 
 
-		Ogre::IdString msaaCompositionId = "NOWAHdrMsaaResolve";
-		Ogre::IdString hdrPostProcessingCompositionId;
+		Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
+		Ogre::IdString hdrPostProcessingNodeName;
+		Ogre::IdString distortionNodeName;
 		if (true == this->workspaceBaseComponent->getUseHdr())
 		{
-			hdrPostProcessingCompositionId = "NOWAHdrPostprocessingNode";
+			hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
 		}
-		// Ogre::IdString finalCompositionId = "NOWAHdrFinalCompositionNode";
-		Ogre::IdString finalCompositionId = this->workspaceBaseComponent->getFinalRenderingNodeName();
+		if (true == this->workspaceBaseComponent->getUseDistortion())
+		{
+			distortionNodeName = this->workspaceBaseComponent->getDistortionNode();
+		}
+
+		Ogre::IdString finalRenderNodeName = this->workspaceBaseComponent->getFinalRenderingNodeName();
 
 		const Ogre::CompositorNodeVec& nodes = this->workspaceBaseComponent->getWorkspace()->getNodeSequence();
 
@@ -273,25 +279,34 @@ namespace NOWA
 		{
 			Ogre::CompositorNode* outNode = *it;
 
-			if (outNode->getEnabled() && outNode->getName() != finalCompositionId
-				&& outNode->getName() != hdrPostProcessingCompositionId
-				&& outNode->getName() != msaaCompositionId)
+			Ogre::IdString outNodeName = outNode->getName();
+
+			if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
+				&& outNode->getName() != hdrPostProcessingNodeName
+				&& outNode->getName() != msaaNodeName
+				/*&& outNode->getName() != distortionNodeName*/)
 			{
 				// Look for the next enabled node we can connect to
 				Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
-				while (it2 != en && (!(*it2)->getEnabled()
-					|| (*it2)->getName() == finalCompositionId
-					|| (*it2)->getName() == hdrPostProcessingCompositionId
-					|| (*it2)->getName() == msaaCompositionId))
+
+				while (it2 != en && (false == (*it2)->getEnabled()
+					|| (*it2)->getName() == finalRenderNodeName
+					|| (*it2)->getName() == hdrPostProcessingNodeName
+					|| (*it2)->getName() == msaaNodeName)
+					/*|| (*it2)->getName() == distortionNodeName*/)
 				{
-					++it2;
+					it2++;
+					if (it2 == en)
+					{
+						break;
+					}
 				}
 
 				if (it2 != en)
 				{
 					lastInNode = (*it2)->getName();
-					workspaceDef->connect(outNode->getName(), 0, lastInNode, 0);
-					workspaceDef->connect(outNode->getName(), 1, lastInNode, 1);
+					workspaceDef->connect(outNodeName, 0, lastInNode, 0);
+					workspaceDef->connect(outNodeName, 1, lastInNode, 1);
 					// Example:
 					// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
 					// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
@@ -302,7 +317,7 @@ namespace NOWA
 				it = it2 - 1;
 			}
 
-			++it;
+			it++;
 		}
 
 		if (lastInNode == Ogre::IdString())
@@ -314,20 +329,43 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
 		}
 
+		if (true == this->workspaceBaseComponent->getUseDistortion())
+		{
+			// 0 is out rt0
+			workspaceDef->connect(renderingNodeNOWA, 0, distortionNodeName, 0);
+
+			unsigned int distortionOutput = 2;
+			if (true == this->workspaceBaseComponent->getUseHdr())
+			{
+				distortionOutput = 3;
+			}
+			// 3 is out rt_distortion
+			workspaceDef->connect(renderingNodeNOWA, distortionOutput, distortionNodeName, 1);
+			//			  out 0 of rendering outNode        , will be passed to channel 2
+			// workspaceDef->connect(finalRenderNodeName, 0, distortionNodeName, 2);
+		}
+
 		if (true == this->workspaceBaseComponent->getUseHdr())
 		{
 			// Example without msaa:
 			if (1 == this->workspaceBaseComponent->getMSAA())
 			{
 				// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
-				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingCompositionId, 1);
+				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingNodeName, 1);
 				// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
-				workspaceDef->connect(lastInNode, 0, hdrPostProcessingCompositionId, 0);
+				workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
 				// Connect RenderWindow to NOWAHdrPostprocessingNode input 2
-				// Note: Will produce warning, as exactly this external connection already may exist, but it does not matter, depending on execution order, it may be that its not connected
-				workspaceDef->connectExternal(0, hdrPostProcessingCompositionId, 2);
 				// Connect NOWAHdrPostprocessingNode output 0 to NOWAHdrFinalCompositionNode input 0
-				workspaceDef->connect(hdrPostProcessingCompositionId, 0, finalCompositionId, 0);
+				workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 0);
+
+				//if (true == this->workspaceBaseComponent->getUseDistortion())
+				//{
+				//	//			  out 0 of rendering outNode        , will be passed to channel 2
+				//	workspaceDef->connect("NOWAHdrPostprocessingNode", 0, distortionNodeName, 2);
+				//}
+
+				// Note: Will produce warning, as exactly this external connection already may exist, but it does not matter, depending on execution order, it may be that its not connected
+				// workspaceDef->connectExternal(0, hdrPostProcessingNodeName, 2);
 
 				// Example:
 				// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
@@ -339,21 +377,26 @@ namespace NOWA
 			}
 			else
 			{
-				workspaceDef->connect(lastInNode, 0, msaaCompositionId, 0);
-				workspaceDef->connect(renderingNodeNOWA, 2, msaaCompositionId, 1);
-				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingCompositionId, 1);
-				workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingCompositionId, 0);
-				workspaceDef->connectExternal(0, hdrPostProcessingCompositionId, 2);
-				workspaceDef->connect(hdrPostProcessingCompositionId, 0, finalCompositionId, 0);
+				workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
+				workspaceDef->connect(renderingNodeNOWA, 2, msaaNodeName, 1);
+				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingNodeName, 1);
+				workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
+				workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 0);
+
+				//if (true == this->workspaceBaseComponent->getUseDistortion())
+				//{
+				//	//			  out 0 of rendering outNode        , will be passed to channel 2
+				//	workspaceDef->connect("NOWAHdrPostprocessingNode", 0, distortionNodeName, 2);
+				//}
+
+				// Is already done in workspace component and would just print a warning, that both are trying to connect, only the latter will be used
+				// workspaceDef->connectExternal(0, hdrPostProcessingNodeName, 2);
 			}
 		}
 		else
 		{
-			workspaceDef->connect(lastInNode, 0, finalCompositionId, 1);
+			workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
 		}
-
-		//Not needed unless we'd called workspaceDef->clearOutputConnections
-		//workspaceDef->connectOutput( "NOWAHdrPostprocessingNode", 0 );
 
 		//Now that we're done, tell the instance to update itself.
 		this->workspaceBaseComponent->getWorkspace()->reconnectAllNodes();
@@ -390,7 +433,7 @@ namespace NOWA
 			this->setBlurWeight(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		return true;
+		return success;
 	}
 
 	GameObjectCompPtr CompositorEffectBloomComponent::clone(GameObjectPtr clonedGameObjectPtr)

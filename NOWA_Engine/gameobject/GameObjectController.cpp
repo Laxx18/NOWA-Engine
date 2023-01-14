@@ -304,7 +304,8 @@ namespace NOWA
 		alreadyDestroyed(false),
 		isSimulating(false),
 		deleteGameObjectsUndoCommand(nullptr),
-		nextGameObjectIndex(0)
+		nextGameObjectIndex(0),
+		bIsDestroying(false)
 	{
 		
 	}
@@ -637,6 +638,7 @@ namespace NOWA
 	{
 		if (false == this->alreadyDestroyed)
 		{
+			this->bIsDestroying = true;
 			auto& it = this->materialIDMap.begin();
 			while (it != this->materialIDMap.end())
 			{
@@ -730,6 +732,8 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Cannot destroy content, as it is already destroyed!");
 		}
+
+		this->bIsDestroying = false;
 	}
 	
 	void GameObjectController::undo(void)
@@ -2284,6 +2288,11 @@ namespace NOWA
 			}
 			++groupIt;
 		}
+	}
+
+	bool GameObjectController::getIsDestroying(void) const
+	{
+		return this->bIsDestroying;
 	}
 
 	GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* camera, Ogre::RaySceneQuery* raySceneQuery, bool raycastFromPoint)

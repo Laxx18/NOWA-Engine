@@ -10,7 +10,8 @@
 
 namespace NOWA
 {
-	using namespace rapidxml;	using namespace luabind;
+	using namespace rapidxml;
+	using namespace luabind;
 
 	PluginTemplate::PluginTemplate()
 		: GameObjectComponent(),

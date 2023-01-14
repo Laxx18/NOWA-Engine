@@ -34,6 +34,8 @@
 # Log files
 *.log
 
+development/
+
 # NOWA specific temp files
 external/CSG/obj/
 external/MeshSplitter/obj/
@@ -174,6 +176,7 @@ bin/Debug/plugins/
 bin/Release/plugins/
 
 # External ignore
+external/Ogre2.2SDK/README.md
 external/Ogre2.2SDK/.github/
 external/Ogre2.2SDK/CMake/
 external/Ogre2.2SDK/CMakeLists.txt
@@ -186,6 +189,8 @@ external/Ogre2.2SDK/Other/
 external/Ogre2.2SDK/PlugIns/CMakeLists.txt
 external/Ogre2.2SDK/PlugIns/ParticleFX/CMakeLists.txt
 external/Ogre2.2SDK/RenderSystems/
+external/Ogre2.2SDK/RenderSystems/NULL/src/
+
 external/Ogre2.2SDK/Samples/
 external/Ogre2.2SDK/Scripts/
 external/Ogre2.2SDK/Tests/

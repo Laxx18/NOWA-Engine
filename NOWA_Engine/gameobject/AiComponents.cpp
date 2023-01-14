@@ -270,15 +270,27 @@ namespace NOWA
 		{
 			if (nullptr != this->movingBehaviorPtr)
 			{
-				// Delete later, as this may be called from lua script and cause trouble else
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-				auto ptrFunction = [this]() { 
+				// Only delete later if not in the middle of destruction of all game objects
+				if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+				{
+					// Delete later, as this may be called from lua script and cause trouble else
+					NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+					auto ptrFunction = [this]()
+					{
+						this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
+						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+						this->movingBehaviorPtr.reset();
+					};
+					NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+					delayProcess->attachChild(closureProcess);
+					NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+				}
+				else
+				{
 					this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
 					AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
-					this->movingBehaviorPtr.reset(); };
-				NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-				delayProcess->attachChild(closureProcess);
-				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+					this->movingBehaviorPtr.reset();
+				}
 			}
 		}
 	}

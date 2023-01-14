@@ -55,12 +55,22 @@ namespace Ogre
             return TerraBrdf::BlinnPhong;
         if( !strcmp( value, "default_uncorrelated" ) )
             return TerraBrdf::DefaultUncorrelated;
+        if( !strcmp( value, "default_had_diffuse_fresnel" ) )
+            return TerraBrdf::DefaultHasDiffuseFresnel;
         if( !strcmp( value, "default_separate_diffuse_fresnel" ) )
             return TerraBrdf::DefaultSeparateDiffuseFresnel;
+        if( !strcmp( value, "cook_torrance_has_diffuse_fresnel" ) )
+            return TerraBrdf::CookTorranceHasDiffuseFresnel;
         if( !strcmp( value, "cook_torrance_separate_diffuse_fresnel" ) )
             return TerraBrdf::CookTorranceSeparateDiffuseFresnel;
+        if( !strcmp( value, "blinn_phong_has_diffuse_fresnel" ) )
+            return TerraBrdf::BlinnPhongHasDiffuseFresnel;
         if( !strcmp( value, "blinn_phong_separate_diffuse_fresnel" ) )
             return TerraBrdf::BlinnPhongSeparateDiffuseFresnel;
+        if( !strcmp( value, "blinn_phong_legacy_math" ) )
+            return TerraBrdf::BlinnPhongLegacyMath;
+        if( !strcmp( value, "blinn_phong_full_legacy" ) )
+            return TerraBrdf::BlinnPhongFullLegacy;
 
         return TerraBrdf::Default;
     }
@@ -93,28 +103,18 @@ namespace Ogre
 
         TextureGpu *texture = 0;
 
-        const CommonTextureTypes::CommonTextureTypes texMapTypes[NUM_TERRA_TEXTURE_TYPES] =
-        {
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::NonColourData,
+        const CommonTextureTypes::CommonTextureTypes texMapTypes[NUM_TERRA_TEXTURE_TYPES] = {
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::NonColourData,
 
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::Diffuse,
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::Diffuse,
+            CommonTextureTypes::NormalMap,  CommonTextureTypes::NormalMap,
+            CommonTextureTypes::NormalMap,  CommonTextureTypes::NormalMap,
 
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
             CommonTextureTypes::EnvMap
         };
 
@@ -122,10 +122,8 @@ namespace Ogre
         if( itor != json.MemberEnd() && itor->value.IsString() )
         {
             const char *textureName = itor->value.GetString();
-            texture = mTextureManager->createOrRetrieveTexture( textureName,
-                                                                GpuPageOutStrategy::Discard,
-                                                                texMapTypes[textureType],
-                                                                resourceGroup );
+            texture = mTextureManager->createOrRetrieveTexture(
+                textureName, GpuPageOutStrategy::Discard, texMapTypes[textureType], resourceGroup );
         }
 
         HlmsSamplerblock samplerBlockRef;
@@ -146,28 +144,18 @@ namespace Ogre
         TextureGpu *texture = 0;
         HlmsSamplerblock const *samplerblock = 0;
 
-        const CommonTextureTypes::CommonTextureTypes texMapTypes[NUM_TERRA_TEXTURE_TYPES] =
-        {
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::NonColourData,
+        const CommonTextureTypes::CommonTextureTypes texMapTypes[NUM_TERRA_TEXTURE_TYPES] = {
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::NonColourData,
 
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::Diffuse,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
-            CommonTextureTypes::NormalMap,
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::Diffuse,
+            CommonTextureTypes::Diffuse,    CommonTextureTypes::Diffuse,
+            CommonTextureTypes::NormalMap,  CommonTextureTypes::NormalMap,
+            CommonTextureTypes::NormalMap,  CommonTextureTypes::NormalMap,
 
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
-            CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
+            CommonTextureTypes::Monochrome, CommonTextureTypes::Monochrome,
             CommonTextureTypes::EnvMap
         };
 
@@ -175,10 +163,8 @@ namespace Ogre
         if( itor != json.MemberEnd() && itor->value.IsString() )
         {
             const char *textureName = itor->value.GetString();
-            texture = mTextureManager->createOrRetrieveTexture( textureName,
-                                                                GpuPageOutStrategy::Discard,
-                                                                texMapTypes[textureType],
-                                                                resourceGroup );
+            texture = mTextureManager->createOrRetrieveTexture(
+                textureName, GpuPageOutStrategy::Discard, texMapTypes[textureType], resourceGroup );
         }
 
         itor = json.FindMember("sampler");
@@ -245,7 +231,7 @@ namespace Ogre
             loadTexture( subobj, blocks, TERRA_DETAIL_WEIGHT, terraDatablock, resourceGroup );
         }
 
-        for( int i=0; i<4; ++i )
+        for( uint8 i = 0u; i < 4u; ++i )
         {
             const String iAsStr = StringConverter::toString(i);
             String texTypeName = "detail" + iAsStr;
@@ -277,12 +263,11 @@ namespace Ogre
 
                 terraDatablock->setDetailMapOffsetScale( i, offsetScale );
 
-                loadTexture( subobj, "diffuse_map",
-                             static_cast<TerraTextureTypes>( TERRA_DETAIL0 + i ),
+                loadTexture( subobj, "diffuse_map", static_cast<TerraTextureTypes>( TERRA_DETAIL0 + i ),
                              terraDatablock, resourceGroup );
                 loadTexture( subobj, "normal_map",
-                             static_cast<TerraTextureTypes>( TERRA_DETAIL0_NM + i ),
-                             terraDatablock, resourceGroup );
+                             static_cast<TerraTextureTypes>( TERRA_DETAIL0_NM + i ), terraDatablock,
+                             resourceGroup );
                 loadTexture( subobj, "roughness_map",
                              static_cast<TerraTextureTypes>( TERRA_DETAIL_ROUGHNESS0 + i ),
                              terraDatablock, resourceGroup );
@@ -293,17 +278,20 @@ namespace Ogre
 //                itor = subobjec.FindMember("sampler");
 //                if( itor != subobjec.MemberEnd() && itor->value.IsString() )
 //                {
-//                    map<LwConstString, const HlmsSamplerblock*>::type::const_iterator it =
+                //                    map<LwConstString, const HlmsSamplerblock*>::type::const_iterator
+                //                    it =
 //                            blocks.samplerblocks.find(
-//                                LwConstString::FromUnsafeCStr( itor->value.GetString()) );
+                //                                LwConstString::FromUnsafeCStr( itor->value.GetString())
+                //                                );
 //                    if( it != blocks.samplerblocks.end() )
 //                    {
 //                        textures[TERRA_DETAIL0 + i].samplerblock = it->second;
 //                        textures[TERRA_DETAIL0_NM + i].samplerblock = it->second;
-//                        textures[TERRA_DETAIL_ROUGHNESS0 + i].samplerblock = it->second;
-//                        textures[TERRA_DETAIL_METALNESS0 + i].samplerblock = it->second;
-//                        for( int i=0; i<4; ++i )
-//                            mHlmsManager->addReference( textures[TERRA_DETAIL0 + i].samplerblock );
+                //                        textures[TERRA_DETAIL_ROUGHNESS0 + i].samplerblock =
+                //                        it->second; textures[TERRA_DETAIL_METALNESS0 + i].samplerblock
+                //                        = it->second; for( int i=0; i<4; ++i )
+                //                            mHlmsManager->addReference( textures[TERRA_DETAIL0 +
+                //                            i].samplerblock );
 //                    }
 //                }
             }
@@ -376,7 +364,7 @@ namespace Ogre
         {
             HlmsTextureManager::TextureLocation texLocation;
             texLocation.texture = datablock->getTexture( textureType );
-            if( !texLocation.texture.isNull() )
+            if( texLocation.texture )
             {
                 texLocation.xIdx = datablock->_getTextureIdx( textureType );
                 texLocation.yIdx = 0;

@@ -228,7 +228,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     inline size_t ShadowMapper::getStartsPtrCount( int32 *starts, int32 *startsBase )
     {
-        const size_t offset = starts - startsBase;
+        const size_t offset = static_cast<size_t>( starts - startsBase );
         if( (offset & 0x11) == 0 )
             return offset >> 2u;
         else
@@ -237,7 +237,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     inline int32 ShadowMapper::getXStepsNeededToReachY( uint32 y, float fStep )
     {
-        return static_cast<int32>( ceilf( std::max( ( (y << 1u) - 1u ) * fStep, 0.0f ) ) );
+        return static_cast<int32>( ceilf( std::max( float( ( y << 1u ) - 1u ) * fStep, 0.0f ) ) );
     }
     //-----------------------------------------------------------------------------------
     inline float ShadowMapper::getErrorAfterXsteps( uint32 xIterationsToSkip, float dx, float dy )
@@ -348,7 +348,7 @@ namespace Ogre
         const int32 xyStep[2] = { ( x0 < x1 ) ? 1 : -1, ( y0 < y1 ) ? 1 : -1 };
         m_jobParamXYStep->setManualValue( xyStep, 2u );
 
-        heightDelta = ( -heightDelta * ( xzDimensions.x / width ) ) / heightScale;
+        heightDelta = ( -heightDelta * ( xzDimensions.x / float( width ) ) ) / heightScale;
         // Avoid sending +/- inf (which causes NaNs inside the shader).
         // Values greater than 1.0 (or less than -1.0) are pointless anyway.
         heightDelta = std::max( -1.0f, std::min( 1.0f, heightDelta ) );
@@ -362,14 +362,14 @@ namespace Ogre
         // y0 is not needed anymore, and we need it to be either 0 or heightOrWidth for the
         // algorithm to work correctly (depending on the sign of xyStep[1]). So do this now.
         if( y0 >= y1 )
-            y0 = heightOrWidth;
+            y0 = float( heightOrWidth );
 
         int32 *starts = startsBase;
 
         const float fStep = ( dx * 0.5f ) / dy;
         // TODO numExtraIterations correct? -1? +1?
         uint32 numExtraIterations = static_cast<uint32>(
-            std::min( ceilf( dy ), ceilf( ( ( heightOrWidth - 1u ) / fStep - 1u ) * 0.5f ) ) );
+            std::min( ceilf( dy ), ceilf( ( float( heightOrWidth - 1u ) / fStep - 1u ) * 0.5f ) ) );
 
         const uint32 threadsPerGroup = m_shadowJob->getThreadsPerGroupX();
         const uint32 firstThreadGroups =
@@ -512,9 +512,9 @@ namespace Ogre
         float fWeightSum = 0;
         for( uint32 i=0; i<kernelRadius + 1u; ++i )
         {
-            const float _X = i - fKernelRadius + ( 1.0f - 1.0f / stepSize );
+            const float _X = float( i ) - fKernelRadius + ( 1.0f - 1.0f / stepSize );
             float fWeight = 1.0f / std::sqrt ( 2.0f * Math::PI * gaussianDeviation * gaussianDeviation );
-            fWeight *= exp( - ( _X * _X ) / ( 2.0f * gaussianDeviation * gaussianDeviation ) );
+            fWeight *= expf( -( _X * _X ) / ( 2.0f * gaussianDeviation * gaussianDeviation ) );
 
             fWeightSum += fWeight;
 			weights[i] = fWeight;
@@ -566,7 +566,8 @@ namespace Ogre
             shaderParams.mParams.push_back( p );
             ShaderParams::Param *param = &shaderParams.mParams.back();
 
-            param->setManualValue( &weights[i], std::min<uint32>( floatsPerParam, weights.size() - i ) );
+            param->setManualValue( &weights[i],
+                                   std::min( floatsPerParam, uint32( weights.size() - i ) ) );
         }
 
         shaderParams.setDirty();

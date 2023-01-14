@@ -57,7 +57,7 @@ compositor_node NOWAHdrFinalCompositionNode
 		}
 	}
 
-	//This output is not always used.
+	// This output is not always used.
 	out 0 rt_output
 }
 

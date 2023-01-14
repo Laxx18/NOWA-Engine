@@ -132,6 +132,14 @@ namespace NOWA
 
 		bool getUseReflection(void) const;
 
+		void setUseSSAO(bool useSSAO);
+
+		bool getUseSSAO(void) const;
+
+		void setUseDistortion(bool useDistortion);
+
+		bool getUseDistortion(void) const;
+
 		void setUsePlanarReflection(bool usePlanarReflection);
 
 		bool getUsePlanarReflection(void) const;
@@ -201,6 +209,8 @@ namespace NOWA
 		static const Ogre::String AttrSuperSampling(void) { return "Super Sampling"; }
 		static const Ogre::String AttrUseHdr(void) { return "Use HDR"; }
 		static const Ogre::String AttrUseReflection(void) { return "Use Reflection"; }
+		static const Ogre::String AttrUseSSAO(void) { return "Use SSAO"; }
+		static const Ogre::String AttrUseDistortion(void) { return "Use Distortion"; }
 		static const Ogre::String AttrReflectionCameraGameObjectId(void) { return "Reflection Camera GameObject Id"; }
 		static const Ogre::String AttrUsePlanarReflection(void) { return "Use Planar Reflection"; }
 		static const Ogre::String AttrShadowGlobalBias(void) { return "Shadow Global Bias"; }
@@ -215,6 +225,12 @@ namespace NOWA
 		virtual void internalCreateCompositorNode(void) = 0;
 
 		virtual bool internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef) = 0;
+
+		virtual void baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef);
+
+		virtual void createDistortionNode(void);
+
+		Ogre::String getDistortionNode(void) const;
 
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);
 
@@ -259,8 +275,6 @@ namespace NOWA
 		*/
 		void initializeSmaa(PresetQuality quality, EdgeDetectionMode edgeDetectionMode);
 
-		void createSSAONoiseTexture(void);
-
 		void resetReflectionForAllEntities(void);
 
 		void setDataBlockPbsReflectionTextureName(GameObject* gameObject, const Ogre::String& textureName);
@@ -268,6 +282,8 @@ namespace NOWA
 		void setUseTerra(bool useTerra);
 
 		void setUseOcean(bool useOcean);
+
+		void createSSAONoiseTexture(void);
 	protected:
 		Variant* backgroundColor;
 		Variant* viewportRect;
@@ -276,6 +292,8 @@ namespace NOWA
 		Variant* useReflection;
 		Variant* reflectionCameraGameObjectId;
 		Variant* usePlanarReflection;
+		Variant* useSSAO;
+		Variant* useDistortion;
 		Variant* shadowGlobalBias;
 		Variant* shadowGlobalNormalOffset;
 		Variant* shadowPSSMLambda;
@@ -292,6 +310,7 @@ namespace NOWA
 		Ogre::String finalRenderingNodeName;
 		Ogre::String planarReflectionReflectiveWorkspaceName;
 		Ogre::String planarReflectionReflectiveRenderingNode;
+		Ogre::String distortionNode;
 		unsigned char msaaLevel;
 		Ogre::Vector3 oldBackgroundColor;
 		Ogre::Hlms* hlms;
@@ -322,6 +341,9 @@ namespace NOWA
 		Ogre::HlmsListener* hlmsListener;
 
 		HlmsWind* hlmsWind;
+
+		Ogre::Pass* passSSAO;
+		Ogre::Pass* passSSAOApply;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

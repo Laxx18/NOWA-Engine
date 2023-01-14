@@ -787,6 +787,12 @@ namespace NOWA
 		void createAllGameObjectsForShaderCacheGeneration(Ogre::SceneManager* sceneManager);
 
 		/**
+		* @brief		Gets whether the game object controller has started destruction of all game objects.
+		* @return		true, if destroying, else false.
+		*/
+		bool getIsDestroying(void) const;
+
+		/**
 		 * @brief		For lua autocompletion in order to register the correct type from a function call.
 		*/
 		template <class Type>
@@ -855,6 +861,8 @@ namespace NOWA
 		std::set<unsigned long> delayedDeleterList;
 		std::shared_ptr<DeleteGameObjectsUndoCommand> deleteGameObjectsUndoCommand;
 		size_t nextGameObjectIndex;
+
+		bool bIsDestroying;
 	};
 
 }; //namespace end NOWA

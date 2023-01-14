@@ -90,6 +90,11 @@ namespace NOWA
 		virtual Ogre::String getParentClassName(void) const override;
 
 		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
+
+		/**
 		 * @see		GameObjectComponent::clone
 		 */
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
@@ -243,6 +248,9 @@ namespace NOWA
 		Variant* envMapScale;
 		LightDirectionalComponent* lightDirectionalComponent;
 		WorkspaceBaseComponent* workspaceBaseComponent;
+		Ogre::ColourValue oldUpperHemisphere;
+		Ogre::ColourValue oldLowerHemisphere;
+		Ogre::Real oldPowerScale;
 	};
 
 }; //namespace end

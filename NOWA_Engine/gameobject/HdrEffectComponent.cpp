@@ -23,7 +23,10 @@ namespace NOWA
 		bloom(new Variant(HdrEffectComponent::AttrBloom(), 5.0f, this->attributes)),
 		envMapScale(new Variant(HdrEffectComponent::AttrEnvMapScale(), 16.0f, this->attributes)),
 		lightDirectionalComponent(nullptr),
-		workspaceBaseComponent(nullptr)
+		workspaceBaseComponent(nullptr),
+		oldUpperHemisphere(Ogre::ColourValue::White),
+		oldLowerHemisphere(Ogre::ColourValue::White),
+		oldPowerScale(4.0f)
 	{
 		this->effectName->addUserData(GameObject::AttrActionNeedRefresh());
 		this->skyColor->addUserData(GameObject::AttrActionColorDialog());
@@ -128,6 +131,9 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[HdrEffectComponent] Init hdr effect component for game object: " + this->gameObjectPtr->getName());
 
+		this->oldUpperHemisphere = this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere();
+		this->oldLowerHemisphere = this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere();
+
 		// Get the sun light (directional light for sun power setting)
 		GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
 
@@ -141,6 +147,7 @@ namespace NOWA
 		if (nullptr != lightDirectionalCompPtr)
 		{
 			this->lightDirectionalComponent = lightDirectionalCompPtr.get();
+			this->oldPowerScale = this->lightDirectionalComponent->getPowerScale();
 		}
 
 		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
@@ -287,10 +294,26 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
+	void HdrEffectComponent::onRemoveComponent(void)
+	{
+		// Reset shining
+		if (nullptr != this->lightDirectionalComponent)
+		{
+			this->lightDirectionalComponent->setPowerScale(this->oldPowerScale);
+		}
+		this->gameObjectPtr->getSceneManager()->setAmbientLight(this->oldUpperHemisphere, this->oldLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
+	}
+
 	void HdrEffectComponent::applyHdrSkyColor(const Ogre::ColourValue& color, Ogre::Real multiplier)
 	{
 		if (nullptr == this->workspaceBaseComponent || false == this->workspaceBaseComponent->getUseHdr() || nullptr == this->workspaceBaseComponent->getWorkspace())
 		{
+			// Reset shining
+			if (nullptr != this->lightDirectionalComponent)
+			{
+				this->lightDirectionalComponent->setPowerScale(this->oldPowerScale);
+			}
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(this->oldUpperHemisphere, this->oldLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 			return;
 		}
 
@@ -363,6 +386,10 @@ namespace NOWA
 	void HdrEffectComponent::setEffectName(const Ogre::String& effectName)
 	{
 		this->effectName->setListSelectedValue(effectName);
+
+		Ogre::ColourValue oldUpperHemisphere;
+		Ogre::ColourValue oldLowerHemisphere;
+		Ogre::Real oldPowerScale;
 
 		if ("Bright, sunny day" == effectName)
 		{

@@ -23,6 +23,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SelectGameObjectsComponent"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VegetationComponent", "VegetationComponent\VegetationComponent.vcxproj", "{C6F0802D-7716-489E-A0A3-2F43441110E3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SSAOComponent", "SSAOComponent\SSAOComponent.vcxproj", "{554F3F7D-03D3-4867-A13E-41EA244B759D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DistortionComponent", "DistortionComponent\DistortionComponent.vcxproj", "{368CFE97-B9C9-44BA-AB4A-BB4D7EA82AC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -69,6 +73,14 @@ Global
 		{C6F0802D-7716-489E-A0A3-2F43441110E3}.Debug|x64.Build.0 = Debug|x64
 		{C6F0802D-7716-489E-A0A3-2F43441110E3}.Release|x64.ActiveCfg = Release|x64
 		{C6F0802D-7716-489E-A0A3-2F43441110E3}.Release|x64.Build.0 = Release|x64
+		{554F3F7D-03D3-4867-A13E-41EA244B759D}.Debug|x64.ActiveCfg = Debug|x64
+		{554F3F7D-03D3-4867-A13E-41EA244B759D}.Debug|x64.Build.0 = Debug|x64
+		{554F3F7D-03D3-4867-A13E-41EA244B759D}.Release|x64.ActiveCfg = Release|x64
+		{554F3F7D-03D3-4867-A13E-41EA244B759D}.Release|x64.Build.0 = Release|x64
+		{368CFE97-B9C9-44BA-AB4A-BB4D7EA82AC9}.Debug|x64.ActiveCfg = Debug|x64
+		{368CFE97-B9C9-44BA-AB4A-BB4D7EA82AC9}.Debug|x64.Build.0 = Debug|x64
+		{368CFE97-B9C9-44BA-AB4A-BB4D7EA82AC9}.Release|x64.ActiveCfg = Release|x64
+		{368CFE97-B9C9-44BA-AB4A-BB4D7EA82AC9}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

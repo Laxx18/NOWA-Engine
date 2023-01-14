@@ -50,10 +50,9 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    const size_t HlmsTerraDatablock::MaterialSizeInGpu          = 4 * 10 * 4;
-    const size_t HlmsTerraDatablock::MaterialSizeInGpuAligned   = alignToNextMultiple<uint32>(
-                                                                    HlmsTerraDatablock::MaterialSizeInGpu,
-                                                                    4 * 4 );
+    const uint32 HlmsTerraDatablock::MaterialSizeInGpu = 4 * 10 * 4;
+    const uint32 HlmsTerraDatablock::MaterialSizeInGpuAligned =
+        alignToNextMultiple<uint32>( HlmsTerraDatablock::MaterialSizeInGpu, 4 * 4 );
 
     //-----------------------------------------------------------------------------------
     HlmsTerraDatablock::HlmsTerraDatablock( IdString name, HlmsTerra *creator,
@@ -61,7 +60,9 @@ namespace Ogre
                                         const HlmsBlendblock *blendblock,
                                         const HlmsParamVec &params ) :
         HlmsTerraBaseTextureDatablock( name, creator, macroblock, blendblock, params ),
-        mkDr( 0.318309886f ), mkDg( 0.318309886f ), mkDb( 0.318309886f ), //Max Diffuse = 1 / PI
+        mkDr( 0.318309886f ),
+        mkDg( 0.318309886f ),
+        mkDb( 0.318309886f ),  // Max Diffuse = 1 / PI
         mShadowConstantBiasGpu( 0.0f ),
         mBrdf( TerraBrdf::Default )
     {
@@ -101,7 +102,8 @@ namespace Ogre
         }
         if( mSamplersDescSet )
         {
-            FastArray<const HlmsSamplerblock*>::const_iterator itor= mSamplersDescSet->mSamplers.begin();
+            FastArray<const HlmsSamplerblock *>::const_iterator itor =
+                mSamplersDescSet->mSamplers.begin();
             FastArray<const HlmsSamplerblock*>::const_iterator end = mSamplersDescSet->mSamplers.end();
             while( itor != end )
             {
@@ -110,16 +112,17 @@ namespace Ogre
             }
         }
 
-        if( static_cast<HlmsTerra*>(mCreator)->getOptimizationStrategy() == HlmsTerra::LowerGpuOverhead )
+        if( static_cast<HlmsTerra *>( mCreator )->getOptimizationStrategy() ==
+            HlmsTerra::LowerGpuOverhead )
         {
             const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex( this );
-            const uint32 finalHash = (hash.mHash & 0xFFFFFE00) | (poolIdx & 0x000001FF);
+            const uint32 finalHash = ( hash.getU32Value() & 0xFFFFFE00 ) | ( poolIdx & 0x000001FF );
             mTextureHash = finalHash;
         }
         else
         {
             const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex( this );
-            const uint32 finalHash = (hash.mHash & 0xFFFFFFF0) | (poolIdx & 0x0000000F);
+            const uint32 finalHash = ( hash.getU32Value() & 0xFFFFFFF0 ) | ( poolIdx & 0x0000000F );
             mTextureHash = finalHash;
         }
     }
@@ -178,7 +181,8 @@ namespace Ogre
         if( mRoughness[detailMapIdx] <= 1e-6f )
         {
             LogManager::getSingleton().logMessage( "WARNING: TERRA Datablock '" +
-                        mName.getFriendlyText() + "' Very low roughness values can "
+                                                   mName.getFriendlyText() +
+                                                   "' Very low roughness values can "
                                                   "cause NaNs in the pixel shader!" );
         }
         scheduleConstBufferUpdate();
@@ -223,8 +227,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void HlmsTerraDatablock::setAlphaTestThreshold( float threshold )
     {
-        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED,
-                     "Alpha testing not supported on Terra Hlms",
+        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Alpha testing not supported on Terra Hlms",
                      "HlmsTerraDatablock::setAlphaTestThreshold" );
 
         HlmsDatablock::setAlphaTestThreshold( threshold );

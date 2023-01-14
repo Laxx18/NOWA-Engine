@@ -155,14 +155,12 @@ namespace Ogre
         bool hasNormalMaps = false;
         for( uint8 i=0; i<4u; ++i )
         {
-            setDetailTextureProperty( TerraProperty::DetailMapN,   datablock,
-                                      TERRA_DETAIL0, i );
-            setDetailTextureProperty( TerraProperty::DetailMapNmN, datablock,
-                                      TERRA_DETAIL0_NM, i );
-            setDetailTextureProperty( TerraProperty::RoughnessMap, datablock,
-                                      TERRA_DETAIL_ROUGHNESS0, i );
-            setDetailTextureProperty( TerraProperty::MetalnessMap, datablock,
-                                      TERRA_DETAIL_METALNESS0, i );
+            setDetailTextureProperty( TerraProperty::DetailMapN, datablock, TERRA_DETAIL0, i );
+            setDetailTextureProperty( TerraProperty::DetailMapNmN, datablock, TERRA_DETAIL0_NM, i );
+            setDetailTextureProperty( TerraProperty::RoughnessMap, datablock, TERRA_DETAIL_ROUGHNESS0,
+                                      i );
+            setDetailTextureProperty( TerraProperty::MetalnessMap, datablock, TERRA_DETAIL_METALNESS0,
+                                      i );
 
             if( datablock->getTexture( TERRA_DETAIL0 + i ) )
                 hasDiffuseMaps = true;
@@ -306,8 +304,12 @@ namespace Ogre
         else if( (brdf & TerraBrdf::BRDF_MASK) == TerraBrdf::BlinnPhong )
             setProperty( PbsProperty::BrdfBlinnPhong, 1 );
 
+        if( brdf & TerraBrdf::FLAG_HAS_DIFFUSE_FRESNEL )
+        {
+            setProperty( PbsProperty::FresnelHasDiffuse, 1 );
         if( brdf & TerraBrdf::FLAG_SPERATE_DIFFUSE_FRESNEL )
             setProperty( PbsProperty::FresnelSeparateDiffuse, 1 );
+        }
 
         if( brdf & TerraBrdf::FLAG_LEGACY_MATH )
             setProperty( PbsProperty::LegacyMathBrdf, 1 );
@@ -320,7 +322,10 @@ namespace Ogre
             setProperty( PbsProperty::FirstValidDetailMapNm, 4 );
 
         if( datablock->mSamplersDescSet )
-            setProperty( PbsProperty::NumSamplers, datablock->mSamplersDescSet->mSamplers.size() );
+        {
+            setProperty( PbsProperty::NumSamplers,
+                         (int32)datablock->mSamplersDescSet->mSamplers.size() );
+        }
 
         if( terrainCell->getParentTerra()->getHeightMapTex()->getPixelFormat() == PFG_R16_UINT )
             setProperty( "terra_use_uint", 1 );
@@ -329,7 +334,7 @@ namespace Ogre
         {
             bool envMap = datablock->getTexture( TERRA_REFLECTION ) != 0;
             setProperty( PbsProperty::NumTextures,
-                         datablock->mTexturesDescSet->mTextures.size() - envMap );
+                         int32( datablock->mTexturesDescSet->mTextures.size() - envMap ) );
 
             setTextureProperty( PbsProperty::DiffuseMap,    datablock,  TERRA_DIFFUSE );
             setTextureProperty( PbsProperty::EnvProbeMap,   datablock,  TERRA_REFLECTION );
@@ -344,7 +349,7 @@ namespace Ogre
 //                if( datablock->getCubemapProbe() )
 //                    setProperty( PbsProperty::UseParallaxCorrectCubemaps, 1 );
                 setProperty( PbsProperty::EnvProbeMap,
-                             static_cast<int32>( reflectionTexture->getName().mHash ) );
+                             static_cast<int32>( reflectionTexture->getName().getU32Value() ) );
             }
         }
 
@@ -355,23 +360,12 @@ namespace Ogre
 
         if( usesNormalMap )
         {
-//            TextureGpu *normalMapTex = datablock->getTexture( TERRA_DETAIL0_NM );
-//            if( PixelFormatGpuUtils::isSigned( normalMapTex->getPixelFormat() ) )
             {
-                setProperty( PbsProperty::NormalSamplingFormat, PbsProperty::NormalRgSnorm.mHash );
-                setProperty( PbsProperty::NormalRgSnorm, PbsProperty::NormalRgSnorm.mHash );
+                setProperty( PbsProperty::NormalSamplingFormat,
+                             static_cast<int32>( PbsProperty::NormalRgSnorm.getU32Value() ) );
+                setProperty( PbsProperty::NormalRgSnorm,
+                             static_cast<int32>( PbsProperty::NormalRgSnorm.getU32Value() ) );
             }
-//            else
-//            {
-//                setProperty( PbsProperty::NormalSamplingFormat, PbsProperty::NormalRgUnorm.mHash );
-//                setProperty( PbsProperty::NormalRgUnorm, PbsProperty::NormalRgUnorm.mHash );
-//            }
-            //Reserved for supporting LA textures in GLES2.
-//            else
-//            {
-//                setProperty( PbsProperty::NormalSamplingFormat, PbsProperty::NormalLa.mHash );
-//                setProperty( PbsProperty::NormalLa, PbsProperty::NormalLa.mHash );
-//            }
         }
 
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
