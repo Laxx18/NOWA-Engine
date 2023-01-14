@@ -176,8 +176,10 @@ bin/Debug/plugins/
 bin/Release/plugins/
 
 # External ignore
-external/Ogre2.2SDK/README.md
+external/Ogre2.2SDK/.git/
 external/Ogre2.2SDK/.github/
+
+external/Ogre2.2SDK/build/
 external/Ogre2.2SDK/CMake/
 external/Ogre2.2SDK/CMakeLists.txt
 external/Ogre2.2SDK/CTestConfig.cmake
@@ -189,15 +191,22 @@ external/Ogre2.2SDK/Other/
 external/Ogre2.2SDK/PlugIns/CMakeLists.txt
 external/Ogre2.2SDK/PlugIns/ParticleFX/CMakeLists.txt
 external/Ogre2.2SDK/RenderSystems/
-external/Ogre2.2SDK/RenderSystems/NULL/src/
-
 external/Ogre2.2SDK/Samples/
 external/Ogre2.2SDK/Scripts/
 external/Ogre2.2SDK/Tests/
 external/Ogre2.2SDK/Tools/
 external/Ogre2.2SDK/VCBuild/
+
+external/Ogre2.2SDK/.clang-format
+external/Ogre2.2SDK/.gitignore
+external/Ogre2.2SDK/.hgeol
+external/Ogre2.2SDK/.hgignore
+external/Ogre2.2SDK/.hgtags
+external/Ogre2.2SDK/.travis.yml
+
 external/newton-dynamics/applications/
 external/newton-dynamics/sdk/
+
 external/OgreRecast/.hgignore
 external/OgreRecast/.hgtags
 external/OgreRecast/.mailmap
@@ -217,6 +226,7 @@ external/OgreRecast/resources.cfg
 external/OgreRecast/resources/
 external/OgreRecast/src/RecastInputGeom - Kopie.cpp
 external/OgreRecast/updateRecastnavigationSvn.sh
+
 external/openal-soft-master/Debug/
 external/openal-soft-master/OpenAL.dir/
 
