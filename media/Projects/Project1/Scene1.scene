@@ -7,7 +7,7 @@
 			<ambientLightUpperHemisphere r="1.35" g="2.25" b="3.15"/>
 			<ambientLightLowerHemisphere r="1.755" g="1.31625" b="0.8775" a="2.925"/>
 			<hemisphereDir x="0.371386" y="0.642788" z="0.669998"/>
-			<envmapScale x="16"/>
+			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
 			<shadowFarDistance distance="500"/>
@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="0"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-25.5 -0.1615 -25.5" mostRightFarPosition="25.5 3.22108 25.5"/>
@@ -149,8 +149,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="0.988589" y="4.11288" z="-7.21572"/>
-			<rotation qw="0.958783" qx="-0.238272" qy="0.150225" qz="0.0373333"/>
+			<position x="4.27118" y="2.67963" z="-5.93919"/>
+			<rotation qw="0.969915" qx="-0.20367" qy="0.130507" qz="0.0274056"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -176,8 +176,8 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="0.98859 4.11288 -7.21572"/>
-					<property type="9" name="CameraOrientation" data="-27.9123 17.8097 3e-05"/>
+					<property type="9" name="CameraPosition" data="-4.00268 1.38454 -12.6146"/>
+					<property type="9" name="CameraOrientation" data="-20.518 46.7666 0.000113039"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -209,19 +209,14 @@
 					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
 					<property type="6" name="KernelRadius" data="1"/>
 					<property type="6" name="PowerScale" data="1.5"/>
-					<property type="7" name="ComponentCompositorEffectBloomComponent" data="CompositorEffectBloomComponent"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
-					<property type="6" name="ImageWeight" data="1"/>
-					<property type="6" name="BlurWeight" data="0.8"/>
 					<property type="7" name="ComponentHdrEffectComponent" data="HdrEffectComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="7" name="EffectName" data="Bright, sunny day"/>
+					<property type="7" name="EffectName" data="Custom"/>
 					<property type="10" name="SkyColor" data="12 24 36 60"/>
 					<property type="10" name="UpperHemisphere" data="1.35 2.25 3.15 4.5"/>
 					<property type="10" name="LowerHemisphere" data="1.755 1.31625 0.8775 2.925"/>
-					<property type="6" name="SunPower" data="97"/>
+					<property type="6" name="SunPower" data="90.697"/>
 					<property type="6" name="Exposure" data="0"/>
 					<property type="6" name="MinAutoExposure" data="-1"/>
 					<property type="6" name="MaxAutoExposure" data="2.5"/>
@@ -259,7 +254,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="9" name="Diffuse" data="1 1 1"/>
 					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
-					<property type="6" name="PowerScale" data="97"/>
+					<property type="6" name="PowerScale" data="90.697"/>
 					<property type="9" name="Direction" data="0 -0.882948 -0.469471"/>
 					<property type="12" name="AffectParentNode" data="true"/>
 					<property type="6" name="AttenuationRadius" data="10"/>
@@ -365,7 +360,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="0"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>

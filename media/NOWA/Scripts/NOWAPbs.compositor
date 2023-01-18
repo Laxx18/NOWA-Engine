@@ -118,9 +118,9 @@ compositor_node NOWAPbsRenderingNodeVR
 
 workspace NOWAPbsWorkspace
 {
-	//Connect RenderWindow to NOWAPbsFinalCompositionNode's input channel #0
-	connect_output NOWAPbsFinalCompositionNode 0
+	//Connect RenderWindow to NOWAFinalCompositionNode's input channel #0
+	connect_output NOWAFinalCompositionNode 0
 	
-	//Connect NOWAPbsRenderingNode's output #0 to NOWAPbsFinalCompositionNode's input #1
-	connect NOWAPbsRenderingNode 0 NOWAPbsFinalCompositionNode 1
+	//Connect NOWAPbsRenderingNode's output #0 to NOWAFinalCompositionNode's input #1
+	connect NOWAPbsRenderingNode 0 NOWAFinalCompositionNode 1
 }

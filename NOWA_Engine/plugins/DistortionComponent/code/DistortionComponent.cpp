@@ -154,21 +154,6 @@ namespace NOWA
 	{
 		if (nullptr == this->distortionDatablock)
 		{
-			// For now it will only work for main camera
-			auto mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_CAMERA_ID);
-			if (nullptr != mainCameraGameObject)
-			{
-				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<WorkspaceBaseComponent>());
-				if (nullptr != workspaceBaseCompPtr)
-				{
-					this->workspaceBaseComponent = workspaceBaseCompPtr.get();
-					if (false == this->workspaceBaseComponent->getUseDistortion())
-					{
-						this->workspaceBaseComponent->setUseDistortion(true);
-					}
-				}
-			}
-
 			// Store current datablock name
 			auto datablockNames = this->gameObjectPtr->getDatablockNames();
 			if (false == datablockNames.empty())

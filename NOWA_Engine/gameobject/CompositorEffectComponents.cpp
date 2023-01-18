@@ -14,7 +14,6 @@ namespace NOWA
 	CompositorEffectBaseComponent::CompositorEffectBaseComponent()
 		: GameObjectComponent(),
 		effectName("None"),
-		isInSimulation(false),
 		workspaceBaseComponent(nullptr),
 		activated(new Variant(CompositorEffectBaseComponent::AttrActivated(), true, this->attributes)),
 		workspaceGameObjectId(new Variant(CompositorEffectBaseComponent::AttrWorkspaceGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
@@ -61,69 +60,17 @@ namespace NOWA
 
 	bool CompositorEffectBaseComponent::connect(void)
 	{
-		this->isInSimulation = true;
-
-		GameObjectPtr workspaceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->workspaceGameObjectId->getULong());
-		if (nullptr == workspaceGameObjectPtr)
-		{
-			Ogre::String message = "[CompositorEffectBaseComponent] Could not get game object with workspace component Affected game object: "
-				+ this->gameObjectPtr->getName();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
-			return false;
-		}
-
-		auto& cameraCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<CameraComponent>());
-		if (nullptr != cameraCompPtr)
-		{
-			// If camera is not activated, this compositor effect should not be played
-			if (false == cameraCompPtr->isActivated())
-			{
-				return true;
-			}
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectBaseComponent] Could not get prior CameraComponent! Affected game object: " + this->gameObjectPtr->getName());
-			return false;
-		}
-
-		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<WorkspaceBaseComponent>());
-		if (nullptr != workspaceBaseCompPtr)
-		{
-			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
-		}
-		else
-		{
-			Ogre::String message = "[CompositorEffectBaseComponent] Could not get a workspace base component! Affected game object: "
-				+ this->gameObjectPtr->getName();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
-			return false;
-		}
-
-		this->setActivated(this->activated->getBool());
 		return true;
 	}
 
 	bool CompositorEffectBaseComponent::disconnect(void)
 	{
-		if (nullptr != this->workspaceBaseComponent)
-		{
-			this->isInSimulation = false;
-		
-			this->playEffect(this->effectName, false);
-		}
 		return true;
 	}
 
 	void CompositorEffectBaseComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
+
 	}
 
 	void CompositorEffectBaseComponent::actualizeValue(Variant* attribute)
@@ -179,10 +126,6 @@ namespace NOWA
 	void CompositorEffectBaseComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (true == this->isInSimulation)
-		{
-			this->playEffect(this->effectName, activated);
-		}
 	}
 
 	Ogre::String CompositorEffectBaseComponent::getClassName(void) const
@@ -210,19 +153,55 @@ namespace NOWA
 		return this->workspaceGameObjectId->getULong();
 	}
 
-	void CompositorEffectBaseComponent::playEffect(const Ogre::String& effectName, bool enabled)
+	void CompositorEffectBaseComponent::enableEffect(const Ogre::String& effectName, bool enabled)
 	{
-		if ("none" == effectName || nullptr == this->workspaceBaseComponent || nullptr == this->workspaceBaseComponent->getWorkspace())
-			return;
-
 		GameObjectPtr workspaceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->workspaceGameObjectId->getULong());
+		if (nullptr == workspaceGameObjectPtr)
+		{
+			Ogre::String message = "[CompositorEffectBaseComponent] Could not get game object with workspace component Affected game object: "
+				+ this->gameObjectPtr->getName();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+
+			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
+			return;
+		}
 
 		auto& cameraCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<CameraComponent>());
+		if (nullptr != cameraCompPtr)
+		{
+			// If camera is not activated, this compositor effect should not be played
+			if (false == cameraCompPtr->isActivated())
+			{
+				return;
+			}
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectBaseComponent] Could not get prior CameraComponent! Affected game object: " + this->gameObjectPtr->getName());
+			return;
+		}
 
-		// Get the chosen workspace name
-		const Ogre::IdString workspaceName(this->workspaceBaseComponent->getWorkspaceName());
+		auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(workspaceGameObjectPtr->getComponent<WorkspaceBaseComponent>());
+		if (nullptr != workspaceBaseCompPtr)
+		{
+			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
+		}
+		else
+		{
+			Ogre::String message = "[CompositorEffectBaseComponent] Could not get a workspace base component! Affected game object: "
+				+ this->gameObjectPtr->getName();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 
-		Ogre::String renderingNodeNOWA = this->workspaceBaseComponent->getRenderingNodeName();
+			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
+			return;
+		}
+
+		if ("none" == effectName || nullptr == this->workspaceBaseComponent || nullptr == this->workspaceBaseComponent->getWorkspace())
+		{
+			return;
+		}
 
 		// Disable/Enable the node (it was already instantiated in setupCompositor())
 		Ogre::CompositorNode* node = this->workspaceBaseComponent->getWorkspace()->findNode(effectName);
@@ -235,171 +214,6 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[WorkspaceModule] Could not find effect: " + effectName);
 			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[WorkspaceModule] Could not find effect: " + effectName, "NOWA");
 		}
-
-		// Get workspace definition, to connect everything
-		Ogre::CompositorWorkspaceDef* workspaceDef = this->workspaceBaseComponent->getWorkspace()->getCompositorManager()->getWorkspaceDefinition(workspaceName);
-
-		//-------------------------------------------------------------------------------------------
-		//
-		//  METHOD 2 (the easy way):
-		//      Reconstruct the whole connection from scratch based on a copy (be it a cloned,
-		//      untouched workspace definition, a custom file, or the very own workspace instance)
-		//      but leaving the node we're disabling unplugged.
-		//      This method is much safer and easier, the **recommended** way for most usage
-		//      scenarios involving toggling compositors on and off frequently. With a few tweaks,
-		//      it can easily be adapted to complex compositors too.
-		//
-		//-------------------------------------------------------------------------------------------
-		workspaceDef->clearAllInterNodeConnections();
-
-
-		Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
-		Ogre::IdString hdrPostProcessingNodeName;
-		Ogre::IdString distortionNodeName;
-		if (true == this->workspaceBaseComponent->getUseHdr())
-		{
-			hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
-		}
-		if (true == this->workspaceBaseComponent->getUseDistortion())
-		{
-			distortionNodeName = this->workspaceBaseComponent->getDistortionNode();
-		}
-
-		Ogre::IdString finalRenderNodeName = this->workspaceBaseComponent->getFinalRenderingNodeName();
-
-		const Ogre::CompositorNodeVec& nodes = this->workspaceBaseComponent->getWorkspace()->getNodeSequence();
-
-		Ogre::IdString lastInNode;
-		Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
-		Ogre::CompositorNodeVec::const_iterator en = nodes.end();
-
-		// Iterate through all effects and add them
-		// Note: combinations are possible, so one prior effect is connected to the next effect
-		while (it != en)
-		{
-			Ogre::CompositorNode* outNode = *it;
-
-			Ogre::IdString outNodeName = outNode->getName();
-
-			if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
-				&& outNode->getName() != hdrPostProcessingNodeName
-				&& outNode->getName() != msaaNodeName
-				/*&& outNode->getName() != distortionNodeName*/)
-			{
-				// Look for the next enabled node we can connect to
-				Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
-
-				while (it2 != en && (false == (*it2)->getEnabled()
-					|| (*it2)->getName() == finalRenderNodeName
-					|| (*it2)->getName() == hdrPostProcessingNodeName
-					|| (*it2)->getName() == msaaNodeName)
-					/*|| (*it2)->getName() == distortionNodeName*/)
-				{
-					it2++;
-					if (it2 == en)
-					{
-						break;
-					}
-				}
-
-				if (it2 != en)
-				{
-					lastInNode = (*it2)->getName();
-					workspaceDef->connect(outNodeName, 0, lastInNode, 0);
-					workspaceDef->connect(outNodeName, 1, lastInNode, 1);
-					// Example:
-					// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
-					// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
-					// workspaceDef->connect("Old Tv", 0, "Glass", 0);
-					// workspaceDef->connect("Old Tv", 1, "Glass", 1);
-				}
-
-				it = it2 - 1;
-			}
-
-			it++;
-		}
-
-		if (lastInNode == Ogre::IdString())
-		{
-			lastInNode = renderingNodeNOWA;
-		}
-		if (lastInNode == Ogre::IdString())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
-		}
-
-		if (true == this->workspaceBaseComponent->getUseDistortion())
-		{
-			// 0 is out rt0
-			workspaceDef->connect(renderingNodeNOWA, 0, distortionNodeName, 0);
-
-			unsigned int distortionOutput = 2;
-			if (true == this->workspaceBaseComponent->getUseHdr())
-			{
-				distortionOutput = 3;
-			}
-			// 3 is out rt_distortion
-			workspaceDef->connect(renderingNodeNOWA, distortionOutput, distortionNodeName, 1);
-			//			  out 0 of rendering outNode        , will be passed to channel 2
-			// workspaceDef->connect(finalRenderNodeName, 0, distortionNodeName, 2);
-		}
-
-		if (true == this->workspaceBaseComponent->getUseHdr())
-		{
-			// Example without msaa:
-			if (1 == this->workspaceBaseComponent->getMSAA())
-			{
-				// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
-				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingNodeName, 1);
-				// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
-				workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
-				// Connect RenderWindow to NOWAHdrPostprocessingNode input 2
-				// Connect NOWAHdrPostprocessingNode output 0 to NOWAHdrFinalCompositionNode input 0
-				workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 0);
-
-				//if (true == this->workspaceBaseComponent->getUseDistortion())
-				//{
-				//	//			  out 0 of rendering outNode        , will be passed to channel 2
-				//	workspaceDef->connect("NOWAHdrPostprocessingNode", 0, distortionNodeName, 2);
-				//}
-
-				// Note: Will produce warning, as exactly this external connection already may exist, but it does not matter, depending on execution order, it may be that its not connected
-				// workspaceDef->connectExternal(0, hdrPostProcessingNodeName, 2);
-
-				// Example:
-				// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
-				// workspaceDef->connect("NOWASkyRenderingNode", 1, "Glass", 1);
-				// workspaceDef->connect("NOWASkyRenderingNode", 2, "NOWAHdrPostprocessingNode", 1);
-				// workspaceDef->connect("Glass", 0, "NOWAHdrPostprocessingNode", 0);
-				// workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-				// workspaceDef->connect("NOWAHdrPostprocessingNode", 0, "NOWAHdrFinalCompositionNode", 0);
-			}
-			else
-			{
-				workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
-				workspaceDef->connect(renderingNodeNOWA, 2, msaaNodeName, 1);
-				workspaceDef->connect(renderingNodeNOWA, 2, hdrPostProcessingNodeName, 1);
-				workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
-				workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 0);
-
-				//if (true == this->workspaceBaseComponent->getUseDistortion())
-				//{
-				//	//			  out 0 of rendering outNode        , will be passed to channel 2
-				//	workspaceDef->connect("NOWAHdrPostprocessingNode", 0, distortionNodeName, 2);
-				//}
-
-				// Is already done in workspace component and would just print a warning, that both are trying to connect, only the latter will be used
-				// workspaceDef->connectExternal(0, hdrPostProcessingNodeName, 2);
-			}
-		}
-		else
-		{
-			workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
-		}
-
-		//Now that we're done, tell the instance to update itself.
-		this->workspaceBaseComponent->getWorkspace()->reconnectAllNodes();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

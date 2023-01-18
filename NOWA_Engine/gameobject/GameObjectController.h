@@ -389,6 +389,30 @@ namespace NOWA
 		std::vector<GameObjectCompPtr> getGameObjectComponentsFromReferenceId(const unsigned long referenceId) const;
 
 		/**
+		 * @brief		Gets all game object components of the given game object component type.
+		 * @return		gameObjectComponents	The game object component list.
+		 */
+		template <class ComponentType>
+		std::vector<boost::shared_ptr<ComponentType>> getGameObjectComponents(void)
+		{
+			std::vector<boost::shared_ptr<ComponentType>> vec;
+			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+			{
+				GameObjectComponents* gameobjectComponents = it->second->getComponents();
+				for (size_t i = 0; i < gameobjectComponents->size(); i++)
+				{
+					boost::shared_ptr<ComponentType> gameObjectCompPtr = boost::dynamic_pointer_cast<ComponentType>(std::get<COMPONENT>(gameobjectComponents->at(i)));
+					if (nullptr != gameObjectCompPtr)
+					{
+						vec.emplace_back(gameObjectCompPtr);
+					}
+				}
+			}
+			
+			return std::move(vec);
+		}
+
+		/**
 		 * @brief		Activates all game object components, that have the same id, as the referenced game object.
 		 * @param[in]	referenceId	The reference id for activation
 		 * @return		gameObjectPtr	The game object shared ptr.

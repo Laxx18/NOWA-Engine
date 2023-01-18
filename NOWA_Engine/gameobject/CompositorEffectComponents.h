@@ -7,14 +7,14 @@
 
 namespace NOWA
 {
-	class WorkspaceBaseComponent;
-
 	class EXPORTED CompositorEffectBaseComponent : public GameObjectComponent
 	{
 	public:
 		typedef boost::shared_ptr<NOWA::CompositorEffectBaseComponent> CompositorEffectBaseCompPtr;
 	public:
 	
+		friend class WorkspaceBaseComponent;
+
 		CompositorEffectBaseComponent();
 
 		virtual ~CompositorEffectBaseComponent();
@@ -143,14 +143,13 @@ namespace NOWA
 		 * - "Night Vision"
 		 * - "Dither"
 		 */
-		void playEffect(const Ogre::String& effectName, bool enabled);
+		void enableEffect(const Ogre::String& effectName, bool enabled);
 	private:
 			void handleWorkspaceComponentDeleted(NOWA::EventDataPtr eventData);
 	protected:
 		Variant* activated;
 		Variant* workspaceGameObjectId;
 		Ogre::String effectName;
-		bool isInSimulation;
 		WorkspaceBaseComponent* workspaceBaseComponent;
 	};
 

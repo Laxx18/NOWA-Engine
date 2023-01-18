@@ -247,14 +247,6 @@ compositor_node NOWAHdrPostprocessingNode
 	target rt_output
 	{
 		pass render_quad
-	    {
-			load { all dont_care }
-			//Ignore the alpha channel
-			material 	Ogre/Copy/4xFP32
-	    	input 0 	rt0
-		}
-		
-		pass render_quad
 		{
 			load		{ colour dont_care }
 			store
@@ -273,50 +265,3 @@ compositor_node NOWAHdrPostprocessingNode
 
 	out 0 rt_output
 }
-
-// workspace NOWAHdrWorkspace
-// {
-	// connect NOWAHdrRenderingNode 0		Glass 0
-	// connect NOWAHdrRenderingNode 1		Glass 1
-	
-	// connect Glass 1						NOWAHdrPostprocessingNode 0
-	// //#################################################################
-	// connect NOWAHdrRenderingNode 2		NOWAHdrPostprocessingNode 1
-	// //#################################################################
-	
-	
-	
-	// connect_output						NOWAHdrPostprocessingNode 2
-	
-	// connect	NOWAHdrPostprocessingNode 0	NOWAFinalComposition2 0
-// }
-
-// workspace NOWAHdrWorkspace
-// {
-	// connect NOWAHdrRenderingNode 0		NOWAGlass 0
-	// connect NOWAHdrRenderingNode 1		NOWAGlass 1
-	
-	// connect NOWAGlass 0					NOWAHdrPostprocessingNode 0
-	// connect NOWAHdrRenderingNode 2		NOWAHdrPostprocessingNode 1
-	
-	// connect_output					NOWAHdrPostprocessingNode 2
-	
-	// connect_output					NOWAFinalComposition 0
-	// connect	NOWAHdrPostprocessingNode 1	NOWAFinalComposition 1
-// }
-
-// workspace NOWAHdrWorkspace
-// {
-	// connect NOWAHdrRenderingNode 0			NOWAHdrPostprocessingNode 0
-	// connect NOWAHdrPostprocessingNode 0		NOWAGlass 0	
-	// //#################################################################
-	// connect NOWAHdrRenderingNode 2			NOWAHdrPostprocessingNode 1
-	// //#################################################################
-	
-	// connect NOWAHdrPostprocessingNode 1		NOWAGlass 1
-	
-	// connect_output							NOWAHdrPostprocessingNode 2
-	// connect_output							NOWAFinalComposition 0
-	
-	// connect NOWAGlass 0						NOWAFinalComposition 1
-// }

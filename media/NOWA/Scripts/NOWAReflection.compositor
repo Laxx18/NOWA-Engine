@@ -432,10 +432,10 @@ compositor_node NOWASkyReflectionRenderingNode
 
 workspace NOWASkyReflectionWorkspace
 {
-	//Connect RenderWindow to NOWAPbsFinalCompositionNode's input channel #0
-	connect_output NOWAPbsFinalCompositionNode 0
+	//Connect RenderWindow to NOWAFinalCompositionNode's input channel #0
+	connect_output NOWAFinalCompositionNode 0
 	
-	connect NOWASkyReflectionRenderingNode 0 NOWAPbsFinalCompositionNode 1
+	connect NOWASkyReflectionRenderingNode 0 NOWAFinalCompositionNode 1
 	
 	//Render Window on channel #0
 	// connect_external 0 NOWASkyReflectionRenderingNode 0

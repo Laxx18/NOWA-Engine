@@ -46,6 +46,16 @@ namespace NOWA
 		virtual bool postInit(void) override;
 
 		/**
+		 * @see		GameObjectComponent::connect
+		 */
+		virtual bool connect(void) override;
+
+		/**
+		 * @see		GameObjectComponent::disconnect
+		 */
+		virtual bool disconnect(void) override;
+
+		/**
 		 * @see		GameObjectComponent::onOtherComponentRemoved
 		 */
 		virtual void onOtherComponentRemoved(unsigned int index);
@@ -284,6 +294,8 @@ namespace NOWA
 		void setUseOcean(bool useOcean);
 
 		void createSSAONoiseTexture(void);
+	private:
+		void reconnectAllNodes(void);
 	protected:
 		Variant* backgroundColor;
 		Variant* viewportRect;

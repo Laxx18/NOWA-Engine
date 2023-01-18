@@ -9,7 +9,9 @@
 #include "CameraComponent.h"
 #include "PlanarReflectionComponent.h"
 #include "ReflectionCameraComponent.h"
+#include "LightDirectionalComponent.h"
 #include "HdrEffectComponent.h"
+#include "CompositorEffectComponents.h"
 #include "DatablockPbsComponent.h"
 #include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 #include "Compositor/Pass/PassMipmap/OgreCompositorPassMipmapDef.h"
@@ -319,18 +321,58 @@ namespace NOWA
 		return this->createWorkspace();
 	}
 
+	bool WorkspaceBaseComponent::connect(void)
+	{
+		if (nullptr != this->workspace)
+		{
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+			if (nullptr != workspaceDef)
+			{
+				workspaceDef->clearAllInterNodeConnections();
+			}
+		}
+
+		auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+		for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+		{
+			compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
+		}
+
+		this->reconnectAllNodes();
+
+		return true;
+	}
+
+	bool WorkspaceBaseComponent::disconnect(void)
+	{
+		if (nullptr != this->workspace)
+		{
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+			if (nullptr != workspaceDef)
+			{
+				workspaceDef->clearAllInterNodeConnections();
+			}
+		}
+
+		auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+		for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+		{
+			compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, false);
+		}
+
+		// Note: If compositor effect components are involved, they will be disabled, hence connections will be removed
+		this->reconnectAllNodes();
+
+		return true;
+	}
+
 	void WorkspaceBaseComponent::internalInitWorkspaceData(void)
 	{
 		this->workspaceName = "NOWAWorkspace" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 		this->renderingNodeName = "NOWARenderingNode" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-		if (false == this->useHdr->getBool())
-		{
-			this->finalRenderingNodeName = "NOWAPbsFinalCompositionNode";
-		}
-		else
-		{
-			this->finalRenderingNodeName = "NOWAHdrFinalCompositionNode";
-		}
+		this->finalRenderingNodeName = "NOWAFinalCompositionNode";
 
 		if (true == this->usePlanarReflection->getBool())
 		{
@@ -632,6 +674,22 @@ namespace NOWA
 
 		this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
 		hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+
+		auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
+		if (nullptr != hdrEffectCompPtr)
+		{
+			if (false == useHdr)
+			{
+				// Reset hdr values
+				hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
+				hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
+				hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
+			}
+			else
+			{
+				hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
+			}
+		}
 
 		return success;
 	}
@@ -979,13 +1037,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		// Example:
-		// workspaceDef->connect("NOWASkyRenderingNode", 0, "Glass", 0);
-		// workspaceDef->connect("NOWASkyRenderingNode", 1, "Glass", 1);
-		// workspaceDef->connect("NOWASkyRenderingNode", 2, "NOWAHdrPostprocessingNode", 1);
-		// workspaceDef->connect("Glass", 0, "NOWAHdrPostprocessingNode", 0);
-		// workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
-		// workspaceDef->connect("NOWAHdrPostprocessingNode", 0, "NOWAHdrFinalCompositionNode", 0);
+		this->msaaLevel = this->getMSAA();
 
 		if (true == this->useDistortion->getBool())
 		{
@@ -1004,36 +1056,51 @@ namespace NOWA
 		// Without Hdr
 		if (false == this->useHdr->getBool())
 		{
-			workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
 			if (true == this->useDistortion->getBool())
 			{
-				//			  out 0 of rendering outNode        , will be passed to channel 2
-				workspaceDef->connect(this->renderingNodeName, 0, this->distortionNode, 2);
+				workspaceDef->connect(this->distortionNode, 0, this->finalRenderingNodeName, 1);
+			}
+			else
+			{
+				workspaceDef->connect(this->renderingNodeName, 0, this->finalRenderingNodeName, 1);
 			}
 			workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 		}
 		else
 		{
-			if (1u == this->msaaLevel)
+			if (1 == this->msaaLevel)
 			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
+				if (true == this->useDistortion->getBool())
+				{
+					workspaceDef->connect(this->distortionNode, 0, "NOWAHdrPostprocessingNode", 0);
+				}
+				else
+				{
+					workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrPostprocessingNode", 0);
+				}
+
 				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
+				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 			else
 			{
-				workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
-				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
+				if (true == this->useDistortion->getBool())
+				{
+					workspaceDef->connect(this->distortionNode, 0, "NOWAHdrMsaaResolve", 0);
+				}
+				else
+				{
+					workspaceDef->connect(this->renderingNodeName, 0, "NOWAHdrMsaaResolve", 0);
+				}
 
+				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrMsaaResolve", 1);
 				workspaceDef->connect("NOWAHdrMsaaResolve", 0, "NOWAHdrPostprocessingNode", 0);
 				workspaceDef->connect(this->renderingNodeName, 2, "NOWAHdrPostprocessingNode", 1);
-
-				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 0);
-
-				workspaceDef->connectExternal(0, "NOWAHdrPostprocessingNode", 2);
+				workspaceDef->connect(this->renderingNodeName, 1, "NOWAHdrPostprocessingNode", 2);
+				workspaceDef->connect("NOWAHdrPostprocessingNode", 0, this->finalRenderingNodeName, 1);
+				workspaceDef->connectExternal(0, this->finalRenderingNodeName, 0);
 			}
 		}
 	}
@@ -1182,10 +1249,10 @@ namespace NOWA
 		// If MSAA is set more than default in ogre.cfg and graphics card has (MultiSampleAntiAliasing) support, use it!
 		// Possible values are 1,2,4,8
 		// 1 is used when its disabled
-		unsigned int multiSample = Core::getSingletonPtr()->getOgreRenderWindow()->isMultisample();
+		unsigned int multiSample = Core::getSingletonPtr()->getOgreRenderWindow()->getSampleDescription().getColourSamples();
 		if (multiSample > 1u && caps->hasCapability(Ogre::RSC_EXPLICIT_FSAA_RESOLVE))
 		{
-			return Core::getSingletonPtr()->getOgreRenderWindow()->isMultisample();
+			return multiSample;
 		}
 
 		return 1u;
@@ -1749,6 +1816,23 @@ namespace NOWA
 				hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
 				hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
 			}
+
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f), Ogre::ColourValue(0.6f, 0.45f, 0.3f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
+
+			// Get the sun light (directional light for sun power setting)
+			GameObjectPtr lightGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(GameObjectController::MAIN_LIGHT_ID);
+
+			if (nullptr == lightGameObjectPtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBaseComponent] Could not find 'SunLight' for this component! Affected game object: " + this->gameObjectPtr->getName());
+				return;
+			}
+
+			auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
+			if (nullptr != lightDirectionalCompPtr)
+			{
+				lightDirectionalCompPtr->setPowerScale(1.0f);
+			}
 		}
 
 		this->createWorkspace();
@@ -1964,6 +2048,175 @@ namespace NOWA
 		Ogre::Pass* passApply = materialApply->getTechnique(0)->getPass(0);
 		Ogre::GpuProgramParametersSharedPtr psParamsApply = passApply->getFragmentProgramParameters();
 		psParamsApply->setNamedConstant("powerScale", 3.0f);
+	}
+
+	void WorkspaceBaseComponent::reconnectAllNodes(void)
+	{
+		//Now that we're done, tell the instance to update itself.
+		if (nullptr != this->workspace)
+		{
+			//Now that we're done, tell the instance to update itself.
+			// this->workspace->reconnectAllNodes();
+			// Get workspace definition, to connect everything
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+
+			//-------------------------------------------------------------------------------------------
+			//
+			//  METHOD 2 (the easy way):
+			//      Reconstruct the whole connection from scratch based on a copy (be it a cloned,
+			//      untouched workspace definition, a custom file, or the very own workspace instance)
+			//      but leaving the node we're disabling unplugged.
+			//      This method is much safer and easier, the **recommended** way for most usage
+			//      scenarios involving toggling compositors on and off frequently. With a few tweaks,
+			//      it can easily be adapted to complex compositors too.
+			//
+			//-------------------------------------------------------------------------------------------
+			workspaceDef->clearAllInterNodeConnections();
+
+			Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
+			Ogre::IdString hdrPostProcessingNodeName;
+			Ogre::IdString distortionNodeName = this->getDistortionNode();
+			if (true == this->useHdr->getBool())
+			{
+				hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
+			}
+
+			Ogre::IdString finalRenderNodeName = this->getFinalRenderingNodeName();
+
+			const Ogre::CompositorNodeVec& nodes = this->workspace->getNodeSequence();
+
+			Ogre::IdString lastInNode;
+			Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
+			Ogre::CompositorNodeVec::const_iterator en = nodes.end();
+
+			// Iterate through all effects and add them
+			// Note: combinations are possible, so one prior effect is connected to the next effect
+			while (it != en)
+			{
+				Ogre::CompositorNode* outNode = *it;
+
+				Ogre::IdString outNodeName = outNode->getName();
+
+				if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
+					&& outNode->getName() != hdrPostProcessingNodeName
+					&& outNode->getName() != msaaNodeName
+					&& outNode->getName() != distortionNodeName)
+				{
+					// Look for the next enabled node we can connect to
+					Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
+
+					while (it2 != en && (false == (*it2)->getEnabled()
+						   || (*it2)->getName() == finalRenderNodeName
+						   || (*it2)->getName() == hdrPostProcessingNodeName
+						   || (*it2)->getName() == msaaNodeName)
+						   || (*it2)->getName() == distortionNodeName)
+					{
+						it2++;
+						if (it2 == en)
+						{
+							break;
+						}
+					}
+
+					if (it2 != en)
+					{
+						lastInNode = (*it2)->getName();
+						workspaceDef->connect(outNodeName, 0, lastInNode, 0);
+						workspaceDef->connect(outNodeName, 1, lastInNode, 1);
+						// Example:
+						// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
+						// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
+						// workspaceDef->connect("Old Tv", 0, "Glass", 0);
+						// workspaceDef->connect("Old Tv", 1, "Glass", 1);
+					}
+
+					it = it2 - 1;
+				}
+
+				it++;
+			}
+
+			if (lastInNode == Ogre::IdString())
+			{
+				lastInNode = this->renderingNodeName;
+			}
+			if (lastInNode == Ogre::IdString())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
+			}
+
+			if (true == this->useDistortion->getBool())
+			{
+				// 0 is out rt0
+				// workspaceDef->connect(this->renderingNodeName, 0, distortionNodeName, 0);
+				workspaceDef->connect(lastInNode, 0, distortionNodeName, 0);
+
+				unsigned int distortionOutput = 2;
+				if (true == this->useHdr->getBool())
+				{
+					distortionOutput = 3;
+				}
+				// 3 is out rt_distortion
+				workspaceDef->connect(this->renderingNodeName, distortionOutput, distortionNodeName, 1);
+			}
+
+			if (false == this->useHdr->getBool())
+			{
+				if (true == this->useDistortion->getBool())
+				{
+					workspaceDef->connect(this->distortionNode, 0, finalRenderNodeName, 1);
+				}
+				else
+				{
+					// Connect compositor effect Glass output 0 to final render input 1
+					workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
+				}
+			}
+			else
+			{
+				// Example without msaa:
+				if (1 == this->msaaLevel)
+				{
+					// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
+					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
+
+					if (true == this->useDistortion->getBool())
+					{
+						workspaceDef->connect(this->distortionNode, 0, hdrPostProcessingNodeName, 0);
+					}
+					else
+					{
+						// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
+						workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
+					}
+
+					workspaceDef->connect(lastInNode, 1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, this->finalRenderingNodeName, 1);
+					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+				}
+				else
+				{
+					if (true == this->useDistortion->getBool())
+					{
+						workspaceDef->connect(this->distortionNode, 0, msaaNodeName, 0);
+					}
+					else
+					{
+						workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
+					}
+
+					workspaceDef->connect(this->renderingNodeName, 2, msaaNodeName, 1);
+					workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
+					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
+					workspaceDef->connect(this->renderingNodeName, 1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
+					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+				}
+			}
+
+			//Now that we're done, tell the instance to update itself.
+			this->workspace->reconnectAllNodes();
+		}
 	}
 
 	bool WorkspaceBaseComponent::getUseOcean(void) const
@@ -2570,7 +2823,7 @@ namespace NOWA
 				}
 
 				// Add also a target to final composition
-				Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst("NOWAPbsFinalCompositionNode");
+				Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst(this->finalRenderingNodeName);
 				if (nullptr != nodeDef)
 				{
 					auto targetDef = compositorNodeDefinition->getTargetPass(0);
@@ -2743,10 +2996,12 @@ namespace NOWA
 		// For VR: disable this line and use NOWAPbsRenderingNodeVR
 		this->changeViewportRect(0, this->viewportRect->getVector4());
 
+		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+
 		if (true == this->useHdr->getBool())
 		{
 			this->initializeHdr(this->msaaLevel);
-		}		
+		}
 
 		return nullptr != this->workspace;
 	}
@@ -3173,12 +3428,10 @@ namespace NOWA
 
 		this->changeSkyBox(this->skyBoxName->getListSelectedValue());
 
-		// this->initializeSmaa(WorkspaceModule::SMAA_PRESET_ULTRA, WorkspaceModule::EdgeDetectionColour);
-
-		// this->initializeHdr(msaaLevel);
-
 		// Is added in CameraComponent
 		// WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
+
+		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
 
 		if (true == this->useHdr->getBool())
 		{
@@ -3716,6 +3969,8 @@ namespace NOWA
 
 		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
 																							   this->cameraComponent->getCamera(), this->workspaceName, true);
+
+		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
 
 		if (true == this->useHdr->getBool())
 		{

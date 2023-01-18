@@ -1,5 +1,5 @@
 // Performs the final pass: Takes the temporary textures (created in prior node) and copies it to the actual RenderWindow
-compositor_node NOWAPbsFinalCompositionNode
+compositor_node NOWAFinalCompositionNode
 {
 	in 0 rt_output
 	// Take input texture #1 and use the local name "rtN" for reference in this scope
@@ -32,33 +32,6 @@ compositor_node NOWAPbsFinalCompositionNode
 		   
 		}
 	}
-}
-
-compositor_node NOWAHdrFinalCompositionNode
-{
-	in 0 rt_output
-
-	target rt_output
-	{
-		pass render_scene
-		{
-			lod_update_list	off
-
-			//Render Overlays
-			overlays	on
-			rq_first	254
-			rq_last		255
-		}
-		
-		// Render MYGUI in pass here, so that no effect will be placed on the GUI!
-		pass custom MYGUI
-		{
-		   
-		}
-	}
-
-	// This output is not always used.
-	out 0 rt_output
 }
 
 abstract target cubemap_target_shadow
