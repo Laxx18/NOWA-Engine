@@ -880,10 +880,11 @@ namespace NOWA
 	
 	void TransformComponent::setScaleSpeed(Ogre::Real scaleSpeed)
 	{
-		if (scaleSpeed > this->scaleMin->getReal())
+		// WTF?
+		/*if (scaleSpeed > this->scaleMin->getReal())
 		{
 			scaleSpeed = 0.1f;
-		}
+		}*/
 		this->scaleSpeed->setValue(scaleSpeed);
 	}
 	

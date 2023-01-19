@@ -224,6 +224,8 @@ namespace NOWA
 			Scale is the same as minThreshold.
 		*/
 		void applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullColorThreshold);
+	private:
+			void resetShining(void);
 	public:
 		static const Ogre::String AttrEffectName(void) { return "Effect Name"; }
 		static const Ogre::String AttrSkyColor(void) { return "Sky Color"; }
@@ -248,9 +250,6 @@ namespace NOWA
 		Variant* envMapScale;
 		LightDirectionalComponent* lightDirectionalComponent;
 		WorkspaceBaseComponent* workspaceBaseComponent;
-		Ogre::ColourValue oldUpperHemisphere;
-		Ogre::ColourValue oldLowerHemisphere;
-		Ogre::Real oldPowerScale;
 	};
 
 }; //namespace end

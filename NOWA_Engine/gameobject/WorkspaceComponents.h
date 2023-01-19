@@ -150,6 +150,10 @@ namespace NOWA
 
 		bool getUseDistortion(void) const;
 
+		void setUseMSAA(bool useMSAA);
+
+		bool getUseMSAA(void) const;
+
 		void setUsePlanarReflection(bool usePlanarReflection);
 
 		bool getUsePlanarReflection(void) const;
@@ -221,6 +225,7 @@ namespace NOWA
 		static const Ogre::String AttrUseReflection(void) { return "Use Reflection"; }
 		static const Ogre::String AttrUseSSAO(void) { return "Use SSAO"; }
 		static const Ogre::String AttrUseDistortion(void) { return "Use Distortion"; }
+		static const Ogre::String AttrUseMSAA(void) { return "Use MSAA"; }
 		static const Ogre::String AttrReflectionCameraGameObjectId(void) { return "Reflection Camera GameObject Id"; }
 		static const Ogre::String AttrUsePlanarReflection(void) { return "Use Planar Reflection"; }
 		static const Ogre::String AttrShadowGlobalBias(void) { return "Shadow Global Bias"; }
@@ -306,6 +311,7 @@ namespace NOWA
 		Variant* usePlanarReflection;
 		Variant* useSSAO;
 		Variant* useDistortion;
+		Variant* useMSAA;
 		Variant* shadowGlobalBias;
 		Variant* shadowGlobalNormalOffset;
 		Variant* shadowPSSMLambda;

@@ -24,7 +24,7 @@ namespace NOWA
 		strength(new Variant(DistortionComponent::AttrStrength(), 1.0f, this->attributes))
 	{
 		this->activated->setDescription("Activated the distortion effect.");
-		this->strength->setConstraints(0.5f, 3.0f);
+		this->strength->setConstraints(0.5f, 10.0f);
 	}
 
 	DistortionComponent::~DistortionComponent(void)
@@ -281,7 +281,7 @@ namespace NOWA
 			Ogre::GpuProgramParametersSharedPtr psParams = this->distortionPass->getFragmentProgramParameters();
 			psParams->setNamedConstant("u_DistortionStrenght", this->strength->getReal());
 
-			this->gameObjectPtr->getSceneNode()->yaw(Ogre::Radian(dt * 0.125f));
+			// this->gameObjectPtr->getSceneNode()->yaw(Ogre::Radian(dt * 0.125f));
 		}
 	}
 
@@ -357,9 +357,9 @@ namespace NOWA
 		{
 			strength = 0.5f;
 		}
-		else if (strength > 3.0f)
+		else if (strength > 10.0f)
 		{
-			strength = 3.0f;
+			strength = 10.0f;
 		}
 		this->strength->setValue(strength);
 	}

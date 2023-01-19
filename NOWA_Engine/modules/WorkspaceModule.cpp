@@ -577,7 +577,10 @@ namespace NOWA
 			}
 			else
 			{
-				this->compositorManager->removeWorkspace(it->second.workspace);
+				if (nullptr != it->second.workspace)
+				{
+					this->compositorManager->removeWorkspace(it->second.workspace);
+				}
 				it->second.workspace = nullptr;
 				// it->second.workspaceBaseComponent->setWorkspace(nullptr);
 			}

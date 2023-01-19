@@ -121,6 +121,7 @@ namespace NOWA
 		usePlanarReflection(new Variant(WorkspaceBaseComponent::AttrUsePlanarReflection(), false, this->attributes)),
 		useSSAO(new Variant(WorkspaceBaseComponent::AttrUseSSAO(), false, this->attributes)),
 		useDistortion(new Variant(WorkspaceBaseComponent::AttrUseDistortion(), false, this->attributes)),
+		useMSAA(new Variant(WorkspaceBaseComponent::AttrUseMSAA(), false, this->attributes)),
 		shadowGlobalBias(new Variant(WorkspaceBaseComponent::AttrShadowGlobalBias(), Ogre::Real(1.0f), this->attributes)),
 		shadowGlobalNormalOffset(new Variant(WorkspaceBaseComponent::AttrShadowGlobalNormalOffset(), Ogre::Real(168.0f), this->attributes)),
 		shadowPSSMLambda(new Variant(WorkspaceBaseComponent::AttrShadowPSSMLambda(), Ogre::Real(0.95f), this->attributes)),
@@ -129,7 +130,7 @@ namespace NOWA
 		shadowSplitPadding(new Variant(WorkspaceBaseComponent::AttrShadowSplitPadding(), Ogre::Real(1.0f), this->attributes)),
 		cameraComponent(nullptr),
 		workspace(nullptr),
-		msaaLevel(1u),
+		msaaLevel(1),
 		oldBackgroundColor(backgroundColor->getVector3()),
 		hlms(nullptr),
 		pbs(nullptr),
@@ -147,17 +148,6 @@ namespace NOWA
 		hlmsListener(nullptr),
 		hlmsWind(nullptr)
 	{
-		/*
-		constantBiasScale( 1.0f ),
-            normalOffsetBias( 168.0f ),
-            autoConstantBiasScale( 100.0f ),
-            autoNormalOffsetBiasScale( 4.0f ),
-			pssmLambda( 0.95f ),
-            splitPadding( 1.0f ),
-            splitBlend( 0.125f ),
-            splitFade( 0.313f ),
-		*/
-
 		this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
 		this->superSampling->setDescription("Sets the supersampling for whole scene texture rendering. E.g. a value of 0.25 will pixelize the scene for retro Game experience.");
 		this->useReflection->setDescription("Activates reflection, which is rendered by a dynamic cubemap. This component works in conjunction with a ReflectionCameraComponent. Attention: Activating this mode decreases the application's performance considerably!");
@@ -166,6 +156,8 @@ namespace NOWA
             "to get heat distortion etc. This component works in conjunction with a DistortionComponent.");
 		this->referenceId->setVisible(false);
 		this->reflectionCameraGameObjectId->setVisible(false);
+
+		this->useMSAA->setDescription("Sets whether to use MSAA (Enhanced Subpixel Morphological Antialiasing). It can also only be used if the ogre.cfg configured anti aliasing level is higher as 1.");
 
 		this->useReflection->addUserData(GameObject::AttrActionNeedRefresh());
 	}
@@ -235,6 +227,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseDistortion")
 		{
 			this->useDistortion->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseMSAA")
+		{
+			this->useMSAA->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseTerra")
@@ -631,8 +628,6 @@ namespace NOWA
 			}
 		}
 
-		// this->initializeSmaa(WorkspaceBaseComponent::SMAA_PRESET_ULTRA, WorkspaceBaseComponent::EdgeDetectionColour);
-
 		bool success = this->internalCreateWorkspace(workspaceDef);
 
 		if (true == this->usePlanarReflection->getBool() && true == success)
@@ -831,6 +826,13 @@ namespace NOWA
 			}
 		}
 
+		// Deletes also the hdr effect component, has no use anymore
+		auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
+		if (nullptr != hdrEffectCompPtr)
+		{
+			this->gameObjectPtr->deleteComponentByIndex(hdrEffectCompPtr->getIndex());
+		}
+
 		if (nullptr != this->cameraComponent)
 		{
 			WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
@@ -876,6 +878,10 @@ namespace NOWA
 		else if (WorkspaceBaseComponent::AttrUseDistortion() == attribute->getName())
 		{
 			this->setUseDistortion(attribute->getBool());
+		}
+		else if (WorkspaceBaseComponent::AttrUseMSAA() == attribute->getName())
+		{
+			this->setUseMSAA(attribute->getBool());
 		}
 		else if (WorkspaceBaseComponent::AttrShadowGlobalBias() == attribute->getName())
 		{
@@ -970,6 +976,12 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseMSAA"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useMSAA->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseTerra"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useTerra)));
 		propertiesXML->append_node(propertyXML);
@@ -1037,7 +1049,14 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		this->msaaLevel = this->getMSAA();
+		if (true == this->useMSAA->getBool())
+		{
+			this->msaaLevel = this->getMSAA();
+		}
+		else
+		{
+			this->msaaLevel = 1;
+		}
 
 		if (true == this->useDistortion->getBool())
 		{
@@ -1894,6 +1913,18 @@ namespace NOWA
 	bool WorkspaceBaseComponent::getUseDistortion(void) const
 	{
 		return this->useDistortion->getBool();
+	}
+
+	void WorkspaceBaseComponent::setUseMSAA(bool useMSAA)
+	{
+		this->useMSAA->setValue(useMSAA);
+
+		this->createWorkspace();
+	}
+
+	bool WorkspaceBaseComponent::getUseMSAA(void) const
+	{
+		return this->useMSAA->getBool();
 	}
 
 	void WorkspaceBaseComponent::setUsePlanarReflection(bool usePlanarReflection)
@@ -2996,7 +3027,22 @@ namespace NOWA
 		// For VR: disable this line and use NOWAPbsRenderingNodeVR
 		this->changeViewportRect(0, this->viewportRect->getVector4());
 
-		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		if (this->msaaLevel == 1)
+		{
+			this->initializeSmaa(SMAA_PRESET_LOW, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 2)
+		{
+			this->initializeSmaa(SMAA_PRESET_MEDIUM, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 4)
+		{
+			this->initializeSmaa(SMAA_PRESET_HIGH, EdgeDetectionColor);
+		}
+		else
+		{
+			this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		}
 
 		if (true == this->useHdr->getBool())
 		{
@@ -3431,7 +3477,22 @@ namespace NOWA
 		// Is added in CameraComponent
 		// WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera(), this);
 
-		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		if (this->msaaLevel == 1)
+		{
+			this->initializeSmaa(SMAA_PRESET_LOW, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 2)
+		{
+			this->initializeSmaa(SMAA_PRESET_MEDIUM, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 4)
+		{
+			this->initializeSmaa(SMAA_PRESET_HIGH, EdgeDetectionColor);
+		}
+		else
+		{
+			this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		}
 
 		if (true == this->useHdr->getBool())
 		{
@@ -3970,7 +4031,22 @@ namespace NOWA
 		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
 																							   this->cameraComponent->getCamera(), this->workspaceName, true);
 
-		this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		if (this->msaaLevel == 1)
+		{
+			this->initializeSmaa(SMAA_PRESET_LOW, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 2)
+		{
+			this->initializeSmaa(SMAA_PRESET_MEDIUM, EdgeDetectionLuma);
+		}
+		else if (this->msaaLevel == 4)
+		{
+			this->initializeSmaa(SMAA_PRESET_HIGH, EdgeDetectionColor);
+		}
+		else
+		{
+			this->initializeSmaa(SMAA_PRESET_ULTRA, EdgeDetectionColor);
+		}
 
 		if (true == this->useHdr->getBool())
 		{

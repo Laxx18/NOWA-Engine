@@ -149,8 +149,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="4.27118" y="2.67963" z="-5.93919"/>
-			<rotation qw="0.969915" qx="-0.20367" qy="0.130507" qz="0.0274056"/>
+			<position x="4.1781" y="1.42081" z="-11.4673"/>
+			<rotation qw="0.979224" qx="-0.088021" qy="0.181947" qz="0.0163569"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -176,8 +176,8 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-4.00268 1.38454 -12.6146"/>
-					<property type="9" name="CameraOrientation" data="-20.518 46.7666 0.000113039"/>
+					<property type="9" name="CameraPosition" data="2.60862 5.02915 -5.55844"/>
+					<property type="9" name="CameraOrientation" data="-50.7729 6.17149 0.000411431"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -212,11 +212,11 @@
 					<property type="7" name="ComponentHdrEffectComponent" data="HdrEffectComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="7" name="EffectName" data="Custom"/>
+					<property type="7" name="EffectName" data="Bright, sunny day"/>
 					<property type="10" name="SkyColor" data="12 24 36 60"/>
 					<property type="10" name="UpperHemisphere" data="1.35 2.25 3.15 4.5"/>
 					<property type="10" name="LowerHemisphere" data="1.755 1.31625 0.8775 2.925"/>
-					<property type="6" name="SunPower" data="90.697"/>
+					<property type="6" name="SunPower" data="97"/>
 					<property type="6" name="Exposure" data="0"/>
 					<property type="6" name="MinAutoExposure" data="-1"/>
 					<property type="6" name="MaxAutoExposure" data="2.5"/>
@@ -254,7 +254,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="9" name="Diffuse" data="1 1 1"/>
 					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
-					<property type="6" name="PowerScale" data="90.697"/>
+					<property type="6" name="PowerScale" data="97"/>
 					<property type="9" name="Direction" data="0 -0.882948 -0.469471"/>
 					<property type="12" name="AffectParentNode" data="true"/>
 					<property type="6" name="AttenuationRadius" data="10"/>
@@ -360,7 +360,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
@@ -610,6 +610,31 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="Strength" data="true"/>
+					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="1 1 1"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="180"/>
+					<property type="6" name="RotationSpeed" data="1"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="true"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="1 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationSpeed" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="12" name="ScaleActivated" data="true"/>
+					<property type="9" name="ScaleAxis" data="1 1 1"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleSpeed" data="10"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
 				</userData>
 			</item>
 		</node>

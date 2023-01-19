@@ -214,7 +214,10 @@ namespace NOWA
 	void CrowdComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		this->setControlled(this->controlled->getBool());
+		if (true == activated)
+		{
+			this->setControlled(this->controlled->getBool());
+		}
 	}
 
 	bool CrowdComponent::isActivated(void) const
