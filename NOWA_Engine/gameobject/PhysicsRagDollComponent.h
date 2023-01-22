@@ -85,7 +85,7 @@ namespace NOWA
 			return "Usage: This component is used to create physics rag doll. The ragdoll details are specified in a XML file. "
 				"This component has also several states, so that it can also behave like an usual physics active component. "
 				"Even a partial rag doll can be created e.g. just using the right arm of the player as rag doll."
-				"Requirements: A game object with mesh and animation (*.skeleton) file.";
+				"Requirements: A game object with mesh and animation (*.skeleton) file. Note: This component will only work with Ogre Entity, as Ogre Item has not been created for such complex animation things.";
 		}
 
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override;

@@ -106,9 +106,9 @@ public:
 	virtual void initialise();
 	virtual void shutdown();
 
-	void setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene);
+	void setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item);
 
-	std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool> getParameter(void) const;
+	std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool, bool> getParameter(void) const;
 
 	void resetSettings(void);
 
@@ -129,6 +129,7 @@ protected:
 	MyGUI::Button* openProjectCheck;
 	MyGUI::Button* createStateCheck;
 	MyGUI::Button* ignoreGlobalSceneCheck;
+	MyGUI::Button* useV2ItemCheck;
 	MyGUI::EditBox* keyEdit;
 	MyGUI::VectorWidgetPtr itemsEdit;
 

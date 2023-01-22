@@ -160,7 +160,8 @@ namespace NOWA
 		resourceLoadingListener(nullptr),
 		cryptKey(2),
 		projectEncoded(false),
-		baseListenerContainer(nullptr)
+		baseListenerContainer(nullptr),
+		useV2Mesh(false)
 	{
 		this->optionDesiredUpdates = this->getScreenRefreshRate();
 	}
@@ -3374,6 +3375,22 @@ namespace NOWA
 		if (nullptr != archive)
 		{
 			return archive->getName();
+		}
+		return "";
+	}
+
+	Ogre::String Core::readContent(const Ogre::String& filePathName, unsigned int startOffset, unsigned int size)
+	{
+		std::ifstream fin(filePathName);
+		if (true == fin.good())
+		{
+			fin.seekg(startOffset);
+			// char buffer[41];
+			std::vector<char> buffer(size + 1);
+			fin.read(&buffer[0], size);
+			buffer[size] = 0;
+			std::istringstream iss(&buffer[0]);
+			return iss.str();
 		}
 		return "";
 	}

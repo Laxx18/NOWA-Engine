@@ -20,6 +20,7 @@ namespace NOWA
 		bool openProject;
 		bool createSceneInOwnState;
 		bool ignoreGlobalScene;
+		bool useV2Item; // Note: Is volatile and will not be saved for scene
 		bool hasPhysics;
 		Ogre::Real physicsUpdateRate;
 		unsigned short solverModel;

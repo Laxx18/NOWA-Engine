@@ -292,8 +292,25 @@ namespace NOWA
 		this->resetShining();
 	}
 
+	void HdrEffectComponent::onOtherComponentRemoved(unsigned int index)
+	{
+		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		if (nullptr != gameObjectCompPtr)
+		{
+			auto& lightDirectionalCompPtr = boost::dynamic_pointer_cast<LightDirectionalComponent>(gameObjectCompPtr);
+			if (nullptr != lightDirectionalCompPtr)
+			{
+				this->lightDirectionalComponent = nullptr;
+			}
+		}
+	}
+
 	void HdrEffectComponent::resetShining(void)
 	{
+		if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+		{
+			return;
+		}
 		// Reset shining and set default values
 		if (nullptr != this->lightDirectionalComponent)
 		{

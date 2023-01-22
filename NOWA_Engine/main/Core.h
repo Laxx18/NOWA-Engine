@@ -594,6 +594,10 @@ namespace NOWA
 
 		inline Ogre::Timer* getOgreTimer(void) const { return this->timer; }
 
+		void setUseV2Mesh(bool useV2Mesh) { this->useV2Mesh = useV2Mesh; };
+
+		bool getUseV2Mesh(void) const { return this->useV2Mesh; }
+
 		/**
 		 * @brief		Gets all the available texture names
 		 * @param[in]	filters			The filters to set for texture name extensions. When empty, all formats will be delivered. E.g. { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" }
@@ -603,10 +607,19 @@ namespace NOWA
 
 		/**
 		 * @brief		Gets the resource file path name.
-		 * @param[in]	resourceName		The texture name with file ending to set. E.g. arrow.png.
+		 * @param[in]	resourceName		The resource name with file ending to set. E.g. arrow.png.
 		 * @return		Resource file location, or empty if cannot be determined.
 		 */
-		Ogre::String getResourceFilePathName(const Ogre::String& textureName);
+		Ogre::String getResourceFilePathName(const Ogre::String& resourceName);
+
+		/**
+		 * @brief		Gets the read content from the given start offset and size.
+		 * @param[in]	filePathName		The file path name to read the content
+		 * @param[in]	startOffset			The start offset, where to start to read
+		 * @param[in]	length				The read length up from the start offset.
+		 * @return		The content as string, or empty, if file could not be found etc.
+		 */
+		Ogre::String readContent(const Ogre::String& filePathName, unsigned int startOffset, unsigned int size);
 
 		void minimizeMemory(Ogre::SceneManager* sceneManager);
 		
@@ -822,6 +835,7 @@ namespace NOWA
 		Ogre::TextureGpuManager::BudgetEntryVec defaultBudget;
 
 		HlmsBaseListenerContainer* baseListenerContainer;
+		bool useV2Mesh;
 	};
 
 }; //end namespace

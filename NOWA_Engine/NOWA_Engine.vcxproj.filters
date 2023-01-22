@@ -643,6 +643,9 @@
     <ClInclude Include="main\InputDeviceCore.h">
       <Filter>main</Filter>
     </ClInclude>
+    <ClInclude Include="utilities\AnimationBlenderV2.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1187,6 +1190,9 @@
     </ClCompile>
     <ClCompile Include="main\InputDeviceCore.cpp">
       <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\AnimationBlenderV2.cpp">
+      <Filter>utilities</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

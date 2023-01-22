@@ -48,7 +48,7 @@ namespace NOWA
 		Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
 		if (nullptr != skeleton)
 		{
-			skeleton->setBlendMode(/*Ogre::v1::ANIMBLEND_CUMULATIVE*/ Ogre::v1::ANIMBLEND_AVERAGE);
+			skeleton->setBlendMode(Ogre::v1::ANIMBLEND_CUMULATIVE /*Ogre::v1::ANIMBLEND_AVERAGE*/);
 		}
 
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AnimationBlender::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
@@ -762,9 +762,6 @@ namespace NOWA
 					while (it.hasMoreElements())
 					{
 						Ogre::v1::AnimationState* anim = it.getNext();
-						anim->setEnabled(false);
-						anim->setWeight(0);
-						anim->setTimePosition(0);
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] Animation name: " + anim->getAnimationName()
 							+ " length: " + Ogre::StringConverter::toString(anim->getLength()) + " seconds");
 					}

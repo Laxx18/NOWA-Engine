@@ -26,11 +26,6 @@ namespace NOWA
 		
 	}
 
-	void PluginTemplate::initialise()
-	{
-
-	}
-
 	const Ogre::String& PluginTemplate::getName() const
 	{
 		return this->name;
@@ -39,16 +34,6 @@ namespace NOWA
 	void PluginTemplate::install(const Ogre::NameValuePairList* options)
 	{
 		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<PluginTemplate>(PluginTemplate::getStaticClassId(), PluginTemplate::getStaticClassName());
-	}
-
-	void PluginTemplate::shutdown()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-	}
-
-	void PluginTemplate::uninstall()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
 	}
 	
 	void PluginTemplate::getAbiCookie(Ogre::AbiCookie& outAbiCookie)

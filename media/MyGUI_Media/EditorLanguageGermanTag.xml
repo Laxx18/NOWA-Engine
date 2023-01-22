@@ -169,6 +169,7 @@
 	<Tag name="OpenProject">C++ Projekt starten</Tag>
 	<Tag name="OwnState">Szene in eigenem AppState erstellen</Tag>
 	<Tag name="IgnoreGlobalScene">Globale Szene ignorieren</Tag>
+	<Tag name="UseV2Item">V2 Item benutzen</Tag>
 	<Tag name="Key">Schluessel</Tag>
 	<Tag name="FailedToLoadProject">Lades des Projektes fehlgeschlagen!</Tag>
 	<Tag name="Resources">Ressourcen</Tag>

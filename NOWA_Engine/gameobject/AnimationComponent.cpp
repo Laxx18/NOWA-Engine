@@ -2,8 +2,6 @@
 #include "AnimationComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
-#include "modules/WorkspaceModule.h"
-#include "LookAfterComponent.h"
 #include "PlayerControllerComponents.h"
 
 namespace NOWA

@@ -20,6 +20,7 @@ namespace NOWA
 		linearDamping(0.1f),
 		angularDamping(Ogre::Vector3(0.1f, 0.1f, 0.1f)),
 		gravity(Ogre::Vector3(0.0f, -19.8f, 0.0f)),
+		useV2Item(false),
 
 		ambientLightUpperHemisphere(Ogre::ColourValue(0.3f, 0.5f, 0.7f)),
 		ambientLightLowerHemisphere(Ogre::ColourValue(0.6f, 0.45f, 0.3f)),

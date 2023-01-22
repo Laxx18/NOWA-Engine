@@ -16,28 +16,28 @@ compositor_node SSAO
 	
 	custom_id Ogre/Postprocess
 
-	rtv rt0
-	{
-	 	colour			rt0 gBufferNormals
-	 	depth_stencil	depthTexture
-	}
+	// rtv rt0
+	// {
+	 	// colour			rt0 gBufferNormals
+	 	// depth_stencil	depthTexture
+	// }
 
-	target rt0
-	{
-		pass render_scene
-		{
-			load
-			{
-				all				clear
-				clear_colour	0	0.2 0.4 0.6 1
-				clear_colour	1	0.5 0.5 1.0 1
-			}
-			lod_update_list	off
-			overlays	off
+	// target rt0
+	// {
+		// pass render_scene
+		// {
+			// load
+			// {
+				// all				clear
+				// clear_colour	0	0.2 0.4 0.6 1
+				// clear_colour	1	0.5 0.5 1.0 1
+			// }
+			// lod_update_list	off
+			// overlays	off
 		
-			gen_normals_gbuffer true
-		}
-	}
+			// gen_normals_gbuffer true
+		// }
+	// }
 	
 	target depthTextureCopy
 	{

@@ -510,6 +510,7 @@
     <ClInclude Include="shader\HlmsFog.h" />
     <ClInclude Include="shader\HlmsWind.h" />
     <ClInclude Include="utilities\AnimationBlender.h" />
+    <ClInclude Include="utilities\AnimationBlenderV2.h" />
     <ClInclude Include="utilities\AnimationSerializer.h" />
     <ClInclude Include="camera\BasePhysicsCamera.h" />
     <ClInclude Include="utilities\AutoCompleteSearch.h" />
@@ -725,6 +726,7 @@
     <ClCompile Include="shader\HlmsFog.cpp" />
     <ClCompile Include="shader\HlmsWind.cpp" />
     <ClCompile Include="utilities\AnimationBlender.cpp" />
+    <ClCompile Include="utilities\AnimationBlenderV2.cpp" />
     <ClCompile Include="utilities\AnimationSerializer.cpp" />
     <ClCompile Include="utilities\AutoCompleteSearch.cpp" />
     <ClCompile Include="utilities\BoundingBoxDraw.cpp" />

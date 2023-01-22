@@ -56,5 +56,13 @@
         <Widget type="Button" skin="CheckBox" position="280 244 175 20" name="ignoreGlobalSceneCheck">
 			<Property key="StateSelected" value="false"/>
 		</Widget>
+		
+		<Widget type="TextBox" skin="TextBox" position="10 276 260 20" name="ignoreGlobalSceneText">
+            <Property key="Caption" value="#{UseV2Item}:"/>
+        </Widget>
+        <Widget type="Button" skin="CheckBox" position="280 276 175 20" name="useV2ItemCheck">
+			<Property key="StateSelected" value="false"/>
+		</Widget>
+		
     </Widget>
 </MyGUI>

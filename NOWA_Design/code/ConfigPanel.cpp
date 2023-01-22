@@ -152,6 +152,8 @@ void ConfigPanel::buttonHit(MyGUI::Widget* sender)
 		NOWA::Core::getSingletonPtr()->setCryptKey(key);
 
 		projectParameter.ignoreGlobalScene = std::get<6>(this->configPanelProject->getParameter());
+		projectParameter.useV2Item = std::get<7>(this->configPanelProject->getParameter());
+		NOWA::Core::getSingletonPtr()->setUseV2Mesh(projectParameter.useV2Item);
 		
 		projectParameter.ambientLightUpperHemisphere = std::get<0>(this->configPanelSceneManager->getParameter());
 		projectParameter.ambientLightLowerHemisphere = std::get<1>(this->configPanelSceneManager->getParameter());
@@ -241,7 +243,7 @@ void ConfigPanel::applySettings(void)
 	NOWA::ProjectParameter& projectParameter = this->projectManager->getProjectParameter();
 
 	this->configPanelProject->setParameter(projectParameter.projectName, projectParameter.sceneName, projectParameter.createProject, projectParameter.openProject, 
-		projectParameter.createSceneInOwnState, NOWA::Core::getSingletonPtr()->getCryptKey(), projectParameter.ignoreGlobalScene);
+		projectParameter.createSceneInOwnState, NOWA::Core::getSingletonPtr()->getCryptKey(), projectParameter.ignoreGlobalScene, projectParameter.useV2Item);
 
 	this->configPanelSceneManager->setParameter(projectParameter.ambientLightUpperHemisphere, projectParameter.ambientLightLowerHemisphere, projectParameter.shadowFarDistance,
 		projectParameter.shadowDirectionalLightExtrusionDistance, projectParameter.shadowDirLightTextureOffset, projectParameter.shadowColor, projectParameter.shadowQualityIndex, projectParameter.ambientLightModeIndex, 
@@ -326,6 +328,7 @@ void ConfigPanelProject::initialise()
 	assignWidget(this->createStateCheck, "createStateCheck");
 	assignWidget(this->keyEdit, "keyEdit");
 	assignWidget(this->ignoreGlobalSceneCheck, "ignoreGlobalSceneCheck");
+	assignWidget(this->useV2ItemCheck, "useV2ItemCheck");
 
 	this->themeBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &ConfigPanelProject::onKeyButtonPressed);
 	this->projectNameEdit->eventKeyButtonPressed += MyGUI::newDelegate(this, &ConfigPanelProject::onKeyButtonPressed);
@@ -341,6 +344,7 @@ void ConfigPanelProject::initialise()
 	this->createStateCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigPanelProject::buttonHit);
 	this->getMainWidget()->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigPanelProject::onMouseButtonClicked);
 	this->ignoreGlobalSceneCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigPanelProject::buttonHit);
+	this->useV2ItemCheck->eventMouseButtonClick += MyGUI::newDelegate(this, &ConfigPanelProject::buttonHit);
 
 	this->itemsEdit.push_back(this->themeBox);
 	this->itemsEdit.push_back(this->projectNameEdit);
@@ -377,6 +381,7 @@ void ConfigPanelProject::resetSettings(void)
 	this->openProjectCheck->setStateCheck(false);
 	this->createStateCheck->setStateCheck(false);
 	this->ignoreGlobalSceneCheck->setStateCheck(false);
+	this->useV2ItemCheck->setStateCheck(false);
 
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "*.*");
 	for (auto filePathName : filePathNames)
@@ -533,7 +538,7 @@ void ConfigPanelProject::shutdown()
 	mWidgetClient->_destroyChildWidget(this->workspaceColorButton);*/
 }
 
-void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene)
+void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item)
 {
 	if (true == projectName.empty())
 		this->projectNameEdit->setOnlyText("Project1");
@@ -550,13 +555,14 @@ void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogr
 	this->createStateCheck->setStateCheck(createOwnState);
 	this->keyEdit->setOnlyText(Ogre::StringConverter::toString(key));
 	this->ignoreGlobalSceneCheck->setStateCheck(ignoreGlobalScene);
+	this->useV2ItemCheck->setStateCheck(useV2Item);
 }
 
-std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool> ConfigPanelProject::getParameter(void) const
+std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool, bool> ConfigPanelProject::getParameter(void) const
 {
 	return std::make_tuple(this->projectNameEdit->getOnlyText(), this->sceneNameEdit->getOnlyText(), this->createProjectCheck->getStateCheck(), 
 		this->openProjectCheck->getStateCheck(), this->createStateCheck->getStateCheck(), Ogre::StringConverter::parseInt(this->keyEdit->getOnlyText()), 
-		this->ignoreGlobalSceneCheck->getStateCheck());
+		this->ignoreGlobalSceneCheck->getStateCheck(), this->useV2ItemCheck->getStateCheck());
 }
 
 /////////////////////////////////////////////////////////////////////////////

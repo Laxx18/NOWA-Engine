@@ -4,28 +4,35 @@ Copyright (c) 2023 Lukas Kalinowski
 GPL v3
 */
 
-#ifndef PLUGIN_TEMPLATE_H
-#define PLUGIN_TEMPLATE_H
+#ifndef ANIMATIONCOMPONENTV2_H
+#define ANIMATIONCOMPONENTV2_H
 
 #include "gameobject/GameObjectComponent.h"
+#include "utilities/AnimationBlenderV2.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
+
+namespace Ogre
+{
+	class SkeletonAnimation;
+	class Bone;
+}
 
 namespace NOWA
 {
 
 	/**
-	  * @brief		Your documentation
+	  * @brief		Play one animation with Ogre Item (v2). Requirements: Item must have a skeleton with animations.
 	  */
-	class EXPORTED PluginTemplate : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED AnimationComponentV2 : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
-		typedef boost::shared_ptr<PluginTemplate> PluginTemplatePtr;
+		typedef boost::shared_ptr<AnimationComponentV2> AnimationComponentV2Ptr;
 	public:
 
-		PluginTemplate();
+		AnimationComponentV2();
 
-		virtual ~PluginTemplate();
+		virtual ~AnimationComponentV2();
 
 		/**
 		* @see		Ogre::Plugin::install
@@ -34,21 +41,18 @@ namespace NOWA
 
 		/**
 		* @see		Ogre::Plugin::initialise
-		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
 		*/
-		virtual void initialise() override {};
+		virtual void initialise() override;
 
 		/**
 		* @see		Ogre::Plugin::shutdown
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
 		*/
-		virtual void shutdown() override {};
+		virtual void shutdown() override;
 
 		/**
 		* @see		Ogre::Plugin::uninstall
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
 		*/
-		virtual void uninstall() override {};
+		virtual void uninstall() override;
 
 		/**
 		* @see		Ogre::Plugin::getName
@@ -140,13 +144,49 @@ namespace NOWA
 		*/
 		virtual bool isActivated(void) const override;
 
+		void setAnimationName(const Ogre::String& animationName);
+
+		const Ogre::String getAnimationName(void) const;
+
+		void setSpeed(Ogre::Real animationSpeed);
+
+		Ogre::Real getSpeed(void) const;
+
+		void setRepeat(bool animationRepeat);
+
+		bool getRepeat(void) const;
+
+		void activateAnimation(void);
+
+		bool isComplete(void) const;
+
+		AnimationBlenderV2* getAnimationBlender(void) const;
+
+		Ogre::Bone* getBone(const Ogre::String& boneName);
+
+		Ogre::Vector3 getLocalToWorldPosition(Ogre::Bone* bone);
+
+		Ogre::Quaternion getLocalToWorldOrientation(Ogre::Bone* bone);
+
+		// These methods are just for lua and are not stored for an editor
+
+		void setTimePosition(Ogre::Real timePosition);
+
+		Ogre::Real getTimePosition(void) const;
+
+		Ogre::Real getLength(void) const;
+
+		void setWeight(Ogre::Real weight);
+
+		Ogre::Real getWeight(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("PluginTemplate");
+			return NOWA::getIdFromName("AnimationComponentV2");
 		}
 
 		/**
@@ -154,7 +194,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "PluginTemplate";
+			return "AnimationComponentV2";
 		}
 	
 		/**
@@ -167,7 +207,7 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: My usage text.";
+			return "Usage: Play one animation with Ogre Item (v2). Requirements: Item must have a skeleton with animations.";
 		}
 		
 		/**
@@ -176,10 +216,21 @@ namespace NOWA
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrName(void) { return "Animation Name"; }
+		static const Ogre::String AttrSpeed(void) { return "Speed"; }
+		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
 	private:
+		void resetAnimation(void);
+		void createAnimationBlender(void);
+	protected:
 		Ogre::String name;
-
+		Ogre::SkeletonInstance* skeleton;
+		bool isInSimulation;
 		Variant* activated;
+		Variant* animationName;
+		Variant* animationSpeed;
+		Variant* animationRepeat;
+		AnimationBlenderV2* animationBlender;
 	};
 
 }; // namespace end

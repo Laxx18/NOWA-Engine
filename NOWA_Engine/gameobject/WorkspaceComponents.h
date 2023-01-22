@@ -245,6 +245,8 @@ namespace NOWA
 
 		virtual void createDistortionNode(void);
 
+		virtual void createSSAONode(void);
+
 		Ogre::String getDistortionNode(void) const;
 
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);

@@ -1174,6 +1174,118 @@ namespace NOWA
 		}
 	}
 
+	void WorkspaceBaseComponent::createSSAONode(void)
+	{
+#if 0
+		if (true == this->useSSAO->getBool())
+		{
+			if (false == this->compositorManager->hasNodeDefinition(this->ssaoNode))
+			{
+				Ogre::CompositorNodeDef* compositorNodeDefinition = compositorManager->addNodeDefinition(this->ssaoNode);
+
+				// depthTextureCopy target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("depthTextureCopy");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+							passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
+							passQuad->addQuadTextureSource(0, "depthTexture");
+						}
+					}
+				}
+
+				// ssaoTexture target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("ssaoTexture");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+							passQuad->mClearColour[0] = Ogre::ColourValue::White;
+
+							passQuad->mMaterialName = "SSAO/HS";
+							passQuad->addQuadTextureSource(0, "depthTextureCopy");
+							passQuad->addQuadTextureSource(1, "gBufferNormals");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// blurTextureHorizontal target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureHorizontal");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/BlurH";
+							passQuad->addQuadTextureSource(0, "ssaoTexture");
+							passQuad->addQuadTextureSource(1, "depthTextureCopy");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// blurTextureVertical target
+				{
+					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureVertical");
+
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/BlurV";
+							passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
+							passQuad->addQuadTextureSource(1, "depthTextureCopy");
+							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
+						}
+					}
+				}
+
+				// Add also a target to final composition
+				Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst(this->finalRenderingNodeName);
+				if (nullptr != nodeDef)
+				{
+					auto targetDef = compositorNodeDefinition->getTargetPass(0);
+					if (nullptr != targetDef)
+					{
+						// Render Quad
+						{
+							Ogre::CompositorPassQuadDef* passQuad;
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+
+							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
+							passQuad->mMaterialName = "SSAO/Apply";
+							passQuad->addQuadTextureSource(0, "blurTextureVertical");
+							passQuad->addQuadTextureSource(1, "rt0");
+							// If does not work, test this one: "rt_output"
+						}
+					}
+				}
+			}
+		}
+#endif
+	}
+
 	Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
 	{
 		return this->distortionNode;
@@ -2191,6 +2303,29 @@ namespace NOWA
 				workspaceDef->connect(this->renderingNodeName, distortionOutput, distortionNodeName, 1);
 			}
 
+			if (true == this->useSSAO->getBool())
+			{
+				// rtv rt0
+				{
+					// If addRenderTextureView fails, try ssaoDef->->getRenderTargetViewDefNonConstNoThrow( "rt0" );
+					Ogre::CompositorNodeDef* compositorNodeDefinition = this->compositorManager->getNodeDefinitionNonConst(this->renderingNodeName);
+
+					Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->getRenderTargetViewDefNonConstNoThrow("rt0");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "rt0";
+					rtv->colourAttachments.push_back(attachment);
+					attachment.textureName = "gBufferNormals";
+					rtv->colourAttachments.push_back(attachment);
+					rtv->depthAttachment.textureName = "depthTexture";
+
+					/*Ogre::RenderTargetViewEntry attachment2;
+					attachment2.textureName = "gBufferNormals";
+					rtv->colourAttachments.push_back(attachment2);
+
+					rtv->stencilAttachment.textureName = "depthTexture";*/
+				}
+			}
+
 			if (false == this->useHdr->getBool())
 			{
 				if (true == this->useDistortion->getBool())
@@ -2521,7 +2656,7 @@ namespace NOWA
 			// For SSAO necessary?
 			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
-
+#if 0
 			if (true == this->useSSAO->getBool())
 			{
 				texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
@@ -2576,6 +2711,7 @@ namespace NOWA
 				blurTextureVerticalTexDef->depthBufferId = 0;
 				blurTextureVerticalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 			}
+#endif
 
 			if (true == this->useDistortion->getBool())
 			{
@@ -2617,17 +2753,28 @@ namespace NOWA
 			rtv->colourAttachments.push_back(attachment);
 			// rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
+#if 0
 			if (true == this->useSSAO->getBool())
 			{
 				// rtv rt0
 				{
-					Ogre::RenderTargetViewEntry attachment2;
+					// If addRenderTextureView fails, try ssaoDef->->getRenderTargetViewDefNonConstNoThrow( "rt0" );
+					// Ogre::RenderTargetViewDef* rtv = compositorNodeDefinition->addRenderTextureView("rt0");
+					Ogre::RenderTargetViewEntry attachment;
+					attachment.textureName = "rt0";
+					rtv->colourAttachments.push_back(attachment);
+					attachment.textureName = "gBufferNormals";
+					rtv->colourAttachments.push_back(attachment);
+					rtv->depthAttachment.textureName = "depthTexture";
+					
+					/*Ogre::RenderTargetViewEntry attachment2;
 					attachment2.textureName = "gBufferNormals";
 					rtv->colourAttachments.push_back(attachment2);
 
-					rtv->stencilAttachment.textureName = "depthTexture";
+					rtv->stencilAttachment.textureName = "depthTexture";*/
 				}
 			}
+#endif
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
 			texDef->width = 0; // target_width
@@ -2644,6 +2791,7 @@ namespace NOWA
 			// Note: When set to POOL_NO_DEPTH, no renderqueues are used, everything is rendered without depth!
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
+#if 0
 			if (true == this->useSSAO->getBool())
 			{
 				// RenderTargetView depthTextureCopy
@@ -2678,6 +2826,7 @@ namespace NOWA
 					rtv->colourAttachments.push_back(attachment);
 				}
 			}
+#endif
 
 			if (true == this->useHdr->getBool())
 			{
@@ -2714,10 +2863,12 @@ namespace NOWA
 			{
 				numTargetPass++;
 			}
+#if 0
 			if (true == this->useSSAO->getBool())
 			{
-				numTargetPass += 4;
+				numTargetPass += 2;
 			}
+#endif
 			compositorNodeDefinition->setNumTargetPass(numTargetPass);
 
 			// rt0 target
@@ -2774,108 +2925,6 @@ namespace NOWA
 				}
 			}
 
-			if (true == this->useSSAO->getBool())
-			{
-				// depthTextureCopy target
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("depthTextureCopy");
-
-					{
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad;
-							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-							passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
-							passQuad->addQuadTextureSource(0, "depthTexture");
-						}
-					}
-				}
-
-				// ssaoTexture target
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("ssaoTexture");
-
-					{
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad;
-							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-							passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
-							passQuad->mClearColour[0] = Ogre::ColourValue::White;
-
-							passQuad->mMaterialName = "SSAO/HS";
-							passQuad->addQuadTextureSource(0, "depthTextureCopy");
-							passQuad->addQuadTextureSource(1, "gBufferNormals");
-							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
-						}
-					}
-				}
-
-				// blurTextureHorizontal target
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureHorizontal");
-
-					{
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad;
-							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-
-							passQuad->mMaterialName = "SSAO/BlurH";
-							passQuad->addQuadTextureSource(0, "ssaoTexture");
-							passQuad->addQuadTextureSource(1, "depthTextureCopy");
-							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
-						}
-					}
-				}
-
-				// blurTextureVertical target
-				{
-					Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("blurTextureVertical");
-
-					{
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad;
-							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-
-							passQuad->mMaterialName = "SSAO/BlurV";
-							passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
-							passQuad->addQuadTextureSource(1, "depthTextureCopy");
-							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
-						}
-					}
-				}
-
-				// Add also a target to final composition
-				Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst(this->finalRenderingNodeName);
-				if (nullptr != nodeDef)
-				{
-					auto targetDef = compositorNodeDefinition->getTargetPass(0);
-					if (nullptr != targetDef)
-					{
-						// Render Quad
-						{
-							Ogre::CompositorPassQuadDef* passQuad;
-							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-
-							passQuad->mMaterialName = "SSAO/Apply";
-							passQuad->addQuadTextureSource(0, "blurTextureVertical");
-							passQuad->addQuadTextureSource(1, "rt0");
-							// If does not work, test this one: "rt_output"
-						}
-					}
-				}
-			}
-
 			if (true == this->useHdr->getBool())
 			{
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("oldLumRt");
@@ -2927,21 +2976,35 @@ namespace NOWA
 				outputChannel++;
 			}
 
+#if 0
+			if (true == this->useSSAO->getBool())
+			{
+				outputChannel += 2;
+			}
+#endif
+
 			compositorNodeDefinition->setNumOutputChannels(outputChannel);
 
 			outputChannel = 0;
 
-			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0");
-			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1");
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt0"); // 0
+			compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt1"); // 1
 
 			if (true == this->useHdr->getBool())
 			{
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "oldLumRt"); // 2
 			}
 			if (true == this->useDistortion->getBool())
 			{
-				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion");
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "rt_distortion"); // 3
 			}
+#if 0
+			if (true == this->useSSAO->getBool())
+			{
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "gBufferNormals"); // 4
+				compositorNodeDefinition->mapOutputChannel(outputChannel++, "depthTexture"); // 5
+			}
+#endif
 		}
 
 		this->setBackgroundColor(this->backgroundColor->getVector3());

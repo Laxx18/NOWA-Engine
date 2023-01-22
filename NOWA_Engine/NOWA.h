@@ -383,6 +383,7 @@ namespace NOWA
 #include "utilities/MeshScissor.h"
 #include "utilities/AnimationSerializer.h"
 #include "utilities/AnimationBlender.h"
+#include "utilities/AnimationBlenderV2.h"
 // #include "utilities/DynamicLines.h"
 #include "utilities/BoundingBoxDraw.h"
 #include "utilities/LensFlare.h"

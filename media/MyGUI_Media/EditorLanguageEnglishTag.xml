@@ -167,6 +167,7 @@
 	<Tag name="OpenProject">Open C++ project</Tag>
 	<Tag name="OwnState">Create scene in own AppState</Tag>
 	<Tag name="IgnoreGlobalScene">Ignore global scene</Tag>
+	<Tag name="UseV2Item">Use V2 Item</Tag>
 	<Tag name="Key">Key</Tag>
 	<Tag name="FailedToLoadProject">Failed to load project!</Tag>
 	<Tag name="Resources">Resources</Tag>

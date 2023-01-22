@@ -2227,7 +2227,7 @@ namespace NOWA
 		}
 	}
 
-#if 0
+#if 1
 	// More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
 	// Unfortunately causes crash e.g. with spaceGun2.mesh
 	void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
@@ -2242,6 +2242,80 @@ namespace NOWA
 				throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
 			}
 
+			// Checks the mesh serializer version, in order to consider whether to create an item (version >= 2.0 or entity < 2.0)
+			Ogre::String resourceFilePathName = Core::getSingletonPtr()->getResourceFilePathName(meshName);
+			resourceFilePathName += "/" + meshName;
+			Ogre::String content = Core::getSingletonPtr()->readContent(resourceFilePathName, 2, 40);
+			size_t serializerStartPos = content.find("[");
+			Ogre::String serializerVersion = "1.4";
+
+			if (serializerStartPos != Ogre::String::npos)
+			{
+				// Get the length of the modulename inside the file
+				size_t serializerEndPos = content.find("]", serializerStartPos);
+				if (serializerEndPos != Ogre::String::npos)
+				{
+					size_t length = serializerEndPos - serializerStartPos - 1;
+					if (length > 0)
+					{
+						Ogre::String serializerName = content.substr(serializerStartPos + 1, length);
+						size_t serializerVersionStartPos = serializerName.find("_v");
+						if (serializerVersionStartPos != Ogre::String::npos)
+						{
+							serializerVersion = serializerName.substr(serializerVersionStartPos + 2, serializerName.length() - serializerVersionStartPos - 2);
+						}
+					}
+				}
+			}
+
+			bool canBeV2Mesh = false;
+			if (serializerVersion == "1.100")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.100")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.8")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.4")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.3")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.2")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.1")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "2.1 R0 LEGACYV1")
+			{
+				canBeV2Mesh = true;
+			}
+
+			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.
+			canBeV2Mesh &= Core::getSingletonPtr()->getUseV2Mesh();
+
+			// See OgreMesh.h
+			/*
+			friend class MeshSerializerImpl_v1_10;
+			friend class MeshSerializerImpl_v1_8;
+			friend class MeshSerializerImpl_v1_4;
+			friend class MeshSerializerImpl_v1_3;
+			friend class MeshSerializerImpl_v1_2;
+			friend class MeshSerializerImpl_v1_1;
+			*/
+			// More to follow
+			
 			Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
 																					  Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
@@ -2254,16 +2328,30 @@ namespace NOWA
 				return;
 			}
 
-			auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-			v1Mesh->unload();
-			v1Mesh.setNull();
+			if (false == canBeV2Mesh)
+			{
+				this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
+				this->tempPlaceMovableObject->setName("PlaceEntity");
+				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
 
-			this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
-			this->tempPlaceMovableObject->setName("PlaceEntity");
-			this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-			this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
+			}
+			else
+			{
 
-			DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup());
+				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+				v1Mesh->unload();
+				v1Mesh.setNull();
+
+				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
+				this->tempPlaceMovableObject->setName("PlaceEntity");
+				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				type = GameObject::ITEM;
+
+				DeployResourceModule::getInstance()->tagResource(meshName, v2Mesh->getGroup());
+			}
 		}
 		catch (Ogre::Exception&)
 		{
@@ -2402,7 +2490,7 @@ namespace NOWA
 	}
 #endif
 
-#if 1
+#if 0
 	void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
 	{
 		// Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
