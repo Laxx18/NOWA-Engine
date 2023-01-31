@@ -1245,6 +1245,13 @@ namespace NOWA
 					this->projectParameter.renderDistance = XMLConverter::getAttribReal(subElement, "renderDistance", Core::getSingletonPtr()->getGlobalRenderDistance());
 					NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
 				}
+
+				subElement = pElement->first_node("useV2Item");
+				if (subElement)
+				{
+					this->projectParameter.useV2Item = XMLConverter::getAttribBool(subElement, "value");
+					Core::getSingletonPtr()->setUseV2Mesh(this->projectParameter.useV2Item);
+				}
 			}
 		}
 
@@ -1913,23 +1920,23 @@ namespace NOWA
 		{
 			if (parent)
 			{
-				pNode = parent->createChildSceneNode(/*Ogre::SCENE_DYNAMIC*/);
+				pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
 			}
 			else
 			{
-				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(/*Ogre::SCENE_DYNAMIC*/);
+				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 			}
 		}
 		else
 		{
 			if (parent)
 			{
-				pNode = parent->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+				pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
 				pNode->setName(name);
 			}
 			else
 			{
-				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 				pNode->setName(name);
 			}
 		}
@@ -2107,61 +2114,51 @@ namespace NOWA
 
 			try
 			{
-				v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-#if 0
-				v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-				if (lodDistance > 0.0f)
+				if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
 				{
-					// Generate LOD levels
-					Ogre::LodConfig lodConfig;
-
-					Ogre::MeshLodGenerator lodGenerator;
-					lodGenerator.getAutoconfig(v1Mesh, lodConfig);
-
-					lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
-
-					for (auto it = lodConfig.levels.begin(); it != lodConfig.levels.end(); ++it)
-					{
-						// E.g. 10 meters = 5421,7295 * x -> x = 10 / 5421,7295 = 0.001844
-						Ogre::Real value = lodDistance / it->distance;
-						it->distance = lodConfig.strategy->transformUserValue(value);
-					}
-
-					lodGenerator.generateLodLevels(lodConfig);
+					v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+																			Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 				}
 
-				// tempMeshFile
-				tempMeshFile.erase(tempMeshFile.find_last_of("."), Ogre::String::npos);
+				// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
-				v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile + "_v2.mesh", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+				if (nullptr == v1Mesh)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
+																	+ tempMeshFile + "' could not be created.");
+					return;
+				}
 
-				// Prepares for shadows
-				const bool oldValue = Ogre::Mesh::msOptimizeForShadowMapping;
-				Ogre::Mesh::msOptimizeForShadowMapping = true;
-				v2Mesh->prepareForShadowMapping(false);
-				Ogre::Mesh::msOptimizeForShadowMapping = oldValue;
-
-				v2Mesh->load();
-
+				if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+				{
+					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+				}
 				v1Mesh->unload();
-				Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
-#endif
+				
 			}
-				catch (Ogre::Exception& e)
+			catch (Ogre::Exception& e)
+			{
+				try
+				{
+					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+					{
+						v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+					}
+				}
+				catch (...)
 				{
 					// Plane has no mesh yet, so skip error
 					if (Ogre::String::npos == meshFile.find("Plane"))
 					{
 						Ogre::String description = e.getFullDescription();
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile
-							+ "! So setting 'Missing.mesh'. Details: " + description);
+																		+ "! So setting 'Missing.mesh'. Details: " + description);
 					}
 					// Try to load the missing.mesh to attend the user, that a resource is missing
 					try
 					{
 						tempMeshFile = "Missing.mesh";
-						Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+						v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
 						// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
 						Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
@@ -2171,13 +2168,11 @@ namespace NOWA
 							Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
 						}
 
-						v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+						if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+						{
+							v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+						}
 						v1Mesh->unload();
-						v1Mesh.setNull();
-
-						// v2Mesh = Ogre::MeshManager::getSingleton().createManual("Plane", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-						// v2Mesh->importV1(v1Mesh.get(), true, true, true);
-						// v1Mesh->unload();
 					}
 					catch (Ogre::Exception& e)
 					{
@@ -2186,15 +2181,16 @@ namespace NOWA
 						return;
 					}
 				}
-				DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+			}
+			DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
 
-				// Always create scene dynamic and later in game object change the type, to what has been configured
-				item = this->sceneManager->createItem(v2Mesh);
-				item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
-				item->setName(name);
-				item->setCastShadows(castShadows);
-				parent->attachObject(item);
-				item->setVisible(visible);
+			// Always create scene dynamic and later in game object change the type, to what has been configured
+			item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
+			item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+			item->setName(name);
+			item->setCastShadows(castShadows);
+			parent->attachObject(item);
+			item->setVisible(visible);
 		}
 
 		// callback to react on postload
@@ -2426,7 +2422,7 @@ namespace NOWA
 			if (GameObject::ENTITY == type)
 			{
 				// Always create scene dynamic and later in game object change the type, to what has been configured
-				entity = this->sceneManager->createEntity(v1Mesh);
+				entity = this->sceneManager->createEntity(v1Mesh, Ogre::SCENE_STATIC);
 				entity->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
 				parent->attachObject(entity);
 
@@ -2437,7 +2433,7 @@ namespace NOWA
 			}
 			else
 			{
-				item = this->sceneManager->createItem(v2Mesh);
+				item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
 				item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
 				parent->attachObject(item);
 
@@ -2727,7 +2723,7 @@ namespace NOWA
 			Ogre::Plane plane(normal, distance);
 			Ogre::v1::MeshPtr planeMeshV1;
 
-			planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals,
+			planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(name + "mesh", "General", plane, width, height, xSegments, ySegments, hasNormals,
 				numTexCoordSets, uTile, vTile, up, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
 			DeployResourceModule::getInstance()->tagResource(name + "mesh", planeMeshV1->getGroup());
@@ -2740,7 +2736,7 @@ namespace NOWA
 			// v2Mesh->importV1(planeMeshV1.get(), true, true, true);
 			// planeMeshV1->unload();
 
-			item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_DYNAMIC);
+			item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
 			item->setName(name + "mesh");
 
 			// MathHelper::getInstance()->ensureHasTangents(entity->getMesh());

@@ -177,6 +177,9 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributeEffectComponent] Init attribute effect component for game object: " + this->gameObjectPtr->getName());
 
+		this->gameObjectPtr->setDynamic(true);
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+
 		return true;
 	}
 	

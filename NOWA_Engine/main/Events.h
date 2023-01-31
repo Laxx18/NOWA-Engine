@@ -1648,6 +1648,63 @@ namespace NOWA
 		}
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataDeleteJoint - This event is sent out when a joint has been deleted in order to react and delete other joints
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataDeleteJoint : public BaseEventData
+	{
+	public:
+
+		EventDataDeleteJoint(void) :
+			jointId(0)
+		{
+		}
+
+		explicit EventDataDeleteJoint(const unsigned long jointId)
+			: jointId(jointId)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe86c7d46;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe86c7d46;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->jointId) >> Ogre::String(" ");
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataDeleteJoint(this->jointId));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->jointId) << " ";
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataDeleteJoint";
+		}
+
+		unsigned long getJointId(void) const
+		{
+			return this->jointId;
+		}
+
+	private:
+		unsigned long jointId;
+	};
+
 }; // namespace end
 
 #endif

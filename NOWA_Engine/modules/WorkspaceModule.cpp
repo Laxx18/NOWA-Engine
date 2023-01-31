@@ -26,6 +26,8 @@ namespace NOWA
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
 		// assert(dynamic_cast<Ogre::HlmsPbs*>(hlms));
 		this->pbs = static_cast<Ogre::HlmsPbs*>(hlms);
+		// Attention: Just a Test!
+		this->pbs->setDefaultBrdfWithDiffuseFresnel(true);
 		// assert(dynamic_cast<Ogre::HlmsUnlit*>(hlms));
 		this->unlit = static_cast<Ogre::HlmsUnlit*>(hlms);
 		this->hlmsManager = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager();

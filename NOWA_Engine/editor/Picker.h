@@ -15,11 +15,31 @@ namespace NOWA
 	class GameObject;
 	class OgreNewt::KinematicController;
 
+	class EXPORTED IPicker
+	{
+	public:
+		virtual Ogre::Real getPickForce(void) const = 0;
+
+		virtual Ogre::Ray getRayFromMouse(void) const = 0;
+
+		virtual Ogre::Real getDragDistance(void) const = 0;
+
+		virtual Ogre::Vector3 getDragPoint(void) const = 0;
+
+		virtual bool getDrawLine(void) const = 0;
+
+		virtual void createLine(void) = 0;
+
+		virtual void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition) = 0;
+
+		virtual void destroyLine() = 0;
+	};
+
 	/**
 	* @class Picker
 	* @brief This class can be used to drag game objects physically via an input device
 	*/
-	class EXPORTED Picker
+	class EXPORTED Picker : public IPicker
 	{
 	public:
 		class PickForceObserver : public PhysicsActiveComponent::IForceObserver
@@ -113,6 +133,7 @@ namespace NOWA
 		*/
 		void init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::Real maxDistance = 100.0f, unsigned int queryMask = 0xFFFFFFFF, bool drawLines = true);
 
+		
 		/**
 		 * @brief		Attaches a pick observer to react at the moment when a game object has been picked or released.
 		 * @param[in]	pickObserver	The pick observer to attach
@@ -146,7 +167,7 @@ namespace NOWA
 		* @return		physicsActiveGameObject The resulting game object that is being dragged.
 		*/
 
-		PhysicsComponent* grab(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow, Ogre::Real pickForce = 20);
+		PhysicsComponent* grab(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow, Ogre::Real pickForce = 20.0f);
 
 		/**
 		* @brief	Releases the dragged game object
@@ -163,24 +184,24 @@ namespace NOWA
 		 * @brief		Gets the current pick force
 		 * @return		pickForce The pick force to get
 		 */
-		Ogre::Real getPickForce(void) const;
-	private:
+		virtual Ogre::Real getPickForce(void) const override;
+	protected:
 		Picker(const Picker&);
 		Picker& operator = (const Picker&);
 
-		Ogre::Ray getRayFromMouse(void) const;
+		virtual Ogre::Ray getRayFromMouse(void) const override;
 
-		Ogre::Real getDragDistance(void) const;
+		virtual Ogre::Real getDragDistance(void) const override;
 
-		Ogre::Vector3 getDragPoint(void) const;
+		virtual Ogre::Vector3 getDragPoint(void) const override;
 
-		bool getDrawLine(void) const;
+		virtual bool getDrawLine(void) const override;
 
-		void createLine(void);
+		virtual void createLine(void) override;
 
-		void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition);
+		virtual void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition) override;
 
-		void destroyLine();
+		virtual void destroyLine() override;
 
 		void dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 	private:
@@ -199,12 +220,181 @@ namespace NOWA
 		PhysicsComponent* dragComponent;
 		OgreNewt::Body* hitBody;
 		unsigned int queryMask;
+		unsigned long gameObjectId;
 		Ogre::SceneNode* dragLineNode;
 		Ogre::ManualObject* dragLineObject;
 		std::vector<IPickObserver*> pickObservers;
 		bool hasMoveCallback;
 		OgreNewt::Body::ForceCallback oldForceTorqueCallback;
 	};
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* @class GameObjectPicker
+	* @brief This class can be used to drag a game object physically via an input device
+	*/
+	class EXPORTED GameObjectPicker : public IPicker
+	{
+	public:
+		class PickForceObserver : public PhysicsActiveComponent::IForceObserver
+		{
+		public:
+			PickForceObserver(IPicker* picker)
+				: PhysicsActiveComponent::IForceObserver(picker)
+			{
+
+			}
+
+			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) override
+			{
+				Ogre::Ray mouseRay = this->picker->getRayFromMouse();
+				// Get the global position our cursor is at
+				Ogre::Vector3 cursorPos = mouseRay.getPoint(this->picker->getDragDistance());
+
+				Ogre::Quaternion bodyOrientation;
+				Ogre::Vector3 bodyPos;
+
+				// Now find the global point on the body
+				body->getPositionOrientation(bodyPos, bodyOrientation);
+
+				// Find the handle position we are holding the body from
+				Ogre::Vector3 dragPos = (bodyOrientation * this->picker->getDragPoint()) + (bodyPos + static_cast<GameObjectPicker*>(this->picker)->offsetPosition);
+
+				Ogre::Vector3 inertia;
+				Ogre::Real mass;
+
+				body->getMassMatrix(mass, inertia);
+
+				// Calculate picking spring force
+				Ogre::Vector3 dragForce = Ogre::Vector3::ZERO;
+
+				if (Ogre::Math::RealEqual(this->picker->getPickForce(), 50.0f))
+				{
+					body->setPositionOrientation(cursorPos, Ogre::Quaternion::IDENTITY);
+					// Annulate gravity
+					body->addForce(body->getGravity() * mass);
+					this->picker->destroyLine();
+				}
+				else
+				{
+					Ogre::Real length = (cursorPos - dragPos).length();
+					// Ogre::LogManager::getSingletonPtr()->logMessage("length: " + Ogre::StringConverter::toString(this->dragDistance));
+					if (length < static_cast<GameObjectPicker*>(this->picker)->dragAffectDistance)
+					{
+						Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * (static_cast<Ogre::Real>(this->picker->getPickForce())))/* - body->getVelocity()*/;
+						if (this->picker->getDrawLine())
+						{
+							this->picker->drawLine(cursorPos, dragPos);
+						}
+						// Add the picking spring force at the handle
+						body->addGlobalForce(dragForce, dragPos);
+					}
+					else
+					{
+						if (this->picker->getDrawLine())
+						{
+							this->picker->destroyLine();
+						}
+					}
+				}
+			}
+		};
+	public:
+		GameObjectPicker();
+		~GameObjectPicker();
+
+		/**
+		* @brief		Initializes the picker.
+		* @param[in]	maxDistance		The the maximum drag distance in meters
+		* @param[in]	gameObjectId	The game object id, which shall be dragged.
+		*/
+		void init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::Real maxDistance, unsigned long gameObjectId);
+
+		/**
+		* @brief		Actualizes the picker.
+		* @param[in]	gameObjectId	The game object id, which shall be dragged.
+		* @param[in]	drawLines		Whether to draw a line
+		*/
+		void actualizeData(Ogre::Camera* camera, unsigned long gameObjectId, bool drawLines);
+
+		/**
+		* @brief		Executes the grab process. This function can be used e.g. when holding a mouse button.
+		* @param[in]	ogreNewt				The ogre newt physics to grab game objects physically
+		* @param[in]	position				The position of the input device, e.g. x, y of the mouse.
+		* @note									The x, y coordinates are absolute cooridnates, ms.X.abs for example
+		* @param[in]	renderWindow			The render window, which is used to get the area size and correct mapped x, y coordinates. Since these coordinates are depending on the render window size.
+		* @param[in]	pickForce				The absolute pick force in newton meters. This values determines the force at which a gameobject will be dragged. The pick force is always added to the
+		*										already existing mass of the dragged game object. That means, each active game object, no matter what mass it has will be dragged.
+		*										Increasing the pick force dragges the game object with more violence.
+		* @param[in]	dragAffectDistance		The drag affect distance in meters at which the target game object is affected by the picker.
+		* @param[in]	offsetPositoin			The offset position at which the target game object shall be picked.
+		* @return		physicsActiveGameObject The resulting game object that is being dragged.
+		*/
+
+		void grabGameObject(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow, Ogre::Real pickForce = 20.0f, Ogre::Real dragAffectDistance = 5.0f, const Ogre::Vector3& offsetPosition = Ogre::Vector3::ZERO);
+
+		/**
+		* @brief	Releases the dragged game object
+		*/
+		void release(void);
+
+		/**
+		* @brief		Adapts the query mask at runtime, to change which game object types can be dragged.
+		* @param[in]	newQueryMask	The new query mask to use
+		*/
+		void updateQueryMask(unsigned int newQueryMask);
+
+		/**
+		 * @brief		Gets the current pick force
+		 * @return		pickForce The pick force to get
+		 */
+		virtual Ogre::Real getPickForce(void) const override;
+	protected:
+		GameObjectPicker(const GameObjectPicker&);
+		GameObjectPicker& operator = (const GameObjectPicker&);
+
+		virtual Ogre::Ray getRayFromMouse(void) const override;
+
+		virtual Ogre::Real getDragDistance(void) const override;
+
+		virtual Ogre::Vector3 getDragPoint(void) const override;
+
+		virtual bool getDrawLine(void) const override;
+
+		virtual void createLine(void) override;
+
+		virtual void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition) override;
+
+		virtual void destroyLine() override;
+
+		void dragCallbackGameObject(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+	private:
+		bool active;
+		bool dragging;
+		Ogre::Real maxDistance;
+		Ogre::Real pickForce;
+		bool drawLines;
+		Ogre::Vector2 mousePosition;
+
+		Ogre::SceneManager* sceneManager;
+		Ogre::Camera* camera;
+		Ogre::Window* renderWindow;
+		Ogre::Vector3 dragPoint;
+		Ogre::Real dragDistance;
+		PhysicsComponent* dragComponent;
+		OgreNewt::Body* hitBody;
+		unsigned int queryMask;
+		unsigned long gameObjectId;
+		Ogre::SceneNode* dragLineNode;
+		Ogre::ManualObject* dragLineObject;
+		bool hasMoveCallback;
+		OgreNewt::Body::ForceCallback oldForceTorqueCallback;
+		Ogre::Real dragAffectDistance;
+		Ogre::Vector3 offsetPosition;
+	};
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	* @class KinematicPicker

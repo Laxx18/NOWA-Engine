@@ -5,6 +5,7 @@
 #include "utilities/MathHelper.h"
 #include "utilities/AnimationBlender.h"
 #include "main/AppStateManager.h"
+#include "TagPointComponent.h"
 
 namespace NOWA
 {
@@ -601,6 +602,28 @@ namespace NOWA
 			{
 				boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
+
+				// Must be called, else when re-activating this state, the bones will become a mess!
+				this->endRagdolling();
+
+				this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+				if (this->rdOldState == PhysicsRagDollComponent::RAGDOLLING)
+				{
+					// Set a bit higher, so that the collision hull may be created above the ground, if changed from ragdoll to inactive
+					this->initialPosition += Ogre::Vector3(0.0f, this->gameObjectPtr->getBottomOffset().y, 0.0f);
+				}
+				this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+				// Only use initial orientation, if the old state was not ragdolling, because else, the player is rotated in wrong manner and constraint axis, up vector will be incorrect
+				if (this->rdOldState != PhysicsRagDollComponent::RAGDOLLING)
+				{
+					this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+				}
+
+				this->releaseConstraintDirection();
+				this->releaseConstraintAxis();
+				// Must be placed, else after one time disconnect, a crash occurs
+				this->destroyBody();
+				this->createDynamicBody();
 			}
 
 			// Must be set manually because, only at connect, all data for debug is available (bodies, joints)
@@ -1042,10 +1065,14 @@ namespace NOWA
 			}
 
 			Ogre::String strJointType = jointXmlElement->Attribute("Type");
-			PhysicsRagDollComponent::JointType jointType = PhysicsRagDollComponent::JT_BALLSOCKET;
+			PhysicsRagDollComponent::JointType jointType = PhysicsRagDollComponent::JT_BASE;
 			Ogre::Vector3 pin = Ogre::Vector3::ZERO;
 
-			if (strJointType == JointBallAndSocketComponent::getStaticClassName())
+			if (strJointType == JointComponent::getStaticClassName())
+			{
+				jointType = PhysicsRagDollComponent::JT_BASE;
+			}
+			else if (strJointType == JointBallAndSocketComponent::getStaticClassName())
 			{
 				jointType = PhysicsRagDollComponent::JT_BALLSOCKET;
 			}
@@ -1103,8 +1130,18 @@ namespace NOWA
 				}
 			}
 
-			Ogre::Degree minTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(jointXmlElement->Attribute("MinTwistAngle")));
-			Ogre::Degree maxTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(jointXmlElement->Attribute("MaxTwistAngle")));
+			Ogre::Degree minTwistAngle = Ogre::Degree(0.0f);
+			Ogre::Degree maxTwistAngle = Ogre::Degree(0.0f);
+
+			if (jointXmlElement->Attribute("MinTwistAngle"))
+			{
+				minTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(jointXmlElement->Attribute("MinTwistAngle")));
+			}
+			if (jointXmlElement->Attribute("MinTwistAngle"))
+			{
+				maxTwistAngle = Ogre::Degree(Ogre::StringConverter::parseReal(jointXmlElement->Attribute("MaxTwistAngle")));
+			}
+
 			Ogre::Degree minTwistAngle2 = Ogre::Degree(0.0f);
 			Ogre::Degree maxTwistAngle2 = Ogre::Degree(0.0f);
 
@@ -1190,6 +1227,29 @@ namespace NOWA
 		
 		switch(type)
 		{
+			case PhysicsRagDollComponent::JT_BASE:
+			{
+				JointCompPtr tempChildCompPtr = boost::dynamic_pointer_cast<JointComponent>(
+					childRagBone->createJointComponent(JointBallAndSocketComponent::getStaticClassName()));
+
+				// tempChildCompPtr->setDofCount(2);
+				// tempChildCompPtr->setMotorOn(true);
+				tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
+				tempChildCompPtr->setBody(childRagBone->getBody());
+				tempChildCompPtr->setStiffness(0.1f);
+				// tempChildCompPtr->setDryFriction(0.5f);
+				// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
+				tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
+				tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
+
+				tempChildCompPtr->setJointRecursiveCollisionEnabled(false);
+
+				childJointCompPtr = tempChildCompPtr;
+				// Add also to GOC, so that other joints can be connected from the outside, but also create joint here, so that the body position has not changed
+				// Because GOC will create later and ragdoll has been applied and body pos changed!
+				AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
+			}
+			break;
 			case PhysicsRagDollComponent::JT_BALLSOCKET:
 				{
 					JointBallAndSocketCompPtr tempChildCompPtr = boost::dynamic_pointer_cast<JointBallAndSocketComponent>(
@@ -1197,8 +1257,10 @@ namespace NOWA
 				
 					// tempChildCompPtr->setDofCount(2);
 					// tempChildCompPtr->setMotorOn(true);
+					tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
 					tempChildCompPtr->setBody(childRagBone->getBody());
 					tempChildCompPtr->setAnchorPosition(offset);
+					tempChildCompPtr->setStiffness(0.1f);
 					// tempChildCompPtr->setDryFriction(0.5f);
 					// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
 					tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
@@ -1231,8 +1293,10 @@ namespace NOWA
 					
 					// tempChildCompPtr->setDofCount(1);
 					// tempChildCompPtr->setMotorOn(true);
+					tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
 					tempChildCompPtr->setBody(childRagBone->getBody());
 					tempChildCompPtr->setAnchorPosition(offset);
+					tempChildCompPtr->setStiffness(0.1f);
 					// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
 					tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
 					tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
@@ -1241,6 +1305,7 @@ namespace NOWA
 				
 					tempChildCompPtr->setLimitsEnabled(true);
 					tempChildCompPtr->setMinMaxAngleLimit(minTwistAngle, maxTwistAngle);
+					tempChildCompPtr->setStiffness(0.1f);
 					// tempChildCompPtr->setSpring(useSpring);
 					// tempChildCompPtr->setMinMaxConeAngleLimit(minTwistAngle, maxTwistAngle, maxConeAngle);
 					tempChildCompPtr->createJoint();
@@ -1263,8 +1328,10 @@ namespace NOWA
 					
 					// tempChildCompPtr->setDofCount(1);
 					// tempChildCompPtr->setMotorOn(true);
+					tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
 					tempChildCompPtr->setBody(childRagBone->getBody());
 					tempChildCompPtr->setAnchorPosition(offset);
+					tempChildCompPtr->setStiffness(0.1f);
 					// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
 					tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
 					tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
@@ -1290,8 +1357,10 @@ namespace NOWA
 
 					// tempChildCompPtr->setDofCount(1);
 					// tempChildCompPtr->setMotorOn(true);
+					tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
 					tempChildCompPtr->setBody(childRagBone->getBody());
 					tempChildCompPtr->setAnchorPosition(offset);
+					tempChildCompPtr->setStiffness(0.1f);
 					// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
 					tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
 					tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
@@ -1325,8 +1394,10 @@ namespace NOWA
 
 				// tempChildCompPtr->setDofCount(1);
 				// tempChildCompPtr->setMotorOn(true);
+				tempChildCompPtr->setBodyMassScale(Ogre::Vector2(0.1f, 1.0f));
 				tempChildCompPtr->setBody(childRagBone->getBody());
 				tempChildCompPtr->setAnchorPosition(offset);
+				tempChildCompPtr->setStiffness(0.1f);
 				// Set predecessor id and body manually, since ragdoll joints are not part of the game object controller's controlling
 				tempChildCompPtr->setPredecessorId(parentJointCompPtr->getId());
 				tempChildCompPtr->connectPredecessorCompPtr(parentJointCompPtr);
@@ -1688,6 +1759,17 @@ namespace NOWA
 		{
 			this->rootJointCompPtr.reset();
 		}
+
+		boost::shared_ptr<TagPointComponent> tagPointCompPtr = nullptr;
+		size_t i = 0;
+		do
+		{
+			tagPointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TagPointComponent>(i++));
+			if (nullptr != tagPointCompPtr)
+			{
+				tagPointCompPtr->disconnect();
+			}
+		} while (nullptr != tagPointCompPtr);
 
 		this->skeleton->unload();
 		// this->skeleton->reload();

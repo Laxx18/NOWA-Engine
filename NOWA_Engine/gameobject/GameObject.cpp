@@ -1496,7 +1496,12 @@ namespace NOWA
 
 	void GameObject::setVisible(bool visible)
 	{
-		if (visible != this->visible->getBool())
+		bool isVisible = true;
+		if (nullptr != this->movableObject)
+		{
+			isVisible = this->movableObject->getVisible();
+		}
+		if (isVisible != this->visible->getBool())
 		{
 			this->visible->setValue(visible);
 			this->sceneNode->setVisible(visible);
@@ -1740,8 +1745,8 @@ namespace NOWA
 			Ogre::v1::MeshPtr v1Mesh;
 			Ogre::MeshPtr v2Mesh;
 			GameObject::eType type = GameObject::ENTITY;
-			// Attention with hbu_static, there is also dynamic
 
+			// Attention with hbu_static, there is also dynamic
 			Ogre::String tempMeshFile;
 
 			Ogre::Item* item = this->getMovableObject<Ogre::Item>();
@@ -1751,7 +1756,11 @@ namespace NOWA
 
 				try
 				{
-					v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+					if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+					{
+						v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+																				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+					}
 
 					// Generate LOD levels
 					Ogre::LodConfig lodConfig;
@@ -1797,13 +1806,18 @@ namespace NOWA
 
 					DeployResourceModule::getInstance()->removeResource(tempMeshFile);
 
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-					v2Mesh->load();
+					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+					{
+						v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+						v2Mesh->load();
+					}
 
 					v1Mesh->unload();
 					Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
 
-					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v1Mesh->getGroup());
+					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+
+					
 
 					Ogre::ConfigFile cf;
 					cf.load(Core::getSingletonPtr()->getResourcesName());
@@ -1831,7 +1845,7 @@ namespace NOWA
 						serializer.exportMesh(v2Mesh.get(), filePathName);
 					}
 				}
-				catch (Ogre::Exception& e)
+				catch (...)
 				{
 				}
 			}
@@ -1843,7 +1857,11 @@ namespace NOWA
 				{
 					tempMeshFile = entity->getMesh()->getName();
 
-					v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+					if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+					{
+						v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+																				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+					}
 
 					// Generate LOD levels
 					Ogre::LodConfig lodConfig;

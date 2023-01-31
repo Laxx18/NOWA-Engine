@@ -8,7 +8,7 @@
 
 namespace NOWA
 {
-	class Picker;
+	class IPicker;
 	class LuaScript;
 
 	class EXPORTED PhysicsActiveComponent : public PhysicsComponent
@@ -78,7 +78,7 @@ namespace NOWA
 		class EXPORTED IForceObserver
 		{
 		public:
-			IForceObserver(Picker* picker)
+			IForceObserver(IPicker* picker)
 				: picker(picker)
 			{
 
@@ -106,7 +106,7 @@ namespace NOWA
 			*/
 			virtual void onForceAdd(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex) = 0;
 		protected:
-			Picker* picker;
+			IPicker* picker;
 		private:
 			Ogre::String name;
 		};

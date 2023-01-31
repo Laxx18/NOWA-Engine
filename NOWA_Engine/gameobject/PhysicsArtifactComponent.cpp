@@ -263,6 +263,10 @@ namespace NOWA
 		// Object will not be moved frequently
 		// this->gameObjectPtr->setDynamic(false); // Am I shit? Let the designer choose, because else an object with artifact collision can be no more moved!
 
+		// Component must be dynamic, because it will be moved
+		this->gameObjectPtr->setDynamic(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+
 		return true;
 	}
 

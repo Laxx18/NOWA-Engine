@@ -507,7 +507,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "bool getUseMultiSelection()", "Gets whether multiple game objects can be selected.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void setUseSelectionRectangle(bool useSelectionRectangle)", "Sets whether use a selection rectangle for multiple game objects selection.");
 		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "bool getUseSelectionRectangle()", "Gets whether use a selection rectangle for multiple game objects selection.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnGameObjectsSelected(func closureFunction, table[GameObject])",
+		LuaScriptApi::getInstance()->addClassToCollection("SelectGameObjectsComponent", "void reactOnGameObjectsSelected(func closureFunction, table[GameObject])",
 			"Sets whether to react if one or more game objects are selected.");
 		LuaScriptApi::getInstance()->addClassToCollection("select", "void select(string gameObjectId, bool bSelect)", "Selects or un-selects the given game object by id.");
 

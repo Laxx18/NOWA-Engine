@@ -73,7 +73,7 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Strength")
 		{
-			this->strength->setValue(XMLConverter::getAttribReal(propertyElement, "data", false));
+			this->strength->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		
@@ -152,6 +152,11 @@ namespace NOWA
 
 	void DistortionComponent::createDistortion(void)
 	{
+		if (nullptr == this->gameObjectPtr)
+		{
+			return;
+		}
+
 		if (nullptr == this->distortionDatablock)
 		{
 			// Store current datablock name
@@ -295,7 +300,7 @@ namespace NOWA
 		}
 		else if(DistortionComponent::AttrStrength() == attribute->getName())
 		{
-			this->setStrength(attribute->getBool());
+			this->setStrength(attribute->getReal());
 		}
 	}
 
@@ -319,7 +324,7 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Strength"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->strength->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->strength->getReal())));
 		propertiesXML->append_node(propertyXML);
 	}
 

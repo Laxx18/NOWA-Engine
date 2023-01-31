@@ -344,6 +344,7 @@ namespace NOWA
 	protected:
 		enum JointType
 		{
+			JT_BASE,
 			JT_BALLSOCKET,
 			JT_HINGE,
 			JT_DOUBLE_HINGE,

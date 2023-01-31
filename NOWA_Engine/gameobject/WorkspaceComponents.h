@@ -243,9 +243,9 @@ namespace NOWA
 
 		virtual void baseCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef);
 
-		virtual void createDistortionNode(void);
+		virtual void createFinalRenderNode(void);
 
-		virtual void createSSAONode(void);
+		virtual void createDistortionNode(void);
 
 		Ogre::String getDistortionNode(void) const;
 
@@ -361,9 +361,6 @@ namespace NOWA
 		Ogre::HlmsListener* hlmsListener;
 
 		HlmsWind* hlmsWind;
-
-		Ogre::Pass* passSSAO;
-		Ogre::Pass* passSSAOApply;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

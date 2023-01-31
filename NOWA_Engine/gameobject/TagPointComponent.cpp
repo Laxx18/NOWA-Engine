@@ -5,6 +5,7 @@
 #include "utilities/MathHelper.h"
 #include "AnimationComponent.h"
 #include "JointComponents.h"
+#include "PhysicsRagDollComponent.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA
@@ -35,7 +36,7 @@ namespace NOWA
 					this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
 					jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
 					jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
-					jointKinematicCompPtr->setPickingMode(4);
+					jointKinematicCompPtr->setPickingMode(3);
 					jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
 					jointKinematicCompPtr->createJoint();
 					this->jointKinematicComponent = jointKinematicCompPtr.get();
@@ -284,14 +285,6 @@ namespace NOWA
 	{
 		if (false == alreadyConnected)
 		{
-			auto& animationCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AnimationComponent>());
-			if (nullptr == animationCompPtr)
-			{
-				// Sent event with feedback
-				boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{AnimationComponentMissing} -> : " + this->gameObjectPtr->getName()));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-			}
-			
 			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 			if (nullptr == entity)
 				return false;
@@ -336,6 +329,11 @@ namespace NOWA
 					}
 				}
 
+				if (nullptr == this->tagPoint)
+				{
+					this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
+					this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+				}
 				this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(), 
 					MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent, this->gameObjectPtr.get()));
 
@@ -347,45 +345,7 @@ namespace NOWA
 
 	bool TagPointComponent::disconnect(void)
 	{
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity && nullptr != this->tagPoint)
-		{
-			Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
-			this->tagPoint->setListener(nullptr);
-			delete nodeListener;
-
-			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-			if (nullptr != sourceGameObjectPtr)
-			{
-				// Reset pointer
-				sourceGameObjectPtr->setConnectedGameObject(boost::weak_ptr<GameObject>());
-
-				if (nullptr != this->tagPointNode)
-				{
-					std::vector<Ogre::MovableObject*> movableObjects;
-					auto& it = this->tagPointNode->getAttachedObjectIterator();
-					// First detach and reatach all movable objects, that are belonging to the source scene node (e.g. mesh, light)
-					while (it.hasMoreElements())
-					{
-						Ogre::MovableObject* movableObject = it.getNext();
-						movableObjects.emplace_back(movableObject);
-					}
-					for (size_t i = 0; i < movableObjects.size(); i++)
-					{
-						movableObjects[i]->detachFromParent();
-						sourceGameObjectPtr->getSceneNode()->attachObject(movableObjects[i]);
-					}
-				}
-			}
-
-			if (nullptr != this->tagPointNode)
-			{
-				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
-				this->tagPointNode = nullptr;
-			}
-
-			this->alreadyConnected = false;
-		}
+		this->resetTagPoint();
 		return true;
 	}
 
@@ -404,6 +364,20 @@ namespace NOWA
 					oldSkeletonInstance->freeTagPoint(this->tagPoint);
 					this->tagPoint = nullptr;
 				}
+			}
+		}
+	}
+
+	void TagPointComponent::onOtherComponentRemoved(unsigned int index)
+	{
+		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		if (nullptr != gameObjectCompPtr)
+		{
+			auto& physicsRagdollCompPtr = boost::dynamic_pointer_cast<PhysicsRagDollComponent>(gameObjectCompPtr);
+			auto& animationCompPtr = boost::dynamic_pointer_cast<AnimationComponent>(gameObjectCompPtr);
+			if (nullptr != physicsRagdollCompPtr || nullptr != animationCompPtr)
+			{
+				this->resetTagPoint();
 			}
 		}
 	}
@@ -697,6 +671,50 @@ namespace NOWA
 			this->debugGeometrySphereNode = nullptr;
 			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometrySphereEntity);
 			this->debugGeometrySphereEntity = nullptr;
+		}
+	}
+
+	void TagPointComponent::resetTagPoint(void)
+	{
+		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+		if (nullptr != entity && nullptr != this->tagPoint)
+		{
+			Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
+			this->tagPoint->setListener(nullptr);
+			delete nodeListener;
+			this->tagPoint = nullptr;
+
+			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
+			if (nullptr != sourceGameObjectPtr)
+			{
+				// Reset pointer
+				sourceGameObjectPtr->setConnectedGameObject(boost::weak_ptr<GameObject>());
+
+				if (nullptr != this->tagPointNode)
+				{
+					std::vector<Ogre::MovableObject*> movableObjects;
+					auto& it = this->tagPointNode->getAttachedObjectIterator();
+					// First detach and reatach all movable objects, that are belonging to the source scene node (e.g. mesh, light)
+					while (it.hasMoreElements())
+					{
+						Ogre::MovableObject* movableObject = it.getNext();
+						movableObjects.emplace_back(movableObject);
+					}
+					for (size_t i = 0; i < movableObjects.size(); i++)
+					{
+						movableObjects[i]->detachFromParent();
+						sourceGameObjectPtr->getSceneNode()->attachObject(movableObjects[i]);
+					}
+				}
+			}
+
+			if (nullptr != this->tagPointNode)
+			{
+				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
+				this->tagPointNode = nullptr;
+			}
+
+			this->alreadyConnected = false;
 		}
 	}
 

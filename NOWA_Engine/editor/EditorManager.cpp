@@ -447,7 +447,7 @@ namespace NOWA
 		virtual void redo(void) override
 		{
 			// Create custom scenenode to store temporary data
-			this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+			this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 
 			if (GameObject::OCEAN == this->type || GameObject::TERRA == this->type)
 			{
@@ -477,7 +477,7 @@ namespace NOWA
 
 				if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 				{
-					Ogre::Item* newItem = this->sceneManager->createItem(meshName);
+					Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
 					this->objectNode->attachObject(newItem);
 
 					newMovableObject = newItem;
@@ -490,7 +490,7 @@ namespace NOWA
 				}
 				else
 				{
-					Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName);
+					Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
 					this->objectNode->attachObject(newEntity);
 
 					newMovableObject = newEntity;
@@ -1039,13 +1039,13 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			this->newPosition = this->camera->getParentNode()->getPosition();
-			this->camera->getParentNode()->setPosition(this->oldPosition);
+			this->newPosition = this->camera->getPosition();
+			this->camera->setPosition(this->oldPosition);
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->getParentNode()->setPosition(this->newPosition);
+			this->camera->setPosition(this->newPosition);
 		}
 	private:
 		Ogre::Vector3 newPosition;
@@ -1068,13 +1068,13 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			this->newOrientation = this->camera->getParentNode()->getOrientation();
-			this->camera->getParentNode()->setOrientation(this->oldOrientation);
+			this->newOrientation = this->camera->getOrientation();
+			this->camera->setOrientation(this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->getParentNode()->setOrientation(this->newOrientation);
+			this->camera->setOrientation(this->newOrientation);
 		}
 	private:
 		Ogre::Quaternion oldOrientation;
@@ -1099,16 +1099,16 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			this->newPosition = this->camera->getParentNode()->getPosition();
-			this->newOrientation = this->camera->getParentNode()->getOrientation();
-			this->camera->getParentNode()->setPosition(this->oldPosition);
-			this->camera->getParentNode()->setOrientation(this->oldOrientation);
+			this->newPosition = this->camera->getPosition();
+			this->newOrientation = this->camera->getOrientation();
+			this->camera->setPosition(this->oldPosition);
+			this->camera->setOrientation(this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->getParentNode()->setPosition(this->newPosition);
-			this->camera->getParentNode()->setOrientation(this->newOrientation);
+			this->camera->setPosition(this->newPosition);
+			this->camera->setOrientation(this->newOrientation);
 		}
 	private:
 		Ogre::Camera* camera;
@@ -2227,13 +2227,15 @@ namespace NOWA
 		}
 	}
 
-#if 1
 	// More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
 	// Unfortunately causes crash e.g. with spaceGun2.mesh
 	void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
 	{
 		// Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
 		this->destroyTempPlaceMovableObjectNode();
+
+		Ogre::v1::MeshPtr v1Mesh;
+		Ogre::MeshPtr v2Mesh;
 
 		try
 		{
@@ -2315,9 +2317,13 @@ namespace NOWA
 			friend class MeshSerializerImpl_v1_1;
 			*/
 			// More to follow
+		
 			
-			Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-																					  Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+			if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+			{
+				v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+																		Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+			}
 
 			// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
@@ -2339,10 +2345,11 @@ namespace NOWA
 			}
 			else
 			{
-
-				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+				if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+				{
+					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+				}
 				v1Mesh->unload();
-				v1Mesh.setNull();
 
 				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
 				this->tempPlaceMovableObject->setName("PlaceEntity");
@@ -2357,23 +2364,18 @@ namespace NOWA
 		{
 			try
 			{
-				Ogre::MeshPtr v2Mesh;
-
 				if (GameObject::PLANE == type || GameObject::MIRROR == type)
 				{
-					/*Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Plane v1",
-											Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-											Ogre::Plane( Ogre::Vector3::UNIT_Y, 1.0f ), 50.0f, 50.0f,
-											1, 1, true, 1, 4.0f, 4.0f, Ogre::Vector3::UNIT_Z,
-											Ogre::v1::HardwareBuffer::HBU_STATIC,
-											Ogre::v1::HardwareBuffer::HBU_STATIC );*/
 					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, mesh, true, true, true);
 					mesh->unload();
 				}
 				else
 				{
 					// Maybe its a v2 mesh
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+					{
+						v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+					}
 				}
 				if (nullptr == v2Mesh)
 				{
@@ -2488,176 +2490,6 @@ namespace NOWA
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
 	}
-#endif
-
-#if 0
-	void EditorManager::attachMeshToPlaceNode(const Ogre::String& meshName, GameObject::eType type, Ogre::v1::Mesh* mesh)
-	{
-		// Note: Its always an entity, no matter if internally its an billboard or something else, because the entity is visible geometry for the editor!
-		this->destroyTempPlaceMovableObjectNode();
-
-		try
-		{
-			if (GameObject::PLANE == type || GameObject::MIRROR == type)
-			{
-				throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
-			}
-
-			Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-			// Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-			if (nullptr == v1Mesh)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
-					+ meshName + "' could not be created.");
-				return;
-			}
-
-			this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
-			this->tempPlaceMovableObject->setName("PlaceEntity");
-			this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-			this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
-
-			DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
-		}
-		catch (Ogre::Exception&)
-		{
-			try
-			{
-				Ogre::MeshPtr v2Mesh;
-
-				if (GameObject::PLANE == type || GameObject::MIRROR == type)
-				{
-					/*Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Plane v1",
-                                            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-                                            Ogre::Plane( Ogre::Vector3::UNIT_Y, 1.0f ), 50.0f, 50.0f,
-                                            1, 1, true, 1, 4.0f, 4.0f, Ogre::Vector3::UNIT_Z,
-                                            Ogre::v1::HardwareBuffer::HBU_STATIC,
-                                            Ogre::v1::HardwareBuffer::HBU_STATIC );*/
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, mesh, true, true, true);
-					mesh->unload();
-				}
-				else
-				{
-					// Maybe its a v2 mesh
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-				}
-				if (nullptr == v2Mesh)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Error cannot create entity, because the mesh: '"
-						+ meshName + "' could not be created.");
-					return;
-				}
-
-				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
-				this->tempPlaceMovableObject->setName("PlaceEntity");
-				this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
-				this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				// If it is not a v1 mesh or a plane, its a v2 mesh, so set the proper type
-				if (GameObject::PLANE != type)
-				{
-					type = GameObject::ITEM;
-				}
-			}
-			catch (...)
-			{
-				return;
-			}
-		}
-		
-		Ogre::v1::Entity* tempEntity = dynamic_cast<Ogre::v1::Entity*>(this->tempPlaceMovableObject);
-		if (nullptr != tempEntity)
-		{
-			if ("Plane" == meshName)
-			{
-				if (nullptr != tempEntity)
-				{
-					tempEntity->setDatablock("GroundDirtPlane");
-				}
-			}
-
-			for (size_t i = 0; i < tempEntity->getNumSubEntities(); i++)
-			{
-				auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempEntity->getSubEntity(i)->getDatablock());
-				if (nullptr != sourceDataBlock)
-				{
-					// Deactivate fresnel by default, because it looks ugly
-					if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-					{
-						sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-					}
-				}
-			}
-		}
-		else
-		{
-			Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
-			if (nullptr != tempItem)
-			{
-				if (GameObject::PLANE == type)
-				{
-					if (nullptr != tempItem)
-					{
-						tempItem->setDatablock("GroundDirtPlane");
-					}
-				}
-				// Change the addressing mode of the roughness map to wrap via code.
-				// Detail maps default to wrap, but the rest to clamp.
-				Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(0)->getDatablock());
-				 //Make a hard copy of the sampler block
-				auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-				if (nullptr != sampleBlock)
-				{
-					Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
-					samplerblockCopy.mU = Ogre::TAM_WRAP;
-					samplerblockCopy.mV = Ogre::TAM_WRAP;
-					samplerblockCopy.mW = Ogre::TAM_WRAP;
-					//Set the new samplerblock. The Hlms system will
-					//automatically create the API block if necessary
-					datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
-				}
-
-				for (size_t i = 0; i < tempItem->getNumSubItems(); i++)
-				{
-					auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(tempItem->getSubItem(i)->getDatablock());
-					if (nullptr != sourceDataBlock)
-					{
-						// Deactivate fresnel by default, because it looks ugly
-						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-						{
-							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-						}
-					}
-				}
-			}
-		}
-
-		// this->tempPlaceEntity->setQueryFlags(VWE::PLACEOBJECT_MASK);
-		// MathHelper::getInstance()->ensureHasTangents(this->tempPlaceEntity->getMesh());
-		// MathHelper::getInstance()->substractOutTangentsForShader(this->tempPlaceEntity);
-
-		/*for (size_t i = 0; i < this->tempPlaceEntity->getNumSubEntities(); i++)
-		{
-			this->tempPlaceEntity->getSubEntity(i)->setDatablock(this->tempPlaceEntity->getSubEntity(i)->getDatablock());
-		}*/
-
-		this->tempPlaceMovableNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC, Ogre::Vector3(0.0f, 20.0f, 0.0f));
-		this->tempPlaceMovableNode->setName("TempPlaceEntityNode");
-		this->tempPlaceMovableNode->attachObject(this->tempPlaceMovableObject);
-		this->placeNode->setVisible(true);
-		this->placeNode->setPosition(Ogre::Vector3(0.0f, 20.0f, 0.0f));
-		this->placeNode->setOrientation(Ogre::Quaternion::IDENTITY);
-		this->selectionManager->clearSelection();
-		this->applyPlaceMovableTransform();
-
-		this->currentPlaceType = type;
-		this->manipulationMode = EDITOR_PLACE_MODE;
-		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
-	}
-#endif
 
 	void EditorManager::attachOtherResourceToPlaceNode(GameObject::eType type)
 	{

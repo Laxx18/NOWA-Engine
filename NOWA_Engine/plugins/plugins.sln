@@ -29,6 +29,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DistortionComponent", "Dist
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimationComponentV2", "AnimationComponentV2\AnimationComponentV2.vcxproj", "{8B3FBAF9-2829-4B1F-AF9A-28B60CF5E12A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EquipmentComponent", "EquipmentComponent\EquipmentComponent.vcxproj", "{406E22F5-C83F-4B20-828A-5011C45C8302}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PickerComponent", "PickerComponent\PickerComponent.vcxproj", "{440824EF-A16C-4B8B-B618-6592C4EF0EB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -87,6 +91,14 @@ Global
 		{8B3FBAF9-2829-4B1F-AF9A-28B60CF5E12A}.Debug|x64.Build.0 = Debug|x64
 		{8B3FBAF9-2829-4B1F-AF9A-28B60CF5E12A}.Release|x64.ActiveCfg = Release|x64
 		{8B3FBAF9-2829-4B1F-AF9A-28B60CF5E12A}.Release|x64.Build.0 = Release|x64
+		{406E22F5-C83F-4B20-828A-5011C45C8302}.Debug|x64.ActiveCfg = Debug|x64
+		{406E22F5-C83F-4B20-828A-5011C45C8302}.Debug|x64.Build.0 = Debug|x64
+		{406E22F5-C83F-4B20-828A-5011C45C8302}.Release|x64.ActiveCfg = Release|x64
+		{406E22F5-C83F-4B20-828A-5011C45C8302}.Release|x64.Build.0 = Release|x64
+		{440824EF-A16C-4B8B-B618-6592C4EF0EB4}.Debug|x64.ActiveCfg = Debug|x64
+		{440824EF-A16C-4B8B-B618-6592C4EF0EB4}.Debug|x64.Build.0 = Debug|x64
+		{440824EF-A16C-4B8B-B618-6592C4EF0EB4}.Release|x64.ActiveCfg = Release|x64
+		{440824EF-A16C-4B8B-B618-6592C4EF0EB4}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

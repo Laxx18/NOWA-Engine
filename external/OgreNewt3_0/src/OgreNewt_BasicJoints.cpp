@@ -1401,6 +1401,10 @@ namespace OgreNewt
 		supportJoint = new dCustomKinematicController(child->getNewtonBody(), attachement);
 		SetSupportJoint(supportJoint);
 
+		((dCustomKinematicController*)supportJoint)->ResetAutoSleep();
+
+		// ((dCustomKinematicController*)supportJoint)->SetAngularViscuosFrictionCoefficient(1.0f);
+
 		// ((dCustomKinematicController*)supportJoint)->SetSolverModel(1);
 	}
 

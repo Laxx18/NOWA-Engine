@@ -230,6 +230,8 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Init joint component for game object: " + this->gameObjectPtr->getName());
 
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &JointComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+
 		if (nullptr != this->gameObjectPtr)
 			this->sceneManager = this->gameObjectPtr->getSceneManager();
 
@@ -325,6 +327,8 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &JointComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+
 		AppStateManager::getSingletonPtr()->getGameObjectController()->removeJointComponentBreakJointChain(this->id->getULong());
 	}
 
@@ -391,36 +395,6 @@ namespace NOWA
 			this->bodyMassScale->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		return true;
-	}
-
-	bool JointComponent::createJoint(const Ogre::Vector3& customJointPosition)
-	{
-		/*if (this->body)
-		{
-			this->jointPosition = this->body->getPosition();
-
-			OgreNewt::Body* predecessorBody = nullptr;
-			if (this->predecessorJointCompPtr)
-			{
-				predecessorBody = this->predecessorJointCompPtr->getBody();
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Creating default joint for body1 name: "
-					+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Created default joint: " + this->gameObjectPtr->getName() + " with world as parent");
-			}
-
-			// Does not work, nothing will collide with this body!
-			// Release joint each time, to create new one with new values
-			// this->releaseJoint();
-			// Create joint, in order to be able to set collision state between conntected joint bodies via child parent hierachy
-			// this->joint = new OgreNewt::CustomJoint(0, this->body, predecessorBody);
-			// Bad, because causing jerky behavior on ragdolls?
-			// this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-			//// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
-		}*/
 		return true;
 	}
 
@@ -766,6 +740,22 @@ namespace NOWA
 		return this->bodyMassScale->getVector2();
 	}
 
+	bool JointComponent::createJoint(const Ogre::Vector3& customJointPosition)
+	{
+		// If a joint is later attached (e.g. in lua script at runtime, all joints have already been connected in game object controller, hence test, if there is a still a joint, that has not yet been connected.
+		if (0 != this->predecessorId->getULong() && nullptr == this->predecessorJointCompPtr)
+		{
+			this->jointAlreadyCreated = false;
+			this->connectPredecessorId(this->predecessorId->getULong());
+		}
+		if (0 != this->targetId->getULong() && nullptr == this->targetJointCompPtr)
+		{
+			this->jointAlreadyCreated = false;
+			this->connectTargetId(this->targetId->getULong());
+		}
+		return true;
+	}
+
 	void JointComponent::releaseJoint(bool resetPredecessorAndTarget)
 	{
 		if (nullptr != this->joint)
@@ -779,6 +769,9 @@ namespace NOWA
 			delete this->joint;
 			this->joint = nullptr;
 
+			boost::shared_ptr<EventDataDeleteJoint> deleteJointEvent(boost::make_shared<EventDataDeleteJoint>(this->getId()));
+			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteJointEvent);
+
 			if (true == resetPredecessorAndTarget)
 			{
 				// Really import to reset the pointer, so that a game object can be deleted, even if other joints point to this joint via predecessor or target
@@ -791,6 +784,23 @@ namespace NOWA
 					this->targetJointCompPtr.reset();
 				}
 			}
+		}
+	}
+
+	void JointComponent::deleteJointDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteJoint>(eventData);
+
+		// If a joint e.g. has been attached externally in a lua script and the predecessor or target is gone, delete this joint too!
+		if (this->predecessorId->getULong() == castEventData->getJointId())
+		{
+			this->releaseJoint(true);
+			this->body = nullptr;
+		}
+		else if (this->targetId->getULong() == castEventData->getJointId())
+		{
+			this->releaseJoint(true);
+			this->body = nullptr;
 		}
 	}
 
@@ -1088,6 +1098,10 @@ namespace NOWA
 
 	bool JointHingeComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
+		Ogre::String gameObjectName = this->gameObjectPtr->getName();
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -1096,12 +1110,12 @@ namespace NOWA
 		
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Cannot create joint for: " + gameObjectName + " because the there is no physics body.");
 			return false;
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Cannot create joint for: " + gameObjectName + " because the pin is zero.");
 			return false;
 		}
 
@@ -1130,12 +1144,12 @@ namespace NOWA
 			if (nullptr != this->predecessorJointCompPtr->getOwner() && nullptr != this->gameObjectPtr)
 			{
 				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Creating hinge joint for body1 name: "
-					+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
+					+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + gameObjectName);
 			}
 		}
 		else
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Created hinge joint: " + this->gameObjectPtr->getName() + " with world as parent");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Created hinge joint: " + gameObjectName + " with world as parent");
 		}
 
 		// Release joint each time, to create new one with new values
@@ -1164,7 +1178,7 @@ namespace NOWA
 
 		if (nullptr != this->gameObjectPtr)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Created joint: " + this->gameObjectPtr->getName());
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Created joint: " + gameObjectName);
 		}
 
 		hingeJoint->SetTorque(this->torque->getReal());
@@ -1890,6 +1904,8 @@ namespace NOWA
 
 	bool JointHingeActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -2443,6 +2459,8 @@ namespace NOWA
 
 	bool JointBallAndSocketComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -2849,6 +2867,7 @@ namespace NOWA
 
 	//bool JointControlledBallAndSocketComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	//{
+	// JointComponent::createJoint(customJointPosition);
 	//if (true == this->jointAlreadyCreated)
 	//{
 	//	// joint already created so skip
@@ -3123,6 +3142,8 @@ namespace NOWA
 
 	bool JointPointToPointComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -3482,6 +3503,7 @@ namespace NOWA
 //
 //	bool RagDollMotorDofComponent::createJoint(const Ogre::Vector3& customJointPosition)
 //	{
+//		JointComponent::createJoint(customJointPosition);
 		//if (true == this->jointAlreadyCreated)
 		//{
 		//	// joint already created so skip
@@ -3776,6 +3798,8 @@ namespace NOWA
 
 	bool JointPinComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -3942,6 +3966,8 @@ namespace NOWA
 
 	bool JointPlaneComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPlaneComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -4250,6 +4276,8 @@ namespace NOWA
 
 	bool JointSpringComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSpringComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -4564,6 +4592,8 @@ namespace NOWA
 
 	bool JointAttractorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointAttractorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -4830,6 +4860,8 @@ namespace NOWA
 	
 	bool JointCorkScrewComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -5254,6 +5286,8 @@ namespace NOWA
 
 	bool JointPassiveSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -5775,6 +5809,8 @@ namespace NOWA
 
 	bool JointSliderActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSliderActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -6340,6 +6376,8 @@ namespace NOWA
 
 	bool JointSlidingContactComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -6794,6 +6832,8 @@ namespace NOWA
 
 	bool JointActiveSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -7354,7 +7394,8 @@ namespace NOWA
 
 	bool JointMathSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		
+		JointComponent::createJoint(customJointPosition);
+
 		return true;
 	}
 
@@ -7539,6 +7580,8 @@ namespace NOWA
 		this->mode = new Variant(JointKinematicComponent::AttrMode(), strModes, this->attributes);
 		this->maxLinearFriction = new Variant(JointKinematicComponent::AttrMaxLinearFriction(), 10.0f, this->attributes);
 		this->maxAngleFriction = new Variant(JointKinematicComponent::AttrMaxAngleFriction(), 10.0f, this->attributes);
+		this->maxSpeed = new Variant(JointKinematicComponent::AttrMaxSpeed(), 0.0f, this->attributes);
+		this->maxOmega = new Variant(JointKinematicComponent::AttrMaxOmega(), 0.0f, this->attributes);
 		this->targetPosition = new Variant(JointKinematicComponent::AttrTargetPosition(), Ogre::Vector3::ZERO, this->attributes);
 		this->targetRotation = new Variant(JointKinematicComponent::AttrTargetRotation(), Ogre::Vector3::ZERO, this->attributes);
 		
@@ -7546,6 +7589,9 @@ namespace NOWA
 		this->predecessorId->setVisible(false);
 		this->anchorPosition->setVisible(false);
 		this->mode->setListSelectedValue("Linear Plus Angluar Friction");
+
+		this->maxSpeed->setDescription("Sets the maximum speed in meters per seconds.");
+		this->maxOmega->setDescription("Sets the maximum rotation speed in degrees per seconds.");
 	}
 
 	JointKinematicComponent::~JointKinematicComponent()
@@ -7581,6 +7627,8 @@ namespace NOWA
 		
 		clonedJointCompPtr->setPickingMode(tempMode);
 		clonedJointCompPtr->setMaxLinearAngleFriction(this->maxLinearFriction->getReal(), this->maxAngleFriction->getReal());
+		clonedJointCompPtr->setMaxSpeed(this->maxSpeed->getReal());
+		clonedJointCompPtr->setMaxOmega(this->maxOmega->getReal());
 		clonedJointCompPtr->setTargetPosition(this->targetPosition->getVector3());
 		clonedJointCompPtr->setTargetRotation(MathHelper::getInstance()->degreesToQuat(this->targetRotation->getVector3()));
 
@@ -7614,6 +7662,16 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointMaxAngleFriction")
 		{
 			this->maxAngleFriction->setValue(XMLConverter::getAttribReal(propertyElement, "data", 0.0f));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointMaxSpeed")
+		{
+			this->maxSpeed->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointMaxOmega")
+		{
+			this->maxOmega->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointTargetPosition")
@@ -7686,6 +7744,8 @@ namespace NOWA
 
 	bool JointKinematicComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointKinematicComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -7750,6 +7810,15 @@ namespace NOWA
 		kinematicController->setMaxLinearFriction(mass * -gravity * this->maxLinearFriction->getReal());
 		kinematicController->setMaxAngularFriction(inertia * this->maxAngleFriction->getReal());
 
+		if (0.0f != this->maxSpeed->getReal())
+		{
+			kinematicController->setMaxSpeed(this->maxSpeed->getReal());
+		}
+		if (0.0f != this->maxOmega->getReal())
+		{
+			kinematicController->setMaxOmega(Ogre::Degree(this->maxOmega->getReal()));
+		}
+
 		//if (0.0f == gravity)
 		//{
 		//	gravity = -1.0f;
@@ -7796,6 +7865,14 @@ namespace NOWA
 		{
 			this->setMaxLinearAngleFriction(maxLinearFriction->getReal(), attribute->getReal());
 		}
+		else if (JointKinematicComponent::AttrMaxSpeed() == attribute->getName())
+		{
+			this->setMaxSpeed(maxSpeed->getReal());
+		}
+		else if (JointKinematicComponent::AttrMaxOmega() == attribute->getName())
+		{
+			this->setMaxOmega(maxOmega->getReal());
+		}
 		else if (JointKinematicComponent::AttrTargetPosition() == attribute->getName())
 		{
 			this->setTargetPosition(attribute->getVector3());
@@ -7839,6 +7916,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "JointMaxAngleFriction"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxAngleFriction->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointMaxSpeed"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxSpeed->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointMaxOmega"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxOmega->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -7983,6 +8072,44 @@ namespace NOWA
 		return MathHelper::getInstance()->degreesToQuat(this->targetRotation->getVector3());
 	}
 
+	void JointKinematicComponent::setMaxSpeed(Ogre::Real speedInMetersPerSeconds)
+	{
+		if (0.0f == speedInMetersPerSeconds)
+		{
+			return;
+		}
+		this->maxSpeed->setValue(speedInMetersPerSeconds);
+		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
+		if (kinematicController && this->activated)
+		{
+			kinematicController->setMaxSpeed(speedInMetersPerSeconds);
+		}
+	}
+
+	Ogre::Real JointKinematicComponent::getMaxSpeed(void) const
+	{
+		return this->maxSpeed->getReal();
+	}
+
+	void JointKinematicComponent::setMaxOmega(const Ogre::Real& speedInDegreesPerSeconds)
+	{
+		if (0.0f == speedInDegreesPerSeconds)
+		{
+			return;
+		}
+		this->maxOmega->setValue(speedInDegreesPerSeconds);
+		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
+		if (kinematicController && this->activated)
+		{
+			kinematicController->setMaxOmega(Ogre::Degree(speedInDegreesPerSeconds));
+		}
+	}
+
+	Ogre::Real JointKinematicComponent::getMaxOmega(void) const
+	{
+		return this->maxOmega->getReal();
+	}
+
 	void JointKinematicComponent::backToOrigin(void)
 	{
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
@@ -8021,7 +8148,9 @@ namespace NOWA
 	/*******************************JointTargetTransformComponent*******************************/
 
 	JointTargetTransformComponent::JointTargetTransformComponent()
-		: JointComponent()
+		: JointComponent(),
+		offsetPosition(Ogre::Vector3::ZERO),
+		offsetOrientation(Ogre::Quaternion::IDENTITY)
 	{
 		this->type->setReadOnly(false);
 		this->type->setValue(this->getClassName());
@@ -8109,13 +8238,29 @@ namespace NOWA
 		if (nullptr != this->joint && true == this->activated->getBool())
 		{
 			OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
-			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getPosition());
-			kinematicController->setTargetRotation(this->predecessorJointCompPtr->getOrientation());
+			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getBody()->getPosition() + this->offsetPosition);
+			// kinematicController->setTargetRotation(this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation);
+
+			Ogre::Quaternion q = this->predecessorJointCompPtr->getBody()->getOgreNode()->getParent()->getParent()->convertLocalToWorldOrientation(this->predecessorJointCompPtr->getBody()->getOgreNode()->_getDerivedOrientation());
+			kinematicController->setTargetRotation(q * this->offsetOrientation);
+
+			// MathHelper::getInstance()->localToGlobal<Ogre::SceneNode>()
+#if 0
+			Ogre::Vector3 position;
+			Ogre::Quaternion q0;
+			kinematicController->getTargetMatrix(position, q0);
+			Ogre::Quaternion q1 = this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation;
+
+			Ogre::Quaternion q = q1 * q0.Inverse();
+			kinematicController->setTargetRotation(q);
+#endif
 		}
 	}
 
 	bool JointTargetTransformComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointTargetTransformComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -8160,10 +8305,28 @@ namespace NOWA
 		*/
 
 
-		kinematicController->setPickingMode(4);
-		kinematicController->setMaxLinearFriction(1000000.0f);
-		kinematicController->setMaxAngularFriction(1000000.0f);
+		/*kinematicController->setPickingMode(4);
+		kinematicController->setMaxLinearFriction(1000.0f);
+		kinematicController->setMaxAngularFriction(40.0f);
+		kinematicController->setMaxSpeed(10.0f);
+		kinematicController->setMaxOmega(Ogre::Degree(0.0f));*/
 
+		dFloat Ixx;
+		dFloat Iyy;
+		dFloat Izz;
+		dFloat mass;
+		NewtonBodyGetMass(this->body->getNewtonBody(), &mass, &Ixx, &Iyy, &Izz);
+
+		// change this to make the grabbing stronger or weaker
+		const dFloat angularFritionAccel = 600.0f;
+		const dFloat linearFrictionAccel = 400.0f * 10.0f;
+		const dFloat inertia = dMax(Izz, dMax(Ixx, Iyy));
+
+		kinematicController->setPickingMode(4);
+
+		kinematicController->setMaxLinearFriction(mass * linearFrictionAccel);
+		kinematicController->setMaxAngularFriction(inertia * angularFritionAccel);
+		kinematicController->setSolverModel(1);
 
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
@@ -8217,6 +8380,16 @@ namespace NOWA
 		{
 			this->createJoint();
 		}
+	}
+
+	void JointTargetTransformComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
+	{
+		this->offsetPosition = offsetPosition;
+	}
+
+	void JointTargetTransformComponent::setOffsetOrientation(const Ogre::Quaternion& offsetOrientation)
+	{
+		this->offsetOrientation = offsetOrientation;
 	}
 
 	/*******************************JointPathFollowComponent*******************************/
@@ -8394,6 +8567,8 @@ namespace NOWA
 
 	bool JointPathFollowComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (false == this->activated->getBool())
 			return true;
 
@@ -8721,6 +8896,8 @@ namespace NOWA
 
 	bool JointDryRollingFrictionComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointDryRollingFrictionComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -8918,6 +9095,8 @@ namespace NOWA
 
 	bool JointGearComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointGearComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -9159,6 +9338,8 @@ namespace NOWA
 
 	bool JointRackAndPinionComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointRackAndPinionComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -9376,6 +9557,8 @@ namespace NOWA
 
 	bool JointWormGearComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointWormGearComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -9604,6 +9787,8 @@ namespace NOWA
 
 	bool JointPulleyComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPulleyComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -9976,6 +10161,8 @@ namespace NOWA
 
 	bool JointUniversalComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -10915,6 +11102,8 @@ namespace NOWA
 
 	bool JointUniversalActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointUniversalActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -11464,6 +11653,8 @@ namespace NOWA
 
 	bool Joint6DofComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -11893,6 +12084,8 @@ namespace NOWA
 
 	bool JointMotorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -12253,6 +12446,8 @@ namespace NOWA
 
 	bool JointWheelComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (true == this->jointAlreadyCreated)
 		{
 			// joint already created so skip
@@ -12583,6 +12778,8 @@ namespace NOWA
 
 	bool JointFlexyPipeHandleComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
@@ -12803,6 +13000,8 @@ namespace NOWA
 
 	bool JointFlexyPipeSpinnerComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
+		JointComponent::createJoint(customJointPosition);
+
 		if (nullptr == this->body)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointFlexyPipeSpinnerComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");

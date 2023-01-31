@@ -14,7 +14,7 @@ compositor_node SSAO
 	texture blurTextureHorizontal	target_width target_height PFG_R16_FLOAT depth_pool 0
 	texture blurTextureVertical		target_width target_height PFG_R16_FLOAT depth_pool 0
 	
-	custom_id Ogre/Postprocess
+	// custom_id Ogre/Postprocess
 
 	// rtv rt0
 	// {

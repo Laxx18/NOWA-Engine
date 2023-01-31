@@ -2299,6 +2299,11 @@ namespace NOWA
 		return makeStrongPtr<JointHingeComponent>(gameObject->getComponent<JointHingeComponent>()).get();
 	}
 
+	JointTargetTransformComponent* getJointTargetTransformComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<JointTargetTransformComponent>(gameObject->getComponent<JointTargetTransformComponent>()).get();
+	}
+
 	JointHingeActuatorComponent* getJointHingeActuatorComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<JointHingeActuatorComponent>(gameObject->getComponent<JointHingeActuatorComponent>()).get();
@@ -3004,6 +3009,11 @@ namespace NOWA
 		return makeStrongPtr<JointHingeComponent>(gameObject->getComponentFromName<JointHingeComponent>(name)).get();
 	}
 
+	JointTargetTransformComponent* getJointTargetTransformComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<JointTargetTransformComponent>(gameObject->getComponentFromName<JointTargetTransformComponent>(name)).get();
+	}
+
 	JointHingeActuatorComponent* getJointHingeActuatorComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<JointHingeActuatorComponent>(gameObject->getComponentFromName<JointHingeActuatorComponent>(name)).get();
@@ -3328,7 +3338,7 @@ namespace NOWA
 	{
 		return boost::dynamic_pointer_cast<JointHingeComponent>(ragBone->getJointComponent()).get();
 	}
-
+	
 	JointUniversalComponent* getRagJointUniversalComponent(PhysicsRagDollComponent::RagBone* ragBone)
 	{
 		return boost::dynamic_pointer_cast<JointUniversalComponent>(ragBone->getJointComponent()).get();
@@ -3502,6 +3512,7 @@ namespace NOWA
 		gameObject.def("getDatablockTerraComponent", &getDatablockTerraComponent);
 		gameObject.def("getJointComponent", &getJointComponent);
 		gameObject.def("getJointHingeComponent", &getJointHingeComponent);
+		gameObject.def("getJointTargetTransformComponent", &getJointTargetTransformComponent);
 		gameObject.def("getJointHingeActuatorComponent", &getJointHingeActuatorComponent);
 		gameObject.def("getJointBallAndSocketComponent", &getJointBallAndSocketComponent);
 		gameObject.def("getJointPointToPointComponent", &getJointPointToPointComponent);
@@ -3657,6 +3668,7 @@ namespace NOWA
 		gameObject.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
 		gameObject.def("getJointComponentFromName", &getJointComponentFromName);
 		gameObject.def("getJointHingeComponentFromName", &getJointHingeComponentFromName);
+		gameObject.def("getJointTargetTransformComponentFromName", &getJointTargetTransformComponentFromName);
 		gameObject.def("getJointHingeActuatorComponentFromName", &getJointHingeActuatorComponentFromName);
 		gameObject.def("getJointBallAndSocketComponentFromName", &getJointBallAndSocketComponentFromName);
 		gameObject.def("getJointPointToPointComponentFromName", &getJointPointToPointComponentFromName);
@@ -3820,6 +3832,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponent()", "Gets the datablock terra component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponent()", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponent()", "Gets the joint hinge component. Requirements: A physics active component.");
+		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponent()", "Gets the joint target transform component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointHingeActuatorComponent getJointHingeActuatorComponent()", "Gets the joint hinge actuator component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointBallAndSocketComponent getJointBallAndSocketComponent()", "Gets the joint ball and socket component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointPointToPointComponent getJointPointToPointComponent()", "Gets the joint point to point component. Requirements: A physics active component.");
@@ -3961,6 +3974,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponentFromName(String name)", "Gets the datablock terra component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponentFromName(String name)", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponentFromName(String name)", "Gets the joint hinge component. Requirements: A physics active component.");
+		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponentFromName(String name)", "Gets the joint target transform component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointHingeActuatorComponent getJointHingeActuatorComponentFromName(String name)", "Gets the joint hinge actuator component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointBallAndSocketComponent getJointBallAndSocketComponentFromName(String name)", "Gets the joint ball and socket component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointPointToPointComponent getJointPointToPointComponentFromName(String name)", "Gets the joint point to point component. Requirements: A physics active component.");
@@ -4973,6 +4987,7 @@ namespace NOWA
 		gameObjectController.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
 		gameObjectController.def("castJointComponent", &GameObjectController::cast<JointComponent>);
 		gameObjectController.def("castJointHingeComponent", &GameObjectController::cast<JointHingeComponent>);
+		gameObjectController.def("castJointTargetTransformComponent", &GameObjectController::cast<JointTargetTransformComponent>);
 		gameObjectController.def("castJointHingeActuatorComponent", &GameObjectController::cast<JointHingeActuatorComponent>);
 		gameObjectController.def("castJointBallAndSocketComponent", &GameObjectController::cast<JointBallAndSocketComponent>);
 		gameObjectController.def("castJointPointToPointComponent", &GameObjectController::cast<JointPointToPointComponent>);
@@ -5129,6 +5144,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "DatablockTerraComponent castDatablockTerraComponent(DatablockTerraComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointComponent castJointComponent(JointComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointHingeComponent castJointHingeComponent(JointHingeComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "JointTargetTransformComponent castJointTargetTransformComponent(JointTargetTransformComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointHingeActuatorComponent castJointHingeActuatorComponent(JointHingeActuatorComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointBallAndSocketComponent castJointBallAndSocketComponent(JointBallAndSocketComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointPointToPointComponent castJointPointToPointComponent(JointPointToPointComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -9048,6 +9064,25 @@ namespace NOWA
 		AddClassToCollection("JointHingeActuatorComponent", "void setSpring(bool asSpringDamper, bool massIndependent, float springDamperRelaxation, float springK, float springD)", "Sets the spring values for this joint. Note: When 'asSpringDamper' is activated the joint will use spring values for rotation.");
 
 		module(lua)
+		[
+			class_<JointTargetTransformComponent, JointComponent>("JointTargetTransformComponent")
+			// // .def("clone", &JointTargetTransformComponent::clone)
+			.def("setAnchorPosition", &JointTargetTransformComponent::setAnchorPosition)
+			.def("getAnchorPosition", &JointTargetTransformComponent::getAnchorPosition)
+			.def("setOffsetPosition", &JointTargetTransformComponent::setOffsetPosition)
+			.def("setOffsetOrientation", &JointTargetTransformComponent::setOffsetOrientation)
+		];
+
+		AddClassToCollection("JointTargetTransformComponent", "class inherits JointComponent", JointTargetTransformComponent::getStaticInfoText());
+		AddClassToCollection("JointTargetTransformComponent", "String getId()", "Gets the id of this joint.");
+		AddClassToCollection("JointTargetTransformComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
+		AddClassToCollection("JointTargetTransformComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
+
+		AddClassToCollection("JointTargetTransformComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Adds an offset position to the target predecessor position.");
+		AddClassToCollection("JointTargetTransformComponent", "void setOffsetOrientation(Quaternion offsetOrientation)", "Adds an offset orientation to the target predecessor orientation.");
+
+		
+		module(lua)
 			[
 				class_<JointBallAndSocketComponent, JointComponent>("JointBallAndSocketComponent")
 				// // .def("clone", &JointBallAndSocketComponent::clone)
@@ -9413,6 +9448,10 @@ namespace NOWA
 			.def("getPickingMode", &JointKinematicComponent::getPickingMode)
 			.def("setMaxLinearAngleFriction", &JointKinematicComponent::setMaxLinearAngleFriction)
 			.def("getMaxLinearAngleFriction", &getMaxLinearAngleFriction)
+			.def("setMaxSpeed", &JointKinematicComponent::setMaxSpeed)
+			.def("getMaxSpeed", &JointKinematicComponent::getMaxSpeed)
+			.def("setMaxOmega", &JointKinematicComponent::setMaxOmega)
+			.def("getMaxOmega", &JointKinematicComponent::getMaxOmega)
 			.def("setTargetPosition", &JointKinematicComponent::setTargetPosition)
 			.def("getTargetPosition", &JointKinematicComponent::getTargetPosition)
 			.def("setTargetRotation", &JointKinematicComponent::setTargetRotation)
@@ -9430,6 +9469,10 @@ namespace NOWA
 		AddClassToCollection("JointKinematicComponent", "String getPickingMode()", "Gets the currently set picking mode. "
 			"Possible values are: Linear, Full 6 Degree Of Freedom, Linear And Twist, Linear And Cone, Linear Plus Angluar Friction");
 		AddClassToCollection("JointKinematicComponent", "void setMaxLinearAngleFriction(float maxLinearFriction, float maxAngleFriction)", "Sets the max linear and angle friction.");
+
+		AddClassToCollection("JointKinematicComponent", "void setMaxSpeed(float maxSpeed)", "Sets the maximum speed in meters per seconds.");
+		AddClassToCollection("JointKinematicComponent", "void setMaxOmega(float maxOmega)", "Sets the maximum rotation speed in degrees per seconds.");
+
 		AddClassToCollection("JointKinematicComponent", "Table[linearFriction][angleFriction] getMaxLinearAngleFriction()", "Gets max linear and angle friction.");
 		AddClassToCollection("JointKinematicComponent", "void setTargetPosition(Vector3 targetPosition)", "Sets the target position.");
 		AddClassToCollection("JointKinematicComponent", "Vector3 getTargetPosition()", "Gets the target position.");
@@ -10715,11 +10758,11 @@ namespace NOWA
 	void bindPhysicsRagDollComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PhysicsRagDollComponent, PhysicsActiveComponent>("PhysicsRagDollComponent")
-				// .def("getClassName", &PhysicsRagDollComponent::getClassName)
-				// .def("clone", &PhysicsRagDollComponent::clone)
-				// .def("getClassId", &PhysicsRagDollComponent::getClassId)
+		[
+			class_<PhysicsRagDollComponent, PhysicsActiveComponent>("PhysicsRagDollComponent")
+			// .def("getClassName", &PhysicsRagDollComponent::getClassName)
+			// .def("clone", &PhysicsRagDollComponent::clone)
+			// .def("getClassId", &PhysicsRagDollComponent::getClassId)
 			.def("inheritVelOmega", &PhysicsRagDollComponent::inheritVelOmega)
 			.def("setActivated", &PhysicsRagDollComponent::setActivated)
 			.def("setState", &PhysicsRagDollComponent::setState)
@@ -10744,36 +10787,37 @@ namespace NOWA
 			[
 				class_<PhysicsRagDollComponent::RagBone>("RagBone")
 				.def("getName", &PhysicsRagDollComponent::RagBone::getName)
-			.def("getPosition", &PhysicsRagDollComponent::RagBone::getPosition)
-			.def("setOrientation", &PhysicsRagDollComponent::RagBone::setOrientation)
-			.def("getOrientation", &PhysicsRagDollComponent::RagBone::getOrientation)
-			// .def("rotate", &PhysicsRagDollComponent::RagBone::rotate)
-			.def("setInitialState", &PhysicsRagDollComponent::RagBone::setInitialState)
-			// .def("getBody", &PhysicsRagDollComponent::RagBone::getBody)
-			.def("getOgreBone", &PhysicsRagDollComponent::RagBone::getOgreBone)
-			.def("getParentRagBone", &PhysicsRagDollComponent::RagBone::getParentRagBone)
-			.def("getInitialBonePosition", &PhysicsRagDollComponent::RagBone::getInitialBonePosition)
-			.def("getInitialBoneOrientation", &PhysicsRagDollComponent::RagBone::getInitialBoneOrientation)
-			// .def("getInitialBodyPosition", &PhysicsRagDollComponent::RagBone::getInitialBodyPosition)
-			// .def("getInitialBodyOrientation", &PhysicsRagDollComponent::RagBone::getInitialBodyOrientation)
-			// .def("getPositionCorrection", &PhysicsRagDollComponent::RagBone::getPositionCorrection)
-			// .def("getOrientationCorrection", &PhysicsRagDollComponent::RagBone::getOrientationCorrection)
-			// .def("setInitialPose", &PhysicsRagDollComponent::RagBone::setInitialPose)
-			.def("getPhysicsRagDollComponent", &PhysicsRagDollComponent::RagBone::getPhysicsRagDollComponent)
-			.def("getRagPose", &PhysicsRagDollComponent::RagBone::getRagPose)
-			.def("applyPose", &PhysicsRagDollComponent::RagBone::applyPose)
-			// .def("getSceneNode", &PhysicsRagDollComponent::RagBone::getSceneNode)
-			.def("getJointComponent", &getRagJointComponent)
-			.def("getJointHingeComponent", &getRagJointHingeComponent)
-			.def("getJointUniversalComponent", &getRagJointUniversalComponent)
-			.def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
-			.def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
-			.def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
-			.def("applyRequiredForceForVelocity", &PhysicsRagDollComponent::RagBone::applyRequiredForceForVelocity)
-			.def("applyOmegaForce", &PhysicsRagDollComponent::RagBone::applyOmegaForce)
-			.def("applyOmegaForceRotateTo", &PhysicsRagDollComponent::RagBone::applyOmegaForceRotateTo)
+				.def("getPosition", &PhysicsRagDollComponent::RagBone::getPosition)
+				.def("setOrientation", &PhysicsRagDollComponent::RagBone::setOrientation)
+				.def("getOrientation", &PhysicsRagDollComponent::RagBone::getOrientation)
+				// .def("rotate", &PhysicsRagDollComponent::RagBone::rotate)
+				.def("setInitialState", &PhysicsRagDollComponent::RagBone::setInitialState)
+				// .def("getBody", &PhysicsRagDollComponent::RagBone::getBody)
+				.def("getOgreBone", &PhysicsRagDollComponent::RagBone::getOgreBone)
+				.def("getParentRagBone", &PhysicsRagDollComponent::RagBone::getParentRagBone)
+				.def("getInitialBonePosition", &PhysicsRagDollComponent::RagBone::getInitialBonePosition)
+				.def("getInitialBoneOrientation", &PhysicsRagDollComponent::RagBone::getInitialBoneOrientation)
+				// .def("getInitialBodyPosition", &PhysicsRagDollComponent::RagBone::getInitialBodyPosition)
+				// .def("getInitialBodyOrientation", &PhysicsRagDollComponent::RagBone::getInitialBodyOrientation)
+				// .def("getPositionCorrection", &PhysicsRagDollComponent::RagBone::getPositionCorrection)
+				// .def("getOrientationCorrection", &PhysicsRagDollComponent::RagBone::getOrientationCorrection)
+				// .def("setInitialPose", &PhysicsRagDollComponent::RagBone::setInitialPose)
+				.def("getPhysicsRagDollComponent", &PhysicsRagDollComponent::RagBone::getPhysicsRagDollComponent)
+				.def("getRagPose", &PhysicsRagDollComponent::RagBone::getRagPose)
+				.def("applyPose", &PhysicsRagDollComponent::RagBone::applyPose)
+				// .def("getSceneNode", &PhysicsRagDollComponent::RagBone::getSceneNode)
+				.def("getJointComponent", &getRagJointComponent)
+				.def("getJointHingeComponent", &getRagJointHingeComponent)
+				.def("getJointUniversalComponent", &getRagJointUniversalComponent)
+				.def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
+				.def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
+				.def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+				.def("applyRequiredForceForVelocity", &PhysicsRagDollComponent::RagBone::applyRequiredForceForVelocity)
+				.def("applyOmegaForce", &PhysicsRagDollComponent::RagBone::applyOmegaForce)
+				.def("applyOmegaForceRotateTo", &PhysicsRagDollComponent::RagBone::applyOmegaForceRotateTo)
+				.def("getSize", &PhysicsRagDollComponent::RagBone::getBodySize)
 			]
-			];
+		];
 		AddClassToCollection("PhysicsRagDollComponent", "class inherits PhysicsActiveComponent", PhysicsRagDollComponent::getStaticInfoText());
 		// AddClassToCollection("PhysicsRagDollComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("PhysicsRagDollComponent", "number getClassId()", "Gets the class id of this component.");
@@ -10817,6 +10861,7 @@ namespace NOWA
 							 "The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). "
 							 "The strength at which the rotation should occur. "
 							 "Note: This should be used during simulation instead of @setOmegaVelocity.");
+		AddClassToCollection("RagBone", "Vector3 getSize()", "Gets the size of the bone.");
 	}
 
 	/*void bindPhysicsMathSliderComponent(lua_State* lua)

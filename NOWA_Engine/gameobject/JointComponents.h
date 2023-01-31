@@ -5,6 +5,8 @@
 #include "OgreNewt.h"
 #include <fparser.hh>
 
+#include "main/Events.h"
+
 namespace NOWA
 {
 	/*******************************JointComponent*******************************/
@@ -206,6 +208,8 @@ namespace NOWA
 		Ogre::Vector2 getBodyMassScale(void) const;
 
 		void releaseJoint(bool resetPredecessorAndTarget = false);
+
+		void deleteJointDelegate(EventDataPtr eventData);
 
 		unsigned long getPriorId(void) const;
 
@@ -1952,6 +1956,14 @@ namespace NOWA
 
 		Ogre::Quaternion getTargetRotation(void) const;
 
+		void setMaxSpeed(Ogre::Real speedInMetersPerSeconds);
+
+		Ogre::Real getMaxSpeed(void) const;
+
+		void setMaxOmega(const Ogre::Real& speedInDegreesPerSeconds);
+
+		Ogre::Real getMaxOmega(void) const;
+
 		void backToOrigin(void);
 
 	public:
@@ -1959,6 +1971,8 @@ namespace NOWA
 		static const Ogre::String AttrMode(void) { return "Mode"; }
 		static const Ogre::String AttrMaxLinearFriction(void) { return "Max. Linear Friction"; }
 		static const Ogre::String AttrMaxAngleFriction(void) { return "Max. Angle Friction"; }
+		static const Ogre::String AttrMaxSpeed(void) { return "Max. Speed"; }
+		static const Ogre::String AttrMaxOmega(void) { return "Max. Omega"; }
 		static const Ogre::String AttrTargetPosition(void) { return "Target Position"; }
 		static const Ogre::String AttrTargetRotation(void) { return "Target Rotation"; }
 	protected:
@@ -1966,6 +1980,8 @@ namespace NOWA
 		Variant* mode;
 		Variant* maxLinearFriction;
 		Variant* maxAngleFriction;
+		Variant* maxSpeed;
+		Variant* maxOmega;
 		Variant* targetPosition;
 		Variant* targetRotation;
 		Ogre::Vector3 originPosition;
@@ -2008,6 +2024,10 @@ namespace NOWA
 
 		virtual void setActivated(bool activated) override;
 
+		void setOffsetPosition(const Ogre::Vector3& offsetPosition);
+
+		void setOffsetOrientation(const Ogre::Quaternion& offsetOrientation);
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointTargetTransformComponent");
@@ -2039,6 +2059,8 @@ namespace NOWA
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
 	protected:
 		Variant* anchorPosition;
+		Ogre::Vector3 offsetPosition;
+		Ogre::Quaternion offsetOrientation;
 	};
 
 	/*******************************JointPathFollowComponent*******************************/

@@ -54,6 +54,11 @@ namespace NOWA
 		virtual void onRemoveComponent(void);
 
 		/**
+		 * @see		GameObjectComponent::onOtherComponentRemoved
+		 */
+		virtual void onOtherComponentRemoved(unsigned int index) override;
+
+		/**
 		 * @see		GameObjectComponent::onCloned
 		 */
 		virtual bool onCloned(void) override;
@@ -195,6 +200,8 @@ namespace NOWA
 		void generateDebugData(void);
 
 		void destroyDebugData(void);
+
+		void resetTagPoint(void);
 	private:
 		Ogre::v1::TagPoint* tagPoint;
 		Ogre::SceneNode* tagPointNode;

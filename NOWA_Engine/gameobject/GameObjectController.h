@@ -847,6 +847,8 @@ namespace NOWA
 		 */
 		GameObjectController(const Ogre::String& appStateName);
 		~GameObjectController();
+
+		void deleteJointDelegate(EventDataPtr eventData);
 	private:
 		Ogre::String appStateName;
 
@@ -887,6 +889,7 @@ namespace NOWA
 		size_t nextGameObjectIndex;
 
 		bool bIsDestroying;
+		bool bAddListenerFirstTime;
 	};
 
 }; //namespace end NOWA

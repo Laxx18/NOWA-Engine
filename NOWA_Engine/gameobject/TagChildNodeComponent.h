@@ -91,7 +91,7 @@ namespace NOWA
 			return "This component can be used to add the scene node of another source game object as a child of the scene node of this game object. "
 				   "When this game object is transformed, all its children will also be transformed relative to this parent. A hierarchy can be formed. "
 				   "Info: Several tag child node components can be added to one game object "
-				   "Example : Adding a light as a child to ball.When the ball is movedand rotated the light will also rotateand move relative to the parents transform.";
+				   "Example: Adding a light as a child to ball. When the ball is moved and rotated the light will also rotateand move relative to the parents transform.";
 		}
 
 		virtual void update(Ogre::Real dt, bool notSimulating) override;

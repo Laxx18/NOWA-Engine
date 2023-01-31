@@ -305,7 +305,8 @@ namespace NOWA
 		isSimulating(false),
 		deleteGameObjectsUndoCommand(nullptr),
 		nextGameObjectIndex(0),
-		bIsDestroying(false)
+		bIsDestroying(false),
+		bAddListenerFirstTime(true)
 	{
 		
 	}
@@ -593,6 +594,12 @@ namespace NOWA
 		this->alreadyDestroyed = false;
 		this->gameObjects->emplace(gameObjectPtr->getId(), gameObjectPtr);
 		this->registerType(gameObjectPtr, gameObjectPtr->category->getListSelectedValue());
+
+		if (true == this->bAddListenerFirstTime)
+		{
+			AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+			this->bAddListenerFirstTime = false;
+		}
 	}
 
 	const OgreNewt::MaterialID* GameObjectController::getMaterialID(GameObject* gameObject, OgreNewt::World* ogreNewt)
@@ -638,6 +645,8 @@ namespace NOWA
 	{
 		if (false == this->alreadyDestroyed)
 		{
+			AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+
 			this->bIsDestroying = true;
 			auto& it = this->materialIDMap.begin();
 			while (it != this->materialIDMap.end())
@@ -734,6 +743,7 @@ namespace NOWA
 		}
 
 		this->bIsDestroying = false;
+		this->bAddListenerFirstTime = true;
 	}
 	
 	void GameObjectController::undo(void)
@@ -972,6 +982,19 @@ namespace NOWA
 					}
 				}
 			}
+		}
+	}
+
+	void GameObjectController::deleteJointDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteJoint>(eventData);
+
+		auto& jointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(castEventData->getJointId()));
+		if (nullptr != jointCompPtr)
+		{
+			jointCompPtr->releaseJoint();
+			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getPredecessorId());
+			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getTargetId());
 		}
 	}
 

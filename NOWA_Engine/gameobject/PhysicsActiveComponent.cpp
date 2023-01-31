@@ -2164,7 +2164,7 @@ namespace NOWA
 			// Ogre::Vector3 currentVelocity = body->getVelocityAtPoint(body->getPosition());
 
 			Ogre::Vector3 moveForce = (this->forceForVelocity - body->getVelocity()) * mass / timeStep;
-			body->addForce(moveForce);
+			body->addForce(std::move(moveForce));
 
 			this->forceForVelocity = Ogre::Vector3::ZERO;
 			this->canAddForceForVelocity = false;

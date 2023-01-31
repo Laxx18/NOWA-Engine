@@ -186,12 +186,23 @@ namespace NOWA
 			// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
 			this->gameObjectPtr->getSceneNode()->attachObject(this->light);
 
-			this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->setCastShadows(false);
+			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				entity->setCastShadows(false);
+				// Borrow the entity from the game object
+				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			}
+			else
+			{
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (item != nullptr)
+				{
+					item->setCastShadows(false);
+				}
+			}
 			// this->light->setDirection(this->direction->getVector3());
 			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-40.0f, 29.0f, 29.0f)));
-
-			// Borrow the entity from the game object
-			this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		}
 	}
 

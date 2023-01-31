@@ -677,6 +677,13 @@ namespace NOWA
 					mainParameterXML->append_node(nodeXML);
 				}
 
+				// useV2Item
+				{
+					xml_node<>* nodeXML = doc.allocate_node(node_element, "useV2Item");
+					nodeXML->append_attribute(doc.allocate_attribute("value", XMLConverter::ConvertString(this->projectParameter.useV2Item)));
+					mainParameterXML->append_node(nodeXML);
+				}
+
 				environmentXML->append_node(mainParameterXML);
 			}
 		}

@@ -217,6 +217,9 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrOrientation())->setVisible(false);
 		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
 
+		this->gameObjectPtr->setDynamic(false);
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+
 		this->createCamera();
 
 		return true;
