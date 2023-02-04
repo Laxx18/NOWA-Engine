@@ -361,6 +361,7 @@ namespace NOWA
 		: active(false),
 		dragComponent(nullptr),
 		hitBody(nullptr),
+		jointId(0),
 		mousePosition(Ogre::Vector2::ZERO),
 		renderWindow(nullptr),
 		camera(nullptr),
@@ -379,11 +380,15 @@ namespace NOWA
 		dragAffectDistance(0.0f),
 		offsetPosition(Ogre::Vector3::ZERO)
 	{
-
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 	}
 
 	GameObjectPicker::~GameObjectPicker()
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteJointDelegate), EventDataDeleteBody::getStaticEventType());
+
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectPicker] Destroying game object picker");
 		this->dragComponent = nullptr;
 		if (this->active)
@@ -421,7 +426,9 @@ namespace NOWA
 	{
 		this->camera = camera;
 		this->gameObjectId = gameObjectId;
+		this->jointId = 0;
 		this->drawLines = drawLines;
+		this->hitBody = nullptr;
 
 		auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectId);
 		if (nullptr != gameObjectPtr)
@@ -437,6 +444,29 @@ namespace NOWA
 		{
 			this->createLine();
 		}
+	}
+
+	void GameObjectPicker::actualizeData2(Ogre::Camera* camera, unsigned long jointId, bool drawLines)
+	{
+		this->camera = camera;
+		this->gameObjectId = 0;
+		this->drawLines = drawLines;
+		this->jointId = jointId;
+		this->hitBody = nullptr;
+		auto jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(jointId));
+		if (nullptr != jointCompPtr)
+		{
+			this->hitBody = jointCompPtr->getBody();
+		}
+	}
+
+	void GameObjectPicker::actualizeData3(Ogre::Camera* camera, OgreNewt::Body* body, bool drawLines)
+	{
+		this->camera = camera;
+		this->gameObjectId = 0;
+		this->hitBody = body;
+		this->drawLines = drawLines;
+		this->jointId = 0;
 	}
 
 	Ogre::Ray GameObjectPicker::getRayFromMouse(void) const
@@ -562,6 +592,28 @@ namespace NOWA
 		}
 	}
 
+	void GameObjectPicker::deleteJointDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<EventDataDeleteJoint>(eventData);
+
+		unsigned long id = castEventData->getJointId();
+		if (id == this->jointId)
+		{
+			this->jointId = 0;
+			this->release(true);
+		}
+	}
+
+	void GameObjectPicker::deleteBodyDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteBody> castEventData = boost::static_pointer_cast<EventDataDeleteBody>(eventData);
+
+		if (castEventData->getBody() == this->hitBody)
+		{
+			this->release(true);
+		}
+	}
+
 	void GameObjectPicker::grabGameObject(OgreNewt::World* ogreNewt, const Ogre::Vector2 position, Ogre::Window* renderWindow, Ogre::Real pickForce, Ogre::Real dragAffectDistance, const Ogre::Vector3& offsetPosition)
 	{
 		this->mousePosition = position;
@@ -635,17 +687,18 @@ namespace NOWA
 						GameObjectPicker::PickForceObserver* pickForceObserver = new GameObjectPicker::PickForceObserver(this);
 						pickForceObserver->setName(this->dragComponent->getOwner()->getName() + "_GameObjectPicker" + Ogre::StringConverter::toString(this->dragComponent->getIndex()));
 						physicsActiveComponent->attachForceObserver(pickForceObserver);
-						
-						// If its no component, but just the body, apply the drag callback with standard functionality
-						// Change the force callback from the standard one to the one that applies the spring picking force
-						// Store the old force torque callback
-						this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
-
-						this->hitBody->setCustomForceAndTorqueCallback<GameObjectPicker>(&GameObjectPicker::dragCallbackGameObject, this);
-						this->hasMoveCallback = true;
 					}
 				}
+				else
+				{
+					// If its no component, but just the body, apply the drag callback with standard functionality
+					// Change the force callback from the standard one to the one that applies the spring picking force
+					// Store the old force torque callback
+					this->oldForceTorqueCallback = this->hitBody->getForceTorqueCallback();
 
+					this->hitBody->setCustomForceAndTorqueCallback<GameObjectPicker>(&GameObjectPicker::dragCallbackGameObject, this);
+					this->hasMoveCallback = true;
+				}
 
 				Ogre::Vector3 currentMousePoint = mouseRay.getOrigin(); /*mouseRay.getPoint(length);*/
 				this->dragDistance = ((globalPos + this->offsetPosition) - currentMousePoint).length();
@@ -658,7 +711,7 @@ namespace NOWA
 		}
 	}
 
-	void GameObjectPicker::release(void)
+	void GameObjectPicker::release(bool resetBody)
 	{
 		if (this->hitBody)
 		{
@@ -684,7 +737,7 @@ namespace NOWA
 			this->hitBody->setCustomForceAndTorqueCallback(this->oldForceTorqueCallback);
 			this->hasMoveCallback = false;
 		}
-		if (0 == this->gameObjectId)
+		if (0 == this->gameObjectId && 0 == this->jointId && true == resetBody)
 		{
 			this->hitBody = nullptr;
 		}

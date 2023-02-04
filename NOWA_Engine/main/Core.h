@@ -733,6 +733,7 @@ namespace NOWA
 		};
 	private:
 		void update(Ogre::Real dt);
+		void updateFrameStats(Ogre::Real dt);
 		void registerHlms(void);
 		void initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName);
 		void setCurrentWorldPath(const Ogre::String& currentWorldPath);

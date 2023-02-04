@@ -158,26 +158,29 @@ namespace NOWA
 					this->vsyncOn = false;
 				}
 			}
-			// Only use max fps, if vsync is off
-			if (GameLoopMode::ADAPTIVE == this->gameLoopMode && false == this->vsyncOn)
+
+			if (GameLoopMode::FPS_INDEPENDENT == this->gameLoopMode)
+			{
+				this->fpsIndependentRendering();
+			}
+			else if (GameLoopMode::ADAPTIVE == this->gameLoopMode)
 			{
 				this->adaptiveFPSRendering();
 			}
 			else
 			{
-				// If vsync is on
 				this->restrictedInterpolatedFPSRendering();
 			}
 
 			// end all present states
-			while (!this->activeStateStack.empty())
+			while (false == this->activeStateStack.empty())
 			{
 				this->activeStateStack.back()->exit();
 				this->activeStateStack.pop_back();
 			}
 
 			// remove all present states
-			while (!states.empty())
+			while (false == states.empty())
 			{
 				StateInfo si = this->states.back();
 				si.state->destroy();
@@ -271,19 +274,20 @@ namespace NOWA
 
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Logic dt: " + Ogre::StringConverter::toString(dt));
 
-				// Updates main
+				// Update core
+				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(frameTime));
 				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(frameTime));
 
 				accumulator -= frameTime;
 
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+				{
+					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(frameTime));
+				}
+
 				// Does not work?
 				// if (this->slowMotionMS > 0)
 				// 	Ogre::Threads::Sleep(this->slowMotionMS);
-			}
-
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
-			{
-				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(timeSinceLast));
 			}
 
 			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(/*static_cast<Ogre::Real>(timeSinceLast)*/);
@@ -324,7 +328,7 @@ namespace NOWA
 		// this keeps track of time (seconds to keep it easy)
 		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 
-		while (!this->bShutdown)
+		while (false == this->bShutdown)
 		{
 			// Process signals from system
 			Ogre::WindowEventUtilities::messagePump();
@@ -336,18 +340,21 @@ namespace NOWA
 			// update input devices
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
 			{
-				InputDeviceCore::getSingletonPtr()->capture(dt);
+				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
 
 				// update the active state
 				this->activeStateStack.back()->update(static_cast<float>(dt));
 			}
 
-			// update main
-			Core::getSingletonPtr()->update(static_cast<float>(dt));
+			// Update core
+			Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
+			Core::getSingletonPtr()->update(static_cast<Ogre::Real>(dt));
 
 			/******rendering comes after update, so its late update*****/
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
-				this->activeStateStack.back()->lateUpdate(static_cast<float>(dt));
+			{
+				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
+			}
 
 			// Ogre::Root::getSingletonPtr()->_fireFrameRenderingQueued();
 			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<float>(dt));
@@ -355,8 +362,7 @@ namespace NOWA
 			// is better because everything necessary is done, and hydrax works properly then
 
 			// Update the renderwindow if the window is not active too, for server/client analysis
-			if ((!false == renderWindow->isFocused() || false == renderWindow->isVisible())
-				&& this->renderWhenInactive)
+			if (false == renderWindow->isVisible() && this->renderWhenInactive)
 			{
 				// Core::getSingletonPtr()->getOgreRenderWindow()->update();
 				// Do not burn CPU cycles unnecessary when minimized etc.
@@ -366,6 +372,133 @@ namespace NOWA
 			// http://stackoverflow.com/questions/3727420/significance-of-sleep0))
 			// This will have the frame rate e.g. from 800 to 400 and give other thread a change to react
 			// Sleep(0);
+		}
+	}
+
+	void AppStateManager::fpsIndependentRendering(void)
+	{
+		std::chrono::nanoseconds lag(0);
+		std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
+		std::chrono::time_point<std::chrono::high_resolution_clock> fpsStartTime = endTime;
+
+		int frameCount = 0;
+		int tickCount = 0;
+
+		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(0.5f);
+		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(0.25f);
+		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+
+		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredUpdates());
+
+		// Whole engine/game is processed constantly at 60 FPS, but rendering as fast as vsync can be or graphics card speed!
+		const std::chrono::nanoseconds lengthOfFrame(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)) / 60);
+		Ogre::Real dt = 1.0f / 60.0f;
+
+		while (false == this->bShutdown)
+		{
+			// Process signals from system
+			Ogre::WindowEventUtilities::messagePump();
+
+			//do status stuff
+			std::chrono::time_point<std::chrono::high_resolution_clock> endTime2 = std::chrono::high_resolution_clock::now();
+			std::chrono::nanoseconds fpsElapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(endTime2 - fpsStartTime));
+			std::chrono::milliseconds framesDt(std::chrono::duration_cast<std::chrono::milliseconds>(endTime2 - fpsStartTime));
+
+			if (fpsElapsedTime >= std::chrono::seconds(1))
+			{
+				// std::stringstream sstr;
+				// sstr << frameCount << ", " << tickCount;
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "frameCount: " + Ogre::StringConverter::toString(frameCount) + " tickCount: " + Ogre::StringConverter::toString(tickCount));
+
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Screen Refresh Rate: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getScreenRefreshRate()));
+				// getScreenRefreshRate = 144
+				
+
+				/*
+				FrameCount: Graphics FPC, TickCount = Processed ticks for dt and updates of engine
+				23:38:12: frameCount: 79 tickCount: 57
+				23:38:13: frameCount: 1 tickCount: 157
+				23:38:14: frameCount: 15 tickCount: 129
+				23:38:15: frameCount: 84 tickCount: 61
+				23:38:16: frameCount: 84 tickCount: 60
+				23:38:17: frameCount: 84 tickCount: 61
+				23:38:18: frameCount: 84 tickCount: 61
+				23:38:19: frameCount: 84 tickCount: 60
+				23:38:20: frameCount: 84 tickCount: 61
+				23:38:21: frameCount: 84 tickCount: 61
+				23:38:22: frameCount: 84 tickCount: 60
+				23:38:23: frameCount: 84 tickCount: 61
+				23:38:24: frameCount: 84 tickCount: 61
+				23:38:25: frameCount: 83 tickCount: 60
+				23:38:26: frameCount: 84 tickCount: 61
+				23:38:27: frameCount: 84 tickCount: 60
+				23:38:28: frameCount: 84 tickCount: 61
+				23:38:29: frameCount: 84 tickCount: 61
+				23:38:30: frameCount: 84 tickCount: 60
+				*/
+		
+
+				Core::getSingletonPtr()->updateFrameStats(dt);
+
+				// fpsStartTime = std::chrono::high_resolution_clock::now();
+				frameCount = 0;
+				tickCount = 0;
+			}
+
+			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
+
+			std::chrono::nanoseconds elapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(startTime - endTime));
+			endTime = startTime;
+
+			lag += elapsedTime;
+
+			// Game processing is independent of rendering
+			while (lag >= lengthOfFrame && false == this->bShutdown)
+			{
+				// update input devices
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+				{
+					//update the player and ship
+					InputDeviceCore::getSingletonPtr()->capture(dt);
+
+					// update the active state
+					this->activeStateStack.back()->update(dt);
+				}
+
+				// Update core
+				Core::getSingletonPtr()->update(dt);
+
+				// Update the renderwindow if the window is not active too, for server/client analysis
+				if (false == renderWindow->isVisible() && this->renderWhenInactive)
+				{
+					// Core::getSingletonPtr()->getOgreRenderWindow()->update();
+					// Do not burn CPU cycles unnecessary when minimized etc.
+					Ogre::Threads::Sleep(500);
+					// Sleep(500);
+				}
+
+				//finish tick
+				lag -= lengthOfFrame;
+
+				tickCount++;	//keep track of how many ticks weve done this second
+			}
+
+			fpsStartTime = std::chrono::high_resolution_clock::now();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "framesDt: " + Ogre::StringConverter::toString(static_cast<unsigned long>(framesDt.count())));
+
+			/******rendering comes after update, so its late update*****/
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+			{
+				this->activeStateStack.back()->lateUpdate(1.0f / static_cast<Ogre::Real>(framesDt.count()));
+			}
+
+			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+
+
+			// Keeps track of how many frames are done this second
+			frameCount++;
 		}
 	}
 

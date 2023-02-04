@@ -24,6 +24,8 @@ namespace NOWA
 		joystickButtonId(-1),
 		mouseIdPressed(false),
 		joystickIdPressed(false),
+		jointId(0),
+		body(nullptr),
 		activated(new Variant(PickerComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(PickerComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		offsetPosition(new Variant(PickerComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
@@ -32,7 +34,6 @@ namespace NOWA
 		drawLine(new Variant(PickerComponent::AttrDrawLine(), true, this->attributes)),
 		mouseButtonPickId(new Variant(PickerComponent::AttrMouseButtonPickId(), std::vector<Ogre::String>(), this->attributes)),
 		joystickButtonPickId(new Variant(PickerComponent::AttrJoystickButtonPickId(), std::vector<Ogre::String>(), this->attributes))
-
 	{
 		this->activated->setDescription("Picking will only take place if this component is activated.");
 		this->targetId->setDescription("Sets the target game object id to be picked.");
@@ -66,6 +67,9 @@ namespace NOWA
 
 	bool PickerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
+
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -152,7 +156,22 @@ namespace NOWA
 	{
 		this->isInSimulation = true;
 
-		this->picker->actualizeData(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->targetId->getULong(), this->drawLine->getBool());
+		if (0 != this->targetId->getULong())
+		{
+			this->picker->actualizeData(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->targetId->getULong(), this->drawLine->getBool());
+		}
+		else if (0 != this->jointId)
+		{
+			this->picker->actualizeData2(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->jointId, this->drawLine->getBool());
+		}
+		else if (nullptr != this->body)
+		{
+			this->picker->actualizeData3(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->body, this->drawLine->getBool());
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Could not attach picker, because either the target id or the joint id or the direct body pointer is invalid for game object: " + this->gameObjectPtr->getName());
+		}
 		
 		return true;
 	}
@@ -169,8 +188,37 @@ namespace NOWA
 		return true;
 	}
 
+	void PickerComponent::deleteJointDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<EventDataDeleteJoint>(eventData);
+
+		unsigned long id = castEventData->getJointId();
+		if (id == this->jointId)
+		{
+			this->jointId = 0;
+			this->picker->actualizeData2(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->jointId, this->drawLine->getBool());
+			this->picker->release();
+		}
+	}
+
+	void PickerComponent::deleteBodyDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteBody> castEventData = boost::static_pointer_cast<EventDataDeleteBody>(eventData);
+
+		if (castEventData->getBody() == this->body)
+		{
+			if (nullptr != this->picker)
+			{
+				this->picker->release();
+			}
+		}
+	}
+
 	void PickerComponent::onRemoveComponent(void)
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
+
 		GameObjectComponent::onRemoveComponent();
 
 		if (this->picker != nullptr)
@@ -327,6 +375,21 @@ namespace NOWA
 	unsigned long PickerComponent::getTargetId(void) const
 	{
 		return this->targetId->getULong();
+	}
+
+	void PickerComponent::setTargetJointId(unsigned long jointId)
+	{
+		this->jointId = jointId;
+		if (0 != jointId)
+		{
+			this->picker->actualizeData2(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->jointId, this->drawLine->getBool());
+		}
+	}
+
+	void PickerComponent::setTargetBody(OgreNewt::Body* body)
+	{
+		this->body = body;
+		this->picker->actualizeData3(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->body, this->drawLine->getBool());
 	}
 
 	void PickerComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
@@ -490,6 +553,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getTargetId());
 	}
 
+	void setTargetJointId(PickerComponent* instance, const Ogre::String& targetJointId)
+	{
+		instance->setTargetJointId(Ogre::StringConverter::parseUnsignedLong(targetJointId));
+	}
+
 	void PickerComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
@@ -499,6 +567,8 @@ namespace NOWA
 			.def("isActivated", &PickerComponent::isActivated)
 			.def("setTargetId", &setTargetId)
 			.def("getTargetId", &getTargetId)
+			.def("setTargetJointId", &setTargetJointId)
+			.def("setTargetBody", &PickerComponent::setTargetBody)
 			.def("setOffsetPosition", &PickerComponent::setOffsetPosition)
 			.def("getOffsetPosition", &PickerComponent::getOffsetPosition)
 			.def("setSpringStrength", &PickerComponent::setSpringStrength)
@@ -518,6 +588,9 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "bool isActivated()", "Gets whether this component is activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void setTargetId(string targetId)", "Sets the target game object id to pick.");
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "string getTargetId()", "Gets the target game object id which is currently picked.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void setTargetJointId(string targetJointId)", "Sets instead a joint id to get the physics body for dragging. Note: Useful if a ragdoll with joint rag bones is involved.");
+		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void setTargetBody(Body body)", "Sets the physics body pointer for dragging. Note: Useful if a ragdoll with joint rag bones is involved.");
 
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets an offset position at which the source game object should be picked.");
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "Vector3 getOffsetPosition()", "Gets the offset position at which the source game object is picked.");

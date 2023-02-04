@@ -319,6 +319,20 @@ namespace NOWA
 		void actualizeData(Ogre::Camera* camera, unsigned long gameObjectId, bool drawLines);
 
 		/**
+		* @brief		Actualizes the picker.
+		* @param[in]	jointId			The joint id (to get the physics body from) to drag. Useful if ragdoll bone is involved.
+		* @param[in]	drawLines		Whether to draw a line
+		*/
+		void actualizeData2(Ogre::Camera* camera, unsigned long jointId, bool drawLines);
+
+		/**
+		* @brief		Actualizes the picker.
+		* @param[in]	body			The direct body pointer to drag.
+		* @param[in]	drawLines		Whether to draw a line
+		*/
+		void actualizeData3(Ogre::Camera* camera, OgreNewt::Body* body, bool drawLines);
+
+		/**
 		* @brief		Executes the grab process. This function can be used e.g. when holding a mouse button.
 		* @param[in]	ogreNewt				The ogre newt physics to grab game objects physically
 		* @param[in]	position				The position of the input device, e.g. x, y of the mouse.
@@ -337,7 +351,7 @@ namespace NOWA
 		/**
 		* @brief	Releases the dragged game object
 		*/
-		void release(void);
+		void release(bool resetBody = false);
 
 		/**
 		* @brief		Adapts the query mask at runtime, to change which game object types can be dragged.
@@ -370,6 +384,10 @@ namespace NOWA
 
 		void dragCallbackGameObject(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 	private:
+		void deleteJointDelegate(EventDataPtr eventData);
+
+		void deleteBodyDelegate(EventDataPtr eventData);
+	private:
 		bool active;
 		bool dragging;
 		Ogre::Real maxDistance;
@@ -384,6 +402,7 @@ namespace NOWA
 		Ogre::Real dragDistance;
 		PhysicsComponent* dragComponent;
 		OgreNewt::Body* hitBody;
+		unsigned long jointId;
 		unsigned int queryMask;
 		unsigned long gameObjectId;
 		Ogre::SceneNode* dragLineNode;

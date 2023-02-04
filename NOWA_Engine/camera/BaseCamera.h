@@ -30,6 +30,8 @@ namespace NOWA
 
 		virtual void setMoveSpeed(Ogre::Real moveSpeed);
 
+		virtual void setRotationSpeed(Ogre::Real rotationSpeed);
+
 		virtual void reset(void);
 
 		virtual Ogre::String getBehaviorType(void) 

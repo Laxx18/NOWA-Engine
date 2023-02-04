@@ -3270,6 +3270,24 @@ namespace NOWA
 	
 	void Core::update(Ogre::Real dt)
 	{
+		MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
+
+		if (this->optionUseLuaConsole)
+		{
+			LuaConsole::getSingletonPtr()->update(dt);
+		}
+
+		ProcessManager::getInstance()->updateProcesses(dt);
+		// allow event queue to process for up to 20 ms
+		AppStateManager* appStateManager = AppStateManager::getSingletonPtr();
+		if (appStateManager->getAppStatesCount() > 0)
+		{
+			appStateManager->getEventManager()->update(20);
+		}
+	}
+
+	void Core::updateFrameStats(Ogre::Real dt)
+	{
 		// Get frames statistics
 		if (this->info && true == this->info->getVisible())
 		{
@@ -3310,21 +3328,6 @@ namespace NOWA
 				}
 #endif
 			}
-		}
-		
-		MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
-
-		if (this->optionUseLuaConsole)
-		{
-			LuaConsole::getSingletonPtr()->update(dt);
-		}
-
-		ProcessManager::getInstance()->updateProcesses(dt);
-		// allow event queue to process for up to 20 ms
-		AppStateManager* appStateManager = AppStateManager::getSingletonPtr();
-		if (appStateManager->getAppStatesCount() > 0)
-		{
-			appStateManager->getEventManager()->update(20);
 		}
 	}
 

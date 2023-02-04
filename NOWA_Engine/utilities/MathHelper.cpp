@@ -591,6 +591,38 @@ namespace NOWA
 		return Ogre::Vector2(std::max(v1.x, v2.x), std::max(v1.y, v2.y));
 	}
 
+	Ogre::Degree MathHelper::getRandomAngle()
+	{
+		return Ogre::Degree(static_cast<int>(rand() % 360));
+	}
+
+	Ogre::Vector3 MathHelper::getRandomVector()
+	{
+		auto getRandomReal = [&]() -> Ogre::Real
+		{
+			Ogre::Real r = static_cast<Ogre::Real>(rand()) / static_cast<Ogre::Real>(RAND_MAX);
+			return r;
+		};
+
+		Ogre::Vector3 rndVector(getRandomReal(), getRandomReal(), getRandomReal());
+		rndVector.normalise();
+		return rndVector;
+	}
+
+	Ogre::Quaternion MathHelper::getRandomDirection()
+	{
+		Ogre::Vector3 axis = getRandomVector();
+		Ogre::Quaternion quat(getRandomAngle(), axis);
+		return quat;
+	}
+
+	Ogre::Vector3 MathHelper::addRandomVectorOffset(const Ogre::Vector3& pos, Ogre::Real offset)
+	{
+		Ogre::Vector3 v = getRandomVector();
+		v *= offset;
+		return pos + v;
+	}
+
 	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::Real step, Ogre::Vector3 value)
 	{
 		if (0.0f == step)

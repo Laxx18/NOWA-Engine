@@ -70,5 +70,5 @@ void MainApplication::startSimulation(const Ogre::String& configName)
 	DesignState::create(NOWA::AppStateManager::getSingletonPtr(), "DesignState", "DesignState");
 
 	// Lets start with the Design state
-	NOWA::AppStateManager::getSingletonPtr()->start("DesignState", false, NOWA::AppStateManager::ADAPTIVE /*NOWA::AppStateManager::RESTRICTED_INTERPOLATED*/);
+	NOWA::AppStateManager::getSingletonPtr()->start("DesignState", false, NOWA::AppStateManager::FPS_INDEPENDENT /*NOWA::AppStateManager::ADAPTIVE*/ /*NOWA::AppStateManager::RESTRICTED_INTERPOLATED*/);
 }

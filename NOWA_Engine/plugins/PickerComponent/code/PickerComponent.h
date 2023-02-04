@@ -154,6 +154,18 @@ namespace NOWA
 		unsigned long getTargetId(void) const;
 
 		/**
+		 * @brief Sets instead a joint id to get the physics body for dragging. Useful if a ragdoll with joint rag bones is involved.
+		 * @param[in] jointId The joint id to set.
+		 */
+		void setTargetJointId(unsigned long jointId);
+
+		/**
+		 * @brief Sets the physics body pointer for dragging. Useful if a ragdoll with joint rag bones is involved.
+		 * @param[in] body The body pointer to set.
+		 */
+		void setTargetBody(OgreNewt::Body* body);
+
+		/**
 		 * @brief Sets an offset position at which the source game object should be picked.
 		 * @param[in] offsetPosition The offset position to set
 		 */
@@ -319,6 +331,9 @@ namespace NOWA
 			 * @return		true			if other key listener successors shall have the chance to react or not.
 			 */
 			virtual bool buttonReleased(const OIS::JoyStickEvent& evt, int button) override;
+		private:
+			void deleteJointDelegate(EventDataPtr eventData);
+			void deleteBodyDelegate(EventDataPtr eventData);
 	private:
 		Ogre::String name;
 		bool isInSimulation;
@@ -327,6 +342,8 @@ namespace NOWA
 		int joystickButtonId;
 		bool mouseIdPressed;
 		bool joystickIdPressed;
+		unsigned long jointId;
+		OgreNewt::Body* body;
 
 		Variant* activated;
 		Variant* targetId;

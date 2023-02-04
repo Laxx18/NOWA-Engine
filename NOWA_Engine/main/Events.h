@@ -1705,6 +1705,63 @@ namespace NOWA
 		unsigned long jointId;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataDeleteBody - This event is sent out when an OgreNewt body has been deleted in order to react and set used body pointer to 0
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataDeleteBody : public BaseEventData
+	{
+	public:
+
+		EventDataDeleteBody(void) :
+			body(nullptr)
+		{
+		}
+
+		explicit EventDataDeleteBody(OgreNewt::Body* body)
+			: body(body)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe86c7d47;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe86c7d47;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+		
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataDeleteBody(this->body));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataDeleteBody";
+		}
+
+		OgreNewt::Body* getBody(void) const
+		{
+			return this->body;
+		}
+
+	private:
+		OgreNewt::Body* body;
+	};
+
 }; // namespace end
 
 #endif

@@ -7677,11 +7677,11 @@ namespace NOWA
 
 	void bindOgreNewt(lua_State* lua)
 	{
-		/*module(lua)
+		module(lua)
 		[
 			class_<OgreNewt::Body>("Body")
 			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
-			.def("getOgreNode", &OgreNewt::Body::getOgreNode)
+			/*.def("getOgreNode", &OgreNewt::Body::getOgreNode)
 			.def("getWorld", &OgreNewt::Body::getWorld)
 			// .def("setType", &OgreNewt::Body::setType)
 			.def("getType", &OgreNewt::Body::getType)
@@ -7726,9 +7726,12 @@ namespace NOWA
 			.def("getLinearDamping", &OgreNewt::Body::getLinearDamping)
 			.def("getAngularDamping", &OgreNewt::Body::getAngularDamping)
 			.def("calculateInverseDynamicsForce", &OgreNewt::Body::calculateInverseDynamicsForce)
-			.def("addImpulse", &OgreNewt::Body::addImpulse)
+			.def("addImpulse", &OgreNewt::Body::addImpulse)*/
 		];
 
+		AddClassToCollection("Body", "class", "OgreNewt physics body.");
+
+		/*
 		module(lua)
 		[
 			class_<OgreNewt::MaterialID>("MaterialID")
@@ -10755,6 +10758,11 @@ namespace NOWA
 		return obj;
 	}
 
+	Ogre::String getJointId(PhysicsRagDollComponent::RagBone* instance)
+	{
+		return Ogre::StringConverter::toString(instance->getJointId());
+	}
+
 	void bindPhysicsRagDollComponent(lua_State* lua)
 	{
 		module(lua)
@@ -10816,6 +10824,8 @@ namespace NOWA
 				.def("applyOmegaForce", &PhysicsRagDollComponent::RagBone::applyOmegaForce)
 				.def("applyOmegaForceRotateTo", &PhysicsRagDollComponent::RagBone::applyOmegaForceRotateTo)
 				.def("getSize", &PhysicsRagDollComponent::RagBone::getBodySize)
+				.def("getJointId", &getJointId)
+				.def("getBody", &PhysicsRagDollComponent::RagBone::getBody)
 			]
 		];
 		AddClassToCollection("PhysicsRagDollComponent", "class inherits PhysicsActiveComponent", PhysicsRagDollComponent::getStaticInfoText());
@@ -10862,6 +10872,8 @@ namespace NOWA
 							 "The strength at which the rotation should occur. "
 							 "Note: This should be used during simulation instead of @setOmegaVelocity.");
 		AddClassToCollection("RagBone", "Vector3 getSize()", "Gets the size of the bone.");
+		AddClassToCollection("RagBone", "string getJointId()", "Gets the joint id of the given rag bone for direct attachment.");
+		AddClassToCollection("RagBone", "Body getBody()", "Gets the OgreNewt physics body for direct attachment.");
 	}
 
 	/*void bindPhysicsMathSliderComponent(lua_State* lua)

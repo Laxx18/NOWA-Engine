@@ -640,6 +640,9 @@ namespace NOWA
 	{
 		if (nullptr != this->physicsBody)
 		{
+			boost::shared_ptr<EventDataDeleteBody> deleteBodyEvent(boost::make_shared<EventDataDeleteBody>(this->physicsBody));
+			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(deleteBodyEvent);
+
 			// Dangerous: If there is a joint and the body is destroyed, all constraints are destroyed by newton automatically!
 			// And joint pointer will become invalid! Hence release the joints
 			unsigned int i = 0;

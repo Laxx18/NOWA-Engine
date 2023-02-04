@@ -298,6 +298,8 @@ namespace NOWA
 			void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
 			// Ogre::Vector3 getPosCorrection(void) const;
+
+			unsigned long getJointId(void);
 		private:
 			void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 		private:

@@ -1529,7 +1529,7 @@ namespace NOWA
 
 	PhysicsRagDollComponent::RagBone* PhysicsRagDollComponent::getRagBone(const Ogre::String& name)
 	{
-		if (name.empty())
+		if (true == name.empty())
 		{
 			return nullptr;
 		}
@@ -2097,6 +2097,15 @@ namespace NOWA
 		}
 
 		this->applyOmegaForce(resultVector);
+	}
+
+	unsigned long PhysicsRagDollComponent::RagBone::getJointId(void)
+	{
+		if (nullptr != this->jointCompPtr)
+		{
+			return this->jointCompPtr->getId();
+		}
+		return 0;
 	}
 
 	void PhysicsRagDollComponent::RagBone::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)

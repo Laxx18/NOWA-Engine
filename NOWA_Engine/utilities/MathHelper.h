@@ -453,8 +453,30 @@ namespace NOWA
 		Ogre::Vector2 max(const Ogre::Vector2& v1, const Ogre::Vector2& v2);
 
 		/**
-		 
+		 * @brief		Gets a random angle.
+		 * @return		rndAngle				The random angle to get.
 		 */
+		Ogre::Degree getRandomAngle();
+
+			/**
+			 * @brief		Gets a random vector3.
+			 * @return		rndVector				The random vector3 to get.
+			 */
+			Ogre::Vector3 getRandomVector();
+
+		/**
+		 * @brief		Gets a random direction.
+		 * @return		rndDirection			The random direction to get.
+		 */
+		Ogre::Quaternion getRandomDirection();
+
+		/**
+		 * @brief		Adds to a given random vector a position multiplied by an offset.
+		 * @param[in]	pos					The pos to add.
+		 * @param[in]	offset				The offset to multiply.
+		 * @return		rndVector			The random vector3 to get.
+		 */
+		Ogre::Vector3 addRandomVectorOffset(const Ogre::Vector3& pos, Ogre::Real offset);
 
 		 /**
 		  * @brief		An extend version of the standard modulo, in that int values are "wrapped"

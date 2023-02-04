@@ -26,7 +26,15 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 	catch( Ogre::Exception& e )
 	{
 		ShowCursor(true);
-		MessageBoxA(0, e.getFullDescription().c_str(), "An exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+	}
+	catch (std::exception& e)
+	{
+		MessageBoxEx(0, e.what(), "An exception has occured!", MB_OK, MB_OK | MB_ICONERROR | MB_TASKMODAL);
+	}
+	catch (...)
+	{
+		MessageBoxEx(0, "An unknown exception has occured!", "Unknown exception", MB_OK, MB_OK | MB_ICONERROR | MB_TASKMODAL);
 	}
 
 	return 0;
@@ -42,17 +50,25 @@ int main(int argc, char **argv)
         if (argc > 1)
         {
             configFileName = argv[1];
+			app.startSimulation(configFileName);
         }
         else
         {
-            configFileName = "ogre.cfg";
+			app.startSimulation();
         }
-        app.startSimulation(configFileName);
     }
-    catch( Ogre::Exception& e )
+    catch(Ogre::Exception& e)
     {
-        std::cerr << "An exception has occured: " << e.getFullDescription();
+        std::cerr << "An Ogre exception has occured: " << e.getFullDescription();
     }
+	catch (std::exception& e)
+	{
+		std::cerr << "An exception has occured!" << e.getFullDescription();
+	}
+	catch (...)
+	{
+		std::cerr << "An unknown exception has occured.");
+	}
 
     return 0;
 }
