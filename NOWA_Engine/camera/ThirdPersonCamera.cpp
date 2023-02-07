@@ -2,6 +2,7 @@
 #include "ThirdPersonCamera.h"
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -15,7 +16,11 @@ namespace NOWA
 		cameraFriction(cameraFriction),
 		cameraSpringLength(cameraSpringLength)
 	{
-
+		// Smoothing creates jitter if simulation updates are 30 ticks per second or below, hence disable smoothing
+		if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
+		{
+			this->smoothValue = 0.0f;
+		}
 	}
 
 	ThirdPersonCamera::~ThirdPersonCamera()
@@ -100,7 +105,7 @@ namespace NOWA
 			tVector.y += this->yOffset;
 
 			//neuen Richtungsvektor aus der Kameraposition zum tVektor erhalten und mit der Federlaenge verlaengern
-			Ogre::Vector3 vVector = Ogre::Vector3(tVector - cameraPosition) * this->cameraSpring * dt * 60.0f * this->moveCameraWeight;
+			Ogre::Vector3 vVector = Ogre::Vector3(tVector - cameraPosition) * this->cameraSpring * this->moveCameraWeight;
 
 			//Reibung hinzufuegen
 			vVector *= this->cameraFriction;

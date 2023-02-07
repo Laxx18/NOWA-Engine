@@ -21,7 +21,7 @@ namespace NOWA
 		moveCameraWeight(1.0f),
 		rotateCameraWeight(1.0f)
 	{
-		
+
 	}
 
 	BaseCamera::~BaseCamera() 
@@ -92,7 +92,7 @@ namespace NOWA
 				moveHorizontal = 0.0f;
 			
 
-			moveValue += Ogre::Vector3((this->moveSpeed * moveHorizontal) /** dt*/, 0.0f, (this->moveSpeed * moveVertical) * /*dt **/ this->moveCameraWeight);
+			moveValue += Ogre::Vector3((this->moveSpeed * moveHorizontal), 0.0f, (this->moveSpeed * moveVertical) * this->moveCameraWeight);
 
 			//// POV hat info is only currently supported on Windows, but the value is
 			//// guaranteed to be 65535 if it's not supported, so we can check its range.
@@ -114,33 +114,33 @@ namespace NOWA
 			if (abs != 0)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[BaseCamera]: Abs " + Ogre::StringConverter::toString(abs));
-				moveValue += Ogre::Vector3(-this->moveSpeed * dt  * static_cast<Ogre::Real>(abs), 0.0f, 0.0f);
+				moveValue += Ogre::Vector3(-this->moveSpeed  * static_cast<Ogre::Real>(abs), 0.0f, 0.0f);
 			}*/
 		}
 		
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_LEFT))
 		{
-			moveValue += Ogre::Vector3(-this->moveSpeed /** dt*/  * this->moveCameraWeight, 0.0f, 0.0f);
+			moveValue += Ogre::Vector3(-this->moveSpeed * this->moveCameraWeight, 0.0f, 0.0f);
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_RIGHT))
 		{
-			moveValue += Ogre::Vector3(this->moveSpeed /** dt*/  * this->moveCameraWeight, 0.0f, 0.0f);
+			moveValue += Ogre::Vector3(this->moveSpeed * this->moveCameraWeight, 0.0f, 0.0f);
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_BACKWARD))
 		{
-			moveValue += Ogre::Vector3(0.0f, 0.0f, this->moveSpeed /** dt*/  * this->moveCameraWeight);
+			moveValue += Ogre::Vector3(0.0f, 0.0f, this->moveSpeed * this->moveCameraWeight);
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_FORWARD))
 		{
-			moveValue += Ogre::Vector3(0.0f, 0.0f, -this->moveSpeed /** dt*/  * this->moveCameraWeight);
+			moveValue += Ogre::Vector3(0.0f, 0.0f, -this->moveSpeed * this->moveCameraWeight);
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_DOWN))
 		{
-			moveValue += Ogre::Vector3(0.0f, -this->moveSpeed /** dt*/  * this->moveCameraWeight, 0.0f);
+			moveValue += Ogre::Vector3(0.0f, -this->moveSpeed * this->moveCameraWeight, 0.0f);
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_UP))
 		{
-			moveValue += Ogre::Vector3(0.0f, this->moveSpeed /** dt*/  * this->moveCameraWeight, 0.0f);
+			moveValue += Ogre::Vector3(0.0f, this->moveSpeed * this->moveCameraWeight, 0.0f);
 		}
 		
 		if (this->camera->getProjectionType() == Ogre::PT_ORTHOGRAPHIC)
@@ -189,8 +189,8 @@ namespace NOWA
 		if (false == forJoyStick)
 		{
 			const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-			rotationValue.x = -ms.X.rel * this->rotateSpeed /** dt*/  * this->rotateCameraWeight;
-			rotationValue.y = -ms.Y.rel * this->rotateSpeed /** dt*/  * this->rotateCameraWeight;
+			rotationValue.x = -ms.X.rel * this->rotateSpeed * this->rotateCameraWeight;
+			rotationValue.y = -ms.Y.rel * this->rotateSpeed * this->rotateCameraWeight;
 		}
 		else
 		{
@@ -220,8 +220,8 @@ namespace NOWA
 				if (Ogre::Math::Abs(rotateHorizontal) < DEAD_ZONE)
 					rotateHorizontal = 0.0f;
 
-				rotationValue.x = (this->rotateSpeed * 10.0f * rotateHorizontal) /** dt*/  * this->rotateCameraWeight;
-				rotationValue.y = (this->rotateSpeed * 10.0f * rotateVertical) /** dt*/  * this->rotateCameraWeight;
+				rotationValue.x = (this->rotateSpeed * 10.0f * rotateHorizontal) * this->rotateCameraWeight;
+				rotationValue.y = (this->rotateSpeed * 10.0f * rotateVertical) * this->rotateCameraWeight;
 			}
 		}
 		

@@ -538,9 +538,17 @@ namespace NOWA
 
 		int getOptionMusicVolume(void) const { return this->optionMusicVolume; }
 
-		void setOptionDesiredUpdates(unsigned int optionDesiredUpdates) { this->optionDesiredUpdates = optionDesiredUpdates; }
+		/**
+		 * @brief		Gets the desired frames updates for graphics rendering. Default value is the max monitor refresh rate (e.g. on a 144hz monitor 144 frames per second).
+		 * @return		The desired frames updates
+		 */
+		unsigned int getOptionDesiredFramesUpdates(void) const { return this->optionDesiredFramesUpdates; }
 
-		unsigned int getOptionDesiredUpdates(void) const { return this->optionDesiredUpdates; }
+		/**
+		 * @brief		Gets the desired simulation updates (tick count). Default value 30 ticks per second.
+		 * @return		The desired simulation updates
+		 */
+		unsigned int getOptionDesiredSimulationUpdates(void) const { return this->optionDesiredSimulationUpdates; }
 
 		void setOptionLogLevel(char optionLogLevel) { this->optionLogLevel = optionLogLevel; }
 
@@ -813,7 +821,8 @@ namespace NOWA
 		unsigned int optionPacketsPerSecond;
 		unsigned int optionPlayerColor;
 		char optionLogLevel;
-		unsigned int optionDesiredUpdates;
+		unsigned int optionDesiredFramesUpdates;
+		unsigned int optionDesiredSimulationUpdates;
 		bool bShutdown;
 		bool startAsServer;
 		int optionLanguage;

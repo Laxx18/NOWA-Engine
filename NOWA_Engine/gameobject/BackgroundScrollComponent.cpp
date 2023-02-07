@@ -23,7 +23,7 @@ namespace NOWA
 		workspaceBackgroundComponent(nullptr),
 		active(new Variant(BackgroundScrollComponent::AttrActive(), true, this->attributes)),
 		targetId(new Variant(BackgroundScrollComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
-		moveSpeedX(new Variant(BackgroundScrollComponent::AttrMoveSpeedX(), 1.0f, this->attributes)),
+		moveSpeedX(new Variant(BackgroundScrollComponent::AttrMoveSpeedX(), 0.01f, this->attributes)),
 		moveSpeedY(new Variant(BackgroundScrollComponent::AttrMoveSpeedY(), 0.0f, this->attributes)),
 		followGameObjectX(new Variant(BackgroundScrollComponent::AttrFollowGameObjectX(), false, this->attributes)),
 		followGameObjectY(new Variant(BackgroundScrollComponent::AttrFollowGameObjectY(), false, this->attributes)),
@@ -236,13 +236,13 @@ namespace NOWA
 					absolutePos2D.x = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f);
 					velocity.x = absolutePos2D.x - this->lastPosition.x;
 
-					this->xScroll += velocity.x * this->moveSpeedX->getReal() * dt;
+					this->xScroll += velocity.x * this->moveSpeedX->getReal();
 
-					if (this->xScroll > 2.0f)
+					if (this->xScroll >= 2.0f)
 					{
 						this->xScroll = 0.0f;
 					}
-					else if (this->xScroll < 0.0f)
+					else if (this->xScroll <= 0.0f)
 					{
 						this->xScroll = 2.0f;
 					}
@@ -252,13 +252,13 @@ namespace NOWA
 					absolutePos2D.y = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f);
 					velocity.y = absolutePos2D.y - this->lastPosition.y;
 
-					this->yScroll -= velocity.y * this->moveSpeedY->getReal() * dt;
+					this->yScroll -= velocity.y * this->moveSpeedY->getReal();
 
-					if (this->yScroll > 2.0f)
+					if (this->yScroll >= 2.0f)
 					{
 						this->yScroll = 0.0f;
 					}
-					else if (this->yScroll < 0.0f)
+					else if (this->yScroll <= 0.0f)
 					{
 						this->yScroll = 2.0f;
 					}
@@ -268,13 +268,13 @@ namespace NOWA
 			if (false == followGameObjectX)
 			{
 				velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f);
-				this->xScroll += velocity.x * dt;
+				this->xScroll += velocity.x;
 
-				if (this->xScroll > 2.0f)
+				if (this->xScroll >= 2.0f)
 				{
 					this->xScroll = 0.0f;
 				}
-				else if (this->xScroll < 0.0f)
+				else if (this->xScroll <= 0.0f)
 				{
 					this->xScroll = 2.0f;
 				}
@@ -283,13 +283,13 @@ namespace NOWA
 			if (false == followGameObjectY && false == followGameObjectZ)
 			{
 				velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f);
-				this->yScroll -= velocity.y * dt;
+				this->yScroll -= velocity.y;
 
-				if (this->yScroll > 2.0f)
+				if (this->yScroll >= 2.0f)
 				{
 					this->yScroll = 0.0f;
 				}
-				else if (this->yScroll < 0.0f)
+				else if (this->yScroll <= 0.0f)
 				{
 					this->yScroll = 2.0f;
 				}

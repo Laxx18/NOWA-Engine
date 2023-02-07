@@ -5,8 +5,8 @@
 		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
 		<ambient>
 			<ambientLightUpperHemisphere r="0.00271308" g="0.00467592" b="0.00810775"/>
-			<ambientLightLowerHemisphere r="0.000904001" g="0.00174444" b="0.0029013" a="1"/>
-			<hemisphereDir x="0.48909" y="0.860066" z="-0.145185"/>
+			<ambientLightLowerHemisphere r="0.000902515" g="0.0017425" b="0.00289856" a="1"/>
+			<hemisphereDir x="0.491175" y="0.860066" z="-0.137964"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="0"/>
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -150,8 +150,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="5.17547" y="3.11211" z="-5.67653"/>
-			<rotation qw="0.931157" qx="-0.100603" qy="0.348437" qz="0.0376473"/>
+			<position x="4.57173" y="2.71612" z="-7.39284"/>
+			<rotation qw="0.919758" qx="-0.11348" qy="0.372894" qz="0.0460103"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -163,7 +163,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -177,8 +177,8 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="4.57173 2.71612 -7.39284"/>
-					<property type="9" name="CameraOrientation" data="-14.0673 44.1378 0.000301458"/>
+					<property type="9" name="CameraPosition" data="3.78707 1.22111 -5.1625"/>
+					<property type="9" name="CameraOrientation" data="-10.5672 23.0876 0.000323517"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -224,7 +224,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="0.573945" qx="-0.619449" qy="-0.242523" qz="0.477549"/>
+			<rotation qw="0.841229" qx="-0.348449" qy="0.158209" qz="0.381951"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -379,7 +379,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="0"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
@@ -628,7 +628,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="6" name="Strength" data="0.5"/>
+					<property type="6" name="Strength" data="3"/>
 					<property type="7" name="ComponentTransformComponent" data="TransformComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

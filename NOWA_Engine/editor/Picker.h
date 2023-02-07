@@ -411,6 +411,8 @@ namespace NOWA
 		OgreNewt::Body::ForceCallback oldForceTorqueCallback;
 		Ogre::Real dragAffectDistance;
 		Ogre::Vector3 offsetPosition;
+		Ogre::Vector3 cursorPos;
+		Ogre::Vector3 dragPos;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////

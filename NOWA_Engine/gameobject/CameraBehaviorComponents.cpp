@@ -662,6 +662,11 @@ namespace NOWA
 		{
 			this->baseCamera = new ThirdPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
 				this->yOffset->getReal(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
+			
+			if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
+			{
+				this->baseCamera->setSmoothValue(0.0f);
+			}
 		}
 		CameraBehaviorComponent::setActivated(activated);
 	}

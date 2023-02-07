@@ -115,7 +115,7 @@ namespace NOWA
 
 	bool CrowdComponent::disconnect(void)
 	{
-		if (-1 != this->agentId)
+		if (-1 != this->agentId && nullptr != this->agent)
 		{
 			this->detourCrowd->removeAgent(this->agentId);
 			this->agentId = -1;
@@ -281,7 +281,7 @@ namespace NOWA
 
 	void CrowdComponent::updateDestination(Ogre::Vector3 destination, bool updatePreviousPath)
 	{
-		if (false == this->controlled->getBool())
+		if (false == this->controlled->getBool() || false == this->activated->getBool())
 		{
 			return;
 		}
@@ -300,6 +300,11 @@ namespace NOWA
 
 	Ogre::Vector3 CrowdComponent::beginUpdateVelocity(void)
 	{
+		if (false == this->activated->getBool())
+		{
+			return this->manualVelocity;
+		}
+
 		if (true == this->controlled->getBool())
 		{
 			if (true == this->agent->active)
@@ -411,7 +416,7 @@ namespace NOWA
 		this->stopped = false;
 		this->destination = Ogre::Vector3::ZERO;
 
-		if (true == this->controlled->getBool())
+		if (true == this->controlled->getBool() && true == this->activated->getBool())
 		{
 			this->detourCrowd->requestVelocity(this->agentId, this->manualVelocity);
 		}
@@ -436,7 +441,7 @@ namespace NOWA
 
 	Ogre::Vector3 CrowdComponent::getVelocity(void)
 	{
-		if (true == this->controlled->getBool())
+		if (true == this->controlled->getBool() && true == this->activated->getBool())
 		{
 			Ogre::Vector3 velocity;
 			OgreRecast::FloatAToOgreVect3(this->agent->nvel, velocity);

@@ -378,7 +378,9 @@ namespace NOWA
 		hasMoveCallback(false),
 		oldForceTorqueCallback(nullptr),
 		dragAffectDistance(0.0f),
-		offsetPosition(Ogre::Vector3::ZERO)
+		offsetPosition(Ogre::Vector3::ZERO),
+		dragPos(Ogre::Vector3::ZERO),
+		cursorPos(Ogre::Vector3::ZERO)
 	{
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &GameObjectPicker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
@@ -497,10 +499,8 @@ namespace NOWA
 	void GameObjectPicker::createLine(void)
 	{
 		this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-		// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
 		this->dragLineObject = this->sceneManager->createManualObject();
 		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->dragLineObject->setName("GameObjectPickerDragLines");
 		this->dragLineObject->setQueryFlags(0 << 0);
 		this->dragLineObject->setCastShadows(false);
 		this->dragLineNode->attachObject(this->dragLineObject);
@@ -542,7 +542,7 @@ namespace NOWA
 	{
 		Ogre::Ray mouseRay = this->getRayFromMouse();
 		// Get the global position our cursor is at
-		Ogre::Vector3 cursorPos = mouseRay.getPoint(this->dragDistance);
+		this->cursorPos = mouseRay.getPoint(this->dragDistance);
 
 		Ogre::Quaternion bodyOrientation;
 		Ogre::Vector3 bodyPos;
@@ -551,7 +551,7 @@ namespace NOWA
 		body->getPositionOrientation(bodyPos, bodyOrientation);
 
 		// Find the handle position we are holding the body from
-		Ogre::Vector3 dragPos = (bodyOrientation * this->dragPoint) + (bodyPos + this->offsetPosition);
+		this->dragPos = (bodyOrientation * this->dragPoint) + (bodyPos + this->offsetPosition);
 
 		Ogre::Vector3 inertia;
 		Ogre::Real mass;
@@ -570,23 +570,25 @@ namespace NOWA
 		}
 		else
 		{
-			Ogre::Real length = (cursorPos - dragPos).length();
+			Ogre::Real length = (this->cursorPos - this->dragPos).length();
 			// Ogre::LogManager::getSingletonPtr()->logMessage("length: " + Ogre::StringConverter::toString(this->dragDistance));
 			if (length < this->dragAffectDistance)
 			{
-				Ogre::Vector3 dragForce = ((cursorPos - dragPos) * mass * (static_cast<Ogre::Real>(this->pickForce)))/* - body->getVelocity()*/;
-				if (this->drawLines)
+				Ogre::Vector3 dragForce = ((this->cursorPos - this->dragPos) * mass * (static_cast<Ogre::Real>(this->pickForce)))/* - body->getVelocity()*/;
+
+				// Must be done outside, because here if 2 pickers are involved and this is called from multiple thread, a crash does occur in ogre trying to draw something.
+				/*if (this->drawLines)
 				{
-					this->drawLine(cursorPos, dragPos);
-				}
+					this->drawLine(this->cursorPos, this->dragPos);
+				}*/
 				// Add the picking spring force at the handle
-				body->addGlobalForce(dragForce, dragPos);
+				body->addGlobalForce(dragForce, this->dragPos);
 			}
 			else
 			{
 				if (this->drawLines)
 				{
-					this->destroyLine();
+					// this->destroyLine();
 				}
 			}
 		}
@@ -707,6 +709,13 @@ namespace NOWA
 				this->dragPoint = Ogre::Vector3::ZERO;
 
 				this->dragging = true;
+			}
+		}
+		else
+		{
+			if (true == this->drawLines)
+			{
+				this->drawLine(this->cursorPos, this->dragPos);
 			}
 		}
 	}

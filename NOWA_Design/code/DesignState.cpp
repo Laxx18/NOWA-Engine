@@ -358,7 +358,7 @@ void DesignState::createScene(void)
 	//entity->setDatablockOrMaterialName("GroundDirtPlane");
 	//entity->setCastShadows(true);
 
-	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
+	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, 1.0f, 0.0f, 1.0f)));
 }
 
 void DesignState::setupMyGUIWidgets(void)
@@ -1453,12 +1453,12 @@ void DesignState::lateUpdate(Ogre::Real dt)
 
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
-			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 100.0f;
+			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 1000.0f;
 			this->cameraMoveSpeed = static_cast<unsigned int>(this->cameraMoveSpeed);
-			if (this->cameraMoveSpeed < 1.0f)
-				this->cameraMoveSpeed = 1.0f;
-			if (this->cameraMoveSpeed > 50.0f)
-				this->cameraMoveSpeed = 50.0f;
+			if (this->cameraMoveSpeed < 0.1f)
+				this->cameraMoveSpeed = 0.1f;
+			if (this->cameraMoveSpeed > 5.0f)
+				this->cameraMoveSpeed = 5.0f;
 
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 			if (nullptr != cameraBehavior)
@@ -1474,8 +1474,8 @@ void DesignState::orbitCamera(Ogre::Real dt)
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 	Ogre::Vector2 rotationValue;
-	rotationValue.x = -ms.X.rel * 5.0f * dt;
-	rotationValue.y = -ms.Y.rel * 5.0f * dt;
+	rotationValue.x = -ms.X.rel;
+	rotationValue.y = -ms.Y.rel;
 
 	if (this->firstTimeValueSet)
 	{

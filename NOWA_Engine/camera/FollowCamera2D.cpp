@@ -4,6 +4,7 @@
 #include "gameobject/GameObject.h"
 #include "gameobject/GameObjectController.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -27,6 +28,11 @@ namespace NOWA
 		maximumBounds(Ogre::Vector3::ZERO),
 		pDebugLine(nullptr)
 	{
+		// Smoothing creates jitter if simulation updates are 30 ticks per second or below, hence disable smoothing
+		if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
+		{
+			this->smoothValue = 0.0f;
+		}
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 	}
 

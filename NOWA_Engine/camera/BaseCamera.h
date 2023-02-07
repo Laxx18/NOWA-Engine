@@ -14,7 +14,7 @@ namespace NOWA
 	public:
 		friend class CameraManager;
 
-		BaseCamera(Ogre::Real moveSpeed = 20.0f, Ogre::Real rotateSpeed = 20.0f, Ogre::Real smoothValue = 0.1f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
+		BaseCamera(Ogre::Real moveSpeed = 0.05f, Ogre::Real rotateSpeed = 0.05f, Ogre::Real smoothValue = 0.1f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
 
 		virtual ~BaseCamera();
 

@@ -2,6 +2,7 @@
 #include "FirstPersonCamera.h"
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -11,7 +12,11 @@ namespace NOWA
 		sceneNode(sceneNode),
 		offsetPosition(offsetPosition)
 	{
-			
+		// Smoothing creates jitter if simulation updates are 30 ticks per second or below, hence disable smoothing
+		if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
+		{
+			this->smoothValue = 0.0f;
+		}
 	}
 
 	FirstPersonCamera::~FirstPersonCamera()
@@ -42,7 +47,7 @@ namespace NOWA
 
 			Ogre::Quaternion targetOrientation = MathHelper::getInstance()->lookAt(this->sceneNode->_getDerivedOrientationUpdated() * this->defaultDirection, Ogre::Vector3::UNIT_Y);
 			//Drehungsanimation der Kamera
-			Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * 60.0f * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
+			Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
 			//Ogre::Quaternion delta = targetOrientation;
 			this->camera->setOrientation(delta);
 			//Die Kanone soll in der Mitte des Bildschirms sein, sie ist jedoch mit einem kleinen Offset (0.4f, 0.8f, -0.2f) am Flubber befestigt, daher X: 0.4

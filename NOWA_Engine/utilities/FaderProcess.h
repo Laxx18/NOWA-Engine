@@ -20,7 +20,7 @@ namespace NOWA
 			FADE_OUT,
 		} eFadeOperation;
 	public:
-		explicit FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Ogre::Real continueAlpha = 0.0f, Ogre::Real continueDuration = 0.0f);
+		explicit FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Ogre::Real continueAlpha = 0.0f, Ogre::Real continueDuration = 0.0f, Ogre::Real speedMultiplier = 1.0f);
 
 		virtual ~FaderProcess();
 
@@ -30,7 +30,7 @@ namespace NOWA
 
 		Ogre::Real getCurrentDuration(void) const;
 
-		virtual void onUpdate(float dt) override;
+		virtual void onUpdate(Ogre::Real dt) override;
 	protected:
 		virtual void onSuccess(void);
 	protected:
@@ -38,6 +38,7 @@ namespace NOWA
 		Ogre::Real currentDuration;
 		Ogre::Real stallDuration;
 		Ogre::Real totalDuration;
+		Ogre::Real speedMultiplier;
 		Ogre::HlmsUnlitDatablock* datablock;
 		Ogre::v1::Overlay* overlay;
 		bool calledFirstTime;

@@ -153,8 +153,8 @@ namespace NOWA
 		const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 		Ogre::Vector2 rotationValue;
-		rotationValue.x = -ms.X.rel * this->rotateSpeed * dt * this->rotateCameraWeight;
-		rotationValue.y = -ms.Y.rel * this->rotateSpeed * dt * this->rotateCameraWeight;
+		rotationValue.x = -ms.X.rel * this->rotateSpeed * this->rotateCameraWeight;
+		rotationValue.y = -ms.Y.rel * this->rotateSpeed * this->rotateCameraWeight;
 
 		if (this->firstTimeValueSet)
 		{

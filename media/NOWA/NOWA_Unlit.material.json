@@ -39,6 +39,15 @@
 			"useColour": true
 		},
 		
+		"RedNoLightingBackground" :
+		{
+			"macroblock" : "Macroblock_6534",
+			"blendblock" : "Blendblock_6534",
+			"shadow_const_bias" : 0.01,
+			"diffuse" : [1, 0, 0, 1],
+			"useColour": true
+		},
+		
 		"recastdebug" :
 		{
 			"macroblock" : "Macroblock_6534",

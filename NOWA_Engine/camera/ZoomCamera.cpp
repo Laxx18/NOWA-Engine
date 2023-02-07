@@ -19,7 +19,11 @@ namespace NOWA
 		moveVelocity(Ogre::Vector3::ZERO),
 		zoomSpeed(0.0f)
 	{
-	
+		// Smoothing creates jitter if simulation updates are 30 ticks per second or below, hence disable smoothing
+		if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
+		{
+			this->smoothValue = 0.0f;
+		}
 	}
 
 	ZoomCamera::~ZoomCamera()

@@ -487,44 +487,6 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		/*if (true == activated)
-		{
-			if ("Base Camera" == this->cameraType->getListSelectedValue())
-			{
-				this->baseCamera = new BaseCamera();
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(BaseCamera::BehaviorType());
-			}
-			else if ("Base Physics Camera" == this->cameraType->getListSelectedValue())
-			{
-				auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
-				if (nullptr == physicsActiveCompPtr)
-					return;
-
-				this->baseCamera = new BasePhysicsCamera(this->gameObjectPtr->getSceneManager(), physicsActiveCompPtr->getOgreNewt());
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(BasePhysicsCamera::BehaviorType());
-			}
-			else if ("First Person" == this->cameraType->getListSelectedValue())
-			{
-				this->baseCamera = new FirstPersonCamera(this->gameObjectPtr->getSceneNode(), this->defaultDirection->getVector3());
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(FirstPersonCamera::BehaviorType());
-			}
-			else if ("Third Person" == this->cameraType->getListSelectedValue())
-			{
-				this->baseCamera = new ThirdPersonCamera(this->gameObjectPtr->getSceneNode(), this->defaultDirection->getVector3());
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(ThirdPersonCamera::BehaviorType());
-			}
-			else if ("Follow Player 2D" == this->cameraType->getListSelectedValue())
-			{
-				this->baseCamera = new FollowCamera2D(this->gameObjectPtr->getSceneNode());
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(FollowCamera2D::BehaviorType());
-			}
-		}*/
-
 		// Sent event, that this player controller has been activated or deactivated
 		boost::shared_ptr<EventDataActivatePlayerController> eventDataActivePlayerController(new EventDataActivatePlayerController(this->activated->getBool()));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataActivePlayerController);

@@ -104,7 +104,7 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MouseButtonPickId")
 		{
-			this->mouseButtonPickId->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", ""));
+			this->setMouseButtonPickId(XMLConverter::getAttrib(propertyElement, "data", ""));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JoystickButtonPickId")
@@ -129,8 +129,8 @@ namespace NOWA
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [this]()
 		{
-			InputDeviceCore::getSingletonPtr()->addMouseListener(this, PickerComponent::getStaticClassName());
-			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, PickerComponent::getStaticClassName());
+			InputDeviceCore::getSingletonPtr()->addMouseListener(this, PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
+			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
@@ -227,8 +227,8 @@ namespace NOWA
 			this->picker = nullptr;
 		}
 
-		InputDeviceCore::getSingletonPtr()->removeMouseListener(PickerComponent::getStaticClassName());
-		InputDeviceCore::getSingletonPtr()->removeJoystickListener(PickerComponent::getStaticClassName());
+		InputDeviceCore::getSingletonPtr()->removeMouseListener(PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
+		InputDeviceCore::getSingletonPtr()->removeJoystickListener(PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
 	}
 	
 	void PickerComponent::onOtherComponentRemoved(unsigned int index)
@@ -360,6 +360,13 @@ namespace NOWA
 	void PickerComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+		if (false == this->activated->getBool())
+		{
+			if (nullptr != this->picker)
+			{
+				this->picker->release();
+			}
+		}
 	}
 
 	bool PickerComponent::isActivated(void) const
@@ -477,53 +484,53 @@ namespace NOWA
 			this->mouseIdPressed = true;
 		}
 
-		return false;
+		return true;
 	}
 
 	bool PickerComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
 		this->mouseIdPressed = false;
 		this->picker->release();
-		return false;
+		return true;
 	}
 
 	bool PickerComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		if (true == this->mouseIdPressed && true == this->isInSimulation)
+		if (true == this->mouseIdPressed && true == this->isInSimulation && true == this->activated->getBool())
 		{
 			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
 										 Core::getSingletonPtr()->getOgreRenderWindow(), this->springStrength->getReal(), this->dragAffectDistance->getReal());
 		}
 
-		return false;
+		return true;
 	}
 
 	bool PickerComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 	{
-		if (this->joystickButtonId == button && true == this->isInSimulation)
+		if (this->joystickButtonId == button && true == this->isInSimulation && true == this->activated->getBool())
 		{
 			this->joystickIdPressed = true;
 		}
-		return false;
+		return true;
 	}
 
 	bool PickerComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 	{
 		this->joystickIdPressed = false;
 		this->picker->release();
-		return false;
+		return true;
 	}
 
 	bool PickerComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		if (true == this->joystickIdPressed && true == this->isInSimulation)
+		if (true == this->joystickIdPressed && true == this->isInSimulation && true == this->activated->getBool())
 		{
 			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.mAxes[0].abs), static_cast<Ogre::Real>(evt.state.mAxes[1].abs)),
 										 Core::getSingletonPtr()->getOgreRenderWindow());
 		}
-		return false;
+		return true;
 	}
 
 	// Lua registration part

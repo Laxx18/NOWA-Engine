@@ -6,8 +6,9 @@
 
 namespace NOWA
 {
-	FaderProcess::FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Ogre::Real continueAlpha, Ogre::Real continueDuration)
+	FaderProcess::FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Ogre::Real continueAlpha, Ogre::Real continueDuration, Ogre::Real speedMultiplier)
 		: eFadeOperation(fadeOperation),
+		speedMultiplier(speedMultiplier),
 		currentAlpha(0.0f),
 		currentDuration(0.0f),
 		totalDuration(0.0f),
@@ -32,6 +33,8 @@ namespace NOWA
 		blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA);
 		this->datablock->setBlendblock(blendblock);*/
 		this->datablock->setUseColour(true);
+
+		this->datablock->setColour(Ogre::ColourValue::Black);
 
 		// http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82797 blendblock, wie macht man unlit transparent
 
@@ -100,11 +103,10 @@ namespace NOWA
 
 	FaderProcess::~FaderProcess()
 	{
-		int i = 0;
-		i = 1;
+
 	}
 
-	void FaderProcess::onUpdate(float dt)
+	void FaderProcess::onUpdate(Ogre::Real dt)
 	{
 		if (this->eFadeOperation != FadeOperation::FADE_NONE && this->datablock)
 		{
@@ -113,10 +115,10 @@ namespace NOWA
 			{
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade in: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
 				
-				this->stallDuration -= dt;
+				this->stallDuration -= dt * this->speedMultiplier;
 				if (this->stallDuration <= 0.0f)
 				{
-					this->currentDuration -= dt;
+					this->currentDuration -= dt * this->speedMultiplier;
 					this->currentAlpha = this->currentDuration / this->totalDuration;
 
 					// Call a bit, before process will be destroyed
@@ -141,7 +143,7 @@ namespace NOWA
 			// If fading out, increase the _alpha until it reaches 1.0
 			else if (this->eFadeOperation == FadeOperation::FADE_OUT)
 			{
-				this->stallDuration -= dt;
+				this->stallDuration -= dt * this->speedMultiplier;
 				if (this->stallDuration <= 0.0f)
 				{
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"Fade out: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));

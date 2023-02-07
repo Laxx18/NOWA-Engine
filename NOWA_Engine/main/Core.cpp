@@ -163,7 +163,8 @@ namespace NOWA
 		baseListenerContainer(nullptr),
 		useV2Mesh(false)
 	{
-		this->optionDesiredUpdates = this->getScreenRefreshRate();
+		this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
+		this->optionDesiredSimulationUpdates = 30;
 	}
 
 	Core::~Core()
@@ -2741,9 +2742,13 @@ namespace NOWA
 			{
 				this->optionAnisotropyLevel = Ogre::StringConverter::parseInt(pSubElement->first_attribute("AnisotropyLevel")->value());
 			}
-			if (pSubElement->first_attribute("DesiredUpdates"))
+			if (pSubElement->first_attribute("DesiredFramesUpdates"))
 			{
-				this->optionDesiredUpdates = Ogre::StringConverter::parseInt(pSubElement->first_attribute("DesiredUpdates")->value());
+				this->optionDesiredFramesUpdates = Ogre::StringConverter::parseInt(pSubElement->first_attribute("DesiredFramesUpdates")->value());
+			}
+			if (pSubElement->first_attribute("DesiredSimulationUpdates"))
+			{
+				this->optionDesiredSimulationUpdates = Ogre::StringConverter::parseInt(pSubElement->first_attribute("DesiredSimulationUpdates")->value());
 			}
 			if (pSubElement->first_attribute("RenderDistance"))
 			{
@@ -2973,7 +2978,8 @@ namespace NOWA
 			<< " LODBias=\"" << Ogre::StringConverter::toString(this->optionLODBias).c_str() << "\""
 			<< " TextureFiltering=\"" << Ogre::StringConverter::toString(this->optionTextureFiltering).c_str() << "\""
 			<< " AnisotropyLevel=\"" << Ogre::StringConverter::toString(this->optionAnisotropyLevel).c_str() << "\""
-			<< " DesiredUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredUpdates).c_str() << "\""
+			<< " DesiredFramesUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredFramesUpdates).c_str() << "\""
+			<< " DesiredSimulationUpdates=\"" << Ogre::StringConverter::toString(this->optionDesiredSimulationUpdates).c_str() << "\""
 			<< " RenderDistance=\"" << Ogre::StringConverter::toString(this->globalRenderDistance).c_str() << "\""
 			<< "/>\n";
 		// Audio-Configuration
