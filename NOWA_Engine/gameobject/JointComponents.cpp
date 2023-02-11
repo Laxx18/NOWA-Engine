@@ -8233,27 +8233,37 @@ namespace NOWA
 		return "JointComponent";
 	}
 
+//	void JointTargetTransformComponent::update(Ogre::Real dt, bool notSimulating)
+//	{
+//		if (nullptr != this->joint && true == this->activated->getBool())
+//		{
+//			OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
+//			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getBody()->getPosition() + this->offsetPosition);
+//			// kinematicController->setTargetRotation(this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation);
+//
+//			Ogre::Quaternion q = this->predecessorJointCompPtr->getBody()->getOgreNode()->getParent()->getParent()->convertLocalToWorldOrientation(this->predecessorJointCompPtr->getBody()->getOgreNode()->_getDerivedOrientation());
+//			kinematicController->setTargetRotation(q * this->offsetOrientation);
+//
+//			// MathHelper::getInstance()->localToGlobal<Ogre::SceneNode>()
+//#if 0
+//			Ogre::Vector3 position;
+//			Ogre::Quaternion q0;
+//			kinematicController->getTargetMatrix(position, q0);
+//			Ogre::Quaternion q1 = this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation;
+//
+//			Ogre::Quaternion q = q1 * q0.Inverse();
+//			kinematicController->setTargetRotation(q);
+//#endif
+//		}
+//	}
+
 	void JointTargetTransformComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (nullptr != this->joint && true == this->activated->getBool())
 		{
 			OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
-			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getBody()->getPosition() + this->offsetPosition);
-			// kinematicController->setTargetRotation(this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation);
-
-			Ogre::Quaternion q = this->predecessorJointCompPtr->getBody()->getOgreNode()->getParent()->getParent()->convertLocalToWorldOrientation(this->predecessorJointCompPtr->getBody()->getOgreNode()->_getDerivedOrientation());
-			kinematicController->setTargetRotation(q * this->offsetOrientation);
-
-			// MathHelper::getInstance()->localToGlobal<Ogre::SceneNode>()
-#if 0
-			Ogre::Vector3 position;
-			Ogre::Quaternion q0;
-			kinematicController->getTargetMatrix(position, q0);
-			Ogre::Quaternion q1 = this->predecessorJointCompPtr->getBody()->getOrientation() * this->offsetOrientation;
-
-			Ogre::Quaternion q = q1 * q0.Inverse();
-			kinematicController->setTargetRotation(q);
-#endif
+			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getPosition());
+			kinematicController->setTargetRotation(this->predecessorJointCompPtr->getOrientation());
 		}
 	}
 

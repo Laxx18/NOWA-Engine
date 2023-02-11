@@ -60,5 +60,5 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
 
 	// Lets start with the Game
-	NOWA::AppStateManager::getSingletonPtr()->start("GameState", false, NOWA::AppStateManager::ADAPTIVE);
+	NOWA::AppStateManager::getSingletonPtr()->start("GameState", false, NOWA::AppStateManager::FPS_INDEPENDENT);
 }

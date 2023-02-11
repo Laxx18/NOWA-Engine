@@ -38,8 +38,8 @@ material Distortion/Quad
 	{
 		pass
 		{
-			// depth_check off
-			// depth_write off
+			depth_check off
+			depth_write off
 
 			cull_hardware none
 

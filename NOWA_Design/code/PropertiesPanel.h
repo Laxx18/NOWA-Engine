@@ -266,6 +266,7 @@ protected:
 	void setNewAttributeValue(MyGUI::EditBox* sender, NOWA::Variant* attribute);
 protected:
 	std::vector<NOWA::GameObjectComponent*> gameObjectComponents;
+	MyGUI::Button* appendComponentButton;
 	MyGUI::Button* deleteComponentButton;
 	MyGUI::Button* debugDataComponentButton;
 	MyGUI::Button* moveUpComponentButton;

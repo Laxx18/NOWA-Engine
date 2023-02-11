@@ -76,10 +76,11 @@ void ComponentsPanel::notifyWindowButtonPressed(MyGUI::Window* sender, const std
 
 void ComponentsPanel::handleShowComponentsPanel(NOWA::EventDataPtr eventData)
 {
-	this->showComponents();
+	boost::shared_ptr<EventDataShowComponentsPanel> castEventData = boost::static_pointer_cast<EventDataShowComponentsPanel>(eventData);
+	this->showComponents(castEventData->getIndex());
 }
 
-void ComponentsPanel::showComponents(void)
+void ComponentsPanel::showComponents(int index)
 {
 	this->clearComponents();
 
@@ -133,6 +134,7 @@ void ComponentsPanel::showComponents(void)
 	this->componentsPanelView->addItem(componentsPanelDynamic);
 	this->componentsPanelView->addItem(componentsPanelInfo);
 
+	this->componentsPanelDynamic->setIndex(index);
 	this->componentsPanelDynamic->showComponents();
 
 	this->setVisible(true);
@@ -215,7 +217,8 @@ ComponentsPanelDynamic::ComponentsPanelDynamic(const std::vector<NOWA::GameObjec
 	name(name),
 	parentPanel(parentPanel),
 	heightCurrent(0),
-	componentsPanelInfo(nullptr)
+	componentsPanelInfo(nullptr),
+	index(-1)
 {
 
 }
@@ -233,6 +236,11 @@ void ComponentsPanelDynamic::setEditorManager(NOWA::EditorManager* editorManager
 void ComponentsPanelDynamic::setComponentsPanelInfo(ComponentsPanelInfo* componentsPanelInfo)
 {
 	this->componentsPanelInfo = componentsPanelInfo;
+}
+
+void ComponentsPanelDynamic::setIndex(int index)
+{
+	this->index = index;
 }
 
 void ComponentsPanelDynamic::initialise()
@@ -541,6 +549,13 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 		}
 
 		this->editorManager->addComponent(gameObjectIds, componentName);
+		if (this->index != -1)
+		{
+			this->gameObjects[0]->moveComponent(this->index + 1);
+			// Sent when a property has changed, so that the properties panel can be refreshed with new values
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		}
 
 		this->parentPanel->setVisible(false);
 		this->clear();

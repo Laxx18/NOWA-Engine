@@ -614,19 +614,19 @@ namespace NOWA
 			params.insert(std::make_pair(customParam.first, customParam.second));
 		}
 
-		this->initMiscParamsListener(params);
+		// this->initMiscParamsListener(params);
 
 		this->renderWindow = Ogre::Root::getSingleton().createRenderWindow(coreConfiguration.wndTitle, width, height, fullscreen, &params);
 
 		// Check for adequate machine resources.
 		bool resourceCheck = false;
-		while (!resourceCheck)
+		while (false == resourceCheck)
 		{
 			DWORDLONG thisRAMPhysical;
 			DWORDLONG thisRAMVirtual;
 			DWORDLONG thisDiscSpace;
 
-			if (!this->checkMemory(this->requiredRAMPhysicalMB, this->requiredRAMVirtualMB, thisRAMPhysical, thisRAMVirtual))
+			if (false == this->checkMemory(this->requiredRAMPhysicalMB, this->requiredRAMVirtualMB, thisRAMPhysical, thisRAMVirtual))
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] RAM is to low to execute this application. A physical RAM with more than "
 					+ Ogre::StringConverter::toString(this->requiredRAMPhysicalMB) + " MB is required and a virtual RAM with more than "

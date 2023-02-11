@@ -318,7 +318,8 @@ namespace MyGUI
 				{
 					if (mTimerDoubleClick < INPUT_TIME_DOUBLE_CLICK)
 					{
-						mWidgetMouseFocus->_riseMouseButtonClick();
+						// 11_02_2023: Removed by Lukas because it causes, that one click makes 2 clicks and this causes crash in a lot of situations, e.g. A state is loaded twice!
+						// mWidgetMouseFocus->_riseMouseButtonClick();
 						// после вызова, виджет может быть сброшен
 						if (nullptr != mWidgetMouseFocus)
 							mWidgetMouseFocus->_riseMouseButtonDoubleClick();

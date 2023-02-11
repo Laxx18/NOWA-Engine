@@ -44,7 +44,7 @@ public:
 
 	void clearComponents(void);
 
-	void showComponents(void);
+	void showComponents(int index);
 
 	void destroyContent(void);
 
@@ -104,6 +104,7 @@ public:
 
 	void setEditorManager(NOWA::EditorManager* editorManager);
 	void setComponentsPanelInfo(ComponentsPanelInfo* componentsPanelInfo);
+	void setIndex(int index);
 
 	virtual void initialise() override;
 	virtual void shutdown() override;
@@ -121,6 +122,7 @@ private:
 	ComponentsPanelInfo* componentsPanelInfo;
 	ComponentsPanel* parentPanel;
 	NOWA::AutoCompleteSearch autoCompleteSearch;
+	int index;
 };
 
 #endif

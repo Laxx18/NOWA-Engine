@@ -73,7 +73,7 @@ void DesignState::enter(void)
 	this->nextInfoUpdate = 1.0f;
 	this->validScene = false;
 	this->activeCategory = "All";
-	this->cameraMoveSpeed = 20.0f;
+	this->cameraMoveSpeed = 0.2f;
 	this->lastOrbitValue = Ogre::Vector2::ZERO;
 	this->firstTimeValueSet = true;
 	this->playerInControl = false;
@@ -1154,7 +1154,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			this->camera->getParentNode()->setPosition(0.0f, 1.0f, 0.0f);
 		}
 		this->camera->getParentNode()->setOrientation(Ogre::Quaternion::IDENTITY);
-		this->cameraMoveSpeed = 20.0f;
+		this->cameraMoveSpeed = 0.2f;
 		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 		if (nullptr != cameraBehavior)
 		{
@@ -1454,11 +1454,10 @@ void DesignState::lateUpdate(Ogre::Real dt)
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
 			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 1000.0f;
-			this->cameraMoveSpeed = static_cast<unsigned int>(this->cameraMoveSpeed);
-			if (this->cameraMoveSpeed < 0.1f)
-				this->cameraMoveSpeed = 0.1f;
-			if (this->cameraMoveSpeed > 5.0f)
-				this->cameraMoveSpeed = 5.0f;
+			if (this->cameraMoveSpeed < 0.05f)
+				this->cameraMoveSpeed = 0.05f;
+			if (this->cameraMoveSpeed > 1.0f)
+				this->cameraMoveSpeed = 1.0f;
 
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 			if (nullptr != cameraBehavior)
@@ -1634,7 +1633,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				{
 					if (nullptr != this->componentsPanel)
 					{
-						this->componentsPanel->showComponents();
+						this->componentsPanel->showComponents(-1);
 					}
 				}
 				else if (GetAsyncKeyState(VK_LCONTROL))

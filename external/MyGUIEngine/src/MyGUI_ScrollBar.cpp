@@ -327,6 +327,8 @@ namespace MyGUI
 	{
 		updateTrack();
 		MyGUI::ControllerManager::getInstance().removeItem(_sender);
+		// 11_02_2023: Lax: Rising mouse release, so that it also can be used outside this scrollbar!
+		this->_riseMouseButtonReleased(_left, _top, _id);
 	}
 
 	void ScrollBar::notifyMouseDrag(Widget* _sender, int _left, int _top, MouseButton _id)

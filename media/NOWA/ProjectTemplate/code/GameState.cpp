@@ -47,7 +47,7 @@ void GameState::lateUpdate(Ogre::Real dt)
 {
 	NOWA::AppState::lateUpdate(dt);
 	
-	const OIS::MouseState& ms = NOWA::Core::getSingletonPtr()->getMouse()->getMouseState();
+	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 		
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
 	

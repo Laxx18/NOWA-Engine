@@ -287,6 +287,13 @@ namespace NOWA
 		bool moveComponentDown(unsigned int index);
 
 		/**
+		 * @brief		Moves the component to the given index
+		 * @param[in]	index	The index to move.
+		 * @return		success Whether the index is in bounds and the component could be moved
+		 */
+		bool moveComponent(unsigned int index);
+
+		/**
 		 * @brief		Gets the game object component base class weak pointer for the given index.
 		 * @param[in]	index	The index to get the component for
 		 * @return		The component weak ptr which must be made to a strong ptr by using the function @makeStrongPtr() or lock(), or nullptr if not found.

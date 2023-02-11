@@ -44,7 +44,7 @@ namespace NOWA
 		{
 			this->succeed();
 
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 			
 			switch(this->stateOperation)
 			{
@@ -120,11 +120,10 @@ namespace NOWA
 	{
 		try
 		{
-			// create new state
+			// Creates new state
 			StateInfo newStateInfo;
 			newStateInfo.name = stateName;
 			newStateInfo.state = state;
-			//und in die Liste packen
 			this->states.push_back(newStateInfo);
 		}
 		catch (std::exception &e)
@@ -176,6 +175,12 @@ namespace NOWA
 			while (false == this->activeStateStack.empty())
 			{
 				this->activeStateStack.back()->exit();
+
+				AppState* oldState = this->activeStateStack.back();
+				InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);
+				InputDeviceCore::getSingletonPtr()->removeMouseListener(oldState);
+				InputDeviceCore::getSingletonPtr()->removeJoystickListener(oldState);
+
 				this->activeStateStack.pop_back();
 			}
 
@@ -401,6 +406,19 @@ namespace NOWA
 			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
 		}
 
+		if (simulationTickCount <= 30)
+		{
+			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+		}
+		else if (simulationTickCount <= 60)
+		{
+			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.025f);
+		}
+		else if (simulationTickCount <= 144)
+		{
+			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.04f);
+		}
+
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
 		{
 			monitorRefreshRate = static_cast<Ogre::Real>(this->desiredUpdates);
@@ -518,20 +536,18 @@ namespace NOWA
 
 	void AppStateManager::internalChangeAppState(AppState* state)
 	{
+		AppState* oldState = nullptr;
 		// end the state if present
-		if (!this->activeStateStack.empty())
+		if (false == this->activeStateStack.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
 			this->activeStateStack.back()->exit();
+
+			oldState = this->activeStateStack.back();
 			
 			this->activeStateStack.pop_back();
 		}
 
-		AppState* oldState = nullptr;
-		if (false == this->activeStateStack.empty())
-		{
-			oldState = this->activeStateStack.back();
-		}
 		this->activeStateStack.push_back(state);
 
 		// link input devices and gui with core
@@ -555,6 +571,8 @@ namespace NOWA
 
 	bool AppStateManager::internalPushAppState(AppState* state)
 	{
+		AppState* oldState = nullptr;
+
 		if (nullptr == state)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager] Error: The desired app state is invalid! (nullptr)");
@@ -564,24 +582,26 @@ namespace NOWA
 			// throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");
 			return false;
 		}
-		// if a state is paused, no other state should be pushed
+		// If a state is paused, no other state should be pushed
 		if (false == this->activeStateStack.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Can not push appstate, because the "
 				+ this->activeStateStack.back()->getName() + " state is paused");
-			if (!this->activeStateStack.back()->pause())
+			if (false == this->activeStateStack.back()->pause())
 			{
 				return false;
 			}
 		}
 
-		AppState* oldState = this->activeStateStack.back();
+		if (false == this->activeStateStack.empty())
+		{
+			oldState = this->activeStateStack.back();
+		}
 		this->activeStateStack.push_back(state);
-		// link input devices and gui with core
+		// Links input devices and gui with core
 		this->linkInputWithCore(oldState, state);
-		//Zustand betreten (SzeneManager, Kamera usw. initialisieren)
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Entering " + this->activeStateStack.back()->getName());
-		// enter the new state
+		// Enters the new state
 		this->activeStateStack.back()->enter();
 
 		this->bStall = false;
@@ -619,16 +639,48 @@ namespace NOWA
 
 	void AppStateManager::internalPopAllAndPushAppState(AppState* state)
 	{
-		while (!this->activeStateStack.empty())
+		while (false == this->activeStateStack.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
 			this->activeStateStack.back()->exit();
+
+			AppState* oldState = this->activeStateStack.back();
+			InputDeviceCore::getSingletonPtr()->removeKeyListener(oldState);
+			InputDeviceCore::getSingletonPtr()->removeMouseListener(oldState);
+			InputDeviceCore::getSingletonPtr()->removeJoystickListener(oldState);
+
 			this->activeStateStack.pop_back();
 		}
 
-		if (state)
+		bool stateAlreadyExists = false;
+		for (auto it = this->activeStateStack.begin(); it != this->activeStateStack.end(); )
 		{
-			this->internalPushAppState(state);
+			if (state != *it)
+			{
+				it = this->activeStateStack.erase(it);
+			}
+			else
+			{
+				stateAlreadyExists = true;
+				++it;
+			}
+		}
+
+		if (nullptr != state)
+		{
+			if (false == stateAlreadyExists)
+			{
+				this->internalPushAppState(state);
+			}
+			else
+			{
+				this->linkInputWithCore(nullptr, state);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Entering " + state->getName());
+				// Enter the new state
+				state->enter();
+
+				this->bStall = false;
+			}
 		}
 		else
 		{
@@ -666,13 +718,14 @@ namespace NOWA
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
 			this->bStall = true;
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the world at another tick. Note, this is necessary
 			// because changing the world destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
+			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
 		}
 	}
 
@@ -692,13 +745,14 @@ namespace NOWA
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
 			this->bStall = true;
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the world at another tick. Note, this is necessary
 			// because changing the world destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PushAppState)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PushAppState)));
+			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PushAppState)));
 		}
 
 		return true;
@@ -709,13 +763,14 @@ namespace NOWA
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
 			this->bStall = true;
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the world at another tick. Note, this is necessary
 			// because changing the world destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::PopAppState)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::PopAppState)));
+			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::PopAppState)));
 		}
 	}
 
@@ -735,13 +790,14 @@ namespace NOWA
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
 			this->bStall = true;
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the world at another tick. Note, this is necessary
 			// because changing the world destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PopAllAndPushAppState)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PopAllAndPushAppState)));
+			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PopAllAndPushAppState)));
 		}
 	}
 
@@ -749,13 +805,14 @@ namespace NOWA
 	{
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
+			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
 			// Creates the delay process and changes the world at another tick. Note, this is necessary
 			// because changing the world destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::ExitGame)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::ExitGame)));
+			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::ExitGame)));
 		}
 	}
 
@@ -772,6 +829,10 @@ namespace NOWA
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [this, state]()
 		{
+			// Remove first for precaution, in order to prevent duplicate state
+			InputDeviceCore::getSingletonPtr()->removeKeyListener(state);
+			InputDeviceCore::getSingletonPtr()->removeMouseListener(state);
+			InputDeviceCore::getSingletonPtr()->removeJoystickListener(state);
 			InputDeviceCore::getSingletonPtr()->addKeyListener(state, state->getName());
 			InputDeviceCore::getSingletonPtr()->addMouseListener(state, state->getName());
 			InputDeviceCore::getSingletonPtr()->addJoystickListener(state, state->getName());

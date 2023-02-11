@@ -1184,6 +1184,31 @@ namespace NOWA
 		return true;
 	}
 
+	bool GameObject::moveComponent(unsigned int index)
+	{
+		if (index > this->gameObjectComponents.size())
+		{
+			return false;
+		}
+		else if (index < 1)
+		{
+			return false;
+		}
+
+		// Make a copy of the element
+		auto currentComponentData = this->gameObjectComponents[this->gameObjectComponents.size() - 1];
+		// Remove the element
+		this->gameObjectComponents.erase(this->gameObjectComponents.begin() + this->gameObjectComponents.size() - 1);
+		// Insert at an different place
+		this->gameObjectComponents.insert(this->gameObjectComponents.begin() + index,
+										  std::make_tuple(std::get<COMPONENT>(currentComponentData)->getClassId(), std::get<COMPONENT>(currentComponentData)->getParentClassId(),
+										  std::get<COMPONENT>(currentComponentData)->getParentParentClassId(), std::get<COMPONENT>(currentComponentData)));
+
+		this->actualizeComponentsIndices();
+
+		return true;
+	}
+
 	boost::weak_ptr<GameObjectComponent> GameObject::getComponentByIndex(unsigned int index)
 	{
 		if (index > this->gameObjectComponents.size())
@@ -1501,7 +1526,7 @@ namespace NOWA
 		{
 			isVisible = this->movableObject->getVisible();
 		}
-		if (isVisible != this->visible->getBool())
+		if (isVisible != visible)
 		{
 			this->visible->setValue(visible);
 			this->sceneNode->setVisible(visible);

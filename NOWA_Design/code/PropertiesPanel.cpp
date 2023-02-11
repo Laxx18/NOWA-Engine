@@ -963,14 +963,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
-			// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1002,14 +1002,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
-			// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1037,14 +1037,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
-			// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1073,14 +1073,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
-			// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1108,14 +1108,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
-		// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 		this->itemsEdit.push_back(edit);
 		break;
@@ -1139,14 +1139,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
-		// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 		this->itemsEdit.push_back(edit);
 
@@ -1179,14 +1179,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
-		// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 		this->itemsEdit.push_back(edit);
 
@@ -1364,7 +1364,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1372,7 +1372,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
-		// edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
 		// edit->setMaxTextLength(15);
 		this->itemsEdit.push_back(edit);
@@ -1478,7 +1478,6 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
-
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
@@ -1594,23 +1593,9 @@ void PropertiesPanelDynamic::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldW
 				MyGUIHelper::getInstance()->setDataForPairing(editBox, *attribute);
 			}
 		}
-	}
 
-	// Causes crash, when panel is scrolled, because the widget is then corrupted
-	// Remove text selection from old widget, if focus of widget changed
-#if 0
-	if (nullptr != sender)
-	{
-		MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
-		if (nullptr != editBox)
-		{
-			if (editBox->getTextSelectionLength() > 0)
-			{
-				editBox->setTextSelection(0, 0);
-			}
-		}
+		editBox->setTextSelection(0, 0);
 	}
-#endif
 }
 
 void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
@@ -1624,7 +1609,7 @@ void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget
 			this->notifyEditSelectAccept(editBox);
 			sender->setUserString("Adapted", "false");
 		}
-		// editBox->setTextSelection(0, 0);
+		editBox->setTextSelection(0, 0);
 	}
 	// MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
 	// MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(editBox);
@@ -2279,6 +2264,7 @@ PropertiesPanelComponent::PropertiesPanelComponent(const std::vector<NOWA::GameO
 	const std::vector<NOWA::GameObjectComponent*>& gameObjectComponents, const Ogre::String& name)
 	: PropertiesPanelDynamic(gameObjects, name),
 	gameObjectComponents(gameObjectComponents),
+	appendComponentButton(nullptr),
 	deleteComponentButton(nullptr),
 	debugDataComponentButton(nullptr),
 	moveUpComponentButton(nullptr),
@@ -2297,7 +2283,15 @@ void PropertiesPanelComponent::initialise()
 	PropertiesPanelDynamic::initialise();
 	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-	this->deleteComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(4, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
+	this->appendComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(4, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "addComponentsButton");
+	this->appendComponentButton->setCaption("C");
+	this->appendComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+	this->appendComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
+	this->appendComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
+	this->appendComponentButton->setUserString("Description", "Append component");
+	this->itemsEdit.push_back(this->appendComponentButton);
+
+	this->deleteComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(29, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "deleteComponentsButton");
 	this->deleteComponentButton->setCaption("X");
 	this->deleteComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 	this->deleteComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
@@ -2305,7 +2299,7 @@ void PropertiesPanelComponent::initialise()
 	this->deleteComponentButton->setUserString("Description", "Delete component");
 	this->itemsEdit.push_back(this->deleteComponentButton);
 
-	this->debugDataComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(29, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
+	this->debugDataComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(54, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "debugComponentsButton");
 	this->debugDataComponentButton->setCaption("D");
 	this->debugDataComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 	this->debugDataComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
@@ -2315,14 +2309,14 @@ void PropertiesPanelComponent::initialise()
 		this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
 	this->itemsEdit.push_back(this->debugDataComponentButton);
 
-	this->moveUpComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonUpSkin", MyGUI::IntCoord(54, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
+	this->moveUpComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonUpSkin", MyGUI::IntCoord(79, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "upComponentsButton");
 	this->moveUpComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 	this->moveUpComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
 	this->moveUpComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
 	this->moveUpComponentButton->setUserString("Description", "Move component up");
 	this->itemsEdit.push_back(this->moveUpComponentButton);
 
-	this->moveDownComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonDownSkin", MyGUI::IntCoord(75, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
+	this->moveDownComponentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("ButtonDownSkin", MyGUI::IntCoord(100, 7, 16, 16), MyGUI::Align::Left | MyGUI::Align::Top, "downComponentsButton");
 	this->moveDownComponentButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 	this->moveDownComponentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelComponent::buttonHit);
 	this->moveDownComponentButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
@@ -2532,6 +2526,7 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 					return;
 				}
 			}
+#if 0
 			// TODO: For undo Redo, is called to often! Just set those values on edit box! when final value is set via slider!
 			if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
 			{
@@ -2560,6 +2555,7 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 				}
 			}
+#endif
 		}
 	}
 }
@@ -2700,6 +2696,24 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 			if (nullptr != this->gameObject->getLuaScript())
 			{
 				NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()));
+			}
+		}
+		else if (button == this->appendComponentButton)
+		{
+			// Deletes the component
+			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+
+			for (size_t i = 0; i < this->gameObjects.size(); i++)
+			{
+				gameObjectIds[i] = this->gameObjects[i]->getId();
+			}
+
+			int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
+			if (-1 != index)
+			{
+				// Sent when a component panel with all components should be shown
+				boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
 			}
 		}
 		else if (button == this->deleteComponentButton)

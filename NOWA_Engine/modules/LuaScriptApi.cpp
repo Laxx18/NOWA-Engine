@@ -10194,6 +10194,7 @@ namespace NOWA
 			.def("addImpulse", &PhysicsActiveComponent::addImpulse)
 			.def("setVelocity", &PhysicsActiveComponent::setVelocity)
 			.def("setDirectionVelocity", &PhysicsActiveComponent::setDirectionVelocity)
+			.def("getVelocity", &PhysicsActiveComponent::getVelocity)
 			.def("applyDirectionForce", &PhysicsActiveComponent::applyDirectionForce)
 			.def("setMass", &PhysicsActiveComponent::setMass)
 			.def("getMass", &PhysicsActiveComponent::getMass)
@@ -10264,7 +10265,7 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "void translate(Vector3 relativePosition)", "Sets relative position of the physics component.");
 		AddClassToCollection("PhysicsActiveComponent", "void addImpulse(Vector3 deltaVector, Vector3 offsetPosition)", "Adds an impulse at the given offset position away from the origin of the physics body.");
 		AddClassToCollection("PhysicsActiveComponent", "void setVelocity(Vector3 velocity)", "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");
-		AddClassToCollection("PhysicsActiveComponent", "void setVelocityCurrentDirection(float speed)", "Sets the velocity speed for the current direction. Note: The default direction axis is applied. See: @GameObject::getDefaultDirection(). Note: This should only be set for initialization and not during simulation, as It could break physics calculation, or it may be called if its a physics active kinematic body.");
+		AddClassToCollection("PhysicsActiveComponent", "void setDirectionVelocity(float speed)", "Sets the velocity speed for the current direction. Note: The default direction axis is applied. See: @GameObject::getDefaultDirection(). Note: This should only be set for initialization and not during simulation, as It could break physics calculation, or it may be called if its a physics active kinematic body.");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getVelocity()", "Gets currently acting velocity on the body.");
 		AddClassToCollection("PhysicsActiveComponent", "void setMass(float mass)", "Sets mass for the body. Note: Internally the inertial values are adapted.");
 		AddClassToCollection("PhysicsActiveComponent", "float getMass()", "Gets the mass of the body.");

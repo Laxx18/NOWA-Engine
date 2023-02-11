@@ -305,7 +305,8 @@ class EventDataShowComponentsPanel : public NOWA::BaseEventData
 {
 public:
 
-	EventDataShowComponentsPanel(void)
+	EventDataShowComponentsPanel(int index = -1)
+		: index(index)
 	{
 
 	}
@@ -332,13 +333,20 @@ public:
 
 	virtual NOWA::EventDataPtr copy() const
 	{
-		return NOWA::EventDataPtr(new EventDataShowComponentsPanel());
+		return NOWA::EventDataPtr(new EventDataShowComponentsPanel(this->index));
 	}
 
 	virtual const char* getName(void) const
 	{
 		return "EventDataShowComponentsPanel";
 	}
+
+	int getIndex(void) const
+	{
+		return index;
+	}
+private:
+	int index;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
