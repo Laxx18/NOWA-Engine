@@ -66,9 +66,9 @@ namespace MyGUI
 		Node* getSelection() const;
 		void setSelection(Node* pSelection);
 
-		/*void addSelection(Node* pSelection);
+		/*void addSelection(Node* pSelection);*/
 
-		void clearSelection(void);*/
+		void clearSelection(void);
 
 		void invalidate();
 

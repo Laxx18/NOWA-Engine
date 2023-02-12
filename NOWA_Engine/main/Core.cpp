@@ -591,8 +591,8 @@ namespace NOWA
 		params.insert(std::make_pair("border", "fixed"));
 		params.insert(std::make_pair("alwaysWindowedMode", "Yes"));
 		params.insert(std::make_pair("enableDoubleClick", "Yes"));
-		params.insert(std::make_pair("useFlipMode", "Yes"));
-		params.insert(std::make_pair("monitorIndex", "0"));*/
+		params.insert(std::make_pair("useFlipMode", "Yes"));*/
+		params.insert(std::make_pair("monitorIndex", "0"));
 
 		// Note: Fixes MyGUI Font rendering issues if set to "none"
 		params.insert(std::make_pair("border", this->borderType));

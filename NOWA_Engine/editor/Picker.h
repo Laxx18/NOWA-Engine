@@ -32,7 +32,9 @@ namespace NOWA
 
 		virtual void drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition) = 0;
 
-		virtual void destroyLine() = 0;
+		virtual void destroyLine(void) = 0;
+
+		virtual bool getIsDragging(void) const = 0;
 	};
 
 	/**
@@ -185,6 +187,12 @@ namespace NOWA
 		 * @return		pickForce The pick force to get
 		 */
 		virtual Ogre::Real getPickForce(void) const override;
+
+		/**
+		 * @brief		Gets whether the picker is dragging.
+		 * @return		true if the picker is dragging, else false.
+		 */
+		virtual bool getIsDragging(void) const override;
 	protected:
 		Picker(const Picker&);
 		Picker& operator = (const Picker&);
@@ -364,6 +372,12 @@ namespace NOWA
 		 * @return		pickForce The pick force to get
 		 */
 		virtual Ogre::Real getPickForce(void) const override;
+
+		/**
+		 * @brief		Gets whether the picker is dragging.
+		 * @return		true if the picker is dragging, else false.
+		 */
+		virtual bool getIsDragging(void) const override;
 	protected:
 		GameObjectPicker(const GameObjectPicker&);
 		GameObjectPicker& operator = (const GameObjectPicker&);

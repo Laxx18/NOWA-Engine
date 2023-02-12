@@ -707,18 +707,23 @@ namespace NOWA
 		gridValue.y = halfSize.y;
 		gridValue.z = halfSize.z * Ogre::Math::Sin(objectOrientation.getYaw().valueRadians());*/
 
-		// Works only for bounding box equal extensions! and only for 45 degree!
-		Ogre::Vector3 gridValue = centerOffset + size;
-
 		//only move the object if it passes the critical distance
 		//do it without the y coordinate because its for placing an object and would cause that the objects gains high
 
 		// Get rotated hit point
 		Ogre::Vector3 destPoint = objectOrientation * value;
 
-		Ogre::Vector3 directionX = objectOrientation * Ogre::Vector3(0.0f, 0.0f, 1.0f);
-		Ogre::Vector3 directionY = objectOrientation * Ogre::Vector3(0.0f, 1.0f, 0.0f);
-		Ogre::Vector3 directionZ = objectOrientation * Ogre::Vector3(1.0f, 0.0f, 0.0f);
+		// Works only for bounding box equal extensions! and only for 45 degree!
+		Ogre::Vector3 gridValue = centerOffset + size/* * 0.8f*/;
+
+		Ogre::Vector3 newGridValue;
+		newGridValue.x = ((round(value.x / gridValue.x * step)) * gridValue.x * step);
+		newGridValue.y = ((round(value.y / gridValue.y * step)) * gridValue.y * step);
+		newGridValue.z = ((round(value.z / gridValue.z * step)) * gridValue.z * step);
+
+		Ogre::Vector3 directionX = objectOrientation.xAxis();
+		Ogre::Vector3 directionY = objectOrientation.yAxis();
+		Ogre::Vector3 directionZ = objectOrientation.zAxis();
 
 		// Get movment direction weight
 		Ogre::Vector3 vPos1 = (directionX.dotProduct(destPoint) * directionX);

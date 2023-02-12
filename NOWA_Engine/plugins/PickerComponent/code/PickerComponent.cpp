@@ -26,6 +26,8 @@ namespace NOWA
 		joystickIdPressed(false),
 		jointId(0),
 		body(nullptr),
+		draggingStartedFirstTime(true),
+		draggingEndedFirstTime(true),
 		activated(new Variant(PickerComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(PickerComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		offsetPosition(new Variant(PickerComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
@@ -179,6 +181,8 @@ namespace NOWA
 	bool PickerComponent::disconnect(void)
 	{
 		this->isInSimulation = false;
+		this->draggingStartedFirstTime = true;
+		this->draggingEndedFirstTime = true;
 		return true;
 	}
 
@@ -411,6 +415,14 @@ namespace NOWA
 
 	void PickerComponent::setSpringStrength(Ogre::Real springStrength)
 	{
+		if (springStrength > 40.0f)
+		{
+			springStrength = 40.0f;
+		}
+		else if (springStrength < 1.0f)
+		{
+			springStrength = 1.0f;
+		}
 		this->springStrength->setValue(springStrength);
 	}
 
@@ -477,6 +489,16 @@ namespace NOWA
 		return this->joystickButtonPickId->getListSelectedValue();
 	}
 
+	void PickerComponent::reactOnDraggingStart(luabind::object closureFunction)
+	{
+		this->startClosureFunction = closureFunction;
+	}
+
+	void PickerComponent::reactOnDraggingEnd(luabind::object closureFunction)
+	{
+		this->endClosureFunction = closureFunction;
+	}
+
 	bool PickerComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
 		if (this->mouseButtonId == id && true == this->isInSimulation)
@@ -490,7 +512,26 @@ namespace NOWA
 	bool PickerComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
 		this->mouseIdPressed = false;
+		this->draggingStartedFirstTime = true;
+		this->draggingEndedFirstTime = true;
 		this->picker->release();
+
+		if (this->endClosureFunction.is_valid())
+		{
+			try
+			{
+				luabind::call_function<void>(this->endClosureFunction);
+			}
+			catch (luabind::error& error)
+			{
+				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+				std::stringstream msg;
+				msg << errorMsg;
+
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
+															+ " details: " + msg.str());
+			}
+		}
 		return true;
 	}
 
@@ -502,7 +543,50 @@ namespace NOWA
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
 										 Core::getSingletonPtr()->getOgreRenderWindow(), this->springStrength->getReal(), this->dragAffectDistance->getReal());
 		}
+		// Call also function in lua script, if it does exist in the lua script component
+		if (nullptr != this->gameObjectPtr->getLuaScript())
+		{
+			if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
+			{
+				if (this->startClosureFunction.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->startClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
+				this->draggingStartedFirstTime = false;
+			}
+			else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
+			{
+				if (this->endClosureFunction.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->endClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
+				this->draggingEndedFirstTime = false;
+			}
+		}
 		return true;
 	}
 
@@ -518,7 +602,27 @@ namespace NOWA
 	bool PickerComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 	{
 		this->joystickIdPressed = false;
+		this->draggingStartedFirstTime = true;
+		this->draggingEndedFirstTime = true;
 		this->picker->release();
+
+		if (this->endClosureFunction.is_valid())
+		{
+			try
+			{
+				luabind::call_function<void>(this->endClosureFunction);
+			}
+			catch (luabind::error& error)
+			{
+				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+				std::stringstream msg;
+				msg << errorMsg;
+
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
+															+ " details: " + msg.str());
+			}
+		}
+
 		return true;
 	}
 
@@ -529,6 +633,51 @@ namespace NOWA
 			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.mAxes[0].abs), static_cast<Ogre::Real>(evt.state.mAxes[1].abs)),
 										 Core::getSingletonPtr()->getOgreRenderWindow());
+		}
+
+		// Call also function in lua script, if it does exist in the lua script component
+		if (nullptr != this->gameObjectPtr->getLuaScript())
+		{
+			if (true == this->draggingStartedFirstTime && true == this->picker->getIsDragging())
+			{
+				if (this->startClosureFunction.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->startClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
+				this->draggingStartedFirstTime = false;
+			}
+			else if (true == this->draggingEndedFirstTime && false == this->picker->getIsDragging())
+			{
+				if (this->endClosureFunction.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->endClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
+				this->draggingEndedFirstTime = false;
+			}
 		}
 		return true;
 	}
@@ -588,6 +737,8 @@ namespace NOWA
 			.def("getMouseButtonPickId", &PickerComponent::getMouseButtonPickId)
 			.def("setJoystickButtonPickId", &PickerComponent::setJoystickButtonPickId)
 			.def("getJoystickButtonPickId", &PickerComponent::getJoystickButtonPickId)
+			.def("reactOnDraggingStart", &PickerComponent::reactOnDraggingStart)
+			.def("reactOnDraggingEnd", &PickerComponent::reactOnDraggingEnd)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "class inherits GameObjectComponent", PickerComponent::getStaticInfoText());
@@ -616,6 +767,11 @@ namespace NOWA
 
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void setJoystickButtonPickId(string joystickButtonPickId)", "Sets the joystick button, which shall active the joystick picking.");
 		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "string getJoystickButtonPickId()", "Gets the joystick button, which shall active the joystick picking.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void reactOnDraggingStart(func closure)",
+														  "Sets whether to react at the moment when the dragging has started.");
+		LuaScriptApi::getInstance()->addClassToCollection("PickerComponent", "void reactOnDraggingEnd(func closure)",
+														  "Sets whether to react at the moment when the dragging has ended.");
 
 		gameObjectClass.def("getPickerComponentFromName", &getPickerComponentFromName);
 		gameObjectClass.def("getPickerComponent", (PickerComponent * (*)(GameObject*)) & getPickerComponent);

@@ -348,7 +348,7 @@ namespace NOWA
 								std::stringstream msg;
 								msg << errorMsg;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeaver' Error: " + Ogre::String(error.what())
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
 																			+ " details: " + msg.str());
 							}
 						}
@@ -497,7 +497,7 @@ namespace NOWA
 							std::stringstream msg;
 							msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeaver' Error: " + Ogre::String(error.what())
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
 																		+ " details: " + msg.str());
 						}
 					}
@@ -597,7 +597,7 @@ namespace NOWA
 
 		LuaScriptApi::getInstance()->addClassToCollection("AreaOfInterestComponent", "void reactOnEnter(func closure, otherGameObject)",
 							 "Sets whether to react at the moment when a game object enters the area.");
-		LuaScriptApi::getInstance()->addClassToCollection("AreaOfInterestComponent", "void reactOnVanish(func closure, otherGameObject)",
+		LuaScriptApi::getInstance()->addClassToCollection("AreaOfInterestComponent", "void reactOnLeave(func closure, otherGameObject)",
 							 "Sets whether to react at the moment when a game object leaves the area. Always check if the game object does exist. It may also be null.");
 
 		gameObject.def("getAreaOfInterestComponent", (AreaOfInterestComponent * (*)(GameObject*)) & getAreaOfInterestComponent);

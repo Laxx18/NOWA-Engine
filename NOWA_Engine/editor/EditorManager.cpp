@@ -1217,6 +1217,7 @@ namespace NOWA
 		pickForce(20.0f),
 		constraintAxis(Ogre::Vector3::ZERO),
 		isInSimulation(false),
+		rotateFactor(0.0f),
 		terraComponent(nullptr)
 	{
 
@@ -2157,18 +2158,17 @@ namespace NOWA
 
 	void EditorManager::rotatePlaceNode(void)
 	{
-		Ogre::Real rotateFactor = 0.0f;
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState().Z.rel > 0.0f)
 		{
-			rotateFactor = 45.0f;
+			this->rotateFactor += 10.0f;
 		}
 		else if (NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState().Z.rel < 0.0f)
 		{
-			rotateFactor = -45.0f;
+			this->rotateFactor -= 10.0f;
 		}
-		if (nullptr != this->placeNode && rotateFactor != 0.0f)
+		if (nullptr != this->placeNode && this->rotateFactor != 0.0f)
 		{
-			this->placeNode->rotate(Ogre::Quaternion(Ogre::Degree(rotateFactor), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);
+			this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
 		}
 	}
 

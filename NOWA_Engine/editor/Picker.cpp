@@ -355,6 +355,11 @@ namespace NOWA
 		return this->pickForce;
 	}
 
+	bool Picker::getIsDragging(void) const
+	{
+		return this->dragging;
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	GameObjectPicker::GameObjectPicker()
@@ -469,6 +474,11 @@ namespace NOWA
 		this->hitBody = body;
 		this->drawLines = drawLines;
 		this->jointId = 0;
+	}
+
+	bool GameObjectPicker::getIsDragging(void) const
+	{
+		return this->dragging;
 	}
 
 	Ogre::Ray GameObjectPicker::getRayFromMouse(void) const
@@ -586,10 +596,7 @@ namespace NOWA
 			}
 			else
 			{
-				if (this->drawLines)
-				{
-					// this->destroyLine();
-				}
+				this->dragging = false;
 			}
 		}
 	}

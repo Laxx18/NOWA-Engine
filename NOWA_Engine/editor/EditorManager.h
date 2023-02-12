@@ -346,6 +346,7 @@ namespace NOWA
 		Ogre::Real pickForce;
 		Ogre::Vector3 constraintAxis;
 		bool isInSimulation;
+		Ogre::Real rotateFactor;
 
 		TerraComponent* terraComponent;
 

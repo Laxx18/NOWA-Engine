@@ -43,7 +43,8 @@ class PropertiesPanelCell : public wraps::BasePanelViewCell
 {
 public:
 	PropertiesPanelCell(MyGUI::Widget* parent)
-		: BasePanelViewCell("PropertiesPanelCell.layout", parent)
+		: BasePanelViewCell("PropertiesPanelCell.layout", parent),
+		component(nullptr)
 	{
 		assignWidget(mTextCaption, "text_Caption");
 		assignWidget(this->buttonMinimize, "button_Minimize");
@@ -56,6 +57,19 @@ public:
 	{
 		wraps::BasePanelViewCell::setMinimized(_minimized);
 		this->buttonMinimize->setStateSelected(isMinimized());
+
+		// NOWA::GameObjectComponent* tempComponent = reinterpret_cast<NOWA::GameObjectComponent*>(Ogre::StringConverter::parseSizeT(strComponentAdress));
+		NOWA::GameObjectComponent** tempComponent = this->getMainWidget()->getUserData<NOWA::GameObjectComponent*>(false);
+
+		if (tempComponent != nullptr)
+		{
+			this->component = *tempComponent;
+		}
+
+		if (nullptr != this->component)
+		{
+			this->component->setIsExpanded(false == isMinimized());
+		}
 	}
 
 private:
@@ -77,6 +91,7 @@ private:
 
 private:
 	MyGUI::Button* buttonMinimize;
+	NOWA::GameObjectComponent* component;
 };
 
 /////////////////////////////////////////////////////////////////////////

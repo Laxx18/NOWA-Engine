@@ -291,7 +291,12 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			this->baseCamera = new BaseCamera(this->moveSpeed->getReal(), this->rotationSpeed->getReal(), this->smoothValue->getReal());
+			Ogre::Real smoothValue = this->smoothValue->getReal();
+			if (0.0f == smoothValue)
+			{
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
+			}
+			this->baseCamera = new BaseCamera(this->moveSpeed->getReal(), this->rotationSpeed->getReal(), smoothValue);
 		}
 		CameraBehaviorComponent::setActivated(activated);
 	}
@@ -458,7 +463,12 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			this->baseCamera = new FirstPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), this->smoothValue->getReal(),
+			Ogre::Real smoothValue = this->smoothValue->getReal();
+			if (0.0f == smoothValue)
+			{
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
+			}
+			this->baseCamera = new FirstPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), smoothValue,
 				this->rotationSpeed->getReal(), this->offsetPosition->getVector3());
 		}
 		CameraBehaviorComponent::setActivated(activated);
@@ -662,11 +672,7 @@ namespace NOWA
 		{
 			this->baseCamera = new ThirdPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
 				this->yOffset->getReal(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
-			
-			if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
-			{
-				this->baseCamera->setSmoothValue(0.0f);
-			}
+			this->baseCamera->setSmoothValue(AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue());
 		}
 		CameraBehaviorComponent::setActivated(activated);
 	}
@@ -853,7 +859,12 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			this->baseCamera = new FollowCamera2D(this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), this->smoothValue->getReal());
+			Ogre::Real smoothValue = this->smoothValue->getReal();
+			if (0.0f == smoothValue)
+			{
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
+			}
+			this->baseCamera = new FollowCamera2D(this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), smoothValue);
 		}
 		CameraBehaviorComponent::setActivated(activated);
 		if (nullptr != this->baseCamera)

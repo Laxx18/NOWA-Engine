@@ -164,8 +164,8 @@ namespace NOWA
 			this->firstTimeMoveValueSet = false;
 		}
 
-		if ((moveValue - this->lastMoveValue).squaredLength() > 10.0f)
-			this->lastMoveValue = moveValue;
+		// if ((moveValue - this->lastMoveValue).squaredLength() > 10.0f)
+		// 	this->lastMoveValue = moveValue;
 
 		moveValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue.x, this->lastMoveValue.x, this->smoothValue);
 		moveValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue.y, this->lastMoveValue.y, this->smoothValue);
@@ -232,8 +232,8 @@ namespace NOWA
 			this->firstTimeValueSet = false;
 		}
 
-		if ((this->lastValue - rotationValue).squaredLength() > 10.0f)
-			this->lastValue = rotationValue;
+		// if ((this->lastValue - rotationValue).squaredLength() > 10.0f)
+		// 	this->lastValue = rotationValue;
 
 		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, this->smoothValue);
 		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);

@@ -412,11 +412,11 @@ namespace NOWA
 		}
 		else if (simulationTickCount <= 60)
 		{
-			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.025f);
+			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.075f);
 		}
 		else if (simulationTickCount <= 144)
 		{
-			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.04f);
+			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
 		}
 
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))

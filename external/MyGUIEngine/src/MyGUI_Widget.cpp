@@ -41,7 +41,9 @@ namespace MyGUI
 		mContainer(nullptr),
 		mAlign(Align::Default),
 		mVisible(true),
-		mDepth(0)
+		mDepth(0),
+		mXThreshold(0),
+		mYThreshold(0)
 	{
 	}
 
@@ -470,7 +472,7 @@ namespace MyGUI
 			|| (!getNeedMouseFocus() && !getInheritsPick())
 			|| !_checkPoint(_left, _top)
 			// если есть маска, проверяем еще и по маске
-			|| !isMaskPickInside(IntPoint(_left - mCoord.left, _top - mCoord.top), mCoord)
+			|| !isMaskPickInside(IntPoint(_left - mCoord.left - mXThreshold, _top - mCoord.top - mYThreshold), mCoord)
 			)
 			return nullptr;
 
@@ -1040,7 +1042,8 @@ namespace MyGUI
 
 	bool Widget::_checkPoint(int _left, int _top) const
 	{
-		return ! ((_getViewLeft() > _left) || (_getViewTop() > _top) || (_getViewRight() < _left) || (_getViewBottom() < _top));
+		// 11.02.2023: Lax: Added 4 pixel threshold, because else lost focus is triggered in each input field to fast and its not possible to adapt values properly
+		return ! ((_getViewLeft() > _left - mXThreshold) || (_getViewTop() > _top + mYThreshold) || (_getViewRight() < _left - mXThreshold) || (_getViewBottom() < _top - mYThreshold));
 	}
 
 	void Widget::_linkChildWidget(Widget* _widget)
@@ -1380,6 +1383,12 @@ namespace MyGUI
 		}
 
 		mWidgetChild.push_back(_widget);
+	}
+
+	void Widget::setMouseHitThreshold(int xThreshold, int yThreshold)
+	{
+		this->mXThreshold = xThreshold;
+		this->mYThreshold = yThreshold;
 	}
 
 	void Widget::_updateChilds()

@@ -184,7 +184,7 @@ namespace MyGUI
 	/*void TreeControl::addSelection(Node* pSelection)
 	{
 		this->selectedNodes.emplace_back(pSelection);
-	}
+	}*/
 
 	void TreeControl::clearSelection(void)
 	{
@@ -194,7 +194,7 @@ namespace MyGUI
 			pItem->setStateSelected(false);
 		}
 		this->selectedNodes.clear();
-	}*/
+	}
 
 	void TreeControl::onMouseWheel(int nValue)
 	{

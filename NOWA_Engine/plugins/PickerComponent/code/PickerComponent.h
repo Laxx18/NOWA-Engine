@@ -239,6 +239,18 @@ namespace NOWA
 		 */
 		Ogre::String getJoystickButtonPickId(void) const;
 
+		/**
+		 * @brief Lua closure function gets called in order to react, when the dragging has started.
+		 * @param[in] closureFunction The closure function set.
+		 */
+		void reactOnDraggingStart(luabind::object closureFunction);
+
+		/**
+		 * @brief Lua closure function gets called in order to react, when the dragging has ended.
+		 * @param[in] closureFunction The closure function set.
+		 */
+		void reactOnDraggingEnd(luabind::object closureFunction);
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -353,6 +365,11 @@ namespace NOWA
 		Variant* drawLine;
 		Variant* mouseButtonPickId;
 		Variant* joystickButtonPickId;
+
+		luabind::object startClosureFunction;
+		luabind::object endClosureFunction;
+		bool draggingStartedFirstTime;
+		bool draggingEndedFirstTime;
 	};
 
 }; // namespace end

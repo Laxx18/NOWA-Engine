@@ -178,7 +178,7 @@ namespace NOWA
 		Ogre::String getCategories(void) const;
 
 		/**
-		 * @brief Lua closure function gets called in order to react, when a game enters the area.
+		 * @brief Lua closure function gets called in order to react, when a game object enters the area.
 		 * @param[in] closureFunction The closure function set.
 		 */
 		void reactOnEnter(luabind::object closureFunction);

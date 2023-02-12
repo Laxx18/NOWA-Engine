@@ -394,11 +394,24 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects)
 
 			componentPropertiesPanel->setEditorManager(this->editorManager);
 			componentPropertiesPanel->setPropertiesPanelInfo(this->propertiesPanelInfo);
+
 			// Add the component to view
 			this->propertiesPanelView1->addItem(componentPropertiesPanel);
 
+			// Adds this component pointer as user data, in order to set expand flag on the component
+			NOWA::GameObjectCompPtr thisComponent = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j));
+			// componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserString("Component", Ogre::StringConverter::toString(reinterpret_cast<size_t>(thisComponent.get())));
+			componentPropertiesPanel->getPanelCell()->getMainWidget()->setUserData(MyGUI::Any(thisComponent.get()));
+
+			bool minimize = false == thisComponent->getIsExpanded();
+			if (true == minimize)
+			{
+				componentPropertiesPanel->getPanelCell()->setClientHeight(26, false);
+				componentPropertiesPanel->getPanelCell()->setMinimized(minimize);
+			}
+
 			// Add the properties
-			auto& attributes = std::get<NOWA::COMPONENT>(gameObjects[0]->getComponents()->at(j))->getAttributes();
+			auto& attributes = thisComponent->getAttributes();
 			for (auto& it = attributes.begin(); it != attributes.end(); ++it)
 			{
 				const auto& found = sameValues.find(it->first);
@@ -548,6 +561,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setMouseHitThreshold(-10, 0);
 				edit->setOnlyText(anim->getAnimationName());
 				edit->setEditReadOnly(true);
 
@@ -958,12 +972,13 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
+			edit->setMouseHitThreshold(-10, 0);
 			// Really important to set the name of the property for the edit box, in order to identify later when a value has been changed, what to do
 			// Store also if all values are the same
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -994,6 +1009,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				edit->setOnlyText("0");
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
+			edit->setMouseHitThreshold(-10, 0);
 			if (NOWA::GameObject::AttrCategoryId() == attribute->getName())
 			{
 				edit->setEditReadOnly(true);
@@ -1002,7 +1018,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1033,11 +1049,12 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				edit->setOnlyText("0");
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
+			edit->setMouseHitThreshold(-10, 0);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1070,10 +1087,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
+			edit->setMouseHitThreshold(-10, 0);
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1104,11 +1122,12 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
+		edit->setMouseHitThreshold(-10, 0);
 		// edit->setTextAlign(MyGUI::Align::Left);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1136,10 +1155,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
+		edit->setMouseHitThreshold(-10, 0);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1175,11 +1195,12 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
+		edit->setMouseHitThreshold(-10, 0);
 		// edit->setTextAlign(MyGUI::Align::Left);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1233,6 +1254,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setMouseHitThreshold(-10, 0);
 				edit->setUserData(MyGUI::Any(attribute));
 				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
@@ -1241,7 +1263,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				edit->setNeedKeyFocus(true);
 				edit->setNeedMouseFocus(true);
 				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
-				// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+				// // // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 
 				this->itemsEdit.push_back(edit);
 			}
@@ -1322,6 +1344,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		// String
 		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		edit->setMouseHitThreshold(-10, 0);
 		if (true == allValuesSame)
 		{
 			edit->setOnlyText(attribute->getString());
@@ -1364,7 +1387,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1419,19 +1442,30 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	// slider->setScrollPage(1);
 	// slider->setScrollWheelPage(1);
 	slider->setMoveToClick(true);
-	// Scroll range must be always one more (see internal implementation of scroll bar)
-	Ogre::Real range = (Ogre::Math::Abs(attribute->getConstraints().second - attribute->getConstraints().first) * 1000.0f) + 1.0f;
-	slider->setScrollRange(static_cast<size_t>(range));
 
+	Ogre::Real currentValue = attribute->getReal();
+	Ogre::Real lowBorder = attribute->getConstraints().first;
+	Ogre::Real highBorder = attribute->getConstraints().second;
+
+	// Scroll range must be always one more (see internal implementation of scroll bar)
+	Ogre::Real range = (Ogre::Math::Abs(highBorder - lowBorder) * 1000.0f) + 1.0f;
+	
 	// https://math.stackexchange.com/questions/51509/how-to-calculate-percentage-of-value-inside-arbitrary-range
 	// Note: transform from - to absolute, only - is relevant, e.g. min: -200, max: 100: value a) -97, value b) 97 -> transform: +200 -> min: 0 max: 300 value a) 103, value b: 297
-	Ogre::Real value = (attribute->getReal() - attribute->getConstraints().first) * 1000.0f;
+
+	Ogre::Real value = (currentValue - lowBorder) * 1000.0f;
 	if (value >= range)
 	{
 		value = range - 1;
 	}
 
-	slider->setScrollPosition(static_cast<size_t>(value));
+	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue * 1000.0f, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
+	slider->setScrollRange(static_cast<size_t>(range));
+	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
+	slider->setTrackSize(10);
+
+	// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->SliderValue: " + Ogre::StringConverter::toString(interpolatedValue));
+
 	// slider->setTickStep((10.0f / range) * 1000.0f); Missing in MyGUI
 	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
@@ -1439,11 +1473,12 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+	edit->setMouseHitThreshold(-10, 0);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+	// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 	// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1464,27 +1499,39 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	// slider->setScrollPage(1);
 	// slider->setScrollWheelPage(1);
 	slider->setMoveToClick(true);
-	// Scroll range must be always one more (see internal implementation of scroll bar)
-	Ogre::Real range = Ogre::Math::Abs(attribute->getConstraints().second - attribute->getConstraints().first) + 1;
-	slider->setScrollRange(static_cast<size_t>(range));
+	
+	Ogre::Real currentValue = attribute->getReal();
+	Ogre::Real lowBorder = attribute->getConstraints().first;
+	Ogre::Real highBorder = attribute->getConstraints().second;
 
-	Ogre::Real value = attribute->getReal() + Ogre::Math::Abs(attribute->getConstraints().first);
+	// Scroll range must be always one more (see internal implementation of scroll bar)
+	Ogre::Real range = Ogre::Math::Abs(highBorder - lowBorder) + 1.0f;
+
+	// https://math.stackexchange.com/questions/51509/how-to-calculate-percentage-of-value-inside-arbitrary-range
+	// Note: transform from - to absolute, only - is relevant, e.g. min: -200, max: 100: value a) -97, value b) 97 -> transform: +200 -> min: 0 max: 300 value a) 103, value b: 297
+
+	Ogre::Real value = (currentValue - lowBorder);
 	if (value >= range)
 	{
 		value = range - 1;
 	}
-	slider->setScrollPosition(value);
+
+	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue, lowBorder, range, lowBorder, highBorder);
+	slider->setScrollRange(static_cast<size_t>(range));
+	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
+
 	// slider->setTickStep((10.0f / range) * 1000.0f); Missing in MyGUI
 	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+	edit->setMouseHitThreshold(-10, 0);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+	// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
 	// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
@@ -1662,6 +1709,8 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 {
 	sender->setUserString("Adapted", "true");
+	// If user is entering something, do not move camera, if the user entered something like asdf
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
 }
 
 void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
@@ -1903,6 +1952,9 @@ void PropertiesPanelGameObject::setNewAttributeValue(MyGUI::EditBox* sender, NOW
 
 void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
+	// Let the camera move again
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+
 	// Send the text box change to the game object and internally actualize the data
 	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
@@ -2406,6 +2458,8 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
+	// Let the camera move again
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 	// Send the text box change to the game object and internally actualize the data
 	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 	NOWA::Variant* variantCopy = (*attribute)->clone();
@@ -2433,14 +2487,29 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		MyGUI::ScrollBar* slider = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ScrollBar>(sliderName, false);
 		if (nullptr != slider)
 		{
-			Ogre::Real value = editValue - (*attribute)->getConstraints().first;
+			Ogre::Real currentValue = (editValue - (*attribute)->getConstraints().first) * 1000.0f;
+			Ogre::Real lowBorder = (*attribute)->getConstraints().first;
+			Ogre::Real highBorder = (*attribute)->getConstraints().second;
+
+			// Scroll range must be always one more (see internal implementation of scroll bar)
+			Ogre::Real range = (Ogre::Math::Abs(highBorder - lowBorder) * 1000.0f) + 1.0f;
+
+			// https://math.stackexchange.com/questions/51509/how-to-calculate-percentage-of-value-inside-arbitrary-range
+			// Note: transform from - to absolute, only - is relevant, e.g. min: -200, max: 100: value a) -97, value b) 97 -> transform: +200 -> min: 0 max: 300 value a) 103, value b: 297
+
+			if (currentValue >= range)
+			{
+				currentValue = range - 1;
+			}
+
+			Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
 			if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
 			{
-				slider->setScrollPosition(static_cast<size_t>(value * 1000.0f));
+				slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
 			}
 			else
 			{
-				slider->setScrollPosition(static_cast<size_t>(value));
+				slider->setScrollPosition(static_cast<size_t>(interpolatedValue / 100.0f));
 			}
 		}
 	}

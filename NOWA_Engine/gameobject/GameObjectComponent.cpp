@@ -47,6 +47,7 @@ namespace NOWA
 		index(0),
 		bShowDebugData(false),
 		bConnectedSuccess(true),
+		bIsExpanded(true),
 		name(new Variant(GameObjectComponent::AttrName(), "", this->attributes)),
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		referenceId(new Variant(GameObjectComponent::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false))
@@ -88,7 +89,12 @@ namespace NOWA
 			this->referenceId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "IsExpanded")
+		{
+			this->bIsExpanded = XMLConverter::getAttribBool(propertyElement, "data");
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		return true;
 	}
 
@@ -170,6 +176,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ReferenceId"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->referenceId->getULong())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "IsExpanded"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->bIsExpanded)));
+		propertiesXML->append_node(propertyXML);
+		
 	}
 
 	Ogre::Vector3 GameObjectComponent::getPosition(void) const
@@ -264,6 +277,16 @@ namespace NOWA
 	unsigned long GameObjectComponent::getReferenceId(void) const
 	{
 		return this->referenceId->getULong();
+	}
+
+	void GameObjectComponent::setIsExpanded(bool bIsExpanded)
+	{
+		this->bIsExpanded = bIsExpanded;
+	}
+
+	bool GameObjectComponent::getIsExpanded(void) const
+	{
+		return this->bIsExpanded;
 	}
 
 	void GameObjectComponent::eraseVariants(std::vector<Variant*>& container, size_t offset)

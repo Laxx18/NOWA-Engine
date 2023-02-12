@@ -264,6 +264,18 @@ namespace NOWA
 		 * @return referenceId The reference Id to get
 		 */
 		unsigned long getReferenceId(void) const;
+
+		/**
+		 * @brief Sets whether this component is expaned. Just useful, if an editor is used for UI.
+		 * @param[in] bIsExpanded The flag to set
+		 */
+		void setIsExpanded(bool bIsExpanded);
+
+		/**
+		 * @brief Gets whether this component is expaned. Just useful, if an editor is used for UI.
+		 * @return true if the component is expanded, else false.
+		 */
+		bool getIsExpanded(void) const;
 	public:
 		static unsigned int getStaticClassId(void)
 		{
@@ -395,6 +407,7 @@ namespace NOWA
 		Ogre::String customDataString;
 	private:
 		bool bConnectedSuccess;
+		bool bIsExpanded;
 	};
 
 }; //Namespace end

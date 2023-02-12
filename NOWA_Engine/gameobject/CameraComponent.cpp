@@ -292,21 +292,18 @@ namespace NOWA
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (nullptr != dummyEntity && true == this->hideEntity)
 		{
-			if (nullptr != dummyEntity && true == this->hideEntity)
+			if (true == this->dummyEntity->isVisible() && true == this->active->getBool())
 			{
-				if (true == this->dummyEntity->isVisible() && true == this->active->getBool())
+				this->dummyEntity->setVisible(false);
+			}
+			else
+			{
+				// If its not the active camera
+				if (false == this->dummyEntity->isVisible() && false == this->active->getBool())
 				{
-					this->dummyEntity->setVisible(false);
-				}
-				else
-				{
-					// If its not the active camera
-					if (false == this->dummyEntity->isVisible() && false == this->active->getBool())
-					{
-						this->dummyEntity->setVisible(true);
-					}
+					this->dummyEntity->setVisible(true);
 				}
 			}
 		}

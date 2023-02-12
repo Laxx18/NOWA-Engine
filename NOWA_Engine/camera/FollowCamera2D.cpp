@@ -28,11 +28,6 @@ namespace NOWA
 		maximumBounds(Ogre::Vector3::ZERO),
 		pDebugLine(nullptr)
 	{
-		// Smoothing creates jitter if simulation updates are 30 ticks per second or below, hence disable smoothing
-		if (Core::getSingletonPtr()->getOptionDesiredSimulationUpdates() <= 30)
-		{
-			this->smoothValue = 0.0f;
-		}
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &FollowCamera2D::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
 	}
 
@@ -381,27 +376,13 @@ namespace NOWA
 	{
 		// Error: No bounds have been set
 		if (Ogre::Vector3::ZERO == this->mostRightUp)
+		{
 			return;
+		}
 
 		if (nullptr == this->sceneNode)
-			return;
-
-		if (this->firstTimeMoveValueSet)
 		{
-			this->lastMoveValue = Ogre::Vector3::ZERO;
-			// set the camera position to the target one for the first time
-			this->camera->setPosition(this->sceneNode->getPosition());
-			// this->camera->lookAt(this->sceneNode->getPosition());
-			// this->camera->moveRelative(this->offset);
-			this->camera->move(this->offset);
-
-			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
-			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-			this->pDebugLine->setQueryFlags(0);
-			Ogre::SceneNode *pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode("Debugline1FlubberNode1");
-			pNode->attachObject(this->pDebugLine);*/
-
-			this->firstTimeMoveValueSet = false;
+			return;
 		}
 
 		const Ogre::Vector3 cameraPosition = this->camera->getPosition();
@@ -426,42 +407,50 @@ namespace NOWA
 				Ogre::Vector3 dragForce = ((anchorPosition - springPosition) * mass * jointSpringCompPtr->getSpringStrength()) - body->getVelocity();
 			*/
 
-
-			if (0.0f != this->smoothValue)
+			if (Ogre::Math::RealEqual(velocity.x, 0.0f))
 			{
-				velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+				velocity.x = 0.0f;
 			}
-				//// this->camera->setPosition(NOWA::MathHelper::getInstance()->lowPassFilter(cameraPosition.x, this->lastMoveValue.x, this->smoothValue), cameraPosition).y, cameraPosition.z);
-
-			//// this->camera->setDirection(direction);
-
-			this->lastMoveValue.x = velocity.x;
-			// this->camera->setPosition(Ogre::Vector3(this->sceneNode->getPosition().x, cameraPosition.y, cameraPosition.z));
-
-			// currentPosition.x = NOWA::MathHelper::getInstance()->lowPassFilter(currentPosition.x, this->lastMoveValue.x, this->smoothValue);
-			/*velocity.x = this->sceneNode->getPosition().x - this->lastMoveValue.x;
-
-			this->lastMoveValue.x = this->sceneNode->getPosition().x;*/
+			if (Ogre::Math::RealEqual(velocity.y, 0.0f))
+			{
+				velocity.y = 0.0f;
+			}
+			if (Ogre::Math::RealEqual(velocity.z, 0.0f))
+			{
+				velocity.z = 0.0f;
+			}
 		}
 		// check the y bounds
 		if (this->sceneNode->getPosition().y + this->offset.y - this->mostRightUp.y > this->minimumBounds.y
 			&& this->sceneNode->getPosition().y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
 		{
 			velocity.y = this->sceneNode->getPosition().y - cameraPosition.y + this->offset.y;
-			if (0.0f != this->smoothValue)
-			{
-				velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
-			}
-
-			this->lastMoveValue.y = velocity.y;
-			// this->camera->setPosition(Ogre::Vector3(cameraPosition.x, this->sceneNode->getPosition().y + this->offset.y, cameraPosition.z + this->offset.z));
-
-			/*velocity.y = this->sceneNode->getPosition().y - this->lastMoveValue.y;
-
-			this->lastMoveValue.y = this->sceneNode->getPosition().y;*/
 		}
 
+		if (this->firstTimeMoveValueSet)
+		{
+			this->lastMoveValue = Ogre::Vector3::ZERO;
+			// set the camera position to the target one for the first time
+			this->camera->setPosition(this->sceneNode->getPosition());
+			// this->camera->lookAt(this->sceneNode->getPosition());
+			// this->camera->moveRelative(this->offset);
+			this->camera->move(this->offset);
+
+			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
+			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+			this->pDebugLine->setQueryFlags(0);
+			Ogre::SceneNode *pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode("Debugline1FlubberNode1");
+			pNode->attachObject(this->pDebugLine);*/
+
+			this->firstTimeMoveValueSet = false;
+		}
+
+		velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
+		velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
+
 		this->camera->move(velocity * this->moveCameraWeight);
+
+		this->lastMoveValue = velocity;
 
 		//////////////////////////////////////////////////////////////////////////////////////////////
 		//// If the camera is out of bounds, constrain its position to remain within bounds
