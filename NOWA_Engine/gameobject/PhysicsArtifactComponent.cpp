@@ -55,6 +55,21 @@ namespace NOWA
 		//	return false;
 		//}
 
+		// Snapshot loaded, game object pointer should exist, set transform
+		if (nullptr != this->gameObjectPtr)
+		{
+			bool oldIsDynamic = this->gameObjectPtr->isDynamic();
+			this->gameObjectPtr->setDynamic(true);
+			Ogre::Vector3 position = this->gameObjectPtr->getPosition();
+			Ogre::Quaternion orientation = this->gameObjectPtr->getOrientation();
+			// This must be done this way, because pos, orientation must be set at once, else orientation will be the old one
+			if (nullptr != this->physicsBody)
+			{
+				this->physicsBody->setPositionOrientation(position, orientation);
+			}
+			this->gameObjectPtr->setDynamic(oldIsDynamic);
+		}
+
 		return true;
 	}
 

@@ -88,7 +88,7 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				// Write all the game object data to stream
-				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, false, "");
+				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
 				if (false == this->appStateName.empty())
 					AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->deleteGameObject(gameObjectPtr->getId());
 				else
@@ -124,7 +124,9 @@ namespace NOWA
 		}
 
 		xmlNodes = XMLDoc.first_node("nodes");
+		this->dotSceneImportModule->setIsSnapshot(true);
 		this->dotSceneImportModule->processNodes(xmlNodes);
+		this->dotSceneImportModule->setIsSnapshot(false);
 
 		// Post init new game objects when created
 		for (size_t i = 0; i < this->gameObjectIds.size(); i++)
@@ -211,8 +213,8 @@ namespace NOWA
 
 			if (nullptr != gameObjectPtr)
 			{
-				// Write all the game object data to stream
-				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, false, "");
+				// Write all the game object data to stream														false -> recursive -> Do not store recursive, as the game objects are a the same level. Its not a usual scene save!
+				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
 			}
 		}
 		doc.append_node(nodesXML);
@@ -259,7 +261,9 @@ namespace NOWA
 		xmlNodes = XMLDoc.first_node("nodes");
 
 		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
+		this->dotSceneImportModule->setIsSnapshot(true);
 		this->dotSceneImportModule->processNodes(xmlNodes, nullptr, true);
+		this->dotSceneImportModule->setIsSnapshot(false);
 		differenceList.clear();
 		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
 	}

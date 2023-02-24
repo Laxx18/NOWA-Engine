@@ -42,8 +42,10 @@ namespace MyGUI
 		mAlign(Align::Default),
 		mVisible(true),
 		mDepth(0),
-		mXThreshold(0),
-		mYThreshold(0)
+		mXLeftThreshold(0),
+		mXRightThreshold(0),
+		mYLeftThreshold(0),
+		mYRightThreshold(0)
 	{
 	}
 
@@ -472,7 +474,7 @@ namespace MyGUI
 			|| (!getNeedMouseFocus() && !getInheritsPick())
 			|| !_checkPoint(_left, _top)
 			// если есть маска, проверяем еще и по маске
-			|| !isMaskPickInside(IntPoint(_left - mCoord.left - mXThreshold, _top - mCoord.top - mYThreshold), mCoord)
+			|| !isMaskPickInside(IntPoint(_left - mCoord.left - mXLeftThreshold, _top - mCoord.top - mYLeftThreshold), mCoord)
 			)
 			return nullptr;
 
@@ -1042,8 +1044,8 @@ namespace MyGUI
 
 	bool Widget::_checkPoint(int _left, int _top) const
 	{
-		// 11.02.2023: Lax: Added 4 pixel threshold, because else lost focus is triggered in each input field to fast and its not possible to adapt values properly
-		return ! ((_getViewLeft() > _left - mXThreshold) || (_getViewTop() > _top + mYThreshold) || (_getViewRight() < _left - mXThreshold) || (_getViewBottom() < _top - mYThreshold));
+		// 11.02.2023: Lax: Added x pixel threshold, because else lost focus is triggered in each input field to fast and its not possible to adapt values properly
+		return ! ((_getViewLeft() > _left - mXLeftThreshold) || (_getViewTop() > _top - mYLeftThreshold) || (_getViewRight() < _left + mXRightThreshold) || (_getViewBottom() < _top + mYRightThreshold));
 	}
 
 	void Widget::_linkChildWidget(Widget* _widget)
@@ -1385,10 +1387,12 @@ namespace MyGUI
 		mWidgetChild.push_back(_widget);
 	}
 
-	void Widget::setMouseHitThreshold(int xThreshold, int yThreshold)
+	void Widget::setMouseHitThreshold(int xLeftThreshold, int xRightThreshold, int yLeftThreshold, int yRightThreshold)
 	{
-		this->mXThreshold = xThreshold;
-		this->mYThreshold = yThreshold;
+		this->mXLeftThreshold = xLeftThreshold;
+		this->mXRightThreshold = xRightThreshold;
+		this->mYLeftThreshold = yLeftThreshold;
+		this->mYRightThreshold = yRightThreshold;
 	}
 
 	void Widget::_updateChilds()

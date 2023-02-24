@@ -842,6 +842,13 @@ namespace NOWA
 	
 	bool AttributesComponent::loadValue(const Ogre::String& saveName, Variant* attribute)
 	{
+		if (nullptr == attribute)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributesComponent] Could not load value for attribute, because the attribute does not exist. GameObject: "
+														   + this->gameObjectPtr->getName() + "'");
+			return false;
+		}
+
 		int index = -1;
 		Ogre::String attributeNameLink = attribute->getUserDataValue("Link");
 		for (size_t i = 0; i < this->attributeNames.size(); i++)

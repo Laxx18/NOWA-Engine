@@ -67,7 +67,7 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
-			this->setActivated(XMLConverter::getAttribBool(propertyElement, "data"));
+			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Position")
@@ -1544,6 +1544,10 @@ namespace NOWA
 																		+ " details: " + msg.str());
 						}
 					}
+				}
+				else
+				{
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Could not process 'reactOnMouseButtonClick' because the given game object: " + this->gameObjectPtr->getName() + " has no lua script component!");
 				}
 			}
 		}

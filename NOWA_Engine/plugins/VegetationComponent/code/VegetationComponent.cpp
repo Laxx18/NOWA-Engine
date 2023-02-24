@@ -646,6 +646,11 @@ namespace NOWA
 			return;
 		}
 
+		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+		{
+		 	return;
+		}
+
 		// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
 		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
 		{

@@ -166,9 +166,15 @@ namespace NOWA
 		planeMeshV1.setNull();
 
 		// Check whether to cast shadows
-		bool castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
-		bool visible = this->gameObjectPtr->getMovableObject()->getVisible();
-		
+		bool castShadows = true;
+		bool visible = true;
+
+		if (nullptr != this->gameObjectPtr->getMovableObject())
+		{
+			castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
+			visible = this->gameObjectPtr->getMovableObject()->getVisible();
+		}
+
 		// Later: Make scene node and entity static!
 		Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
 
@@ -180,9 +186,13 @@ namespace NOWA
 		this->gameObjectPtr->init(item);
 
 		// Get the used data block name 0
-		Ogre::String dataBlock = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0")->getString();
-		if ("Missing" != dataBlock)
-			item->setDatablock(dataBlock);
+		auto datablockAttribute = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0");
+		if (nullptr != datablockAttribute)
+		{
+			Ogre::String dataBlock = datablockAttribute->getString();
+			if ("Missing" != dataBlock)
+				item->setDatablock(dataBlock);
+		}
 
 		item->setName(this->gameObjectPtr->getName() + "mesh");
 

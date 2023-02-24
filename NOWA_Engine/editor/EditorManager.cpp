@@ -853,7 +853,7 @@ namespace NOWA
 				if (nullptr != gameObjectPtr)
 				{
 					// Write all the game object data to stream
-					this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, false, "");
+					this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
 				}
 				else

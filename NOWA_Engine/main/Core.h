@@ -350,9 +350,10 @@ namespace NOWA
 		/*
 		* @brief		Gets the save file path name for this pc, which is in the user directory. Necessary directories will be created automatically.
 		* @param[in] saveName	The save name to add as save file path name
+		* @param[in] fileEnding	Adds the given file ending, if does not exist.
 		* @return			The whole save file path name with (*.sav) ending
 		*/
-		Ogre::String getSaveFilePathName(const Ogre::String& saveName);
+		Ogre::String getSaveFilePathName(const Ogre::String& saveName, const Ogre::String& fileEnding = ".sav");
 
 		/*
 		* @brief		Creates a folder for the given path
@@ -391,12 +392,12 @@ namespace NOWA
 
 		/*
 		* @brief	Removes the given parts from a string
-		* @param[in] source		The source string to operate on
-		* @param[in] parts		The parts to remove
-		* @return target		The target cleaned string
+		* @param[in] source			The source string to operate on
+		* @param[in] parts			The parts to remove
+		* @return success, target	Success, if something has been removed and the target manipulated string.
 		* @note		E.g. remove illegal chars from a string like []*()'
 		*/
-		Ogre::String removePartsFromString(const Ogre::String& source, const Ogre::String& parts);
+		std::pair<bool, Ogre::String> removePartsFromString(const Ogre::String& source, const Ogre::String& parts);
 
 		/**
 		 * @brief		Copies the given text to global clipboard for paste operations
@@ -413,6 +414,10 @@ namespace NOWA
 		std::vector<Ogre::String> getSceneFileNames(const Ogre::String& resourceGroupName, const Ogre::String& projectName);
 
 		std::vector<Ogre::String> getFilePathNamesInProject(const Ogre::String& projectName, const Ogre::String& pattern);
+
+		std::vector<Ogre::String> getSceneSnapshotsInProject(const Ogre::String& projectName);
+
+		std::vector<Ogre::String> getSaveNamesInProject(const Ogre::String& projectName);
 
 		std::vector<Ogre::String> getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern);
 

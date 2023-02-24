@@ -8,6 +8,8 @@
 #include "BaseLayout/BaseLayout.h"
 #include "ItemBox/BaseCellView.h"
 #include "ItemBox/BaseItemBox.h"
+
+#include "modules/MiniMapModule.h"
 	
 namespace NOWA
 {
@@ -142,6 +144,10 @@ namespace NOWA
 
 		bool getUseToolTip(void) const;
 
+		void setUseVisitation(bool useVisitation);
+
+		bool getUseVisitation(void) const;
+
 		void setAxis(const Ogre::String& axis);
 	
 		/**
@@ -206,10 +212,19 @@ namespace NOWA
 		void generateMiniMap(void);
 
 		void generateTrackables(void);
+
+		void setSceneVisited(unsigned int index, bool visited);
+
+		bool getIsSceneVisited(unsigned int index);
+
+		void setSceneVisited(const Ogre::String& sceneName, bool visited);
+
+		bool getIsSceneVisited(const Ogre::String& sceneName);
 	public:
 		static const Ogre::String AttrStartPosition(void) { return "Start Position"; }
 		static const Ogre::String AttrScaleFactor(void) { return "Scale Factor"; }
 		static const Ogre::String AttrUseToolTip(void) { return "Use ToolTip"; }
+		static const Ogre::String AttrUseVisitation(void) { return "Use Visitation"; }
 		static const Ogre::String AttrAxis(void) { return "Axis"; }
 		static const Ogre::String AttrShowNames(void) { return "Show Names"; }
 		static const Ogre::String AttrSkinName(void) { return "Skin Name "; }
@@ -230,6 +245,7 @@ namespace NOWA
 		void destroyTrackables(void);
 	private:
 		MiniMapToolTip* toolTip;
+		std::vector<MiniMapModule::MiniMapData> miniMapDataList;
 		
 		unsigned int miniMapTilesCount;
 		std::vector<MyGUI::Widget*> windowMapTiles;
@@ -239,6 +255,7 @@ namespace NOWA
 		Variant* startPosition;
 		Variant* scaleFactor;
 		Variant* useToolTip;
+		Variant* useVisitation;
 		Variant* axis;
 		Variant* showNames;
 		Variant* trackableCount;
@@ -251,6 +268,7 @@ namespace NOWA
 		std::vector<Variant*> trackableImages;
 		std::vector<Variant*> trackableImageTileSizes;
 		std::vector<int> spriteAnimationIndices;
+		std::vector<Variant*> visitedList;
 
 		bool bShowMiniMap;
 		Ogre::Real timeSinceLastUpdate;

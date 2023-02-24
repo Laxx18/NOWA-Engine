@@ -21,6 +21,7 @@ namespace NOWA
 		// transfered to the first class of the 2 classes that are bidirectional associated
 		typedef boost::shared_ptr<GameObjectComponent> GameObjectCompPtr;
 	public:
+		friend class DotSceneImportModule;
 
 		/*
 		* @brief Creates a new game object from XML or sets data for existing game object
@@ -55,6 +56,7 @@ namespace NOWA
 		 * @param[in]	componentClassName	The component class name for creation
 		 */
 		GameObjectCompPtr createComponent(GameObjectPtr gameObjectPtr, const Ogre::String& componentClassName);
+
 	public:
 		static GameObjectFactory* getInstance();
 	private:

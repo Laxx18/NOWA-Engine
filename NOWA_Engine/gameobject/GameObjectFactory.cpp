@@ -470,6 +470,26 @@ namespace NOWA
 				{
 					gameObjectPtr = existingGameObjectPtr;
 				}
+
+				// If this is a global game object, and in the local scene the same game object does already exist, the global one cannot be used, because the local one has already been registered
+				// Note: First all local scene game objects are loaded and after that all global ones
+				// If its a snapshot (saved game loaded, only values are set, hence its not necessary to check if the game object does exist, because it does and just the values are set...
+				if (true == global)
+				{
+					auto localExistingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
+					if (nullptr != localExistingGameObjectPtr)
+					{
+						Ogre::String message = "[GameObjectFactory] For the local game object: " + sceneNode->getName() +
+							" the same global game object does exist. The global game object will be overwritten with the local one."
+							" If this is not intended fix this scenario by deleting in the .scene xml file and do not save the scene.";
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+						boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+						NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
+					}
+				}
+
+
+				gameObjectPtr->setName(sceneNode->getName());
 				gameObjectPtr->setTagName(tagName);
 				gameObjectPtr->setControlledByClientID(controlledByClientID);
 				gameObjectPtr->setDefaultDirection(defaultDirection);
@@ -518,7 +538,6 @@ namespace NOWA
 			// Loop through each property element and load the component
 			while (nullptr != propertyElement)
 			{
-				// since Ogitor it is not possible to have 2x Component as attribute, therefore calling it for example Component2 and getting it with the *
 				Ogre::String componentName = XMLConverter::getAttrib(propertyElement, "name");
 
 				if (Ogre::StringUtil::match(componentName, "Componen*", true))
@@ -547,7 +566,7 @@ namespace NOWA
 						sceneNode->removeAndDestroyAllChildren();
 						sceneManager->destroySceneNode(sceneNode);
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-							+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
+																		+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
 
 						sceneNode = nullptr;
 						return nullptr;
@@ -556,13 +575,13 @@ namespace NOWA
 				else
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + gameObjectPtr->getName()
-						+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "'");
+																	+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "'");
 
 					propertyElement = propertyElement->next_sibling("property");
 					/*throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectFactory] GameObject '" + gameObjectPtr->getName()
 						 + "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "'\n", "NOWA");*/
 
-					// break;
+						 // break;
 				}
 			}
 

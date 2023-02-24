@@ -66,7 +66,7 @@ namespace NOWA
 
 	}
 
-	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName)
+	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName, bool crypted)
 	{
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
 		// Announce the current world path to core
@@ -96,6 +96,7 @@ namespace NOWA
 			xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
 			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
 			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
+			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(sceneName)));
 
 			// ResourceLocations element
 			// Is no more required
@@ -168,18 +169,28 @@ namespace NOWA
 			Core::getSingletonPtr()->setCurrentWorldBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 		}
 
+		std::stringstream stream;
+		stream << doc;
+
+		if (true == crypted)
+		{
+			stream << Core::getSingletonPtr()->encode64(stream.str(), true);
+		}
+
 		std::ofstream file;
 		file.open(filePathName);
-		file << doc;
+		file << stream.str();
+
 		file.close();
 	}
 
-	void DotSceneExportModule::saveSceneSnapshot(const Ogre::String& filePathName)
+	void DotSceneExportModule::saveSceneSnapshot(const Ogre::String& filePathName, bool crypted)
 	{
+		Ogre::String tempFilePathName = Core::getSingletonPtr()->removePartsFromString(filePathName, ".sav").second;
 		// Maybe create a folder
-		Core::getSingletonPtr()->createFolders(filePathName);
+		Core::getSingletonPtr()->createFolders(tempFilePathName);
 
-		if (filePathName.empty())
+		if (tempFilePathName.empty())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.\n", "NOWA");
@@ -196,6 +207,8 @@ namespace NOWA
 			xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
 			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
 			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
+			sceneXML->append_attribute(doc.allocate_attribute("projectName", XMLConverter::ConvertString(Core::getSingletonPtr()->getProjectName())));
+			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(Core::getSingletonPtr()->getWorldName())));
 
 			// ResourceLocations element
 			// Is no more required
@@ -246,8 +259,8 @@ namespace NOWA
 			// Nodes element
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
-				// Export local game objects (true)!
-				this->exportSceneNodes(nodesXML, doc, true, filePathName);
+				// Export local game objects (true)! Also global!
+				this->exportSceneNodes(nodesXML, doc, true, tempFilePathName);
 				sceneXML->append_node(nodesXML);
 			}
 
@@ -260,9 +273,18 @@ namespace NOWA
 			}
 		}
 
+		std::stringstream stream;
+		stream << doc;
+
+		if (true == crypted)
+		{
+			stream << Core::getSingletonPtr()->encode64(stream.str(), true);
+		}
+
 		std::ofstream file;
-		file.open(filePathName);
-		file << doc;
+		file.open(tempFilePathName);
+		file << stream.str();
+
 		file.close();
 	}
 
@@ -396,7 +418,7 @@ namespace NOWA
 		file.close();
 	}
 
-	void DotSceneExportModule::exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName)
+	void DotSceneExportModule::exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName, bool crypted)
 	{
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
 		// Project is always: "projects/projectName/global.scene"
@@ -434,9 +456,18 @@ namespace NOWA
 			}
 		}
 
+		std::stringstream stream;
+		stream << doc;
+
+		if (true == crypted)
+		{
+			stream << Core::getSingletonPtr()->encode64(stream.str(), true);
+		}
+
 		std::ofstream file;
 		file.open(filePathName);
-		file << doc;
+		file << stream.str();
+
 		file.close();
 	}
 
@@ -975,7 +1006,7 @@ namespace NOWA
 		this->exportNode(this->sceneManager->getRootSceneNode(), nodesXML, doc, exportGlobalGameObjects, filePath);
 	}
 
-	void DotSceneExportModule::exportNode(Ogre::Node* ogreNode, xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath)
+	void DotSceneExportModule::exportNode(Ogre::Node* ogreNode, xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath, bool recursive)
 	{
 // Attention: Check this! As ragdoll will store lots of nodes without name (bones)
 		Ogre::String nodeName = ogreNode->getName();
@@ -997,35 +1028,38 @@ namespace NOWA
 		// Attention: Scene Type must be stored too!!!
 		std::hash<Ogre::String> hash;
 		auto nodeIt = ogreNode->getChildIterator();
-		
-		if (nullptr != gameObject)
+		if (true == recursive)
 		{
-			// 2 cases:
-			// 1: If only local game objects should be exported (exportGlobalGameObject = false) and it is a global game object (global = true), do not export this one
-			// 2: If only global game objects should be exported (exportGlobalGameObject = true) and it is a local game object (global = false), do not export this one
-			if (exportGlobalGameObject != gameObject->getGlobal())
+			if (nullptr != gameObject)
+			{
+				// 2 cases:
+				// 1: If only local game objects should be exported (exportGlobalGameObject = false) and it is a global game object (global = true), do not export this one
+				// 2: If only global game objects should be exported (exportGlobalGameObject = true) and it is a local game object (global = false), do not export this one
+				bool isGlobal = gameObject->getGlobal();
+				if (exportGlobalGameObject != isGlobal)
+				{
+					while (nodeIt.hasMoreElements())
+					{
+						//go through all objects recursive that are attached to the scenenodes
+						this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
+					}
+					return;
+				}
+			}
+
+			// If a node has no game object, do not export the node, but the next one
+			if (nullptr == gameObject)
 			{
 				while (nodeIt.hasMoreElements())
 				{
 					//go through all objects recursive that are attached to the scenenodes
-					this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath);
+					this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
 				}
 				return;
 			}
 		}
 
-		// If a node has no game object, do not export the node, but the next one
-		if (nullptr == gameObject)
-		{
-			while (nodeIt.hasMoreElements())
-			{
-				//go through all objects recursive that are attached to the scenenodes
-				this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath);
-			}
-			return;
-		}
-
-		Ogre::SceneNode::ObjectIterator objectIt = ((Ogre::SceneNode*) ogreNode)->getAttachedObjectIterator();
+		Ogre::SceneNode::ObjectIterator objectIt = ((Ogre::SceneNode*)ogreNode)->getAttachedObjectIterator();
 
 		// Node
 		{
@@ -1148,7 +1182,7 @@ namespace NOWA
 		while (nodeIt.hasMoreElements())
 		{
 			//go through all objects recursive that are attached to the scenenodes
-			this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath);
+			this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
 		}
 	}
 
@@ -1419,7 +1453,7 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				// Write all the game object data to stream (may also be a global game object)
-				this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), filePath);
+				this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), filePath, false);
 			}
 		}
 		doc.append_node(nodesXML);

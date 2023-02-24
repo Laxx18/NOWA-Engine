@@ -145,7 +145,7 @@ namespace NOWA
 				}
 			}
 			this->setAttributesCount(this->attributesCount->getUInt() + 1);
-			this->attributeNames[this->attributesCount->getUInt()]->setValue(attributeName);
+			this->attributeNames[this->attributesCount->getUInt() - 1]->setValue(attributeName);
 
 			Ogre::String strType;
 			if (Variant::VAR_BOOL == attributeType)
@@ -184,7 +184,7 @@ namespace NOWA
 			{
 				strType = "Vector4";
 			}
-			this->attributeTypes[this->attributesCount->getUInt()]->setListSelectedValue(strType);
+			this->attributeTypes[this->attributesCount->getUInt() - 1]->setListSelectedValue(strType);
 			return true;
 		}
 

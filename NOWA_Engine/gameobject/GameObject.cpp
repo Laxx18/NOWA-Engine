@@ -409,7 +409,10 @@ namespace NOWA
 			{
 				if ("" != loadedDatablocks[i])
 				{
-					this->dataBlocks[i]->setValue(loadedDatablocks[i]);
+					if (nullptr != this->dataBlocks[i])
+					{
+						this->dataBlocks[i]->setValue(loadedDatablocks[i]);
+					}
 				}
 			}
 		}
@@ -625,18 +628,7 @@ namespace NOWA
 	{
 		if (GameObject::AttrName() == attribute->getName())
 		{
-			Ogre::String name = attribute->getString();
-			Ogre::String tempName;
-			if (true == name.empty())
-				tempName = "Default";
-			else
-				tempName = name;
-
-			AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(tempName, this->id->getULong());
-			this->name->setValue(tempName);
-			
-			this->sceneNode->setName(tempName);
-			this->movableObject->setName(tempName);
+			this->setName(attribute->getName());
 		}
 		else if (GameObject::AttrCategory() == attribute->getName())
 		{
@@ -975,6 +967,21 @@ namespace NOWA
 		return this->id->getULong();
 	}
 
+	void GameObject::setName(const Ogre::String& name)
+	{
+		Ogre::String tempName;
+		if (true == name.empty())
+			tempName = "Default";
+		else
+			tempName = name;
+
+		AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(tempName, this->id->getULong());
+		this->name->setValue(tempName);
+
+		this->sceneNode->setName(tempName);
+		this->movableObject->setName(tempName);
+	}
+
 	const Ogre::String GameObject::getName(void) const
 	{
 		return this->name->getString();
@@ -1108,7 +1115,7 @@ namespace NOWA
 
 	bool GameObject::moveComponentUp(unsigned int index)
 	{
-		if (index > this->gameObjectComponents.size())
+		if (index >= this->gameObjectComponents.size())
 		{
 			return false;
 		}
@@ -1186,7 +1193,7 @@ namespace NOWA
 
 	bool GameObject::moveComponent(unsigned int index)
 	{
-		if (index > this->gameObjectComponents.size())
+		if (index >= this->gameObjectComponents.size())
 		{
 			return false;
 		}
@@ -1211,7 +1218,7 @@ namespace NOWA
 
 	boost::weak_ptr<GameObjectComponent> GameObject::getComponentByIndex(unsigned int index)
 	{
-		if (index > this->gameObjectComponents.size())
+		if (index >= this->gameObjectComponents.size())
 		{
 			return boost::weak_ptr<GameObjectComponent>();
 		}
@@ -1401,7 +1408,7 @@ namespace NOWA
 	void GameObject::setAttributePosition(const Ogre::Vector3& position)
 	{
 		this->position->setValue(position);
-		this->sceneNode->setPosition(position);
+		this->sceneNode->_setDerivedPosition(position);
 	}
 
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
@@ -1416,7 +1423,7 @@ namespace NOWA
 	{
 		// Set in the form degree, x-axis, y-axis, z-axis
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
-		this->sceneNode->setOrientation(orientation);
+		this->sceneNode->_setDerivedOrientation(orientation);
 	}
 
 	void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)

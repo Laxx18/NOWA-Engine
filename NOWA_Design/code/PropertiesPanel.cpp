@@ -498,14 +498,14 @@ void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 
 void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 {
-	const int height = 24;
-	const int heightStep = 26;
+	const int height = 26;
+	const int heightStep = 28;
 	const int widthStep = 3;
 
 	const int keyLeft = 1;
-	const int keyWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.7f);
-	const int valueLeft = static_cast<int>(this->mWidgetClient->getWidth() * 0.7f + widthStep);
-	const int valueWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.4);
+	const int keyWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f);
+	const int valueLeft = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f + widthStep);
+	const int valueWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.3f);
 
 	for (size_t i = 0; i < gameObject->getComponents()->size(); i++)
 	{
@@ -561,7 +561,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setMouseHitThreshold(-10, 0);
+				edit->setMouseHitThreshold(6, 6, 3, 3);
 				edit->setOnlyText(anim->getAnimationName());
 				edit->setEditReadOnly(true);
 
@@ -868,7 +868,7 @@ void PropertiesPanelDynamic::shutdown()
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {
-	const int heightStep = 26;
+	const int heightStep = 28;
 	int heightCurrent = 0;
 	for (unsigned int pos = 0; pos < 16; ++pos)
 	{
@@ -894,14 +894,14 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		return;
 	}
 
-	const int height = 24;
-	const int heightStep = 26;
+	const int height = 26;
+	const int heightStep = 28;
 	const int widthStep = 3;
 
 	const int keyLeft = 1;
-	const int keyWidth = static_cast<int>(mWidgetClient->getWidth() * 0.7f);
-	const int valueLeft = static_cast<int>(mWidgetClient->getWidth() * 0.7f + widthStep);
-	const int valueWidth = static_cast<int>(mWidgetClient->getWidth() * 0.4f);
+	const int keyWidth = static_cast<int>(mWidgetClient->getWidth() * 0.8f);
+	const int valueLeft = static_cast<int>(mWidgetClient->getWidth() * 0.8f + widthStep);
+	const int valueWidth = static_cast<int>(mWidgetClient->getWidth() * 0.3f);
 
 	// Add label when required
 	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLabel()))
@@ -972,7 +972,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(-10, 0);
+			edit->setMouseHitThreshold(6, 6, 3, 3);
 			// Really important to set the name of the property for the edit box, in order to identify later when a value has been changed, what to do
 			// Store also if all values are the same
 			edit->setUserData(MyGUI::Any(attribute));
@@ -1009,7 +1009,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				edit->setOnlyText("0");
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(-10, 0);
+			edit->setMouseHitThreshold(6, 6, 3, 3);
 			if (NOWA::GameObject::AttrCategoryId() == attribute->getName())
 			{
 				edit->setEditReadOnly(true);
@@ -1049,7 +1049,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				edit->setOnlyText("0");
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(-10, 0);
+			edit->setMouseHitThreshold(6, 6, 3, 3);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
@@ -1087,7 +1087,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
-			edit->setMouseHitThreshold(-10, 0);
+			edit->setMouseHitThreshold(6, 6, 3, 3);
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
@@ -1122,7 +1122,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(-10, 0);
+		edit->setMouseHitThreshold(6, 6, 3, 3);
 		// edit->setTextAlign(MyGUI::Align::Left);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
@@ -1155,7 +1155,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(-10, 0);
+		edit->setMouseHitThreshold(6, 6, 3, 3);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
@@ -1195,7 +1195,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
-		edit->setMouseHitThreshold(-10, 0);
+		edit->setMouseHitThreshold(6, 6, 3, 3);
 		// edit->setTextAlign(MyGUI::Align::Left);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
@@ -1228,6 +1228,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		{
 			MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 			comboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+			comboBox->setMouseHitThreshold(6, 6, 3, 3);
 			if (attribute->getName() == NOWA::GameObject::AttrCategory())
 			{
 				if (this->gameObjects.size() > 1)
@@ -1254,7 +1255,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setMouseHitThreshold(-10, 0);
+				edit->setMouseHitThreshold(6, 6, 3, 3);
 				edit->setUserData(MyGUI::Any(attribute));
 				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
@@ -1344,7 +1345,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		// String
 		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		edit->setMouseHitThreshold(-10, 0);
+		edit->setMouseHitThreshold(6, 6, 3, 3);
 		if (true == allValuesSame)
 		{
 			edit->setOnlyText(attribute->getString());
@@ -1473,7 +1474,7 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	edit->setMouseHitThreshold(-10, 0);
+	edit->setMouseHitThreshold(6, 6, 3, 3);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
@@ -1526,7 +1527,7 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	edit->setMouseHitThreshold(-10, 0);
+	edit->setMouseHitThreshold(6, 6, 3, 3);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);

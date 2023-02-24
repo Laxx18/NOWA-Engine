@@ -42,6 +42,7 @@ namespace NOWA
 		showProgress(false),
 		forceCreation(false),
 		bSceneParsed(false),
+		bIsSnapshot(false),
 		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
 		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
 		sunLight(nullptr)
@@ -61,6 +62,7 @@ namespace NOWA
 		showProgress(false),
 		forceCreation(false),
 		bSceneParsed(false),
+		bIsSnapshot(false),
 #ifndef PAGEDGEOMETRY_NOT_PORTED
 		// pagedGeometryModule(nullptr),
 #endif
@@ -122,6 +124,7 @@ namespace NOWA
 		showProgress(false),
 		forceCreation(false),
 		bSceneParsed(false),
+		bIsSnapshot(false),
 		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
 		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY))
 	{
@@ -141,9 +144,6 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load world, because the groupname is empty.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load world, because the groupname is empty.\n", "NOWA");
 		}
-
-		// First process the usual scene with all the other stuff
-		rapidxml::xml_document<> XMLDoc;
 
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
 
@@ -177,12 +177,18 @@ namespace NOWA
 		}
 	}
 	
-	bool DotSceneImportModule::parseGlobalScene(bool justSetValues)
+	bool DotSceneImportModule::parseGlobalScene(bool crypted)
 	{
 		rapidxml::xml_document<> XMLDoc;
 		rapidxml::xml_node<>* xmlRoot;
 		
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
+		auto sections = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName);
+		if (true == sections.empty())
+		{
+			return false;
+		}
+
+		Ogre::String projectPath = sections[0];
 
 		this->bSceneParsed = true;
 		
@@ -199,14 +205,9 @@ namespace NOWA
 		}
 		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
-		if (GetFileAttributes(globalSceneFilePathName.data()) & FileFlag)
+		if (GetFileAttributes(globalSceneFilePathName.data()) & FileFlag || crypted)
 		{
 			content = Core::getSingletonPtr()->decode64(content, true);
-			Core::getSingletonPtr()->projectEncoded = true;
-		}
-		else
-		{
-			Core::getSingletonPtr()->projectEncoded = false;
 		}
 		content += '\0';
 
@@ -236,7 +237,7 @@ namespace NOWA
 		}
 		
 		// Process the global.scene
-		this->processScene(xmlRoot, justSetValues);
+		this->processScene(xmlRoot);
 
 		this->bSceneParsed = false;
 
@@ -246,12 +247,8 @@ namespace NOWA
 	bool DotSceneImportModule::parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight,
 		DotSceneImportModule::IWorldLoaderCallback* worldLoaderCallback, bool showProgress)
 	{
+		// Note: No crypted flag used, because if its a usual scene and shall be crypted, the whole project and all scene files will be crypted from the outside at once and also decoded at once.
 		bool success = true;
-
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-		this->projectParameter.projectName = projectName;
-
-		this->bSceneParsed = true;
 
 		// Remove .scene
 		Ogre::String tempSceneName = sceneName;
@@ -261,6 +258,7 @@ namespace NOWA
 			tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
 		}
 
+		this->projectParameter.projectName = projectName;
 		this->projectParameter.sceneName = tempSceneName;
 		this->resourceGroupName = resourceGroupName;
 		this->sunLight = sunLight;
@@ -276,10 +274,6 @@ namespace NOWA
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load world, because the groupname is empty.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Can not load world, because the groupname is empty.\n", "NOWA");
 		}
-
-		// First process the usual scene with all the other stuff
-		rapidxml::xml_document<> XMLDoc;
-		rapidxml::xml_node<>* xmlRoot;
 		
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(this->resourceGroupName)[0];
 		
@@ -287,26 +281,32 @@ namespace NOWA
 		// E.g.: "Projects/Plattformer/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
 		this->worldPath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene";
 
-		std::ifstream ifs(this->worldPath);
-		if (false == ifs.good())
-		{
-			success = false;
-			// If there is no scene yet, try to parse a possible global scene
-			/*success = this->parseGlobalScene();
-			if (false == success)
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: '" + this->worldPath
-					+ "' because it does not exist.");
-			}*/
-			return success;
-		}
+		return this->internalParseScene(this->worldPath);
+	}
 
-		// Announce the current world path to core
+	bool DotSceneImportModule::internalParseScene(const Ogre::String& filePathName, bool crypted)
+	{
+		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
+		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+
+		// Announce the current world path to core. Do not set file path name, as it could be from a saved game, which points to a whole different location, in which there are no lua scripts etc.
 		Core::getSingletonPtr()->setCurrentWorldPath(this->worldPath);
 
+		this->bSceneParsed = true;
+
+		std::ifstream ifs(filePathName);
+		if (false == ifs.good())
+		{
+			return false;
+		}
+
+		// First process the usual scene with all the other stuff
+		rapidxml::xml_document<> XMLDoc;
+		rapidxml::xml_node<>* xmlRoot;
+
 		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-		DWORD dwFileAttributes	= GetFileAttributes(this->worldPath.data());
-		if (dwFileAttributes & FileFlag)
+		DWORD dwFileAttributes = GetFileAttributes(filePathName.data());
+		if (dwFileAttributes & FileFlag || crypted)
 		{
 			content = Core::getSingletonPtr()->decode64(content, true);
 			Core::getSingletonPtr()->projectEncoded = true;
@@ -326,17 +326,22 @@ namespace NOWA
 		}
 		catch (rapidxml::parse_error& error)
 		{
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse scene: " + sceneName + " error: " + Ogre::String(error.what())
-				+ " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not parse scene: " + this->projectParameter.sceneName + " error: " + Ogre::String(error.what())
+								  + " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
 		}
 		/*catch (Ogre::FileNotFoundException& exception)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: " + sceneName 
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: " + sceneName
 				+ " because it does not exist. Error: " + exception.what());
 			return false;
 		}*/
 
 		xmlRoot = XMLDoc.first_node("scene");
+		if (nullptr == xmlRoot)
+		{
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid global.scene File. Missing <scene>");
+			return false;
+		}
 		if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing <scene>");
@@ -349,14 +354,14 @@ namespace NOWA
 		// Second process a possible global.scene with all global game objects, that are used for all scenes in the project
 		if (false == this->projectParameter.ignoreGlobalScene)
 		{
-			this->parseGlobalScene();
+			this->parseGlobalScene(crypted);
 		}
 
 		// This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
 		this->postInitData();
-		
+
 		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
+		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
 
 		// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
@@ -368,7 +373,41 @@ namespace NOWA
 		return true;
 	}
 
-	void NOWA::DotSceneImportModule::postInitData()
+	bool NOWA::DotSceneImportModule::parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& filePathName, bool crypted, bool showProgress)
+	{
+		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
+		bool success = true;
+		this->bIsSnapshot = true;
+		this->bSceneParsed = true;
+		this->showProgress = showProgress;
+
+		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
+
+		rapidxml::xml_document<> XMLDoc;
+
+		std::ifstream ifs(filePathName);
+		if (false == ifs.good())
+		{
+			success = false;
+			return success;
+		}
+
+		this->projectParameter.projectName = projectName;
+		this->projectParameter.sceneName = sceneName;
+
+		this->resourceGroupName = resourceGroupName;
+		this->sunLight = sunLight;
+		this->worldLoaderCallback = worldLoaderCallback;
+		this->showProgress = showProgress;
+		this->parsedGameObjectIds.clear();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '"
+														+ this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene' for resource group: '" + resourceGroupName + "'");
+
+		return this->internalParseScene(filePathName, crypted);
+	}
+
+	void DotSceneImportModule::postInitData()
 	{
 		auto& mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
 		if (nullptr == mainCameraGameObject)
@@ -403,14 +442,15 @@ namespace NOWA
 		mainGameObject->postInit();
 
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); 
+			 it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
 		{
 			const auto& gameObjectPtr = it->second;
 			if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
 				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID
 				&& gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
 			{
-				if (!gameObjectPtr->postInit())
+				if (false == gameObjectPtr->postInit())
 				{
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
 				}
@@ -444,84 +484,6 @@ namespace NOWA
 		Ogre::Camera* tempCamera = it.getNext();
 		tempCamera->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
 		}*/
-	}
-
-	bool NOWA::DotSceneImportModule::loadSceneSnapshot(const Ogre::String& filePathName)
-	{
-		bool success = true;
-
-		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-
-		// First process the usual scene with all the other stuff
-		rapidxml::xml_document<> XMLDoc;
-		rapidxml::xml_node<>* xmlRoot;
-
-		std::ifstream ifs(filePathName);
-		if (false == ifs.good())
-		{
-			success = false;
-			// If there is no scene yet, try to parse a possible global scene
-			/*success = this->parseGlobalScene();
-			if (false == success)
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: '" + this->worldPath
-					+ "' because it does not exist.");
-			}*/
-			return success;
-		}
-
-		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-		DWORD dwFileAttributes = GetFileAttributes(this->worldPath.data());
-		if (dwFileAttributes & FileFlag)
-		{
-			content = Core::getSingletonPtr()->decode64(content, true);
-			Core::getSingletonPtr()->projectEncoded = true;
-		}
-		else
-		{
-			Core::getSingletonPtr()->projectEncoded = false;
-		}
-		content += '\0';
-
-		boost::shared_ptr<EventDataProjectEncoded> eventDataProjectEncoded(new EventDataProjectEncoded(Core::getSingletonPtr()->projectEncoded));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectEncoded);
-
-		try
-		{
-			XMLDoc.parse<0>(&content[0]);
-		}
-		catch (rapidxml::parse_error& error)
-		{
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Could not load scene snapshot from: " + filePathName + " error: " + Ogre::String(error.what())
-				+ " at: " + Ogre::String(error.where<char>()) + "\n", "NOWA");
-		}
-		/*catch (Ogre::FileNotFoundException& exception)
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Could not parse scene: " + sceneName
-				+ " because it does not exist. Error: " + exception.what());
-			return false;
-		}*/
-
-		xmlRoot = XMLDoc.first_node("scene");
-		if (XMLConverter::getAttrib(xmlRoot, "formatVersion", "") == "")
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Invalid .scene File. Missing <scene>");
-			return false;
-		}
-
-		// Process the scene
-		this->processScene(xmlRoot, true);
-
-		this->postInitData();
-
-		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + filePathName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
-
-		// Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-		this->bSceneParsed = false;
-
-		return true;
 	}
 
 	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
@@ -1890,6 +1852,13 @@ namespace NOWA
 			
 				// Now that the gameobject has been fully created, run the post init phase
 				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->missingGameObjectIds[i]);
+				if (nullptr == gameObjectPtr)
+				{
+					Ogre::String message = "[DotSceneImportModule] Cannot undo deletion of game object id: " + Ogre::StringConverter::toString(this->missingGameObjectIds[i])
+										+ " because somehow the game object has not been snapshotted as the simulation mode started.";
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+					throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, message + "\n", "NOWA");
+				}
 				if (false == gameObjectPtr->postInit())
 				{
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
@@ -1918,7 +1887,7 @@ namespace NOWA
 		Ogre::SceneNode* pNode = 0;
 		if (name.empty())
 		{
-			if (parent)
+			if (nullptr != parent)
 			{
 				pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
 			}
@@ -1929,15 +1898,56 @@ namespace NOWA
 		}
 		else
 		{
-			if (parent)
+			bool foundNode = false;
+			// Snapshot is loaded, scenenodes should exist already, find the node
+			if (true == this->bIsSnapshot)
 			{
-				pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
-				pNode->setName(name);
+				// Damn it, scene node names are not unique!
+				const auto& nodesList = this->sceneManager->findSceneNodes(name);
+				if (false == nodesList.empty())
+				{
+					if (1 == nodesList.size())
+					{
+						pNode = nodesList[0];
+						foundNode = true;
+					}
+					else
+					{
+						for (size_t i = 0; i < nodesList.size(); i++)
+						{
+							Ogre::Node* node = nodesList[i];
+							if (nullptr != node)
+							{
+								auto gameObject = Ogre::any_cast<GameObject*>(node->getUserObjectBindings().getUserAny());
+								if (nullptr != gameObject)
+								{
+									if (gameObject->getName() == name)
+									{
+										pNode = nodesList[i];
+										foundNode = true;
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
 			}
-			else
+			
+			if (false == foundNode)
 			{
-				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-				pNode->setName(name);
+				// Must not set values, because node does not exist and game object does also not exist and must be created!
+				justSetValues = false;
+				if (nullptr != parent)
+				{
+					pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
+					pNode->setName(name);
+				}
+				else
+				{
+					pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+					pNode->setName(name);
+				}
 			}
 		}
 
@@ -1958,7 +1968,6 @@ namespace NOWA
 		pElement = xmlNode->first_node("rotation");
 		if (pElement)
 		{
-			// if ("MainCamera" != name)
 			pNode->setOrientation(XMLConverter::parseQuaternion(pElement));
 		}
 
@@ -2095,6 +2104,11 @@ namespace NOWA
 
 		Ogre::String tempMeshFile = meshFile;
 		GameObject::eType type = GameObject::ITEM;
+
+		if (Ogre::String::npos != tempMeshFile.find("Plane"))
+		{
+			tempMeshFile = "Missing.mesh";
+		}
 
 		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse item: " + name + " mesh: " + meshFile);
@@ -2268,6 +2282,11 @@ namespace NOWA
 						{
 							unsigned long existingGameObjectId = XMLConverter::getAttribUnsignedLong(propertyElement, "data");
 							GameObjectPtr existingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(existingGameObjectId);
+							if (nullptr == existingGameObjectPtr)
+							{
+								// Not found, is illegal do nothing
+								break;
+							}
 
 							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, item,
 								type, this->worldPath, this->forceCreation, this->bSceneParsed, existingGameObjectPtr);
@@ -2324,6 +2343,11 @@ namespace NOWA
 		Ogre::MeshPtr v2Mesh;
 		GameObject::eType type = GameObject::ENTITY;
 		// Attention with hbu_static, there is also dynamic
+
+		if (Ogre::String::npos != tempMeshFile.find("Plane"))
+		{
+			tempMeshFile = "Missing.mesh";
+		}
 
 		unsigned long missingGameObjectId = 0;
 		if (true == justSetValues && false == this->missingGameObjectIds.empty())
@@ -2674,6 +2698,7 @@ namespace NOWA
 
 							gameObjectPtr = GameObjectFactory::getInstance()->createOrSetGameObjectFromXML(pElement, this->sceneManager, parent, nullptr, GameObject::TERRA,
 								this->worldPath, this->forceCreation, false, existingGameObjectPtr);
+
 							foundId = true;
 						}
 						else
@@ -2834,6 +2859,58 @@ namespace NOWA
 	const ProjectParameter& DotSceneImportModule::getProjectParameter(void) const
 	{
 		return this->projectParameter;
+	}
+
+	void NOWA::DotSceneImportModule::setIsSnapshot(bool bIsSnapshot)
+	{
+		this->bIsSnapshot = bIsSnapshot;
+	}
+
+	std::pair<Ogre::String, Ogre::String> NOWA::DotSceneImportModule::getProjectAndSceneName(const Ogre::String& filePathName, bool decrypt)
+	{
+		Ogre::String sceneName;
+		Ogre::String projectName;
+		std::ifstream ifs(filePathName);
+		if (false == ifs.good())
+		{
+			return std::make_pair(projectName, sceneName);
+		}
+
+		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+		DWORD dwFileAttributes = GetFileAttributes(filePathName.c_str());
+		if (dwFileAttributes & FileFlag && true == decrypt)
+		{
+			content = Core::getSingletonPtr()->decode64(content, true);
+		}
+		content += '\0';
+
+		{
+			Ogre::String toFind = "projectName=\"";
+			size_t projectNameTagPos = content.find(toFind);
+			if (Ogre::String::npos != projectNameTagPos)
+			{
+				size_t projectNameTagEndPos = content.find("\"", projectNameTagPos + toFind.length());
+				if (Ogre::String::npos != projectNameTagEndPos)
+				{
+					projectName = content.substr(projectNameTagPos + toFind.length(), projectNameTagEndPos - (projectNameTagPos + toFind.length()));
+				}
+			}
+		}
+
+		{
+			Ogre::String toFind = "sceneName=\"";
+			size_t sceneNameTagPos = content.find(toFind);
+			if (Ogre::String::npos != sceneNameTagPos)
+			{
+				size_t sceneNameTagEndPos = content.find("\"", sceneNameTagPos + toFind.length());
+				if (Ogre::String::npos != sceneNameTagEndPos)
+				{
+					sceneName = content.substr(sceneNameTagPos + toFind.length(), sceneNameTagEndPos - (sceneNameTagPos + toFind.length()));
+				}
+			}
+		}
+		ifs.close();
+		return std::make_pair(projectName, sceneName);
 	}
 
 }; //Namespace end

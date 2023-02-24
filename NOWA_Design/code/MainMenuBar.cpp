@@ -1022,7 +1022,7 @@ void MainMenuBar::createLuaAnalysisWindow(void)
 
 void MainMenuBar::createLuaApiWindow(void)
 {
-	if (0 == this->luaApiWidgets.size())
+	if (0 == this->luaApiWidgets.size() || nullptr == this->luaApiWindow)
 	{
 		this->luaApiWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowCS", MyGUI::IntCoord(10, 10, 1280, 768), MyGUI::Align::Default, "Popup");
 		this->luaApiWindow->setMinSize(400, 400);

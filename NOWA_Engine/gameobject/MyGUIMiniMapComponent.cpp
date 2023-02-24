@@ -94,6 +94,8 @@ namespace NOWA
 		this->axis = new Variant(MyGUIMiniMapComponent::AttrAxis(), std::vector<Ogre::String>{ "X,Y", "X,Z" }, this->attributes);
 		this->showNames = new Variant(MyGUIMiniMapComponent::AttrShowNames(), true, this->attributes);
 		this->useToolTip = new Variant(MyGUIMiniMapComponent::AttrUseToolTip(), true, this->attributes);
+		this->useVisitation = new Variant(MyGUIMiniMapComponent::AttrUseVisitation(), true, this->attributes);
+		
 		this->trackableCount = new Variant(MyGUIMiniMapComponent::AttrTrackableCount(), 0, this->attributes);
 		this->trackableImageAnimationSpeed = new Variant(MyGUIMiniMapComponent::AttrTrackableImageAnimationSpeed(), 0.2f, this->attributes);
 
@@ -101,6 +103,8 @@ namespace NOWA
 
 		this->position->setValue(Ogre::Vector2(0.0f, 0.0f));
 		this->size->setValue(Ogre::Vector2(1.0f, 1.0f));
+
+		this->useVisitation->setDescription("If activated, only minimap tiles are visible, which are marked as visited, via @setVisited(...) functionality.");
 
 		this->axis->setDescription("The axis for exit direction. For Jump'n'Run e.g. 'X,Y' is correct and for a casual 3D world 'X,Z'.");
 		this->trackableCount->setDescription("Sets the count of track able game objects. The track able id is used to specify the game object that should be tracked on minimap. "
@@ -143,6 +147,11 @@ namespace NOWA
 			this->useToolTip->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseVisitation")
+		{
+			this->useVisitation->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Axis")
 		{
 			this->axis->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
@@ -167,6 +176,7 @@ namespace NOWA
 			this->skinNames.resize(this->miniMapTilesCount);
 			this->miniMapTilesColors.resize(this->miniMapTilesCount);
 			this->toolTipDescriptions.resize(this->miniMapTilesCount);
+			this->visitedList.resize(this->miniMapTilesCount);
 		}
 
 		for (size_t i = 0; i < this->miniMapTilesCount; i++)
@@ -211,8 +221,44 @@ namespace NOWA
 					this->toolTipDescriptions[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 				}
 				propertyElement = propertyElement->next_sibling("property");
-				this->toolTipDescriptions[i]->addUserData(GameObject::AttrActionSeparator());
 			}
+			if (nullptr != propertyElement)
+			{
+				Ogre::String name = XMLConverter::getAttrib(propertyElement, "name");
+				if (Ogre::String::npos != name.find(" Scene Visited"))
+				{
+					if (nullptr == this->visitedList[i])
+					{
+						this->visitedList[i] = new Variant(name, XMLConverter::getAttribBool(propertyElement, "data"), this->attributes);
+						this->visitedList[i]->addUserData(GameObject::AttrActionSeparator());
+					}
+					else
+					{
+						this->visitedList[i]->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+						this->visitedList[i]->addUserData(GameObject::AttrActionSeparator());
+					}
+				}
+				else
+				{
+					this->toolTipDescriptions[i]->addUserData(GameObject::AttrActionSeparator());
+				}
+				propertyElement = propertyElement->next_sibling("property");
+			}
+		}
+
+		bool allVisitedVariantEmpty = false;
+		for (size_t i = 0; i < this->visitedList.size(); i++)
+		{
+			if (nullptr == this->visitedList[i])
+			{
+				allVisitedVariantEmpty = true;
+				break;
+			}
+		}
+
+		if (true == allVisitedVariantEmpty)
+		{
+			this->visitedList.clear();
 		}
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TrackableCount")
@@ -330,33 +376,54 @@ namespace NOWA
 		Ogre::Vector2 viewPortSize = Ogre::Vector2(static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().width), static_cast<Ogre::Real>(this->widget->getAbsoluteCoord().height)) / this->scaleFactor->getReal();
 
 		// Check how many mini maps can be created
-		std::vector<MiniMapModule::MiniMapData> miniMapDataList = AppStateManager::getSingletonPtr()->getMiniMapModule()->parseMinimaps(this->gameObjectPtr->getSceneManager(), 
+		this->miniMapDataList = AppStateManager::getSingletonPtr()->getMiniMapModule()->parseMinimaps(this->gameObjectPtr->getSceneManager(), 
 			this->axis->getListSelectedValue() == "X,Y" ? true : false, this->startPosition->getVector2(), viewPortSize);
 
-		if (miniMapDataList.size() > this->skinNames.size())
+		if (this->miniMapDataList.size() > this->skinNames.size())
 		{
-			miniMapTilesCount = static_cast<unsigned int>(miniMapDataList.size());
+			miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
 			// If there are more scene, then actually properties loaded sind the last save, fill up with default data
-			for (size_t i = this->skinNames.size(); i < miniMapDataList.size(); i++)
+			for (size_t i = this->skinNames.size(); i < this->miniMapDataList.size(); i++)
 			{
 				this->skinNames.push_back(new Variant(MyGUIMiniMapComponent::AttrSkinName() + Ogre::StringConverter::toString(i), std::vector<Ogre::String>{ "PanelSkin" }, this->attributes));
 				this->miniMapTilesColors.push_back(new Variant(MyGUIMiniMapComponent::AttrMiniMapTileColor() + Ogre::StringConverter::toString(i), Ogre::Vector3(0.2f, 0.2f, 0.2f), this->attributes));
 				this->miniMapTilesColors[i]->addUserData(GameObject::AttrActionColorDialog());
 				this->toolTipDescriptions.push_back(new Variant(MyGUIMiniMapComponent::AttrToolTipDescription() + Ogre::StringConverter::toString(i), "", this->attributes));
+				this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
 			}
 		}
-		else if (miniMapDataList.size() < this->skinNames.size())
+		else if (this->miniMapDataList.size() < this->skinNames.size())
 		{
-			miniMapTilesCount = static_cast<unsigned int>(miniMapDataList.size());
+			miniMapTilesCount = static_cast<unsigned int>(this->miniMapDataList.size());
 
 			this->eraseVariants(this->skinNames, miniMapTilesCount);
 			this->eraseVariants(this->miniMapTilesColors, miniMapTilesCount);
 			this->eraseVariants(this->toolTipDescriptions, miniMapTilesCount);
+			this->eraseVariants(this->visitedList, this->miniMapDataList.size());
 		}
 
-		for (size_t i = 0; i < miniMapDataList.size(); i++)
+		if (true == this->visitedList.empty())
 		{
-			const MiniMapModule::MiniMapData& miniMapData = miniMapDataList[i];
+			for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+			{
+				this->visitedList.push_back(new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes));
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+			{
+				if (nullptr == this->visitedList[i])
+				{
+					this->visitedList[i] = new Variant(this->miniMapDataList[i].sceneName + " Scene Visited", true, this->attributes);
+				}
+			}
+		}
+
+
+		for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+		{
+			const MiniMapModule::MiniMapData& miniMapData = this->miniMapDataList[i];
 
 			// Note: Widgets are created with absolute coordinates!?
 			MyGUI::Widget* mapTileWindow = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Widget>(this->skinNames[i]->getListSelectedValue(),
@@ -391,7 +458,7 @@ namespace NOWA
 			// Set map tile text box as child of map tile window
 			// mapTileTextBox->attachToWidget(mapTileWindow);
 			// mapTileTextBox->setRealSize(miniMapData.size.x, 0.05f);
-			mapTileTextBox->setRealPosition(miniMapData.position.x, miniMapData.position.y);
+			mapTileTextBox->setRealPosition(miniMapData.position.x + 0.01f, miniMapData.position.y + 0.015f);
 
 			// Set label
 			this->skinNames[i]->addUserData(GameObject::AttrActionLabel());
@@ -401,6 +468,7 @@ namespace NOWA
 		}
 
 		this->widget->setVisible(this->bShowMiniMap);
+		// 
 		// Add event handler, if its a window, to close the mini map when x button is pressed
 		MyGUI::Window* window = this->widget->castType<MyGUI::Window>(false);
 		if (window != nullptr)
@@ -461,6 +529,44 @@ namespace NOWA
 				}
 			}
 		}
+	}
+
+	void MyGUIMiniMapComponent::setSceneVisited(unsigned int index, bool visited)
+	{
+		if (index > this->visitedList.size())
+			index = static_cast<unsigned int>(this->visitedList.size()) - 1;
+		this->visitedList[index]->setValue(visited);
+	}
+
+	bool MyGUIMiniMapComponent::getIsSceneVisited(unsigned int index)
+	{
+		if (index > this->visitedList.size())
+			return false;
+		return this->visitedList[index]->getBool();
+	}
+
+	void MyGUIMiniMapComponent::setSceneVisited(const Ogre::String& sceneName, bool visited)
+	{
+		for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+		{
+			if (sceneName == this->miniMapDataList[i].sceneName)
+			{
+				this->visitedList[i]->setValue(visited);
+				break;
+			}
+		}
+	}
+
+	bool MyGUIMiniMapComponent::getIsSceneVisited(const Ogre::String& sceneName)
+	{
+		for (size_t i = 0; i < this->miniMapDataList.size(); i++)
+		{
+			if (sceneName == this->miniMapDataList[i].sceneName)
+			{
+				return this->visitedList[i]->getBool();
+			}
+		}
+		return false;
 	}
 
 	void MyGUIMiniMapComponent::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -574,6 +680,7 @@ namespace NOWA
 	{
 		bool success = MyGUIWindowComponent::connect();
 
+		this->setUseVisitation(this->useVisitation->getBool());
 		this->generateMiniMap();
 		this->generateTrackables();
 		this->setUseToolTip(this->useToolTip->getBool());
@@ -601,6 +708,10 @@ namespace NOWA
 		else if (MyGUIMiniMapComponent::AttrUseToolTip() == attribute->getName())
 		{
 			this->setUseToolTip(attribute->getBool());
+		}
+		else if (MyGUIMiniMapComponent::AttrUseVisitation() == attribute->getName())
+		{
+			this->setUseVisitation(attribute->getBool());
 		}
 		else if (MyGUIMiniMapComponent::AttrAxis() == attribute->getName())
 		{
@@ -633,6 +744,10 @@ namespace NOWA
 				else if (MyGUIMiniMapComponent::AttrToolTipDescription() + Ogre::StringConverter::toString(i) == attribute->getName())
 				{
 					this->setToolTipDescription(i, attribute->getString());
+				}
+				else if (this->visitedList[i]->getName() == attribute->getName())
+				{
+					this->setSceneVisited(i, attribute->getBool());
 				}
 			}
 			for (unsigned int i = 0; i < this->trackableCount->getUInt(); i++)
@@ -683,6 +798,12 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseVisitation"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useVisitation->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Axis"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->axis->getListSelectedValue())));
@@ -719,6 +840,15 @@ namespace NOWA
 			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("ToolTipDescription" + Ogre::StringConverter::toString(i))));
 			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->toolTipDescriptions[i]->getString())));
 			propertiesXML->append_node(propertyXML);
+
+			if (false == this->visitedList.empty() && nullptr != this->visitedList[i])
+			{
+				propertyXML = doc.allocate_node(node_element, "property");
+				propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(this->visitedList[i]->getName())));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->visitedList[i]->getBool())));
+				propertiesXML->append_node(propertyXML);
+			}
 		}
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -849,6 +979,16 @@ namespace NOWA
 	bool MyGUIMiniMapComponent::getUseToolTip(void) const
 	{
 		return this->useToolTip->getBool();
+	}
+
+	void MyGUIMiniMapComponent::setUseVisitation(bool useVisitation)
+	{
+		this->useVisitation->setValue(useVisitation);
+	}
+
+	bool MyGUIMiniMapComponent::getUseVisitation(void) const
+	{
+		return this->useVisitation->getBool();
 	}
 
 	void MyGUIMiniMapComponent::setSkinName(unsigned int index, const Ogre::String& skinName)
@@ -1075,17 +1215,55 @@ namespace NOWA
 		if (nullptr != this->widget)
 		{
 			this->widget->setVisible(bShow);
-			for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+
+			if (false == this->useVisitation->getBool())
 			{
-				this->textBoxMapTiles[i]->setVisible(bShow);
+				for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+				{
+					this->textBoxMapTiles[i]->setVisible(bShow);
+				}
+				for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+				{
+					this->windowMapTiles[i]->setVisible(bShow);
+				}
+				for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+				{
+					this->trackableImageBoxes[i]->setVisible(bShow);
+				}
 			}
-			for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+			else
 			{
-				this->windowMapTiles[i]->setVisible(bShow);
-			}
-			for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
-			{
-				this->trackableImageBoxes[i]->setVisible(bShow);
+				if (true == bShow)
+				{
+					// Only show tile if also is set on visited list!
+					for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+					{
+						this->textBoxMapTiles[i]->setVisible(this->visitedList[i]->getBool());
+					}
+					for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+					{
+						this->windowMapTiles[i]->setVisible(this->visitedList[i]->getBool());
+					}
+					for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+					{
+						this->trackableImageBoxes[i]->setVisible(this->visitedList[i]->getBool());
+					}
+				}
+				else
+				{
+					for (size_t i = 0; i < this->textBoxMapTiles.size(); i++)
+					{
+						this->textBoxMapTiles[i]->setVisible(false);
+					}
+					for (size_t i = 0; i < this->windowMapTiles.size(); i++)
+					{
+						this->windowMapTiles[i]->setVisible(false);
+					}
+					for (size_t i = 0; i < this->trackableImageBoxes.size(); i++)
+					{
+						this->trackableImageBoxes[i]->setVisible(false);
+					}
+				}
 			}
 		}
 	}

@@ -4678,7 +4678,7 @@ namespace NOWA
 			.def("getMovable", &MyGUI::Window::getMovable)
 			];
 		AddClassToCollection("Window", "class", "MyGUI window class.");
-		AddClassToCollection("Window", "void setMovable(bool movable)", "Sets whether thw window can be moved.");
+		AddClassToCollection("Window", "void setMovable(bool movable)", "Sets whether the window can be moved.");
 		AddClassToCollection("Window", "bool getMovable()", "Gets whether the window can be moved");
 
 		module(lua)
@@ -4817,8 +4817,8 @@ namespace NOWA
 			"Optionally crypts the content, so that it is not readable anymore. Optionally can saves a whole scene snapshot");
 		AddClassToCollection("GameProgressModule", "String saveValue(String saveName, String gameObjectId, unsigned int attributeIndex, bool crypted)", "Saves a value for the given game object id and its attribute index. Optionally crypts the content, so that it is not readable anymore.");
 		AddClassToCollection("GameProgressModule", "String saveValues(String saveName, String gameObjectId, bool crypted)", "Saves all values for the given game object id and its attribute components. Optionally crypts the content, so that it is not readable anymore.");
-		AddClassToCollection("GameProgressModule", "bool loadProgress(String saveName, bool sceneSnapshot)", "Loads all values for all game objects with attributes components for the given save name. "
-			"Optionally can loads a whole scene snapshot. Returns false, if no save file could be found.");
+		AddClassToCollection("GameProgressModule", "bool loadProgress(String saveName, bool sceneSnapshot, bool showProgress)", "Loads all values for all game objects with attributes components for the given save name. "
+			"Optionally can load a whole scene snapshot. If the scene is in the snapshot is the same as the current one, just values are set. Else first a whole new scene is loaded and after that the snapshot on the top. Returns false, if no save file could be found.");
 		AddClassToCollection("GameProgressModule", "bool loadValue(String saveName, String gameObjectId, unsigned int attributeIndex)", "Loads a value for the given game object id and attribute index and the given save name. Returns false, if no save file could be found or index or game object id is invalid.");
 		AddClassToCollection("GameProgressModule", "bool loadValue(String saveName, String gameObjectId)", "Loads all values for the given game object id and the given save name. Returns false, if no save file could be found or game object id is invalid.");
 
@@ -5682,6 +5682,16 @@ namespace NOWA
 		instance->changeValue<Ogre::Vector4>(name, value);
 	}
 
+	void incrementValueNumber(Variant* instance, Ogre::Real value)
+	{
+		instance->setValue(instance->getReal() + value);
+	}
+
+	void decrementValueNumber(Variant* instance, Ogre::Real value)
+	{
+		instance->setValue(instance->getReal() - value);
+	}
+
 	void bindAttributesComponent(lua_State* lua)
 	{
 		module(lua)
@@ -5715,6 +5725,8 @@ namespace NOWA
 			// .def("setValueType", (void (Variant::*)(int, const Ogre::String&)) &Variant::setValue)
 			// .def("setValueFloat", (void (Variant::*)(Ogre::Real)) &Variant::setValue)
 			.def("setValueNumber", (void (Variant::*)(Ogre::Real)) & Variant::setValue)
+			.def("incrementValueNumber", &incrementValueNumber)
+			.def("decrementValueNumber", &decrementValueNumber)
 			.def("setValueBool", (void (Variant::*)(bool)) & Variant::setValue)
 			// .def("setValueInt", (void (Variant::*)(int)) &Variant::setValue)
 			// .def("setValueUInt", (void (Variant::*)(unsigned int)) &Variant::setValue)
@@ -12090,6 +12102,8 @@ namespace NOWA
 			.def("isMiniMapShown", &MyGUIMiniMapComponent::isMiniMapShown)
 			.def("setStartPosition", &MyGUIMiniMapComponent::setStartPosition)
 			.def("getStartPosition", &MyGUIMiniMapComponent::getStartPosition)
+			.def("setUseVisitation", &MyGUIMiniMapComponent::setUseVisitation)
+			.def("getUseVisitation", &MyGUIMiniMapComponent::getUseVisitation)
 			// .def("setSkinName", &MyGUIMiniMapComponent::setSkinName)
 			// .def("getSkinName", &MyGUIMiniMapComponent::getSkinName)
 			.def("getMiniMapTilesCount", &MyGUIMiniMapComponent::getMiniMapTilesCount)
@@ -12111,6 +12125,10 @@ namespace NOWA
 			.def("generateMiniMap", &MyGUIMiniMapComponent::generateMiniMap)
 			.def("generateTrackables", &MyGUIMiniMapComponent::generateTrackables)
 			.def("reactOnMouseButtonClick", &MyGUIMiniMapComponent::reactOnMouseButtonClick)
+			.def("setSceneVisited", (void (MyGUIMiniMapComponent::*)(unsigned int, bool)) &MyGUIMiniMapComponent::setSceneVisited)
+			.def("getIsSceneVisited", (bool (MyGUIMiniMapComponent::*)(unsigned int)) & MyGUIMiniMapComponent::getIsSceneVisited)
+			.def("setSceneVisited", (void (MyGUIMiniMapComponent::*)(const Ogre::String&, bool)) & MyGUIMiniMapComponent::setSceneVisited)
+			.def("getIsSceneVisited", (bool (MyGUIMiniMapComponent::*)(const Ogre::String&)) & MyGUIMiniMapComponent::getIsSceneVisited)
 		];
 
 		AddClassToCollection("MyGUIMiniMapComponent", "class inherits MyGUIWindowComponent", MyGUIMiniMapComponent::getStaticInfoText());
@@ -12118,6 +12136,9 @@ namespace NOWA
 		AddClassToCollection("MyGUIMiniMapComponent", "bool isMiniMapShown()", "Gets whether the minimap is shown.");
 		AddClassToCollection("MyGUIMiniMapComponent", "void setStartPosition(Vector2 startPosition)", "Sets the relative start position, at which the whole minimap will be generated. Default value is 0,0 (left, top corner). E.g. setting to 0.5, 0.5 would start in the middle of the screen.");
 		AddClassToCollection("MyGUIMiniMapComponent", "Vector2 getStartPosition()", "Gets the start position, at which the whole minimap will be generated.");
+		AddClassToCollection("MyGUIMiniMapComponent", "void setUseVisitation(bool useVisitation)", "If activated, only minimap tiles are visible, which are marked as visited, via @setVisited(...) functionality.");
+		AddClassToCollection("MyGUIMiniMapComponent", "bool getUseVisitation()", "Gets whether only minimap tiles are visible, which are marked as visited, via @setVisited(...) functionality.");
+
 		AddClassToCollection("MyGUIMiniMapComponent", "int getMiniMapTilesCount()", "Gets the generated minimap tiles count.");
 		AddClassToCollection("MyGUIMiniMapComponent", "void setMiniMapTileColor(int index, Vector3 color)", "Sets the color for the given minimap tile index.");
 		AddClassToCollection("MyGUIMiniMapComponent", "Vector3 getMiniMapTileColor(int index)", "Gets the color for the given minimap tile index.");
@@ -12136,6 +12157,11 @@ namespace NOWA
 		AddClassToCollection("MyGUIMiniMapComponent", "Vector2 getTrackableImageTileSize(int index)", "Gets the image name for the given trackable index.");
 		AddClassToCollection("MyGUIMiniMapComponent", "void generateMiniMap()", "Generates the minimap from the scratch manually.");
 		AddClassToCollection("MyGUIMiniMapComponent", "void generateTrackables()", "Generates the trackables from the scratch manually.");
+
+		AddClassToCollection("MyGUIMiniMapComponent", "void setSceneVisited(int index, bool visited)", "Sets whether the given level (scene) index has been visited and shall be visible on the minimap.");
+		AddClassToCollection("MyGUIMiniMapComponent", "bool getIsSceneVisited(int index)", "Gets whether the given level (scene) index has been visited and is visible on the minimap.");
+		AddClassToCollection("MyGUIMiniMapComponent", "void setSceneVisited(string index, bool visited)", "Sets whether the given level (scene) name has been visited and shall be visible on the minimap.");
+		AddClassToCollection("MyGUIMiniMapComponent", "bool getIsSceneVisited(int index)", "Gets whether the given level (scene) name has been visited and is visible on the minimap.");
 
 		AddClassToCollection("MyGUIComponent", "void reactOnMouseButtonClick(func closureFunction, int mapTileIndex)",
 														  "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.");
@@ -12570,6 +12596,36 @@ namespace NOWA
 		return instance->getCurrentDateAndTime();
 	}
 
+	luabind::object getSceneSnapshotsInProject(Core* instance, const Ogre::String& projectName)
+	{
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		const auto& snapshotsInProject = instance->getSceneSnapshotsInProject(projectName);
+
+		unsigned int i = 0;
+		for (auto& it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
+		{
+			obj[i++] = *it;
+		}
+
+		return obj;
+	}
+
+	luabind::object getSaveNamesInProject(Core* instance, const Ogre::String& projectName)
+	{
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		const auto& snapshotsInProject = instance->getSaveNamesInProject(projectName);
+
+		unsigned int i = 0;
+		for (auto& it = snapshotsInProject.cbegin(); it != snapshotsInProject.cend(); ++it)
+		{
+			obj[i++] = *it;
+		}
+
+		return obj;
+	}
+
 	void bindCore(lua_State* lua)
 	{
 		module(lua)
@@ -12584,6 +12640,10 @@ namespace NOWA
 			.def("setCurrentSaveGameName", &Core::setCurrentSaveGameName)
 			.def("getCurrentSaveGameName", &Core::getCurrentSaveGameName)
 			.def("getSaveFilePathName", &Core::getSaveFilePathName)
+			.def("getSceneSnapshotsInProject", &getSceneSnapshotsInProject)
+			.def("getSaveNamesInProject", &getSaveNamesInProject)
+			.def("getProjectName", &Core::getProjectName)
+			.def("getWorldName", &Core::getWorldName)
 		];
 
 		object globalVars = globals(lua);
@@ -12605,10 +12665,10 @@ namespace NOWA
 		AddClassToCollection("InputDeviceCore", "class", "Input device core functionality.");
 		AddClassToCollection("InputDeviceCore", "KeyBoard getKeyboard()", "Gets the keyboard for direct manipulation.");
 		AddClassToCollection("InputDeviceCore", "Mouse getMouse()", "Gets the mouse for direct manipulation.");
-
-		AddClassToCollection("Core", "class", "Some functions for NOWA core functionality.");
 		AddClassToCollection("InputDeviceCore", "KeyBoard getKeyboard()", "Gets the keyboard for direct manipulation.");
 		AddClassToCollection("InputDeviceCore", "Mouse getMouse()", "Gets the mouse for direct manipulation.");
+
+		AddClassToCollection("Core", "class", "Some functions for NOWA core functionality.");
 		AddClassToCollection("Core", "Vector3 getCurrentWorldBoundLeftNear()", "Gets left near bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "Vector3 getCurrentWorldBoundRightFar()", "Gets right far bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "bool getIsGame()", "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.");
@@ -12617,6 +12677,10 @@ namespace NOWA
 		AddClassToCollection("Core", "void setCurrentSaveGameName(String saveGameName)", "Sets the current global save game name, which can be used for loading a game in an application state.");
 		AddClassToCollection("Core", "String getCurrentSaveGameName()", "Gets the current save game name, or empty string, if does not exist.");
 		AddClassToCollection("Core", "String getSaveFilePathName(String saveGameName)", "Gets the save file path name, or empty string, if does not exist. Note: This is usefull for debug purposes, to see, where a game does store its content and open those files for analysis etc.");
+		AddClassToCollection("Core", "String getProjectName()", "Gets the current project name.");
+		AddClassToCollection("Core", "String getWorldName()", "Gets the current world (scene) name.");
+		AddClassToCollection("Core", "Table[index][string] getSceneSnapshotsInProject(String projectName)", "Gets a list of saved game scene snapshots from the save directory for the given project name.");
+		AddClassToCollection("Core", "Table[index][string] getSaveNamesInProject(String projectName)", "Gets a list of saved game saves (*.sav) file names from the save directory for the given project name.");
 	}
 
 	void bindAppStateManager(lua_State* lua)

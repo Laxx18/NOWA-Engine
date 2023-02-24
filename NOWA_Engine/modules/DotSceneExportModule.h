@@ -31,13 +31,13 @@ namespace NOWA
 
 		~DotSceneExportModule();
 
-		void exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName);
+		void exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName, bool crypted = false);
 
-		void saveSceneSnapshot(const Ogre::String& filePathName);
+		void saveSceneSnapshot(const Ogre::String& filePathName, bool crypted = false);
 
 		void copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneName, const Ogre::String& worldResourceGroupName);
 
-		void exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName);
+		void exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName, bool crypted = false);
 
 		void exportResourceLocations(rapidxml::xml_node<>* resourcesXML, rapidxml::xml_document<>& doc);
 
@@ -50,7 +50,7 @@ namespace NOWA
 		// void exportMainCamera(rapidxml::xml_node<>* cameraXML, rapidxml::xml_document<>& doc);
 		void exportSceneNodes(rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObjects, const Ogre::String& filePath);
 
-		void exportNode(Ogre::Node* ogreNode, rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath);
+		void exportNode(Ogre::Node* ogreNode, rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath, bool recursive = true);
 
 		void exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity,  rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
 

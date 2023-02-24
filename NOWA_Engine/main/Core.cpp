@@ -2023,12 +2023,14 @@ namespace NOWA
 		return "";
 	}
 	
-	Ogre::String Core::getSaveFilePathName(const Ogre::String& saveName)
+	Ogre::String Core::getSaveFilePathName(const Ogre::String& saveName, const Ogre::String& fileEnding)
 	{
 		Ogre::String saveFilePathName;
 		
-		Ogre::String applicationFilePathName = this->getApplicationFilePathName();
-		Ogre::String applicationName = this->getFileNameFromPath(applicationFilePathName);
+		// Ogre::String applicationFilePathName = this->getApplicationFilePathName();
+		// Ogre::String applicationName = this->getFileNameFromPath(applicationFilePathName);
+
+		Ogre::String applicationName = this->projectName + "\\";
 
 		size_t dotPos = applicationName.find(".");
 		if (Ogre::String::npos != dotPos)
@@ -2040,7 +2042,13 @@ namespace NOWA
 		if (false == saveUserFolder.empty())
 		{
 				this->createFolders(saveUserFolder);
-				saveFilePathName = saveUserFolder + saveName + ".sav";;
+
+				bool hasEnding = saveName.size() >= fileEnding.size() && 0 == saveName.compare(saveName.size() - fileEnding.size(), fileEnding.size(), fileEnding);
+				saveFilePathName = saveUserFolder + saveName;
+				if (false == hasEnding)
+				{
+					saveFilePathName += fileEnding;
+				}
 		}
 		else
 		{
@@ -2050,14 +2058,18 @@ namespace NOWA
 		return saveFilePathName;
 	}
 
-	Ogre::String Core::removePartsFromString(const Ogre::String& source, const Ogre::String& parts)
+	std::pair<bool, Ogre::String> Core::removePartsFromString(const Ogre::String& source, const Ogre::String& parts)
 	{
+		bool success = false;
+		size_t n = parts.length();
 		Ogre::String target = source;
-		for (unsigned int i = 0; i < parts.size(); ++i)
+		for (size_t i = target.find(parts); i != Ogre::String::npos; i = target.find(parts))
 		{
-			target.erase(std::remove(target.begin(), target.end(), parts[i]), target.end());
+			target.erase(i, n);
 		}
-		return target;
+		success = target.length() < source.length();
+
+		return std::make_pair(success, target);
 	}
 
 	void Core::copyTextToClipboard(const Ogre::String& text)
@@ -2163,6 +2175,58 @@ namespace NOWA
 				if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 				{
 					fileNames.push_back(projectPath + "/" + projectName + "/" + fd.cFileName);
+				}
+			} while (::FindNextFile(hFind, &fd));
+			::FindClose(hFind);
+		}
+
+		return fileNames;
+	}
+
+	std::vector<Ogre::String> Core::getSceneSnapshotsInProject(const Ogre::String& projectName)
+	{
+		std::vector<Ogre::String> fileNames;
+
+		Ogre::String saveGameProjectPath = this->getSaveGameDirectory(projectName);
+		Ogre::String searchPath = saveGameProjectPath + "*.scene";
+
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do
+			{
+				// read all (real) files in current folder
+				// , delete '!' read other 2 default folder . and ..
+				if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+				{
+					fileNames.push_back(fd.cFileName);
+				}
+			} while (::FindNextFile(hFind, &fd));
+			::FindClose(hFind);
+		}
+
+		return fileNames;
+	}
+
+	std::vector<Ogre::String> Core::getSaveNamesInProject(const Ogre::String& projectName)
+	{
+		std::vector<Ogre::String> fileNames;
+
+		Ogre::String saveGameProjectPath = this->getSaveGameDirectory(projectName);
+		Ogre::String searchPath = saveGameProjectPath + "*.sav";
+
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do
+			{
+				// read all (real) files in current folder
+				// , delete '!' read other 2 default folder . and ..
+				if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+				{
+					fileNames.push_back(fd.cFileName);
 				}
 			} while (::FindNextFile(hFind, &fd));
 			::FindClose(hFind);
@@ -3073,7 +3137,6 @@ namespace NOWA
 				}
 			}
 		}
-		assert((archName.size() != 0) && "[Core::getSectionPath] Error: No path found for the given section.");
 		return archName;
 	}
 

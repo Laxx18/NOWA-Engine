@@ -16,6 +16,7 @@ namespace NOWA
 	public:
 		friend class ExitComponent;
 		friend class LoadWorldProcess;
+		friend class LoadProgressProcess;
 		friend class AppState; // Only AppState may create this class
 	private:
 		class WorldData
@@ -136,7 +137,7 @@ namespace NOWA
 		* @param[in]	sceneSnapshot	Optionally whether to load also a snapshot of the current scene.
 		* @return		success	 Whether the progress could be loaded (file does exist).
 		*/
-		bool loadProgress(const Ogre::String& saveName, bool sceneSnapshot = false);
+		bool loadProgress(const Ogre::String& saveName, bool sceneSnapshot = false, bool showProgress = false);
 		
 	   /**
 		* @brief		Loads all values for the given game object id and the given save name.
@@ -219,8 +220,12 @@ namespace NOWA
 		~GameProgressModule();
 
 		void setPlayerName(const Ogre::String& playerName);
+
+		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
+
+		void setStallUpdates(bool bStallUpdates);
 	private:
-		Ogre::String getSaveFileContent(const Ogre::String& saveName);
+		std::pair<bool, Ogre::String> getSaveFileContent(const Ogre::String& saveName);
 	private:
 		Ogre::String appStateName;
 

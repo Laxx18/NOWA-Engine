@@ -1019,16 +1019,6 @@ namespace NOWA
 			}
 		}
 
-		void add(const Ogre::String& other)
-		{
-			if (!this->lock)
-			{
-				Variant nv;
-				nv.setValue(other);
-				add(nv);
-			}
-		}
-
 		void inverse(const Ogre::String& other)
 		{
 			if (!this->lock)
@@ -1059,7 +1049,7 @@ namespace NOWA
 			}
 		}
 
-		void add(const Variant& variant)
+		void increment(const Variant& variant)
 		{
 			if (!this->lock)
 			{
@@ -1078,6 +1068,29 @@ namespace NOWA
 				case VAR_MAT4:  setValue(getMatrix4()    * variant.getMatrix4());    break;
 				default:
 					setValue(getString() + variant.getString());
+					break;
+				}
+			}
+		}
+
+		void decrement(const Variant& variant)
+		{
+			if (!this->lock)
+			{
+				switch (this->type)
+				{
+				case VAR_BOOL:  setValue(getBool() != variant.getBool());       break;
+				case VAR_INT:   setValue(getInt() - variant.getInt());        break;
+				case VAR_UINT:  setValue(getUInt() - variant.getUInt());        break;
+				case VAR_ULONG:  setValue(getULong() - variant.getULong());        break;
+				case VAR_REAL:  setValue(getReal() - variant.getReal());       break;
+				case VAR_VEC2:  setValue(getVector2() - variant.getVector2());    break;
+				case VAR_VEC3:  setValue(getVector3() - variant.getVector3());    break;
+				case VAR_VEC4:  setValue(getVector4() - variant.getVector4());    break;
+				case VAR_QUAT:  setValue(variant.getQuaternion().Inverse() * getQuaternion()); break;
+				case VAR_MAT3:  setValue(variant.getMatrix3().Inverse() * getMatrix3());    break;
+				case VAR_MAT4:  setValue(variant.getMatrix4().inverse() * getMatrix4());    break;
+				default:
 					break;
 				}
 			}

@@ -178,6 +178,13 @@ namespace NOWA
 		unsigned long getId(void) const;
 
 		/**
+		 * @brief		Sets a name for this game object
+		 * @param[in]	name		The name to set.
+		 * @note		If the name does already exist, a number will be appended and incremented.
+		 */
+		void setName(const Ogre::String& name);
+
+		/**
 		 * @brief	Gets the name of this game object
 		 * @return	name	The name of this game object
 		 */

@@ -86,7 +86,16 @@ namespace NOWA
 		bool parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight = nullptr,
 			IWorldLoaderCallback* worldLoaderCallback = nullptr, bool showProgress = true);
 
-		bool loadSceneSnapshot(const Ogre::String& filePathName);
+		/**
+		* @brief		Parses a scene XML to create the virtual environment for the game engine
+		* @param[in]	projectName			The project name
+		* @param[in]	sceneName			The scene name
+		* @param[in]	filePathName		The whole file path name of the saved game location.
+		* @param[in]	crypted				If a saved game snapshot shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
+		* @param[in]	showProgress		If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
+		* @return		success				True, if scene could be parsed, else false
+		*/
+		bool parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& filePathName, bool crypted = false, bool showProgress = false);
 
 		std::vector<unsigned long> parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName);
 
@@ -166,6 +175,20 @@ namespace NOWA
 		 * @return		ProjectParameter	The project parameter to get
 		 */
 		const ProjectParameter& getProjectParameter(void) const;
+
+		/**
+		 * @brief		Sets whether dot scene import module will parse things as snapshot (nodes will not be re-created but reused etc.)
+		 * @param[in]	bIsSnapshot	The flag to set.
+		 * @note		Do not forget to reset the value after the parse operation.
+		 */
+		void setIsSnapshot(bool bIsSnapshot);
+
+		/**
+		 * @brief		Gets the parsed project and scene name. May be empty.
+		 * @note		Useful if a snapshot has been created, in order to identify to which scene the snapshot belongs.
+		 * @return		project, sceneName	The project and scene name to get
+		 */
+		std::pair<Ogre::String, Ogre::String> getProjectAndSceneName(const Ogre::String& filePathName, bool decrypt);
 	protected:
 		/**
 		* @brief		Parses a scene XML to create the virtual environment for the game engine
@@ -178,11 +201,14 @@ namespace NOWA
 		DotSceneImportModule(Ogre::SceneManager* sceneManager, const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName);
 
 		void postInitData(void);
+
+		bool internalParseScene(const Ogre::String& filePathName, bool crypted = false);
 		
 		/**
-		 * @brief		Parses a global scene to create the virtual environment for the game engine
+		 * @brief		Parses a global scene to create the virtual environment for the game engine.
+		 * @param[in]	crypted		Whether the scene is crypted and must be decoded first.
 		 */
-		bool parseGlobalScene(bool justSetValues = false);
+		bool parseGlobalScene(bool crypted = false);
 	
 		void processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues = false);
 		void processResourceLocations(rapidxml::xml_node<>* xmlNode);
@@ -242,6 +268,7 @@ namespace NOWA
 		Ogre::Vector3 mostRightFarPosition;
 
 		std::vector<unsigned long> missingGameObjectIds;
+		bool bIsSnapshot;
 	};
 
 }; // namespace end

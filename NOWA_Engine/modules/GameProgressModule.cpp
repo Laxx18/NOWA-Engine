@@ -66,7 +66,7 @@ namespace NOWA
 			if (false == success)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse world: '" + this->nextWorldName + "' correctly!");
-				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bStallUpdates = false;
+				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
 				return;
 			}
 			// Continue fading after loading world, if there is enough time left
@@ -101,7 +101,7 @@ namespace NOWA
 			// 	Ogre::Root::getSingletonPtr()->renderOneFrame();
 			// }
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bStallUpdates = false;
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
 		}
 
 		virtual void onUpdate(float dt) override
@@ -113,6 +113,139 @@ namespace NOWA
 		DotSceneImportModule* dotSceneImportModule;
 		Ogre::String nextWorldName;
 		Ogre::String playerName;
+		bool worldChanged;
+		bool showProgress;
+	};
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class LoadProgressProcess : public NOWA::Process
+	{
+	public:
+		explicit LoadProgressProcess(const Ogre::String& appStateName, DotSceneImportModule* dotSceneImportModule, const Ogre::String& saveName, bool crypted, bool sceneSnapshot, const Ogre::String& globalAttributesStream, const Ogre::String& playerName, bool worldChanged, bool showProgress = false)
+			: appStateName(appStateName),
+			dotSceneImportModule(dotSceneImportModule),
+			saveName(saveName),
+			crypted(crypted),
+			sceneSnapshot(sceneSnapshot),
+			globalAttributesStream(globalAttributesStream),
+			playerName(playerName),
+			worldChanged(worldChanged),
+			showProgress(showProgress)
+		{
+
+		}
+
+	protected:
+		virtual void onInit(void) override
+		{
+			this->succeed();
+
+			if (true == this->sceneSnapshot)
+			{
+				Ogre::String openFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName, ".scene");
+
+				std::pair<Ogre::String, Ogre::String> snapshotProjectAndSceneName = this->dotSceneImportModule->getProjectAndSceneName(openFilePathName, crypted);
+				if (true == openFilePathName.empty())
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse saved name: '" + this->saveName + "' because its unclear to which scene the save snapshot belongs!");
+					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+					return;
+				}
+
+				// Show black picture
+				FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
+				Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->resetContent();
+
+				EngineResourceFadeListener* engineResourceListener = nullptr;
+
+				if (true == this->showProgress)
+				{
+					engineResourceListener = new EngineResourceFadeListener(Core::getSingletonPtr()->getOgreRenderWindow());
+					Core::getSingletonPtr()->setEngineResourceListener(engineResourceListener);
+
+					engineResourceListener->showLoadingBar();
+				}
+
+				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, openFilePathName, this->crypted, this->showProgress);
+				if (false == success)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->saveName + "' correctly!");
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameProgressModule]: Error: Could not parse scene: '" + this->saveName + "' correctly!" + "'\n", "NOWA");
+				}
+
+				std::pair<Ogre::Real, Ogre::Real> continueData(0.0f, 0.0f);
+
+				if (true == this->showProgress)
+				{
+					continueData = engineResourceListener->hideLoadingBar();
+					Core::getSingletonPtr()->resetEngineResourceListener();
+
+					delete engineResourceListener;
+					engineResourceListener = nullptr;
+				}
+
+				// Continue fading after loading world, if there is enough time left
+				/*if (continueData.second > 1.0f)
+				{
+					NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
+				}*/
+
+				// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
+				// Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+				// Set the data for a state
+				NOWA::SceneParameter sceneParameter;
+				sceneParameter.appStateName = this->appStateName;
+				sceneParameter.sceneManager = this->dotSceneImportModule->getSceneManager();
+				sceneParameter.mainCamera = this->dotSceneImportModule->getMainCamera();
+				sceneParameter.sunLight = this->dotSceneImportModule->getSunLight();
+				sceneParameter.ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt();
+				sceneParameter.dotSceneImportModule = this->dotSceneImportModule;
+
+				// NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
+
+				// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextWorldName);
+
+				// Send event, that world has been loaded. Note: When world has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+				// and the world has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+				boost::shared_ptr<EventDataWorldLoaded> eventDataWorldLoaded(new EventDataWorldLoaded(this->worldChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(eventDataWorldLoaded);
+
+				// for (unsigned short i = 0; i < 10; i++)
+				// {
+				// 	Ogre::Root::getSingletonPtr()->renderOneFrame();
+				// }
+			}
+
+			bool success = AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->internalReadGlobalAttributes(globalAttributesStream);
+			if (false == success)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not read global attributes for saved name: '" + this->saveName + "' correctly!");
+			}
+
+			for (unsigned short i = 0; i < 2; i++)
+			{
+				Ogre::Root::getSingletonPtr()->renderOneFrame();
+			}
+
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+		}
+
+		virtual void onUpdate(float dt) override
+		{
+			this->succeed();
+		}
+	private:
+		Ogre::String appStateName;
+		DotSceneImportModule* dotSceneImportModule;
+		Ogre::String saveName;
+		Ogre::String playerName;
+		bool crypted;
+		bool sceneSnapshot;
+		Ogre::String globalAttributesStream;
 		bool worldChanged;
 		bool showProgress;
 	};
@@ -192,13 +325,14 @@ namespace NOWA
 			++it;
 		}
 		this->globalAttributesMap.clear();
-		this->bStallUpdates = false;
+		this->setStallUpdates(false);
 	}
 
 	void GameProgressModule::resetContent(void)
 	{
 		// this->sceneManager->destroyAllCameras();
 		// std::vector<Ogre::String> excludeGameObjects = { "MainCamera" };
+		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
 		WorkspaceModule::getInstance()->destroyContent();
 
@@ -236,11 +370,6 @@ namespace NOWA
 			delete this->dotSceneImportModule;
 		}
 		this->dotSceneImportModule = new NOWA::DotSceneImportModule(sceneManager, nullptr, nullptr);
-		if (nullptr != this->dotSceneExportModule)
-		{
-			delete this->dotSceneExportModule;
-		}
-		this->dotSceneExportModule = new NOWA::DotSceneExportModule(sceneManager, AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt());
 	}
 
 	void GameProgressModule::setPlayerName(const Ogre::String& playerName)
@@ -435,7 +564,7 @@ namespace NOWA
 
 	void GameProgressModule::loadWorld(const Ogre::String& worldName)
 	{
-		this->bStallUpdates = true;
+		this->setStallUpdates(true);
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
@@ -452,7 +581,7 @@ namespace NOWA
 
 	void GameProgressModule::loadWorldShowProgress(const Ogre::String& worldName)
 	{
-		this->bStallUpdates = true;
+		this->setStallUpdates(true);
 
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
@@ -470,7 +599,7 @@ namespace NOWA
 
 	void GameProgressModule::changeWorld(const Ogre::String& worldName)
 	{
-		this->bStallUpdates = true;
+		this->setStallUpdates(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the world at another tick. Note, this is necessary
@@ -483,7 +612,7 @@ namespace NOWA
 
 	void GameProgressModule::changeWorldShowProgress(const Ogre::String& worldName)
 	{
-		this->bStallUpdates = true;
+		this->setStallUpdates(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the world at another tick. Note, this is necessary
@@ -505,9 +634,15 @@ namespace NOWA
 		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
 		if (false == saveFilePathName.empty())
 		{
+			if (nullptr != this->dotSceneExportModule)
+			{
+				delete this->dotSceneExportModule;
+			}
+			this->dotSceneExportModule = new NOWA::DotSceneExportModule(sceneManager, AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt());
+
 			if (true == sceneSnapshot)
 			{
-				this->dotSceneExportModule->saveSceneSnapshot(saveFilePathName + "_scene");
+				this->dotSceneExportModule->saveSceneSnapshot(saveFilePathName + ".scene", crypted);
 			}
 
 			Ogre::String strStream;
@@ -611,298 +746,57 @@ namespace NOWA
 				+ saveFilePathName + "'");
 		}
 	}
-	
-	void GameProgressModule::saveValues(const Ogre::String& saveName, unsigned long gameObjectId, bool crypted)
+
+	bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
 	{
-		this->saveName = saveName;
-		
-		std::ostringstream oStream;
-		bool foundSpecific = false;
+		this->setStallUpdates(true);
 
-		// Get the content from file
-		Ogre::String strStream = this->getSaveFileContent(saveName);
-		if (false == strStream.empty())
-		{
-			Ogre::String strGameObjectId = Ogre::StringConverter::toString(gameObjectId);
-			size_t foundIdPos = strStream.find(Ogre::StringConverter::toString(gameObjectId));
-			if (Ogre::String::npos != foundIdPos)
-			{
-				// + 2 -> ]\n
-				foundIdPos += strGameObjectId.size() + 2;
-				
-				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
-				if (nullptr != gameObjectPtr)
-				{
-					// Save attributes for the given game object id
-					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-					if (nullptr != attributesCompPtr)
-					{
-						attributesCompPtr->internalSave(oStream);
-					}
-				}
-				// Get the content before the attributes
-				Ogre::String beforeAttributesContent = strStream.substr(0, foundIdPos);
-				beforeAttributesContent += oStream.str();
-
-				Ogre::String afterAttributesContent;
-
-				size_t foundNextIdPos = strStream.find('[', foundIdPos);
-				if (Ogre::String::npos != foundNextIdPos)
-				{
-					int remainingSize = static_cast<int>(strStream.size() - foundNextIdPos);
-
-					// Get the content after the attributes
-					if (remainingSize > 0)
-						afterAttributesContent = strStream.substr(foundNextIdPos, remainingSize);
-				}
-				// Must be cleared, because its content is already used in before attributes content
-				oStream.str("");
-				oStream << beforeAttributesContent + afterAttributesContent;
-				
-				foundSpecific = true;
-			}
-		}
-		
-		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
-		if (false == saveFilePathName.empty())
-		{
-			std::ofstream outFile;
-			outFile.open(saveFilePathName.c_str());
-			if (!outFile)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not create file for path: "
-					+ saveFilePathName + "'");
-				return;
-			}
-
-			// Store whether the file should be crypted or not
-			outFile << crypted << "\n";
-			
-			if (false == foundSpecific)
-			{
-				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
-				if (nullptr != gameObjectPtr)
-				{
-					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
-
-					// First save the game object id, if it does have an attributes component
-					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-					if (nullptr != attributesCompPtr)
-					{
-						oStream << "[" << Ogre::StringConverter::toString(gameObjectPtr->getId()) << "]\n";
-						attributesCompPtr->internalSave(oStream);
-					}
-				}
-			}
-
-			if (true == crypted)
-			{
-				strStream = Core::getSingletonPtr()->encode64(oStream.str(), true);
-			}
-			else
-			{
-				strStream = oStream.str();
-			}
-
-			outFile << strStream;
-			outFile.close();
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not get file path name for saving data: "
-				+ saveFilePathName + "'");
-		}
-	}
-	
-	void GameProgressModule::saveValue(const Ogre::String& saveName, unsigned long gameObjectId, unsigned int attributeIndex, bool crypted)
-	{
-		this->saveName = saveName;
-		
-		std::ostringstream oStream;
-		bool foundSpecific = false;
-		Ogre::String strStream = this->getSaveFileContent(saveName);
-		if (false == strStream.empty())
-		{
-			Ogre::String strGameObjectId = Ogre::StringConverter::toString(gameObjectId);
-			size_t foundIdPos = strStream.find(strGameObjectId);
-			if (Ogre::String::npos != foundIdPos)
-			{
-				// + 2 -> ]\n
-				foundIdPos += strGameObjectId.size() + 2;
-
-				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
-				if (nullptr != gameObjectPtr)
-				{
-					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-					if (nullptr != attributesCompPtr)
-					{
-						Ogre::String attributesContent;
-						size_t foundNextIdPos = strStream.find('[', foundIdPos);
-						if (Ogre::String::npos != foundNextIdPos)
-						{
-							attributesContent = strStream.substr(foundIdPos, foundNextIdPos - foundIdPos);
-						}
-						else
-						{
-							// If it was the last game object and nothing comes after that
-							attributesContent = strStream.substr(foundIdPos, strStream.size() - foundIdPos);
-						}
-						// Replace content internally
-						attributesCompPtr->internalSave(attributesContent, attributeIndex);
-						
-						// Get the content before the attributes
-						Ogre::String beforeAttributesContent = strStream.substr(0, foundIdPos);
-						beforeAttributesContent += attributesContent;
-
-						Ogre::String afterAttributesContent;
-
-						// Get the content after the attributes
-						if (Ogre::String::npos != foundNextIdPos)
-						{
-							int remainingSize = static_cast<unsigned int>(strStream.size() - foundNextIdPos);
-
-							if (remainingSize > 0)
-								afterAttributesContent = strStream.substr(foundNextIdPos, remainingSize);
-						}
-
-						oStream << beforeAttributesContent + afterAttributesContent;
-
-						foundSpecific = true;
-					}
-				}
-			}
-		}
-		
-		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
-		if (false == saveFilePathName.empty())
-		{
-			std::ofstream outFile;
-			outFile.open(saveFilePathName.c_str());
-			if (!outFile)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not create file for path: "
-					+ saveFilePathName + "'");
-				return;
-			}
-
-			// Store whether the file should be crypted or not
-			outFile << crypted << "\n";
-			
-			if (false == foundSpecific)
-			{
-				// Get the game object controller for this app state name
-				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
-				if (nullptr != gameObjectPtr)
-				{
-					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
-
-					// First save the game object id, if it does have an attributes component
-					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-					if (nullptr != attributesCompPtr)
-					{
-						oStream << "[" << Ogre::StringConverter::toString(gameObjectPtr->getId()) << "]\n";
-						attributesCompPtr->internalSave(oStream);
-					}
-				}
-			}
-
-			if (true == crypted)
-			{
-				strStream = Core::getSingletonPtr()->encode64(oStream.str(), true);
-			}
-			else
-			{
-				strStream = oStream.str();
-			}
-
-			outFile << strStream;
-			outFile.close();
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not get file path name for saving data: "
-				+ saveFilePathName + "'");
-		}
-	}
-	
-	Ogre::String GameProgressModule::getSaveFileContent(const Ogre::String& saveName)
-	{
-		Ogre::String strStream;
-		this->saveName = saveName;
-		Ogre::String openFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
-		if (false == openFilePathName.empty())
-		{
-			std::ifstream inFile;
-			inFile.open(openFilePathName.c_str(), std::ios::in);
-			if (!inFile)
-			{
-				// Nothing to read
-				return strStream;
-			}
-
-			// Get the first line to check if its crypted
-			Ogre::String line;
-			inFile >> line;
-
-			// Crypted?
-			bool crypted;
-			std::istringstream(line) >> crypted;
-
-			Ogre::String content = std::string((std::istreambuf_iterator<char>(inFile)), (std::istreambuf_iterator<char>()));
-
-			if (true == content.empty())
-				return strStream;
-			
-			// eat the \n
-			if (content[0] == '\n')
-				content = content.substr(1, content.size());
-			
-			inFile.close();
-
-			if (true == crypted)
-			{
-				strStream = Core::getSingletonPtr()->decode64(content, true);
-			}
-			else
-			{
-				strStream = content;
-			}
-		}
-		return strStream;
-	}
-
-	bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot)
-	{
 		bool success = false;
 		this->saveName = saveName;
+		Ogre::String tempSaveName = saveName;
 
-		if (true == sceneSnapshot)
+		auto resultPair = Core::getSingletonPtr()->removePartsFromString(saveName, ".scene");
+		if (true == resultPair.first)
 		{
-			// Somewhat optinally, if does not exist, do not do it
-			this->dotSceneImportModule->loadSceneSnapshot(saveName);
+			tempSaveName = resultPair.second;
 		}
 
-		Ogre::String strStream = this->getSaveFileContent(saveName);
-		if (true == strStream.empty())
+		auto streamData = this->getSaveFileContent(tempSaveName);
+		if (true == streamData.second.empty())
+		{
 			return success;
-		
-		std::istringstream inStream(strStream);
-		
+		}
+
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+		// Creates the delay process and changes the world at another tick. Note, this is necessary
+		// because changing the world destroys all game objects and its components.
+		// So changing the state directly inside a component would create a mess, since everything will be destroyed
+		// and the game object map in update loop becomes invalid while its iterating
+		delayProcess->attachChild(NOWA::ProcessPtr(new LoadProgressProcess(this->appStateName, this->dotSceneImportModule, saveName, streamData.first, sceneSnapshot, streamData.second, nullptr != this->player ? this->player->getName() : "", true)));
+		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+		return success;
+	}
+
+	bool GameProgressModule::internalReadGlobalAttributes(const Ogre::String& globalAttributesStream)
+	{
+		bool success = true;
+		std::istringstream inStream(globalAttributesStream);
+
 		Ogre::String line;
 
 		while (std::getline(inStream, line)) // This is used, because white spaces are also read
 		{
 			if (true == line.empty())
 				continue;
-			
+
 			// Read till global attributes section
 			size_t foundGlobalAttributeSection = line.find("[GlobalAttributes]");
 			if (foundGlobalAttributeSection != Ogre::String::npos)
+			{
 				break;
-			
+			}
+
 			// GameObject
 			Ogre::String gameObjectId = line.substr(1, line.size() - 2);
 			unsigned long id;
@@ -920,21 +814,21 @@ namespace NOWA
 				}
 			}
 		}
-		
+
 		// Read possible global attributes
 		Ogre::StringVector data;
-		
+
 		// parse til eof
-		while(std::getline(inStream, line)) // This is used, because white spaces are also read
+		while (std::getline(inStream, line)) // This is used, because white spaces are also read
 		{
 			// Parse til next game object
 			if (line.find("[") != Ogre::String::npos)
 				break;
-			
+
 			data = Ogre::StringUtil::split(line, "=");
 			if (data.size() < 3)
 				continue;
-			
+
 			Variant* globalAttribute = nullptr;
 			auto& it = this->globalAttributesMap.find(data[0]);
 			if (it != this->globalAttributesMap.cend())
@@ -947,7 +841,7 @@ namespace NOWA
 				globalAttribute->setValue(data[1]);
 				this->globalAttributesMap.emplace(data[0], globalAttribute);
 			}
-			
+
 			if (nullptr != globalAttribute)
 			{
 				if ("Bool" == data[1])
@@ -997,18 +891,290 @@ namespace NOWA
 				}
 			}
 		}
-		
 		return success;
+	}
+
+	void GameProgressModule::setStallUpdates(bool bStallUpdates)
+	{
+		this->bStallUpdates = bStallUpdates;
+	}
+	
+	void GameProgressModule::saveValues(const Ogre::String& saveName, unsigned long gameObjectId, bool crypted)
+	{
+		this->saveName = saveName;
+		
+		std::ostringstream oStream;
+		bool foundSpecific = false;
+
+		// Get the content from file
+		auto streamData = this->getSaveFileContent(saveName);
+		if (false == streamData.second.empty())
+		{
+			Ogre::String strGameObjectId = Ogre::StringConverter::toString(gameObjectId);
+			size_t foundIdPos = streamData.second.find(Ogre::StringConverter::toString(gameObjectId));
+			if (Ogre::String::npos != foundIdPos)
+			{
+				// + 2 -> ]\n
+				foundIdPos += strGameObjectId.size() + 2;
+				
+				// Get the game object controller for this app state name
+				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				if (nullptr != gameObjectPtr)
+				{
+					// Save attributes for the given game object id
+					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
+					if (nullptr != attributesCompPtr)
+					{
+						attributesCompPtr->internalSave(oStream);
+					}
+				}
+				// Get the content before the attributes
+				Ogre::String beforeAttributesContent = streamData.second.substr(0, foundIdPos);
+				beforeAttributesContent += oStream.str();
+
+				Ogre::String afterAttributesContent;
+
+				size_t foundNextIdPos = streamData.second.find('[', foundIdPos);
+				if (Ogre::String::npos != foundNextIdPos)
+				{
+					int remainingSize = static_cast<int>(streamData.second.size() - foundNextIdPos);
+
+					// Get the content after the attributes
+					if (remainingSize > 0)
+						afterAttributesContent = streamData.second.substr(foundNextIdPos, remainingSize);
+				}
+				// Must be cleared, because its content is already used in before attributes content
+				oStream.str("");
+				oStream << beforeAttributesContent + afterAttributesContent;
+				
+				foundSpecific = true;
+			}
+		}
+		
+		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
+		if (false == saveFilePathName.empty())
+		{
+			std::ofstream outFile;
+			outFile.open(saveFilePathName.c_str());
+			if (!outFile)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not create file for path: "
+					+ saveFilePathName + "'");
+				return;
+			}
+
+			// Store whether the file should be crypted or not
+			outFile << crypted << "\n";
+			
+			if (false == foundSpecific)
+			{
+				// Get the game object controller for this app state name
+				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				if (nullptr != gameObjectPtr)
+				{
+					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
+
+					// First save the game object id, if it does have an attributes component
+					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
+					if (nullptr != attributesCompPtr)
+					{
+						oStream << "[" << Ogre::StringConverter::toString(gameObjectPtr->getId()) << "]\n";
+						attributesCompPtr->internalSave(oStream);
+					}
+				}
+			}
+
+			if (true == crypted)
+			{
+				streamData.second = Core::getSingletonPtr()->encode64(oStream.str(), true);
+			}
+			else
+			{
+				streamData.second = oStream.str();
+			}
+
+			outFile << streamData.second;
+			outFile.close();
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not get file path name for saving data: "
+				+ saveFilePathName + "'");
+		}
+	}
+	
+	void GameProgressModule::saveValue(const Ogre::String& saveName, unsigned long gameObjectId, unsigned int attributeIndex, bool crypted)
+	{
+		this->saveName = saveName;
+		
+		std::ostringstream oStream;
+		bool foundSpecific = false;
+		auto streamData = this->getSaveFileContent(saveName);
+		if (false == streamData.second.empty())
+		{
+			Ogre::String strGameObjectId = Ogre::StringConverter::toString(gameObjectId);
+			size_t foundIdPos = streamData.second.find(strGameObjectId);
+			if (Ogre::String::npos != foundIdPos)
+			{
+				// + 2 -> ]\n
+				foundIdPos += strGameObjectId.size() + 2;
+
+				// Get the game object controller for this app state name
+				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				if (nullptr != gameObjectPtr)
+				{
+					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
+					if (nullptr != attributesCompPtr)
+					{
+						Ogre::String attributesContent;
+						size_t foundNextIdPos = streamData.second.find('[', foundIdPos);
+						if (Ogre::String::npos != foundNextIdPos)
+						{
+							attributesContent = streamData.second.substr(foundIdPos, foundNextIdPos - foundIdPos);
+						}
+						else
+						{
+							// If it was the last game object and nothing comes after that
+							attributesContent = streamData.second.substr(foundIdPos, streamData.second.size() - foundIdPos);
+						}
+						// Replace content internally
+						attributesCompPtr->internalSave(attributesContent, attributeIndex);
+						
+						// Get the content before the attributes
+						Ogre::String beforeAttributesContent = streamData.second.substr(0, foundIdPos);
+						beforeAttributesContent += attributesContent;
+
+						Ogre::String afterAttributesContent;
+
+						// Get the content after the attributes
+						if (Ogre::String::npos != foundNextIdPos)
+						{
+							int remainingSize = static_cast<unsigned int>(streamData.second.size() - foundNextIdPos);
+
+							if (remainingSize > 0)
+								afterAttributesContent = streamData.second.substr(foundNextIdPos, remainingSize);
+						}
+
+						oStream << beforeAttributesContent + afterAttributesContent;
+
+						foundSpecific = true;
+					}
+				}
+			}
+		}
+		
+		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
+		if (false == saveFilePathName.empty())
+		{
+			std::ofstream outFile;
+			outFile.open(saveFilePathName.c_str());
+			if (!outFile)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not create file for path: "
+					+ saveFilePathName + "'");
+				return;
+			}
+
+			// Store whether the file should be crypted or not
+			outFile << crypted << "\n";
+			
+			if (false == foundSpecific)
+			{
+				// Get the game object controller for this app state name
+				auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(gameObjectId);
+				if (nullptr != gameObjectPtr)
+				{
+					// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
+
+					// First save the game object id, if it does have an attributes component
+					boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
+					if (nullptr != attributesCompPtr)
+					{
+						oStream << "[" << Ogre::StringConverter::toString(gameObjectPtr->getId()) << "]\n";
+						attributesCompPtr->internalSave(oStream);
+					}
+				}
+			}
+
+			if (true == crypted)
+			{
+				streamData.second = Core::getSingletonPtr()->encode64(oStream.str(), true);
+			}
+			else
+			{
+				streamData.second = oStream.str();
+			}
+
+			outFile << streamData.second;
+			outFile.close();
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not get file path name for saving data: "
+				+ saveFilePathName + "'");
+		}
+	}
+	
+	std::pair<bool, Ogre::String> GameProgressModule::getSaveFileContent(const Ogre::String& saveName)
+	{
+		bool crypted = false;
+		Ogre::String strStream;
+		this->saveName = saveName;
+		Ogre::String openFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
+		if (false == openFilePathName.empty())
+		{
+			std::ifstream inFile;
+			inFile.open(openFilePathName.c_str(), std::ios::in);
+			if (!inFile)
+			{
+				// Nothing to read
+				return std::make_pair(false, strStream);
+			}
+
+			// Get the first line to check if its crypted
+			Ogre::String line;
+			inFile >> line;
+
+			// Crypted?
+			std::istringstream(line) >> crypted;
+
+			Ogre::String content = std::string((std::istreambuf_iterator<char>(inFile)), (std::istreambuf_iterator<char>()));
+
+			if (true == content.empty())
+			{
+				return std::make_pair(false, strStream);
+			}
+			
+			// eat the \n
+			if (content[0] == '\n')
+			{
+				content = content.substr(1, content.size());
+			}
+			
+			inFile.close();
+
+			if (true == crypted)
+			{
+				strStream = Core::getSingletonPtr()->decode64(content, true);
+			}
+			else
+			{
+				strStream = content;
+			}
+		}
+		return std::make_pair(crypted, strStream);
 	}
 	
 	bool GameProgressModule::loadValues(const Ogre::String& saveName, unsigned long gameObjectId)
 	{
 		bool success = false;
-		Ogre::String strStream = this->getSaveFileContent(saveName);
-		if (true == strStream.empty())
+		auto streamData = this->getSaveFileContent(saveName);
+		if (true == streamData.second.empty())
+		{
 			return success;
+		}
 		
-		std::istringstream inStream(strStream);
+		std::istringstream inStream(streamData.second);
 		Ogre::String line;
 
 		while (std::getline(inStream, line)) // This is used, because white spaces are also read
@@ -1043,11 +1209,13 @@ namespace NOWA
 	bool GameProgressModule::loadValue(const Ogre::String& saveName, unsigned long gameObjectId, unsigned int attributeIndex)
 	{
 		bool success = false;
-		Ogre::String strStream = this->getSaveFileContent(saveName);
-		if (true == strStream.empty())
+		auto streamData = this->getSaveFileContent(saveName);
+		if (true == streamData.second.empty())
+		{
 			return success;
+		}
 		
-		std::istringstream inStream(strStream);
+		std::istringstream inStream(streamData.second);
 
 		Ogre::String line;
 
