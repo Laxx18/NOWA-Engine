@@ -269,7 +269,7 @@ namespace NOWA
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "cFrametime: " + Ogre::StringConverter::toString(cFrametime));
 
 				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 				{
 					InputDeviceCore::getSingletonPtr()->capture(frameTime);
 
@@ -285,7 +285,7 @@ namespace NOWA
 
 				accumulator -= frameTime;
 
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 				{
 					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(frameTime));
 				}
@@ -343,7 +343,7 @@ namespace NOWA
 			currentTime += dt;
 
 			// update input devices
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 			{
 				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
 
@@ -356,7 +356,7 @@ namespace NOWA
 			Core::getSingletonPtr()->update(static_cast<Ogre::Real>(dt));
 
 			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 			{
 				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
 			}
@@ -429,6 +429,8 @@ namespace NOWA
 		const Ogre::Real tickCountDt = 1.0f / simulationTickCount;
 		const Ogre::Real framesDt = 1.0f / monitorRefreshRate;
 
+		// Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+
 		while (false == this->bShutdown)
 		{
 			// Process signals from system
@@ -436,6 +438,9 @@ namespace NOWA
 
 			std::chrono::time_point<std::chrono::high_resolution_clock> endTime2 = std::chrono::high_resolution_clock::now();
 			std::chrono::nanoseconds fpsElapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(endTime2 - fpsStartTime));
+
+			// Wait til all textures are loaded
+			// textureManager->waitForStreamingCompletion();
 
 			if (fpsElapsedTime >= std::chrono::seconds(1))
 			{
@@ -489,7 +494,7 @@ namespace NOWA
 			while (lag >= lengthOfFrame && false == this->bShutdown)
 			{
 				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 				{
 					// Updates the active state
 					this->activeStateStack.back()->update(tickCountDt);
@@ -520,7 +525,7 @@ namespace NOWA
 			}
 
 			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->stallUpdates())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 			{
 				// Note: dt is always constant 1 / 60 = 0.0167
 				this->activeStateStack.back()->lateUpdate(tickCountDt);

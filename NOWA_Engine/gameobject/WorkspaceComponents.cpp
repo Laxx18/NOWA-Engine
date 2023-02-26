@@ -385,308 +385,315 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::createWorkspace(void)
 	{
-		if (nullptr == this->compositorManager)
-			return true;
+		// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+		// auto ptrFunction = [this]() {
+			if (nullptr == this->compositorManager)
+				return true;
 
-		// Only create workspace if the camera is activated
-		if (false == this->cameraComponent->isActivated())
-			return true;
+			// Only create workspace if the camera is activated
+			if (false == this->cameraComponent->isActivated())
+				return true;
 
-		this->removeWorkspace();
+			this->removeWorkspace();
 
-		this->internalInitWorkspaceData();
+			this->internalInitWorkspaceData();
 
-		this->resetReflectionForAllEntities();
+			this->resetReflectionForAllEntities();
 
-		std::vector<bool> reflections(AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size());
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+			std::vector<bool> reflections(AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size());
+			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
-		Ogre::String cubemapRenderingNode;
+			Ogre::String cubemapRenderingNode;
 
-		if (true == this->useReflection->getBool())
-		{
-			// Store, which game object has used reflections
-
-			unsigned int i = 0;
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			if (true == this->useReflection->getBool())
 			{
-				auto& gameObjectPtr = it->second;
-				if (nullptr != gameObjectPtr)
-				{
-					reflections[i++] = gameObjectPtr->getUseReflection();
-					// gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(true);
-					gameObjectPtr->setUseReflection(false);
-				}
-			}
+				// Store, which game object has used reflections
 
-			WorkspacePbsComponent* workspacePbsComponent = dynamic_cast<WorkspacePbsComponent*>(this);
-			WorkspaceSkyComponent* workspaceSkyComponent = nullptr;
-			WorkspaceBackgroundComponent* workspaceBackgroundComponent = nullptr;
-			WorkspaceCustomComponent* workspaceCustomComponent = nullptr;
-			
-
-			// TODO:  const IdString cubemapRendererNode = renderWindow->getSampleDescription().isMultisample()
-			// ? "CubemapRendererNodeMsaa"
-			// 	: "CubemapRendererNode";
-			if (nullptr == workspacePbsComponent)
-			{
-				workspaceSkyComponent = dynamic_cast<WorkspaceSkyComponent*>(this);
-				if (nullptr == workspaceSkyComponent)
+				unsigned int i = 0;
+				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
 				{
-					workspaceBackgroundComponent = dynamic_cast<WorkspaceBackgroundComponent*>(this);
-					if (nullptr != workspaceBackgroundComponent)
+					auto& gameObjectPtr = it->second;
+					if (nullptr != gameObjectPtr)
 					{
-						cubemapRenderingNode = "NOWABackgroundDynamicCubemapProbeRendererNode";
+						reflections[i++] = gameObjectPtr->getUseReflection();
+						// gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(true);
+						gameObjectPtr->setUseReflection(false);
+					}
+				}
+
+				WorkspacePbsComponent* workspacePbsComponent = dynamic_cast<WorkspacePbsComponent*>(this);
+				WorkspaceSkyComponent* workspaceSkyComponent = nullptr;
+				WorkspaceBackgroundComponent* workspaceBackgroundComponent = nullptr;
+				WorkspaceCustomComponent* workspaceCustomComponent = nullptr;
+
+
+				// TODO:  const IdString cubemapRendererNode = renderWindow->getSampleDescription().isMultisample()
+				// ? "CubemapRendererNodeMsaa"
+				// 	: "CubemapRendererNode";
+				if (nullptr == workspacePbsComponent)
+				{
+					workspaceSkyComponent = dynamic_cast<WorkspaceSkyComponent*>(this);
+					if (nullptr == workspaceSkyComponent)
+					{
+						workspaceBackgroundComponent = dynamic_cast<WorkspaceBackgroundComponent*>(this);
+						if (nullptr != workspaceBackgroundComponent)
+						{
+							cubemapRenderingNode = "NOWABackgroundDynamicCubemapProbeRendererNode";
+						}
+						else
+						{
+							workspaceCustomComponent = dynamic_cast<WorkspaceCustomComponent*>(this);
+							if (nullptr != workspaceCustomComponent)
+							{
+								cubemapRenderingNode = "NOWASkyDynamicCubemapProbeRendererNode";
+							}
+						}
 					}
 					else
 					{
-						workspaceCustomComponent = dynamic_cast<WorkspaceCustomComponent*>(this);
-						if (nullptr != workspaceCustomComponent)
-						{
-							cubemapRenderingNode = "NOWASkyDynamicCubemapProbeRendererNode";
-						}
+						cubemapRenderingNode = "NOWASkyDynamicCubemapProbeRendererNode";
 					}
 				}
 				else
 				{
-					cubemapRenderingNode = "NOWASkyDynamicCubemapProbeRendererNode";
+					cubemapRenderingNode = "NOWAPbsDynamicCubemapProbeRendererNode";
 				}
 			}
-			else
+			/*else
 			{
-				cubemapRenderingNode = "NOWAPbsDynamicCubemapProbeRendererNode";
-			}
-		}
-		/*else
-		{
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
-			{
-				auto& gameObjectPtr = it->second;
-				if (nullptr != gameObjectPtr)
+				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
 				{
-					gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
-				}
-			}
-		}*/
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspacePbsComponent] Creating workspace: " + this->workspaceName);
-
-		const Ogre::IdString workspaceNameId(this->workspaceName);
-		if (false == this->compositorManager->hasWorkspaceDefinition(workspaceNameId))
-		{
-			Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
-			this->compositorManager->createBasicWorkspaceDef(this->workspaceName, color, Ogre::IdString());
-		}
-
-		Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
-		workspaceDef->clearAll();
-
-		Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
-
-		// Iterate through Compositor Managers resources
-		Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator it = nodeDefs.begin();
-		Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator end = nodeDefs.end();
-
-		Ogre::IdString compositorId = "Ogre/Postprocess";
-
-		// Add all compositor resources to the view container
-		while (it != end)
-		{
-			if (it->second->mCustomIdentifier == compositorId)
-			{
-				// this->compositorNames.emplace_back(it->second->getNameStr());
-
-				// Manually disable the node and add it to the workspace without any connection
-				it->second->setStartEnabled(false);
-				workspaceDef->addNodeAlias(it->first, it->first);
-			}
-
-			++it;
-		}
-
-		if (true == this->useReflection->getBool())
-		{
-			GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
-			if (nullptr != reflectionCameraGameObjectPtr)
-			{
-				auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
-				if (nullptr != reflectionCameraCompPtr)
-				{
-					// Set this component as back reference, because when reflection camera is deleted, reflection must be disabled immediately, else a render crash occurs
-					reflectionCameraCompPtr->workspaceBaseComponent = this;
-
-					this->canUseReflection = true;
-
-					// We first create the Cubemap workspace and pass it to the final workspace
-					// that does the real rendering.
-					//
-					// If in your application you need to create a workspace but don't have a cubemap yet,
-					// you can either programatically modify the workspace definition (which is cumbersome)
-					// or just pass a PF_NULL texture that works as a dud and barely consumes any memory.
-					
-					unsigned int iblSpecularFlag = 0;
-					if (Ogre::Root::getSingletonPtr()->getRenderSystem()->getCapabilities()->hasCapability(Ogre::RSC_COMPUTE_PROGRAM))
+					auto& gameObjectPtr = it->second;
+					if (nullptr != gameObjectPtr)
 					{
-						iblSpecularFlag = Ogre::TextureFlags::Uav | Ogre::TextureFlags::Reinterpretable;
+						gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
 					}
-
-					Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-					/*
-					this->cubemap = textureManager->createTexture("cubemap", Ogre::GpuPageOutStrategy::Discard,
-						Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps, Ogre::TextureTypes::TypeCube);*/
-
-					this->cubemap = textureManager->createOrRetrieveTexture("cubemap", 
-						Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps | 
-						iblSpecularFlag, Ogre::TextureTypes::TypeCube);
-					this->cubemap->scheduleTransitionTo(Ogre::GpuResidency::OnStorage);
-
-					unsigned int cubeTextureSize = Ogre::StringConverter::parseUnsignedInt(reflectionCameraCompPtr->getCubeTextureSize());
-
-					this->cubemap->setResolution(cubeTextureSize, cubeTextureSize);
-					this->cubemap->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(cubeTextureSize, cubeTextureSize));
-					this->cubemap->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-					this->cubemap->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
-
-					this->pbs->resetIblSpecMipmap(0u);
-
-					//Setup the cubemap's compositor.
-					Ogre::CompositorChannelVec cubemapExternalChannels(1);
-					//Any of the cubemap's render targets will do
-					cubemapExternalChannels[0] = this->cubemap;
-
-					Ogre::String workspaceCubemapName = this->workspaceName + "_cubemap";
-
-					if (false == this->compositorManager->hasWorkspaceDefinition(workspaceCubemapName))
-					{
-						Ogre::CompositorWorkspaceDef* workspaceDef = this->compositorManager->addWorkspaceDefinition(workspaceCubemapName);
-						// "NOWALocalCubemapProbeRendererNode" has been defined in scripts.
-						// Very handy (as it 99% the same for everything)
-						workspaceDef->connectExternal(0, cubemapRenderingNode, 0);
-					}
-
-					// If camera has not been created yet, do it!
-					if (nullptr == reflectionCameraCompPtr->getCamera())
-					{
-						reflectionCameraCompPtr->postInit();
-					}
-
-					this->workspaceCubemap = this->compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), cubemapExternalChannels, reflectionCameraCompPtr->getCamera(),
-						workspaceCubemapName, true);
-
-					/*this->workspaceCubemap = this->compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), cubemapExternalChannels, reflectionCameraCompPtr->getCamera(),
-						workspaceCubemapName, true, -1, (Ogre::UavBufferPackedVec*)0, &this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
-
-					// Now setup the regular renderer
-					this->externalChannels.resize(2);
-					// Render window
-					this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
-					this->externalChannels[1] = this->cubemap;
 				}
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Warning reflections will not work, because the given game object id: " + Ogre::StringConverter::toString(this->reflectionCameraGameObjectId->getULong()) +
-						" has no " + CameraComponent::getStaticClassName() + ". Affected game object : " + this->gameObjectPtr->getName());
-				}
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Warning reflections will not work, because the given game object id: " + Ogre::StringConverter::toString(this->reflectionCameraGameObjectId->getULong()) 
-					+ " does not exist. Affected game object : " + this->gameObjectPtr->getName());
-			}
-		}
+			}*/
 
-		this->internalCreateCompositorNode();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspacePbsComponent] Creating workspace: " + this->workspaceName);
 
-		this->updateShadowGlobalBias();
-
-		if (true == this->useTerra)
-		{
-			unsigned short externalInputTextureId = 1;
-
-			if (false == this->canUseReflection)
-			{
-				this->externalChannels.resize(1);
-			}
-			else
-			{
-				this->externalChannels.resize(2);
-				externalInputTextureId = 1;
-			}
-		}
-
-		if (true == this->usePlanarReflection->getBool())
-		{
-			if (false == this->compositorManager->hasWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName))
+			const Ogre::IdString workspaceNameId(this->workspaceName);
+			if (false == this->compositorManager->hasWorkspaceDefinition(workspaceNameId))
 			{
 				Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
-				this->compositorManager->createBasicWorkspaceDef(this->planarReflectionReflectiveWorkspaceName, color, Ogre::IdString());
-
-				Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName);
-
-				workspaceDef->connectExternal(0, this->planarReflectionReflectiveRenderingNode, 0);
+				this->compositorManager->createBasicWorkspaceDef(this->workspaceName, color, Ogre::IdString());
 			}
-		}
 
-		bool success = this->internalCreateWorkspace(workspaceDef);
+			Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+			workspaceDef->clearAll();
 
-		if (true == this->usePlanarReflection->getBool() && true == success)
-		{
-			// Setup PlanarReflections, 1.0 = max distance
-			this->planarReflections = new Ogre::PlanarReflections(this->gameObjectPtr->getSceneManager(), this->compositorManager, 1.0f, nullptr);
-			this->planarReflectionsWorkspaceListener = new PlanarReflectionsWorkspaceListener(this->planarReflections);
-			this->workspace->addListener(this->planarReflectionsWorkspaceListener);
+			Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
 
-			// Attention: Only one planar reflection setting is possible!
-			this->pbs->setPlanarReflections(this->planarReflections);
-		}
+			// Iterate through Compositor Managers resources
+			Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator it = nodeDefs.begin();
+			Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator end = nodeDefs.end();
 
-		if (true == this->canUseReflection || true == this->usePlanarReflection->getBool())
-		{
-			// Restore the reflections
-			unsigned int j = 0;
-			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			Ogre::IdString compositorId = "Ogre/Postprocess";
+
+			// Add all compositor resources to the view container
+			while (it != end)
 			{
-				auto& gameObjectPtr = it->second;
-				if (nullptr != gameObjectPtr)
+				if (it->second->mCustomIdentifier == compositorId)
 				{
-					// Refresh reflections
-					gameObjectPtr->setUseReflection(reflections[j]);
+					// this->compositorNames.emplace_back(it->second->getNameStr());
 
-					if (true == this->usePlanarReflection->getBool())
+					// Manually disable the node and add it to the workspace without any connection
+					it->second->setStartEnabled(false);
+					workspaceDef->addNodeAlias(it->first, it->first);
+				}
+
+				++it;
+			}
+
+			if (true == this->useReflection->getBool())
+			{
+				GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
+				if (nullptr != reflectionCameraGameObjectPtr)
+				{
+					auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
+					if (nullptr != reflectionCameraCompPtr)
 					{
-						auto planarReflectionCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlanarReflectionComponent>());
-						if (nullptr != planarReflectionCompPtr)
-						{
-							planarReflectionCompPtr->createPlane();
-						}
-					}
+						// Set this component as back reference, because when reflection camera is deleted, reflection must be disabled immediately, else a render crash occurs
+						reflectionCameraCompPtr->workspaceBaseComponent = this;
 
-					j++;
+						this->canUseReflection = true;
+
+						// We first create the Cubemap workspace and pass it to the final workspace
+						// that does the real rendering.
+						//
+						// If in your application you need to create a workspace but don't have a cubemap yet,
+						// you can either programatically modify the workspace definition (which is cumbersome)
+						// or just pass a PF_NULL texture that works as a dud and barely consumes any memory.
+
+						unsigned int iblSpecularFlag = 0;
+						if (Ogre::Root::getSingletonPtr()->getRenderSystem()->getCapabilities()->hasCapability(Ogre::RSC_COMPUTE_PROGRAM))
+						{
+							iblSpecularFlag = Ogre::TextureFlags::Uav | Ogre::TextureFlags::Reinterpretable;
+						}
+
+						Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+
+						/*
+						this->cubemap = textureManager->createTexture("cubemap", Ogre::GpuPageOutStrategy::Discard,
+							Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps, Ogre::TextureTypes::TypeCube);*/
+
+						this->cubemap = textureManager->createOrRetrieveTexture("cubemap",
+																				Ogre::GpuPageOutStrategy::Discard, Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::AllowAutomipmaps |
+																				iblSpecularFlag, Ogre::TextureTypes::TypeCube);
+						this->cubemap->scheduleTransitionTo(Ogre::GpuResidency::OnStorage);
+
+						unsigned int cubeTextureSize = Ogre::StringConverter::parseUnsignedInt(reflectionCameraCompPtr->getCubeTextureSize());
+
+						this->cubemap->setResolution(cubeTextureSize, cubeTextureSize);
+						this->cubemap->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(cubeTextureSize, cubeTextureSize));
+						this->cubemap->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
+						this->cubemap->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
+
+						this->pbs->resetIblSpecMipmap(0u);
+
+						//Setup the cubemap's compositor.
+						Ogre::CompositorChannelVec cubemapExternalChannels(1);
+						//Any of the cubemap's render targets will do
+						cubemapExternalChannels[0] = this->cubemap;
+
+						Ogre::String workspaceCubemapName = this->workspaceName + "_cubemap";
+
+						if (false == this->compositorManager->hasWorkspaceDefinition(workspaceCubemapName))
+						{
+							Ogre::CompositorWorkspaceDef* workspaceDef = this->compositorManager->addWorkspaceDefinition(workspaceCubemapName);
+							// "NOWALocalCubemapProbeRendererNode" has been defined in scripts.
+							// Very handy (as it 99% the same for everything)
+							workspaceDef->connectExternal(0, cubemapRenderingNode, 0);
+						}
+
+						// If camera has not been created yet, do it!
+						if (nullptr == reflectionCameraCompPtr->getCamera())
+						{
+							reflectionCameraCompPtr->postInit();
+						}
+
+						this->workspaceCubemap = this->compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), cubemapExternalChannels, reflectionCameraCompPtr->getCamera(),
+																					   workspaceCubemapName, true);
+
+						/*this->workspaceCubemap = this->compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), cubemapExternalChannels, reflectionCameraCompPtr->getCamera(),
+							workspaceCubemapName, true, -1, (Ogre::UavBufferPackedVec*)0, &this->initialCubemapLayouts, &this->initialCubemapUavAccess);*/
+
+							// Now setup the regular renderer
+						this->externalChannels.resize(2);
+						// Render window
+						this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
+						this->externalChannels[1] = this->cubemap;
+					}
+					else
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Warning reflections will not work, because the given game object id: " + Ogre::StringConverter::toString(this->reflectionCameraGameObjectId->getULong()) +
+																		" has no " + CameraComponent::getStaticClassName() + ". Affected game object : " + this->gameObjectPtr->getName());
+					}
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Warning reflections will not work, because the given game object id: " + Ogre::StringConverter::toString(this->reflectionCameraGameObjectId->getULong())
+																	+ " does not exist. Affected game object : " + this->gameObjectPtr->getName());
 				}
 			}
-		}
 
-		this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
-		hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+			this->internalCreateCompositorNode();
 
-		auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
-		if (nullptr != hdrEffectCompPtr)
-		{
-			if (false == useHdr)
+			this->updateShadowGlobalBias();
+
+			if (true == this->useTerra)
 			{
-				// Reset hdr values
-				hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
-				hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
-				hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
-			}
-			else
-			{
-				hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
-			}
-		}
+				unsigned short externalInputTextureId = 1;
 
-		return success;
+				if (false == this->canUseReflection)
+				{
+					this->externalChannels.resize(1);
+				}
+				else
+				{
+					this->externalChannels.resize(2);
+					externalInputTextureId = 1;
+				}
+			}
+
+			if (true == this->usePlanarReflection->getBool())
+			{
+				if (false == this->compositorManager->hasWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName))
+				{
+					Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
+					this->compositorManager->createBasicWorkspaceDef(this->planarReflectionReflectiveWorkspaceName, color, Ogre::IdString());
+
+					Ogre::CompositorWorkspaceDef* workspaceDef = WorkspaceModule::getInstance()->getCompositorManager()->getWorkspaceDefinition(this->planarReflectionReflectiveWorkspaceName);
+
+					workspaceDef->connectExternal(0, this->planarReflectionReflectiveRenderingNode, 0);
+				}
+			}
+
+			bool success = this->internalCreateWorkspace(workspaceDef);
+
+			if (true == this->usePlanarReflection->getBool() && true == success)
+			{
+				// Setup PlanarReflections, 1.0 = max distance
+				this->planarReflections = new Ogre::PlanarReflections(this->gameObjectPtr->getSceneManager(), this->compositorManager, 1.0f, nullptr);
+				this->planarReflectionsWorkspaceListener = new PlanarReflectionsWorkspaceListener(this->planarReflections);
+				this->workspace->addListener(this->planarReflectionsWorkspaceListener);
+
+				// Attention: Only one planar reflection setting is possible!
+				this->pbs->setPlanarReflections(this->planarReflections);
+			}
+
+			if (true == this->canUseReflection || true == this->usePlanarReflection->getBool())
+			{
+				// Restore the reflections
+				unsigned int j = 0;
+				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+				{
+					auto& gameObjectPtr = it->second;
+					if (nullptr != gameObjectPtr)
+					{
+						// Refresh reflections
+						gameObjectPtr->setUseReflection(reflections[j]);
+
+						if (true == this->usePlanarReflection->getBool())
+						{
+							auto planarReflectionCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlanarReflectionComponent>());
+							if (nullptr != planarReflectionCompPtr)
+							{
+								planarReflectionCompPtr->createPlane();
+							}
+						}
+
+						j++;
+					}
+				}
+			}
+
+			this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
+			hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+
+			auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
+			if (nullptr != hdrEffectCompPtr)
+			{
+				if (false == useHdr)
+				{
+					// Reset hdr values
+					hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
+					hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
+					hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
+				}
+				else
+				{
+					hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
+				}
+			}
+		// };
+		// NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+		// delayProcess->attachChild(closureProcess);
+		// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
+
+		return true;
 	}
 
 	void WorkspaceBaseComponent::removeWorkspace(void)

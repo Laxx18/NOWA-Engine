@@ -1394,7 +1394,7 @@ void DesignState::update(Ogre::Real dt)
 	NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->update(dt);
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 	{
 		if (true == this->simulating)
 		{

@@ -297,7 +297,14 @@ namespace NOWA
 		std::ifstream ifs(filePathName);
 		if (false == ifs.good())
 		{
-			return false;
+			// If scene does not exist yet, maybe there is a global scene. Parse these one.
+			bool success = this->parseGlobalScene(crypted);
+			// If there is no scene, but just an existing global scene, post init must be done, because maybe main camera etc. are just in the global scene!
+			if (true == success)
+			{
+				this->postInitData();
+			}
+			return success;
 		}
 
 		// First process the usual scene with all the other stuff
@@ -442,8 +449,8 @@ namespace NOWA
 		mainGameObject->postInit();
 
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
-		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); 
-			 it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();
+				it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
 		{
 			const auto& gameObjectPtr = it->second;
 			if (gameObjectPtr->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
@@ -452,7 +459,7 @@ namespace NOWA
 			{
 				if (false == gameObjectPtr->postInit())
 				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
+					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
 				}
 			}
 		}
@@ -476,14 +483,6 @@ namespace NOWA
 			delete this->worldLoaderCallback;
 			this->worldLoaderCallback = nullptr;
 		}
-
-		// Set unused mask for all camera, because log is spammed with exceptions
-		/*Ogre::SceneManager::CameraIterator it = this->sceneManager->getCameraIterator();
-		while (it.hasMoreElements())
-		{
-		Ogre::Camera* tempCamera = it.getNext();
-		tempCamera->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
-		}*/
 	}
 
 	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
@@ -590,7 +589,7 @@ namespace NOWA
 		{
 			if (!gameObjectPtr->postInit())
 			{
-				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
+				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
 			}
 		}
 
@@ -669,7 +668,7 @@ namespace NOWA
 			{
 				if (!gameObjectPtr->postInit())
 				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
+					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
 				}
 			}
 		}
@@ -1861,7 +1860,7 @@ namespace NOWA
 				}
 				if (false == gameObjectPtr->postInit())
 				{
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
+					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
 				}
 			}
 		}

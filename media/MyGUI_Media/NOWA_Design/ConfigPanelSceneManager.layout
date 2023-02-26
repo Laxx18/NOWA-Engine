@@ -132,7 +132,7 @@
             <Property key="Caption" value="#{RenderDistance}:"/>
          </Widget>
 		 <Widget type="EditBox" skin="EditBox" position="280 500 175 20" name="renderDistanceEdit">
-		    <Property key="Caption" value="0"/>
+		    <Property key="Caption" value="100"/>
 		 </Widget>
     </Widget>
 </MyGUI>

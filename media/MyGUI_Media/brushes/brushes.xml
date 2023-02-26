@@ -76,4 +76,364 @@
 		</Group>
 	</Resource>
 	
+	<Resource type="ResourceImageSet" name="Circle Mountain 1.png">
+		<Group name="States" texture="Circle Mountain 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Circle Mountain 2.png">
+		<Group name="States" texture="Circle Mountain 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Circle Mountain 3.png">
+		<Group name="States" texture="Circle Mountain 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Circle Mountain 4.png">
+		<Group name="States" texture="Circle Mountain 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Circle Mountain 5.png">
+		<Group name="States" texture="Circle Mountain 5.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Cliff Mountain 1.png">
+		<Group name="States" texture="Cliff Mountain 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Cliff Mountain 2.png">
+		<Group name="States" texture="Cliff Mountain 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Cliff Mountain 3.png">
+		<Group name="States" texture="Cliff Mountain 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Cliff Mountain4.png">
+		<Group name="States" texture="Cliff Mountain 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 1.png">
+		<Group name="States" texture="Desert Mountain 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 2.png">
+		<Group name="States" texture="Desert Mountain 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 3.png">
+		<Group name="States" texture="Desert Mountain 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 4.png">
+		<Group name="States" texture="Desert Mountain 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 5.png">
+		<Group name="States" texture="Desert Mountain 5.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 6.png">
+		<Group name="States" texture="Desert Mountain 6.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Desert Mountain 7.png">
+		<Group name="States" texture="Desert Mountain 7.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 1.png">
+		<Group name="States" texture="Mountain 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 2.png">
+		<Group name="States" texture="Mountain 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 3.png">
+		<Group name="States" texture="Mountain 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 4.png">
+		<Group name="States" texture="Mountain 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 5.png">
+		<Group name="States" texture="Mountain 5.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 6.png">
+		<Group name="States" texture="Mountain 6.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Mountain 7.png">
+		<Group name="States" texture="Mountain 7.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Plateau 1.png">
+		<Group name="States" texture="Plateau 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Plateau 2.png">
+		<Group name="States" texture="Plateau 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Plateau 3.png">
+		<Group name="States" texture="Plateau 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Plateau 4.png">
+		<Group name="States" texture="Plateau 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Rough Dune 1.png">
+		<Group name="States" texture="Rough Dune 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Rough Dune 2.png">
+		<Group name="States" texture="Rough Dune 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Rough Dune 3.png">
+		<Group name="States" texture="Rough Dune 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Rough Dune 4.png">
+		<Group name="States" texture="Rough Dune 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Rough Dune 5.png">
+		<Group name="States" texture="Rough Dune 5.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Snow Mountain 1.png">
+		<Group name="States" texture="Snow Mountain 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Snow Mountain 2.png">
+		<Group name="States" texture="Snow Mountain 2.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Snow Mountain 3.png">
+		<Group name="States" texture="Snow Mountain 3.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Snow Mountain 4.png">
+		<Group name="States" texture="Snow Mountain 4.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Snow Mountain 5.png">
+		<Group name="States" texture="Snow Mountain 5.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 1.png">
+		<Group name="States" texture="Terraced Mountain 1" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 2.png">
+		<Group name="States" texture="Terraced Mountain 2" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 3.png">
+		<Group name="States" texture="Terraced Mountain 3" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 4.png">
+		<Group name="States" texture="Terraced Mountain 4" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 5.png">
+		<Group name="States" texture="Terraced Mountain 5" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 6.png">
+		<Group name="States" texture="Terraced Mountain 6" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Terraced Mountain 7.png">
+		<Group name="States" texture="Terraced Mountain 7" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
+	<Resource type="ResourceImageSet" name="Donut 1.png">
+		<Group name="States" texture="Donut 1.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
 </MyGUI>

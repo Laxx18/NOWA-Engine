@@ -66,7 +66,7 @@ namespace NOWA
 			if (false == success)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse world: '" + this->nextWorldName + "' correctly!");
-				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
 				return;
 			}
 			// Continue fading after loading world, if there is enough time left
@@ -75,8 +75,8 @@ namespace NOWA
 				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
 			}*/
 
-			// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
-			// Ogre::Root::getSingletonPtr()->renderOneFrame();
+			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
+			Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 			// Set the data for a state
 			NOWA::SceneParameter sceneParameter;
@@ -96,12 +96,12 @@ namespace NOWA
 			boost::shared_ptr<EventDataWorldLoaded> eventDataWorldLoaded(new EventDataWorldLoaded(this->worldChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(eventDataWorldLoaded);
 			
-			// for (unsigned short i = 0; i < 10; i++)
-			// {
-			// 	Ogre::Root::getSingletonPtr()->renderOneFrame();
-			// }
+			 for (unsigned short i = 0; i < 2; i++)
+			 {
+			 	Ogre::Root::getSingletonPtr()->renderOneFrame();
+			 }
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
 		}
 
 		virtual void onUpdate(float dt) override
@@ -149,7 +149,7 @@ namespace NOWA
 				if (true == openFilePathName.empty())
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse saved name: '" + this->saveName + "' because its unclear to which scene the save snapshot belongs!");
-					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
 					return;
 				}
 
@@ -193,8 +193,8 @@ namespace NOWA
 					NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
 				}*/
 
-				// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
-				// Ogre::Root::getSingletonPtr()->renderOneFrame();
+				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
+				Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 				// Set the data for a state
 				NOWA::SceneParameter sceneParameter;
@@ -213,11 +213,6 @@ namespace NOWA
 				// and the world has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
 				boost::shared_ptr<EventDataWorldLoaded> eventDataWorldLoaded(new EventDataWorldLoaded(this->worldChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(eventDataWorldLoaded);
-
-				// for (unsigned short i = 0; i < 10; i++)
-				// {
-				// 	Ogre::Root::getSingletonPtr()->renderOneFrame();
-				// }
 			}
 
 			bool success = AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->internalReadGlobalAttributes(globalAttributesStream);
@@ -231,7 +226,7 @@ namespace NOWA
 				Ogre::Root::getSingletonPtr()->renderOneFrame();
 			}
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setStallUpdates(false);
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
 		}
 
 		virtual void onUpdate(float dt) override
@@ -285,7 +280,7 @@ namespace NOWA
 		player(nullptr),
 		dotSceneImportModule(nullptr),
 		dotSceneExportModule(nullptr),
-		bStallUpdates(false)
+		bWorldLoading(false)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameProgressModule] Module created");
 	}
@@ -295,9 +290,9 @@ namespace NOWA
 
 	}
 
-	bool GameProgressModule::stallUpdates(void)
+	bool GameProgressModule::isWorldLoading(void) const
 	{
-		return this->bStallUpdates;
+		return this->bWorldLoading;
 	}
 	
 	void GameProgressModule::destroyContent(void)
@@ -325,7 +320,7 @@ namespace NOWA
 			++it;
 		}
 		this->globalAttributesMap.clear();
-		this->setStallUpdates(false);
+		this->bWorldLoading = false;
 	}
 
 	void GameProgressModule::resetContent(void)
@@ -564,7 +559,7 @@ namespace NOWA
 
 	void GameProgressModule::loadWorld(const Ogre::String& worldName)
 	{
-		this->setStallUpdates(true);
+		this->setIsWorldLoading(true);
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
@@ -581,7 +576,7 @@ namespace NOWA
 
 	void GameProgressModule::loadWorldShowProgress(const Ogre::String& worldName)
 	{
-		this->setStallUpdates(true);
+		this->setIsWorldLoading(true);
 
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
@@ -599,7 +594,7 @@ namespace NOWA
 
 	void GameProgressModule::changeWorld(const Ogre::String& worldName)
 	{
-		this->setStallUpdates(true);
+		this->setIsWorldLoading(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the world at another tick. Note, this is necessary
@@ -612,7 +607,7 @@ namespace NOWA
 
 	void GameProgressModule::changeWorldShowProgress(const Ogre::String& worldName)
 	{
-		this->setStallUpdates(true);
+		this->setIsWorldLoading(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the world at another tick. Note, this is necessary
@@ -749,7 +744,7 @@ namespace NOWA
 
 	bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
 	{
-		this->setStallUpdates(true);
+		this->setIsWorldLoading(true);
 
 		bool success = false;
 		this->saveName = saveName;
@@ -894,9 +889,9 @@ namespace NOWA
 		return success;
 	}
 
-	void GameProgressModule::setStallUpdates(bool bStallUpdates)
+	void GameProgressModule::setIsWorldLoading(bool bWorldLoading)
 	{
-		this->bStallUpdates = bStallUpdates;
+		this->bWorldLoading = bWorldLoading;
 	}
 	
 	void GameProgressModule::saveValues(const Ogre::String& saveName, unsigned long gameObjectId, bool crypted)

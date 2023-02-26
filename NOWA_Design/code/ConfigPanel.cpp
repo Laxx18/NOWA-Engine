@@ -708,6 +708,10 @@ void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLight
 	this->lightsPerCellEditBox->setOnlyText(Ogre::StringConverter::toString(lightsPerCell));
 	this->minLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(minLightDistance));
 	this->maxLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(maxLightDistance));
+	if (renderDistance <= 0)
+	{
+		renderDistance = 100;
+	}
 	this->renderDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(renderDistance));
 }
 

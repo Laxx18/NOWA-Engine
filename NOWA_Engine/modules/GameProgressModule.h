@@ -212,9 +212,9 @@ namespace NOWA
 		void changeWorldShowProgress(const Ogre::String& worldName);
 
 		/**
-		 * @brief		Stalls the updates, when a world is changed, because it takes some time and all pointers like camera etc. will be exchanged during runtime.
+		 * @brief		Gets whether the state is in the middle of world loading.
 		 */
-		bool stallUpdates(void);
+		bool isWorldLoading(void) const;
 	private:
 		GameProgressModule(const Ogre::String& appStateName);
 		~GameProgressModule();
@@ -223,7 +223,7 @@ namespace NOWA
 
 		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
 
-		void setStallUpdates(bool bStallUpdates);
+		void setIsWorldLoading(bool bWorldLoading);
 	private:
 		std::pair<bool, Ogre::String> getSaveFileContent(const Ogre::String& saveName);
 	private:
@@ -244,7 +244,7 @@ namespace NOWA
 
 		Ogre::String currentWorldName;
 
-		bool bStallUpdates;
+		bool bWorldLoading;
 		
 	};
 

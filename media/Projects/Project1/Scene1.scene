@@ -4,10 +4,10 @@
 	<environment>
 		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.0015" g="0.0015" b="0.0015"/>
-			<ambientLightLowerHemisphere r="0.00109689" g="0.00137111" b="0.00178244" a="0.00274222"/>
+			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
+			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
 			<hemisphereDir x="-3.34553e-08" y="0.92388" z="-0.382683"/>
-			<envmapScale x="0.0152588"/>
+			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
 			<shadowFarDistance distance="500"/>
@@ -518,14 +518,14 @@
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Plane_0mesh" meshFile="Plane_0" castShadows="true" visible="true">
-				<subitem index="0" datablockName="GroundDirtPlane4134407075"/>
+				<subitem index="0" datablockName="GroundDirtPlane"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4134407075"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>

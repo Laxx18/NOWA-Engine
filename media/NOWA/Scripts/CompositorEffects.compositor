@@ -556,4 +556,107 @@ compositor_node Dither
 	out 1 rt_input
 }
 
+//DOF
+compositor_node Dof
+{
+	in 0 rt_input
+	in 1 rt_output
+	
+	custom_id Ogre/Postprocess
+
+	texture rt_depth target_width target_height PFG_RGBA8_UNORM depth_texture depth_format PF_D32_FLOAT depth_pool 3
+	texture depthTexture target_width target_height PFG_D32_FLOAT depth_pool 3
+
+	rtv rt_depth
+	{
+		depth_stencil depthTexture
+	}
+
+	target rt_depth
+	{		
+		pass render_scene
+		{
+			load
+			{
+				all				clear
+				clear_colour	0.2 0.4 0.6 1
+			}
+			store
+			{
+				// We'll need both the MSAA (to continue rendering during the refraction pass)
+				// and the resolved version (to be used sampled refractions)
+				colour	store_and_resolve
+				depth	store
+				stencil	dont_care
+			}
+			
+			lod_update_list	off
+			overlays	off
+			rq_first   3
+			rq_last   6
+		}
+	}
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			load
+			{
+				all		clear
+			}
+			store
+			{
+				depth	dont_care
+				stencil	dont_care
+			}
+			material Postprocess/Dof
+			input 0 depthTexture
+			input 1 rt_input
+		}
+	}
+
+	out 0 rt_output
+	out 1 rt_input
+}
+
+//HeightFog
+compositor_node HeightFog
+{
+	in 0 rt_input
+	in 1 rt_output
+	
+	custom_id Ogre/Postprocess
+
+	texture rt_depth target_width target_height PFG_RGBA8_UNORM depth_texture depth_format PFG_D32_FLOAT depth_pool 3
+	texture depthTexture target_width target_height PFG_D32_FLOAT depth_pool 3
+
+	target rt_depth
+	{		
+		pass clear
+		{
+		}
+		
+		pass render_scene
+		{
+			lod_update_list	off
+			overlays	off
+			rq_first   3
+			rq_last   6
+		}
+	}
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			material Postprocess/HeightFog
+			input 0 depthTexture
+			input 1 rt_input
+		}
+	}
+
+	out 0 rt_output
+	out 1 rt_input
+}
 

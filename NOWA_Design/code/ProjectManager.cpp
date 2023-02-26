@@ -210,7 +210,8 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 	}
 
 	// Check after (maybe loading a valid global.scene, which mandatory game objects already exists
-	if (nullptr == NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera"))
+	const auto& mainCameraGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
+	if (nullptr == mainCameraGameObjectPtr)
 	{
 		Ogre::Camera* camera = this->createMainCamera();
 		if (nullptr == camera)
@@ -220,6 +221,20 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 		}
 		// Add and activate the main camera
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
+	}
+	else
+	{
+		// Add and activate the main camera
+		auto cameraComponent = NOWA::makeStrongPtr(mainCameraGameObjectPtr->getComponent<NOWA::CameraComponent>());
+		if (nullptr != cameraComponent)
+		{
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(cameraComponent->getCamera(), true);
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[ProjectManager] Could not new project because the mandantory camera could not be created. Details: The camera component is missing.\n", "NOWA");
+		}
 	}
 
 	// No workspace created during scene loading, create a dummy one

@@ -143,6 +143,9 @@ namespace NOWA
 		this->componentFactory.registerClass<CompositorEffectColorComponent>(CompositorEffectColorComponent::getStaticClassId(), CompositorEffectColorComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectEmbossedComponent>(CompositorEffectEmbossedComponent::getStaticClassId(), CompositorEffectEmbossedComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectSharpenEdgesComponent>(CompositorEffectSharpenEdgesComponent::getStaticClassId(), CompositorEffectSharpenEdgesComponent::getStaticClassName());
+		this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
+		this->componentFactory.registerClass<CompositorEffectHeightFogComponent>(CompositorEffectHeightFogComponent::getStaticClassId(), CompositorEffectHeightFogComponent::getStaticClassName());
+		
 		
 		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
 		this->componentFactory.registerClass<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassId(), DatablockUnlitComponent::getStaticClassName());
@@ -474,6 +477,7 @@ namespace NOWA
 				// If this is a global game object, and in the local scene the same game object does already exist, the global one cannot be used, because the local one has already been registered
 				// Note: First all local scene game objects are loaded and after that all global ones
 				// If its a snapshot (saved game loaded, only values are set, hence its not necessary to check if the game object does exist, because it does and just the values are set...
+#if 0
 				if (true == global)
 				{
 					auto localExistingGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(id);
@@ -487,9 +491,7 @@ namespace NOWA
 						NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
 					}
 				}
-
-
-				gameObjectPtr->setName(sceneNode->getName());
+#endif
 				gameObjectPtr->setTagName(tagName);
 				gameObjectPtr->setControlledByClientID(controlledByClientID);
 				gameObjectPtr->setDefaultDirection(defaultDirection);
@@ -585,9 +587,19 @@ namespace NOWA
 				}
 			}
 
-			// Register the game object to the controller, but do it before postInit to set a categoryID for the component
 			if (nullptr == existingGameObjectPtr)
 			{
+				const auto& existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+
+				// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
+				if (nullptr != existingGameObjectNamePtr)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName()
+																	+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
+																	"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
+					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
+				}
+				// Registers the game object to the controller, but do it before postInit to set a categoryID for the component
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 			}
 			else
@@ -722,6 +734,16 @@ namespace NOWA
 		}
 		else
 		{
+			const auto& existingGameObjectNamePtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(sceneNode->getName());
+
+			// If naming collision: Somehow a local scene has the game object and the global one, kill the first one and register the second one.
+			if (nullptr != existingGameObjectNamePtr)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + existingGameObjectNamePtr->getName()
+																+ "' already exists. It will be deleted and the newer one registered. This scenario may haben if "
+																"somehow a local scene has the game object and the global one, kill the first one and register the second one.");
+				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(existingGameObjectNamePtr->getId());
+			}
 			// Registers the game object to the controller, but do it before postInit to set a categoryID for the component
 			AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 

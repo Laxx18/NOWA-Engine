@@ -413,7 +413,7 @@ namespace NOWA
 
 	void AppState::updateModules(Ogre::Real dt)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->stallUpdates())
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
 		{
 			this->ogreNewtModule->update(dt);
 			this->ogreRecastModule->update(dt);
@@ -425,7 +425,7 @@ namespace NOWA
 
 	void AppState::lateUpdateModules(Ogre::Real dt)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->stallUpdates())
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
 		{
 			// Late update the GameObjects
 			this->gameObjectController->lateUpdate(dt, false);

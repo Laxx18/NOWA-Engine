@@ -370,6 +370,10 @@ namespace NOWA
 			if (0 == renderDistance)
 			{
 				renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
+				if (0 == renderDistance)
+				{
+					renderDistance = 1000;
+				}
 			}
 			this->renderDistance->setValue(renderDistance);
 			this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
@@ -979,7 +983,10 @@ namespace NOWA
 		this->name->setValue(tempName);
 
 		this->sceneNode->setName(tempName);
-		this->movableObject->setName(tempName);
+		if (nullptr != this->movableObject)
+		{
+			this->movableObject->setName(tempName);
+		}
 	}
 
 	const Ogre::String GameObject::getName(void) const

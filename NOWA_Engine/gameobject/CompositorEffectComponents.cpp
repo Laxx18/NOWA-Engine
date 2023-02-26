@@ -1440,7 +1440,7 @@ namespace NOWA
 	{
 		bool success = CompositorEffectBaseComponent::postInit();
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectSharpenEdgesComponent] Init compositor effect embossed component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectSharpenEdgesComponent] Init compositor effect sharpen edges component for game object: " + this->gameObjectPtr->getName());
 
 		Ogre::String materialName0 = "Postprocess/SharpenEdges";
 
@@ -1512,6 +1512,176 @@ namespace NOWA
 	Ogre::Real CompositorEffectSharpenEdgesComponent::getWeight(void) const
 	{
 		return this->weight->getReal();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectDepthOfFieldComponent::CompositorEffectDepthOfFieldComponent()
+		: CompositorEffectBaseComponent(),
+		pass(nullptr)
+	{
+		this->effectName = "Dof";
+	}
+
+	CompositorEffectDepthOfFieldComponent::~CompositorEffectDepthOfFieldComponent()
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectDepthOfFieldComponent] Destructor compositor effect depth of field component for game object: " + this->gameObjectPtr->getName());
+		this->pass = nullptr;
+	}
+
+	bool CompositorEffectDepthOfFieldComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+
+		return true;
+	}
+
+	GameObjectCompPtr CompositorEffectDepthOfFieldComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		CompositorEffectDepthOfFieldCompPtr clonedCompPtr(boost::make_shared<CompositorEffectDepthOfFieldComponent>());
+
+
+		clonedCompPtr->setActivated(this->activated->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
+	bool CompositorEffectDepthOfFieldComponent::postInit(void)
+	{
+		bool success = CompositorEffectBaseComponent::postInit();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectSharpenEdgesComponent] Init compositor effect depth of field component for game object: " + this->gameObjectPtr->getName());
+
+		Ogre::String materialName0 = "Postprocess/SharpenEdges";
+
+		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
+		if (true == this->material.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectDepthOfFieldComponent] Could not set: " + this->effectName
+															+ " because the material: '" + materialName0 + "' does not exist!");
+			return false;
+		}
+
+		Ogre::Material* material0 = this->material.getPointer();
+		this->pass = material0->getTechnique(0)->getPass(0);
+
+		return success;
+	}
+
+	void CompositorEffectDepthOfFieldComponent::actualizeValue(Variant* attribute)
+	{
+		CompositorEffectBaseComponent::actualizeValue(attribute);
+	}
+
+	void CompositorEffectDepthOfFieldComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+	}
+
+	Ogre::String CompositorEffectDepthOfFieldComponent::getClassName(void) const
+	{
+		return "CompositorEffectDepthOfFieldComponent";
+	}
+
+	Ogre::String CompositorEffectDepthOfFieldComponent::getParentClassName(void) const
+	{
+		return "CompositorEffectBaseComponent";
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectHeightFogComponent::CompositorEffectHeightFogComponent()
+		: CompositorEffectBaseComponent(),
+		pass(nullptr)
+	{
+		this->effectName = "HeightFog";
+	}
+
+	CompositorEffectHeightFogComponent::~CompositorEffectHeightFogComponent()
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectHeightFogComponent] Destructor compositor effect height fog component for game object: " + this->gameObjectPtr->getName());
+		this->pass = nullptr;
+	}
+
+	bool CompositorEffectHeightFogComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+
+		return true;
+	}
+
+	GameObjectCompPtr CompositorEffectHeightFogComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		CompositorEffectHeightFogCompPtr clonedCompPtr(boost::make_shared<CompositorEffectHeightFogComponent>());
+
+
+		clonedCompPtr->setActivated(this->activated->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
+	bool CompositorEffectHeightFogComponent::postInit(void)
+	{
+		bool success = CompositorEffectBaseComponent::postInit();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectHeightFogComponent] Init compositor effect height fog component for game object: " + this->gameObjectPtr->getName());
+
+		Ogre::String materialName0 = "Postprocess/HeightFog";
+
+		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
+		if (true == this->material.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectHeightFogComponent] Could not set: " + this->effectName
+															+ " because the material: '" + materialName0 + "' does not exist!");
+			return false;
+		}
+
+		Ogre::Material* material0 = this->material.getPointer();
+		this->pass = material0->getTechnique(0)->getPass(0);
+
+		return success;
+	}
+
+	void CompositorEffectHeightFogComponent::actualizeValue(Variant* attribute)
+	{
+		CompositorEffectBaseComponent::actualizeValue(attribute);
+	}
+
+	void CompositorEffectHeightFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+	}
+
+	Ogre::String CompositorEffectHeightFogComponent::getClassName(void) const
+	{
+		return "CompositorEffectHeightFogComponent";
+	}
+
+	Ogre::String CompositorEffectHeightFogComponent::getParentClassName(void) const
+	{
+		return "CompositorEffectBaseComponent";
 	}
 
 }; // namespace end

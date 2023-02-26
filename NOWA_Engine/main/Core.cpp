@@ -150,7 +150,7 @@ namespace NOWA
 		requiredCPUSpeedMhz(1300), // 1.3 Ghz,
 		requiredRAMPhysicalMB(1024), // 1 Gigabyte
 		requiredRAMVirtualMB(512), // 0.5 Gigabyte
-		globalRenderDistance(1000.0f),
+		globalRenderDistance(100.0f),
 		optionLanguage(0), // English default
 		borderType("none"),
 		info(nullptr),
@@ -3142,7 +3142,7 @@ namespace NOWA
 
 	bool Core::keyPressed(const OIS::KeyEvent& keyEventRef)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		OIS::KeyEvent tempKeyEvent = keyEventRef;
@@ -3242,7 +3242,7 @@ namespace NOWA
 
 	bool Core::keyReleased(const OIS::KeyEvent& keyEventRef)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stalisWorldLoadinglUpdates())
 		//	return true;
 
 		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(keyEventRef.key));
@@ -3251,7 +3251,7 @@ namespace NOWA
 
 	bool Core::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		// Useless, and working with abs dangerous, as e.g. 0.8 the mouse can never be moved to right corner!
@@ -3292,7 +3292,7 @@ namespace NOWA
 
 	bool Core::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		MyGUI::InputManager::getInstancePtr()->injectMousePress(evt.state.X.abs, evt.state.Y.abs, MyGUI::MouseButton::Enum(id));
@@ -3301,7 +3301,7 @@ namespace NOWA
 
 	bool Core::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		MyGUI::InputManager::getInstancePtr()->injectMouseRelease(evt.state.X.abs, evt.state.Y.abs, MyGUI::MouseButton::Enum(id));
@@ -3310,7 +3310,7 @@ namespace NOWA
 	
 	bool Core::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		return true;
@@ -3318,7 +3318,7 @@ namespace NOWA
 		
 	bool Core::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		return true;
@@ -3326,7 +3326,7 @@ namespace NOWA
 	
 	bool Core::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stallUpdates())
+		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
 		// 	return true;
 
 		return true;

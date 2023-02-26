@@ -752,38 +752,54 @@ namespace NOWA
 	
 	void GameObjectController::undo(void)
 	{
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this]() { this->commandModule.undo(); };
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+			&& false == this->bIsDestroying)
+		{
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+			auto ptrFunction = [this]() { this->commandModule.undo(); };
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		}
 	}
 		
 	void GameObjectController::undoAll(void)
 	{
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this]() { this->commandModule.undoAll(); };
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+			&& false == this->bIsDestroying)
+		{
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+			auto ptrFunction = [this]() { this->commandModule.undoAll(); };
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		}
 	}
 	
 	void GameObjectController::redo(void)
 	{
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this]() { this->commandModule.redo(); };
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+			&& false == this->bIsDestroying)
+		{
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+			auto ptrFunction = [this]() { this->commandModule.redo(); };
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		}
 	}
 	
 	void GameObjectController::redoAll(void)
 	{	
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
-		auto ptrFunction = [this]() { this->commandModule.redoAll(); };
-		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-		delayProcess->attachChild(closureProcess);
-		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+			&& false == this->bIsDestroying)
+		{
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+			auto ptrFunction = [this]() { this->commandModule.redoAll(); };
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		}
 	}
 
 	bool GameObjectController::getIsSimulating(void) const
@@ -1464,7 +1480,7 @@ namespace NOWA
 		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
 		{
 			const auto& gameObjectPtr = it->second;
-			if (!gameObjectPtr->disconnect())
+			if (false == gameObjectPtr->disconnect())
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
 				throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");

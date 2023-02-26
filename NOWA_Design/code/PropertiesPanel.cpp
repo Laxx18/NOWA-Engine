@@ -1306,7 +1306,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		else
 		{
-			MyGUI::ItemBox* itemBox = mWidgetClient->createWidget<MyGUI::ItemBox>("ItemBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 20, 200), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+			MyGUI::ItemBox* itemBox = mWidgetClient->createWidget<MyGUI::ItemBox>("ItemBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 20, 700), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 			// itemBox->setVerticalAlignment(true);
 			// https://github.com/MyGUI/mygui/blob/master/UnitTests/UnitTest_ItemBox_Info/DemoKeeper.cpp
 			itemBox->requestCoordItem = MyGUI::newDelegate(this, &PropertiesPanelDynamic::requestCoordItem);
@@ -1316,15 +1316,16 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			itemBox->setNeedKeyFocus(true);
 			itemBox->setNeedMouseFocus(true);
 
-			this->heightCurrent += 200;
+			this->heightCurrent += 700;
 
 			itemBox->setUserData(MyGUI::Any(attribute));
 
 			for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
 			{
-				if (false == attribute->getList()[i].empty())
+				auto item = attribute->getList().at(i);
+				if (false == item.empty())
 				{
-					itemBox->addItem(attribute->getList()[i]);
+					itemBox->addItem(item);
 				}
 			}
 			/*itemBox->setSize(itemBox->getSize().width - 1, itemBox->getSize().height - 1);
@@ -1460,7 +1461,7 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 		value = range - 1;
 	}
 
-	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue * 1000.0f, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
+	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(value * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f);
 	slider->setScrollRange(static_cast<size_t>(range));
 	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
 	slider->setTrackSize(10);
@@ -1517,7 +1518,7 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 		value = range - 1;
 	}
 
-	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue, lowBorder, range, lowBorder, highBorder);
+	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(value, lowBorder, highBorder, lowBorder, highBorder);
 	slider->setScrollRange(static_cast<size_t>(range));
 	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
 
