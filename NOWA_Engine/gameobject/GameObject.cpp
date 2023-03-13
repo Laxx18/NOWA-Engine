@@ -177,7 +177,6 @@ namespace NOWA
 		// game object uses the unique name of the scene node
 		if (nullptr != this->sceneNode)
 		{
-			this->name->setValue(this->sceneNode->getName());
 			this->sceneNode->setStatic(!this->dynamic->getBool());
 		}
 		if (nullptr != this->movableObject)
@@ -632,7 +631,7 @@ namespace NOWA
 	{
 		if (GameObject::AttrName() == attribute->getName())
 		{
-			this->setName(attribute->getName());
+			this->setName(attribute->getString());
 		}
 		else if (GameObject::AttrCategory() == attribute->getName())
 		{

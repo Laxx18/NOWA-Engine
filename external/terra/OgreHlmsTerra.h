@@ -71,11 +71,11 @@ namespace Ogre
         void setDetailTextureProperty( const char *propertyName, HlmsTerraDatablock *datablock,
                                        TerraTextureTypes baseTexType, uint8 detailIdx );
 
-        virtual void calculateHashFor( Renderable *renderable, uint32 &outHash, uint32 &outCasterHash );
-        virtual void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces );
-        virtual void calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces );
+        void calculateHashFor( Renderable *renderable, uint32 &outHash, uint32 &outCasterHash ) override;
+        void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces ) override;
+        void calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces ) override;
 
-        virtual void notifyPropertiesMergedPreGenerationStep(void);
+        void notifyPropertiesMergedPreGenerationStep() override;
 
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
                                            const QueuedRenderable &queuedRenderable,
@@ -133,14 +133,21 @@ namespace Ogre
     {
         static const IdString UseSkirts;
         static const IdString ZUp;
+
         static const IdString NumTextures;
-        static const char *DiffuseMap;
-        static const char *EnvProbeMap;
-        static const char *DetailWeightMap;
-        static const char *DetailMapN;
-        static const char *DetailMapNmN;
-        static const char *RoughnessMap;
-        static const char *MetalnessMap;
+        static const char* DiffuseMap;
+        static const char* EnvProbeMap;
+        static const char* DetailWeightMap;
+        static const char* DetailMapN;
+        static const char* DetailMapNmN;
+        static const char* RoughnessMap;
+        static const char* MetalnessMap;
+
+        static const IdString DetailTriplanar;
+        static const IdString DetailTriplanarDiffuse;
+        static const IdString DetailTriplanarNormal;
+        static const IdString DetailTriplanarRoughness;
+        static const IdString DetailTriplanarMetalness;
     };
 
     /** @} */

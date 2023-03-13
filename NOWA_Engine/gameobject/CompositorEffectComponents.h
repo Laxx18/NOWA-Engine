@@ -1024,6 +1024,160 @@ namespace NOWA
 		Ogre::Pass* pass;
 	};
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class EXPORTED CompositorEffectFogComponent : public CompositorEffectBaseComponent
+	{
+	public:
+		typedef boost::shared_ptr<NOWA::CompositorEffectFogComponent> CompositorEffectFogCompPtr;
+	public:
+
+		CompositorEffectFogComponent();
+
+		virtual ~CompositorEffectFogComponent();
+
+		/**
+		 * @see		GameObjectComponent::init
+		 */
+		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+
+		/**
+		 * @see		GameObjectComponent::postInit
+		 */
+		virtual bool postInit(void) override;
+
+		/**
+		 * @see		GameObjectComponent::getClassName
+		 */
+		virtual Ogre::String getClassName(void) const override;
+
+		/**
+		 * @see		GameObjectComponent::getParentClassName
+		 */
+		virtual Ogre::String getParentClassName(void) const override;
+
+		/**
+		 * @see		GameObjectComponent::clone
+		 */
+		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+		static unsigned int getStaticClassId(void)
+		{
+			return NOWA::getIdFromName("CompositorEffectFogComponent");
+		}
+
+		static Ogre::String getStaticClassName(void)
+		{
+			return "CompositorEffectFogComponent";
+		}
+
+		/**
+		 * @see  GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) {}
+
+		/**
+		 * @see		GameObjectComponent::actualizeValue
+		 */
+		virtual void actualizeValue(Variant* attribute) override;
+
+		/**
+		 * @see		GameObjectComponent::writeXML
+		 */
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		/**
+		 * @see	GameObjectComponent::getStaticInfoText
+		 */
+		static Ogre::String getStaticInfoText(void)
+		{
+			return "Requirements: A camera component must exist.";
+		}
+
+	public:
+		static const Ogre::String AttrWeight(void) { return "Weight"; }
+	private:
+		Ogre::MaterialPtr material;
+		Ogre::Pass* pass;
+	};
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	class EXPORTED CompositorEffectLightShaftsComponent : public CompositorEffectBaseComponent
+	{
+	public:
+		typedef boost::shared_ptr<NOWA::CompositorEffectLightShaftsComponent> CompositorEffectLightShaftsCompPtr;
+	public:
+
+		CompositorEffectLightShaftsComponent();
+
+		virtual ~CompositorEffectLightShaftsComponent();
+
+		/**
+		 * @see		GameObjectComponent::init
+		 */
+		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+
+		/**
+		 * @see		GameObjectComponent::postInit
+		 */
+		virtual bool postInit(void) override;
+
+		/**
+		 * @see		GameObjectComponent::getClassName
+		 */
+		virtual Ogre::String getClassName(void) const override;
+
+		/**
+		 * @see		GameObjectComponent::getParentClassName
+		 */
+		virtual Ogre::String getParentClassName(void) const override;
+
+		/**
+		 * @see		GameObjectComponent::clone
+		 */
+		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+		static unsigned int getStaticClassId(void)
+		{
+			return NOWA::getIdFromName("CompositorEffectLightShaftsComponent");
+		}
+
+		static Ogre::String getStaticClassName(void)
+		{
+			return "CompositorEffectLightShaftsComponent";
+		}
+
+		/**
+		 * @see  GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) {}
+
+		/**
+		 * @see		GameObjectComponent::actualizeValue
+		 */
+		virtual void actualizeValue(Variant* attribute) override;
+
+		/**
+		 * @see		GameObjectComponent::writeXML
+		 */
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		/**
+		 * @see	GameObjectComponent::getStaticInfoText
+		 */
+		static Ogre::String getStaticInfoText(void)
+		{
+			return "Requirements: A camera component must exist.";
+		}
+
+	public:
+		static const Ogre::String AttrWeight(void) { return "Weight"; }
+	private:
+		Ogre::MaterialPtr material;
+		Ogre::Pass* pass;
+	};
+
 }; //namespace end
 
 #endif

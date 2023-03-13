@@ -493,6 +493,12 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromTagName(const Ogre::String& tagName) const;
 
 		/**
+		 * @brief		Gets a list of game object's which do overlap each other.
+		 * @return		gameObjectPtrList	The game object shared ptr list. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<GameObjectPtr> getOverlappingGameObjects() const;
+
+		/**
 		 * @brief		Gets the category id from the given category name.
 		 * @param[in]	category	The category name to get the id from
 		 * @return		categoryId	The category id

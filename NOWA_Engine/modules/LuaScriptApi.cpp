@@ -3359,6 +3359,11 @@ namespace NOWA
 		return boost::dynamic_pointer_cast<JointUniversalActuatorComponent>(ragBone->getJointComponent()).get();
 	}
 
+	JointKinematicComponent* getRagJointKinematicComponent(PhysicsRagDollComponent::RagBone* ragBone)
+	{
+		return boost::dynamic_pointer_cast<JointKinematicComponent>(ragBone->getSecondJointComponent()).get();
+	}
+
 	Ogre::v1::Entity* getEntity(GameObject* gameObject)
 	{
 		return gameObject->getMovableObject<Ogre::v1::Entity>();
@@ -7786,7 +7791,7 @@ namespace NOWA
 
 	JointComponent* getPredecessorJointComponent(JointComponent* instance)
 	{
-		auto& jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getId()));
+		auto& jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getPredecessorId()));
 		if (nullptr != jointCompPtr)
 		{
 			return jointCompPtr.get();
@@ -7795,6 +7800,22 @@ namespace NOWA
 		{
 			currentErrorGameObject = Ogre::StringConverter::toString(instance->getId());
 			currentCalledFunction = "getPredecessorJointComponent";
+
+			return nullptr;
+		}
+	}
+
+	JointComponent* getTargetJointComponent(JointComponent* instance)
+	{
+		auto& jointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(instance->getTargetId()));
+		if (nullptr != jointCompPtr)
+		{
+			return jointCompPtr.get();
+		}
+		else
+		{
+			currentErrorGameObject = Ogre::StringConverter::toString(instance->getId());
+			currentCalledFunction = "getTargetJointComponent";
 
 			return nullptr;
 		}
@@ -8958,7 +8979,9 @@ namespace NOWA
 			.def("getTargetId", &getTargetId2)
 			.def("getJoint", &JointComponent::getJoint)
 			.def("getPredecessorJointComponent", &getPredecessorJointComponent)
+			.def("getTargetJointComponent", &getTargetJointComponent)
 			.def("getJointPosition", &JointComponent::getJointPosition)
+			.def("getUpdatedJointPosition", &JointComponent::getUpdatedJointPosition)
 			.def("setJointRecursiveCollisionEnabled", &JointComponent::setJointRecursiveCollisionEnabled)
 			.def("getJointRecursiveCollisionEnabled", &JointComponent::getJointRecursiveCollisionEnabled)
 			.def("setBodyMassScale", &JointComponent::setBodyMassScale)
@@ -8973,7 +8996,9 @@ namespace NOWA
 		AddClassToCollection("JointComponent", "String getType()", "Gets the type of this joint.");
 		// AddClassToCollection("JointComponent", "String getClassName()", "Gets the class name of this component as string.");
 		AddClassToCollection("JointComponent", "JointComponent getPredecessorJointComponent()", "Gets the predecessor joint component.");
+		AddClassToCollection("JointComponent", "JointComponent getTargetJointComponent()", "Gets the target joint component.");
 		AddClassToCollection("JointComponent", "Vector3 getJointPosition()", "Gets the position of this joint.");
+		AddClassToCollection("JointComponent", "Vector3 getUpdatedJointPosition()", "Gets the updated joint position, which also may take a custom joint offset into account and does change, as the physics body does change its position.");
 		AddClassToCollection("JointComponent", "void setJointRecursiveCollisionEnabled(bool enabled)", "Sets whether this joint should collide with its predecessors or not.");
 		AddClassToCollection("JointComponent", "bool getJointRecursiveCollisionEnabled()", "Gets whether this joint should collide with its predecessors or not.");
 		AddClassToCollection("JointComponent", "void releaseJoint()", "Releases this joint, so that it is no more connected with its predecessors and the joint is deleted. "
@@ -9452,9 +9477,25 @@ namespace NOWA
 		AddClassToCollection("JointMathSliderComponent", "String getFunctionZ()", "Gets the math function for z.");
 
 		module(lua)
-			[
-				class_<JointKinematicComponent, JointComponent>("JointKinematicComponent")
-				// // .def("clone", &JointKinematicComponent::clone)
+		[
+			class_<JointPointToPointComponent, JointComponent>("JointPointToPointComponent")
+			// // .def("clone", &JointPointToPointComponent::clone)
+			.def("setAnchorPosition1", &JointPointToPointComponent::setAnchorPosition1)
+			.def("getAnchorPosition1", &JointPointToPointComponent::getAnchorPosition1)
+			.def("setAnchorPosition1", &JointPointToPointComponent::setAnchorPosition2)
+			.def("getAnchorPosition1", &JointPointToPointComponent::getAnchorPosition2)
+		];
+
+		AddClassToCollection("JointBallAndSocketComponent", "class inherits JointComponent", JointPointToPointComponent::getStaticInfoText());
+		AddClassToCollection("JointBallAndSocketComponent", "void setAnchorPosition1(Vector3 anchorPosition)", "Sets anchor position 1 where to place the joint. The anchor position 1 is set relative to the global mesh origin.");
+		AddClassToCollection("JointBallAndSocketComponent", "Vector3 getAnchorPosition1()", "Gets joint anchor position 1.");
+		AddClassToCollection("JointBallAndSocketComponent", "void setAnchorPosition2(Vector3 anchorPosition)", "Sets anchor position 2 where to attach to the joint. The anchor position 2 is set relative to the global mesh origin.");
+		AddClassToCollection("JointBallAndSocketComponent", "Vector3 getAnchorPosition2()", "Gets joint anchor position 2.");
+
+		module(lua)
+		[
+			class_<JointKinematicComponent, JointComponent>("JointKinematicComponent")
+			// // .def("clone", &JointKinematicComponent::clone)
 			.def("setActivated", &JointKinematicComponent::setActivated)
 			.def("isActivated", &JointKinematicComponent::isActivated)
 			.def("setAnchorPosition", &JointKinematicComponent::setAnchorPosition)
@@ -9467,12 +9508,17 @@ namespace NOWA
 			.def("getMaxSpeed", &JointKinematicComponent::getMaxSpeed)
 			.def("setMaxOmega", &JointKinematicComponent::setMaxOmega)
 			.def("getMaxOmega", &JointKinematicComponent::getMaxOmega)
+			.def("setAngularViscousFrictionCoefficient", &JointKinematicComponent::setAngularViscousFrictionCoefficient)
+			.def("getAngularViscousFrictionCoefficient", &JointKinematicComponent::getAngularViscousFrictionCoefficient)
 			.def("setTargetPosition", &JointKinematicComponent::setTargetPosition)
 			.def("getTargetPosition", &JointKinematicComponent::getTargetPosition)
 			.def("setTargetRotation", &JointKinematicComponent::setTargetRotation)
 			.def("getTargetRotation", &JointKinematicComponent::getTargetRotation)
 			.def("backToOrigin", &JointKinematicComponent::backToOrigin)
-			];
+			.def("setShortTimeActivation", &JointKinematicComponent::setShortTimeActivation)
+			.def("getShortTimeActivation", &JointKinematicComponent::getShortTimeActivation)
+			.def("reactOnTargetPositionReached", &JointKinematicComponent::reactOnTargetPositionReached)
+		];
 		AddClassToCollection("JointKinematicComponent", "class inherits JointComponent", JointKinematicComponent::getStaticInfoText());
 		AddClassToCollection("JointKinematicComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("JointKinematicComponent", "void setActivated(bool activated)", "Sets whether to activate the kinematic motion.");
@@ -9484,9 +9530,12 @@ namespace NOWA
 		AddClassToCollection("JointKinematicComponent", "String getPickingMode()", "Gets the currently set picking mode. "
 			"Possible values are: Linear, Full 6 Degree Of Freedom, Linear And Twist, Linear And Cone, Linear Plus Angluar Friction");
 		AddClassToCollection("JointKinematicComponent", "void setMaxLinearAngleFriction(float maxLinearFriction, float maxAngleFriction)", "Sets the max linear and angle friction.");
-
 		AddClassToCollection("JointKinematicComponent", "void setMaxSpeed(float maxSpeed)", "Sets the maximum speed in meters per seconds.");
+		AddClassToCollection("JointKinematicComponent", "float getMaxSpeed()", "Gets the maximum speed in meters per seconds.");
 		AddClassToCollection("JointKinematicComponent", "void setMaxOmega(float maxOmega)", "Sets the maximum rotation speed in degrees per seconds.");
+		AddClassToCollection("JointKinematicComponent", "float getMaxOmega()", "Gets the maximum rotation speed in degrees per seconds.");
+		AddClassToCollection("JointKinematicComponent", "void setAngularViscousFrictionCoefficient(float coefficient)", "Adds a viscous friction coefficient to the angular rotation (good for setting target position in water e.g.).");
+		AddClassToCollection("JointKinematicComponent", "float getAngularViscousFrictionCoefficient()", "Gets the viscous friction coefficient of the angular rotation.");
 
 		AddClassToCollection("JointKinematicComponent", "Table[linearFriction][angleFriction] getMaxLinearAngleFriction()", "Gets max linear and angle friction.");
 		AddClassToCollection("JointKinematicComponent", "void setTargetPosition(Vector3 targetPosition)", "Sets the target position.");
@@ -9494,6 +9543,11 @@ namespace NOWA
 		AddClassToCollection("JointKinematicComponent", "void setTargetRotation(Quaternion targetRotation)", "Sets the target rotation.");
 		AddClassToCollection("JointKinematicComponent", "Quaternion getTargetRotation()", "Gets the target rotation.");
 		AddClassToCollection("JointKinematicComponent", "void backToOrigin()", "Moves the game object back to its origin.");
+		AddClassToCollection("JointKinematicComponent", "void setShortTimeActivation(bool shortTimeActivation)", "If set to true, this component will be deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.");
+		AddClassToCollection("JointKinematicComponent", "bool getShortTimeActivation()", "Gets whether this component is deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.");
+
+		AddClassToCollection("AreaOfInterestComponent", "void reactOnTargetPositionReached(func closure, otherGameObject)",
+														  "Sets whether to react at the moment when the game object has reached the target position.");
 
 		module(lua)
 			[
@@ -10833,6 +10887,7 @@ namespace NOWA
 				.def("getJointBallAndSocketComponent", &getRagJointBallAndSocketComponent)
 				.def("getJointHingeActuatorComponent", &getRagJointHingeActuatorComponent)
 				.def("getJointUniversalActuatorComponent", &getRagJointUniversalActuatorComponent)
+				.def("getJointKinematicComponent", &getRagJointKinematicComponent)
 				.def("applyRequiredForceForVelocity", &PhysicsRagDollComponent::RagBone::applyRequiredForceForVelocity)
 				.def("applyOmegaForce", &PhysicsRagDollComponent::RagBone::applyOmegaForce)
 				.def("applyOmegaForceRotateTo", &PhysicsRagDollComponent::RagBone::applyOmegaForceRotateTo)

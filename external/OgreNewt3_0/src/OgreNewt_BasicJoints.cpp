@@ -1475,6 +1475,12 @@ namespace OgreNewt
 		joint->SetMaxOmega((float)speedInDegreesPerSeconds.valueRadians());
 	}
 
+	void KinematicController::setAngularViscousFrictionCoefficient(Ogre::Real coefficient)
+	{
+		dCustomKinematicController* joint = (dCustomKinematicController*)GetSupportJoint();
+		joint->SetAngularViscuosFrictionCoefficient(coefficient);
+	}
+
 	void KinematicController::resetAutoSleep(void)
 	{
 		dCustomKinematicController* joint = (dCustomKinematicController*)GetSupportJoint();

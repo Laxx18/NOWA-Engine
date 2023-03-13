@@ -73,7 +73,7 @@ void DesignState::enter(void)
 	this->nextInfoUpdate = 1.0f;
 	this->validScene = false;
 	this->activeCategory = "All";
-	this->cameraMoveSpeed = 0.2f;
+	this->cameraMoveSpeed = 10.0f;
 	this->lastOrbitValue = Ogre::Vector2::ZERO;
 	this->firstTimeValueSet = true;
 	this->playerInControl = false;
@@ -205,6 +205,10 @@ void DesignState::createScene(void)
 	// Create the SceneManager, in this case a generic one
 	this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "ExampleSMInstance");
 	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
+
+	// Loads textures in background in multiple threads
+	Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+	hlmsTextureManager->setMultiLoadPool(numThreads);
 
 	// http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015
 	// Longer loading times, but faster, test it
@@ -1151,10 +1155,10 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 	{
 		if (!GetAsyncKeyState(VK_LSHIFT))
 		{
-			this->camera->getParentNode()->setPosition(0.0f, 1.0f, 0.0f);
+			this->camera->setPosition(0.0f, 1.0f, 0.0f);
 		}
-		this->camera->getParentNode()->setOrientation(Ogre::Quaternion::IDENTITY);
-		this->cameraMoveSpeed = 0.2f;
+		this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
+		this->cameraMoveSpeed = 10.0f;
 		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 		if (nullptr != cameraBehavior)
 		{
@@ -1454,10 +1458,10 @@ void DesignState::lateUpdate(Ogre::Real dt)
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
 			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 1000.0f;
-			if (this->cameraMoveSpeed < 0.05f)
-				this->cameraMoveSpeed = 0.05f;
-			if (this->cameraMoveSpeed > 1.0f)
+			if (this->cameraMoveSpeed < 1.0f)
 				this->cameraMoveSpeed = 1.0f;
+			if (this->cameraMoveSpeed > 10.0f)
+				this->cameraMoveSpeed = 10.0f;
 
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 			if (nullptr != cameraBehavior)
@@ -1487,13 +1491,13 @@ void DesignState::orbitCamera(Ogre::Real dt)
 
 	// Start orbit mode
 	// Same as camera->moveRelative
-	Ogre::Vector3 trans = this->camera->getParentSceneNode()->getOrientation() * Ogre::Vector3(rotationValue.x, rotationValue.y, 0.0f);
-	this->camera->getParentSceneNode()->translate(trans);
+	Ogre::Vector3 trans = this->camera->getOrientation() * Ogre::Vector3(rotationValue.x, rotationValue.y, 0.0f);
+	this->camera->move(trans);
 
 	//this->pCamera->moveRelative(this->pSelectNode->getPosition() + (this->pCamera->getOrientation() * offset));
 	//this->pCamera->moveRelative(this->pSelectNode->getPosition());
 	// Same as: camera->lookAt
-	this->camera->getParentSceneNode()->setDirection(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getParentSceneNode()->getPosition());
+	this->camera->setDirection(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getPosition());
 
 	this->lastOrbitValue = rotationValue;
 }

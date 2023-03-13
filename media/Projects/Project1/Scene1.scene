@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
-			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
-			<hemisphereDir x="-3.34553e-08" y="0.92388" z="-0.382683"/>
+			<ambientLightUpperHemisphere r="0.0094722" g="0.0328875" b="0.0829233"/>
+			<ambientLightLowerHemisphere r="0.0106167" g="0.014325" b="0.0192884" a="1"/>
+			<hemisphereDir x="0.509853" y="0.860066" z="-0.0183627"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-25.5 -0.1615 -25.5" mostRightFarPosition="25.5 3.7391 25.5"/>
+		<bounds mostLeftNearPosition="-102 -0.1615 -102" mostRightFarPosition="102 3.7391 102"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -512,103 +512,6 @@
 					<property type="6" name="RenderDistance" data="10000"/>
 				</userData>
 			</entity>
-		</node>
-		<node name="Plane_0" id="1695645354">
-			<position x="0" y="0" z="0"/>
-			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="1" y="1" z="1"/>
-			<item name="Plane_0mesh" meshFile="Plane_0" castShadows="true" visible="true">
-				<subitem index="0" datablockName="GroundDirtPlane"/>
-				<userData>
-					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="4134407075"/>
-					<property type="7" name="Category" data="Default"/>
-					<property type="7" name="TagName" data=""/>
-					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
-					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 1"/>
-					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
-					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
-					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
-					<property type="7" name="Workflow" data="SpecularWorkflow"/>
-					<property type="6" name="Metalness" data="0.01"/>
-					<property type="6" name="Roughness" data="0.3"/>
-					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
-					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
-					<property type="6" name="RefractionStrength" data="0.075"/>
-					<property type="7" name="Brdf" data="BlinnPhong"/>
-					<property type="12" name="TwoSidedLighting" data="false"/>
-					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
-					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
-					<property type="6" name="AlphaTestThreshold" data="0.5"/>
-					<property type="12" name="ReceiveShadows" data="true"/>
-					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
-					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
-					<property type="9" name="SpecularColor" data="1 1 1"/>
-					<property type="9" name="EmissiveColor" data="0 0 0"/>
-					<property type="7" name="DiffuseTextureName" data="ground_dirt_gardenD.png"/>
-					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.png"/>
-					<property type="6" name="NormalMapWeight" data="1"/>
-					<property type="6" name="ClearCoat" data="0"/>
-					<property type="6" name="ClearCoatRoughness" data="0.2"/>
-					<property type="7" name="SpecularTextureName" data=""/>
-					<property type="7" name="MetallicTextureName" data=""/>
-					<property type="7" name="RoughnessTextureName" data="ground_dirt_gardenR.png"/>
-					<property type="7" name="DetailWeightTextureName" data=""/>
-					<property type="7" name="Detail0TextureName" data=""/>
-					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data=""/>
-					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data=""/>
-					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data=""/>
-					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data=""/>
-					<property type="7" name="Detail1NMTextureName" data=""/>
-					<property type="7" name="Detail2NMTextureName" data=""/>
-					<property type="7" name="Detail3NMTextureName" data=""/>
-					<property type="7" name="ReflectionTextureName" data=""/>
-					<property type="7" name="EmissiveTextureName" data=""/>
-					<property type="7" name="TransparencyMode" data="None"/>
-					<property type="7" name="Transparency" data="1"/>
-					<property type="12" name="UseAlphaFromTextures" data="true"/>
-					<property type="2" name="UVScale" data="1"/>
-					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
-					<property type="7" name="ShadowConstBias" data="0.01"/>
-					<property type="7" name="ComponentPlaneComponent" data="PlaneComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="6" name="Distance" data="0"/>
-					<property type="6" name="Width" data="50"/>
-					<property type="6" name="Height" data="50"/>
-					<property type="2" name="XSegments" data="2"/>
-					<property type="2" name="YSegments" data="2"/>
-					<property type="2" name="NumTexCoordSets" data="1"/>
-					<property type="6" name="UTile" data="20"/>
-					<property type="6" name="VTile" data="20"/>
-					<property type="9" name="Normal" data="0 1 0"/>
-					<property type="9" name="Up" data="0 0 1"/>
-					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="6" name="Mass" data="10000"/>
-					<property type="12" name="Serialize" data="false"/>
-				</userData>
-			</item>
 		</node>
 	</nodes>
 </scene>

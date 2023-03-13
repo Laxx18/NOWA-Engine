@@ -888,6 +888,7 @@ namespace NOWA
 		static const Ogre::String AttrActionImage(void) { return "Image"; }
 		static const Ogre::String AttrActionNoUndo(void) { return "NoUndo"; }
 		static const Ogre::String AttrActionGenerateLuaFunction(void) { return "GenerateLuaFunction"; }
+		static const Ogre::String AttrActionReadOnly(void) { return "ReadOnly"; }
 
 		// Custom data strings
 		static const Ogre::String AttrCustomDataSkipCreation(void) { return "SkipCreation"; }

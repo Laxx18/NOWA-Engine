@@ -1684,4 +1684,174 @@ namespace NOWA
 		return "CompositorEffectBaseComponent";
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectFogComponent::CompositorEffectFogComponent()
+		: CompositorEffectBaseComponent(),
+		pass(nullptr)
+	{
+		this->effectName = "Fog";
+	}
+
+	CompositorEffectFogComponent::~CompositorEffectFogComponent()
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Destructor compositor effect fog component for game object: " + this->gameObjectPtr->getName());
+		this->pass = nullptr;
+	}
+
+	bool CompositorEffectFogComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+
+		return true;
+	}
+
+	GameObjectCompPtr CompositorEffectFogComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		CompositorEffectFogCompPtr clonedCompPtr(boost::make_shared<CompositorEffectFogComponent>());
+
+
+		clonedCompPtr->setActivated(this->activated->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
+	bool CompositorEffectFogComponent::postInit(void)
+	{
+		bool success = CompositorEffectBaseComponent::postInit();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Init compositor effect fog component for game object: " + this->gameObjectPtr->getName());
+
+		Ogre::String materialName0 = "Postprocess/Fog";
+
+		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
+		if (true == this->material.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectFogComponent] Could not set: " + this->effectName
+															+ " because the material: '" + materialName0 + "' does not exist!");
+			return false;
+		}
+
+		Ogre::Material* material0 = this->material.getPointer();
+		this->pass = material0->getTechnique(0)->getPass(0);
+
+		return success;
+	}
+
+	void CompositorEffectFogComponent::actualizeValue(Variant* attribute)
+	{
+		CompositorEffectBaseComponent::actualizeValue(attribute);
+	}
+
+	void CompositorEffectFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+	}
+
+	Ogre::String CompositorEffectFogComponent::getClassName(void) const
+	{
+		return "CompositorEffectFogComponent";
+	}
+
+	Ogre::String CompositorEffectFogComponent::getParentClassName(void) const
+	{
+		return "CompositorEffectBaseComponent";
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	CompositorEffectLightShaftsComponent::CompositorEffectLightShaftsComponent()
+		: CompositorEffectBaseComponent(),
+		pass(nullptr)
+	{
+		this->effectName = "LightShafts";
+	}
+
+	CompositorEffectLightShaftsComponent::~CompositorEffectLightShaftsComponent()
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectLightShaftsComponent] Destructor compositor effect light shafts component for game object: " + this->gameObjectPtr->getName());
+		this->pass = nullptr;
+	}
+
+	bool CompositorEffectLightShaftsComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+
+		return true;
+	}
+
+	GameObjectCompPtr CompositorEffectLightShaftsComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		CompositorEffectLightShaftsCompPtr clonedCompPtr(boost::make_shared<CompositorEffectLightShaftsComponent>());
+
+
+		clonedCompPtr->setActivated(this->activated->getBool());
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
+	bool CompositorEffectLightShaftsComponent::postInit(void)
+	{
+		bool success = CompositorEffectBaseComponent::postInit();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectFogComponent] Init compositor effect light shafts component for game object: " + this->gameObjectPtr->getName());
+
+		Ogre::String materialName0 = "Postprocess/LightShafts";
+
+		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
+		if (true == this->material.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectLightShaftsComponent] Could not set: " + this->effectName
+															+ " because the material: '" + materialName0 + "' does not exist!");
+			return false;
+		}
+
+		Ogre::Material* material0 = this->material.getPointer();
+		this->pass = material0->getTechnique(0)->getPass(0);
+
+		return success;
+	}
+
+	void CompositorEffectLightShaftsComponent::actualizeValue(Variant* attribute)
+	{
+		CompositorEffectBaseComponent::actualizeValue(attribute);
+	}
+
+	void CompositorEffectLightShaftsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+	}
+
+	Ogre::String CompositorEffectLightShaftsComponent::getClassName(void) const
+	{
+		return "CompositorEffectLightShaftsComponent";
+	}
+
+	Ogre::String CompositorEffectLightShaftsComponent::getParentClassName(void) const
+	{
+		return "CompositorEffectBaseComponent";
+	}
+
 }; // namespace end

@@ -509,6 +509,8 @@ namespace OgreNewt
 
 		void setMaxOmega(const Ogre::Degree& speedInDegreesPerSeconds);
 
+		void setAngularViscousFrictionCoefficient(Ogre::Real coefficient);
+
 		void resetAutoSleep(void);
 
 		void setSolverModel(unsigned short solverModel);

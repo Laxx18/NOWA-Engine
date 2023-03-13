@@ -245,6 +245,9 @@ namespace NOWA
 		//getNumLogicalCores() may return 0 if couldn't detect
 			const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
+			// Loads textures in background in multiple threads
+			Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+			hlmsTextureManager->setMultiLoadPool(numThreads);
 
 			// Create the SceneManager, in this case a generic one
 			this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, this->appStateName + "_SceneManager");

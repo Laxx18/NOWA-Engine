@@ -79,11 +79,22 @@ namespace base
 		if (!mRoot->restoreConfig())
 		{
 			// ничего не получилось, покажем диалог
+			#if (OGRE_VERSION >= ((1 << 16) | (10 << 8) | 0))
+			if (!mRoot->showConfigDialog(OgreBites::getNativeConfigDialog())) return false;
+			#else
 			if (!mRoot->showConfigDialog()) return false;
+			#endif
 		}
 
+		#if (OGRE_VERSION >= ((1 << 16) | (11 << 8) | 0)) && MYGUI_PLATFORM == MYGUI_PLATFORM_WIN32
+		Ogre::NameValuePairList miscParams;
+		mWindow = mRoot->initialise(false);
+		miscParams["windowProc"] = Ogre::StringConverter::toString((size_t)Ogre::WindowEventUtilities::_WndProc);
+		mWindow = Ogre::Root::getSingleton().createRenderWindow("MyGUI Demo", 800, 600, false, &miscParams);
+		Ogre::WindowEventUtilities::_addRenderWindow(mWindow);
+		#else
 		mWindow = mRoot->initialise(true);
-
+		#endif
 
 		// вытаскиваем дискриптор окна
 		size_t handle = getWindowHandle();
@@ -134,9 +145,11 @@ namespace base
 
 		createPointerManager(handle);
 
-		createScene();
-
+		// this needs to be called before createScene() since some demos require
+		// screen size to properly position the widgets
 		windowResized(mWindow);
+
+		createScene();
 
 		return true;
 	}
@@ -345,6 +358,9 @@ namespace base
 	{
 		int width = (int)_rw->getWidth();
 		int height = (int)_rw->getHeight();
+
+		if (mPlatform)
+			MyGUI::RenderManager::getInstance().setViewSize(width, height);
 
 		// при удалении окна может вызываться этот метод
 		if (mCamera)

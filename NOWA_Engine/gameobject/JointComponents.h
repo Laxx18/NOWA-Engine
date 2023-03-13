@@ -125,6 +125,12 @@ namespace NOWA
 		virtual bool isActivated(void) const override;
 
 		/**
+		* @brief	Gets the updated joint position, which also may take a custom joint offset into account and does change, as the physics body does change its position.
+		* @return	updatedJointPosition		The updated joint position to get.
+		*/
+		virtual Ogre::Vector3 getUpdatedJointPosition(void);
+
+		/**
 		* @brief	Gets the unique id of this joint handler instance
 		* @return	id		The id of this joint handler instance
 		*/
@@ -253,6 +259,7 @@ namespace NOWA
 		JointCompPtr predecessorJointCompPtr;
 		JointCompPtr targetJointCompPtr;
 		Ogre::Vector3 jointPosition;
+		bool hasCustomJointPosition;
 
 	};
 
@@ -290,6 +297,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -421,6 +430,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointHingeActuatorComponent");
@@ -443,8 +454,6 @@ namespace NOWA
 		{
 			return "Requirements: A kind of physics component must exist.";
 		}
-
-		virtual void setActivated(bool activated) override;
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
@@ -558,6 +567,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointBallAndSocketComponent");
@@ -666,6 +677,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -985,6 +998,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointPlaneComponent");
@@ -1231,6 +1246,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointCorkScrewComponent");
@@ -1329,6 +1346,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1437,6 +1456,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointSliderActuatorComponent");
@@ -1459,8 +1480,6 @@ namespace NOWA
 		{
 			return "Requirements: A kind of physics component must exist.";
 		}
-
-		virtual void setActivated(bool activated) override;
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
@@ -1561,6 +1580,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1681,6 +1702,8 @@ namespace NOWA
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
 		virtual void setActivated(bool activated) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1909,6 +1932,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		virtual void setActivated(bool activated) override;
 
 		static unsigned int getStaticClassId(void)
@@ -1962,9 +1987,31 @@ namespace NOWA
 
 		void setMaxOmega(const Ogre::Real& speedInDegreesPerSeconds);
 
+		void setAngularViscousFrictionCoefficient(Ogre::Real coefficient);
+
+		Ogre::Real getAngularViscousFrictionCoefficient(void) const;
+
 		Ogre::Real getMaxOmega(void) const;
 
 		void backToOrigin(void);
+
+		/**
+		 * @brief If set to true, this component will be deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.
+		 * @param[in] shortTimeActivation The flag to set.
+		 */
+		void setShortTimeActivation(bool shortTimeActivation);
+
+		/**
+		 * @brief Gets whether this component is deactivated shortly after it has been activated.
+		 * @return True if the component is in short time activation mode, else false.
+		 */
+		bool getShortTimeActivation(void) const;
+
+		/**
+		 * @brief Lua closure function gets called in order to react, when the game object has reached the target position.
+		 * @param[in] closureFunction The closure function set.
+		 */
+		void reactOnTargetPositionReached(luabind::object closureFunction);
 
 	public:
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
@@ -1973,8 +2020,11 @@ namespace NOWA
 		static const Ogre::String AttrMaxAngleFriction(void) { return "Max. Angle Friction"; }
 		static const Ogre::String AttrMaxSpeed(void) { return "Max. Speed"; }
 		static const Ogre::String AttrMaxOmega(void) { return "Max. Omega"; }
+		static const Ogre::String AttrAngularViscousFrictionCoefficient(void) { return "Ang. Viscous Friction Coef"; }
+		
 		static const Ogre::String AttrTargetPosition(void) { return "Target Position"; }
 		static const Ogre::String AttrTargetRotation(void) { return "Target Rotation"; }
+		static const Ogre::String AttrShortTimeActivation(void) { return "Short Time Activation"; }
 	protected:
 		Variant* anchorPosition;
 		Variant* mode;
@@ -1982,11 +2032,14 @@ namespace NOWA
 		Variant* maxAngleFriction;
 		Variant* maxSpeed;
 		Variant* maxOmega;
+		Variant* angularViscousFrictionCoefficient;
 		Variant* targetPosition;
 		Variant* targetRotation;
+		Variant* shortTimeActivation;
 		Ogre::Vector3 originPosition;
 		Ogre::Quaternion originRotation;
 		Ogre::Vector3 gravity;
+		luabind::object targetPositionReachedClosureFunction;
 	};
 
 	/*******************************JointTargetTransformComponent*******************************/
@@ -2023,6 +2076,8 @@ namespace NOWA
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
 		virtual void setActivated(bool activated) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		void setOffsetPosition(const Ogre::Vector3& offsetPosition);
 
@@ -2061,6 +2116,7 @@ namespace NOWA
 		Variant* anchorPosition;
 		Ogre::Vector3 offsetPosition;
 		Ogre::Quaternion offsetOrientation;
+		Ogre::Vector3 gravity;
 	};
 
 	/*******************************JointPathFollowComponent*******************************/
@@ -2095,6 +2151,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2523,6 +2581,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointUniversalComponent");
@@ -2682,6 +2742,8 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointUniversalActuatorComponent");
@@ -2839,6 +2901,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -3051,6 +3115,8 @@ namespace NOWA
 		virtual void actualizeValue(Variant* attribute) override;
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{

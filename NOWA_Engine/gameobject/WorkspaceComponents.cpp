@@ -101,8 +101,10 @@ namespace NOWA
 			Ogre::CompositorPassScene* passScene = static_cast<Ogre::CompositorPassScene*>(pass);
 			Ogre::Camera* camera = passScene->getCamera();
 
-			//Note: The Aspect Ratio must match that of the camera we're reflecting.
-			this->planarReflections->update(camera, camera->getAspectRatio());
+			// Note: The Aspect Ratio must match that of the camera we're reflecting.
+			this->planarReflections->update(camera, camera->getAutoAspectRatio()
+									   ? pass->getViewportAspectRatio(0u)
+									   : camera->getAspectRatio());
 		}
 	private:
 		Ogre::PlanarReflections* planarReflections;
@@ -4115,6 +4117,8 @@ namespace NOWA
 
 			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
 			this->passBackground[i] = material->getTechnique(0)->getPass(0);
+			Ogre::TextureUnitState* tex = this->passBackground[i]->getTextureUnitState(0);
+			tex->setNumMipmaps(0);
 		}
 
 		this->changeViewportRect(0, this->viewportRect->getVector4());
@@ -4189,6 +4193,7 @@ namespace NOWA
 		{
 			// Change background texture
 			Ogre::TextureUnitState* tex = this->passBackground[index]->getTextureUnitState(0);
+			tex->setNumMipmaps(0);
 			tex->setTextureName(backgroundTextureName);
 
 			// tex->setGamma(2.0);

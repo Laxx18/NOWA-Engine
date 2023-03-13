@@ -182,6 +182,7 @@
 	<Tag name="ShadowQuality">Schattenqualitaet</Tag>
 	<Tag name="AmbientLightMode">Modus ambientes Licht</Tag>
 	<Tag name="GameObjectsCount">Anzahl Spielobjekte</Tag>
+	<Tag name="OverlappingGameObjectsCount">Anzahl ueberlappender Spielobjekte</Tag>
 	<Tag name="DynamicGameObjectsCount">Anzahl beweglicher Spielobjekte</Tag>
 	<Tag name="ComponentsCount">Anzahl Komponenten</Tag>
 	<Tag name="Components">Komponenten</Tag>

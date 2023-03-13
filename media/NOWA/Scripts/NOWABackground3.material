@@ -81,7 +81,7 @@ material NOWABackgroundPostprocess3
 			{
 				texture alpha.png
 				alpha_op_ex add src_manual src_texture 0.1
-				filtering			trilinear
+				filtering			bilinear
 			}
 		}
 	}

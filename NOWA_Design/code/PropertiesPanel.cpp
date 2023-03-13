@@ -954,6 +954,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		checkBox->_setRootKeyFocus(true);
 		checkBox->_setRootMouseFocus(true);
 
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+		{
+			checkBox->setEnabled(false);
+		}
+
 		this->itemsEdit.push_back(checkBox);
 		break;
 	}
@@ -986,6 +991,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
 			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+
+			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+			{
+				edit->setEnabled(false);
+			}
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1027,6 +1037,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setNeedMouseFocus(true);
 			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
+			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+			{
+				edit->setEnabled(false);
+			}
+
 			this->itemsEdit.push_back(edit);
 		}
 		else
@@ -1062,6 +1077,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
 			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+
+			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+			{
+				edit->setEnabled(false);
+			}
 
 			this->itemsEdit.push_back(edit);
 		}
@@ -1100,6 +1120,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setNeedMouseFocus(true);
 			edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
+			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+			{
+				edit->setEnabled(false);
+			}
+
 			this->itemsEdit.push_back(edit);
 		}
 		else
@@ -1136,6 +1161,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setNeedMouseFocus(true);
 		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
 
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+		{
+			edit->setEnabled(false);
+		}
+
 		this->itemsEdit.push_back(edit);
 		break;
 	}
@@ -1167,6 +1197,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
 		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+		{
+			edit->setEnabled(false);
+		}
 
 		this->itemsEdit.push_back(edit);
 
@@ -1208,6 +1243,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
 		edit->getClientWidget()->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseDoubleClick);
+
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+		{
+			edit->setEnabled(false);
+		}
 
 		this->itemsEdit.push_back(edit);
 
@@ -1266,6 +1306,11 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
 				// // // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 
+				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+				{
+					edit->setEnabled(false);
+				}
+
 				this->itemsEdit.push_back(edit);
 			}
 			else
@@ -1302,6 +1347,12 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			comboBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			comboBox->setNeedKeyFocus(true);
 			comboBox->setNeedMouseFocus(true);
+
+			if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+			{
+				comboBox->setEnabled(false);
+			}
+
 			this->itemsEdit.push_back(comboBox);
 		}
 		else
@@ -1347,6 +1398,12 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setMouseHitThreshold(6, 6, 3, 3);
+
+		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+		{
+			edit->setEnabled(false);
+		}
+
 		if (true == allValuesSame)
 		{
 			edit->setOnlyText(attribute->getString());
@@ -1445,6 +1502,11 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	// slider->setScrollWheelPage(1);
 	slider->setMoveToClick(true);
 
+	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+	{
+		slider->setEnabled(false);
+	}
+
 	Ogre::Real currentValue = attribute->getReal();
 	Ogre::Real lowBorder = attribute->getConstraints().first;
 	Ogre::Real highBorder = attribute->getConstraints().second;
@@ -1501,6 +1563,11 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	// slider->setScrollPage(1);
 	// slider->setScrollWheelPage(1);
 	slider->setMoveToClick(true);
+
+	if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+	{
+		slider->setEnabled(false);
+	}
 	
 	Ogre::Real currentValue = attribute->getReal();
 	Ogre::Real lowBorder = attribute->getConstraints().first;

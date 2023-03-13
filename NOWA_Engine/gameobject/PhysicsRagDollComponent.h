@@ -282,6 +282,8 @@ namespace NOWA
 
 			JointCompPtr getJointComponent(void) const;
 
+			JointCompPtr getSecondJointComponent(void) const;
+
 			Ogre::Vector3 getBodySize(void) const;
 
 			void applyRequiredForceForVelocity(const Ogre::Vector3& velocity);
@@ -319,6 +321,7 @@ namespace NOWA
 			Ogre::Real limit2;
 
 			JointCompPtr jointCompPtr;
+			JointCompPtr jointCompPtr2;
 
 			Ogre::Vector3 pose;
 
@@ -351,7 +354,8 @@ namespace NOWA
 			JT_HINGE,
 			JT_DOUBLE_HINGE,
 			JT_HINGE_ACTUATOR,
-			JT_DOUBLE_HINGE_ACTUATOR
+			JT_DOUBLE_HINGE_ACTUATOR,
+			JT_KINEMATIC
 		};
 
 		bool createRagDoll(const Ogre::String& boneName);

@@ -65,7 +65,8 @@ namespace NOWA
 		debugGeometryEntity2(nullptr),
 		sceneManager(nullptr),
 		useCustomStiffness(false),
-		jointAlreadyCreated(false)
+		jointAlreadyCreated(false),
+		hasCustomJointPosition(false)
 	{
 		// https://stackoverflow.com/questions/21151264/base-method-is-being-called-instead-of-derive-method-from-constructor
 		// Bad idea to call virtual functions in constructor, so getClassName will deliver this one, even its call from a derived class!
@@ -404,7 +405,7 @@ namespace NOWA
 
 		if (JointComponent::AttrActivated() == attribute->getName())
 		{
-			this->setActivated(attribute->getBool());
+			this->activated->setValue(attribute->getBool());
 		}
 		else if (JointComponent::AttrPredecessorId() == attribute->getName())
 		{
@@ -575,11 +576,27 @@ namespace NOWA
 	void JointComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+
+		this->jointAlreadyCreated = false;
+		if (true == activated)
+		{
+			this->createJoint();
+		}
+		// Note: release joint does not make any sense, else the joint is gone! E.g. deactivate lever motion, lever would flow in the universe
+		/*else
+		{
+			this->releaseJoint();
+		}*/
 	}
 
 	bool JointComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
+	}
+
+	Ogre::Vector3 JointComponent::getUpdatedJointPosition(void)
+	{
+		return this->jointPosition;
 	}
 
 	void JointComponent::internalSetPriorId(unsigned long priorId)
@@ -753,6 +770,12 @@ namespace NOWA
 			this->jointAlreadyCreated = false;
 			this->connectTargetId(this->targetId->getULong());
 		}
+
+		if (false == this->activated->getBool())
+		{
+			return false;
+		}
+
 		return true;
 	}
 
@@ -952,7 +975,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		this->internalShowDebugData(true, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 
 		return success;
 	}
@@ -961,7 +984,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::disconnect();
 
-		this->internalShowDebugData(false, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(false, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 
 		return success;
 	}
@@ -1098,7 +1121,11 @@ namespace NOWA
 
 	bool JointHingeComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		Ogre::String gameObjectName = this->gameObjectPtr->getName();
 
@@ -1122,18 +1149,12 @@ namespace NOWA
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
 			Ogre::Vector3 size = this->body->getAABB().getSize();
-			//Ogre::Vector3 aPos = Ogre::Vector3(-this->anchorPosition.x, -this->anchorPosition.y, -this->anchorPosition.z);
-			//// relative anchor pos: 0.5 0 0 means 50% in X of the size of the parent object
-			//Ogre::Vector3 offset = (aPos * size);
-			//// take orientation into account, so that orientated joints are processed correctly
-			//this->jointPosition = this->body->getPosition() - (this->body->getOrientation() * offset);
-
-			// without rotation
 			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
 			this->jointPosition = (this->body->getPosition() + offset);
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -1158,6 +1179,10 @@ namespace NOWA
 		/*JointHingeActuatorCompPtr jointHingeActuatorCompPtr = boost::dynamic_pointer_cast<JointHingeActuatorComponent>(this->targetJointCompPtr);
 		if (nullptr == jointHingeActuatorCompPtr)*/
 		{
+			if (nullptr == this->body)
+			{
+				return false;
+			}
 			this->joint = new OgreNewt::Hinge(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		}
 //		else
@@ -1166,6 +1191,8 @@ namespace NOWA
 //			this->joint = new OgreNewt::Hinge(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(),
 //				jointHingeActuatorCompPtr->getJointPosition(), predecessorBody->getOrientation() * jointHingeActuatorCompPtr->getPin());
 //		}
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 
 		// Bad, because causing jerky behavior on ragdolls?
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
@@ -1204,7 +1231,7 @@ namespace NOWA
 
 	void JointHingeComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 	}
 
 	void JointHingeComponent::actualizeValue(Variant* attribute)
@@ -1363,6 +1390,25 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "JointFriction"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->friction->getReal())));
 		propertiesXML->append_node(propertyXML);
+	}
+
+	Ogre::Vector3 JointHingeComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
 	}
 
 	void JointHingeComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -1643,7 +1689,7 @@ namespace NOWA
 			}
 		}
 
-		this->internalShowDebugData(true, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 
 		return success;
 	}
@@ -1655,7 +1701,7 @@ namespace NOWA
 		this->internalDirectionChange = this->directionChange->getBool();
 		this->oppositeDir = 1.0f;
 
-		this->internalShowDebugData(false, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(false, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 
 		return success;
 	}
@@ -1674,56 +1720,65 @@ namespace NOWA
 	{
 		if (false == notSimulating && true == this->activated->getBool())
 		{
-			if (true == this->internalDirectionChange)
+			bool targetAngleReached = false;
+
+			OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
+			if (nullptr != hingeActuatorJoint)
 			{
-				bool targetAngleReached = false;
-
-				OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
-				if (nullptr != hingeActuatorJoint)
+				Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
+				Ogre::Real step = this->angleRate->getReal() * dt;
+				if (1.0f == this->oppositeDir)
 				{
-					Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
-					Ogre::Real step = this->angleRate->getReal() * dt;
-					if (1.0f == this->oppositeDir)
+					if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), step))
 					{
-						if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), step))
+						targetAngleReached = true;
+						if (true == this->internalDirectionChange)
 						{
-							targetAngleReached = true;
 							this->oppositeDir *= -1.0f;
-							this->round++;
 						}
+						this->round++;
 					}
-					else
+				}
+				else
+				{
+					if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), step))
 					{
-						if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), step))
+						targetAngleReached = true;
+						if (true == this->internalDirectionChange)
 						{
-							targetAngleReached = true;
 							this->oppositeDir *= -1.0f;
-							this->round++;
 						}
+						this->round++;
 					}
 				}
+			}
 
-				// If the hinge took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
-				if (this->round == 2)
+			// If the hinge took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
+			if (this->round == 2)
+			{
+				this->round = 0;
+				// if repeat is of, only change the direction one time, to get back to its origin and leave
+				if (false == this->repeat->getBool())
 				{
-					this->round = 0;
-					// if repeat is of, only change the direction one time, to get back to its origin and leave
-					if (false == this->repeat->getBool())
-					{
-						this->internalDirectionChange = false;
-					}
+					this->internalDirectionChange = false;
 				}
+			}
 
-				if (true == targetAngleReached && (true == this->repeat->getBool() || true == this->internalDirectionChange))
-				{
-					Ogre::Degree newAngle = Ogre::Degree(0.0f);
+			if (true == targetAngleReached && (true == this->repeat->getBool() || true == this->internalDirectionChange))
+			{
+				Ogre::Degree newAngle = Ogre::Degree(0.0f);
 
-					if (1.0f == this->oppositeDir)
-						newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
-					else
-						newAngle = Ogre::Degree(this->minAngleLimit->getReal());
-					hingeActuatorJoint->SetTargetAngle(newAngle);
-				}
+				if (1.0f == this->oppositeDir)
+					newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
+				else
+					newAngle = Ogre::Degree(this->minAngleLimit->getReal());
+				hingeActuatorJoint->SetTargetAngle(newAngle);
+			}
+
+			if (true == targetAngleReached && false == this->internalDirectionChange && true == this->repeat->getBool())
+			{
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(0.0f));
+				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->targetAngle->getReal()));
 			}
 		}
 	}
@@ -1902,9 +1957,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointHingeActuatorComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointHingeActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -1937,6 +2015,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -1956,6 +2035,8 @@ namespace NOWA
 		this->releaseJoint();
 		this->joint = new OgreNewt::HingeActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), 
 								Ogre::Degree(this->angleRate->getReal()), Ogre::Degree(this->minAngleLimit->getReal()), Ogre::Degree(this->maxAngleLimit->getReal()));
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
@@ -1987,7 +2068,7 @@ namespace NOWA
 
 	void JointHingeActuatorComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 0, this->jointPosition, this->pin->getVector3());
+		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
 	}
 
 	void JointHingeActuatorComponent::actualizeValue(Variant* attribute)
@@ -2050,22 +2131,6 @@ namespace NOWA
 		{
 			this->setRepeat(attribute->getBool());
 		}
-	}
-
-	void JointHingeActuatorComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		// Note: release joint does not make any sense, else the joint is gone! E.g. deactivate lever motion, lever would flow in the universe
-		/*else
-		{
-			this->releaseJoint();
-		}*/
 	}
 
 	void JointHingeActuatorComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -2368,7 +2433,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
-		this->internalShowDebugData(true, 1, this->jointPosition, Ogre::Vector3::ZERO);
+		this->internalShowDebugData(true, 1, this->getUpdatedJointPosition(), Ogre::Vector3::ZERO);
 
 		return success;
 	}
@@ -2377,7 +2442,7 @@ namespace NOWA
 	{
 		bool success = JointComponent::disconnect();
 
-		this->internalShowDebugData(false, 1, this->jointPosition, Ogre::Vector3::ZERO);
+		this->internalShowDebugData(false, 1, this->getUpdatedJointPosition(), Ogre::Vector3::ZERO);
 
 		return success;
 	}
@@ -2452,6 +2517,25 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointBallAndSocketComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	void JointBallAndSocketComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		
@@ -2459,7 +2543,11 @@ namespace NOWA
 
 	bool JointBallAndSocketComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -2486,6 +2574,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -2507,6 +2596,7 @@ namespace NOWA
 		// this->joint->setStiffness(0.1f);
 		OgreNewt::BallAndSocket* ballAndSocketJoint = dynamic_cast<OgreNewt::BallAndSocket*>(this->joint);
 		
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -2539,7 +2629,7 @@ namespace NOWA
 
 	void JointBallAndSocketComponent::forceShowDebugData(bool activate)
 	{
-		this->internalShowDebugData(activate, 1, this->jointPosition, Ogre::Vector3::ZERO);
+		this->internalShowDebugData(activate, 1, this->getUpdatedJointPosition(), Ogre::Vector3::ZERO);
 	}
 
 	void JointBallAndSocketComponent::actualizeValue(Variant* attribute)
@@ -2867,7 +2957,11 @@ namespace NOWA
 
 	//bool JointControlledBallAndSocketComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	//{
-	// JointComponent::createJoint(customJointPosition);
+	// // Joint base created but not activated, return false, but its no error, hence after that return true.
+	// if (false == JointComponent::createJoint(customJointPosition))
+	// {
+	// 	return true;
+	// }
 	//if (true == this->jointAlreadyCreated)
 	//{
 	//	// joint already created so skip
@@ -2893,6 +2987,7 @@ namespace NOWA
 	//	}
 	//	else
 	//	{
+	//		this->hasCustomJointPosition = true;
 	//		this->jointPosition = customJointPosition;
 	//	}
 	//	OgreNewt::Body* predecessorBody = nullptr;
@@ -2913,6 +3008,7 @@ namespace NOWA
 
 	//	OgreNewt::ControlledBallAndSocket* controlledBallAndSocket = dynamic_cast<OgreNewt::ControlledBallAndSocket*>(this->joint);
 	//	
+	// this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 	//	this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 	////	this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 	// this->applyStiffness();
@@ -3140,9 +3236,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointPointToPointComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition1->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointPointToPointComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -3164,6 +3283,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		
@@ -3503,7 +3623,11 @@ namespace NOWA
 //
 //	bool RagDollMotorDofComponent::createJoint(const Ogre::Vector3& customJointPosition)
 //	{
-//		JointComponent::createJoint(customJointPosition);
+//		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		// if (false == JointComponent::createJoint(customJointPosition))
+		// {
+		// 	return true;
+		// }
 		//if (true == this->jointAlreadyCreated)
 		//{
 		//	// joint already created so skip
@@ -3529,6 +3653,7 @@ namespace NOWA
 //		}
 //		else
 //		{
+//			this->hasCustomJointPosition = true;
 //			this->jointPosition = customJointPosition;
 //		}
 //		OgreNewt::Body* predecessorBody = nullptr;
@@ -3558,6 +3683,7 @@ namespace NOWA
 //		// this->joint->setStiffness(0.1f);
 //		OgreNewt::RagDollMotor* ragDollMotor = dynamic_cast<OgreNewt::RagDollMotor*>(this->joint);
 //		
+//		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 //		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 ////		this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 //		this->applyStiffness();
@@ -3798,7 +3924,11 @@ namespace NOWA
 
 	bool JointPinComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -3816,6 +3946,7 @@ namespace NOWA
 		this->releaseJoint();
 		this->joint = new OgreNewt::UpVector(this->body, this->body->getOrientation() * this->pin->getVector3());
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		
@@ -3964,9 +4095,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointPlaneComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointPlaneComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -3988,6 +4142,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -4007,6 +4162,8 @@ namespace NOWA
 		this->joint = new OgreNewt::PlaneConstraint(this->body, predecessorBody, this->jointPosition, this->normal->getVector3());
 // Attention: Just a test!
 		// this->joint->setStiffness(0.1f);
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -4276,7 +4433,11 @@ namespace NOWA
 
 	bool JointSpringComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -4592,7 +4753,11 @@ namespace NOWA
 
 	bool JointAttractorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -4857,10 +5022,33 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxAngleLimit->getReal())));
 		propertiesXML->append_node(propertyXML);
 	}
+
+	Ogre::Vector3 JointCorkScrewComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
 	
 	bool JointCorkScrewComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -4887,6 +5075,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -4901,6 +5090,8 @@ namespace NOWA
 		this->releaseJoint();
 		this->joint = new OgreNewt::CorkScrew(this->body, predecessorBody, this->jointPosition);
 		OgreNewt::CorkScrew* corkScrewJoint = dynamic_cast<OgreNewt::CorkScrew*>(this->joint);
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -5284,9 +5475,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointPassiveSliderComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointPassiveSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -5319,6 +5533,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -5339,6 +5554,7 @@ namespace NOWA
 		this->joint = new OgreNewt::Slider(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		OgreNewt::Slider* passiveSlider = dynamic_cast<OgreNewt::Slider*>(this->joint);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -5807,9 +6023,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointSliderActuatorComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointSliderActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -5837,6 +6076,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -5856,6 +6096,8 @@ namespace NOWA
 		this->releaseJoint();
 		this->joint = new OgreNewt::SliderActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), 
 												this->linearRate->getReal(), this->minStopDistance->getReal(), this->maxStopDistance->getReal());
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
@@ -5933,21 +6175,6 @@ namespace NOWA
 		{
 			this->setRepeat(attribute->getBool());
 		}
-	}
-
-	void JointSliderActuatorComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		/*else
-		{
-			this->releaseJoint();
-		}*/
 	}
 
 	void JointSliderActuatorComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -6374,9 +6601,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointSlidingContactComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointSlidingContactComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -6408,6 +6658,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -6421,6 +6672,7 @@ namespace NOWA
 		this->joint = new OgreNewt::SlidingContact(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		OgreNewt::SlidingContact* slidingContact = dynamic_cast<OgreNewt::SlidingContact*>(this->joint);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -6832,7 +7084,11 @@ namespace NOWA
 
 	bool JointActiveSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -6865,6 +7121,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -6878,6 +7135,7 @@ namespace NOWA
 		this->joint = new OgreNewt::ActiveSliderJoint(this->body, predecessorBody, this->jointPosition, this->pin->getVector3(), this->minStopDistance->getReal(),
 			this->maxStopDistance->getReal(), this->moveSpeed->getReal(), this->repeat->getBool(), this->directionChange->getBool(), this->activated->getBool());
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -6945,6 +7203,25 @@ namespace NOWA
 		if (nullptr != activeSlider)
 		{
 			activeSlider->setActivated(activated);
+		}
+	}
+
+	Ogre::Vector3 JointActiveSliderComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
 		}
 	}
 	
@@ -7394,7 +7671,11 @@ namespace NOWA
 
 	bool JointMathSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		return true;
 	}
@@ -7574,16 +7855,17 @@ namespace NOWA
 		this->type->setReadOnly(false);
 		this->type->setValue(this->getClassName());
 		this->type->setReadOnly(true);
-		this->activated = new Variant(JointKinematicComponent::AttrActivated(), true, this->attributes);
 		this->anchorPosition = new Variant(JointKinematicComponent::AttrAnchorPosition(), Ogre::Vector3::ZERO, this->attributes);
 		std::vector<Ogre::String> strModes = { "Linear", "Full 6 Degree Of Freedom", "Linear And Twist", "Linear And Cone", "Linear Plus Angluar Friction" };
 		this->mode = new Variant(JointKinematicComponent::AttrMode(), strModes, this->attributes);
-		this->maxLinearFriction = new Variant(JointKinematicComponent::AttrMaxLinearFriction(), 10.0f, this->attributes);
-		this->maxAngleFriction = new Variant(JointKinematicComponent::AttrMaxAngleFriction(), 10.0f, this->attributes);
+		this->maxLinearFriction = new Variant(JointKinematicComponent::AttrMaxLinearFriction(), 10000.0f, this->attributes);
+		this->maxAngleFriction = new Variant(JointKinematicComponent::AttrMaxAngleFriction(), 10000.0f, this->attributes);
 		this->maxSpeed = new Variant(JointKinematicComponent::AttrMaxSpeed(), 0.0f, this->attributes);
 		this->maxOmega = new Variant(JointKinematicComponent::AttrMaxOmega(), 0.0f, this->attributes);
+		this->angularViscousFrictionCoefficient = new Variant(JointKinematicComponent::AttrAngularViscousFrictionCoefficient(), 1.0f, this->attributes);
 		this->targetPosition = new Variant(JointKinematicComponent::AttrTargetPosition(), Ogre::Vector3::ZERO, this->attributes);
 		this->targetRotation = new Variant(JointKinematicComponent::AttrTargetRotation(), Ogre::Vector3::ZERO, this->attributes);
+		this->shortTimeActivation = new Variant(JointKinematicComponent::AttrShortTimeActivation(), false, this->attributes);
 		
 		this->targetId->setVisible(false);
 		this->predecessorId->setVisible(false);
@@ -7592,6 +7874,15 @@ namespace NOWA
 
 		this->maxSpeed->setDescription("Sets the maximum speed in meters per seconds.");
 		this->maxOmega->setDescription("Sets the maximum rotation speed in degrees per seconds.");
+		this->angularViscousFrictionCoefficient->setDescription("Adds a viscous friction coefficient to the angular rotation (good for setting target position in water e.g.).");
+		this->targetPosition->addUserData(GameObject::AttrActionReadOnly());
+		this->targetRotation->addUserData(GameObject::AttrActionReadOnly());
+
+		this->targetPosition->setDescription("This values can only be set in code (C++, lua).");
+		this->targetRotation->setDescription("This values can only be set in code (C++, lua).");
+
+		// It does not make sense to set those attributes in editor, but just in code!
+		this->shortTimeActivation->setDescription("If set to true, this component will be deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.");
 	}
 
 	JointKinematicComponent::~JointKinematicComponent()
@@ -7629,9 +7920,12 @@ namespace NOWA
 		clonedJointCompPtr->setMaxLinearAngleFriction(this->maxLinearFriction->getReal(), this->maxAngleFriction->getReal());
 		clonedJointCompPtr->setMaxSpeed(this->maxSpeed->getReal());
 		clonedJointCompPtr->setMaxOmega(this->maxOmega->getReal());
+
+		clonedJointCompPtr->setAngularViscousFrictionCoefficient(this->angularViscousFrictionCoefficient->getReal());
 		clonedJointCompPtr->setTargetPosition(this->targetPosition->getVector3());
 		clonedJointCompPtr->setTargetRotation(MathHelper::getInstance()->degreesToQuat(this->targetRotation->getVector3()));
-
+		clonedJointCompPtr->setShortTimeActivation(this->shortTimeActivation->getBool());
+		
 		clonedGameObjectPtr->addComponent(clonedJointCompPtr);
 		clonedJointCompPtr->setOwner(clonedGameObjectPtr);
 
@@ -7674,6 +7968,11 @@ namespace NOWA
 			this->maxOmega->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAngularViscousFrictionCoefficient")
+		{
+			this->angularViscousFrictionCoefficient->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointTargetPosition")
 		{
 			this->targetPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
@@ -7682,6 +7981,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointTargetRotation")
 		{
 			this->targetRotation->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShortTimeActivation")
+		{
+			this->shortTimeActivation->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		return true;
@@ -7739,12 +8043,47 @@ namespace NOWA
 
 	void JointKinematicComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		// Checks if the body has reached its target position, and if short time activation is set, the component will be deactivated, if possition reached.
+		if (false == notSimulating)
+		{
+			if (true == this->activated->getBool())
+			{
+				Ogre::Real distSquare = this->getUpdatedJointPosition().squaredDistance(this->targetPosition->getVector3());
+				if (distSquare <= 0.01f * 0.01f)
+				{
+					if (true == this->shortTimeActivation->getBool())
+					{
+						this->setActivated(false);
+					}
 
+					if (this->targetPositionReachedClosureFunction.is_valid())
+					{
+						try
+						{
+							luabind::call_function<void>(this->targetPositionReachedClosureFunction);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what())
+																		+ " details: " + msg.str());
+						}
+					}
+				}
+			}
+		}
 	}
 
 	bool JointKinematicComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -7762,6 +8101,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -7773,6 +8113,10 @@ namespace NOWA
 		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
 
+		// Better results!
+		kinematicController->setSolverModel(0);
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -7809,6 +8153,9 @@ namespace NOWA
 
 		kinematicController->setMaxLinearFriction(mass * -gravity * this->maxLinearFriction->getReal());
 		kinematicController->setMaxAngularFriction(inertia * this->maxAngleFriction->getReal());
+		// Better results, nope
+		// kinematicController->setMaxAngularFriction(mass * -gravity * this->maxLinearFriction->getReal());
+		kinematicController->setAngularViscousFrictionCoefficient(this->angularViscousFrictionCoefficient->getReal());
 
 		if (0.0f != this->maxSpeed->getReal())
 		{
@@ -7867,12 +8214,18 @@ namespace NOWA
 		}
 		else if (JointKinematicComponent::AttrMaxSpeed() == attribute->getName())
 		{
-			this->setMaxSpeed(maxSpeed->getReal());
+			this->setMaxSpeed(attribute->getReal());
 		}
 		else if (JointKinematicComponent::AttrMaxOmega() == attribute->getName())
 		{
-			this->setMaxOmega(maxOmega->getReal());
+			this->setMaxOmega(attribute->getReal());
 		}
+		else if (JointKinematicComponent::AttrAngularViscousFrictionCoefficient() == attribute->getName())
+		{
+			this->setAngularViscousFrictionCoefficient(attribute->getReal());
+		}
+		// It does not make sense to set those attributes in editor, but just in code!
+#if 0
 		else if (JointKinematicComponent::AttrTargetPosition() == attribute->getName())
 		{
 			this->setTargetPosition(attribute->getVector3());
@@ -7880,6 +8233,11 @@ namespace NOWA
 		else if (JointKinematicComponent::AttrTargetRotation() == attribute->getName())
 		{
 			this->setTargetRotation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
+		}
+#endif
+		else if (JointKinematicComponent::AttrShortTimeActivation() == attribute->getName())
+		{
+			this->setShortTimeActivation(attribute->getBool());
 		}
 	}
 	
@@ -7931,6 +8289,12 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointAngularViscousFrictionCoefficient"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->angularViscousFrictionCoefficient->getReal())));
+		propertiesXML->append_node(propertyXML);
+		
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "JointTargetPosition"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->targetPosition->getVector3())));
@@ -7941,6 +8305,46 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "JointTargetRotation"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->targetRotation->getVector3())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ShortTimeActivation"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->shortTimeActivation->getBool())));
+		propertiesXML->append_node(propertyXML);
+	}
+
+	Ogre::Vector3 JointKinematicComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
+	void JointKinematicComponent::setActivated(bool activated)
+	{
+		JointComponent::setActivated(activated);
+
+		this->jointAlreadyCreated = false;
+		if (true == activated)
+		{
+			this->createJoint();
+		}
+		else
+		{
+			this->releaseJoint();
+		}
 	}
 
 	void JointKinematicComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -8015,6 +8419,8 @@ namespace NOWA
 
 			kinematicController->setMaxLinearFriction(mass * -gravity * this->maxLinearFriction->getReal());
 			kinematicController->setMaxAngularFriction(inertia * this->maxAngleFriction->getReal());
+			// Better results, nope
+			// kinematicController->setMaxAngularFriction(mass * -gravity * this->maxLinearFriction->getReal());
 
 			/*if (0.0f == this->gravity.y)
 			{
@@ -8033,9 +8439,15 @@ namespace NOWA
 
 	void JointKinematicComponent::setTargetPosition(const Ogre::Vector3& targetPosition)
 	{
+		// First activates
+		if (true == this->shortTimeActivation->getBool() && false == this->activated->getBool())
+		{
+			this->setActivated(true);
+		}
+
 		this->targetPosition->setValue(targetPosition);
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setTargetPosit(this->targetPosition->getVector3());
 		}
@@ -8048,9 +8460,14 @@ namespace NOWA
 
 	void JointKinematicComponent::setTargetRotation(const Ogre::Quaternion& targetRotation)
 	{
+		// First activates
+		if (true == this->shortTimeActivation->getBool() && false == this->activated->getBool())
+		{
+			this->setActivated(true);
+		}
 		this->targetRotation->setValue(MathHelper::getInstance()->quatToDegreesRounded(targetRotation));
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setTargetRotation(targetRotation);
 		}
@@ -8058,10 +8475,15 @@ namespace NOWA
 
 	void JointKinematicComponent::setTargetPositionRotation(const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetRotation)
 	{
+		// First activates
+		if (true == this->shortTimeActivation->getBool() && false == this->activated->getBool())
+		{
+			this->setActivated(true);
+		}
 		this->targetPosition->setValue(targetPosition);
 		this->targetRotation->setValue(MathHelper::getInstance()->quatToDegreesRounded(targetRotation));
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setTargetMatrix(targetPosition, targetRotation);
 		}
@@ -8080,7 +8502,7 @@ namespace NOWA
 		}
 		this->maxSpeed->setValue(speedInMetersPerSeconds);
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setMaxSpeed(speedInMetersPerSeconds);
 		}
@@ -8099,10 +8521,20 @@ namespace NOWA
 		}
 		this->maxOmega->setValue(speedInDegreesPerSeconds);
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setMaxOmega(Ogre::Degree(speedInDegreesPerSeconds));
 		}
+	}
+
+	void JointKinematicComponent::setAngularViscousFrictionCoefficient(Ogre::Real coefficient)
+	{
+		this->angularViscousFrictionCoefficient->setValue(coefficient);
+	}
+
+	Ogre::Real JointKinematicComponent::getAngularViscousFrictionCoefficient(void) const
+	{
+		return this->angularViscousFrictionCoefficient->getReal();
 	}
 
 	Ogre::Real JointKinematicComponent::getMaxOmega(void) const
@@ -8112,37 +8544,33 @@ namespace NOWA
 
 	void JointKinematicComponent::backToOrigin(void)
 	{
+		// First activates
+		if (true == this->shortTimeActivation->getBool() && false == this->activated->getBool())
+		{
+			this->setActivated(true);
+		}
+
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController && this->activated)
+		if (kinematicController && this->activated->getBool())
 		{
 			kinematicController->setTargetPosit(this->originPosition);
 			kinematicController->setTargetRotation(this->originRotation);
 		}
 	}
 
-	void JointKinematicComponent::setActivated(bool activated)
+	void JointKinematicComponent::setShortTimeActivation(bool shortTimeActivation)
 	{
-		JointComponent::setActivated(activated);
+		this->shortTimeActivation->setValue(shortTimeActivation);
+	}
 
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		/*else
-		{
-			this->releaseJoint();
-		}*/
+	bool JointKinematicComponent::getShortTimeActivation(void) const
+	{
+		return this->shortTimeActivation->getBool();
+	}
 
-		/*if (this->activated->getBool())
-		{
-		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
-		if (kinematicController)
-		{
-		kinematicController->setTargetPosit(this->targetPosition);
-		kinematicController->setTargetRotation(this->targetRotation);
-		}
-		}*/
+	void JointKinematicComponent::reactOnTargetPositionReached(luabind::object closureFunction)
+	{
+		this->targetPositionReachedClosureFunction = closureFunction;
 	}
 
 	/*******************************JointTargetTransformComponent*******************************/
@@ -8150,7 +8578,8 @@ namespace NOWA
 	JointTargetTransformComponent::JointTargetTransformComponent()
 		: JointComponent(),
 		offsetPosition(Ogre::Vector3::ZERO),
-		offsetOrientation(Ogre::Quaternion::IDENTITY)
+		offsetOrientation(Ogre::Quaternion::IDENTITY),
+		gravity(Ogre::Vector3::ZERO)
 	{
 		this->type->setReadOnly(false);
 		this->type->setValue(this->getClassName());
@@ -8214,6 +8643,21 @@ namespace NOWA
 	{
 		bool success = JointComponent::connect();
 
+		if (true == success)
+		{
+			PhysicsActiveCompPtr physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+			if (nullptr != physicsActiveCompPtr)
+			{
+				this->gravity = physicsActiveCompPtr->getGravity();
+			}
+			else
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointTargetTransformComponent] Error: Final init failed, because the game object: "
+																+ this->gameObjectPtr->getName() + " has no sort of physics active component to set gravity!");
+				return false;
+			}
+		}
+
 		return success;
 	}
 
@@ -8262,14 +8706,18 @@ namespace NOWA
 		if (nullptr != this->joint && true == this->activated->getBool())
 		{
 			OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
-			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getPosition());
+			kinematicController->setTargetPosit(this->predecessorJointCompPtr->getJointPosition());
 			kinematicController->setTargetRotation(this->predecessorJointCompPtr->getOrientation());
 		}
 	}
 
 	bool JointTargetTransformComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -8283,6 +8731,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -8321,6 +8770,13 @@ namespace NOWA
 		kinematicController->setMaxSpeed(10.0f);
 		kinematicController->setMaxOmega(Ogre::Degree(0.0f));*/
 
+		Ogre::Real gravity = this->gravity.length();
+
+		if (0.0f == gravity)
+		{
+			gravity = -1.0f;
+		}
+
 		dFloat Ixx;
 		dFloat Iyy;
 		dFloat Izz;
@@ -8328,16 +8784,19 @@ namespace NOWA
 		NewtonBodyGetMass(this->body->getNewtonBody(), &mass, &Ixx, &Iyy, &Izz);
 
 		// change this to make the grabbing stronger or weaker
-		const dFloat angularFritionAccel = 600.0f;
-		const dFloat linearFrictionAccel = 400.0f * 10.0f;
+		const dFloat angularFritionAccel = 100000.0f;
+		const dFloat linearFrictionAccel = 100000.0f;
 		const dFloat inertia = dMax(Izz, dMax(Ixx, Iyy));
 
+		kinematicController->setSolverModel(0);
 		kinematicController->setPickingMode(4);
 
-		kinematicController->setMaxLinearFriction(mass * linearFrictionAccel);
+		kinematicController->setMaxLinearFriction(mass * -gravity * linearFrictionAccel);
 		kinematicController->setMaxAngularFriction(inertia * angularFritionAccel);
-		kinematicController->setSolverModel(1);
+		// Better results nope
+		// kinematicController->setMaxAngularFriction(mass * -gravity * angularFritionAccel);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 
 		return true;
@@ -8389,6 +8848,25 @@ namespace NOWA
 		if (true == activated)
 		{
 			this->createJoint();
+		}
+	}
+
+	Ogre::Vector3 JointTargetTransformComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
 		}
 	}
 
@@ -8575,9 +9053,32 @@ namespace NOWA
 		}
 	}
 
+	Ogre::Vector3 JointPathFollowComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointPathFollowComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (false == this->activated->getBool())
 			return true;
@@ -8603,6 +9104,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -8906,7 +9408,11 @@ namespace NOWA
 
 	bool JointDryRollingFrictionComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -9105,7 +9611,11 @@ namespace NOWA
 
 	bool JointGearComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -9182,6 +9692,7 @@ namespace NOWA
 				jointHingeCompPtr1->getBody()->getOrientation() * jointHingeCompPtr1->getPin(), jointHingeActuatorCompPtr2->getBody()->getOrientation() * jointHingeActuatorCompPtr2->getPin(), this->gearRatio->getReal());
 		}
 		
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
@@ -9348,7 +9859,11 @@ namespace NOWA
 
 	bool JointRackAndPinionComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -9421,6 +9936,8 @@ namespace NOWA
 				jointHingeCompPtr1->getBody()->getOrientation() * jointHingeCompPtr1->getPin(), jointActiveSliderCompPtr2->getBody()->getOrientation() * jointActiveSliderCompPtr2->getPin(),
 				this->gearRatio->getReal());
 		}
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
@@ -9567,7 +10084,11 @@ namespace NOWA
 
 	bool JointWormGearComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -9638,6 +10159,8 @@ namespace NOWA
 				jointHingeCompPtr1->getBody()->getOrientation() * jointHingeCompPtr1->getPin(), jointPassiveSliderCompPtr2->getBody()->getOrientation() * jointActiveSliderCompPtr2->getPin(),
 			this->gearRatio->getReal(), this->slideRatio->getReal());
 		}
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
@@ -9797,7 +10320,11 @@ namespace NOWA
 
 	bool JointPulleyComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -9890,6 +10417,8 @@ namespace NOWA
 				+ ", because both predecessor and target joint handler are two active slider! But only one of them can be one.");
 			return false;
 		}
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		return true;
@@ -10171,7 +10700,11 @@ namespace NOWA
 
 	bool JointUniversalComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -10199,6 +10732,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -10220,6 +10754,7 @@ namespace NOWA
 
 		OgreNewt::Universal* universalJoint = dynamic_cast<OgreNewt::Universal*>(this->joint);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -10466,6 +11001,25 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Friction1"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->friction1->getReal())));
 		propertiesXML->append_node(propertyXML);
+	}
+
+	Ogre::Vector3 JointUniversalComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
 	}
 
 	void JointUniversalComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -11110,9 +11664,32 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	Ogre::Vector3 JointUniversalActuatorComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
 	bool JointUniversalActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -11135,6 +11712,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -11155,6 +11733,8 @@ namespace NOWA
 		this->joint = new OgreNewt::UniversalActuator(this->body, predecessorBody, this->jointPosition, 
 												Ogre::Degree(this->angleRate0->getReal()), Ogre::Degree(this->minAngleLimit0->getReal()), Ogre::Degree(this->maxAngleLimit0->getReal()),
 												Ogre::Degree(this->angleRate1->getReal()), Ogre::Degree(this->minAngleLimit1->getReal()), Ogre::Degree(this->maxAngleLimit1->getReal()));
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		// Bad, because causing jerky behavior on ragdolls?
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
@@ -11663,7 +12243,11 @@ namespace NOWA
 
 	bool Joint6DofComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -11691,6 +12275,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -11716,6 +12301,7 @@ namespace NOWA
 		this->joint = new OgreNewt::Joint6Dof(this->body, predecessorBody, this->jointPosition, jointPosition2);
 		OgreNewt::Joint6Dof* joint6Dof = dynamic_cast<OgreNewt::Joint6Dof*>(this->joint);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -11847,6 +12433,25 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxRollAngleLimit->getReal())));
 		propertiesXML->append_node(propertyXML);
 
+	}
+
+	Ogre::Vector3 Joint6DofComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition0->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
 	}
 
 	void Joint6DofComponent::setAnchorPosition0(const Ogre::Vector3& anchorPosition)
@@ -12094,7 +12699,11 @@ namespace NOWA
 
 	bool JointMotorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -12119,6 +12728,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -12456,7 +13066,11 @@ namespace NOWA
 
 	bool JointWheelComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -12490,6 +13104,7 @@ namespace NOWA
 		}
 		else
 		{
+			this->hasCustomJointPosition = true;
 			this->jointPosition = customJointPosition;
 		}
 
@@ -12511,6 +13126,8 @@ namespace NOWA
 		this->joint = new OgreNewt::Wheel(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 
 		// Bad, because causing jerky behavior on ragdolls?
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->applyStiffness();
@@ -12587,6 +13204,25 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SteeringRate"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->steeringRate->getReal())));
 		propertiesXML->append_node(propertyXML);
+	}
+
+	Ogre::Vector3 JointWheelComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
 	}
 
 	void JointWheelComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -12788,7 +13424,11 @@ namespace NOWA
 
 	bool JointFlexyPipeHandleComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -12821,6 +13461,7 @@ namespace NOWA
 		}
 		this->joint = new OgreNewt::FlexyPipeHandleJoint(this->body, this->body->getOrientation() * dir);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		
@@ -13010,7 +13651,11 @@ namespace NOWA
 
 	bool JointFlexyPipeSpinnerComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
-		JointComponent::createJoint(customJointPosition);
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
 
 		if (nullptr == this->body)
 		{
@@ -13040,6 +13685,7 @@ namespace NOWA
 		Ogre::Vector3 direction = this->body->getPosition() - predecessorBody->getPosition();
 		this->joint = new OgreNewt::FlexyPipeSpinnerJoint(this->body, predecessorBody, this->jointPosition, direction.normalisedCopy() /*this->body->getOrientation() * this->pin->getVector3()*/);
 
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
 		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		// this->body->setJointRecursiveCollision(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
 		

@@ -18,6 +18,7 @@ namespace NOWA
 	typedef boost::shared_ptr<JointHingeActuatorComponent> JointHingeActuatorCompPtr;
 	typedef boost::shared_ptr<JointUniversalComponent> JointUniversalCompPtr;
 	typedef boost::shared_ptr<JointUniversalActuatorComponent> JointUniversalActuatorCompPtr;
+	typedef boost::shared_ptr<JointKinematicComponent> JointKinematicCompPtr;
 
 	// typedef boost::shared_ptr<RagDollMotorDofComponent> RagDollMotorDofCompPtr;
 	
@@ -1041,7 +1042,11 @@ namespace NOWA
 		while (nullptr != jointXmlElement)
 		{
 			Ogre::String ragBoneChildName = jointXmlElement->Attribute("Child");
-			Ogre::String ragBoneParentName = jointXmlElement->Attribute("Parent");
+			Ogre::String ragBoneParentName;
+			if (jointXmlElement->Attribute("Parent"))
+			{
+				ragBoneParentName = jointXmlElement->Attribute("Parent");
+			}
 
 			RagBone* childRagBone = this->getRagBone(ragBoneChildName);
 			RagBone* parentRagBone = this->getRagBone(ragBoneParentName);
@@ -1051,11 +1056,6 @@ namespace NOWA
 				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Warning: There is no child rag bone name: "
 					+ ragBoneChildName + " specified for game object " + this->gameObjectPtr->getName());
 			}
-			/*if (nullptr == parentRagBone)
-			{
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent] Warning: There is no parent rag bone name: "
-					+ ragBoneParentName + " specified for game object " + this->gameObjectPtr->getName());
-			}*/
 
 			Ogre::Real friction = -1.0f;
 
@@ -1129,6 +1129,10 @@ namespace NOWA
 					return false;
 				}
 			}
+			else if (strJointType == JointKinematicComponent::getStaticClassName())
+			{
+				jointType = PhysicsRagDollComponent::JT_KINEMATIC;
+			}
 
 			Ogre::Degree minTwistAngle = Ogre::Degree(0.0f);
 			Ogre::Degree maxTwistAngle = Ogre::Degree(0.0f);
@@ -1165,11 +1169,6 @@ namespace NOWA
 				Ogre::LogManager::getSingleton().logMessage("[PhysicsRagDollComponent] Error: Cannot find 'Child' XML element in xml file: " + this->boneConfigFile->getString());
 				return false;
 			}
-			if (nullptr == jointXmlElement->Attribute("Parent"))
-			{
-				Ogre::LogManager::getSingleton().logMessage("[PhysicsRagDollComponent] Error: Cannot find 'Parent' XML element in xml file: " + this->boneConfigFile->getString());
-				return false;
-			}
 
 			bool useSpring = false;
 
@@ -1191,7 +1190,7 @@ namespace NOWA
 			// this->applyPose(jpin);
 			// }
 
-			if (nullptr != childRagBone && nullptr != parentRagBone)
+			if (nullptr != childRagBone)
 				this->joinBones(jointType, childRagBone, parentRagBone, pin, minTwistAngle, maxTwistAngle, maxConeAngle, minTwistAngle2, maxTwistAngle2, friction, useSpring, offset);
 
 			jointXmlElement = jointXmlElement->NextSiblingElement("Joint");
@@ -1212,15 +1211,18 @@ namespace NOWA
 		// if the parent bone has no joint handler, create a default one (this one of course does not join anything, its just a placeholder to connect joint handlers together,
 		// because a joint connection is just required for 2 bones)
 
-		if (nullptr == parentRagBone->getJointComponent())
+		if (type != PhysicsRagDollComponent::JT_KINEMATIC)
 		{
-			parentJointCompPtr = boost::dynamic_pointer_cast<JointComponent>(parentRagBone->createJointComponent(JointComponent::getStaticClassName()));
-			parentJointCompPtr->setBody(parentRagBone->getBody());
-			AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(parentJointCompPtr);
-		}
-		else
-		{
-			parentJointCompPtr = parentRagBone->getJointComponent();
+			if (nullptr == parentRagBone->getJointComponent())
+			{
+				parentJointCompPtr = boost::dynamic_pointer_cast<JointComponent>(parentRagBone->createJointComponent(JointComponent::getStaticClassName()));
+				parentJointCompPtr->setBody(parentRagBone->getBody());
+				AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(parentJointCompPtr);
+			}
+			else
+			{
+				parentJointCompPtr = parentRagBone->getJointComponent();
+			}
 		}
 
 		// Note this->getOrientation() etc. not required since when hinge is create orientation is also taken into account!
@@ -1414,6 +1416,17 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
 			}
 			break;
+			case PhysicsRagDollComponent::JT_KINEMATIC:
+			{
+				JointKinematicCompPtr tempChildCompPtr = boost::dynamic_pointer_cast<JointKinematicComponent>(
+					childRagBone->createJointComponent(JointKinematicComponent::getStaticClassName()));
+
+				tempChildCompPtr->setMaxLinearAngleFriction(10.0f, 1000.0f);
+
+				childJointCompPtr = tempChildCompPtr;
+				AppStateManager::getSingletonPtr()->getGameObjectController()->addJointComponent(tempChildCompPtr);
+			}
+			break;
 		}
 
 		if (nullptr != childJointCompPtr)
@@ -1434,7 +1447,6 @@ namespace NOWA
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent]: Name: " + this->gameObjectPtr->getName()
 					+ " child joint pos: " + Ogre::StringConverter::toString(childJointCompPtr->getJointPosition()) + " between child: " + childRagBone->getName()
-					+ " and parent: root, joint pos: " + Ogre::StringConverter::toString(parentJointCompPtr->getJointPosition())
 					+ ", joint pin: " + Ogre::StringConverter::toString(pin));
 			}
 		}
@@ -2453,6 +2465,15 @@ namespace NOWA
 		{
 			this->jointCompPtr = boost::make_shared<JointUniversalActuatorComponent>();
 		}
+		else if (JointKinematicComponent::getStaticClassName() == type)
+		{
+			this->jointCompPtr2 = boost::make_shared<JointKinematicComponent>();
+			this->jointCompPtr2->setType(type);
+			// Set scene manager for debug data
+			this->jointCompPtr2->setSceneManager(this->physicsRagDollComponent->getOwner()->getSceneManager());
+			this->jointCompPtr2->setOwner(this->physicsRagDollComponent->getOwner());
+			return this->jointCompPtr2;
+		}
 		else
 		{
 			this->jointCompPtr = boost::make_shared<JointComponent>();
@@ -2468,6 +2489,11 @@ namespace NOWA
 	JointCompPtr PhysicsRagDollComponent::RagBone::getJointComponent(void) const
 	{
 		return this->jointCompPtr;
+	}
+
+	JointCompPtr PhysicsRagDollComponent::RagBone::getSecondJointComponent(void) const
+	{
+		return this->jointCompPtr2;
 	}
 
 	Ogre::Vector3 PhysicsRagDollComponent::RagBone::getBodySize(void) const

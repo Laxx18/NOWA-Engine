@@ -430,6 +430,8 @@ namespace NOWA
 		GameObjectPtr clonedGameObjectPtr(boost::make_shared<GameObject>(sceneManager, clonedSceneNode, clonedMovableObject,
 			originalGameObjectPtr->getCategory(), originalGameObjectPtr->isDynamic(), originalGameObjectPtr->getType(), targetId));
 
+		clonedGameObjectPtr->setName(originalGameObjectPtr->getName());
+
 		// Store during cloning the prior id, which this game object had, in order to be able to retrieve connection of game objects when cloned
 		clonedGameObjectPtr->priorId = originalGameObjectPtr->getId();
 
@@ -1762,6 +1764,54 @@ namespace NOWA
 			if (it->second->getTagName() == tagName)
 			{
 				vec.emplace_back(it->second);
+			}
+		}
+		return std::move(vec);
+	}
+
+	std::vector<GameObjectPtr> GameObjectController::getOverlappingGameObjects() const
+	{
+		std::vector<GameObjectPtr> vec;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			const auto& firstGameObjectPtr = it->second;
+
+			for (auto& it2 = this->gameObjects->cbegin(); it2 != this->gameObjects->cend(); ++it2)
+			{
+				const auto& secondGameObjectPtr = it2->second;
+				if (firstGameObjectPtr != secondGameObjectPtr)
+				{
+					Ogre::Vector4 firstOrientation(firstGameObjectPtr->getOrientation().x, firstGameObjectPtr->getOrientation().y, firstGameObjectPtr->getOrientation().z, firstGameObjectPtr->getOrientation().w);
+					Ogre::Vector4 secondOrientation(secondGameObjectPtr->getOrientation().x, secondGameObjectPtr->getOrientation().y, secondGameObjectPtr->getOrientation().z, secondGameObjectPtr->getOrientation().w);
+
+					if (MathHelper::getInstance()->vector3Equals(firstGameObjectPtr->getPosition(), secondGameObjectPtr->getPosition(), 0.01f)
+						&& MathHelper::getInstance()->vector4Equals(firstOrientation, secondOrientation, 0.1f))
+					{
+						const auto& firstEntity = firstGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+						const auto& secondEntity = secondGameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+
+						if (nullptr != firstEntity && nullptr != secondEntity)
+						{
+							if (firstEntity->getMesh()->getName() == secondEntity->getMesh()->getName())
+							{
+								vec.emplace_back(secondGameObjectPtr);
+							}
+						}
+						else
+						{
+							const auto& firstItem = firstGameObjectPtr->getMovableObject<Ogre::Item>();
+							const auto& secondItem = secondGameObjectPtr->getMovableObject<Ogre::Item>();
+
+							if (nullptr != firstItem && nullptr != secondItem)
+							{
+								if (firstItem->getMesh()->getName() == secondItem->getMesh()->getName())
+								{
+									vec.emplace_back(secondGameObjectPtr);
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 		return std::move(vec);

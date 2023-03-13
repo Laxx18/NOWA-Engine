@@ -20,16 +20,17 @@ namespace NOWA
 		sphereSceneQuery(nullptr),
 		triggerSphereQueryObserver(nullptr),
 		triggerUpdateTimer(0.0f),
-		sphereQueryUpdateFrequency(0.5f),
 		categoriesId(GameObjectController::ALL_CATEGORIES_ID),
 		luaScriptComponent(nullptr),
 		activated(new Variant(AreaOfInterestComponent::AttrActivated(), true, this->attributes)),
 		radius(new Variant(AreaOfInterestComponent::AttrRadius(), 10.0f, this->attributes)),
+		updateThreshold(new Variant(AreaOfInterestComponent::AttrUpdateThreshold(), 0.5f, this->attributes)),
 		categories(new Variant(AreaOfInterestComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		shortTimeActivation(new Variant(AreaOfInterestComponent::AttrShortTimeActivation(), false, this->attributes))
 	{
 		this->shortTimeActivation->setDescription("If set to true, this component will be deactivated shortly after it has been activated."
 			"Useful for short action, like check if player is located at an item.");
+		this->updateThreshold->setDescription("Sets how often the area is checked for game objects. Default is 0.5 seconds. The lower the value, the more often the area is checked, but a performance costs, but more precise actualized results.");
 	}
 
 	AreaOfInterestComponent::~AreaOfInterestComponent(void)
@@ -98,6 +99,11 @@ namespace NOWA
 			this->radius->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UpdateThreshold")
+		{
+			this->updateThreshold->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
 		{
 			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
@@ -112,6 +118,7 @@ namespace NOWA
 
 		clonedCompPtr->setShortTimeActivation(this->shortTimeActivation->getBool());
 		clonedCompPtr->setRadius(this->radius->getReal());
+		clonedCompPtr->setUpdateThreshold(this->updateThreshold->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
@@ -146,7 +153,7 @@ namespace NOWA
 
 	bool AreaOfInterestComponent::disconnect(void)
 	{
-
+		this->triggerUpdateTimer = 0.0f;
 		return true;
 	}
 
@@ -196,12 +203,13 @@ namespace NOWA
 
 	void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
 	{
-		if (0.0f < this->sphereQueryUpdateFrequency)
+		if (this->updateThreshold->getReal() > 0.0f)
 		{
 			this->triggerUpdateTimer += dt;
 		}
+
 		// Checks area only 2x a second
-		if (this->triggerUpdateTimer >= this->sphereQueryUpdateFrequency)
+		if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
 		{
 			this->triggerUpdateTimer = 0.0f;
 
@@ -386,6 +394,10 @@ namespace NOWA
 		{
 			this->setRadius(attribute->getReal());
 		}
+		else if (AreaOfInterestComponent::AttrUpdateThreshold() == attribute->getName())
+		{
+			this->setUpdateThreshold(attribute->getReal());
+		}
 		else if (AreaOfInterestComponent::AttrCategories() == attribute->getName())
 		{
 			this->setCategories(attribute->getString());
@@ -420,6 +432,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Radius"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->radius->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UpdateThreshold"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->updateThreshold->getReal())));
+		propertiesXML->append_node(propertyXML);
+		
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -510,6 +529,10 @@ namespace NOWA
 
 	void AreaOfInterestComponent::setRadius(Ogre::Real radius)
 	{
+		if (radius < 0.1f)
+		{
+			radius = 0.1f;
+		}
 		this->radius->setValue(radius);
 	}
 
@@ -537,6 +560,20 @@ namespace NOWA
 	Ogre::String AreaOfInterestComponent::getCategories(void) const
 	{
 		return this->categories->getString();
+	}
+
+	void AreaOfInterestComponent::setUpdateThreshold(Ogre::Real updateThreshold)
+	{
+		if (updateThreshold < 0.0f)
+		{
+			updateThreshold = 0.0f;
+		}
+		this->updateThreshold->setValue(updateThreshold);
+	}
+
+	Ogre::Real AreaOfInterestComponent::getUpdateThreshold(void) const
+	{
+		return this->updateThreshold->getReal();
 	}
 
 	void AreaOfInterestComponent::reactOnEnter(luabind::object closureFunction)

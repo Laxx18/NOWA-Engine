@@ -921,6 +921,18 @@ void MainMenuBar::showAnalysisWindow(void)
 	MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("gameObjectsCountLabel")->setCaptionWithReplacing("#{GameObjectsCount}: "
 		+ Ogre::StringConverter::toString(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size()));
 
+
+	const auto& overlappingGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getOverlappingGameObjects();
+	MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("overlappingGameObjectsCountLabel")->setCaptionWithReplacing("#{OverlappingGameObjectsCount}: "
+																											   + Ogre::StringConverter::toString(overlappingGameObjects.size()));
+
+	auto comboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("overlappingGameObjectsCombo");
+	comboBox->removeAllItems();
+	for (size_t i = 0; i < overlappingGameObjects.size(); i++)
+	{
+		comboBox->addItem(overlappingGameObjects[i]->getName());
+	}
+
 	size_t componentsCount = 0;
 	unsigned int dynamicGameObjectsCount = 0;
 	unsigned int lightsCount = 0;

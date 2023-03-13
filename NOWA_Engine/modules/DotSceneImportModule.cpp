@@ -1884,7 +1884,7 @@ namespace NOWA
 
 		// Szenenknoten erstellen
 		Ogre::SceneNode* pNode = 0;
-		if (name.empty())
+		if (true == name.empty())
 		{
 			if (nullptr != parent)
 			{

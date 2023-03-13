@@ -174,7 +174,7 @@ namespace NOWA
 		// Same as camera->moveRelative
 		// Ogre::Vector3 trans = this->camera->getParentSceneNode()->getOrientation() * moveValue;
 		// this->camera->getParentSceneNode()->translate(trans);
-		this->camera->moveRelative(moveValue);
+		this->camera->moveRelative(moveValue * dt);
 
 		this->lastMoveValue = moveValue;
 	}
@@ -243,8 +243,8 @@ namespace NOWA
 		this->camera->getParentSceneNode()->pitch(Ogre::Degree(rotationValue.y));
 		this->camera->getParentSceneNode()->roll(Ogre::Radian(0.0f));*/
 
-		this->camera->yaw(Ogre::Degree(rotationValue.x));
-		this->camera->pitch(Ogre::Degree(rotationValue.y));
+		this->camera->yaw(Ogre::Degree(rotationValue.x * dt));
+		this->camera->pitch(Ogre::Degree(rotationValue.y * dt));
 		this->camera->roll(Ogre::Radian(0.0f));
 
 		this->lastValue = rotationValue;

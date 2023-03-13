@@ -145,6 +145,8 @@ namespace NOWA
 		this->componentFactory.registerClass<CompositorEffectSharpenEdgesComponent>(CompositorEffectSharpenEdgesComponent::getStaticClassId(), CompositorEffectSharpenEdgesComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectDepthOfFieldComponent>(CompositorEffectDepthOfFieldComponent::getStaticClassId(), CompositorEffectDepthOfFieldComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectHeightFogComponent>(CompositorEffectHeightFogComponent::getStaticClassId(), CompositorEffectHeightFogComponent::getStaticClassName());
+		this->componentFactory.registerClass<CompositorEffectFogComponent>(CompositorEffectFogComponent::getStaticClassId(), CompositorEffectFogComponent::getStaticClassName());
+		this->componentFactory.registerClass<CompositorEffectLightShaftsComponent>(CompositorEffectLightShaftsComponent::getStaticClassId(), CompositorEffectLightShaftsComponent::getStaticClassName());
 		
 		
 		this->componentFactory.registerClass<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassId(), DatablockPbsComponent::getStaticClassName());
@@ -492,6 +494,7 @@ namespace NOWA
 					}
 				}
 #endif
+				gameObjectPtr->setName(sceneNode->getName());
 				gameObjectPtr->setTagName(tagName);
 				gameObjectPtr->setControlledByClientID(controlledByClientID);
 				gameObjectPtr->setDefaultDirection(defaultDirection);

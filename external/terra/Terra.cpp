@@ -227,7 +227,7 @@ namespace Ogre
 		m_heightUnormScaled = m_height;
 		Ogre::PixelFormatGpu pixelFormat = image.getPixelFormat();
 #if OGRE_PLATFORM == OGRE_PLATFORM_ANDROID // Many Android GPUs don't support PFG_R16_UNORM so we scale it by hand
-	if(pixelFormat == PFG_R16_UNORM && !textureManager->checkSupport(PFG_R16_UNORM,0))
+	if(pixelFormat == PFG_R16_UNORM && !textureManager->checkSupport( PFG_R16_UNORM, TextureTypes::Type2D, 0 ) )
 	{
 		pixelFormat = PFG_R16_UINT;
 		m_heightUnormScaled /= 65535.0f;
@@ -1218,6 +1218,43 @@ namespace Ogre
 
         Ogre::HlmsTerraDatablock* terraDataBlock = dynamic_cast<Ogre::HlmsTerraDatablock*>(datablock);
         terraDataBlock->setTexture(Ogre::TerraTextureTypes::TERRA_DETAIL_WEIGHT, m_blendWeightTex);
+
+        // Triplanar enabled
+        terraDataBlock->setDetailTriplanarDiffuseEnabled(true);
+        terraDataBlock->setDetailTriplanarRoughnessEnabled(true);
+        terraDataBlock->setDetailTriplanarMetalnessEnabled(true);
+
+        Ogre::Vector2 terrainDimensions = this->getXZDimensions();
+
+        const unsigned char detailMapsCount = 4;
+        Ogre::Vector4 detailMapOffsetScale[detailMapsCount];
+        for (size_t i = 0; i < detailMapsCount; i++)
+        {
+            detailMapOffsetScale[i] = terraDataBlock->getDetailMapOffsetScale(i);
+        }
+
+        // Switch between "common" UV mapping and world coordinates-based UV mapping (and vice versa)
+        if (true)
+        {
+            for (size_t i = 0; i < detailMapsCount; i++)
+            {
+                detailMapOffsetScale[i].z = 1.0f / (terrainDimensions.x / detailMapOffsetScale[i].z);
+                detailMapOffsetScale[i].w = 1.0f / (terrainDimensions.y / detailMapOffsetScale[i].w);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < detailMapsCount; i++)
+            {
+                detailMapOffsetScale[i].z *= terrainDimensions.x;
+                detailMapOffsetScale[i].w *= terrainDimensions.y;
+            }
+        }
+
+        for (size_t i = 0; i < detailMapsCount; i++)
+        {
+            terraDataBlock->setDetailMapOffsetScale(i, detailMapOffsetScale[i]);
+        }
 
         if( mHlmsTerraIndex == std::numeric_limits<uint32>::max() )
         {

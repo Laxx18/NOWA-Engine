@@ -326,6 +326,7 @@ namespace NOWA
 				//        Ogre::HlmsMacroblock macroblock;
 				//        macroblock.mPolygonMode = Ogre::PM_WIREFRAME;
 				//datablock->setMacroblock( macroblock );
+
 				this->terra->setDatablock(datablock);
 			}
 			else

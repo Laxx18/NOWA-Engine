@@ -35,7 +35,15 @@ THE SOFTWARE.
 #include "OgreLwString.h"
 #include "OgreStringConverter.h"
 
-#include "rapidjson/document.h"
+#    if defined( __clang__ )
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+#        pragma clang diagnostic ignored "-Wdeprecated-copy"
+#    endif
+#	 include "rapidjson/document.h"
+#    if defined( __clang__ )
+#        pragma clang diagnostic pop
+#    endif
 
 namespace Ogre
 {
@@ -203,105 +211,129 @@ namespace Ogre
         return retVal;
     }
     //-----------------------------------------------------------------------------------
-    void HlmsJsonTerra::loadMaterial( const rapidjson::Value &json, const HlmsJson::NamedBlocks &blocks,
-                                      HlmsDatablock *datablock, const String &resourceGroup )
+    void HlmsJsonTerra::loadMaterial(const rapidjson::Value& json, const HlmsJson::NamedBlocks& blocks,
+                                     HlmsDatablock* datablock, const String& resourceGroup)
     {
-        assert( dynamic_cast<HlmsTerraDatablock*>(datablock) );
-        HlmsTerraDatablock *terraDatablock = static_cast<HlmsTerraDatablock*>(datablock);
+        assert(dynamic_cast<HlmsTerraDatablock*>(datablock));
+        HlmsTerraDatablock* terraDatablock = static_cast<HlmsTerraDatablock*>(datablock);
 
         rapidjson::Value::ConstMemberIterator itor = json.FindMember("brdf");
         if (itor != json.MemberEnd() && itor->value.IsString())
             terraDatablock->setBrdf(parseBrdf(itor->value.GetString()));
 
         itor = json.FindMember("diffuse");
-        if( itor != json.MemberEnd() && itor->value.IsObject() )
+        if (itor != json.MemberEnd() && itor->value.IsObject())
         {
-            const rapidjson::Value &subobj = itor->value;
-            loadTexture( subobj, blocks, TERRA_DIFFUSE, terraDatablock, resourceGroup );
+            const rapidjson::Value& subobj = itor->value;
+            loadTexture(subobj, blocks, TERRA_DIFFUSE, terraDatablock, resourceGroup);
 
-            itor = subobj.FindMember( "value" );
-            if( itor != subobj.MemberEnd() && itor->value.IsArray() )
-                terraDatablock->setDiffuse( parseVector3Array( itor->value ) );
+            itor = subobj.FindMember("value");
+            if (itor != subobj.MemberEnd() && itor->value.IsArray())
+                terraDatablock->setDiffuse(parseVector3Array(itor->value));
         }
 
         itor = json.FindMember("detail_weight");
-        if( itor != json.MemberEnd() && itor->value.IsObject() )
+        if (itor != json.MemberEnd() && itor->value.IsObject())
         {
-            const rapidjson::Value &subobj = itor->value;
-            loadTexture( subobj, blocks, TERRA_DETAIL_WEIGHT, terraDatablock, resourceGroup );
+            const rapidjson::Value& subobj = itor->value;
+            loadTexture(subobj, blocks, TERRA_DETAIL_WEIGHT, terraDatablock, resourceGroup);
         }
 
-        for( uint8 i = 0u; i < 4u; ++i )
+        for (uint8 i = 0u; i < 4u; ++i)
         {
             const String iAsStr = StringConverter::toString(i);
             String texTypeName = "detail" + iAsStr;
 
             itor = json.FindMember(texTypeName.c_str());
-            if( itor != json.MemberEnd() && itor->value.IsObject() )
+            if (itor != json.MemberEnd() && itor->value.IsObject())
             {
-                const rapidjson::Value &subobj = itor->value;
-                loadTexture( subobj, blocks, static_cast<TerraTextureTypes>(TERRA_DETAIL0 + i),
-                             terraDatablock, resourceGroup );
+                const rapidjson::Value& subobj = itor->value;
+                loadTexture(subobj, blocks, static_cast<TerraTextureTypes>(TERRA_DETAIL0 + i),
+                            terraDatablock, resourceGroup);
 
-                itor = subobj.FindMember( "roughness" );
-                if( itor != subobj.MemberEnd() && itor->value.IsNumber() )
-                    terraDatablock->setRoughness( i, static_cast<float>( itor->value.GetDouble() ) );
+                itor = subobj.FindMember("roughness");
+                if (itor != subobj.MemberEnd() && itor->value.IsNumber())
+                    terraDatablock->setRoughness(i, static_cast<float>(itor->value.GetDouble()));
 
-                itor = subobj.FindMember( "metalness" );
-                if( itor != subobj.MemberEnd() && itor->value.IsNumber() )
-                    terraDatablock->setMetalness( i, static_cast<float>( itor->value.GetDouble() ) );
+                itor = subobj.FindMember("metalness");
+                if (itor != subobj.MemberEnd() && itor->value.IsNumber())
+                    terraDatablock->setMetalness(i, static_cast<float>(itor->value.GetDouble()));
 
-                Vector4 offsetScale( 0, 0, 1, 1 );
+                Vector4 offsetScale(0, 0, 1, 1);
 
-                itor = subobj.FindMember( "offset" );
-                if( itor != subobj.MemberEnd() && itor->value.IsArray() )
-                    parseOffset( itor->value, offsetScale );
+                itor = subobj.FindMember("offset");
+                if (itor != subobj.MemberEnd() && itor->value.IsArray())
+                    parseOffset(itor->value, offsetScale);
 
-                itor = subobj.FindMember( "scale" );
-                if( itor != subobj.MemberEnd() && itor->value.IsArray() )
-                    parseScale( itor->value, offsetScale );
+                itor = subobj.FindMember("scale");
+                if (itor != subobj.MemberEnd() && itor->value.IsArray())
+                    parseScale(itor->value, offsetScale);
 
-                terraDatablock->setDetailMapOffsetScale( i, offsetScale );
+                terraDatablock->setDetailMapOffsetScale(i, offsetScale);
 
-                loadTexture( subobj, "diffuse_map", static_cast<TerraTextureTypes>( TERRA_DETAIL0 + i ),
-                             terraDatablock, resourceGroup );
-                loadTexture( subobj, "normal_map",
-                             static_cast<TerraTextureTypes>( TERRA_DETAIL0_NM + i ), terraDatablock,
-                             resourceGroup );
-                loadTexture( subobj, "roughness_map",
-                             static_cast<TerraTextureTypes>( TERRA_DETAIL_ROUGHNESS0 + i ),
-                             terraDatablock, resourceGroup );
-                loadTexture( subobj, "metalness_map",
-                             static_cast<TerraTextureTypes>( TERRA_DETAIL_METALNESS0 + i ),
-                             terraDatablock, resourceGroup );
+                loadTexture(subobj, "diffuse_map", static_cast<TerraTextureTypes>(TERRA_DETAIL0 + i),
+                            terraDatablock, resourceGroup);
+                loadTexture(subobj, "normal_map",
+                            static_cast<TerraTextureTypes>(TERRA_DETAIL0_NM + i), terraDatablock,
+                            resourceGroup);
+                loadTexture(subobj, "roughness_map",
+                            static_cast<TerraTextureTypes>(TERRA_DETAIL_ROUGHNESS0 + i),
+                            terraDatablock, resourceGroup);
+                loadTexture(subobj, "metalness_map",
+                            static_cast<TerraTextureTypes>(TERRA_DETAIL_METALNESS0 + i),
+                            terraDatablock, resourceGroup);
 
-//                itor = subobjec.FindMember("sampler");
-//                if( itor != subobjec.MemberEnd() && itor->value.IsString() )
-//                {
+                //                itor = subobjec.FindMember("sampler");
+                //                if( itor != subobjec.MemberEnd() && itor->value.IsString() )
+                //                {
                 //                    map<LwConstString, const HlmsSamplerblock*>::type::const_iterator
                 //                    it =
-//                            blocks.samplerblocks.find(
+                //                            blocks.samplerblocks.find(
                 //                                LwConstString::FromUnsafeCStr( itor->value.GetString())
                 //                                );
-//                    if( it != blocks.samplerblocks.end() )
-//                    {
-//                        textures[TERRA_DETAIL0 + i].samplerblock = it->second;
-//                        textures[TERRA_DETAIL0_NM + i].samplerblock = it->second;
+                //                    if( it != blocks.samplerblocks.end() )
+                //                    {
+                //                        textures[TERRA_DETAIL0 + i].samplerblock = it->second;
+                //                        textures[TERRA_DETAIL0_NM + i].samplerblock = it->second;
                 //                        textures[TERRA_DETAIL_ROUGHNESS0 + i].samplerblock =
                 //                        it->second; textures[TERRA_DETAIL_METALNESS0 + i].samplerblock
                 //                        = it->second; for( int i=0; i<4; ++i )
                 //                            mHlmsManager->addReference( textures[TERRA_DETAIL0 +
                 //                            i].samplerblock );
-//                    }
-//                }
+                //                    }
+                //                }
             }
         }
 
         itor = json.FindMember("reflection");
-        if( itor != json.MemberEnd() && itor->value.IsObject() )
+        if (itor != json.MemberEnd() && itor->value.IsObject())
         {
-            const rapidjson::Value &subobj = itor->value;
-            loadTexture( subobj, blocks, TERRA_REFLECTION, terraDatablock, resourceGroup );
+            const rapidjson::Value& subobj = itor->value;
+            loadTexture(subobj, blocks, TERRA_REFLECTION, terraDatablock, resourceGroup);
+        }
+
+        itor = json.FindMember("detail_triplanar_diffuse");
+        if (itor != json.MemberEnd() && itor->value.IsBool())
+        {
+            terraDatablock->setDetailTriplanarDiffuseEnabled(itor->value.GetBool());
+        }
+
+        itor = json.FindMember("detail_triplanar_normal");
+        if (itor != json.MemberEnd() && itor->value.IsBool())
+        {
+            terraDatablock->setDetailTriplanarNormalEnabled(itor->value.GetBool());
+        }
+
+        itor = json.FindMember("detail_triplanar_roughness");
+        if (itor != json.MemberEnd() && itor->value.IsBool())
+        {
+            terraDatablock->setDetailTriplanarRoughnessEnabled(itor->value.GetBool());
+        }
+
+        itor = json.FindMember("detail_triplanar_metalness");
+        if (itor != json.MemberEnd() && itor->value.IsBool())
+        {
+            terraDatablock->setDetailTriplanarMetalnessEnabled(itor->value.GetBool());
         }
     }
     //-----------------------------------------------------------------------------------

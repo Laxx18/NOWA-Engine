@@ -114,31 +114,34 @@ namespace Ogre
         }
     }
     //-------------------------------------------------------------------------
-    void TerraWorkspaceListener::passSceneAfterShadowMaps( CompositorPassScene *pass )
+    void TerraWorkspaceListener::passSceneAfterShadowMaps(CompositorPassScene* pass)
     {
-        if( !m_terraNeedsRestoring )
+        if (!m_terraNeedsRestoring)
             return;  // Nothing to restore
 
-        const CompositorPassDef *definition = pass->getDefinition();
-        if( definition->getType() != PASS_SCENE )
-            return;  // We don't care
-
-        OGRE_ASSERT_HIGH( dynamic_cast<const CompositorPassSceneDef *>( definition ) );
-        const CompositorPassSceneDef *sceneDef =
-            static_cast<const CompositorPassSceneDef *>( definition );
-
-        if( sceneDef->mShadowNodeRecalculation == SHADOW_NODE_CASTER_PASS )
-            return;  // passEarlyPreExecute handled this
-
-        const FastArray<Terra *> &linkedTerras = m_hlmsTerra->getLinkedTerras();
-
-        FastArray<Terra *>::const_iterator itor = linkedTerras.begin();
-        FastArray<Terra *>::const_iterator endt = linkedTerras.end();
-
-        while( itor != endt )
+        if (pass)  // Can be nullptr if caller is a PASS_WARM_UP
         {
-            ( *itor )->setCamera( 0 );
-            ( *itor )->_swapSavedState();
+            const CompositorPassDef* definition = pass->getDefinition();
+            if (definition->getType() != PASS_SCENE)
+                return;  // We don't care
+
+            OGRE_ASSERT_HIGH(dynamic_cast<const CompositorPassSceneDef*>(definition));
+            const CompositorPassSceneDef* sceneDef =
+                static_cast<const CompositorPassSceneDef*>(definition);
+
+            if (sceneDef->mShadowNodeRecalculation == SHADOW_NODE_CASTER_PASS)
+                return;  // passPreExecute handled this
+        }
+
+        const FastArray<Terra*>& linkedTerras = m_hlmsTerra->getLinkedTerras();
+
+        FastArray<Terra*>::const_iterator itor = linkedTerras.begin();
+        FastArray<Terra*>::const_iterator endt = linkedTerras.end();
+
+        while (itor != endt)
+        {
+            (*itor)->setCamera(0);
+            (*itor)->_swapSavedState();
             ++itor;
         }
 

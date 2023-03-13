@@ -40,7 +40,7 @@ namespace NOWA
 		this->activated->setDescription("Picking will only take place if this component is activated.");
 		this->targetId->setDescription("Sets the target game object id to be picked.");
 		this->offsetPosition->setDescription("Sets the offset position at which the target game object shall be picked.");
-		this->springStrength->setDescription("Sets the pick spring strength. Default value is 20 N.");
+		this->springStrength->setDescription("Sets the pick spring strength. Default value is 20 N. Max is 49 N.");
 		this->dragAffectDistance->setDescription("Sets the drag affect distance in meters at which the target game object is affected by the picker.");
 		this->drawLine->setDescription("Sets whether to draw a picking line.");
 		this->mouseButtonPickId->setDescription("Sets the mouse pick id.");
@@ -131,8 +131,9 @@ namespace NOWA
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [this]()
 		{
-			InputDeviceCore::getSingletonPtr()->addMouseListener(this, PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
-			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
+			Ogre::String listenerName = PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName();
+			InputDeviceCore::getSingletonPtr()->addMouseListener(this, listenerName);
+			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, listenerName);
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
@@ -231,8 +232,8 @@ namespace NOWA
 			this->picker = nullptr;
 		}
 
-		InputDeviceCore::getSingletonPtr()->removeMouseListener(PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
-		InputDeviceCore::getSingletonPtr()->removeJoystickListener(PickerComponent::getStaticClassName() + Ogre::StringConverter::toString(this->getIndex()) + "_" + this->gameObjectPtr->getName());
+		InputDeviceCore::getSingletonPtr()->removeMouseListener(this);
+		InputDeviceCore::getSingletonPtr()->removeJoystickListener(this);
 	}
 	
 	void PickerComponent::onOtherComponentRemoved(unsigned int index)
@@ -415,9 +416,10 @@ namespace NOWA
 
 	void PickerComponent::setSpringStrength(Ogre::Real springStrength)
 	{
-		if (springStrength > 40.0f)
+		// 50 will escalate
+		if (springStrength > 49.0f)
 		{
-			springStrength = 40.0f;
+			springStrength = 49.0f;
 		}
 		else if (springStrength < 1.0f)
 		{

@@ -1,6 +1,6 @@
 /*
 -----------------------------------------------------------------------------
-This source file is part of OGRE
+This source file is part of OGRE-Next
     (Object-oriented Graphics Rendering Engine)
 For the latest info, see http://www.ogre3d.org/
 
@@ -55,16 +55,20 @@ namespace Ogre
         alignToNextMultiple<uint32>( HlmsTerraDatablock::MaterialSizeInGpu, 4 * 4 );
 
     //-----------------------------------------------------------------------------------
-    HlmsTerraDatablock::HlmsTerraDatablock( IdString name, HlmsTerra *creator,
-                                        const HlmsMacroblock *macroblock,
-                                        const HlmsBlendblock *blendblock,
-                                        const HlmsParamVec &params ) :
-        HlmsTerraBaseTextureDatablock( name, creator, macroblock, blendblock, params ),
-        mkDr( 0.318309886f ),
-        mkDg( 0.318309886f ),
-        mkDb( 0.318309886f ),  // Max Diffuse = 1 / PI
-        mShadowConstantBiasGpu( 0.0f ),
-        mBrdf( TerraBrdf::Default )
+    HlmsTerraDatablock::HlmsTerraDatablock(IdString name, HlmsTerra* creator,
+                                           const HlmsMacroblock* macroblock,
+                                           const HlmsBlendblock* blendblock,
+                                           const HlmsParamVec& params) :
+        HlmsTerraBaseTextureDatablock(name, creator, macroblock, blendblock, params),
+        mkDr(0.318309886f),
+        mkDg(0.318309886f),
+        mkDb(0.318309886f),  // Max Diffuse = 1 / PI
+        mShadowConstantBiasGpu(0.0f),
+        mBrdf(TerraBrdf::Default),
+        mDetailTriplanarDiffuseEnabled(false),
+        mDetailTriplanarNormalEnabled(false),
+        mDetailTriplanarRoughnessEnabled(false),
+        mDetailTriplanarMetalnessEnabled(false)
     {
         mShadowConstantBiasGpu = mShadowConstantBias = 0.01f;
 
@@ -73,10 +77,10 @@ namespace Ogre
         mMetalness[0] = mMetalness[1] = 1.0f;
         mMetalness[2] = mMetalness[3] = 1.0f;
 
-        for( size_t i=0; i<4; ++i )
-            mDetailsOffsetScale[i] = Vector4( 0, 0, 1, 1 );
+        for (size_t i = 0; i < 4; ++i)
+            mDetailsOffsetScale[i] = Vector4(0, 0, 1, 1);
 
-        creator->requestSlot( /*mTextureHash*/0, this, false );
+        creator->requestSlot( /*mTextureHash*/ 0, this, false);
         calculateHash();
     }
     //-----------------------------------------------------------------------------------
@@ -127,7 +131,7 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::scheduleConstBufferUpdate(void)
+    void HlmsTerraDatablock::scheduleConstBufferUpdate()
     {
         static_cast<HlmsTerra*>(mCreator)->scheduleForUpdate( this );
     }
@@ -170,7 +174,7 @@ namespace Ogre
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    Vector3 HlmsTerraDatablock::getDiffuse(void) const
+    Vector3 HlmsTerraDatablock::getDiffuse() const
     {
         return Vector3( mkDr, mkDg, mkDb ) * Ogre::Math::PI;
     }
@@ -249,9 +253,46 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    uint32 HlmsTerraDatablock::getBrdf(void) const
+    uint32 HlmsTerraDatablock::getBrdf() const { return mBrdf; }
+    //-----------------------------------------------------------------------------------
+    void HlmsTerraDatablock::setDetailTriplanarDiffuseEnabled( bool enabled )
     {
-        return mBrdf;
+        if( mDetailTriplanarDiffuseEnabled != enabled )
+        {
+            mDetailTriplanarDiffuseEnabled = enabled;
+
+            flushRenderables();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsTerraDatablock::setDetailTriplanarNormalEnabled( bool enabled )
+    {
+        if( mDetailTriplanarNormalEnabled != enabled )
+    {
+            mDetailTriplanarNormalEnabled = enabled;
+
+            flushRenderables();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsTerraDatablock::setDetailTriplanarRoughnessEnabled( bool enabled )
+    {
+        if( mDetailTriplanarRoughnessEnabled != enabled )
+        {
+            mDetailTriplanarRoughnessEnabled = enabled;
+
+            flushRenderables();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsTerraDatablock::setDetailTriplanarMetalnessEnabled( bool enabled )
+    {
+        if( mDetailTriplanarMetalnessEnabled != enabled )
+        {
+            mDetailTriplanarMetalnessEnabled = enabled;
+
+            flushRenderables();
+        }
     }
     //-----------------------------------------------------------------------------------
     bool HlmsTerraDatablock::suggestUsingSRGB( TerraTextureTypes type ) const

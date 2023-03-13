@@ -1,51 +1,63 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="Window" position="295 270 420 300" layer="Main" name="analysisWindow">
+    <Widget type="Window" skin="Window" position="295 270 420 350" layer="Main" name="analysisWindow">
         <Property key="Movable" value="true"/>
         <Property key="Caption" value="#{SceneAnalysis}"/>
         <Property key="Visible" value="false"/>
+		
         <Widget type="EditBox" skin="EditBox" position="15 10 390 25" name="gameObjectsCountLabel">
             <Property key="Caption" value="#{GameObjectsCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 35 390 25" name="dynamicGameObjectsCountLabel">
+		
+		<Widget type="EditBox" skin="EditBox" position="15 35 390 25" name="overlappingGameObjectsCountLabel">
+            <Property key="Caption" value="#{OverlappingGameObjectsCount}:"/>
+            <Property key="ReadOnly" value="true"/>
+            <Property key="Static" value="true"/>
+        </Widget>
+		
+		<Widget type="ComboBox" skin="ComboBox" position="15 60 390 25" layer="Overlapped" name="overlappingGameObjectsCombo">
+			<!--<Property key="ReadOnly" value="true"/>-->
+		</Widget>
+		
+		<Widget type="EditBox" skin="EditBox" position="15 85 390 25" name="dynamicGameObjectsCountLabel">
             <Property key="Caption" value="#{DynamicGameObjectsCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-        <Widget type="EditBox" skin="EditBox" position="15 60 390 25" name="componentsCountLabel">
+        <Widget type="EditBox" skin="EditBox" position="15 110 390 25" name="componentsCountLabel">
             <Property key="Caption" value="#{ComponentsCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 85 390 25" name="physicsBodyCountLabel">
+		<Widget type="EditBox" skin="EditBox" position="15 135 390 25" name="physicsBodyCountLabel">
             <Property key="Caption" value="#{PhysicsBodyCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 110 390 25" name="physicsConstraintsCountLabel">
+		<Widget type="EditBox" skin="EditBox" position="15 160 390 25" name="physicsConstraintsCountLabel">
             <Property key="Caption" value="#{PhysicsConstraintsCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 135 390 25" name="physicsMemoryLabel">
+		<Widget type="EditBox" skin="EditBox" position="15 185 390 25" name="physicsMemoryLabel">
             <Property key="Caption" value="#{PhysicsMemory}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 160 390 25" name="threadCountLabel">
+		<Widget type="EditBox" skin="EditBox" position="15 210 390 25" name="threadCountLabel">
             <Property key="Caption" value="#{ThreadCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
-		<Widget type="EditBox" skin="EditBox" position="15 185 390 25" name="lightsCountLabel">
+		<Widget type="EditBox" skin="EditBox" position="15 235 390 25" name="lightsCountLabel">
             <Property key="Caption" value="#{LightsCount}:"/>
             <Property key="ReadOnly" value="true"/>
             <Property key="Static" value="true"/>
         </Widget>
 		
-		<Widget type="Button" skin="Button" position="185 230 50 25" name="analysisOkButton">
+		<Widget type="Button" skin="Button" position="185 280 50 25" name="analysisOkButton">
             <Property key="Caption" value="Ok"/>
         </Widget>
     </Widget>

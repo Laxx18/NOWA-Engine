@@ -180,6 +180,7 @@
 	<Tag name="ShadowQuality">Shadow quality</Tag>
 	<Tag name="AmbientLightMode">Ambient light mode</Tag>
 	<Tag name="GameObjectsCount">GameObjects count</Tag>
+	<Tag name="OverlappingGameObjectsCount">Overlapping GameObjects count</Tag>
 	<Tag name="DynamicGameObjectsCount">Dynamic GameObjects count</Tag>
 	<Tag name="ComponentsCount">Components count</Tag>
 	<Tag name="Components">Components</Tag>

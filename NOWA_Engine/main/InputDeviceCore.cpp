@@ -268,6 +268,8 @@ namespace NOWA
 		else
 		{
 			// Doesn't Exist
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove key listener because the listener name: " + instanceName + " does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[InputDeviceCore] Error: Could not remove key listener because the listener name: " + instanceName + " does not exist!\n", "NOWA");
 		}
 	}
 
@@ -283,6 +285,8 @@ namespace NOWA
 		else
 		{
 			// Doesn't Exist
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove mouse listener because the listener name: " + instanceName + " does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[InputDeviceCore] Error: Could not remove mouse listener because the listener name: " + instanceName + " does not exist!\n", "NOWA");
 		}
 	}
 
@@ -298,6 +302,8 @@ namespace NOWA
 		else
 		{
 			// Doesn't Exist
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InputDeviceCore] Error: Could not remove joystick listener because the listener name: " + instanceName + " does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[InputDeviceCore] Error: Could not remove joystick listener because the listener name: " + instanceName + " does not exist!\n", "NOWA");
 		}
 	}
 

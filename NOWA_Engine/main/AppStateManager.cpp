@@ -408,15 +408,18 @@ namespace NOWA
 
 		if (simulationTickCount <= 30)
 		{
-			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(3.0f);
 		}
 		else if (simulationTickCount <= 60)
 		{
-			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.075f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.075f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(2.0f);
 		}
 		else if (simulationTickCount <= 144)
 		{
-			this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.07f);
+			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(0.1f);
 		}
 
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
@@ -431,8 +434,13 @@ namespace NOWA
 
 		// Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
+		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+
 		while (false == this->bShutdown)
 		{
+			double dt = (static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001) - currentTime;
+			currentTime += dt;
+
 			// Process signals from system
 			Ogre::WindowEventUtilities::messagePump();
 
@@ -528,11 +536,25 @@ namespace NOWA
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 			{
 				// Note: dt is always constant 1 / 60 = 0.0167
-				this->activeStateStack.back()->lateUpdate(tickCountDt);
+				if (0 == this->desiredUpdates)
+				{
+					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
+				}
+				else
+				{
+					this->activeStateStack.back()->lateUpdate(framesDt);
+				}
 			}
 
 			// Controls the shown fps in game!
-			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(framesDt);
+			if (0 == this->desiredUpdates)
+			{
+				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<Ogre::Real>(dt));
+			}
+			else
+			{
+				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(framesDt);
+			}
 
 			// Keeps track of how many frames are done this second
 			frameCount++;

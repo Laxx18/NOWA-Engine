@@ -177,6 +177,10 @@ namespace NOWA
 
 		Ogre::String getCategories(void) const;
 
+		void setUpdateThreshold(Ogre::Real updateThreshold);
+
+		Ogre::Real getUpdateThreshold(void) const;
+
 		/**
 		 * @brief Lua closure function gets called in order to react, when a game object enters the area.
 		 * @param[in] closureFunction The closure function set.
@@ -216,6 +220,7 @@ namespace NOWA
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrShortTimeActivation(void) { return "Short Time Activation"; }
 		static const Ogre::String AttrRadius(void) { return "Radius"; }
+		static const Ogre::String AttrUpdateThreshold(void) { return "Update Threshold"; }
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
 	private:
 
@@ -239,13 +244,13 @@ namespace NOWA
 		Variant* activated;
 		Variant* radius;
 		Variant* categories;
+		Variant* updateThreshold;
 		Variant* shortTimeActivation;
 
 		Ogre::SphereSceneQuery* sphereSceneQuery;
 		ITriggerSphereQueryObserver* triggerSphereQueryObserver;
 		std::unordered_map<unsigned long, GameObject*> triggeredGameObjects;
 		Ogre::Real triggerUpdateTimer;
-		Ogre::Real sphereQueryUpdateFrequency;
 		unsigned int categoriesId;
 		LuaScriptComponent* luaScriptComponent;
 
