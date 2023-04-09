@@ -1223,38 +1223,7 @@ namespace Ogre
         terraDataBlock->setDetailTriplanarDiffuseEnabled(true);
         terraDataBlock->setDetailTriplanarRoughnessEnabled(true);
         terraDataBlock->setDetailTriplanarMetalnessEnabled(true);
-
-        Ogre::Vector2 terrainDimensions = this->getXZDimensions();
-
-        const unsigned char detailMapsCount = 4;
-        Ogre::Vector4 detailMapOffsetScale[detailMapsCount];
-        for (size_t i = 0; i < detailMapsCount; i++)
-        {
-            detailMapOffsetScale[i] = terraDataBlock->getDetailMapOffsetScale(i);
-        }
-
-        // Switch between "common" UV mapping and world coordinates-based UV mapping (and vice versa)
-        if (true)
-        {
-            for (size_t i = 0; i < detailMapsCount; i++)
-            {
-                detailMapOffsetScale[i].z = 1.0f / (terrainDimensions.x / detailMapOffsetScale[i].z);
-                detailMapOffsetScale[i].w = 1.0f / (terrainDimensions.y / detailMapOffsetScale[i].w);
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < detailMapsCount; i++)
-            {
-                detailMapOffsetScale[i].z *= terrainDimensions.x;
-                detailMapOffsetScale[i].w *= terrainDimensions.y;
-            }
-        }
-
-        for (size_t i = 0; i < detailMapsCount; i++)
-        {
-            terraDataBlock->setDetailMapOffsetScale(i, detailMapOffsetScale[i]);
-        }
+        terraDataBlock->setDetailTriplanarNormalEnabled(true);
 
         if( mHlmsTerraIndex == std::numeric_limits<uint32>::max() )
         {

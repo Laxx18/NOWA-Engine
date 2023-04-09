@@ -7866,6 +7866,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getWaypointId(index));
 	}
 
+	void setAiAgentId(AiComponent* instance, const Ogre::String& agentId)
+	{
+		return instance->setAgentId(Ogre::StringConverter::parseUnsignedLong(agentId));
+	}
+
 	void bindAiComponents(lua_State* lua)
 	{
 		module(lua)
@@ -7884,6 +7889,7 @@ namespace NOWA
 			.def("reactOnAgentStuck", &AiComponent::reactOnAgentStuck)
 			.def("setAutoOrientation", &AiComponent::setAutoOrientation)
 			.def("setAutoAnimation", &AiComponent::setAutoAnimation)
+			.def("setAgentId", &setAiAgentId)
 		];
 
 		AddClassToCollection("AiComponent", "class inherits GameObjectComponent", "Base class for ai components with some attributes. Note: The game Object must have a PhysicsActiveComponent.");
@@ -7904,7 +7910,7 @@ namespace NOWA
 			"Sets whether to react the agent got stuck.");
 		AddClassToCollection("AiComponent", "void setAutoOrientation(bool autoOrientation)", "Sets whether the agent should be auto orientated during ai movement.");
 		AddClassToCollection("AiComponent", "void setAutoAnimation(bool autoAnimation)", "Sets whether to use auto animation during ai movement. That is, the animation speed is adapted dynamically depending the velocity, which will create a much more realistic effect. Note: The game object must have a proper configured animation component.");
-
+		AddClassToCollection("AiComponent", "void setAgentId(string agentId)", "Sets agent id, which shall be moved.");
 
 		module(lua)
 			[
@@ -9075,6 +9081,7 @@ namespace NOWA
 			.def("getRepeat", &JointHingeActuatorComponent::getRepeat)
 			.def("setSpring", (void (JointHingeActuatorComponent::*)(bool, bool)) & JointHingeActuatorComponent::setSpring)
 			.def("setSpring", (void (JointHingeActuatorComponent::*)(bool, bool, Ogre::Real, Ogre::Real, Ogre::Real)) & JointHingeActuatorComponent::setSpring)
+			.def("reactOnTargetAngleReached", &JointHingeActuatorComponent::reactOnTargetAngleReached)
 			];
 
 		AddClassToCollection("JointHingeActuatorComponent", "class inherits JointComponent", JointHingeActuatorComponent::getStaticInfoText());
@@ -9102,6 +9109,9 @@ namespace NOWA
 		AddClassToCollection("JointHingeActuatorComponent", "bool getRepeat()", "Gets whether the direction changed rotation is repeated.");
 		AddClassToCollection("JointHingeActuatorComponent", "void setSpring(bool asSpringDamper, bool massIndependent)", "Activates the spring with currently set spring values.");
 		AddClassToCollection("JointHingeActuatorComponent", "void setSpring(bool asSpringDamper, bool massIndependent, float springDamperRelaxation, float springK, float springD)", "Sets the spring values for this joint. Note: When 'asSpringDamper' is activated the joint will use spring values for rotation.");
+		AddClassToCollection("JointHingeActuatorComponent", "void reactOnTargetAngleReached(func closure, Degree angle)",
+							 "Sets whether to react at the moment when the game object has reached the target angle. Note: The angle parameter can be used to check if the min angle limit has been reached or the max angle limit.");
+
 
 		module(lua)
 		[
@@ -9323,7 +9333,8 @@ namespace NOWA
 			.def("getDirectionChange", &JointSliderActuatorComponent::getDirectionChange)
 			.def("setRepeat", &JointSliderActuatorComponent::setRepeat)
 			.def("getRepeat", &JointSliderActuatorComponent::getRepeat)
-			];
+			.def("reactOnTargetPositionReached", &JointSliderActuatorComponent::reactOnTargetPositionReached)
+		];
 		AddClassToCollection("JointSliderActuatorComponent", "class inherits JointComponent", "Derived class from JointComponent. A child body attached via a slider joint can only slide up and down (move along) the axis it is attached to. "
 			"It will move automatically to the given target position, or when direction change is activated from min- to max stop distance and vice versa.");
 		AddClassToCollection("JointSliderActuatorComponent", "String getId()", "Gets the id of this joint.");
@@ -9349,6 +9360,9 @@ namespace NOWA
 		AddClassToCollection("JointSliderActuatorComponent", "bool getDirectionChange()", "Gets whether the direction is changed, when the motion reaches the min or max stop distance.");
 		AddClassToCollection("JointSliderActuatorComponent", "void setRepeat(bool repeat)", "Sets whether to repeat the direction changed motion. Note: If set to false the motion will only go from min stop distance and back to max stop distance once.");
 		AddClassToCollection("JointSliderActuatorComponent", "bool getRepeat()", "Gets whether the direction changed motion is repeated.");
+
+		AddClassToCollection("JointSliderActuatorComponent", "void reactOnTargetPositionReached(func closure, Vector3 position)",
+							 "Sets whether to react at the moment when the game object has reached the target position. The position can be used to check if it equals the min stop distance or the max stop distance.");
 
 		module(lua)
 			[
@@ -9546,7 +9560,7 @@ namespace NOWA
 		AddClassToCollection("JointKinematicComponent", "void setShortTimeActivation(bool shortTimeActivation)", "If set to true, this component will be deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.");
 		AddClassToCollection("JointKinematicComponent", "bool getShortTimeActivation()", "Gets whether this component is deactivated shortly after it has been activated. Which means, the kinematic joint will take its target transform and remain there.");
 
-		AddClassToCollection("AreaOfInterestComponent", "void reactOnTargetPositionReached(func closure, otherGameObject)",
+		AddClassToCollection("JointKinematicComponent", "void reactOnTargetPositionReached(func closure, otherGameObject)",
 														  "Sets whether to react at the moment when the game object has reached the target position.");
 
 		module(lua)
@@ -9714,45 +9728,45 @@ namespace NOWA
 			.def("getMaxTorque1", &JointUniversalActuatorComponent::getMaxTorque1)
 			];
 
-		AddClassToCollection("JointHingeActuatorComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a universal actuator joint can rotate around two dimensions perpendicular to the axes it is attached to. "
+		AddClassToCollection("JointUniversalActuatorComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a universal actuator joint can rotate around two dimensions perpendicular to the axes it is attached to. "
 			"It will rotate automatically to the given target angle, or when direction change is activated from min- to max angle limit and vice versa. It can be seen like a double hinge joint.");
-		AddClassToCollection("JointHingeActuatorComponent", "String getId()", "Gets the id of this joint.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
-		AddClassToCollection("JointHingeActuatorComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setAngleRate0(float angularRate)", "Sets the first angle rate (rotation speed).");
-		AddClassToCollection("JointHingeActuatorComponent", "float getAngleRate0()", "Gets the first angle rate (rotation speed) for this joint.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setTargetAngle0(Degree targetAngle)", "Sets first target angle, the game object will be rotated to. Note: This does only work, if 'setDirectionChange0' is off.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getTargetAngle0()", "Gets first target angle.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMinAngleLimit0(Degree minAngleLimit)", "Sets the first min angle limit in degree. "
+		AddClassToCollection("JointUniversalActuatorComponent", "String getId()", "Gets the id of this joint.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
+		AddClassToCollection("JointUniversalActuatorComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setAngleRate0(float angularRate)", "Sets the first angle rate (rotation speed).");
+		AddClassToCollection("JointUniversalActuatorComponent", "float getAngleRate0()", "Gets the first angle rate (rotation speed) for this joint.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setTargetAngle0(Degree targetAngle)", "Sets first target angle, the game object will be rotated to. Note: This does only work, if 'setDirectionChange0' is off.");
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getTargetAngle0()", "Gets first target angle.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMinAngleLimit0(Degree minAngleLimit)", "Sets the first min angle limit in degree. "
 			"Note: If 'setDirectionChange0' is enabled, this is the angle at which the rotation direction will be changed.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getMinAngleLimit0()", "Gets the first min angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMaxAngleLimit0(Degree maxAngleLimit)", "Sets the first max angle limit in degree. "
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getMinAngleLimit0()", "Gets the first min angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMaxAngleLimit0(Degree maxAngleLimit)", "Sets the first max angle limit in degree. "
 			"Note: If 'setDirectionChange0' is enabled, this is the angle at which the rotation direction will be changed.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getMaxAngleLimit0()", "Gets the first max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMaxTorque0(float maxTorque)", "Sets the first max torque during rotation. Note: This will affect the rotation rate. "
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getMaxAngleLimit0()", "Gets the first max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMaxTorque0(float maxTorque)", "Sets the first max torque during rotation. Note: This will affect the rotation rate. "
 			"Note: A high value will cause that the rotation will start slow and will be faster and at the end slow again.");
-		AddClassToCollection("JointHingeActuatorComponent", "float getMaxTorque0()", "Gets the first max torque that is used during rotation.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setDirectionChange0(bool directionChange)", "Sets whether the direction should be changed, when the first rotation reaches the min or max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "bool getDirectionChange0()", "Gets whether the direction is changed, when the first rotation reaches the min or max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setRepeat0(bool repeat)", "Sets whether to repeat the first direction changed rotation. Note: If set to false the rotation will only go from min angle limit and back to max angular limit once.");
-		AddClassToCollection("JointHingeActuatorComponent", "bool getRepeat0()", "Gets whether the second direction changed rotation is repeated.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setAngleRate1(float angularRate)", "Sets the second angle rate (rotation speed).");
-		AddClassToCollection("JointHingeActuatorComponent", "float getAngleRate1()", "Gets the second angle rate (rotation speed) for this joint.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setTargetAngle1(Degree targetAngle)", "Sets second target angle, the game object will be rotated to. Note: This does only work, if 'setDirectionChange0' is off.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getTargetAngle1()", "Gets second target angle.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMinAngleLimit1(Degree minAngleLimit)", "Sets the second min angle limit in degree. "
+		AddClassToCollection("JointUniversalActuatorComponent", "float getMaxTorque0()", "Gets the first max torque that is used during rotation.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setDirectionChange0(bool directionChange)", "Sets whether the direction should be changed, when the first rotation reaches the min or max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "bool getDirectionChange0()", "Gets whether the direction is changed, when the first rotation reaches the min or max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setRepeat0(bool repeat)", "Sets whether to repeat the first direction changed rotation. Note: If set to false the rotation will only go from min angle limit and back to max angular limit once.");
+		AddClassToCollection("JointUniversalActuatorComponent", "bool getRepeat0()", "Gets whether the second direction changed rotation is repeated.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setAngleRate1(float angularRate)", "Sets the second angle rate (rotation speed).");
+		AddClassToCollection("JointUniversalActuatorComponent", "float getAngleRate1()", "Gets the second angle rate (rotation speed) for this joint.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setTargetAngle1(Degree targetAngle)", "Sets second target angle, the game object will be rotated to. Note: This does only work, if 'setDirectionChange0' is off.");
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getTargetAngle1()", "Gets second target angle.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMinAngleLimit1(Degree minAngleLimit)", "Sets the second min angle limit in degree. "
 			"Note: If 'setDirectionChange1' is enabled, this is the angle at which the rotation direction will be changed.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getMinAngleLimit1()", "Gets the second min angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMaxAngleLimit1(Degree maxAngleLimit)", "Sets the second max angle limit in degree. "
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getMinAngleLimit1()", "Gets the second min angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMaxAngleLimit1(Degree maxAngleLimit)", "Sets the second max angle limit in degree. "
 			"Note: If 'setDirectionChange1' is enabled, this is the angle at which the rotation direction will be changed.");
-		AddClassToCollection("JointHingeActuatorComponent", "Degree getMaxAngleLimit1()", "Gets the second max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setMaxTorque1(float maxTorque)", "Sets the second max torque during rotation. Note: This will affect the rotation rate. "
+		AddClassToCollection("JointUniversalActuatorComponent", "Degree getMaxAngleLimit1()", "Gets the second max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setMaxTorque1(float maxTorque)", "Sets the second max torque during rotation. Note: This will affect the rotation rate. "
 			"Note: A high value will cause that the rotation will start slow and will be faster and at the end slow again.");
-		AddClassToCollection("JointHingeActuatorComponent", "float getMaxTorque1()", "Gets the second max torque that is used during rotation.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setDirectionChange1(bool directionChange)", "Sets whether the direction should be changed, when the second rotation reaches the min or max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "bool getDirectionChange1()", "Gets whether the direction is changed, when the second rotation reaches the min or max angle limit.");
-		AddClassToCollection("JointHingeActuatorComponent", "void setRepeat1(bool repeat)", "Sets whether to repeat the second direction changed rotation. Note: If set to false the rotation will only go from min angle limit and back to max angular limit once.");
-		AddClassToCollection("JointHingeActuatorComponent", "bool getRepeat1()", "Gets whether the second direction changed rotation is repeated.");
+		AddClassToCollection("JointUniversalActuatorComponent", "float getMaxTorque1()", "Gets the second max torque that is used during rotation.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setDirectionChange1(bool directionChange)", "Sets whether the direction should be changed, when the second rotation reaches the min or max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "bool getDirectionChange1()", "Gets whether the direction is changed, when the second rotation reaches the min or max angle limit.");
+		AddClassToCollection("JointUniversalActuatorComponent", "void setRepeat1(bool repeat)", "Sets whether to repeat the second direction changed rotation. Note: If set to false the rotation will only go from min angle limit and back to max angular limit once.");
+		AddClassToCollection("JointUniversalActuatorComponent", "bool getRepeat1()", "Gets whether the second direction changed rotation is repeated.");
 
 		module(lua)
 			[

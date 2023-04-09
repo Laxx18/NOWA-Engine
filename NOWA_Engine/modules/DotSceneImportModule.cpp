@@ -2110,7 +2110,7 @@ namespace NOWA
 		}
 
 		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse item: " + name + " mesh: " + meshFile);
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse item: " + name + " mesh: " + meshFile);
 
 		Ogre::Item* item = nullptr;
 
@@ -2315,7 +2315,7 @@ namespace NOWA
 			}
 
 			float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end item: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end item: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds.");
 		}
 	}
 
@@ -2332,7 +2332,7 @@ namespace NOWA
 		Ogre::String tempMeshFile = meshFile;
 
 		float currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse entity: " + name + " mesh: " + meshFile);
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse entity: " + name + " mesh: " + meshFile);
 
 		// later maybe for complex objects
 		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=PixelCountLodStrategy&structure=Cookbook
@@ -2598,7 +2598,7 @@ namespace NOWA
 			}
 
 			float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end entity: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end entity: " + name + " mesh: " + meshFile + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
 		}
 	}
 

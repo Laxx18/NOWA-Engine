@@ -97,7 +97,7 @@ namespace NOWA
 				"Requirements: This component can only be placed under a game object with a workspace background component. Up to 9 background can be used.";
 		}
 
-		void lateUpdate(Ogre::Real dt, bool notSimulating);
+		void update(Ogre::Real dt, bool notSimulating);
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

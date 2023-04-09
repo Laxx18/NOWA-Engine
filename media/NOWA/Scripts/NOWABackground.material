@@ -82,8 +82,7 @@ material NOWABackgroundPostprocess
 			{
 				texture Sky.png
 				alpha_op_ex add src_manual src_texture 0.1
-				filtering			bilinear
-				// scale 10 10
+				filtering			none
 			}
 		}
 	}

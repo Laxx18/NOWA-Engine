@@ -124,7 +124,12 @@ namespace NOWA
 	bool AiLuaComponent::disconnect(void)
 	{
 		if (nullptr != this->movingBehaviorPtr)
+		{
+			delete this->pathGoalObserver;
+			this->pathGoalObserver = nullptr;
+			this->movingBehaviorPtr->setPathGoalObserver(nullptr);
 			this->movingBehaviorPtr->reset();
+		}
 
 		this->luaStateMachine->resetStates();
 

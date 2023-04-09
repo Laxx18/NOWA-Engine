@@ -201,7 +201,7 @@ namespace NOWA
 		this->lastPosition = this->pausedLastPosition;
 	}
 
-	void BackgroundScrollComponent::lateUpdate(Ogre::Real dt, bool notSimulating)
+	void BackgroundScrollComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && true == this->active->getBool() && nullptr != this->workspaceBackgroundComponent)
 		{

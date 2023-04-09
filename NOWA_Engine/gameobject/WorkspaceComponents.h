@@ -586,6 +586,10 @@ namespace NOWA
 		 * @see		GameObjectComponent::writeXML
 		 */
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+
+		void setHardwareGammaEnabled(bool hardwareGammaEnabled);
+
+		bool getHardwareGammaEnabled(void) const;
 	protected:
 		virtual void internalCreateCompositorNode(void) override;
 
@@ -601,9 +605,12 @@ namespace NOWA
 		void setBackgroundScrollSpeedY(unsigned short index, Ogre::Real backgroundScrollFarSpeedY);
 
 		void compileBackgroundMaterial(unsigned short index);
+	public:
+		static const Ogre::String AttrHardwareGammaEnabled(void) { return "Hardware Gamma Enabled"; }
 	private:
 		Ogre::MaterialPtr materialBackgroundPtr[9];
 		Ogre::Pass* passBackground[9];
+		Variant* hardwareGammaEnabled;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

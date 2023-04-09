@@ -583,10 +583,10 @@ namespace NOWA
 			this->createJoint();
 		}
 		// Note: release joint does not make any sense, else the joint is gone! E.g. deactivate lever motion, lever would flow in the universe
-		/*else
+		else
 		{
 			this->releaseJoint();
-		}*/
+		}
 	}
 
 	bool JointComponent::isActivated(void) const
@@ -1753,18 +1753,7 @@ namespace NOWA
 				}
 			}
 
-			// If the hinge took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
-			if (this->round == 2)
-			{
-				this->round = 0;
-				// if repeat is of, only change the direction one time, to get back to its origin and leave
-				if (false == this->repeat->getBool())
-				{
-					this->internalDirectionChange = false;
-				}
-			}
-
-			if (true == targetAngleReached && (true == this->repeat->getBool() || true == this->internalDirectionChange))
+			if (true == targetAngleReached && this->round == 2)
 			{
 				Ogre::Degree newAngle = Ogre::Degree(0.0f);
 
@@ -1773,12 +1762,23 @@ namespace NOWA
 				else
 					newAngle = Ogre::Degree(this->minAngleLimit->getReal());
 				hingeActuatorJoint->SetTargetAngle(newAngle);
-			}
 
-			if (true == targetAngleReached && false == this->internalDirectionChange && true == this->repeat->getBool())
-			{
-				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(0.0f));
-				hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->targetAngle->getReal()));
+				if (this->targetAngleReachedClosureFunction.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
 			}
 		}
 	}
@@ -2307,6 +2307,11 @@ namespace NOWA
 	std::tuple<bool, bool, Ogre::Real, Ogre::Real, Ogre::Real> JointHingeActuatorComponent::getSpring(void) const
 	{
 		return std::make_tuple(this->asSpringDamper->getBool(), this->massIndependent->getBool(), this->springDamperRelaxation->getReal(), this->springK->getReal(), this->springD->getReal());
+	}
+
+	void JointHingeActuatorComponent::reactOnTargetAngleReached(luabind::object closureFunction)
+	{
+		this->targetAngleReachedClosureFunction = closureFunction;
 	}
 	
 	/*******************************JointBallAndSocketComponent*******************************/
@@ -5878,6 +5883,23 @@ namespace NOWA
 						newPosition = this->minStopDistance->getReal();
 
 					sliderActuatorJoint->SetTargetPosition(newPosition);
+
+					if (this->targetPositionReachedClosureFunction.is_valid())
+					{
+						try
+						{
+							luabind::call_function<void>(this->targetPositionReachedClosureFunction, newPosition);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what())
+																		+ " details: " + msg.str());
+						}
+					}
 				}
 			}
 		}
@@ -6338,6 +6360,11 @@ namespace NOWA
 	bool JointSliderActuatorComponent::getRepeat(void) const
 	{
 		return this->repeat->getBool();
+	}
+
+	void JointSliderActuatorComponent::reactOnTargetPositionReached(luabind::object closureFunction)
+	{
+		this->targetPositionReachedClosureFunction = closureFunction;
 	}
 
 	/*******************************JointSlidingContactComponent*******************************/

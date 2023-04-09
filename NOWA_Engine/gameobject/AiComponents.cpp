@@ -25,11 +25,14 @@ namespace NOWA
 		stuckTime(new Variant(AiComponent::AttrStuckTime(), 0.0f, this->attributes)),
 		autoOrientation(new Variant(AiComponent::AttrAutoOrientation(), true, this->attributes)),
 		autoAnimation(new Variant(AiComponent::AttrAutoAnimation(), false, this->attributes)),
+		agentId(new Variant(AiComponent::AttrAgentId(), static_cast<unsigned long>(0), this->attributes, true)),
+
 		pathGoalObserver(nullptr),
 		agentStuckObserver(nullptr)
 	{
 		this->stuckTime->setDescription("The time in seconds the agent is stuck, until the current behavior will be removed. 0 disables the stuck check.");
 		this->autoAnimation->setDescription("Sets whether to use auto animation during ai movement. That is, the animation speed is adapted dynamically depending the velocity, which will create a much more realistic effect.Note: The game object must have a proper configured animation component.");
+		this->agentId->setDescription("Sets an optional agent id, which shall be moved. E.g. setting a waypoint and the target agent shall move to it.");
 	}
 
 	AiComponent::~AiComponent()
@@ -72,6 +75,11 @@ namespace NOWA
 			this->autoAnimation->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AgentId")
+		{
+			this->agentId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -79,9 +87,22 @@ namespace NOWA
 	{
 		if (true == this->activated->getBool())
 		{
-			this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+			if (0 != this->agentId->getULong())
+			{
+				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->agentId->getULong());
+				if (nullptr != sourceGameObjectPtr)
+				{
+					this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->agentId->getULong());
+				}
+			}
+			else
+			{
+				this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+			}
 			if (nullptr == this->movingBehaviorPtr)
+			{
 				return false;
+			}
 		}
 
 		// Component must be dynamic, because it will be moved
@@ -153,7 +174,14 @@ namespace NOWA
 		// If there is no ai component for this game object anymore, remove the behavior
 		if (false == stillAiComponentActive)
 		{
-			AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+			if (0 != this->agentId->getULong())
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->agentId->getULong());
+			}
+			else
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+			}
 		}
 	}
 
@@ -184,6 +212,10 @@ namespace NOWA
 		else if (AiComponent::AttrAutoAnimation() == attribute->getName())
 		{
 			this->setAutoAnimation(attribute->getBool());
+		}
+		else if (AiComponent::AttrAgentId() == attribute->getName())
+		{
+			this->setAgentId(attribute->getULong());
 		}
 	}
 
@@ -233,6 +265,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AutoAnimation"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->autoAnimation->getBool())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "AgentId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->agentId->getULong())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String AiComponent::getClassName(void) const
@@ -249,8 +287,7 @@ namespace NOWA
 	{
 		// Check if there is a physics active component and no ai lua component (because it already has a moving behavior)
 		auto aiLuaCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<AiLuaComponent>());
-		auto physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsActiveComponent>());
-		if (nullptr == aiLuaCompPtr && nullptr != physicsCompPtr)
+		if (nullptr == aiLuaCompPtr)
 		{
 			return true;
 		}
@@ -262,9 +299,23 @@ namespace NOWA
 		this->activated->setValue(activated);
 		if (true == activated)
 		{
-			this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+			if (0 != this->agentId->getULong())
+			{
+				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->agentId->getULong());
+				if (nullptr != sourceGameObjectPtr)
+				{
+					this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->agentId->getULong());
+				}
+			}
+			else
+			{
+				this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+			}
+
 			if (nullptr != this->movingBehaviorPtr)
+			{
 				this->movingBehaviorPtr->addBehavior(this->behaviorTypeId);
+			}
 		}
 		else
 		{
@@ -278,7 +329,17 @@ namespace NOWA
 					auto ptrFunction = [this]()
 					{
 						this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
-						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+						if (0 != this->agentId->getULong())
+						{
+							AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->agentId->getULong());
+						}
+						else
+						{
+							AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+						}
+						delete this->pathGoalObserver;
+						this->pathGoalObserver = nullptr;
+						this->movingBehaviorPtr->setPathGoalObserver(nullptr);
 						this->movingBehaviorPtr.reset();
 					};
 					NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
@@ -288,7 +349,17 @@ namespace NOWA
 				else
 				{
 					this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
-					AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+					if (0 != this->agentId->getULong())
+					{
+						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->agentId->getULong());
+					}
+					else
+					{
+						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
+					}
+					delete this->pathGoalObserver;
+					this->pathGoalObserver = nullptr;
+					this->movingBehaviorPtr->setPathGoalObserver(nullptr);
 					this->movingBehaviorPtr.reset();
 				}
 			}
@@ -391,6 +462,29 @@ namespace NOWA
 		}
 		this->movingBehaviorPtr->setAgentStuckObserver(this->agentStuckObserver);
 		static_cast<AgentStuckObserver*>(this->agentStuckObserver)->reactOnAgentStuck(closureFunction);
+	}
+
+	void AiComponent::setAgentId(unsigned long agentId)
+	{
+		if (0 != this->agentId->getULong())
+		{
+			// Removes the old behavior
+			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(agentId);
+			if (nullptr != sourceGameObjectPtr)
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(agentId);
+				this->movingBehaviorPtr.reset();
+
+				this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(agentId);
+			}
+		}
+
+		this->agentId->setValue(agentId);
+	}
+
+	unsigned long AiComponent::getAgentId(void) const
+	{
+		return this->agentId->getULong();
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

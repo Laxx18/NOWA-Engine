@@ -318,21 +318,24 @@ namespace NOWA
 												   Ogre::Vector3(endX - this->center->getVector3().x,    (this->dimensions->getVector3().y * 0.5f) + (this->center->getVector3().y), endZ - this->center->getVector3().z));
 			terra->setLocalAabb(aabb);
 
-			// Note: Default terra datablock must first always be used from json. On that base the data block may be adapted in datablock terra component.
-			Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraExampleMaterial");
-			if (nullptr != datablock)
+			if (nullptr != this->terra)
 			{
-				//        Ogre::HlmsDatablock *datablock = hlmsManager->getHlms( Ogre::HLMS_USER3 )->getDefaultDatablock();
-				//        Ogre::HlmsMacroblock macroblock;
-				//        macroblock.mPolygonMode = Ogre::PM_WIREFRAME;
-				//datablock->setMacroblock( macroblock );
+				// Note: Default terra datablock must first always be used from json. On that base the data block may be adapted in datablock terra component.
+				Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraExampleMaterial");
+				if (nullptr != datablock)
+				{
+					//        Ogre::HlmsDatablock *datablock = hlmsManager->getHlms( Ogre::HLMS_USER3 )->getDefaultDatablock();
+					//        Ogre::HlmsMacroblock macroblock;
+					//        macroblock.mPolygonMode = Ogre::PM_WIREFRAME;
+					//datablock->setMacroblock( macroblock );
 
-				this->terra->setDatablock(datablock);
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName());
-				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
+					this->terra->setDatablock(datablock);
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName());
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
+				}
 			}
 
 			// Terra cannot be moved after being created, so set static

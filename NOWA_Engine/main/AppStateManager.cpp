@@ -409,17 +409,20 @@ namespace NOWA
 		if (simulationTickCount <= 30)
 		{
 			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
-			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(3.0f);
+			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(30.0f);
+			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
 		}
 		else if (simulationTickCount <= 60)
 		{
 			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.075f);
-			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(2.0f);
+			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(15.0f);
+			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(15.0f);
 		}
 		else if (simulationTickCount <= 144)
 		{
 			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.07f);
-			// this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(0.1f);
+			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(12.0f);
+			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(12.0f);
 		}
 
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))

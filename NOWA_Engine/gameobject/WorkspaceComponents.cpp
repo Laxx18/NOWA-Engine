@@ -3608,7 +3608,8 @@ namespace NOWA
 			tex->setCubicTextureName(skyBoxName, true);
 			// tex->setEnvironmentMap(true);
 			// tex->setNumMipmaps(1024);
-			tex->setGamma(2.0);
+			tex->setGamma(8.0);
+			tex->setHardwareGammaEnabled(true);
 			material->compile();
 		}
 	}
@@ -3627,7 +3628,8 @@ namespace NOWA
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
-		: WorkspaceBaseComponent()
+		: WorkspaceBaseComponent(),
+		hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes))
 	{
 		for (size_t i = 0; i < 9; i++)
 		{
@@ -3643,6 +3645,12 @@ namespace NOWA
 	bool WorkspaceBackgroundComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
 		bool success = WorkspaceBaseComponent::init(propertyElement, filename);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HardwareGammaEnabled")
+		{
+			this->hardwareGammaEnabled->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		return success;
 	}
@@ -3660,6 +3668,10 @@ namespace NOWA
 	{
 		WorkspaceBaseComponent::actualizeValue(attribute);
 
+		if (WorkspaceBackgroundComponent::AttrHardwareGammaEnabled() == attribute->getName())
+		{
+			this->setHardwareGammaEnabled(attribute->getBool());
+		}
 	}
 
 	void WorkspaceBackgroundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -3672,6 +3684,62 @@ namespace NOWA
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
 		WorkspaceBaseComponent::writeXML(propertiesXML, doc, filePath);
+
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "HardwareGammaEnabled"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->hardwareGammaEnabled->getBool())));
+		propertiesXML->append_node(propertyXML);
+	}
+
+	void WorkspaceBackgroundComponent::setHardwareGammaEnabled(bool hardwareGammaEnabled)
+	{
+		this->hardwareGammaEnabled->setValue(hardwareGammaEnabled);
+		for (size_t i = 0; i < 9; i++)
+		{
+			Ogre::String strMaterialName = "NOWABackgroundPostprocess";
+			if (i > 0)
+			{
+				strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
+
+			}
+			this->materialBackgroundPtr[i] = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
+
+			if (true == this->materialBackgroundPtr[i].isNull())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
+				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
+			}
+
+			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
+			this->passBackground[i] = material->getTechnique(0)->getPass(0);
+			Ogre::TextureUnitState* tex = this->passBackground[i]->getTextureUnitState(0);
+
+			Ogre::HlmsSamplerblock samplerblock;
+			samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mMaxAnisotropy = 0;
+			samplerblock.mMagFilter = Ogre::FO_POINT;
+			samplerblock.mMinFilter = Ogre::FO_POINT;
+			samplerblock.mMipFilter = Ogre::FO_NONE;
+			samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
+
+			this->passBackground[i]->setSamplerblock(samplerblock);
+			
+			if (true == this->hardwareGammaEnabled->getBool())
+			{
+				tex->setGamma(8.0);
+			}
+			tex->setHardwareGammaEnabled(hardwareGammaEnabled);
+			tex->setNumMipmaps(0);
+			material->compile();
+		}
+	}
+
+	bool WorkspaceBackgroundComponent::getHardwareGammaEnabled(void) const
+	{
+		return this->hardwareGammaEnabled->getBool();
 	}
 
 	Ogre::String WorkspaceBackgroundComponent::getClassName(void) const
@@ -3837,11 +3905,14 @@ namespace NOWA
 					//https://forums.ogre3d.org/viewtopic.php?t=93636
 					//https://forums.ogre3d.org/viewtopic.php?t=94748
 
+					const Ogre::CompositorPassQuadDef::FrustumCorners corners = Ogre::CompositorPassQuadDef::NO_CORNERS;
+
 					// Background 1 quad
 					{
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 2 quad
@@ -3849,6 +3920,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess2";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 3 quad
@@ -3856,6 +3928,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess3";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 4 quad
@@ -3863,6 +3936,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess4";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 5 quad
@@ -3870,6 +3944,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess5";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 6 quad
@@ -3877,6 +3952,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess6";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 7 quad
@@ -3884,6 +3960,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess7";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 8 quad
@@ -3891,6 +3968,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess8";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Background 9 quad
@@ -3898,6 +3976,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad;
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 						passQuad->mMaterialName = "NOWABackgroundPostprocess9";
+						passQuad->mFrustumCorners = corners;
 					}
 
 					// Render Scene
@@ -4118,7 +4197,26 @@ namespace NOWA
 			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
 			this->passBackground[i] = material->getTechnique(0)->getPass(0);
 			Ogre::TextureUnitState* tex = this->passBackground[i]->getTextureUnitState(0);
+
+			Ogre::HlmsSamplerblock samplerblock;
+			samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
+			samplerblock.mMaxAnisotropy = 0;
+			samplerblock.mMagFilter = Ogre::FO_POINT;
+			samplerblock.mMinFilter = Ogre::FO_POINT;
+			samplerblock.mMipFilter = Ogre::FO_NONE;
+			samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
+
+			this->passBackground[i]->setSamplerblock(samplerblock);
+
+			if (true == this->hardwareGammaEnabled->getBool())
+			{
+				tex->setGamma(8.0);
+			}
+			tex->setHardwareGammaEnabled(this->hardwareGammaEnabled->getBool());
 			tex->setNumMipmaps(0);
+			material->compile();
 		}
 
 		this->changeViewportRect(0, this->viewportRect->getVector4());
@@ -4195,8 +4293,11 @@ namespace NOWA
 			Ogre::TextureUnitState* tex = this->passBackground[index]->getTextureUnitState(0);
 			tex->setNumMipmaps(0);
 			tex->setTextureName(backgroundTextureName);
-
-			// tex->setGamma(2.0);
+			if (true == this->hardwareGammaEnabled->getBool())
+			{
+				tex->setGamma(8.0);
+			}
+			tex->setHardwareGammaEnabled(this->hardwareGammaEnabled->getBool());
 			this->materialBackgroundPtr[index]->compile();
 		}
 	}

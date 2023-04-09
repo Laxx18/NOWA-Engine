@@ -623,8 +623,6 @@ namespace NOWA
 		{
 			if (std::get<COMPONENT>(*it)->getClassId() == LuaScriptComponent::getStaticClassId())
 				boost::static_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it))->lateUpdate(dt, notSimulating);
-			else if (std::get<COMPONENT>(*it)->getClassName() == BackgroundScrollComponent::getStaticClassName())
-				boost::static_pointer_cast<BackgroundScrollComponent>(std::get<COMPONENT>(*it))->lateUpdate(dt, notSimulating);
 		}
 	}
 	void GameObject::actualizeValue(Variant* attribute)

@@ -102,7 +102,7 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Requirements: A kind of physics active component must exist and no AiLuaComponent, because it has already a moving behavior, which can be used in lua script for all kinds of ai component behavior.";
+			return "Simple Ai movement";
 		}
 
 		void setRotationSpeed(Ogre::Real rotationSpeed);
@@ -130,6 +130,18 @@ namespace NOWA
 		void reactOnPathGoalReached(luabind::object closureFunction);
 
 		void reactOnAgentStuck(luabind::object closureFunction);
+
+		/**
+		 * @brief Sets agent id for the game object that shall move.
+		 * @param[in] agentId The agent id to set
+		 */
+		void setAgentId(unsigned long agentId);
+
+		/**
+		 * @brief Gets the agent id for the game object that shall move.
+		 * @return agentId The agent id to get
+		 */
+		unsigned long getAgentId(void) const;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrRotationSpeed(void) { return "Rotation Speed"; }
@@ -137,6 +149,7 @@ namespace NOWA
 		static const Ogre::String AttrStuckTime(void) { return "Stuck Time"; }
 		static const Ogre::String AttrAutoOrientation(void) { return "Auto Orientation"; }
 		static const Ogre::String AttrAutoAnimation(void) { return "Auto Animation"; }
+		static const Ogre::String AttrAgentId(void) { return "Agent Id"; }
 	protected:
 		Variant* activated;
 		Variant* rotationSpeed;
@@ -144,6 +157,7 @@ namespace NOWA
 		Variant* stuckTime;
 		Variant* autoOrientation;
 		Variant* autoAnimation;
+		Variant* agentId;
 		NOWA::KI::MovingBehavior::BehaviorType behaviorTypeId;
 		boost::shared_ptr<NOWA::KI::MovingBehavior> movingBehaviorPtr;
 		IPathGoalObserver* pathGoalObserver;

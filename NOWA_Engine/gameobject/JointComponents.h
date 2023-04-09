@@ -496,6 +496,12 @@ namespace NOWA
 		void setSpring(bool asSpringDamper, bool massIndependent, Ogre::Real springDamperRelaxation, Ogre::Real springK, Ogre::Real springD);
 
 		std::tuple<bool, bool, Ogre::Real, Ogre::Real, Ogre::Real> getSpring(void) const;
+
+		/**
+		 * @brief Lua closure function gets called in order to react, when the game object has reached the target angle.
+		 * @param[in] closureFunction The closure function set.
+		 */
+		void reactOnTargetAngleReached(luabind::object closureFunction);
 	public:
 		// Attribute constants
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
@@ -530,6 +536,7 @@ namespace NOWA
 		Variant* springK;
 		Variant* springD;
 		Variant* springDamperRelaxation;
+		luabind::object targetAngleReachedClosureFunction;
 	};
 
 	/*******************************JointBallAndSocketComponent*******************************/
@@ -1520,6 +1527,12 @@ namespace NOWA
 		void setRepeat(bool repeat);
 		
 		bool getRepeat(void) const;
+
+		/**
+		 *@brief Lua closure function gets called in order to react, when the game object has reached the target angle.
+		 * @param[in] closureFunction The closure function set.
+		 */
+		void reactOnTargetPositionReached(luabind::object closureFunction);
 	public:
 		// Attribute constants
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
@@ -1546,6 +1559,7 @@ namespace NOWA
 		short round;
 		bool internalDirectionChange;
 		Ogre::Real oppositeDir;
+		luabind::object targetPositionReachedClosureFunction;
 	};
 
 	/*******************************JointSlidingContactComponent*******************************/
