@@ -585,7 +585,8 @@ namespace NOWA
 		// Note: release joint does not make any sense, else the joint is gone! E.g. deactivate lever motion, lever would flow in the universe
 		else
 		{
-			this->releaseJoint();
+			// Only release this joint and not other chained joints or predecessors, targets!
+			this->internalReleaseJoint();
 		}
 	}
 
@@ -784,7 +785,7 @@ namespace NOWA
 		if (nullptr != this->joint)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Joint: "
-				+ this->type->getString() + " released");
+				+ this->type->getString() + " released for game object: " + this->gameObjectPtr->getName());
 
 			this->jointAlreadyCreated = false;
 
@@ -807,6 +808,21 @@ namespace NOWA
 					this->targetJointCompPtr.reset();
 				}
 			}
+		}
+	}
+
+	void JointComponent::internalReleaseJoint(void)
+	{
+		if (nullptr != this->joint)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Joint: "
+															+ this->type->getString() + " released for game object: " + this->gameObjectPtr->getName());
+
+			this->jointAlreadyCreated = false;
+
+			this->joint->destroyJoint(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt());
+			delete this->joint;
+			this->joint = nullptr;
 		}
 	}
 
@@ -1137,8 +1153,7 @@ namespace NOWA
 		
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeComponent] Cannot create joint for: " + gameObjectName + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -1174,15 +1189,11 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		
 		/*JointHingeActuatorCompPtr jointHingeActuatorCompPtr = boost::dynamic_pointer_cast<JointHingeActuatorComponent>(this->targetJointCompPtr);
 		if (nullptr == jointHingeActuatorCompPtr)*/
 		{
-			if (nullptr == this->body)
-			{
-				return false;
-			}
 			this->joint = new OgreNewt::Hinge(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		}
 //		else
@@ -1396,6 +1407,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointHingeComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -1726,6 +1738,7 @@ namespace NOWA
 			if (nullptr != hingeActuatorJoint)
 			{
 				Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
+				// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle));
 				Ogre::Real step = this->angleRate->getReal() * dt;
 				if (1.0f == this->oppositeDir)
 				{
@@ -1775,7 +1788,7 @@ namespace NOWA
 						std::stringstream msg;
 						msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
 																	+ " details: " + msg.str());
 					}
 				}
@@ -1961,6 +1974,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -1991,8 +2005,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -2019,6 +2032,10 @@ namespace NOWA
 			this->jointPosition = customJointPosition;
 		}
 
+		this->round = 0;
+		this->internalDirectionChange = this->directionChange->getBool();
+		this->oppositeDir = 1.0f;
+
 		OgreNewt::Body* predecessorBody = nullptr;
 		if (this->predecessorJointCompPtr)
 		{
@@ -2032,7 +2049,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::HingeActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), 
 								Ogre::Degree(this->angleRate->getReal()), Ogre::Degree(this->minAngleLimit->getReal()), Ogre::Degree(this->maxAngleLimit->getReal()));
 
@@ -2526,6 +2543,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointBallAndSocketComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -2561,9 +2579,9 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointBallAndSocketComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
+
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
 			Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -2595,7 +2613,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::BallAndSocket(this->body, predecessorBody, this->jointPosition);
 // Attention: Just a test!
 		// this->joint->setStiffness(0.1f);
@@ -2973,10 +2991,9 @@ namespace NOWA
 	//	return true;
 	//}
 	//	if (nullptr == this->body)
-	//	{
-	//	Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointControlledBallAndSocketComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-	//	return false;
-	//	}
+	//		{
+	//		this->connect();
+	//		}
 	//	if (Ogre::Vector3::ZERO == customJointPosition)
 	//	{
 	//		Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -3008,7 +3025,7 @@ namespace NOWA
 	//	}
 
 	//	// Release joint each time, to create new one with new values
-	//	this->releaseJoint();
+		// this->internalReleaseJoint();
 	//	this->joint = new OgreNewt::ControlledBallAndSocket(this->body, predecessorBody, this->jointPosition);
 
 	//	OgreNewt::ControlledBallAndSocket* controlledBallAndSocket = dynamic_cast<OgreNewt::ControlledBallAndSocket*>(this->joint);
@@ -3245,6 +3262,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointPointToPointComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -3275,8 +3293,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPointToPointComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		// Special type of joint, which cannot be created with world as precessor body
 		if (nullptr == this->predecessorJointCompPtr)
@@ -3307,7 +3324,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::PointToPoint(this->body, predecessorBody, this->jointPosition, this->jointPosition2);
 		// this->applyStiffness();
 
@@ -3639,10 +3656,9 @@ namespace NOWA
 		//	return true;
 		//}
 //		if (nullptr == this->body)
-//		{
-//		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[RagDollMotorDofComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-//		return false;
-//		}
+//			{
+//			this->connect();
+//			}
 //if (Ogre::Vector3::ZERO == customJointPosition)
 //		{
 //			Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -3674,7 +3690,7 @@ namespace NOWA
 //		}
 //
 //		// Release joint each time, to create new one with new values
-//		this->releaseJoint();
+//		this->internalReleaseJoint();
 //		
 //		unsigned int dofCount = 1;
 //		if ("2" == this->dofCount->getListSelectedValue())
@@ -3937,8 +3953,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -3948,7 +3963,8 @@ namespace NOWA
 		
 		this->jointPosition = this->body->getPosition();
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::UpVector(this->body, this->body->getOrientation() * this->pin->getVector3());
 
 		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
@@ -4104,6 +4120,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointPlaneComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -4129,8 +4146,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPlaneComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -4163,7 +4179,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::PlaneConstraint(this->body, predecessorBody, this->jointPosition, this->normal->getVector3());
 // Attention: Just a test!
 		// this->joint->setStiffness(0.1f);
@@ -4330,43 +4346,6 @@ namespace NOWA
 			return false;
 		}
 
-		/*
-		// See PhysicsActiveComponent
-		for (const auto& jointHandlerPtr : this->jointHandlers)
-		{
-			// Add the new cloned joint to list
-			JointHandlerPtr clonedJointHandlerPtr = jointHandlerPtr->clone();
-			clonedCompPtr->addJointHandler(clonedJointHandlerPtr);
-			
-			if ("Spring" == jointHandlerPtr->getType())
-			{
-				clonedCompPtr->addSpringJointHandler(clonedJointHandlerPtr);
-				// Spring can also be released
-				AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(clonedCompPtr.get(), &PhysicsActiveComponent::releaseSpringDelegate), EventDataSpringRelease::getStaticEventType());
-			}
-			else if ("KinematicController" == jointHandlerPtr->getType())
-			{
-				// Set gravity for friction equations
-				boost::shared_ptr<JointKinematicHandler> jointKinematicHandlerPtr = boost::dynamic_pointer_cast<JointKinematicHandler>(clonedJointHandlerPtr);
-				jointKinematicHandlerPtr->setGravity(clonedCompPtr->getGravity());
-			};
-			
-			// note: in post init, the new joint handlers get the valid data and will be added to game object controller!
-		}
-		*/
-
-		//// Add spring joint handlers to a list, but only if there are valid (having a predecessor joint handler)
-		// This was in final init of physicsactivecomponent
-		//for (const auto& jointHandlerPtr : this->jointHandlers)
-		//{
-		//	if ("Spring" == jointHandlerPtr->getType() && static_cast<unsigned long>(0) != jointHandlerPtr->getPredecessorId())
-		//	{
-		//		this->addSpringJointHandler(jointHandlerPtr);
-		//		// Spring can also be released
-		//		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsActiveComponent::releaseSpringDelegate), EventDataSpringRelease::getStaticEventType());
-		//	}
-		//}
-
 		return success;
 	}
 
@@ -4446,17 +4425,16 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSpringComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		this->jointPosition = this->body->getPosition();
 
-		if (this->predecessorJointCompPtr)
+		if (nullptr != this->predecessorJointCompPtr)
 		{
 			this->predecessorBody = this->predecessorJointCompPtr->getBody();
 		}
-		if (!this->predecessorBody)
+		if (nullptr == this->predecessorBody)
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSpringComponent] Could not create spring joint for " + this->gameObjectPtr->getName() + " because there no predecessor body!");
 			return false;
@@ -4766,8 +4744,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointAttractorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		this->jointPosition = this->body->getPosition();
 
@@ -5032,6 +5009,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointCorkScrewComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -5062,8 +5040,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointCorkScrewComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -5092,7 +5069,8 @@ namespace NOWA
 				+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::CorkScrew(this->body, predecessorBody, this->jointPosition);
 		OgreNewt::CorkScrew* corkScrewJoint = dynamic_cast<OgreNewt::CorkScrew*>(this->joint);
 
@@ -5514,8 +5492,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPassiveSliderComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -5555,7 +5532,8 @@ namespace NOWA
 			return false;
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::Slider(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		OgreNewt::Slider* passiveSlider = dynamic_cast<OgreNewt::Slider*>(this->joint);
 
@@ -5896,7 +5874,7 @@ namespace NOWA
 							std::stringstream msg;
 							msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what())
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what())
 																		+ " details: " + msg.str());
 						}
 					}
@@ -6049,6 +6027,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -6074,8 +6053,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSliderActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -6102,6 +6080,10 @@ namespace NOWA
 			this->jointPosition = customJointPosition;
 		}
 
+		this->round = 0;
+		this->internalDirectionChange = this->directionChange->getBool();
+		this->oppositeDir = 1.0f;
+
 		OgreNewt::Body* predecessorBody = nullptr;
 		if (this->predecessorJointCompPtr)
 		{
@@ -6115,7 +6097,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::SliderActuator(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3(), 
 												this->linearRate->getReal(), this->minStopDistance->getReal(), this->maxStopDistance->getReal());
 
@@ -6632,6 +6614,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointSlidingContactComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -6662,8 +6645,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSlidingContactComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -6695,7 +6677,8 @@ namespace NOWA
 			predecessorBody = this->predecessorJointCompPtr->getBody();
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::SlidingContact(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 		OgreNewt::SlidingContact* slidingContact = dynamic_cast<OgreNewt::SlidingContact*>(this->joint);
 
@@ -7124,8 +7107,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointActiveSliderComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -7158,7 +7140,8 @@ namespace NOWA
 			predecessorBody = this->predecessorJointCompPtr->getBody();
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::ActiveSliderJoint(this->body, predecessorBody, this->jointPosition, this->pin->getVector3(), this->minStopDistance->getReal(),
 			this->maxStopDistance->getReal(), this->moveSpeed->getReal(), this->repeat->getBool(), this->directionChange->getBool(), this->activated->getBool());
 
@@ -7237,6 +7220,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointActiveSliderComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -7548,8 +7532,8 @@ namespace NOWA
 					// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from +  to -");
 					if (true == this->directionChange->getBool())
 					{
-						oppositeDir *= -1.0f;
-						round++;
+						this->oppositeDir *= -1.0f;
+						this->round++;
 					}
 				}
 			}
@@ -7562,15 +7546,15 @@ namespace NOWA
 					// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from -  to +");
 					if (true == this->directionChange->getBool())
 					{
-						oppositeDir *= -1.0f;
-						round++;
+						this->oppositeDir *= -1.0f;
+						this->round++;
 					}
 				}
 			}
 			// if the slider took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
 			// also take the progress into account, the slider started at zero and should stop at zero
 			// maybe here attribute in xml, to set how many rounds the slider should proceed
-			if (round == 2 && this->progress >= 0.0f)
+			if (this->round == 2 && this->progress >= 0.0f)
 			{
 				// if repeat is of, only change the direction one time, to get back to its origin and leave
 				if (false == this->repeat->getBool())
@@ -7704,6 +7688,9 @@ namespace NOWA
 			return true;
 		}
 
+		this->round = 0;
+		this->oppositeDir = 1.0f;
+
 		return true;
 	}
 
@@ -7747,15 +7734,6 @@ namespace NOWA
 		{
 			this->setDirectionChange(attribute->getBool());
 		}
-	}
-
-	void JointMathSliderComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->oppositeDir = 1.0f;
-		this->progress = 0.0f;
-		this->round = 0;
 	}
 
 	void JointMathSliderComponent::setFunctionX(const Ogre::String& mx)
@@ -8114,8 +8092,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointKinematicComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -8135,7 +8112,8 @@ namespace NOWA
 		this->originPosition = this->jointPosition;
 		this->originRotation = this->body->getOrientation();
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		// has no predecessor body
 		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
 		OgreNewt::KinematicController* kinematicController = dynamic_cast<OgreNewt::KinematicController*>(this->joint);
@@ -8344,6 +8322,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointKinematicComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -8356,21 +8335,6 @@ namespace NOWA
 		else
 		{
 			return this->jointPosition;
-		}
-	}
-
-	void JointKinematicComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		else
-		{
-			this->releaseJoint();
 		}
 	}
 
@@ -8748,8 +8712,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointTargetTransformComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -8773,7 +8736,8 @@ namespace NOWA
 			return false;
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		// has no predecessor body
 		this->joint = new OgreNewt::KinematicController(this->body, this->jointPosition);
 		OgreNewt::KinematicController* kinematicController = static_cast<OgreNewt::KinematicController*>(this->joint);
@@ -8867,21 +8831,11 @@ namespace NOWA
 		return this->anchorPosition->getVector3();
 	}
 
-	void JointTargetTransformComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-	}
-
 	Ogre::Vector3 JointTargetTransformComponent::getUpdatedJointPosition(void)
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointTargetTransformComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -9084,6 +9038,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointPathFollowComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -9112,8 +9067,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointKinematicComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -9167,8 +9121,9 @@ namespace NOWA
 			}
 		}
 
-		this->releaseJoint();
-		// has no predecessor body
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
+		// Has no predecessor body
 		this->joint = new OgreNewt::PathFollow(this->body, predecessorBody, this->jointPosition);
 
 		OgreNewt::PathFollow* pathFollow = static_cast<OgreNewt::PathFollow*>(this->joint);
@@ -9187,21 +9142,6 @@ namespace NOWA
 		}
 
 		return success;
-	}
-
-	void JointPathFollowComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		/*else
-		{
-			this->releaseJoint();
-		}*/
 	}
 
 	void JointPathFollowComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -9443,8 +9383,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointDryRollingFrictionComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		
 		if (true == this->jointAlreadyCreated)
@@ -9453,7 +9392,8 @@ namespace NOWA
 			return true;
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::CustomDryRollingFriction(this->body, this->radius->getReal(), this->rollingFrictionCoefficient->getReal());
 		
 		return true;
@@ -9646,8 +9586,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointGearComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		//if (true == this->jointAlreadyCreated)
@@ -9701,7 +9640,8 @@ namespace NOWA
 			}
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 
 		if (jointHingeCompPtr1 && jointHingeCompPtr2)
 		{
@@ -9894,8 +9834,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointRackAndPinionComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		
 		if (nullptr == this->targetJointCompPtr)
@@ -9936,7 +9875,8 @@ namespace NOWA
 			}
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		// Worm gear: target hinge, predecessor slider
 		if (jointHingeCompPtr1 && jointPassiveSliderCompPtr2)
 		{
@@ -10119,8 +10059,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointWormGearComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (nullptr == this->targetJointCompPtr)
 		{
@@ -10159,7 +10098,8 @@ namespace NOWA
 			}
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		// Worm gear: target hinge, predecessor slider
 		if (jointHingeCompPtr1 && jointPassiveSliderCompPtr2)
 		{
@@ -10355,8 +10295,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPulleyComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		
 		//if (true == this->jointAlreadyCreated)
@@ -10406,7 +10345,8 @@ namespace NOWA
 			}
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		// Combinations of active and passive sliders are possible
 		if (jointPassiveSliderCompPtr1 && jointPassiveSliderCompPtr2)
 		{
@@ -10740,8 +10680,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointUniversalComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -10769,7 +10708,8 @@ namespace NOWA
 			predecessorBody = this->predecessorJointCompPtr->getBody();
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 
 		Ogre::Vector3 pin = Ogre::Vector3::ZERO;
 		if (Ogre::Vector3::ZERO != this->pin->getVector3())
@@ -11034,6 +10974,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointUniversalComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -11695,6 +11636,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointUniversalActuatorComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -11720,8 +11662,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointUniversalActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -11743,6 +11684,13 @@ namespace NOWA
 			this->jointPosition = customJointPosition;
 		}
 
+		this->round0 = 0;
+		this->round1 = 0;
+		this->internalDirectionChange0 = this->directionChange0->getBool();
+		this->internalDirectionChange1 = this->directionChange1->getBool();
+		this->oppositeDir0 = 1.0f;
+		this->oppositeDir1 = 1.0f;
+
 		OgreNewt::Body* predecessorBody = nullptr;
 		if (this->predecessorJointCompPtr)
 		{
@@ -11756,7 +11704,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::UniversalActuator(this->body, predecessorBody, this->jointPosition, 
 												Ogre::Degree(this->angleRate0->getReal()), Ogre::Degree(this->minAngleLimit0->getReal()), Ogre::Degree(this->maxAngleLimit0->getReal()),
 												Ogre::Degree(this->angleRate1->getReal()), Ogre::Degree(this->minAngleLimit1->getReal()), Ogre::Degree(this->maxAngleLimit1->getReal()));
@@ -11867,21 +11815,6 @@ namespace NOWA
 		{
 			this->setRepeat1(attribute->getBool());
 		}
-	}
-
-	void JointUniversalActuatorComponent::setActivated(bool activated)
-	{
-		JointComponent::setActivated(activated);
-
-		this->jointAlreadyCreated = false;
-		if (true == activated)
-		{
-			this->createJoint();
-		}
-		/*else
-		{
-			this->releaseJoint();
-		}*/
 	}
 
 	void JointUniversalActuatorComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
@@ -12283,8 +12216,7 @@ namespace NOWA
 		}
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[Joint6DofComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -12324,7 +12256,8 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Joint6DofComponent] Created 6 Dof joint: " + this->gameObjectPtr->getName() + " with world as parent");
 		}
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 		this->joint = new OgreNewt::Joint6Dof(this->body, predecessorBody, this->jointPosition, jointPosition2);
 		OgreNewt::Joint6Dof* joint6Dof = dynamic_cast<OgreNewt::Joint6Dof*>(this->joint);
 
@@ -12466,6 +12399,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Joint6DofComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -12740,8 +12674,7 @@ namespace NOWA
 		
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin0->getVector3())
 		{
@@ -12787,7 +12720,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 	
 		this->joint = new OgreNewt::Motor(this->body, predecessorBody, targetBody, predecessorBody->getOrientation() * this->pin0->getVector3(),
 													targetBody->getOrientation() * this->pin1->getVector3());
@@ -13107,8 +13040,7 @@ namespace NOWA
 		
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointWheelComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -13148,7 +13080,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 		
 		this->joint = new OgreNewt::Wheel(this->body, predecessorBody, this->jointPosition, this->body->getOrientation() * this->pin->getVector3());
 
@@ -13237,6 +13169,7 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointWheelComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 
@@ -13459,8 +13392,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -13478,7 +13410,8 @@ namespace NOWA
 		
 		this->jointPosition = this->body->getPosition();
 
-		this->releaseJoint();
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
 
 		Ogre::Vector3 dir = this->pin->getVector3();
 
@@ -13686,8 +13619,7 @@ namespace NOWA
 
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointFlexyPipeSpinnerComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the there is no physics body.");
-			return false;
+			this->connect();
 		}
 		
 		OgreNewt::Body* predecessorBody = nullptr;
@@ -13704,7 +13636,7 @@ namespace NOWA
 		}
 
 		// Release joint each time, to create new one with new values
-		this->releaseJoint();
+		this->internalReleaseJoint();
 
 		this->jointPosition = this->body->getPosition();
 

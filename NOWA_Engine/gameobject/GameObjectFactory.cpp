@@ -580,7 +580,7 @@ namespace NOWA
 				else
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: GameObject '" + gameObjectPtr->getName()
-																	+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "'");
+																	+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
 
 					propertyElement = propertyElement->next_sibling("property");
 					/*throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectFactory] GameObject '" + gameObjectPtr->getName()

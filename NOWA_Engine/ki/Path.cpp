@@ -35,7 +35,9 @@ namespace NOWA
 				return std::pair<bool, Ogre::Vector3>(this->valid, *this->currentWaypointItr);
 			}
 			else
-				return std::pair<bool, Ogre::Vector3>(false, Ogre::Vector3::ZERO);
+			{
+				return std::pair<bool, Ogre::Vector3>(false, Ogre::Vector3());
+			}
 		}
 
 		bool Path::isFinished(void)
@@ -108,7 +110,7 @@ namespace NOWA
 				newPos.y = 0.0f;
 				newPos.z += midZ;
 
-				this->wayPoints.push_back(newPos);
+				this->wayPoints.push_back(Ogre::Vector3(newPos));
 			}
 
 			this->currentWaypointItr = this->wayPoints.begin();
@@ -154,17 +156,17 @@ namespace NOWA
 			}
 		}
 
-		void Path::addWayPoint(Ogre::Vector3 newPoint)
+		void Path::addWayPoint(const Ogre::Vector3& waypoint)
 		{
-			this->wayPoints.push_back(newPoint);
+			this->wayPoints.push_back(waypoint);
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;
 		}
 
-		void Path::setWayPoint(Ogre::Vector3 newPoint)
+		void Path::setWayPoint(const Ogre::Vector3& waypoint)
 		{
 			this->wayPoints.clear();
-			this->wayPoints.push_back(newPoint);
+			this->wayPoints.push_back(waypoint);
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;
 			this->round = 0;
@@ -217,13 +219,17 @@ namespace NOWA
 				if (this->currentWaypointItr == wayPoints.end())
 				{
 					if (false == this->repeat)
+					{
 						this->valid = false;
+					}
 
 					// Valid false, but itr must be set to begin, else an exception will occur, because the itr is invalid when it is at the end!
 					this->currentWaypointItr = wayPoints.begin();
 					// if repeat is off, increment the round
 					if (false == this->repeat)
+					{
 						this->round++;
+					}
 
 					// Without direction change the agent may run just one round
 					if (1 == this->round && false == this->directionChange)
@@ -255,7 +261,9 @@ namespace NOWA
 				if (this->currentWaypointItr == wayPoints.begin())
 				{
 					if (false == this->repeat)
+					{
 						this->round++;
+					}
 					
 					if (1 == this->round && false == this->directionChange)
 					{

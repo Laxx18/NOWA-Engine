@@ -777,12 +777,12 @@ namespace NOWA
 				if (nullptr == this->waypoints[i])
 				{
 					this->waypoints[i] = new Variant(AiPathFollowComponent::AttrWaypoint() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0), this->attributes);
-					propertyElement = propertyElement->next_sibling("property");
 				}
 				else
 				{
 					this->waypoints[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0));
 				}
+				propertyElement = propertyElement->next_sibling("property");
 				this->waypoints[i]->addUserData(GameObject::AttrActionSeparator());
 			}
 		}
@@ -2614,11 +2614,16 @@ namespace NOWA
 		this->waypoints.resize(this->waypointsCount->getUInt());
 		for (size_t i = 0; i < this->waypoints.size(); i++)
 		{
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Waypoint" + Ogre::StringConverter::toString(i))
+			if (nullptr == this->waypoints[i])
 			{
 				this->waypoints[i] = new Variant(AiPathFollowComponent2D::AttrWaypoint() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0), this->attributes);
-				propertyElement = propertyElement->next_sibling("property");
 			}
+			else
+			{
+				this->waypoints[i]->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0));
+			}
+			propertyElement = propertyElement->next_sibling("property");
+			this->waypoints[i]->addUserData(GameObject::AttrActionSeparator());
 		}
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Repeat")

@@ -4,6 +4,7 @@
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/AnimationComponent.h"
+#include "gameobject/PlayerControllerComponents.h"
 #include "gameobject/JointComponents.h"
 #include "gameObject/CrowdComponent.h"
 #include "utilities/MathHelper.h"
@@ -25,7 +26,7 @@ namespace NOWA
 			defaultDirection(Ogre::Vector3::UNIT_Z),
 			autoOrientation(true),
 			autoAnimation(false),
-			animationComponent(nullptr),
+			animationBlender(nullptr),
 			oldAnimationSpeed(1.0f),
 			rotationSpeed(0.1f),
 			deceleration(FAST),
@@ -447,8 +448,7 @@ namespace NOWA
 
 			for (size_t i = 0; i < path.size(); i++)
 			{
-				Ogre::Vector3 waypoint = path[i];
-				this->pPath->addWayPoint(waypoint);
+				this->pPath->addWayPoint(path[i]);
 			}
 		}
 
@@ -550,11 +550,7 @@ namespace NOWA
 				node->attachObject(entity);*/
 
 				Ogre::Vector3 waypoint = path[i];
-				// Ogre::Real bottomCenter = MathHelper::getInstance()->getBottomCenterOfMesh(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()).y;
-				// Ogre::Real agentPosHeight = this->gameObjectPtr->getPosition().y/* - bottomCenter*/;
-				// waypoint.y = agentPosHeight;
-				this->pPath->addWayPoint(waypoint);
-				// node->setPosition(waypoint);
+				this->pPath->addWayPoint(Ogre::Vector3(path[i]));
 			}
 		}
 
@@ -845,7 +841,8 @@ namespace NOWA
 					{
 						currentWaypoint = this->pPath->getCurrentWaypoint();
 						
-						return this->seek(currentWaypoint.second, dt);
+						Ogre::Vector3 positionWithDirection = currentWaypoint.second;
+						return this->seek(positionWithDirection, dt);
 					}
 					else
 					{
@@ -1947,7 +1944,7 @@ namespace NOWA
 				}
 			}
 
-			this->motionDistanceChange = this->agent->getVelocity().length() /*/ this->agent->getSpeed()*/;
+			this->motionDistanceChange = this->agent->getVelocity().length() / this->agent->getSpeed();
 
 			this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.1f);
 
@@ -1957,9 +1954,9 @@ namespace NOWA
 			}
 
 			// Apply animation speed
-			if (nullptr != this->animationComponent)
+			if (nullptr != this->animationBlender)
 			{
-				this->animationComponent->setSpeed(this->oldAnimationSpeed * this->motionDistanceChange);
+				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange / this->animationBlender->getSource()->getLength());
 			}
 
 			this->lastMotionDistanceChange = this->motionDistanceChange;
@@ -2194,25 +2191,41 @@ namespace NOWA
 
 			if (true == autoAnimation)
 			{
+				bool hasAnimation = false;
+				AnimationBlender* animationBlender;
 				auto animationCompPtr = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponent>());
-				if (nullptr != animationCompPtr)
+				if (nullptr == animationCompPtr)
 				{
-					this->autoAnimation = autoAnimation;
-					this->animationComponent = animationCompPtr.get();
-					this->oldAnimationSpeed = animationCompPtr->getSpeed();
+					auto playerControllerCompPtr = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<PlayerControllerComponent>());
+					if (nullptr != playerControllerCompPtr)
+					{
+						animationBlender = playerControllerCompPtr->getAnimationBlender();
+						this->autoAnimation = autoAnimation;
+						this->animationBlender = animationBlender;
+						this->oldAnimationSpeed = playerControllerCompPtr->getAnimationSpeed();
+						hasAnimation = true;
+					}
 				}
 				else
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no animation component for game object: " 
+					animationBlender = animationCompPtr->getAnimationBlender();
+					this->autoAnimation = autoAnimation;
+					this->animationBlender = animationBlender;
+					this->oldAnimationSpeed = animationCompPtr->getSpeed();
+					hasAnimation = true;
+				}
+
+				if (false == hasAnimation)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent has no component which includes animation (AnimationComponent, PlayerControllerComponent) for game object: " 
 						+ this->agent->getOwner()->getName());
 				}
 			}
 			else
 			{
-				if (nullptr != this->animationComponent)
+				if (nullptr != this->animationBlender)
 				{
-					this->animationComponent->setSpeed(this->oldAnimationSpeed);
-					this->animationComponent = nullptr;
+					this->animationBlender = nullptr;
 				}
 			}
 		}
@@ -2666,7 +2679,7 @@ namespace NOWA
 			this->obstacleAvoidanceRangeRadius = 10.0f;
 			this->obstaclesAvoidanceCategoryIds = 0;
 			this->motionDistanceChange = 0.0f;
-			this->animationComponent = nullptr;
+			this->animationBlender = nullptr;
 			this->oldAnimationSpeed = 1.0f;
 			// this->setAgentId(0);
 		}

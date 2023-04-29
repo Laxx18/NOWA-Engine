@@ -47,28 +47,7 @@ namespace NOWA
 			this->attributeTypes.resize(this->attributesCount->getUInt());
 			this->attributeValues.resize(this->attributesCount->getUInt());
 		}
-		if (this->attributeNames.size() > 0)
-		{
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AttributeName0")
-			{
-				this->attributeNames[0]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AttributeType0")
-			{
-				this->attributeTypes[0]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
-				propertyElement = propertyElement->next_sibling("property");
-			}
-			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AttributeValue0")
-			{
-				// Make a link from value to name for better identification
-				this->attributeValues[0]->addUserData("Link", this->attributeNames[0]->getString());
-				
-				this->attributeValues[0]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
-				propertyElement = propertyElement->next_sibling("property");
-			}
-		}
-		for (size_t i = oldSize; i < this->attributeNames.size(); i++)
+		for (size_t i = 0; i < this->attributeNames.size(); i++)
 		{
 			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AttributeName" + Ogre::StringConverter::toString(i))
 			{

@@ -578,7 +578,7 @@ namespace NOWA
 
 		params.insert(std::make_pair("FSAA", cfgOpts["FSAA"].currentValue));
 		params.insert(std::make_pair("VSync", cfgOpts["VSync"].currentValue));
-		// params.insert(std::make_pair("reverse_depth", "Yes"));
+		params.insert(std::make_pair("reverse_depth", "Yes"));
 		Ogre::String useVsync = cfgOpts["VSync"].currentValue;
 
 		// Params for window inside graphics
@@ -3142,47 +3142,6 @@ namespace NOWA
 
 	bool Core::keyPressed(const OIS::KeyEvent& keyEventRef)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
-		OIS::KeyEvent tempKeyEvent = keyEventRef;
-		// Somehow ois sents text always 0 when numpad is key is pressed, so remap for my gui
-		switch (keyEventRef.key)
-		{
-		case OIS::KC_NUMPAD0:
-			tempKeyEvent.text = '0';
-			break;
-		case OIS::KC_NUMPAD1:
-			tempKeyEvent.text = '1';
-			break;
-		case OIS::KC_NUMPAD2:
-			tempKeyEvent.text = '2';
-			break;
-		case OIS::KC_NUMPAD3:
-			tempKeyEvent.text = '3';
-			break;
-		case OIS::KC_NUMPAD4:
-			tempKeyEvent.text = '4';
-			break;
-		case OIS::KC_NUMPAD5:
-			tempKeyEvent.text = '5';
-			break;
-		case OIS::KC_NUMPAD6:
-			tempKeyEvent.text = '6';
-			break;
-		case OIS::KC_NUMPAD7:
-			tempKeyEvent.text = '7';
-			break;
-		case OIS::KC_NUMPAD8:
-			tempKeyEvent.text = '8';
-			break;
-		case OIS::KC_NUMPAD9:
-			tempKeyEvent.text = '9';
-			break;
-		}
-			
-		MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
-
 		if (keyEventRef.key == OIS::KC_SYSRQ)
 		{
 			// Screenshot
@@ -3242,93 +3201,36 @@ namespace NOWA
 
 	bool Core::keyReleased(const OIS::KeyEvent& keyEventRef)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->stalisWorldLoadinglUpdates())
-		//	return true;
-
-		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(keyEventRef.key));
 		return true;
 	}
 
 	bool Core::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
-		// Useless, and working with abs dangerous, as e.g. 0.8 the mouse can never be moved to right corner!
-		//Ogre::Vector3 mouseSpeed;
-		//mouseSpeed.x = evt.state.X.rel * 0.2f;
-		//mouseSpeed.y = evt.state.Y.rel * 0.2f;
-		//mouseSpeed.z = evt.state.Z.rel/* / 100*/;
-
-		//float MOUSE_SPEED = 0.5;
-
-		////this is for mouse speed
-		//mouseSpeed.x = evt.state.X.rel * MOUSE_SPEED;
-		//mouseSpeed.y = evt.state.Y.rel * MOUSE_SPEED;
-		//mouseSpeed.z = evt.state.Z.rel / 100;
-
-		////this is for mouse coordinate in pixels
-		///*key.mPosAbs.x += key.mSpeed.x;
-		//key.mPosAbs.y += key.mSpeed.y;*/
-
-		////limits
-		//if (key.mPosAbs.x > viewport->getActualWidth())
-		//	key.mPosAbs.x = viewport->getActualWidth();
-		//if (key.mPosAbs.y > viewport->getActualHeight())
-		//	key.mPosAbs.y = viewport->getActualHeight();
-		//if (key.mPosAbs.x < 1)
-		//	key.mPosAbs.x = 1;
-		//if (key.mPosAbs.y < 1)
-		//	key.mPosAbs.y = 1;
-
-		////this is mouse coordinate as 0-1 values
-		//key.mPos.x = key.mPosAbs.x / ou.render.getScreenWidth();
-		//key.mPos.y = key.mPosAbs.y / ou.render.getScreenHeight();
-
-
-		MyGUI::InputManager::getInstancePtr()->injectMouseMove(evt.state.X.abs, evt.state.Y.abs, evt.state.Z.abs);
 		return true;
 	}
 
 	bool Core::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
-		MyGUI::InputManager::getInstancePtr()->injectMousePress(evt.state.X.abs, evt.state.Y.abs, MyGUI::MouseButton::Enum(id));
 		return true;
 	}
 
 	bool Core::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
-		MyGUI::InputManager::getInstancePtr()->injectMouseRelease(evt.state.X.abs, evt.state.Y.abs, MyGUI::MouseButton::Enum(id));
 		return true;
 	}
 	
 	bool Core::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
 		return true;
 	}
 		
 	bool Core::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
 		return true;
 	}
 	
 	bool Core::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 	{
-		// if (true == AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
-		// 	return true;
-
 		return true;
 	}
 	

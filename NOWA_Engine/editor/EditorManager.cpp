@@ -1734,14 +1734,14 @@ namespace NOWA
 		{
 			this->snapshotCameraTransform();
 
-			Ogre::Real distance = gameObject->getMovableObject()->getLocalAabb().getRadius() * 2.0f;
+			// World aabb updated uses also the scale of the node!
+			Ogre::Real distance = gameObject->getMovableObject()->getWorldAabbUpdated().getRadius() * 8.0f;
 
-			this->camera->getParentSceneNode()->_getFullTransformUpdated();
+			this->camera->setPosition(gameObject->getPosition() + (this->camera->getOrientation() * Ogre::Vector3(0, 0, distance)));
+
 			// Same as: camera->lookAt
-			this->camera->getParentSceneNode()->setDirection(gameObject->getPosition() - this->camera->getParentSceneNode()->getPosition());
-			this->camera->getParentSceneNode()->roll(Ogre::Radian(0.0f));
-
-			this->camera->getParentSceneNode()->setPosition(gameObject->getPosition() + (this->camera->getParentSceneNode()->getOrientation() * Ogre::Vector3(0, 0, distance)));
+			this->camera->lookAt(gameObject->getPosition());
+			// this->camera->roll(Ogre::Radian(0.0f));
 		}
 	}
 

@@ -235,6 +235,7 @@ namespace NOWA
 		void setJointPosition(const Ogre::Vector3& jointPosition);
 		void internalSetPriorId(unsigned long priorId);
 		void internalShowDebugData(bool activate, unsigned short type, const Ogre::Vector3& value1, const Ogre::Vector3& value2);
+		void internalReleaseJoint(void);
 		void applyStiffness(void);
 	protected:
 		Variant* activated;
@@ -1826,8 +1827,6 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
-		virtual void setActivated(bool activated) override;
-
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("JointMathSliderComponent");
@@ -1947,8 +1946,6 @@ namespace NOWA
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
-
-		virtual void setActivated(bool activated) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2089,8 +2086,6 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
-		virtual void setActivated(bool activated) override;
-
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
 		void setOffsetPosition(const Ogre::Vector3& offsetPosition);
@@ -2190,8 +2185,6 @@ namespace NOWA
 		{
 			return "Requirements: A kind of physics component must exist.";
 		}
-
-		virtual void setActivated(bool activated) override;
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
@@ -2780,8 +2773,6 @@ namespace NOWA
 		{
 			return "Requirements: A kind of physics component must exist.";
 		}
-
-		virtual void setActivated(bool activated) override;
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 

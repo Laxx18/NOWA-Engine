@@ -3,6 +3,7 @@
 #include "main/Core.h"
 #include "modules/InputDeviceModule.h"
 #include "console/LuaConsole.h"
+#include "MyGUI_InputManager.h"
 
 namespace NOWA
 {
@@ -407,6 +408,51 @@ namespace NOWA
 
 	bool InputDeviceCore::keyPressed(const OIS::KeyEvent& e)
 	{
+		OIS::KeyEvent tempKeyEvent = e;
+		// Somehow ois sents text always 0 when numpad is key is pressed, so remap for my gui
+		switch (e.key)
+		{
+		case OIS::KC_NUMPAD0:
+			tempKeyEvent.text = '0';
+			break;
+		case OIS::KC_NUMPAD1:
+			tempKeyEvent.text = '1';
+			break;
+		case OIS::KC_NUMPAD2:
+			tempKeyEvent.text = '2';
+			break;
+		case OIS::KC_NUMPAD3:
+			tempKeyEvent.text = '3';
+			break;
+		case OIS::KC_NUMPAD4:
+			tempKeyEvent.text = '4';
+			break;
+		case OIS::KC_NUMPAD5:
+			tempKeyEvent.text = '5';
+			break;
+		case OIS::KC_NUMPAD6:
+			tempKeyEvent.text = '6';
+			break;
+		case OIS::KC_NUMPAD7:
+			tempKeyEvent.text = '7';
+			break;
+		case OIS::KC_NUMPAD8:
+			tempKeyEvent.text = '8';
+			break;
+		case OIS::KC_NUMPAD9:
+			tempKeyEvent.text = '9';
+			break;
+		}
+
+		MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
+
+		// Do not react on input if there is any interaction with a mygui widget
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return false;
+		}
+
 		auto& itKeyListener = this->keyListeners.begin();
 		auto& itKeyListenerEnd = this->keyListeners.end();
 		for (; itKeyListener != itKeyListenerEnd; ++itKeyListener)
@@ -423,6 +469,15 @@ namespace NOWA
 
 	bool InputDeviceCore::keyReleased(const OIS::KeyEvent& e)
 	{
+		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
+
+		// Do not react on input if there is any interaction with a mygui widget
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return false;
+		}
+
 		auto& itKeyListener = this->keyListeners.begin();
 		auto& itKeyListenerEnd = this->keyListeners.end();
 		for (; itKeyListener != itKeyListenerEnd; ++itKeyListener)
@@ -443,6 +498,40 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseMoved(const OIS::MouseEvent& e)
 	{
+		// Useless, and working with abs dangerous, as e.g. 0.8 the mouse can never be moved to right corner!
+		//Ogre::Vector3 mouseSpeed;
+		//mouseSpeed.x = evt.state.X.rel * 0.2f;
+		//mouseSpeed.y = evt.state.Y.rel * 0.2f;
+		//mouseSpeed.z = evt.state.Z.rel/* / 100*/;
+
+		//float MOUSE_SPEED = 0.5;
+
+		////this is for mouse speed
+		//mouseSpeed.x = evt.state.X.rel * MOUSE_SPEED;
+		//mouseSpeed.y = evt.state.Y.rel * MOUSE_SPEED;
+		//mouseSpeed.z = evt.state.Z.rel / 100;
+
+		////this is for mouse coordinate in pixels
+		///*key.mPosAbs.x += key.mSpeed.x;
+		//key.mPosAbs.y += key.mSpeed.y;*/
+
+		////limits
+		//if (key.mPosAbs.x > viewport->getActualWidth())
+		//	key.mPosAbs.x = viewport->getActualWidth();
+		//if (key.mPosAbs.y > viewport->getActualHeight())
+		//	key.mPosAbs.y = viewport->getActualHeight();
+		//if (key.mPosAbs.x < 1)
+		//	key.mPosAbs.x = 1;
+		//if (key.mPosAbs.y < 1)
+		//	key.mPosAbs.y = 1;
+
+		////this is mouse coordinate as 0-1 values
+		//key.mPos.x = key.mPosAbs.x / ou.render.getScreenWidth();
+		//key.mPos.y = key.mPosAbs.y / ou.render.getScreenHeight();
+
+
+		MyGUI::InputManager::getInstancePtr()->injectMouseMove(e.state.X.abs, e.state.Y.abs, e.state.Z.abs);
+
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();
 		for (; itMouseListener != itMouseListenerEnd; ++itMouseListener)
@@ -463,6 +552,15 @@ namespace NOWA
 
 	bool InputDeviceCore::mousePressed(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
+		MyGUI::InputManager::getInstancePtr()->injectMousePress(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
+
+		// Do not react on input if there is any interaction with a mygui widget
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return false;
+		}
+
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();
 		for (; itMouseListener != itMouseListenerEnd; ++itMouseListener)
@@ -483,6 +581,15 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseReleased(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
+		MyGUI::InputManager::getInstancePtr()->injectMouseRelease(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
+
+		// Do not react on input if there is any interaction with a mygui widget
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return false;
+		}
+
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();
 		for (; itMouseListener != itMouseListenerEnd; itMouseListener++)

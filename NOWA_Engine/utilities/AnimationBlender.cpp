@@ -484,13 +484,13 @@ namespace NOWA
 
 			if (true == this->debugLog)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Source Animation: " + this->source->getAnimationName()
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Source Animation : " + this->source->getAnimationName()
 					+ " timePosition: " + Ogre::StringConverter::toString(this->source->getTimePosition())
 					+ " length: " + Ogre::StringConverter::toString(this->source->getLength())
 					+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->getWeight()));
 				if (target != nullptr)
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Target Animation: " + this->target->getAnimationName()
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Target Animation: " + this->target->getAnimationName()
 						+ " timePosition: " + Ogre::StringConverter::toString(this->target->getTimePosition())
 						+ " length: " + Ogre::StringConverter::toString(this->target->getLength()) + " weight: " + Ogre::StringConverter::toString(this->target->getWeight()));
 				}

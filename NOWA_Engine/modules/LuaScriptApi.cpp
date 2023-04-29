@@ -162,6 +162,16 @@ namespace NOWA
 		return Ogre::StringConverter::toString(val);
 	}
 
+	Ogre::String toString(const Ogre::Degree& val)
+	{
+		return Ogre::StringConverter::toString(val);
+	}
+
+	Ogre::String toString(const Ogre::Radian& val)
+	{
+		return Ogre::StringConverter::toString(val);
+	}
+
 	bool matches(const Ogre::String& name, const Ogre::String& pattern)
 	{
 		return Ogre::StringUtil::match(name, pattern, false);
@@ -207,6 +217,16 @@ namespace NOWA
 		luabind::module(lua)
 			[
 				luabind::def("toString", (Ogre::String(*)(const ColourValue&)) & toString)
+			];
+
+		luabind::module(lua)
+			[
+				luabind::def("toString", (Ogre::String(*)(const Degree&)) & toString)
+			];
+
+		luabind::module(lua)
+			[
+				luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
 			];
 
 		luabind::module(lua)
@@ -11264,7 +11284,7 @@ namespace NOWA
 		AddClassToCollection("Path", "bool getRepeat()", "Gets whether the path traversal should be repeated, if the path is finished.");
 		AddClassToCollection("Path", "void setDirectionChange(bool directionChange)", "Sets whether the traversal direction should be changed, if path is finished.");
 		AddClassToCollection("Path", "bool getDirectionChange()", "Gets whether the traversal direction should be changed, if path is finished.");
-		AddClassToCollection("Path", "void addWayPoint(Vector3 newPoint)", "Adds a new way point a the end of the list.");
+		AddClassToCollection("Path", "void addWayPoint(Vector3 newPoint)", "Adds a new way point at the end of the list.");
 		AddClassToCollection("Path", "void setWayPoint(Vector3 newPoint)", "Clears the list and sets a new way point.");
 		AddClassToCollection("Path", "void clear()", "Clears the way point list.");
 		AddClassToCollection("Path", "table[Vector3] getWayPoints()", "Gets the list of all waypoints.");
