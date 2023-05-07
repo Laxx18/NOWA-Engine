@@ -28,6 +28,7 @@ namespace NOWA
 			autoAnimation(false),
 			animationBlender(nullptr),
 			oldAnimationSpeed(1.0f),
+			oldGravity(Ogre::Vector3::ZERO),
 			rotationSpeed(0.1f),
 			deceleration(FAST),
 			wanderJitter(1.0f),
@@ -81,6 +82,7 @@ namespace NOWA
 				if (nullptr != physicsActiveComponent)
 				{
 					this->agent = physicsActiveComponent.get();
+					this->oldGravity = this->agent->getGravity();
 					this->oldAgentPositionForStuck = this->agent->getPosition();
 					this->defaultDirection = this->agent->getOwner()->getDefaultDirection();
 				}
@@ -100,6 +102,11 @@ namespace NOWA
 
 		MovingBehavior::~MovingBehavior()
 		{
+			if (nullptr != this->agent)
+			{
+				this->agent->setGravity(this->oldGravity);
+			}
+
 			if (nullptr != this->pPath)
 			{
 				delete this->pPath;
@@ -202,6 +209,7 @@ namespace NOWA
 				if (nullptr != physicsActiveComponent)
 				{
 					this->agent = physicsActiveComponent.get();
+					this->oldGravity = this->agent->getGravity();
 					this->oldAgentPositionForStuck = this->agent->getPosition();
 					this->defaultDirection = this->agent->getOwner()->getDefaultDirection();
 				}
@@ -274,6 +282,20 @@ namespace NOWA
 		void MovingBehavior::setFlyMode(bool flyMode)
 		{
 			this->flyMode = flyMode;
+			// Only if there is gravity use getVelocity, else if in the force equation no gravity is used, y of velocty value may go up to 2233 m per seconds!
+			// Hence if fly mode is set, deactivate gravity!
+			if (nullptr != this->agent)
+			{
+				if (true == flyMode)
+				{
+					this->oldGravity = this->agent->getGravity();
+					this->agent->setGravity(Ogre::Vector3::ZERO);
+				}
+				else
+				{
+					this->agent->setGravity(this->oldGravity);
+				}
+			}
 		}
 
 		bool MovingBehavior::isInFlyMode(void) const
@@ -1386,8 +1408,8 @@ namespace NOWA
 				return Ogre::Vector3::ZERO;
 
 			// First find the center of mass of all the agents
-			Ogre::Vector3 centerOfMass;
-			Ogre::Vector3 steeringForce;
+			Ogre::Vector3 centerOfMass = Ogre::Vector3::ZERO;
+			Ogre::Vector3 steeringForce = Ogre::Vector3::ZERO;
 
 			unsigned int neighborCount = 0;
 
@@ -1406,7 +1428,7 @@ namespace NOWA
 				}
 			}
 
-			if (neighborCount > 0)
+			if (neighborCount > 0 && centerOfMass.squaredLength() > 0.0f)
 			{
 				//the center of mass is the average of the sum of positions
 				centerOfMass /= static_cast<Ogre::Real>(neighborCount);
@@ -1443,7 +1465,7 @@ namespace NOWA
 			}
 
 			// Get average
-			if (neighborCount > 0)
+			if (neighborCount > 0 && distVector.squaredLength() > 0.0f)
 			{
 				distVector /= static_cast<Ogre::Real>(neighborCount);
 			}
@@ -1472,7 +1494,7 @@ namespace NOWA
 					neighborCount++;
 				}
 			}
-			if (neighborCount > 0)
+			if (neighborCount > 0 && sumVelocity.squaredLength() > 0.0f)
 			{
 				sumVelocity /= static_cast<Ogre::Real>(neighborCount);
 				sumVelocity -= this->agent->getVelocity();
@@ -1944,9 +1966,17 @@ namespace NOWA
 				}
 			}
 
-			this->motionDistanceChange = this->agent->getVelocity().length() / this->agent->getSpeed();
+			Ogre::Real velocityLength = this->agent->getVelocity().length();
+			if (true == Ogre::Math::RealEqual(velocityLength, 0.0f))
+			{
 
-			this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.1f);
+			}
+			else
+			{
+				this->motionDistanceChange = velocityLength / this->agent->getSpeed();
+
+				this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.1f);
+			}
 
 			if (this->motionDistanceChange > 1.0f)
 			{
@@ -2015,12 +2045,10 @@ namespace NOWA
 					if (false == this->flyMode)
 					{
 						resultVelocity.y = 0.0f;
-						physicsActiveKinematicComponent->setVelocity(physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
+						
 					}
-					else
-					{
-						physicsActiveKinematicComponent->setVelocity(resultVelocity);
-					}
+					
+					physicsActiveKinematicComponent->setVelocity(physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
 
 					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
 					
@@ -2054,12 +2082,8 @@ namespace NOWA
 					if (false == this->flyMode)
 					{
 						resultVelocity.y = 0.0f;
-						this->agent->applyRequiredForceForVelocity(this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
 					}
-					else
-					{
-						this->agent->applyRequiredForceForVelocity(resultVelocity + this->agent->getGravity());
-					}
+					this->agent->applyRequiredForceForVelocity(this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
 
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] vel: " + Ogre::StringConverter::toString(resultVelocity));
 
@@ -2554,9 +2578,9 @@ namespace NOWA
 		Ogre::Vector3 MovingBehavior::limitVelocity(const Ogre::Vector3& totalVelocity)
 		{
 			//// https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
-			// Ogre::Vector3 resultVelocity = totalForce / this->agent->getMass();
+			Ogre::Vector3 resultVelocity = totalVelocity /*/ this->agent->getMass()*/;
 			// Apply the physics velocity according to the resulting behavior
-			Ogre::Vector3 velocity = totalVelocity;
+			Ogre::Vector3 velocity = /*this->agent->getVelocity() +*/ resultVelocity;
 
 			if (nullptr == this->agent)
 			{
@@ -2571,10 +2595,11 @@ namespace NOWA
 			{
 				velocity = velocity.normalisedCopy() * this->agent->getMinSpeed();
 			}
-			
-			// Check whether agent is in fly mode, if not, limit y component of velocity
+
 			if (false == this->flyMode)
+			{
 				velocity.y = 0.0f;
+			}
 
 			return velocity;
 		}
@@ -2587,8 +2612,12 @@ namespace NOWA
 			}
 
 			// https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
-			Ogre::Vector3 resultVelocity = totalVelocity / this->agent->getMass();
-			Ogre::Vector3 velocity = this->agent->getVelocity() + resultVelocity;
+			Ogre::Vector3 resultVelocity = totalVelocity/* / this->agent->getMass()*/;
+			
+			Ogre::Vector3 velocity = /*this->agent->getVelocity() +*/ resultVelocity;
+			
+			// Only if there is gravity use getVelocity, else if in the force equation no gravity is used, y of velocty value may go up to 2233 m per seconds!
+			// Hence if fly mode is set, deactivate gravity!
 
 			if (velocity.squaredLength() > this->agent->getMaxSpeed() * this->agent->getMaxSpeed())
 			{
@@ -2600,7 +2629,26 @@ namespace NOWA
 			}
 
 			if (false == this->flyMode)
+			{
 				velocity.y = 0.0f;
+			}
+			/*else if (true == hasGravity)
+			{
+				Ogre::Vector3 tempGravity = gravity;
+				if (true == Ogre::Math::RealEqual(gravity.x, 0.0f))
+				{
+					tempGravity.x += 1.0f;
+				}
+				if (true == Ogre::Math::RealEqual(gravity.y, 0.0f))
+				{
+					tempGravity.y += 1.0f;
+				}
+				if (true == Ogre::Math::RealEqual(gravity.z, 0.0f))
+				{
+					tempGravity.z += 1.0f;
+				}
+				velocity /= tempGravity;
+			}*/
 
 			return velocity;
 		}

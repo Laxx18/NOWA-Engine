@@ -10268,15 +10268,32 @@ namespace NOWA
 		instance->getJointProperties().anchorPosition = anchorPosition;
 	}*/
 
+	PhysicsActiveComponent::ContactData getContactAhead(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, const Ogre::String& categoryIds)
+	{
+		return instance->getContactAhead(index, offset, length, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactToDirection(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
+							   Ogre::Real from, Ogre::Real to, bool forceDrawLine, const Ogre::String& categoryIds)
+	{
+		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactBelow(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
+	{
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+	}
+
 	void bindPhysicsActiveComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PhysicsActiveComponent::ContactData>("ContactData")
-				.def("getHitGameObject", &PhysicsActiveComponent::ContactData::getHitGameObject)
+		[
+			class_<PhysicsActiveComponent::ContactData>("ContactData")
+			.def("getHitGameObject", &PhysicsActiveComponent::ContactData::getHitGameObject)
 			.def("getHeight", &PhysicsActiveComponent::ContactData::getHeight)
 			.def("getNormal", &PhysicsActiveComponent::ContactData::getNormal)
-			];
+			.def("getSlope", &PhysicsActiveComponent::ContactData::getSlope)
+		];
 
 		module(lua)
 		[
@@ -10334,9 +10351,9 @@ namespace NOWA
 			.def("getContinuousCollision", &PhysicsActiveComponent::getContinuousCollision)
 
 			// .def("getContactAhead", (OgreNewt::BasicRaycast::BasicRaycastInfo (PhysicsActiveComponent::*)(Ogre::Vector3 , Ogre::Real )) &PhysicsActiveComponent::getContactAhead)
-			.def("getContactAhead", &PhysicsActiveComponent::getContactAhead)
-			.def("getContactToDirection", &PhysicsActiveComponent::getContactToDirection)
-			.def("getContactBelow", &PhysicsActiveComponent::getContactBelow)
+			.def("getContactAhead", &getContactAhead)
+			.def("getContactToDirection", &getContactToDirection)
+			.def("getContactBelow", &getContactBelow)
 			.def("setBounds", &PhysicsActiveComponent::setBounds)
 		];
 
@@ -10344,6 +10361,7 @@ namespace NOWA
 		AddClassToCollection("ContactData", "GameObject getHitGameObject()", "Gets the hit game object, if nothing has been hit, null will be returned.");
 		AddClassToCollection("ContactData", "float getHeight()", "Gets the height, at which the ray hit another game object. Note: This is usefull to check if a player is on ground.");
 		AddClassToCollection("ContactData", "float getNormal()", "Gets normal of the hit game object. Note: This can be used to check if a ground is to steep.");
+		AddClassToCollection("ContactData", "float getSlope()", "Gets the slope in degree to the hit game object.");
 
 		AddClassToCollection("PhysicsActiveComponent", "class inherits PhysicsComponent", "Derived class of PhysicsComponent. It can be used for physically active game objects (movable).");
 		// TODO: Check if its necessary, that each derived class must also set all functions, even they are already set in base class??
@@ -10431,17 +10449,18 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "void setAngularDamping(Vector3 angularDamping)", "Sets the angular damping. Range: [0, 1]");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getAngularDamping()", "Gets the angular damping.");
 
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAhead(Vector3 offset, float length, bool forceDrawLine)", "Gets a contact data if there was a physics ray contact a head of the physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAhead(int index,  Vector3 offset, float length, bool forceDrawLine, string categoryIds)", "Gets a contact data if there was a physics ray contact a head of the physics body. "
 			"The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
 			"The length of the ray in meters. If 'drawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
 
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactToDirection(Vector3 direction, Vector3 offset, float from, float to, bool forceDrawLine)", "Gets a contact data if there was a physics ray contact with a physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactToDirection(int index, const Vector3 direction, Vector3 offset, "
+							 "float from, float to, bool forceDrawLine, string categoryIds)", "Gets a contact data if there was a physics ray contact with a physics body. "
 			"The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
-			"The value 'from' is from which distance to shoot the ray and the value 'to' is the length of the ray in meters. If 'drawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
+			"The value 'from' is from which distance to shoot the ray and the value 'to' is the length of the ray in meters. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
 
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow(Vector3 offset, bool forceDrawLine)", "Gets a contact data below the physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow(int index, Vector3 offset, bool forceDrawLine, string categoryIds)", "Gets a contact data below the physics body. "
 			"The offset is used to set the offset position away from the physics component. "
-			"The value 'from' is from which distance to shoot the ray and the value 'to' is the length of the ray in meters. If 'drawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
+			"If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
 		AddClassToCollection("PhysicsActiveComponent", "void setBounds(Vector3 minBounds, Vector3 maxBounds)", "Sets the min max bounds, until which this body can be moved.");
      }
 

@@ -460,6 +460,8 @@ namespace NOWA
 	public:
 		static const Ogre::String AttrStartStateName(void) { return "Start State Name"; }
 	private:
+		void handleLuaScriptConnected(NOWA::EventDataPtr eventData);
+	private:
 		NOWA::KI::LuaStateMachine<GameObject>* luaStateMachine;
 		Variant* startStateName;
 	};

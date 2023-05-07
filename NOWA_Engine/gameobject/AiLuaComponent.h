@@ -6,6 +6,7 @@
 #include "ki/MovingBehavior.h"
 #include "modules/LuaScript.h"
 #include "utilities/LuaObserver.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -161,6 +162,8 @@ namespace NOWA
 		static const Ogre::String AttrRotationSpeed(void) { return "Rotation Speed"; }
 		static const Ogre::String AttrFlyMode(void) { return "Fly Mode"; }
 		static const Ogre::String AttrStartStateName(void) { return "Start State Name"; }
+	private:
+		void handleLuaScriptConnected(NOWA::EventDataPtr eventData);
 	protected:
 		Variant* activated;
 		Variant* rotationSpeed;

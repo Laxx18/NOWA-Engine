@@ -4,6 +4,7 @@
 #include "main/InputDeviceCore.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
+#include "MyGUI_InputManager.h"
 
 namespace NOWA
 {
@@ -62,6 +63,12 @@ namespace NOWA
 	{
 		if (true == cameraControlLocked)
 			return;
+
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return;
+		}
 		
 		Ogre::Vector3 moveValue = Ogre::Vector3::ZERO;
 
@@ -183,6 +190,12 @@ namespace NOWA
 	{
 		if (true == cameraControlLocked)
 			return;
+
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget)
+		{
+			return;
+		}
 
 		Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
 

@@ -382,12 +382,12 @@ namespace NOWA
 			bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
 
 		GameObject* getContact(int index, const Ogre::Vector3& direction = Ogre::Vector3::NEGATIVE_UNIT_Z, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f),
-			Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, bool drawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
+			Ogre::Real from = 0.0f, Ogre::Real to = 1.0f, bool forceDrawLine = false, unsigned int categoryIds = 0xFFFFFFFF);
 
 		bool getFixedContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, Ogre::Real scale, 
 			unsigned int categoryIds = 0xFFFFFFFF);
 
-		ContactData getContactBelow(int index, const Ogre::Vector3& positionOffset1, bool forceDrawLine = false, 
+		ContactData getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
 			unsigned int categoryIds = 0xFFFFFFFF);
 
 		Ogre::Real determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, 

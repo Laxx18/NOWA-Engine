@@ -406,6 +406,10 @@ namespace NOWA
 			void changeState(const luabind::object& newState)
 			{
 				this->previousState = this->currentState;
+				if (false == this->currentState.is_valid())
+				{
+					return;
+				}
 				try
 				{
 					// Call the exit method of the existing state

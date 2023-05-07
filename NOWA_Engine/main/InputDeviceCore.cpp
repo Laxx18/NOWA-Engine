@@ -446,12 +446,12 @@ namespace NOWA
 
 		MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
 
-		// Do not react on input if there is any interaction with a mygui widget
-		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-		if (nullptr != widget)
-		{
-			return false;
-		}
+		//// Do not react on input if there is any interaction with a mygui widget
+		//MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		//if (nullptr != widget)
+		//{
+		//	return false;
+		//}
 
 		auto& itKeyListener = this->keyListeners.begin();
 		auto& itKeyListenerEnd = this->keyListeners.end();

@@ -416,6 +416,7 @@ namespace NOWA
 			bool autoAnimation;
 			AnimationBlender* animationBlender;
 			Ogre::Real oldAnimationSpeed;
+			Ogre::Vector3 oldGravity;
 			// Target object
 			PhysicsActiveComponent* targetAgent;
 			PhysicsActiveComponent* targetAgent2;

@@ -711,8 +711,15 @@ namespace NOWA
 					if (std::get<COMPONENT>(component)->getOccurrenceIndex() == componentOccurrenceIndex)
 					{
 						GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
+						// If already tagged for destruction, do not get it!
+						if (true == baseCompPtr->bTaggedForRemovement)
+						{
+							return boost::weak_ptr<ComponentType>();
+						}
+
 						// Cast from base the the sub type
 						boost::shared_ptr<ComponentType> subCompPtr(boost::dynamic_pointer_cast<ComponentType>(baseCompPtr));
+
 						// Because of circular references between GameObject and GameObjectComponent, the Components, that are belonging to the GameObject
 						// must have a weak binding
 						boost::weak_ptr<ComponentType> weakSubCompPtr(subCompPtr);
@@ -770,8 +777,15 @@ namespace NOWA
 					if (std::get<COMPONENT>(component)->getName() == componentName)
 					{
 						GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
+						// If already tagged for destruction, do not get it!
+						if (true == baseCompPtr->bTaggedForRemovement)
+						{
+							return boost::weak_ptr<ComponentType>();
+						}
+
 						// Cast from base the the sub type
 						boost::shared_ptr<ComponentType> subCompPtr(boost::dynamic_pointer_cast<ComponentType>(baseCompPtr));
+
 						// Because of circular references between GameObject and GameObjectComponent, the Components, that are belonging to the GameObject
 						// must have a weak binding
 						boost::weak_ptr<ComponentType> weakSubCompPtr(subCompPtr);
@@ -783,6 +797,12 @@ namespace NOWA
 					if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getParentClassName() == componentName || std::get<COMPONENT>(component)->getParentParentClassName() == componentName)
 					{
 						GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
+						// If already tagged for destruction, do not get it!
+						if (true == baseCompPtr->bTaggedForRemovement)
+						{
+							return boost::weak_ptr<ComponentType>();
+						}
+
 						// Cast from base the the sub type
 						boost::shared_ptr<ComponentType> subCompPtr(boost::dynamic_pointer_cast<ComponentType>(baseCompPtr));
 						// Because of circular references between GameObject and GameObjectComponent, the Components, that are belonging to the GameObject

@@ -408,6 +408,7 @@ namespace NOWA
 	private:
 		bool bConnectedSuccess;
 		bool bIsExpanded;
+		bool bTaggedForRemovement;
 	};
 
 }; //Namespace end

@@ -1011,6 +1011,8 @@ namespace NOWA
 			this->baseListenerContainer = new HlmsBaseListenerContainer();
 			hlmsPbs->setListener(this->baseListenerContainer);
 			hlmsManager->registerHlms(hlmsPbs);
+
+			// hlmsPbs->setIndustryCompatible(true);
 		}
 
 		// HlmsTerra

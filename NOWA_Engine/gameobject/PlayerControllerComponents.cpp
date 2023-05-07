@@ -1250,6 +1250,8 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerJumpNRunLuaComponent] Destructor player controller 3D Lua component for game object: " + this->gameObjectPtr->getName());
 
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+
 		if (this->luaStateMachine)
 		{
 			delete this->luaStateMachine;
@@ -1266,6 +1268,9 @@ namespace NOWA
 			this->startStateName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+
 		return success;
 	}
 
@@ -1305,27 +1310,37 @@ namespace NOWA
 	{
 		bool success = PlayerControllerComponent::connect();
 
-		if (nullptr != this->gameObjectPtr->getLuaScript())
+		return success;
+	}
+
+	void PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteComponent> castEventData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
+		// Found the game object
+		if (this->gameObjectPtr->getId() == castEventData->getGameObjectId())
 		{
-			// http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
-
-			this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate(
-				"\n" + this->startStateName->getString() + " = { };\n"
-				"aiLuaComponent = nil;\n\n"
-				+ this->startStateName->getString() + "[\"enter\"] = function(gameObject)\n"
-				"\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n"
-				+ this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n"
-				+ this->startStateName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
-
-			if (true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
+			// Call enter on the start state
+			if (nullptr != this->gameObjectPtr->getLuaScript())
 			{
-				const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+				// http://www.allacrost.org/wiki/index.php?title=Scripting_Engine
 
-				// Call the start state name to start the lua file with that state
-				this->luaStateMachine->setCurrentState(compiledStateScriptReference);
+				this->gameObjectPtr->getLuaScript()->setInterfaceFunctionsTemplate(
+					"\n" + this->startStateName->getString() + " = { };\n"
+					"aiLuaComponent = nil;\n\n"
+					+ this->startStateName->getString() + "[\"enter\"] = function(gameObject)\n"
+					"\taiLuaComponent = gameObject:getAiLuaComponent();\nend\n\n"
+					+ this->startStateName->getString() + "[\"execute\"] = function(gameObject, dt)\n\nend\n\n"
+					+ this->startStateName->getString() + "[\"exit\"] = function(gameObject)\n\nend");
+
+				if (true == this->gameObjectPtr->getLuaScript()->createLuaEnvironmentForStateTable(this->startStateName->getString()))
+				{
+					const luabind::object& compiledStateScriptReference = this->gameObjectPtr->getLuaScript()->getCompiledStateScriptReference();
+
+					// Call the start state name to start the lua file with that state
+					this->luaStateMachine->setCurrentState(compiledStateScriptReference);
+				}
 			}
 		}
-		return success;
 	}
 
 	bool PlayerControllerJumpNRunLuaComponent::disconnect(void)

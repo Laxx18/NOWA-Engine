@@ -1702,14 +1702,14 @@ namespace NOWA
 		return std::move(PhysicsActiveComponent::ContactData(gameObject, height, normal, slope));
 	}
 
-	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactBelow(int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, unsigned int categoryIds)
+	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds)
 	{
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f; // Default invalid value for checking
 		Ogre::Real slope = 0.0f;
 		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 		//Anfangsposition
-		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + positionOffset;
+		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + offset;
 		//Straht von Anfangsposition bis 500 Meter nach unten erzeugen
 		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f, true);
 
@@ -1799,7 +1799,7 @@ namespace NOWA
 	}
 
 	GameObject* PhysicsActiveComponent::getContact(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, 
-		Ogre::Real from, Ogre::Real to, bool drawLine, unsigned int categoryIds)
+		Ogre::Real from, Ogre::Real to, bool forceDrawLine, unsigned int categoryIds)
 	{
 		Ogre::Vector3 tempDirection = this->physicsBody->getOrientation() * direction;
 		GameObject* gameObject = nullptr;
@@ -1812,7 +1812,7 @@ namespace NOWA
 
 		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
 
-		if (true == drawLine)
+		if (true == forceDrawLine)
 		{
 			// Get a key from id and user index to match a line, when line drawing is set to on
 			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContact";

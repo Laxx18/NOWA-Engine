@@ -29,13 +29,15 @@ namespace NOWA
 
 	AiLuaComponent::~AiLuaComponent()
 	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiLuaComponent] Destructor ai lua component for game object: " + this->gameObjectPtr->getName());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+
 		if (this->luaStateMachine)
 		{
 			delete this->luaStateMachine;
 			this->luaStateMachine = nullptr;
 		}
 		this->targetGameObject = nullptr;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiLuaComponent] Destructor ai lua component for game object: " + this->gameObjectPtr->getName());
 	}
 
 	bool AiLuaComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -62,6 +64,8 @@ namespace NOWA
 			this->startStateName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
 	
 		return true;
 	}
@@ -117,7 +121,6 @@ namespace NOWA
 		this->movingBehaviorPtr->setFlyMode(this->flyMode->getBool());
 		this->movingBehaviorPtr->setDefaultDirection(this->gameObjectPtr->getDefaultDirection());
 
-		this->setActivated(this->activated->getBool());
 		return true;
 	}
 
@@ -135,6 +138,17 @@ namespace NOWA
 
 		this->ready = false;
 		return true;
+	}
+
+	void AiLuaComponent::handleLuaScriptConnected(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteComponent> castEventData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
+		// Found the game object
+		if (this->gameObjectPtr->getId() == castEventData->getGameObjectId())
+		{
+			// Call enter on the start state
+			this->setActivated(this->activated->getBool());
+		}
 	}
 
 	void AiLuaComponent::onRemoveComponent(void)

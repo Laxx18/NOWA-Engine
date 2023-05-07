@@ -305,7 +305,7 @@ namespace NOWA
 					this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
 				}
 
-				if (nullptr == this->sourcePhysicsActiveComponent)
+				// if (nullptr == this->sourcePhysicsActiveComponent)
 				{
 					this->tagPointNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 					this->tagPointNode->setScale(this->gameObjectPtr->getSceneNode()->getScale());
@@ -327,16 +327,15 @@ namespace NOWA
 						movableObjects[i]->detachFromParent();
 						this->tagPointNode->attachObject(movableObjects[i]);
 					}
-				}
 
-				if (nullptr == this->tagPoint)
-				{
-					this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
-					this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+					if (nullptr == this->tagPoint)
+					{
+						this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
+						this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+					}
+					this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(),
+												MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent, this->gameObjectPtr.get()));
 				}
-				this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(), 
-					MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent, this->gameObjectPtr.get()));
-
 				this->alreadyConnected = true;
 			}
 		}
@@ -352,20 +351,8 @@ namespace NOWA
 	void TagPointComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
-
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
-		{
-			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-			if (nullptr != oldSkeletonInstance)
-			{
-				if (nullptr != this->tagPoint)
-				{
-					oldSkeletonInstance->freeTagPoint(this->tagPoint);
-					this->tagPoint = nullptr;
-				}
-			}
-		}
+		
+		this->resetTagPoint();
 	}
 
 	void TagPointComponent::onOtherComponentRemoved(unsigned int index)
@@ -679,10 +666,18 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity && nullptr != this->tagPoint)
 		{
-			Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
-			this->tagPoint->setListener(nullptr);
-			delete nodeListener;
-			this->tagPoint = nullptr;
+			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
+			if (nullptr != oldSkeletonInstance)
+			{
+				if (nullptr != this->tagPoint)
+				{
+					oldSkeletonInstance->freeTagPoint(this->tagPoint);
+					Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
+					this->tagPoint->setListener(nullptr);
+					delete nodeListener;
+					this->tagPoint = nullptr;
+				}
+			}
 
 			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
 			if (nullptr != sourceGameObjectPtr)
@@ -710,6 +705,7 @@ namespace NOWA
 
 			if (nullptr != this->tagPointNode)
 			{
+				this->tagPointNode->removeAndDestroyAllChildren();
 				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
 				this->tagPointNode = nullptr;
 			}

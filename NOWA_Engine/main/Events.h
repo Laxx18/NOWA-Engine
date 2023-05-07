@@ -1762,6 +1762,62 @@ namespace NOWA
 		OgreNewt::Body* body;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataLuaScriptConnected - This event is sent out the lua script has been connected.
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataLuaScriptConnected : public BaseEventData
+	{
+	public:
+
+		EventDataLuaScriptConnected(void) :
+			id(0)
+		{
+		}
+
+		explicit EventDataLuaScriptConnected(const unsigned long id)
+			: id(id)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe86c7d48;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe86c7d48;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->id);
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataLuaScriptConnected(this->id));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->id) << " ";
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataLuaScriptConnected";
+		}
+
+		const unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+	private:
+		unsigned long id;
+	};
+
 }; // namespace end
 
 #endif

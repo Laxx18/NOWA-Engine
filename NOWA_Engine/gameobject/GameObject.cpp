@@ -518,11 +518,17 @@ namespace NOWA
 			if (nullptr != luaScriptCompPtr)
 			{
 				luaScriptCompPtr->connect();
+				// Send event, that lua script has been connected, so that in a state machine the first state can be entered after that
+				boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->id->getULong()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
 			}
 			// If there is an ai lua component, it must be connected after the lua script! Because it may be, that it is using variables from lua script (connect) function in its state
 			if (nullptr != aiLuaCompPtr)
 			{
 				aiLuaCompPtr->connect();
+				// Send event, that lua script has been connected, so that in a state machine the first state can be entered after that
+				boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->id->getULong()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
 			}
 		}
 		return true;
@@ -556,6 +562,7 @@ namespace NOWA
 	{
 		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
 		{
+			std::get<COMPONENT>(*it)->bTaggedForRemovement = true;
 			std::get<COMPONENT>(*it)->onRemoveComponent();
 		}
 		this->gameObjectComponents.clear();
@@ -1343,6 +1350,7 @@ namespace NOWA
 			}
 			
 			// Call to give a chance to react before the component is removed
+			component->bTaggedForRemovement = true;
 			component->onRemoveComponent();
 			this->gameObjectComponents.erase(this->gameObjectComponents.begin() + index);
 
@@ -1371,6 +1379,7 @@ namespace NOWA
 					boost::shared_ptr<EventDataDeleteComponent> eventDataDeleteComponent(new EventDataDeleteComponent(this->id->getULong(), componentClassName, i));
 					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataDeleteComponent);
 					// Call to give a chance to react before the component is removed
+					std::get<COMPONENT>(*it)->bTaggedForRemovement = true;
 					std::get<COMPONENT>(*it)->onRemoveComponent();
 					// Frees the category, internally a check will be made if there is still a game object with the category, if not it will be un-occupied, for a next new category
 					// Do not free category when comopnent is delete, this is none sense, because the game object may still exist, even without components!

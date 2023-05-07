@@ -143,10 +143,8 @@ namespace NOWA
 		return true;
 	}
 
-	void AiComponent::onRemoveComponent(void)
+	void AiComponent::tryRemoveMovingBehavior(void)
 	{
-		GameObjectComponent::onRemoveComponent();
-		
 		// Dangerous in destructor, as when exiting the simulation, the game object will be deleted and this function called, to seek for another ai component, that has been deleted
 		// Thus handle it, just when a component is removed
 		bool stillAiComponentActive = false;
@@ -183,6 +181,13 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
 			}
 		}
+	}
+
+	void AiComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+		
+		this->tryRemoveMovingBehavior();
 	}
 
 	void AiComponent::actualizeValue(Variant* attribute)
@@ -329,14 +334,7 @@ namespace NOWA
 					auto ptrFunction = [this]()
 					{
 						this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
-						if (0 != this->agentId->getULong())
-						{
-							AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->agentId->getULong());
-						}
-						else
-						{
-							AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
-						}
+						this->tryRemoveMovingBehavior();
 						delete this->pathGoalObserver;
 						this->pathGoalObserver = nullptr;
 						this->movingBehaviorPtr->setPathGoalObserver(nullptr);
@@ -349,14 +347,7 @@ namespace NOWA
 				else
 				{
 					this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
-					if (0 != this->agentId->getULong())
-					{
-						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->agentId->getULong());
-					}
-					else
-					{
-						AppStateManager::getSingletonPtr()->getGameObjectController()->removeMovingBehavior(this->gameObjectPtr->getId());
-					}
+					this->tryRemoveMovingBehavior();
 					delete this->pathGoalObserver;
 					this->pathGoalObserver = nullptr;
 					this->movingBehaviorPtr->setPathGoalObserver(nullptr);
@@ -476,6 +467,14 @@ namespace NOWA
 				this->movingBehaviorPtr.reset();
 
 				this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(agentId);
+
+				auto aiLuaCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<AiLuaComponent>());
+				// If there is an ai lua component, also reset the moving behavior for that one
+				if (aiLuaCompPtr != nullptr)
+				{
+					aiLuaCompPtr->disconnect();
+					aiLuaCompPtr->connect();
+				}
 			}
 		}
 

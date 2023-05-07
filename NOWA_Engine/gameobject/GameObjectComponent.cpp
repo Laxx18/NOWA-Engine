@@ -48,6 +48,7 @@ namespace NOWA
 		bShowDebugData(false),
 		bConnectedSuccess(true),
 		bIsExpanded(true),
+		bTaggedForRemovement(false),
 		name(new Variant(GameObjectComponent::AttrName(), "", this->attributes)),
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		referenceId(new Variant(GameObjectComponent::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false))

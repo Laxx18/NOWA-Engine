@@ -150,6 +150,8 @@ namespace NOWA
 		static const Ogre::String AttrAutoOrientation(void) { return "Auto Orientation"; }
 		static const Ogre::String AttrAutoAnimation(void) { return "Auto Animation"; }
 		static const Ogre::String AttrAgentId(void) { return "Agent Id"; }
+	private:
+		void tryRemoveMovingBehavior(void);
 	protected:
 		Variant* activated;
 		Variant* rotationSpeed;

@@ -1207,7 +1207,14 @@ namespace NOWA
 
 	void GameObjectController::removeMovingBehavior(const unsigned long gameObjectId)
 	{
-		this->movingBehaviors.erase(gameObjectId);
+		auto& it = this->movingBehaviors.find(gameObjectId);
+		if (it != this->movingBehaviors.end())
+		{
+			it->second->setAgentId(0);
+			it->second->setTargetAgentId(0);
+			it->second->setTargetAgentId2(0);
+			this->movingBehaviors.erase(gameObjectId);
+		}
 	}
 
 	boost::shared_ptr<KI::MovingBehavior> GameObjectController::getMovingBehavior(const unsigned long gameObjectId)
