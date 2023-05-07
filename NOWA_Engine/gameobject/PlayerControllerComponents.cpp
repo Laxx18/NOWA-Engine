@@ -1315,7 +1315,7 @@ namespace NOWA
 
 	void PlayerControllerJumpNRunLuaComponent::handleLuaScriptConnected(NOWA::EventDataPtr eventData)
 	{
-		boost::shared_ptr<EventDataDeleteComponent> castEventData = boost::static_pointer_cast<EventDataDeleteComponent>(eventData);
+		boost::shared_ptr<EventDataLuaScriptConnected> castEventData = boost::static_pointer_cast<EventDataLuaScriptConnected>(eventData);
 		// Found the game object
 		if (this->gameObjectPtr->getId() == castEventData->getGameObjectId())
 		{

@@ -436,8 +436,13 @@ void ProjectManager::internalApplySettings(void)
 	// this->sceneManager->setShadowTextureFadeStart(0.8f);
 	// this->sceneManager->setShadowTextureFadeEnd(0.9f);
 
+	// Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
+	Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+	Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+
 	if (0 == this->projectParameter.forwardMode)
 	{
+		hlmsPbs->setUseLightBuffers(false);
 		this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
 			this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 		this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
@@ -445,11 +450,13 @@ void ProjectManager::internalApplySettings(void)
 	}
 	else if (1 == this->projectParameter.forwardMode)
 	{
+		hlmsPbs->setUseLightBuffers(true);
 		this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
                                             this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 	}
 	else if (2 == this->projectParameter.forwardMode)
 	{
+		hlmsPbs->setUseLightBuffers(true);
 		this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
                                             10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 	}

@@ -918,6 +918,17 @@ namespace NOWA
 		// Test:
 		// textureGpuManager->dumpMemoryUsage(Ogre::LogManager::getSingletonPtr()->getDefaultLog());
 
+#ifdef _DEBUG
+//Debugging multithreaded code is a PITA, disable it.
+		const size_t numThreads = 1;
+#else
+	//getNumLogicalCores() may return 0 if couldn't detect
+		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+#endif
+		// Loads textures in background in multiple threads
+		Ogre::TextureGpuManager* hlmsTextureManager = this->root->getRenderSystem()->getTextureGpuManager();
+		hlmsTextureManager->setMultiLoadPool(numThreads);
+
 		// setTightMemoryBudget();
 		setRelaxedMemoryBudget();
 		this->defaultBudget = textureGpuManager->getBudget();
@@ -1012,7 +1023,7 @@ namespace NOWA
 			hlmsPbs->setListener(this->baseListenerContainer);
 			hlmsManager->registerHlms(hlmsPbs);
 
-			// hlmsPbs->setIndustryCompatible(true);
+			hlmsPbs->setIndustryCompatible(true);
 		}
 
 		// HlmsTerra

@@ -43,7 +43,8 @@ namespace NOWA
 	using namespace luabind;
 
 	GameObjectComponent::GameObjectComponent()
-		: occurrenceIndex(0),
+		: gameObjectPtr(nullptr),
+		occurrenceIndex(0),
 		index(0),
 		bShowDebugData(false),
 		bConnectedSuccess(true),

@@ -206,10 +206,6 @@ void DesignState::createScene(void)
 	this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "ExampleSMInstance");
 	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
 
-	// Loads textures in background in multiple threads
-	Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-	hlmsTextureManager->setMultiLoadPool(numThreads);
-
 	// http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015
 	// Longer loading times, but faster, test it
 #ifndef _DEBUG
