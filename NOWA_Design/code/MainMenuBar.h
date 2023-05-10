@@ -135,7 +135,7 @@ private:
 
 	MyGUI::EditBox* pluginNameEdit;
 
-	MyGUI::MenuItem* recentFileItem[5];
+	MyGUI::MenuItem* recentFileItem[10];
 	bool bDrawNavigationMesh;
 	bool bTestSelectedGameObjects;
 };

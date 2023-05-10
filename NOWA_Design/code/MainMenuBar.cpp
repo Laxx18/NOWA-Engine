@@ -134,15 +134,45 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		this->recentFileItem[2]->hideItemChild();
 		this->recentFileItem[2]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		this->recentFileItem[3] = fileMenuControl->addItem("recentFileMenuItem3", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[3] = fileMenuControl->addItem("recentFileMenuItem4", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		this->recentFileItem[3]->setCaption("--");
 		this->recentFileItem[3]->hideItemChild();
 		this->recentFileItem[3]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		this->recentFileItem[4] = fileMenuControl->addItem("recentFileMenuItem3", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[4] = fileMenuControl->addItem("recentFileMenuItem5", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		this->recentFileItem[4]->setCaption("--");
 		this->recentFileItem[4]->hideItemChild();
 		this->recentFileItem[4]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[5] = fileMenuControl->addItem("recentFileMenuItem6", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[5]->setCaption("--");
+		this->recentFileItem[5]->hideItemChild();
+		this->recentFileItem[5]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[6] = fileMenuControl->addItem("recentFileMenuItem7", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[6]->setCaption("--");
+		this->recentFileItem[6]->hideItemChild();
+		this->recentFileItem[6]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[7] = fileMenuControl->addItem("recentFileMenuItem8", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[7]->setCaption("--");
+		this->recentFileItem[7]->hideItemChild();
+		this->recentFileItem[7]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[7] = fileMenuControl->addItem("recentFileMenuItem9", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[7]->setCaption("--");
+		this->recentFileItem[7]->hideItemChild();
+		this->recentFileItem[7]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[8] = fileMenuControl->addItem("recentFileMenuItem10", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[8]->setCaption("--");
+		this->recentFileItem[8]->hideItemChild();
+		this->recentFileItem[8]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->recentFileItem[9] = fileMenuControl->addItem("recentFileMenuItem11", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[9]->setCaption("--");
+		this->recentFileItem[9]->hideItemChild();
+		this->recentFileItem[9]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
 		menuItem = fileMenuControl->addItem("Separator", MyGUI::MenuItemType::Separator);
 
@@ -543,6 +573,11 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		case 11: // Recent file 3
 		case 12: // Recent file 4
 		case 13: // Recent file 5
+		case 14: // Recent file 6
+		case 15: // Recent file 7
+		case 16: // Recent file 8
+		case 17: // Recent file 9
+		case 18: // Recent file 10
 		{
 			if (Ogre::String("--") != item->getCaption().asUTF8())
 			{
@@ -555,38 +590,38 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			break;
 		}
 		
-		case 14: // Close
+		case 20: // Close
 		{
 			boost::shared_ptr<EventDataExit> eventDataExit(new EventDataExit());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataExit);
 			break;
 		}
-		case SAVE_GROUP + 15: // Save Group
+		case SAVE_GROUP + 21: // Save Group
 		{
 			this->projectManager->showFileSaveDialog("SaveGroup", "*.group");
 			break;
 		}
-		case LOAD_GROUP + 15: // Load Group
+		case LOAD_GROUP + 21: // Load Group
 		{
 			this->projectManager->showFileOpenDialog("LoadGroup", "*.group");
 			break;
 		}
-		case LOAD_MESH_RESOURCE + 15: // Add Mesh Resources
+		case LOAD_MESH_RESOURCE + 21: // Add Mesh Resources
 		{
 			this->projectManager->showFileOpenDialog("AddMeshResources", "");
 			break;
 		}
-		case SAVE_DATABLOCKS + 15: // Save datablocks
+		case SAVE_DATABLOCKS + 21: // Save datablocks
 		{
 			this->projectManager->showFileSaveDialog("SaveDatablocks", "*.json");
 			break;
 		}
-		case OPEN_PROJECT_FOLDER + 15: // Open project folder
+		case OPEN_PROJECT_FOLDER + 21: // Open project folder
 		{
 			NOWA::Core::getSingletonPtr()->openFolder(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
 			break;
 		}
-		case START_GAME + 15: // Start game
+		case START_GAME + 21: // Start game
 		{
 			if (NOWA::DeployResourceModule::getInstance()->startGame(NOWA::Core::getSingletonPtr()->getProjectName()))
 			{
@@ -599,7 +634,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case UNDO + 15: // Undo
+		case UNDO + 21: // Undo
 		{
 			this->projectManager->getEditorManager()->undo();
 			
@@ -610,7 +645,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 			break;
 		}
-		case REDO + 15: // Redo
+		case REDO + 21: // Redo
 		{
 			this->projectManager->getEditorManager()->redo();
 
@@ -621,104 +656,104 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 			break;
 		}
-		case SELECTION_UNDO + 15: // Selection Undo
+		case SELECTION_UNDO + 21: // Selection Undo
 		{
 			this->projectManager->getEditorManager()->getSelectionManager()->selectionUndo();
 			break;
 		}
-		case SELECTION_REDO + 15: // Selection Redo
+		case SELECTION_REDO + 21: // Selection Redo
 		{
 			this->projectManager->getEditorManager()->getSelectionManager()->selectionRedo();
 			break;
 		}
-		case 26: // Front View
+		case 32: // Front View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_FRONT);
 			break;
 		}
-		case 27: // TOP View
+		case 33: // TOP View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_TOP);
 			break;
 		}
-		case 28: // Back View
+		case 34: // Back View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BACK);
 			break;
 		}
-		case 29: // Bottom View
+		case 35: // Bottom View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BOTTOM);
 			break;
 		}
-		case 30: // Left View
+		case 36: // Left View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_LEFT);
 			break;
 		}
-		case 31: // Right View
+		case 37: // Right View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_RIGHT);
 			break;
 		}
-		case 32: // Camera Undo
+		case 38: // Camera Undo
 		{
 			this->projectManager->getEditorManager()->cameraUndo();
 			break;
 		}
-		case 33: // Camera Redo
+		case 39: // Camera Redo
 		{
 			this->projectManager->getEditorManager()->cameraRedo();
 			break;
 		}
-		case 34: // Render Solid
+		case 40: // Render Solid
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(3);
 			break;
 		}
-		case 35: // Render Wireframe
+		case 41: // Render Wireframe
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(2);
 			break;
 		}
-		case 36: // Render Points
+		case 42: // Render Points
 		{
 			// Does not work, do not know why
 			NOWA::Core::getSingletonPtr()->setPolygonMode(1);
 			break;
 		}
-		case 37: // Scene analysis
+		case 43: // Scene analysis
 		{
 			this->showAnalysisWindow();
 			break;
 		}
-		case 38: // Deploy
+		case 44: // Deploy
 		{
 			this->showDeployWindow();
 			break;
 		}
-		case 39: // Lua Analysis
+		case 45: // Lua Analysis
 		{
 			this->showLuaAnalysisWindow();
 			break;
 		}
-		case 40: // Lua Api
+		case 46: // Lua Api
 		{
 			this->showLuaApiWindow();
 			break;
 		}
-		case 41: // Draw Navigation Mesh
+		case 47: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 42: // Optimize scene
+		case 48: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 43: // Control selected player
+		case 49: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -731,7 +766,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 44: // Test selected game objects
+		case 50: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -739,7 +774,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 45: // About
+		case 51: // About
 		{
 			this->showAboutWindow();
 			break;

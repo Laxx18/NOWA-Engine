@@ -44,13 +44,13 @@ namespace NOWA
 	void FollowCamera2D::onSetData(void)
 	{
 		BaseCamera::onSetData();
-		this->firstTimeValueSet = true;
+		this->firstTimeMoveValueSet = true;
 	}
 
 	void FollowCamera2D::setOffset(const Ogre::Vector3& offset)
 	{
 		this->offset = offset;
-		this->firstTimeValueSet = true;
+		this->firstTimeMoveValueSet = true;
 	}
 	
 	void FollowCamera2D::handleUpdateBounds(NOWA::EventDataPtr eventData)
@@ -63,6 +63,7 @@ namespace NOWA
 	void FollowCamera2D::setBorderOffset(const Ogre::Vector3& borderOffset)
 	{
 		this->borderOffset = borderOffset;
+		this->firstTimeMoveValueSet = true;
 	}
 
 	void FollowCamera2D::setBounds(Ogre::Vector3& minimumBounds, Ogre::Vector3& maximumBounds)
@@ -87,6 +88,9 @@ namespace NOWA
 		// Note: 2.5 is exactly the value! Even when fovy is changed, the value is correct
 		this->mostRightUp = (this->camera->getViewMatrix(true) * corners[4] / 2.5f) / this->camera->getAspectRatio();
 		this->mostRightUp += this->borderOffset;
+
+		this->firstTimeValueSet = true;
+		this->firstTimeMoveValueSet = true;
 	}
 
 	void FollowCamera2D::alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager)
@@ -385,6 +389,24 @@ namespace NOWA
 			return;
 		}
 
+		if (true == this->firstTimeMoveValueSet)
+		{
+			this->lastMoveValue = Ogre::Vector3::ZERO;
+			// set the camera position to the target one for the first time
+			this->camera->setPosition(this->sceneNode->getPosition());
+			// this->camera->lookAt(this->sceneNode->getPosition());
+			// this->camera->moveRelative(this->offset);
+			this->camera->move(this->offset);
+
+			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
+			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+			this->pDebugLine->setQueryFlags(0);
+			Ogre::SceneNode *pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode("Debugline1FlubberNode1");
+			pNode->attachObject(this->pDebugLine);*/
+
+			this->firstTimeMoveValueSet = false;
+		}
+
 		const Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
 		//////////////////////////////////////////////////////////////////////////////////////////////
@@ -425,24 +447,6 @@ namespace NOWA
 			&& this->sceneNode->getPosition().y + this->offset.y + this->mostRightUp.y < this->maximumBounds.y)
 		{
 			velocity.y = this->sceneNode->getPosition().y - cameraPosition.y + this->offset.y;
-		}
-
-		if (this->firstTimeMoveValueSet)
-		{
-			this->lastMoveValue = Ogre::Vector3::ZERO;
-			// set the camera position to the target one for the first time
-			this->camera->setPosition(this->sceneNode->getPosition());
-			// this->camera->lookAt(this->sceneNode->getPosition());
-			// this->camera->moveRelative(this->offset);
-			this->camera->move(this->offset);
-
-			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
-			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-			this->pDebugLine->setQueryFlags(0);
-			Ogre::SceneNode *pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode("Debugline1FlubberNode1");
-			pNode->attachObject(this->pDebugLine);*/
-
-			this->firstTimeMoveValueSet = false;
 		}
 
 		velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);

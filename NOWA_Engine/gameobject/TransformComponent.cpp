@@ -55,7 +55,6 @@ namespace NOWA
 	TransformComponent::~TransformComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TransformComponent] Destructor transform component for game object: " + this->gameObjectPtr->getName());
-		
 	}
 
 	bool TransformComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -259,9 +258,9 @@ namespace NOWA
 			{
 				if (Ogre::Math::RealEqual(this->rotationOppositeDir, 1.0f))
 				{
-					this->rotationProgress += this->rotationSpeed->getReal() * dt;
+					this->rotationProgress += this->rotationSpeed->getReal();
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "rot progress: " + Ogre::StringConverter::toString(this->rotationProgress) +  " rot max: " 
-					// 	+ Ogre::StringConverter::toString(this->rotationMax->getReal()));
+					//  	+ Ogre::StringConverter::toString(this->rotationMax->getReal()));
 					if (this->rotationProgress >= this->rotationMax->getReal())
 					{
 						// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from +  to -");
@@ -274,9 +273,9 @@ namespace NOWA
 				}
 				else
 				{
-					this->rotationProgress -= this->rotationSpeed->getReal() * dt;
+					this->rotationProgress -= this->rotationSpeed->getReal();
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "rot progress: " + Ogre::StringConverter::toString(this->rotationProgress) + " min max: "
-					// 	+ Ogre::StringConverter::toString(this->rotationMin->getReal()));
+					//  	+ Ogre::StringConverter::toString(this->rotationMin->getReal()));
 					if (this->rotationProgress <= this->rotationMin->getReal())
 					{
 						// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from -  to +");
@@ -291,7 +290,7 @@ namespace NOWA
 				// also take the progress into account, the translation started at zero and should stop at zero
 				if (this->rotationRound == 2 && this->rotationProgress >= 0.0f)
 				{
-					// if repeat is of, only change the direction one time, to get back to its origin and leave
+					// if repeat is off, only change the direction one time, to get back to its origin and leave
 					if (false == this->rotationRepeat->getBool())
 					{
 						this->internalRotationDirectionChange = false;
@@ -314,6 +313,8 @@ namespace NOWA
 				if (Ogre::Math::RealEqual(this->translationOppositeDir, 1.0f))
 				{
 					this->translationProgress += this->translationSpeed->getReal() * dt;
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "trans progress: " + Ogre::StringConverter::toString(this->translationProgress) + " trans max: "
+					// 												+ Ogre::StringConverter::toString(this->translationMax->getReal()));
 					if (this->translationProgress >= this->translationMax->getReal())
 					{
 						// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from +  to -");
@@ -327,6 +328,8 @@ namespace NOWA
 				else
 				{
 					this->translationProgress -= this->translationSpeed->getReal() * dt;
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "trans progress: " + Ogre::StringConverter::toString(this->translationProgress) + " trans min: "
+					// 												+ Ogre::StringConverter::toString(this->translationMin->getReal()));
 					if (this->translationProgress <= this->translationMin->getReal())
 					{
 						// Ogre::LogManager::getSingletonPtr()->logMessage("dir change from -  to +");

@@ -271,6 +271,8 @@ namespace NOWA
 
 			void deleteRagBone(void);
 
+			void resetBody(void);
+
 			// get doll.
 			PhysicsRagDollComponent* getPhysicsRagDollComponent(void) const;
 
@@ -373,6 +375,8 @@ namespace NOWA
 		void createInactiveRagdoll();
 
 		void gameObjectAnimationChangedDelegate(EventDataPtr eventData);
+
+		void deleteJointDelegate(EventDataPtr eventData);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrBonesConfigFile(void) { return "Config. File"; }

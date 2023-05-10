@@ -44,6 +44,7 @@ namespace NOWA
 		this->gyroscopicTorque->setVisible(false);
 
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponent::gameObjectAnimationChangedDelegate), EventDataAnimationChanged::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 	}
 
 	PhysicsRagDollComponent::~PhysicsRagDollComponent()
@@ -51,6 +52,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent] Destructor physics rag doll component for game object: " + this->gameObjectPtr->getName());
 		
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponent::gameObjectAnimationChangedDelegate), EventDataAnimationChanged::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsRagDollComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 		
 		while (this->ragDataList.size() > 0)
 		{
@@ -1799,6 +1801,21 @@ namespace NOWA
 		}
 	}
 
+	void PhysicsRagDollComponent::deleteJointDelegate(EventDataPtr eventData)
+	{
+		//boost::shared_ptr<EventDataDeleteJoint> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteJoint>(eventData);
+
+		//// Sometimes: If escape is pressed to often, a crash occurs because yet the body does exist, but this does also crash
+		//for (size_t i = 0; i < this->ragDataList.size(); i++)
+		//{
+		//	if (this->ragDataList[i].ragBone->getJointId() == castEventData->getJointId())
+		//	{
+		//		this->ragDataList[i].ragBone->resetBody();
+		//		break;
+		//	}
+		//}
+	}
+
 	/*********************************Inner bone class*****************************************************************/
 
 	PhysicsRagDollComponent::RagBone::RagBone(const Ogre::String& name, PhysicsRagDollComponent* physicsRagDollComponent, RagBone* parentRagBone, Ogre::v1::OldBone* ogreBone, 
@@ -2210,6 +2227,11 @@ namespace NOWA
 		}
 	}
 
+	void PhysicsRagDollComponent::RagBone::resetBody(void)
+	{
+		this->body = nullptr;
+	}
+
 	void PhysicsRagDollComponent::RagBone::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (nullptr != this->jointCompPtr && false == notSimulating)
@@ -2377,12 +2399,26 @@ namespace NOWA
 
 	Ogre::Vector3 PhysicsRagDollComponent::RagBone::getPosition(void) const
 	{
-		return this->body->getPosition();
+		if (nullptr != this->body)
+		{
+			return this->body->getPosition();
+		}
+		else
+		{
+			return Ogre::Vector3::ZERO;
+		}
 	}
 
 	Ogre::Quaternion PhysicsRagDollComponent::RagBone::getOrientation(void) const
 	{
-		return this->body->getOrientation();
+		if (nullptr != this->body)
+		{
+			return this->body->getOrientation();
+		}
+		else
+		{
+			return Ogre::Quaternion::IDENTITY;
+		}
 	}
 
 	Ogre::Vector3 PhysicsRagDollComponent::RagBone::getOffset(void) const

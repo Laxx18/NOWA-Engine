@@ -600,35 +600,35 @@ namespace NOWA
 		if (resX > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for x: "
-				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used.");
+				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 // Attention: X is used, test this
 		int resY = this->functionParser[1].Parse(this->yFunction->getString(), "t");
 		if (resY > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for y: "
-				+ Ogre::String(this->functionParser[1].ErrorMsg()) + " Note: Variable 't' must be used.");
+															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resZ = this->functionParser[2].Parse(this->zFunction->getString(), "t");
 		if (resZ > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for z: "
-				+ Ogre::String(this->functionParser[2].ErrorMsg()) + " Note: Variable 't' must be used.");
+															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resMinLength = this->functionParser[3].Parse(this->minLength->getString(), "t");
 		if (resMinLength > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for min length: "
-				+ Ogre::String(this->functionParser[3].ErrorMsg()) + " Note: Variable 't' must be used.");
+															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resMaxLength = this->functionParser[4].Parse(this->maxLength->getString(), "t");
 		if (resMaxLength > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for max length: "
-				+ Ogre::String(this->functionParser[4].ErrorMsg()) + " Note: Variable 't' must be used.");
+															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 	}
 

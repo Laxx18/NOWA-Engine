@@ -706,6 +706,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	auto& gameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(node->getText());
 	if (nullptr != gameObjectPtr)
 	{
+		this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
 		this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
 		// Focus object if Alt has been pressed
 		if (GetAsyncKeyState(VK_RCONTROL))
@@ -718,6 +719,11 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	if (NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->hasCategory(node->getText()))
 	{
 		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(node->getText());
+
+		if (false == gameObjects.empty())
+		{
+			this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
+		}
 
 		for (size_t i = 0; i < gameObjects.size(); i++)
 		{

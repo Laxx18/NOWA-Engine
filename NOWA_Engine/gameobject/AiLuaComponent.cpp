@@ -30,7 +30,7 @@ namespace NOWA
 	AiLuaComponent::~AiLuaComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiLuaComponent] Destructor ai lua component for game object: " + this->gameObjectPtr->getName());
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
 
 		if (this->luaStateMachine)
 		{
@@ -65,7 +65,7 @@ namespace NOWA
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
-		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AiLuaComponent::handleLuaScriptConnected), EventDataLuaScriptConnected::getStaticEventType());
 	
 		return true;
 	}

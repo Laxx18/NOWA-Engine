@@ -6,7 +6,7 @@
 class RecentFilesManager : public MyGUI::Singleton<RecentFilesManager>
 {
 public:
-	static const unsigned int maxRecentFiles = 5;
+	static const unsigned int maxRecentFiles = 10;
 
 	typedef std::vector<MyGUI::UString> VectorUString;
 

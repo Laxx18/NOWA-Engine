@@ -322,23 +322,11 @@ namespace NOWA
 		{
 			if (nullptr != this->gameObjectPtr)
 			{
-				
-				// Ogre::Vector3 cameraPosition = this->gameObjectPtr->getSceneNode()->convertLocalToWorldPosition(this->camera->getPosition());
-				// Ogre::Quaternion cameraOrientation = this->gameObjectPtr->getSceneNode()->convertLocalToWorldOrientation(this->camera->getOrientation());
-
-				/*this->gameObjectPtr->getSceneNode()->setPosition(resultPosition);
-				this->gameObjectPtr->getSceneNode()->setOrientation(resultOrientation);*/
-
 				Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
-				// Ogre::Vector3 cameraPosition = this->camera->getParentSceneNode()->convertWorldToLocalPosition(this->camera->getPosition());
 
 				if (false == MathHelper::getInstance()->vector3Equals(this->position->getVector3(), cameraPosition, 0.001f))
 				{
 					this->position->setValue(cameraPosition);
-
-					// boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
-					// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
-					// this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
 				}
 
 				Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
@@ -347,7 +335,6 @@ namespace NOWA
 				if (false == MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), orientationDegree, 0.001f))
 				{
 					this->orientation->setValue(orientationDegree);
-					// this->gameObjectPtr->getSceneNode()->setOrientation(cameraOrientation);
 				}
 
 				this->timeSinceLastUpdate = 2.0f;
