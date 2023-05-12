@@ -24,9 +24,15 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 			app.startSimulation();
 		}
 	}
-	catch( Ogre::Exception& e )
+	catch(Ogre::Exception& e)
 	{
 		// Destroys ogrenewt and newton before throwing, as else it will cause trouble in a thread deep inside newton.
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+		ShowCursor(true);
+		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+	}
+	catch (MyGUI::Exception& e)
+	{
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
 		ShowCursor(true);
 		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);

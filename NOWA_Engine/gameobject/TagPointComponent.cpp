@@ -36,7 +36,7 @@ namespace NOWA
 					this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
 					jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
 					jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
-					jointKinematicCompPtr->setPickingMode(3);
+					jointKinematicCompPtr->setPickingMode(4);
 					jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
 					jointKinematicCompPtr->createJoint();
 					this->jointKinematicComponent = jointKinematicCompPtr.get();
@@ -44,6 +44,12 @@ namespace NOWA
 				else
 				{
 					this->jointKinematicComponent = existingJointKinematicCompPtr.get();
+					auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObject->getComponent<JointComponent>());
+					if (nullptr != jointCompPtr)
+					{
+						this->jointKinematicComponent->connectPredecessorId(jointCompPtr->getId());
+						this->jointKinematicComponent->createJoint();
+					}
 				}
 			}
 		}
@@ -105,12 +111,12 @@ namespace NOWA
 					}
 				}
 
-				Ogre::Quaternion newOrientation = worldOrientation * this->offsetOrientation;
-				Ogre::Vector3 newPosition = worldPosition + (newOrientation * this->offsetPosition);
+				Ogre::Quaternion newOrientation = updatedNode->_getDerivedOrientation() * this->offsetOrientation;
+				Ogre::Vector3 newPosition = (updatedNode->_getDerivedPosition() + (newOrientation * this->offsetPosition)) * this->realNode->getScale();
 
 				this->jointKinematicComponent->setTargetPositionRotation(newPosition, newOrientation);
 				
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] orient: " + Ogre::StringConverter::toString(newOrientation));
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] position: " + Ogre::StringConverter::toString(newPosition) + " orientation: " + Ogre::StringConverter::toString(newOrientation));
 			}
 		}
 
@@ -455,25 +461,25 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TagPointName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->tagPoints->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tagPoints->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SourceId"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sourceId->getULong())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sourceId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OffsetPosition"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->offsetPosition->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetPosition->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OffsetOrientation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->offsetOrientation->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetOrientation->getVector3())));
 		propertiesXML->append_node(propertyXML);
 	}
 

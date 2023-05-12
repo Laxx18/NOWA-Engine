@@ -444,76 +444,76 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "DatablockName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->datablockName->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->datablockName->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxChainElements"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxChainElements->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxChainElements->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "NumberOfChains"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numberOfChains->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numberOfChains->getUInt())));
 		propertiesXML->append_node(propertyXML);
 		
 		for (size_t i = 0; i < this->numberOfChains->getUInt(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("ColorChange" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->colorChanges[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "ColorChange" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->colorChanges[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("WidthChange" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->widthChanges[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "WidthChange" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->widthChanges[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 			
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("InitialColor" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->initialColors[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "InitialColor" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->initialColors[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("InitialWidth" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->initialWidths[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "InitialWidth" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->initialWidths[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "FaceCameraId"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->faceCameraId->getULong())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->faceCameraId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TextureCoordRange"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->textureCoordRange->getVector2())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->textureCoordRange->getVector2())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TrailLength"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->trailLength->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->trailLength->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RenderDistance"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->renderDistance->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->renderDistance->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
 		/*propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CastShadows"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->castShadows->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->castShadows->getBool())));
 		propertiesXML->append_node(propertyXML);*/
 	}
 

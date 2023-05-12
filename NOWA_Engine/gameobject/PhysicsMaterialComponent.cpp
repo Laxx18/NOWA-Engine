@@ -383,85 +383,85 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Category1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->category1->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->category1->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Category2"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->category2->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->category2->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Friction"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->friction->getVector2())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->friction->getVector2())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Softness"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->softness->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->softness->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Elasticity"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->elasticity->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->elasticity->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SurfaceThickness"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->surfaceThickness->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->surfaceThickness->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Collideable"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->collideable->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collideable->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactBehavior"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactBehavior->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactBehavior->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactSpeed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactSpeed->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactSpeed->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactDirection"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactDirection->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactDirection->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OverlapFunctionName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->overlapFunctionName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->overlapFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactFunctionName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactFunctionName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactOnceFunctionName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactOnceFunctionName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactOnceFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ContactScratchFunctionName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->contactScratchFunctionName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->contactScratchFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 	}
 

@@ -43,6 +43,7 @@ namespace NOWA
 		forceCreation(false),
 		bSceneParsed(false),
 		bIsSnapshot(false),
+		bNewScene(false),
 		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
 		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY)),
 		sunLight(nullptr)
@@ -63,6 +64,7 @@ namespace NOWA
 		forceCreation(false),
 		bSceneParsed(false),
 		bIsSnapshot(false),
+		bNewScene(false),
 #ifndef PAGEDGEOMETRY_NOT_PORTED
 		// pagedGeometryModule(nullptr),
 #endif
@@ -125,6 +127,7 @@ namespace NOWA
 		forceCreation(false),
 		bSceneParsed(false),
 		bIsSnapshot(false),
+		bNewScene(false),
 		mostLeftNearPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
 		mostRightFarPosition(Ogre::Vector3(Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY, Ogre::Math::NEG_INFINITY))
 	{
@@ -297,6 +300,7 @@ namespace NOWA
 		std::ifstream ifs(filePathName);
 		if (false == ifs.good())
 		{
+			this->bNewScene = true;
 			// If scene does not exist yet, maybe there is a global scene. Parse these one.
 			bool success = this->parseGlobalScene(crypted);
 			// If there is no scene, but just an existing global scene, post init must be done, because maybe main camera etc. are just in the global scene!
@@ -304,6 +308,7 @@ namespace NOWA
 			{
 				this->postInitData();
 			}
+			this->bNewScene = false;
 			return success;
 		}
 
@@ -417,36 +422,45 @@ namespace NOWA
 	void DotSceneImportModule::postInitData()
 	{
 		auto& mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_CAMERA_ID);
-		if (nullptr == mainCameraGameObject)
+		if (nullptr == mainCameraGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load world, because the MainCamera could not be created! See log for further information.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load world, because the MainCamera could not be created! See log for further information.\n", "NOWA");
 		}
-		mainCameraGameObject->postInit();
-		if (nullptr == this->mainCamera)
+		else if (nullptr != mainCameraGameObject)
 		{
-			this->mainCamera = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<CameraComponent>())->getCamera();
+			mainCameraGameObject->postInit();
+			if (nullptr == this->mainCamera && false == this->bNewScene)
+			{
+				this->mainCamera = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<CameraComponent>())->getCamera();
+			}
 		}
 
 		auto& mainLightGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_LIGHT_ID);
-		if (nullptr == mainLightGameObject)
+		if (nullptr == mainLightGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load world, because the MainLight could not be created! See log for further information.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load world, because the MainLight could not be created! See log for further information.\n", "NOWA");
 		}
-		mainLightGameObject->postInit();
-		if (nullptr == this->sunLight)
+		else if (nullptr != mainLightGameObject)
 		{
-			this->sunLight = NOWA::makeStrongPtr(mainLightGameObject->getComponent<LightDirectionalComponent>())->getOgreLight();
+			mainLightGameObject->postInit();
+			if (nullptr == this->sunLight)
+			{
+				this->sunLight = NOWA::makeStrongPtr(mainLightGameObject->getComponent<LightDirectionalComponent>())->getOgreLight();
+			}
 		}
 
 		auto& mainGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
-		if (nullptr == mainGameObject)
+		if (nullptr == mainGameObject && false == this->bNewScene)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error: Can not load world, because the MainGameObject could not be created. Maybe this is an old scene, which does not have a MainGameObject! See log for further information.");
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneImportModule] Error: Can not load world, because the MainGameObject could not be created! See log for further information.\n", "NOWA");
 		}
-		mainGameObject->postInit();
+		else if (nullptr != mainGameObject)
+		{
+			mainGameObject->postInit();
+		}
 
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
 		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();

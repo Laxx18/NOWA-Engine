@@ -219,61 +219,61 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "EffectName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->effectName->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->effectName->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SkyColor"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->skyColor->getVector4())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyColor->getVector4())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UpperHemisphere"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->upperHemisphere->getVector4())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->upperHemisphere->getVector4())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "LowerHemisphere"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->lowerHemisphere->getVector4())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lowerHemisphere->getVector4())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SunPower"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sunPower->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunPower->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Exposure"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->exposure->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->exposure->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MinAutoExposure"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->minAutoExposure->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->minAutoExposure->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxAutoExposure"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->maxAutoExposure->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxAutoExposure->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Bloom"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->bloom->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->bloom->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "EnvMapScale"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->envMapScale->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->envMapScale->getReal())));
 		propertiesXML->append_node(propertyXML);
 	}
 

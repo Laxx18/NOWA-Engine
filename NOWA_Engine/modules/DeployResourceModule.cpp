@@ -949,4 +949,61 @@ namespace NOWA
 		return true;
 	}
 
+	bool DeployResourceModule::createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName)
+	{
+		auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("", "../../media/Projects/backup/", "*.*");
+		for (auto filePathName : filePathNames)
+		{
+			size_t found = filePathName.find_last_of("/\\");
+			if (Ogre::String::npos == found)
+				continue;
+
+			filePathName = filePathName.substr(found + 1, filePathName.length() - found);
+			Ogre::String pattern = "_backup_";
+			size_t found1 = filePathName.find(pattern);
+			if (found1 != Ogre::String::npos)
+			{
+				Ogre::String worldNamePattern = filePathName.substr(0, filePathName.size() - pattern.size());
+				this->sceneBackupMap[projectName].push_back(filePathName);
+			}
+			
+		}
+
+		Ogre::String tempWorldName = worldName;
+		size_t found = tempWorldName.find(".scene");
+		if (found != Ogre::String::npos)
+		{
+			tempWorldName = tempWorldName.substr(0, tempWorldName.size() - 6);
+		}
+
+		Ogre::String destinationFolder = "../../media/Projects/backup/" + projectName;
+		Core::getSingletonPtr()->createFolders(destinationFolder + "/");
+		Ogre::String sourceFolder = "../../media/Projects/" + projectName;
+
+		time_t rawtime;
+		struct tm* timeinfo;
+		time(&rawtime);
+		timeinfo = localtime(&rawtime);
+		char strTempTime[1000];
+		strftime(strTempTime, sizeof(strTempTime), "%Y_%m_%d_%H_%M_%S", timeinfo);
+		Ogre::String strTime = strTempTime;
+
+		Ogre::String destinationFilePathName = destinationFolder + "/" + tempWorldName + "_backup_" + strTime + ".scene";
+		Ogre::String sourceFilePathName = sourceFolder + "/" + tempWorldName + ".scene";
+		CopyFile(sourceFilePathName.data(), destinationFilePathName.data(), TRUE);
+
+		std::ifstream ifs(destinationFilePathName);
+		if (false == ifs.good())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule] Create project backup failed, because the file: " + destinationFilePathName + " cannot be opened.");
+			return false;
+		}
+		else
+		{
+			this->sceneBackupMap[projectName].push_back(destinationFilePathName);
+		}
+
+		return true;
+	}
+
 } // namespace end

@@ -269,6 +269,7 @@ namespace NOWA
 
 		std::vector<unsigned long> missingGameObjectIds;
 		bool bIsSnapshot;
+		bool bNewScene;
 	};
 
 }; // namespace end

@@ -47,39 +47,8 @@ ConfigPanel::ConfigPanel(ProjectManager* projectManager, const MyGUI::FloatCoord
 
 void ConfigPanel::destroyContent(void)
 {
+	// No delete of e.g. configPanelProject because its done internally in removeAllItems
 	this->configPanelView->removeAllItems();
-
-	if (this->okButton)
-	{
-		delete this->okButton;
-		this->okButton = nullptr;
-	}
-	if (this->abordButton)
-	{
-		delete this->abordButton;
-		this->abordButton = nullptr;
-	}
-
-	if (this->configPanelProject)
-	{
-		delete this->configPanelProject;
-		this->configPanelProject = nullptr;
-	}
-	if (this->configPanelSceneManager)
-	{
-		delete this->configPanelSceneManager;
-		this->configPanelSceneManager = nullptr;
-	}
-	if (this->configPanelOgreNewt)
-	{
-		delete this->configPanelOgreNewt;
-		this->configPanelOgreNewt = nullptr;
-	}
-	if (this->configPanelRecast)
-	{
-		delete this->configPanelRecast;
-		this->configPanelRecast = nullptr;
-	}
 }
 
 void ConfigPanel::setVisible(bool show)

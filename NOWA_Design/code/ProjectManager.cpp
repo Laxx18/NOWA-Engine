@@ -291,6 +291,8 @@ void ProjectManager::saveProject(const Ogre::String& optionalFileName)
 		this->dotSceneExportModule->setAdditionalMeshResources(this->additionalMeshResources);
 	}
 
+	// Creates prior a backup of the scene
+	NOWA::DeployResourceModule::getInstance()->createProjectBackup(this->projectParameter.projectName, this->projectParameter.sceneName);
 	this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
 
 	// Add file name to recent file names

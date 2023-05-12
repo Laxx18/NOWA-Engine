@@ -729,6 +729,7 @@ namespace NOWA
 
 		GameObjectPtr gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, dynamic, type, id);
 		gameObjectPtr->setControlledByClientID(0);
+		gameObjectPtr->setName(sceneNode->getName());
 
 		if (false == gameObjectPtr->init())
 		{

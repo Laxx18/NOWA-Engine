@@ -307,45 +307,45 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->activated->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "InterpolationMode"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->interpolationMode->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->interpolationMode->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RotationMode"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->rotationMode->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotationMode->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Repeat"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->repeat->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->repeat->getBool())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "NodeTrackCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->nodeTrackCount->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->nodeTrackCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("NodeTrackId" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->nodeTrackIds[i]->getULong())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "NodeTrackId" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->nodeTrackIds[i]->getULong())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("TimePosition" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->timePositions[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "TimePosition" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->timePositions[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 	}

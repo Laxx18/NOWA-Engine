@@ -189,6 +189,17 @@ namespace NOWA
 
 		if (nullptr != this->root)
 		{
+			auto factoryMovableText = this->root->getMovableObjectFactory("MovableText");
+			if (nullptr != factoryMovableText)
+			{
+				delete factoryMovableText;
+			}
+			auto factoryRectangle2D = this->root->getMovableObjectFactory("Rectangle2D");
+			if (nullptr != factoryRectangle2D)
+			{
+				delete factoryRectangle2D;
+			}
+
 			Ogre::RenderSystem* renderSystem = this->root->getRenderSystem();
 			Ogre::TextureGpuManager* textureGpuManager = renderSystem->getTextureGpuManager();
 			if (nullptr != textureGpuManager)
@@ -2252,7 +2263,11 @@ namespace NOWA
 	{
 		std::vector<Ogre::String> fileNames;
 
-		Ogre::String rootPath = Core::getSingletonPtr()->getSectionPath(resourceGroupName)[0];
+		Ogre::String rootPath;
+		if (false == Core::getSingletonPtr()->getSectionPath(resourceGroupName).empty())
+		{
+			rootPath = Core::getSingletonPtr()->getSectionPath(resourceGroupName)[0];
+		}
 		Ogre::String searchPath;
 
 		if (true == folder.empty())
@@ -2739,7 +2754,7 @@ namespace NOWA
 			return;
 		}
 		Ogre::DataStreamPtr stream(OGRE_NEW Ogre::FileStreamDataStream(strFilename, &fp, false));
-		char* customConfig = _strdup(stream->getAsString().c_str());
+		char* customConfig = XMLDoc.allocate_string(stream->getAsString().data());
 		// parse the document
 		try
 		{

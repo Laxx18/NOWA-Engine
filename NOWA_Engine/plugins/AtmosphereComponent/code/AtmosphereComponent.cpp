@@ -1135,117 +1135,117 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->activated->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableSky"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->enableSky->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableSky->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "StartTime"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->startTime->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startTime->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TimeMultiplicator"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->timeMultiplicator->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->timeMultiplicator->getReal())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "PresetsCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->presetCount->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->presetCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->times.size(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("Time" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->times[i]->getString())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Time" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->times[i]->getString())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("DensityCoefficient" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->densityCoefficients[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityCoefficient" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityCoefficients[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("DensityDiffusion" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->densityDiffusions[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "DensityDiffusion" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->densityDiffusions[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("HorizonLimit" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->horizonLimits[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "HorizonLimit" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->horizonLimits[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("SunPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sunPowers[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SunPower" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sunPowers[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("SkyPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->skyPowers[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyPower" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyPowers[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("SkyColor" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->skyColors[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SkyColor" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skyColors[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("FogDensity" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->fogDensities[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogDensity" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogDensities[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("FogBreakMinBrightness" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->fogBreakMinBrightnesses[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakMinBrightness" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakMinBrightnesses[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("FogBreakFalloff" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->fogBreakFalloffs[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "FogBreakFalloff" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fogBreakFalloffs[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("LinkedLightPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->linkedLightPowers[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedLightPower" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedLightPowers[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->linkedSceneAmbientUpperPowers[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientUpperPower" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientUpperPowers[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->linkedSceneAmbientLowerPowers[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "LinkedAmbientLowerPower" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->linkedSceneAmbientLowerPowers[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("EnvmapScale" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->envmapScales[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "EnvmapScale" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->envmapScales[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 	}

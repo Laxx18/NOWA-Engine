@@ -1403,9 +1403,21 @@ namespace OgreNewt
 
 		((dCustomKinematicController*)supportJoint)->ResetAutoSleep();
 
-		// ((dCustomKinematicController*)supportJoint)->SetAngularViscuosFrictionCoefficient(1.0f);
-
 		// ((dCustomKinematicController*)supportJoint)->SetSolverModel(1);
+	}
+
+	KinematicController::KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos, const OgreNewt::Body* referenceBody)
+	{
+		dCustomJoint* supportJoint;
+
+		// make the joint matrix 
+		dVector attachement(pos.x, pos.y, pos.z, 1.0f);
+
+		// crate a Newton Custom joint and set it at the support joint	
+		supportJoint = new dCustomKinematicController(child->getNewtonBody(), attachement, referenceBody ? referenceBody->getNewtonBody() : nullptr);
+		SetSupportJoint(supportJoint);
+
+		((dCustomKinematicController*)supportJoint)->ResetAutoSleep();
 	}
 
 	KinematicController::~KinematicController()

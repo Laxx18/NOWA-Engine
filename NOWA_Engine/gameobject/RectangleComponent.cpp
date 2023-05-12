@@ -314,57 +314,57 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CastShadows"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->castShadows->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->castShadows->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TwoSided"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->twoSided->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->twoSided->getBool())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RectanglesCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->rectanglesCount->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rectanglesCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->rectanglesCount->getUInt(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("color1" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->colors1[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "color1" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->colors1[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("color2" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->colors2[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "color2" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->colors2[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("StartPosition" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->startPositions[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "StartPosition" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startPositions[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("StartOrientation" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->startOrientations[i]->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "StartOrientation" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startOrientations[i]->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("Width" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->widths[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Width" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->widths[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("Height" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->heights[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Height" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->heights[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 	}

@@ -36,6 +36,8 @@ namespace NOWA
 
 		bool createLuaInitScript(const Ogre::String& projectName);
 
+		bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName);
+
 		void destroyContent(void);
 	public:
 		static DeployResourceModule* getInstance();
@@ -44,6 +46,7 @@ namespace NOWA
 		~DeployResourceModule();
 	private:
 		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
+		std::map<Ogre::String, std::vector<Ogre::String>> sceneBackupMap;
 	};
 
 }; //namespace end

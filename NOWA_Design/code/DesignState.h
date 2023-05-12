@@ -143,6 +143,8 @@ private:
 	bool playerInControl;
 
 	std::set<unsigned long> oldSelectedGameObjectIds;
+	Ogre::RaySceneQuery* selectQuery;
+	Ogre::String selectedMovableObjectInfo;
 };
 
 #endif

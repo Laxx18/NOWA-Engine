@@ -52,6 +52,8 @@ namespace NOWA
 		friend class AppStateListener;
 		friend class AppStateManager;
 
+		virtual ~AppState() {};
+
 		/**
 		 * @brief	Creates a new application state like (world1 or level1 state)
 		 * @note	Call the macro DECLARE_APPSTATE_CLASS in the header of the own application state. For example after the constructor: DECLARE_APPSTATE_CLASS(YourState)

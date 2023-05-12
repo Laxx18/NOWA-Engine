@@ -398,6 +398,7 @@ MainMenuBar::~MainMenuBar()
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
 	if (nullptr != this->configPanel)
 	{
+		this->configPanel->destroyContent();
 		delete this->configPanel;
 		this->configPanel = nullptr;
 	}

@@ -485,11 +485,16 @@ namespace NOWA
 		MyGUI::FactoryManager::getInstance().unregisterFactory<ResourceItemInfo>(resourceCategory);
 
 		// Is done in MyGUIWidgetComponent
-		/*if (nullptr != this->itemBoxWindow)
+		if (nullptr != this->itemBoxWindow)
 		{
+			if (nullptr != this->widget)
+			{
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+				this->widget = nullptr;
+			}
 			delete this->itemBoxWindow;
 			this->itemBoxWindow = nullptr;
-		}*/
+		}
 		if (nullptr != this->toolTip)
 		{
 			delete this->toolTip;
@@ -819,51 +824,51 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ResourceLocationName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->resourceLocationName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resourceLocationName->getString())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseToolTip"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->useToolTip->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useToolTip->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AllowDragDrop"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->allowDragDrop->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->allowDragDrop->getBool())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ItemCount"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->itemCount->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->itemCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->itemCount->getUInt(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("ResourceName" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->resourceNames[i]->getString())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "ResourceName" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->resourceNames[i]->getString())));
 			propertiesXML->append_node(propertyXML);
 			
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("Quantity" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->quantities[i]->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Quantity" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->quantities[i]->getUInt())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("SellValue" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sellValues[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "SellValue" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sellValues[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("BuyValue" + Ogre::StringConverter::toString(i))));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->buyValues[i]->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "BuyValue" + Ogre::StringConverter::toString(i))));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->buyValues[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 	}
@@ -1264,6 +1269,7 @@ namespace NOWA
 			{
 				for (size_t i = itemCount; i < oldSize; i++)
 				{
+					delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i);
 					this->itemBoxWindow->getItemBox()->removeItem(i);
 				}
 			}
@@ -1637,6 +1643,7 @@ namespace NOWA
 		}
 		for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
 		{
+			delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(0);
 			this->itemBoxWindow->getItemBox()->removeItem(0);
 		}
 		for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)

@@ -458,6 +458,8 @@ namespace OgreNewt
 		*/
 		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos);
 
+		KinematicController(const OgreNewt::Body* child, const Ogre::Vector3& pos, const OgreNewt::Body* referenceBody);
+
 		//! destructor.
 		~KinematicController();
 

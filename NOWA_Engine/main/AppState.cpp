@@ -386,10 +386,24 @@ namespace NOWA
 			delete this->gameProgressModule;
 			this->gameProgressModule = nullptr;
 
+			this->miniMapModule->destroyContent();
+			delete this->miniMapModule;
+			this->miniMapModule = nullptr;
+
+			delete this->meshDecalGeneratorModule;
+			this->meshDecalGeneratorModule = nullptr;
+
 			// Destroy all scripts for just this AppState
 			this->luaScriptModule->destroyContent();
 			delete this->luaScriptModule;
 			this->luaScriptModule = nullptr;
+
+			delete this->eventManager;
+			this->eventManager = nullptr;
+
+			this->scriptEventManager->destroyContent();
+			delete this->scriptEventManager;
+			this->scriptEventManager = nullptr;
 
 			if (nullptr != this->rakNetModule)
 			{

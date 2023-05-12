@@ -285,7 +285,7 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->activated->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		// Copy script to location, if it does not exist in a group file path
@@ -317,11 +317,11 @@ namespace NOWA
 
 		if (true == this->differentScriptNameForXML.empty())
 		{
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->scriptFile->getString())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->scriptFile->getString())));
 		}
 		else
 		{
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->differentScriptNameForXML)));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->differentScriptNameForXML)));
 			this->differentScriptNameForXML.clear();
 		}
 		propertiesXML->append_node(propertyXML);
@@ -329,13 +329,13 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CloneScript"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->cloneScript->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cloneScript->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "HasCommonScript"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->commonScript->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->commonScript->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 

@@ -1194,5 +1194,8 @@
     <ClCompile Include="utilities\AnimationBlenderV2.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
+    <ClCompile Include="utilities\XMLConverter.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

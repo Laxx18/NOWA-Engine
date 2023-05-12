@@ -78,6 +78,7 @@ void DesignState::enter(void)
 	this->firstTimeValueSet = true;
 	this->playerInControl = false;
 	this->ogreNewt = nullptr;
+	this->selectQuery = nullptr;
 
 	// Register the tree control
 	MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -116,6 +117,9 @@ void DesignState::exit(void)
 {
 	this->canUpdate = false;
 	this->hasStarted = false;
+
+	this->sceneManager->destroyQuery(this->selectQuery);
+	this->selectQuery = nullptr;
 
 	NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
 
@@ -262,6 +266,9 @@ void DesignState::createScene(void)
 
 	// Setup all MyGUI widgets
 	this->setupMyGUIWidgets();
+
+	this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), NOWA::GameObjectController::ALL_CATEGORIES_ID);
+	this->selectQuery->setSortByDistance(true);
 
 	// Attention: Dangerous test, as maybe textures are deleted, that are in use, check background scroll etc.!
 	// Causes crash, when exiting application
@@ -1268,6 +1275,11 @@ void DesignState::updateInfo(Ogre::Real dt)
 	{
 		Ogre::String info = "Selected : " + Ogre::StringConverter::toString(this->editorManager->getSelectionManager()->getSelectedGameObjects().size());
 
+		if (false == this->selectedMovableObjectInfo.empty())
+		{
+			info += " " + this->selectedMovableObjectInfo;
+		}
+
 		if (1 == this->editorManager->getSelectionManager()->getSelectedGameObjects().size())
 		{
 			NOWA::GameObject* gameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
@@ -1529,6 +1541,34 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 	{
 		return true;
 	}*/
+
+	if (false == this->simulating)
+	{
+		if (GetAsyncKeyState(VK_LCONTROL) && keyEventRef.key == MyGUI::KeyCode::C)
+		{
+			if (false == this->selectedMovableObjectInfo.empty())
+			{
+				Ogre::String toFind = "local pos: ";
+				size_t foundStart = this->selectedMovableObjectInfo.find(toFind);
+				if (foundStart != Ogre::String::npos)
+				{
+					size_t foundEnd = this->selectedMovableObjectInfo.find(" normal: ", foundStart + toFind.length());
+					if (foundEnd != Ogre::String::npos)
+					{
+						Ogre::String strPosition = this->selectedMovableObjectInfo.substr(foundStart + toFind.length(), foundEnd - (foundStart + toFind.length()));
+						NOWA::Core::getSingletonPtr()->copyTextToClipboard(strPosition);
+					}
+				}
+
+				size_t foundPos = this->selectedMovableObjectInfo.find("pos: ");
+				if (foundPos != Ogre::String::npos)
+				{
+					
+				}
+			}
+		}
+	}
+
 	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
 	{
 		return true;
@@ -1811,6 +1851,24 @@ void DesignState::processUnbufferedMouseInput(Ogre::Real dt)
 
 bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 {
+	if (false == this->simulating)
+	{
+		if (evt.state.buttonDown(OIS::MB_Middle))
+		{
+			Ogre::MovableObject* movableObject = nullptr;
+			Ogre::Item* item = nullptr;
+			Ogre::Vector3 result = Ogre::Vector3::ZERO;
+			Ogre::Real closestDistance = 0.0f;
+			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+			if (NOWA::MathHelper::getInstance()->getRaycastFromPoint(evt.state.X.abs, evt.state.Y.abs, this->camera, NOWA::Core::getSingletonPtr()->getOgreRenderWindow(),
+				this->selectQuery, result, (size_t&)movableObject, closestDistance, normal, nullptr, false))
+			{
+				this->selectedMovableObjectInfo = "GameObject: " + movableObject->getName() + " global pos: " + Ogre::StringConverter::toString(result) + " local pos: " + Ogre::StringConverter::toString(result - movableObject->getParentNode()->_getDerivedPositionUpdated()) + " normal: " + Ogre::StringConverter::toString(normal);
+			}
+		}
+	}
+
 	// Prevent scene manipulation, when user does something in GUI
 	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 	if (nullptr != widget && false == this->simulating)
@@ -1904,6 +1962,8 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 
 bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID id)
 {
+	this->selectedMovableObjectInfo.clear();
+
 	// Prevent scene manipulation, when user does something in GUI
 	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 	if (nullptr != widget/* && true == this->simulating*/) // causes ugly gui behavior

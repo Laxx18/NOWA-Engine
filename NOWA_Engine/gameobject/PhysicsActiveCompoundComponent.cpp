@@ -264,7 +264,7 @@ namespace NOWA
 		{
 			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "MeshCompoundConfigFile"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->meshCompoundConfigFile->getString())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->meshCompoundConfigFile->getString())));
 			propertiesXML->append_node(propertyXML);
 		}
 		else
@@ -274,26 +274,26 @@ namespace NOWA
 			{
 				propertyXML = doc.allocate_node(node_element, "property");
 				propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("CollisionType" + Ogre::StringConverter::toString(i))));
-				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->collisionDataList[i].collisionType)));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CollisionType" + Ogre::StringConverter::toString(i))));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collisionDataList[i].collisionType)));
 				propertiesXML->append_node(propertyXML);
 
 				propertyXML = doc.allocate_node(node_element, "property");
 				propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("CollisionPosition" + Ogre::StringConverter::toString(i))));
-				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->collisionDataList[i].collisionPosition)));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CollisionPosition" + Ogre::StringConverter::toString(i))));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collisionDataList[i].collisionPosition)));
 				propertiesXML->append_node(propertyXML);
 
 				propertyXML = doc.allocate_node(node_element, "property");
 				propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
-				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("CollisionOrientation" + Ogre::StringConverter::toString(i))));
-				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->collisionDataList[i].collisionOrientation)));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CollisionOrientation" + Ogre::StringConverter::toString(i))));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collisionDataList[i].collisionOrientation)));
 				propertiesXML->append_node(propertyXML);
 
 				propertyXML = doc.allocate_node(node_element, "property");
 				propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
-				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString("CollisionSize" + Ogre::StringConverter::toString(i))));
-				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->collisionDataList[i].collisionSize)));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "CollisionSize" + Ogre::StringConverter::toString(i))));
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collisionDataList[i].collisionSize)));
 				propertiesXML->append_node(propertyXML);
 			}
 		}

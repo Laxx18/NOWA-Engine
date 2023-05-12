@@ -218,7 +218,7 @@ namespace MyGUI
 		}
 		else
 		{
-			MYGUI_EXCEPT("Widget '" << _widget->getName() << "' not found");
+			// MYGUI_EXCEPT("Widget '" << _widget->getName() << "' not found");
 		}
 	}
 

@@ -106,7 +106,7 @@ namespace NOWA
 		if (true == this->entity->hasAnimationState(animationName))
 		{
 			this->source = this->entity->getAnimationState(animationName);
-			this->source->setEnabled(true);
+			this->source->setEnabled(false);
 			this->source->setWeight(1.0f);
 			this->timeleft = 0.0f;
 			this->duration = 1.0f;

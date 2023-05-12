@@ -532,43 +532,43 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "DataBlockName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->dataBlockName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dataBlockName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShapeType"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->shapeType->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shapeType->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UVTile"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->uvTile->getVector2())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->uvTile->getVector2())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "EnableNormals"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->enableNormals->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->enableNormals->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "NumTexCoords"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numTexCoords->getUInt())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numTexCoords->getUInt())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UVOrigin"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->uvOrigin->getVector2())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->uvOrigin->getVector2())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SwitchUV"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->switchUV->getBool())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->switchUV->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 
@@ -579,13 +579,13 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "SizeXYZ"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sizeXYZ->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sizeXYZ->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegXYZ"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegXYZ->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegXYZ->getVector3())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -595,7 +595,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumRings"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numRings->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numRings->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -604,13 +604,13 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegments"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegments->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegments->getUInt())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegHeight"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegHeight->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegHeight->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -620,13 +620,13 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "Radius"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->radius->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->radius->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "Height"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->height->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->height->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -635,7 +635,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "Capped"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->capped->getBool())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->capped->getBool())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -644,7 +644,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumIterations"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numIterations->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numIterations->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -653,19 +653,19 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegXY"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegXY->getVector2())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegXY->getVector2())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NormalXYZ"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->normalXYZ->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->normalXYZ->getVector3())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "SizeXY"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sizeXY->getVector3())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sizeXY->getVector3())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -674,7 +674,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSides"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSides->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSides->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -683,13 +683,13 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "ChamferSize"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->chamferSize->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->chamferSize->getReal())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "ChamferNumSeg"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->chamferNumSeg->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->chamferNumSeg->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -698,13 +698,13 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegPath"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegPath->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegPath->getUInt())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumRounds"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numRounds->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numRounds->getUInt())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -713,19 +713,19 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegSection"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegSection->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegSection->getUInt())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "NumSegCircle"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->numSegCircle->getUInt())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->numSegCircle->getUInt())));
 			propertiesXML->append_node(propertyXML);
 
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "SectionRadius"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->sectionRadius->getReal())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->sectionRadius->getReal())));
 			propertiesXML->append_node(propertyXML);
 		}
 		
@@ -734,7 +734,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "TorusKnotPQ"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->torusKnotPQ->getVector2())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->torusKnotPQ->getVector2())));
 			propertiesXML->append_node(propertyXML);
 		}
 
@@ -743,7 +743,7 @@ namespace NOWA
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", "OuterInnerRadius"));
-			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->outerInnerRadius->getVector2())));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->outerInnerRadius->getVector2())));
 			propertiesXML->append_node(propertyXML);
 		}
 	}
@@ -1741,25 +1741,25 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "DataBlockName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->dataBlockName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->dataBlockName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetId1"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->targetId1->getULong())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetId1->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetId2"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->targetId2->getULong())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetId2->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "BoolOperation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(this->boolOperation->getListSelectedValue())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->boolOperation->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 	}
 

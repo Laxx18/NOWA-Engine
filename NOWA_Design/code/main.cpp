@@ -2,12 +2,24 @@
 #include "MainApplication.h"
 #include <string>
 
+// #define MEMORY_LEAK_DETECTION
+
+#ifdef MEMORY_LEAK_DETECTION
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#include <iostream>
+#endif
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
 
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 {
+#ifdef MEMORY_LEAK_DETECTION
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 	// Create the application
 	MainApplication app;
 	try	
@@ -23,9 +35,15 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 			app.startSimulation();
 		}
 	}
-	catch( Ogre::Exception& e )
+	catch(Ogre::Exception& e)
 	{
 		// Destroys ogrenewt and newton before throwing, as else it will cause trouble in a thread deep inside newton.
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+		ShowCursor(true);
+		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+	}
+	catch (MyGUI::Exception& e)
+	{
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
 		ShowCursor(true);
 		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
@@ -36,6 +54,11 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
 		MessageBoxEx(0, "An unknown exception has occured!", "Unknown exception", MB_OK, MB_OK | MB_ICONERROR | MB_TASKMODAL);
 	}
+
+#ifdef MEMORY_LEAK_DETECTION
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
+	_CrtDumpMemoryLeaks();
+#endif
 
 	return 0;
 }
