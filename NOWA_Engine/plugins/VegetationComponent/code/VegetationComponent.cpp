@@ -44,6 +44,7 @@ namespace NOWA
 		minimumBounds(Ogre::Vector3::ZERO),
 		maximumBounds(Ogre::Vector3::ZERO),
 		raySceneQuery(nullptr),
+		activated(new Variant(VegetationComponent::AttrActivated(), true, this->attributes)),
 		targetGameObjectId(new Variant(VegetationComponent::AttrTargetGameObjectId(), static_cast<unsigned long>(0), this->attributes)),
 		density(new Variant(VegetationComponent::AttrDensity(), 1.0f, this->attributes)),
 		positionXZ(new Variant(VegetationComponent::AttrPositionXZ(), Ogre::Vector2::ZERO, this->attributes)),
@@ -108,6 +109,12 @@ namespace NOWA
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
 
 		GameObjectComponent::init(propertyElement, filename);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
+		{
+			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetGameObjectId")
 		{
@@ -266,7 +273,11 @@ namespace NOWA
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
+		if (VegetationComponent::AttrActivated() == attribute->getName())
+		{
+			this->setActivated(attribute->getBool());
+		}
+		else if (VegetationComponent::AttrTargetGameObjectId() == attribute->getName())
 		{
 			this->setTargetGameObjectId(attribute->getULong());
 		}
@@ -330,6 +341,12 @@ namespace NOWA
 		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetGameObjectId"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetGameObjectId->getULong())));
@@ -411,12 +428,20 @@ namespace NOWA
 
 	void VegetationComponent::setActivated(bool activated)
 	{
-
+		this->activated->setValue(activated);
+		if (true == activated)
+		{
+			regenerateVegetation();
+		}
+		else
+		{
+			this->clearLists();
+		}
 	}
 
 	bool VegetationComponent::isActivated(void) const
 	{
-		return true;
+		return this->activated->getBool();
 	}
 
 	void VegetationComponent::setTargetGameObjectId(unsigned long targetGameObjectId)
@@ -641,6 +666,11 @@ namespace NOWA
 
 	void VegetationComponent::regenerateVegetation()
 	{
+		if (false == this->activated->getBool())
+		{
+			return;
+		}
+
 		if (nullptr == this->gameObjectPtr)
 		{
 			return;

@@ -322,7 +322,9 @@ namespace NOWA
 
 		void clearItems(void);
 
-		void reactOnDropItem(luabind::object closureFunction);
+		void reactOnDropItemRequest(luabind::object closureFunction);
+
+		void reactOnDropItemAccepted(luabind::object closureFunction);
 	public:
 		static const Ogre::String AttrResourceLocationName(void) { return "Resource Location Name"; }
 		static const Ogre::String AttrUseToolTip(void) { return "Use ToolTip"; }
@@ -358,7 +360,8 @@ namespace NOWA
 		std::vector<Variant*> sellValues;
 		std::vector<Variant*> buyValues;
 		Variant* allowDragDrop;
-		luabind::object closureFunction;
+		luabind::object closureFunctionRequestDropRequest;
+		luabind::object closureFunctionRequestDropAccepted;
 		DragDropData* dragDropData;
 		Ogre::String oldResourceLocationName;
 		bool dropFinished;

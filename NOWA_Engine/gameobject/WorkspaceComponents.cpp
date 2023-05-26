@@ -1892,6 +1892,18 @@ namespace NOWA
 
 					Ogre::PlanarReflectionActor* actor = this->planarReflections->addActor(Ogre::PlanarReflectionActor(position, mirrorSize, orientation));
 
+					// Not necessary yet, but just for the future: https://forums.ogre3d.org/viewtopic.php?t=97019
+					/*GameObjectPtr reflectionCameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->reflectionCameraGameObjectId->getULong());
+					if (nullptr != reflectionCameraGameObjectPtr)
+					{
+						auto& reflectionCameraCompPtr = NOWA::makeStrongPtr(reflectionCameraGameObjectPtr->getComponent<ReflectionCameraComponent>());
+						
+						/*if (nullptr != reflectionCameraCompPtr)
+						{
+							Ogre::UserObjectBindings& cameraBindings(static_cast<Ogre::MovableObject*>(reflectionCameraCompPtr->getCamera())->getUserObjectBindings());
+							cameraBindings.setUserAny("Slot", Ogre::Any(actor->getCurrentBoundSlot()));
+						}*/
+
 					// Make sure it's always activated (i.e. always win against other actors) unless it's not visible by the camera.
 					actor->mActivationPriority = 0;
 					this->planarReflectionActors[i] = std::make_tuple(gameObjectId, planarReflectionActorIndex, actor);

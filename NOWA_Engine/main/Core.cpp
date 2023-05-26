@@ -2259,7 +2259,7 @@ namespace NOWA
 		return fileNames;
 	}
 
-	std::vector<Ogre::String> Core::getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern)
+	std::vector<Ogre::String> Core::getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern, bool recursive)
 	{
 		std::vector<Ogre::String> fileNames;
 
@@ -2274,9 +2274,13 @@ namespace NOWA
 		{
 			searchPath = rootPath + "/" + pattern;
 		}
-		else
+		else if(false == rootPath.empty())
 		{
 			searchPath = rootPath + "/" + folder + "/" + pattern;
+		}
+		else
+		{
+			searchPath = folder + "/" + pattern;
 		}
 
 		WIN32_FIND_DATA fd;
@@ -2287,11 +2291,18 @@ namespace NOWA
 			{
 				// read all (real) files in current folder
 				// , delete '!' read other 2 default folder . and ..
-				if (false == folder.empty())
+				if (false == folder.empty() && false == recursive)
 				{
 					if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 					{
-						fileNames.push_back(rootPath + "/" + folder + "/" + fd.cFileName);
+						if (false == rootPath.empty())
+						{
+							fileNames.push_back(rootPath + "/" + folder + "/" + fd.cFileName);
+						}
+						else
+						{
+							fileNames.push_back(folder + "/" + fd.cFileName);
+						}
 					}
 				}
 				else
@@ -2302,7 +2313,14 @@ namespace NOWA
 						{
 							continue;
 						}
-						fileNames.push_back(rootPath + "/" + fd.cFileName);
+						if (false == rootPath.empty())
+						{
+							fileNames.push_back(rootPath + "/" + fd.cFileName);
+						}
+						else
+						{
+							fileNames.push_back(folder + "/" + fd.cFileName);
+						}
 					}
 				}
 			} while (::FindNextFile(hFind, &fd));

@@ -46,7 +46,6 @@ namespace NOWA
 		~DeployResourceModule();
 	private:
 		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
-		std::map<Ogre::String, std::vector<Ogre::String>> sceneBackupMap;
 	};
 
 }; //namespace end

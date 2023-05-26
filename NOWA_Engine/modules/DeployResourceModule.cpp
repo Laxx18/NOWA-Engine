@@ -951,22 +951,21 @@ namespace NOWA
 
 	bool DeployResourceModule::createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName)
 	{
-		auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("", "../../media/Projects/backup/", "*.*");
+		std::list<Ogre::String> sceneBackupList;
+		auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("", "../../media/Projects/backup/" + projectName, "*.*");
 		for (auto filePathName : filePathNames)
 		{
-			size_t found = filePathName.find_last_of("/\\");
-			if (Ogre::String::npos == found)
-				continue;
+			sceneBackupList.push_back(filePathName);
+		}
 
-			filePathName = filePathName.substr(found + 1, filePathName.length() - found);
-			Ogre::String pattern = "_backup_";
-			size_t found1 = filePathName.find(pattern);
-			if (found1 != Ogre::String::npos)
-			{
-				Ogre::String worldNamePattern = filePathName.substr(0, filePathName.size() - pattern.size());
-				this->sceneBackupMap[projectName].push_back(filePathName);
-			}
-			
+		// TODO: Not per project but in project 4 backup files per scene!
+		// Only allows up to 4 backup files per project
+		const unsigned char maxElements = 10;
+		while (sceneBackupList.size() >= maxElements)
+		{
+			Ogre::String oldestBackup = sceneBackupList.front();
+			std::remove(oldestBackup.data());
+			sceneBackupList.pop_front();
 		}
 
 		Ogre::String tempWorldName = worldName;
@@ -997,10 +996,6 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule] Create project backup failed, because the file: " + destinationFilePathName + " cannot be opened.");
 			return false;
-		}
-		else
-		{
-			this->sceneBackupMap[projectName].push_back(destinationFilePathName);
 		}
 
 		return true;

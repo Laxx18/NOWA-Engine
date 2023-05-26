@@ -234,6 +234,7 @@ namespace NOWA
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
+		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrTargetGameObjectId(void) { return "Target Id"; }
 		static const Ogre::String AttrDensity(void) { return "Density"; }
 		static const Ogre::String AttrPositionXZ(void) { return "Position X-Z"; }
@@ -261,6 +262,7 @@ namespace NOWA
 		Ogre::RaySceneQuery* raySceneQuery;
 		std::vector<int> terraLayerList;
 
+		Variant* activated;
 		Variant* targetGameObjectId;
 		Variant* density;
 		Variant* positionXZ;

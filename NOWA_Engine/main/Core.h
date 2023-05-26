@@ -419,7 +419,7 @@ namespace NOWA
 
 		std::vector<Ogre::String> getSaveNamesInProject(const Ogre::String& projectName);
 
-		std::vector<Ogre::String> getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern);
+		std::vector<Ogre::String> getFilePathNames(const Ogre::String& resourceGroupName, const Ogre::String& folder, const Ogre::String& pattern, bool recursive = false);
 
 		void openFolder(const Ogre::String& filePathName);
 

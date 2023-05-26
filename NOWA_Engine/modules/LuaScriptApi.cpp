@@ -11772,7 +11772,8 @@ namespace NOWA
 			.def("getBuyValue", (Ogre::Real(MyGUIItemBoxComponent::*)(const Ogre::String&)) & MyGUIItemBoxComponent::getBuyValue)
 
 			.def("clearItems", &MyGUIItemBoxComponent::clearItems)
-			.def("reactOnDropItem", &MyGUIItemBoxComponent::reactOnDropItem)
+			.def("reactOnDropItemRequest", &MyGUIItemBoxComponent::reactOnDropItemRequest)
+			.def("reactOnDropItemAccepted", &MyGUIItemBoxComponent::reactOnDropItemAccepted)
 			.def("reactOnMouseButtonClick", &MyGUIItemBoxComponent::reactOnMouseButtonClick)
 		];
 
@@ -11793,8 +11794,10 @@ namespace NOWA
 		AddClassToCollection("MyGUIItemBoxComponent", "void addQuantity(String resourceName, int quantity)", "Adds the quantity of the resource, if does not exist, creates a new slot in inventory.");
 		AddClassToCollection("MyGUIItemBoxComponent", "void removeQuantity(String resourceName, int quantity)", "Removes the quantity from the resource.");
 		AddClassToCollection("MyGUIItemBoxComponent", "void clearItems()", "Cleares the whole inventory.");
-		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItem(func closureFunction, DragDropData dragDropData)",
-			"Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItem(function(dragDropData) ... end");
+		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemRequest(func closureFunction, DragDropData dragDropData)",
+			"Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItemRequest(function(dragDropData) ... end");
+		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemAccepted(func closureFunction, DragDropData dragDropData)",
+							 "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end");
 		AddClassToCollection("MyGUIComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
 														  "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.");
 
@@ -11808,6 +11811,7 @@ namespace NOWA
 			.def("getSenderReceiverIsSame", &DragDropData::getSenderReceiverIsSame)
 			.def("getSenderInventoryId", &getSenderInventoryId)
 			.def("setCanDrop", &DragDropData::setCanDrop)
+			.def("getCanDrop", &DragDropData::getCanDrop)
 		];
 		AddClassToCollection("DragDropData", "DragDropData", "It can be used when an item is dragged from one inventory to another to get some data and control if it may be dropped.");
 		AddClassToCollection("DragDropData", "String getResourceName()", "Gets the resource name.");
@@ -11817,6 +11821,7 @@ namespace NOWA
 		AddClassToCollection("DragDropData", "bool getSenderReceiverIsSame()", "Gets whether the inventory sender and receiver is the same. E.g. moving the item within the same inventory.");
 		AddClassToCollection("DragDropData", "string getSenderInventoryId()", "Gets the sender inventory id.");
 		AddClassToCollection("DragDropData", "void setCanDrop(bool canDrop)", "Sets whether the item can be dropped.");
+		AddClassToCollection("DragDropData", "bool getCanDrop()", "Gets whether the item can be dropped.");
 
 		module(lua)
 			[

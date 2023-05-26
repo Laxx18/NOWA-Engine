@@ -169,12 +169,6 @@ namespace NOWA
 				this->resourceImage = manager.getByName(this->resourceInfo->getItemResourceImage())->castType<MyGUI::ResourceImageSet>();
 			}
 		}
-		else
-		{
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not add resource: "
-			// 	+ resourceName + ", because it cannot be found. Check your resource location name XML");
-			this->clear();
-		}
 	}
 
 	Ogre::String ItemData::getResourceName(void) const
@@ -923,11 +917,11 @@ namespace NOWA
 		{
 			this->dragDropData->senderReceiverIsSame = true;
 
-			if (this->closureFunction.is_valid())
+			if (this->closureFunctionRequestDropRequest.is_valid())
 			{
 				try
 				{
-					luabind::call_function<void>(this->closureFunction, this->dragDropData);
+					luabind::call_function<void>(this->closureFunctionRequestDropRequest, this->dragDropData);
 				}
 				catch (luabind::error& error)
 				{
@@ -935,7 +929,7 @@ namespace NOWA
 					std::stringstream msg;
 					msg << errorMsg;
 
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItem' Error: " + Ogre::String(error.what())
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
 						+ " details: " + msg.str());
 				}
 			}
@@ -949,11 +943,11 @@ namespace NOWA
 				auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
 				if (nullptr != myGuiItemBoxCompPtr)
 				{
-					if (myGuiItemBoxCompPtr->closureFunction.is_valid())
+					if (myGuiItemBoxCompPtr->closureFunctionRequestDropRequest.is_valid())
 					{
 						try
 						{
-							luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunction, this->dragDropData);
+							luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropRequest, this->dragDropData);
 						}
 						catch (luabind::error& error)
 						{
@@ -961,7 +955,7 @@ namespace NOWA
 							std::stringstream msg;
 							msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItem' Error: " + Ogre::String(error.what())
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
 								+ " details: " + msg.str());
 						}
 					}
@@ -977,23 +971,84 @@ namespace NOWA
 
 	void MyGUIItemBoxComponent::notifyEndDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool _result)
 	{
-		if (_result && false == this->dropFinished)
+		if (_result && false == this->dropFinished && true == this->dragDropData->canDrop)
 		{
 			ItemData* senderData = *static_cast<ItemBox*>(_info.sender)->getItemDataAt<ItemData*>(_info.sender_index);
 			ItemData* receiverData = *static_cast<ItemBox*>(_info.receiver)->getItemDataAt<ItemData*>(_info.receiver_index);
 
-			// Remove one from the sender
-			unsigned int currentQuantity = this->quantities[_info.sender_index]->getUInt();
-			if (currentQuantity > 1)
+			// Sender and receiver is the same
+			if ((_info.sender == _info.receiver))
 			{
-				this->quantities[_info.sender_index]->setValue(currentQuantity - 1);
+				this->dragDropData->senderReceiverIsSame = true;
+
+				if (this->closureFunctionRequestDropAccepted.is_valid())
+				{
+					try
+					{
+						luabind::call_function<void>(this->closureFunctionRequestDropAccepted, this->dragDropData);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
+																	+ " details: " + msg.str());
+					}
+				}
 			}
 			else
 			{
-				this->quantities[_info.sender_index]->setValue(0);
-				this->resourceNames[_info.sender_index]->setValue("");
-				this->sellValues[_info.sender_index]->setValue(0.0f);
-				this->buyValues[_info.sender_index]->setValue(0.0f);
+				if (receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId())
+				{
+					// Calls on receiver the closure function, if does exist
+					auto receiverGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(receiverData->getInventoryOwnerId());
+					auto myGuiItemBoxCompPtr = NOWA::makeStrongPtr(receiverGameObjectPtr->getComponent<MyGUIItemBoxComponent>());
+					if (nullptr != myGuiItemBoxCompPtr)
+					{
+						if (myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted.is_valid())
+						{
+							try
+							{
+								luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted, this->dragDropData);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
+
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
+																			+ " details: " + msg.str());
+							}
+						}
+					}
+				}
+			}
+
+#if 1
+			// Shall be done in lua script!
+			//if ((_info.sender != _info.receiver))
+			//{
+			//	// Remove one from the sender
+			//	unsigned int currentQuantity = this->quantities[_info.sender_index]->getUInt();
+			//	if (currentQuantity > 1)
+			//	{
+			//		this->quantities[_info.sender_index]->setValue(currentQuantity - 1);
+			//	}
+			//	else
+			//	{
+			//		this->setResourceName(_info.sender_index, "");
+			//		this->setQuantity(_info.sender_index, 0);
+			//		this->setSellValue(_info.sender_index, 0.0f);
+			//		this->setBuyValue(_info.sender_index, 0.0f);
+			//	}
+			//}
+
+			if (false == this->dragDropData->canDrop)
+			{
+				return;
 			}
 
 			// Add also the inventory resource and data for the receiver
@@ -1011,14 +1066,29 @@ namespace NOWA
 			}
 			else
 			{
+				// In the same inventory re-arranged the items
 				this->setResourceName(_info.receiver_index, senderData->getResourceName());
-				this->increaseQuantity(_info.receiver_index, senderData->getQuantity());
+				this->setQuantity(_info.receiver_index, senderData->getQuantity());
 				this->setSellValue(_info.receiver_index, senderData->getSellValue());
 				this->setBuyValue(_info.receiver_index, senderData->getBuyValue());
+
+				this->setResourceName(_info.sender_index, "");
+				this->setQuantity(_info.sender_index, 0);
+				this->setSellValue(_info.sender_index, 0.0f);
+				this->setBuyValue(_info.sender_index, 0.0f);
 			}
 
 			receiverData->add(senderData);
-			senderData->removeQuantity(1 /*senderData->getQuantity()*/);
+			if (_info.sender != _info.receiver || receiverData->getInventoryOwnerId() != this->gameObjectPtr->getId())
+			{
+				senderData->removeQuantity(1);
+			}
+			else
+			{
+				// Just moved from a to b in the same inventory, remove completely from the previous place
+				senderData->clear();
+			}
+#endif
 
 			static_cast<ItemBox*>(_info.receiver)->setItemData(_info.receiver_index, receiverData);
 			static_cast<ItemBox*>(_info.sender)->setItemData(_info.sender_index, senderData);
@@ -1377,7 +1447,7 @@ namespace NOWA
 			do
 			{
 				item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
-				if (nullptr != item)
+				if (nullptr != item && (*item)->getResourceName() == resourceName)
 				{
 					return i;
 				}
@@ -1652,9 +1722,14 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIItemBoxComponent::reactOnDropItem(luabind::object closureFunction)
+	void MyGUIItemBoxComponent::reactOnDropItemRequest(luabind::object closureFunction)
 	{
-		this->closureFunction = closureFunction;
+		this->closureFunctionRequestDropRequest = closureFunction;
+	}
+
+	void MyGUIItemBoxComponent::reactOnDropItemAccepted(luabind::object closureFunction)
+	{
+		this->closureFunctionRequestDropAccepted = closureFunction;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////
