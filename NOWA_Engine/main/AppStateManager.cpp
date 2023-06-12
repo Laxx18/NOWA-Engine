@@ -389,40 +389,21 @@ namespace NOWA
 		int frameCount = 0;
 		int tickCount = 0;
 
-		/*this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(20.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);*/
-
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.01f);
 
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
+
+		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
 		Ogre::Real monitorRefreshRate = static_cast<Ogre::Real>(Core::getSingletonPtr()->getScreenRefreshRate());
 
 		if (0 == monitorRefreshRate)
 		{
 			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
-		}
-
-		if (simulationTickCount <= 30)
-		{
-			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
-			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(30.0f);
-			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
-		}
-		else if (simulationTickCount <= 60)
-		{
-			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.075f);
-			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(15.0f);
-			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(15.0f);
-		}
-		else if (simulationTickCount <= 144)
-		{
-			// this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.07f);
-			this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(12.0f);
-			this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(12.0f);
 		}
 
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
@@ -432,7 +413,7 @@ namespace NOWA
 
 		// Whole engine/game is processed constantly at 60 ticks per second, but rendering as fast graphics card speed!
 		const std::chrono::nanoseconds lengthOfFrame(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)) / simulationTickCount);
-		const Ogre::Real tickCountDt = 1.0f / simulationTickCount;
+		const Ogre::Real tickCountDt = 1.0f / static_cast<Ogre::Real>(simulationTickCount);
 		const Ogre::Real framesDt = 1.0f / monitorRefreshRate;
 
 		// Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
@@ -535,27 +516,25 @@ namespace NOWA
 				// Sleep(500);
 			}
 
+			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count()) / static_cast<Ogre::Real>(lengthOfFrame.count()) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+
+			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count() / 1000.0f) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+
 			/******rendering comes after update, so its late update*****/
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
 			{
-				// Note: dt is always constant 1 / 60 = 0.0167
-				if (0 == this->desiredUpdates)
-				{
-					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
-				}
-				else
-				{
-					this->activeStateStack.back()->lateUpdate(framesDt);
-				}
+				this->activeStateStack.back()->lateUpdate(dt);
 			}
 
-			// Controls the shown fps in game!
+			// Controls the shown fps in game! If in DefaultConfig.xml set to 0, go with as many as frames as possible (adaptive)
 			if (0 == this->desiredUpdates)
 			{
-				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<Ogre::Real>(dt));
+				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame();
 			}
 			else
 			{
+				// Else go with max this->desiredUpdates. E.g. if monitor has 144hz 1 / 144
+				// this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<Ogre::Real>(elapsedTime.count() / 1000000.0f));
 				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(framesDt);
 			}
 

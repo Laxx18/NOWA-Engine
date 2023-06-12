@@ -181,6 +181,7 @@ namespace OgreNewt
 
 		m_maxTicksPerFrames = maxUpdatesPerFrames;
 		m_updateFPS = desiredFps;
+		this->desiredFps = desiredFps;
 
 		m_timestep = 1.0f / desiredFps;
 
