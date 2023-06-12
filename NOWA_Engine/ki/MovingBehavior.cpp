@@ -102,11 +102,6 @@ namespace NOWA
 
 		MovingBehavior::~MovingBehavior()
 		{
-			if (nullptr != this->agent)
-			{
-				this->agent->setGravity(this->oldGravity);
-			}
-
 			if (nullptr != this->pPath)
 			{
 				delete this->pPath;
@@ -198,6 +193,10 @@ namespace NOWA
 		{
 			if (0 == agentId)
 			{
+				if (nullptr != this->agent)
+				{
+					this->agent->setGravity(this->oldGravity);
+				}
 				this->agent = nullptr;
 				return;
 			}
@@ -1975,7 +1974,7 @@ namespace NOWA
 			{
 				this->motionDistanceChange = velocityLength / this->agent->getSpeed();
 
-				this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.1f);
+				this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.5f);
 			}
 
 			if (this->motionDistanceChange > 1.0f)
@@ -1986,7 +1985,7 @@ namespace NOWA
 			// Apply animation speed
 			if (nullptr != this->animationBlender)
 			{
-				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange / this->animationBlender->getSource()->getLength());
+				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange /*/ this->animationBlender->getSource()->getLength()*/);
 			}
 
 			this->lastMotionDistanceChange = this->motionDistanceChange;

@@ -145,6 +145,11 @@ namespace NOWA
 
 	void AiComponent::tryRemoveMovingBehavior(void)
 	{
+		if (nullptr != this->movingBehaviorPtr)
+		{
+			this->movingBehaviorPtr->setAgentId(0);
+		}
+
 		// Dangerous in destructor, as when exiting the simulation, the game object will be deleted and this function called, to seek for another ai component, that has been deleted
 		// Thus handle it, just when a component is removed
 		bool stillAiComponentActive = false;

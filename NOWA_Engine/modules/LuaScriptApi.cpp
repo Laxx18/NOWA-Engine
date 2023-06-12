@@ -10270,18 +10270,18 @@ namespace NOWA
 
 	PhysicsActiveComponent::ContactData getContactAhead(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactAhead(index, offset, length, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+		return instance->getContactAhead(index, offset, length, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
 	}
 
 	PhysicsActiveComponent::ContactData getContactToDirection(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
 							   Ogre::Real from, Ogre::Real to, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
 	}
 
 	PhysicsActiveComponent::ContactData getContactBelow(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactBelow(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedLong(categoryIds));
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
 	}
 
 	void bindPhysicsActiveComponent(lua_State* lua)

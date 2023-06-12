@@ -474,6 +474,10 @@ namespace NOWA
 				if (false == weightChange)
 				{
 					this->source->setWeight(1.0f);
+					if (false == this->source->getEnabled())
+					{
+						this->source->setEnabled(true);
+					}
 					/*if (nullptr != this->target)
 					{
 						this->target->setWeight(1.0f);
