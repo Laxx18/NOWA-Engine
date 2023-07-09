@@ -3,6 +3,8 @@
 #include "OgreNewt_World.h"
 #include "OgreNewt_Collision.h"
 #include "OgreNewt_Tools.h"
+#include "OgreNewt_ContactJoint.h"
+
 //#include "OgreItem.h"
 //#include "OgreMesh.h"
 //#include "OgreMeshManager.h"
@@ -890,16 +892,29 @@ namespace OgreNewt
 
 			if (m_contactCallback)
 			{
+				dVector point(0.0f);
+				dVector normal(0.0f);
+				int count = 0;
+
 				for (NewtonJoint* joint = NewtonBodyGetFirstContactJoint(m_body); joint; joint = NewtonBodyGetNextContactJoint(m_body, joint))
 				{
-					NewtonBody* const newtonBody0 = NewtonJointGetBody0(joint);
-					NewtonBody* const newtonBody1 = NewtonJointGetBody1(joint);
-					
-					const NewtonBody* const otherBody = (newtonBody0 == m_body) ? newtonBody1 : newtonBody0;
+					if (NewtonJointIsActive(joint))
+					{
+						NewtonBody* const newtonBody0 = NewtonJointGetBody0(joint);
+						NewtonBody* const newtonBody1 = NewtonJointGetBody1(joint);
 
-					OgreNewt::Body* body = (OgreNewt::Body*)NewtonBodyGetUserData(otherBody);
+						const NewtonBody* const otherBody = (newtonBody0 == m_body) ? newtonBody1 : newtonBody0;
+						OgreNewt::Body* body = (OgreNewt::Body*)NewtonBodyGetUserData(otherBody);
 
-					m_contactCallback(body);
+						for (void* contact = NewtonContactJointGetFirstContact(joint); contact; contact = NewtonContactJointGetNextContact(joint, contact))
+						{
+							OgreNewt::ContactJoint contactJoint(joint);
+							OgreNewt::Contact ogreNewtContact(contact, &contactJoint);
+							count++;
+
+							m_contactCallback(body, &ogreNewtContact);
+						}
+					}
 				}
 			}
 

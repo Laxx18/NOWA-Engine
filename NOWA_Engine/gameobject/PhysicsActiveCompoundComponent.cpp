@@ -446,7 +446,8 @@ namespace NOWA
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), convexCollisionPtr);
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 

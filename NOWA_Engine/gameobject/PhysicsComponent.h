@@ -41,6 +41,10 @@ namespace NOWA
 		*/
 		virtual bool disconnect(void) override;
 
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void) override;
 
 		/**
 		* @see		GameObjectComponent::getClassName
@@ -99,7 +103,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::actualizeValue
 		 */
-		virtual void actualizeValue(Variant* attribute) = 0;
+		virtual void actualizeValue(Variant* attribute) override;
 
 		/**
 		 * @see		GameObjectComponent::writeXML
@@ -211,15 +215,14 @@ namespace NOWA
 		OgreNewt::CollisionPtr createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionPosition, 
 			const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId);
 
-		OgreNewt::CollisionPtr createCollisionPrimitive(const Ogre::String& _collisionType, const Ogre::Vector3& collisionPosition,
-			const Ogre::Quaternion collisionOrientation, const Ogre::Vector3& collisionSize, Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId);
+		OgreNewt::CollisionPtr createCollisionPrimitive(const Ogre::String& collisionType, const Ogre::Vector3& collisionPosition,
+			const Ogre::Quaternion& collisionOrientation, const Ogre::Vector3& collisionSize, Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId);
 
 		OgreNewt::CollisionPtr createDeformableCollision(OgreNewt::CollisionPtr collisionPtr);
 
 		OgreNewt::CollisionPtr getWeightedBoneConvexHull(Ogre::v1::OldBone* bone, Ogre::v1::MeshPtr mesh, Ogre::Real minWeight,
 			Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId, const Ogre::Vector3& offsetPosition, const Ogre::Quaternion& offsetOrientation,
 			const Ogre::Vector3& scale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
-
 	protected:
 		OgreNewt::World* ogreNewt;
 		OgreNewt::Body* physicsBody;
@@ -230,7 +233,7 @@ namespace NOWA
 		Ogre::Vector3 initialScale;
 		Ogre::Quaternion initialOrientation;
 		Ogre::Real volume;
-		/*std::list<GameObjectPtr>* taggedList;*/
+		OgreNewt::CollisionPtr collisionPtr;
 	};
 
 }; //namespace end

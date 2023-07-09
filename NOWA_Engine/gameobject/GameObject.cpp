@@ -449,16 +449,6 @@ namespace NOWA
 		Ogre::String oldCustomString = this->getCustomDataString();
 		this->setCustomDataString(GameObject::AttrCustomDataSkipCreation());
 
-		// Resets all variants so that all setter of all this game object and all its components are called
-		for (size_t i = 0; i < this->attributes.size(); i++)
-		{
-			if (true == this->attributes[i].second->hasChanged())
-			{
-				this->actualizeValue(this->attributes[i].second);
-			}
-			this->attributes[i].second->resetChange();
-		}
-
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size()); i++)
 		{
 			auto gameObjectCompPtr = std::get<COMPONENT>(this->gameObjectComponents[i]);
@@ -469,18 +459,29 @@ namespace NOWA
 				std::get<COMPONENT>(this->gameObjectComponents[i])->resetVariants();
 			}
 		}
+
+		// Resets all variants so that all setter of all this game object and all its components are called
+		for (size_t i = 0; i < this->attributes.size(); i++)
+		{
+			if (true == this->attributes[i].second->hasChanged())
+			{
+				this->actualizeValue(this->attributes[i].second);
+			}
+			this->attributes[i].second->resetChange();
+		}
+
 		this->setCustomDataString(oldCustomString);
 	}
 
 	void GameObject::resetChanges()
 	{
-		for (size_t i = 0; i < this->attributes.size(); i++)
-		{
-			this->attributes[i].second->resetChange();
-		}
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectComponents.size()); i++)
 		{
 			std::get<COMPONENT>(this->gameObjectComponents[i])->resetChanges();
+		}
+		for (size_t i = 0; i < this->attributes.size(); i++)
+		{
+			this->attributes[i].second->resetChange();
 		}
 	}
 
@@ -660,16 +661,18 @@ namespace NOWA
 		{
 			this->scale->setValue(attribute->getVector3());
 			this->sceneNode->setScale(attribute->getVector3());
+
 			// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
 			this->refreshSize();
 			this->oldScale = attribute->getVector3();
 		}
 		else if (GameObject::AttrOrientation() == attribute->getName())
 		{
+			unsigned long test = this->id->getULong();
+			Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(attribute->getVector3());
 			Ogre::Vector3 degreeOrientation = attribute->getVector3();
 			this->orientation->setValue(attribute->getVector3());
-
-			this->sceneNode->setOrientation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
+			this->sceneNode->setOrientation(orientation);
 		}
 		else if (GameObject::AttrDynamic() == attribute->getName())
 		{

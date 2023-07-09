@@ -172,7 +172,7 @@ namespace NOWA
 
 		/**
 		 * @brief Sets the lua function name, to react when a player controller collided with another game object.
-		 * @param[in]	onEnterFunctionName		The function name to set
+		 * @param[in]	onContactFunctionName		The function name to set
 		 */
 		void setOnContactFunctionName(const Ogre::String& onContactFunctionName);
 

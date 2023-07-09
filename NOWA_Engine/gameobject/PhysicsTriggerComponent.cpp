@@ -427,7 +427,8 @@ namespace NOWA
 
 		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		this->setConstraintAxis(this->constraintAxis->getVector3());
 

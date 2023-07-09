@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="code\EquipmentComponent.cpp" />
+    <ClCompile Include="code\ReferenceComponent.cpp" />
     <ClCompile Include="code\NOWAPrecompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -19,13 +19,13 @@
     <ClCompile Include="code\startDll.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="code\EquipmentComponent.h" />
+    <ClInclude Include="code\ReferenceComponent.h" />
     <ClInclude Include="code\NOWAPrecompiled.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{406E22F5-C83F-4B20-828A-5011C45C8302}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>EquipmentComponent</RootNamespace>
+    <RootNamespace>ReferenceComponent</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

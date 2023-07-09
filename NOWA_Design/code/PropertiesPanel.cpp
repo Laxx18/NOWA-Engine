@@ -2151,6 +2151,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				{
 					this->gameObjects[i]->actualizeValue(*attribute);
 				}
+				this->gameObjects[i]->actualizeValue(*attribute);
 			}
 		}
 	}

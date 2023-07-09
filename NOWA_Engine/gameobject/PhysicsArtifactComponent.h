@@ -72,6 +72,8 @@ namespace NOWA
 		bool getSerialize(void) const;
 
 		bool createStaticBody(void);
+
+		void changeCollisionFaceId(unsigned int id);
 	public:
 		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
 	protected:

@@ -848,6 +848,7 @@ namespace NOWA
 			// this->parts[0] wrong because its a map
 			it->second->getBody()->setPositionOrientation(Ogre::Vector3(x, y, z), this->parts[0]->getBody()->getOrientation());
 		}
+		PhysicsComponent::setPosition(Ogre::Vector3(x, y, z));
 	}
 
 	void PhysicsActiveDestructableComponent::setPosition(const Ogre::Vector3& position)
@@ -857,13 +858,14 @@ namespace NOWA
 		{
 			it->second->getBody()->setPositionOrientation(position, this->parts[0]->getBody()->getOrientation());
 		}
+		PhysicsComponent::setPosition(position);
 	}
 
 	void PhysicsActiveDestructableComponent::translate(const Ogre::Vector3& relativePosition)
 	{
 		for (auto& it = this->parts.cbegin(); it != this->parts.cend(); it++)
 		{
-			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition(), this->parts[0]->getBody()->getOrientation());
+			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition() + relativePosition, this->parts[0]->getBody()->getOrientation());
 		}
 	}
 
@@ -883,6 +885,7 @@ namespace NOWA
 		{
 			it->second->getBody()->setPositionOrientation(it->second->getBody()->getPosition(), orientation);
 		}
+		PhysicsComponent::setOrientation(orientation);
 	}
 
 	void PhysicsActiveDestructableComponent::setVelocity(const Ogre::Vector3& velocity)

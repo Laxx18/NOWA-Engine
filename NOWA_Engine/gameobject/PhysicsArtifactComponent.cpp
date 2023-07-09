@@ -65,7 +65,8 @@ namespace NOWA
 			// This must be done this way, because pos, orientation must be set at once, else orientation will be the old one
 			if (nullptr != this->physicsBody)
 			{
-				this->physicsBody->setPositionOrientation(position, orientation);
+				this->setPosition(position);
+				this->setOrientation(orientation);
 			}
 			this->gameObjectPtr->setDynamic(oldIsDynamic);
 		}
@@ -110,7 +111,7 @@ namespace NOWA
 
 	void PhysicsArtifactComponent::actualizeValue(Variant* attribute)
 	{
-		GameObjectComponent::actualizeValue(attribute);
+		PhysicsComponent::actualizeValue(attribute);
 
 		//// The category and the category id are handled in game object, but the category id must be handled in physics component too
 		//if ("Category" == attribute->getName())
@@ -268,7 +269,8 @@ namespace NOWA
 
 		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		// Artifact body should always sleep?
 		this->physicsBody->setAutoSleep(1);
@@ -283,6 +285,18 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
 		return true;
+	}
+
+	void PhysicsArtifactComponent::changeCollisionFaceId(unsigned int id)
+	{
+		if (nullptr != this->collisionPtr)
+		{
+			auto treeCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::TreeCollision>(this->collisionPtr);
+			if (nullptr != treeCollision)
+			{
+				treeCollision->setFaceId(id);
+			}
+		}
 	}
 
 	void PhysicsArtifactComponent::reCreateCollision(void)

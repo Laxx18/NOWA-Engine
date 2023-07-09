@@ -179,6 +179,10 @@ namespace NOWA
 	void ItemData::setQuantity(unsigned int quantity)
 	{
 		this->quantity = quantity;
+		if (0 == quantity && false == this->resourceName.empty())
+		{
+			this->clear();
+		}
 	}
 
 	unsigned int ItemData::getQuantity(void) const

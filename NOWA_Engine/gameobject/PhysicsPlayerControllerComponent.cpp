@@ -261,7 +261,7 @@ namespace NOWA
 				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
-			playerControllerBody->setPositionOrientation(position, this->physicsBody->getOrientation());
+			PhysicsComponent::setPosition(this->initialPosition);
 		}
 	}
 
@@ -279,7 +279,7 @@ namespace NOWA
 				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
-			playerControllerBody->setPositionOrientation(this->physicsBody->getPosition(), orientation);
+			PhysicsComponent::setOrientation(this->initialOrientation);
 		}
 	}
 
@@ -306,6 +306,8 @@ namespace NOWA
 						this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			}
 		}
+
+		PhysicsComponent::setScale(this->initialScale);
 	}
 
 	bool PhysicsPlayerControllerComponent::postInit(void)
@@ -516,8 +518,9 @@ namespace NOWA
 		this->setSpeed(this->speed->getReal());
 		this->setJumpSpeed(this->jumpSpeed->getReal());
 
-		// Set the body
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		// Set the body initial transform
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 
@@ -577,7 +580,8 @@ namespace NOWA
 			OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
 			if (nullptr != playerControllerBody)
 			{
-				playerControllerBody->setPositionOrientation(castEventData->getNewPosition(), this->physicsBody->getOrientation());
+				this->setPosition(castEventData->getNewPosition());
+
 				this->initialPosition = castEventData->getNewPosition();
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 					this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
@@ -598,6 +602,8 @@ namespace NOWA
 			if (nullptr != playerControllerBody)
 			{
 				playerControllerBody->setPositionOrientation(this->physicsBody->getPosition(), castEventData->getNewOrientation());
+				this->setOrientation(castEventData->getNewOrientation());
+
 				playerControllerBody->setStartOrientation(castEventData->getNewOrientation());
 				this->initialOrientation = castEventData->getNewOrientation();
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,

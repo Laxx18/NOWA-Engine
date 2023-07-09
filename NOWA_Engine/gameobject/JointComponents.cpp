@@ -1153,7 +1153,11 @@ namespace NOWA
 		
 		if (nullptr == this->body)
 		{
-			this->connect();
+			bool success = this->connect();
+			if (false == success)
+			{
+				return false;
+			}
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -1993,10 +1997,11 @@ namespace NOWA
 	bool JointHingeActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		if (false == JointComponent::createJoint(customJointPosition))
+		// This kind of joint must be created, else the physics active component will not be stable
+		/*if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
-		}
+		}*/
 
 		if (true == this->jointAlreadyCreated)
 		{
@@ -6046,10 +6051,11 @@ namespace NOWA
 	bool JointSliderActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		if (false == JointComponent::createJoint(customJointPosition))
+		// This kind of joint must be created, else the physics active component will not be stable
+		/*if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
-		}
+		}*/
 
 		if (nullptr == this->body)
 		{
@@ -7683,10 +7689,11 @@ namespace NOWA
 	bool JointMathSliderComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		if (false == JointComponent::createJoint(customJointPosition))
+		// This kind of joint must be created, else the physics active component will not be stable
+		/*if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
-		}
+		}*/
 
 		this->round = 0;
 		this->oppositeDir = 1.0f;
@@ -8727,6 +8734,7 @@ namespace NOWA
 	bool JointTargetTransformComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		// This kind of joint must be created, else the physics active component will not be stable
 		if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
@@ -9079,10 +9087,11 @@ namespace NOWA
 	bool JointPathFollowComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		if (false == JointComponent::createJoint(customJointPosition))
+		// This kind of joint must be created, else the physics active component will not be stable
+		/*if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
-		}
+		}*/
 
 		if (false == this->activated->getBool())
 			return true;
@@ -11677,10 +11686,11 @@ namespace NOWA
 	bool JointUniversalActuatorComponent::createJoint(const Ogre::Vector3& customJointPosition)
 	{
 		// Joint base created but not activated, return false, but its no error, hence after that return true.
-		if (false == JointComponent::createJoint(customJointPosition))
+		// This kind of joint must be created, else the physics active component will not be stable
+		/*if (false == JointComponent::createJoint(customJointPosition))
 		{
 			return true;
-		}
+		}*/
 
 		if (nullptr == this->body)
 		{

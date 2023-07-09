@@ -68,6 +68,8 @@ namespace NOWA
 		virtual void showDebugData(void) override;
 
 		void reCreateCollision(void) override;
+
+		void changeCollisionFaceId(unsigned int id);
 	};
 
 }; //namespace end

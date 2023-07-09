@@ -407,13 +407,23 @@ namespace OgreNewt
 			/*!
 				\param active true = Callback active; false = Callback disabled
 			*/
-			void setRayCastCallbackactive(bool active = true)
+			void setRayCastCallbackActive(bool active = true)
 			{
-				setRayCastCallbackactive(active, m_col);
+				setRayCastCallbackActive(active, m_col);
 			}
 
-			void setFaceId(unsigned int faceId);
+			/*!
+			  Change the user defined collision attribute stored with faces of the collision mesh.
 
+			  @param attribute value of the user defined attribute to be stored with the face.
+
+			  This function is used to obtain the user data stored in faces of the collision geometry.
+			  The application can use this user data to achieve per polygon material behavior in large static collision meshes.
+			  By changing the value of this user data the application can achieve modifiable surface behavior with the collision geometry.
+			  For example, in a driving game, the surface of a polygon that represents the street can changed from pavement to oily or wet after
+			  some collision event occurs.
+			*/
+			void setFaceId(unsigned int faceId);
 
 			//! used internally
 			static float _CDECL newtonRayCastCallback(const NewtonBody* const body, const NewtonCollision* const treeCollision, dFloat interception,
@@ -424,7 +434,7 @@ namespace OgreNewt
 			static int MarkFaces(void* const context, const dFloat* const polygon, int strideInBytes, const int* const indexArray, int indexCount);
 
 		private:
-			static void setRayCastCallbackactive(bool active, const NewtonCollision *col);
+			static void setRayCastCallbackActive(bool active, const NewtonCollision *col);
 
 		private:
 			int m_faceCount;
@@ -447,18 +457,38 @@ namespace OgreNewt
 			// HeightField(const World* world, Ogre::Terra* terra, int shapeID);
 		~HeightField(){}
 
-		 void setRayCastCallbackactive(bool active = true)
-            {
-                setRayCastCallbackactive( active, m_col );
-            }
+		/*!
+			  Change the user defined collision attribute stored with faces of the collision mesh.
+
+			  @param attribute value of the user defined attribute to be stored with the face.
+
+			  This function is used to obtain the user data stored in faces of the collision geometry.
+			  The application can use this user data to achieve per polygon material behavior in large static collision meshes.
+			  By changing the value of this user data the application can achieve modifiable surface behavior with the collision geometry.
+			  For example, in a driving game, the surface of a polygon that represents the street can changed from pavement to oily or wet after
+			  some collision event occurs.
+			*/
+		void setFaceId(unsigned int faceId);
+
+		static int CountFaces(void* const context, const dFloat* const polygon, int strideInBytes, const int* const indexArray, int indexCount);
+
+		static int MarkFaces(void* const context, const dFloat* const polygon, int strideInBytes, const int* const indexArray, int indexCount);
+
+		void setRayCastCallbackActive(bool active = true)
+        {
+            setRayCastCallbackActive( active, m_col );
+        }
 
             //! used internally
             static float _CDECL newtonRayCastCallback(const NewtonBody* const body, const NewtonCollision* const heightFieldCollision, dFloat interception, int row, int col, dFloat* normal, int faceId, void* usedData);
 
         private:
-            static void setRayCastCallbackactive( bool active , const NewtonCollision *col );
+            static void setRayCastCallbackActive( bool active , const NewtonCollision *col );
 			//!Used internally to create the newton Heightfield collision
 			//void createHeightFieldCollision(const World *world,int width,int height,int gridsDiagonals,unsigned short *elevationMap,char *attributeMap,Ogre::Real horizontalScale,Ogre::Real verticleScale,int shapeID);
+		private:
+			int m_faceCount;
+			unsigned int m_categoryId;
 		};
 
 		////////////////////////////////////////////////////////

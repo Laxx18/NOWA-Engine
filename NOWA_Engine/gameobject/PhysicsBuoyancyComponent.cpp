@@ -372,7 +372,8 @@ namespace NOWA
 
 		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
 
 		// Artifact body should always sleep?
 		// this->physicsBody->setAutoSleep(1);
@@ -404,7 +405,7 @@ namespace NOWA
 
 	void PhysicsBuoyancyComponent::actualizeValue(Variant* attribute)
 	{
-		GameObjectComponent::actualizeValue(attribute);
+		PhysicsComponent::actualizeValue(attribute);
 
 		if (PhysicsBuoyancyComponent::AttrWaterToSolidVolumeRatio() == attribute->getName())
 		{

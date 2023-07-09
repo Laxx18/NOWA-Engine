@@ -158,6 +158,19 @@ namespace NOWA
 
 		void Path::addWayPoint(const Ogre::Vector3& waypoint)
 		{
+			if (this->wayPoints.size() > 0)
+			{
+				auto currentWaypoint = this->getCurrentWaypoint();
+				if (true == currentWaypoint.first)
+				{
+					Ogre::Real distSq = waypoint.squaredDistance(currentWaypoint.second);
+					if (distSq < 0.2f * 0.2f)
+					{
+						// Skip if the new way point sits totally near the current one.
+						return;
+					}
+				}
+			}
 			this->wayPoints.push_back(waypoint);
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;

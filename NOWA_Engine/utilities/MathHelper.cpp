@@ -478,12 +478,18 @@ namespace NOWA
 		Ogre::Radian yRad;
 		Ogre::Radian rRad;
 		mat.ToEulerAnglesYXZ(yRad, pRad, rRad);
-		if (-0.0f == pRad.valueDegrees())
+		if (true == this->realEquals(-0.0f, pRad.valueDegrees()))
+		{
 			pRad = 0.0f;
-		if (-0.0f == yRad.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, yRad.valueDegrees()))
+		{
 			yRad = 0.0f;
-		if (-0.0f == rRad.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, rRad.valueDegrees()))
+		{
 			rRad = 0.0f;
+		}
 		return std::move(Ogre::Vector3(pRad.valueDegrees(), yRad.valueDegrees(), rRad.valueDegrees()));
 	}
 
@@ -495,12 +501,18 @@ namespace NOWA
 		Ogre::Radian yRad;
 		Ogre::Radian rRad;
 		mat.ToEulerAnglesYXZ(yRad, pRad, rRad);
-		if (-0.0f == pRad.valueDegrees())
+		if (true == this->realEquals(-0.0f, pRad.valueDegrees()))
+		{
 			pRad = 0.0f;
-		if (-0.0f == yRad.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, yRad.valueDegrees()))
+		{
 			yRad = 0.0f;
-		if (-0.0f == rRad.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, rRad.valueDegrees()))
+		{
 			rRad = 0.0f;
+		}
 
 		Ogre::Vector3 rotationValue = Ogre::Vector3(MathHelper::getInstance()->round(pRad.valueDegrees()), MathHelper::getInstance()->round(yRad.valueDegrees()), MathHelper::getInstance()->round(rRad.valueDegrees()));
 		return std::move(rotationValue);
@@ -511,18 +523,25 @@ namespace NOWA
 		Ogre::Degree degX(degrees.x);
 		Ogre::Degree degY(degrees.y);
 		Ogre::Degree degZ(degrees.z);
-		if (-0.0f == degX.valueDegrees())
+		if (true == this->realEquals(-0.0f, degX.valueDegrees()))
+		{
 			degX = 0.0f;
-		if (-0.0f == degY.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, degY.valueDegrees()))
+		{
 			degY = 0.0f;
-		if (-0.0f == degZ.valueDegrees())
+		}
+		if (true == this->realEquals(-0.0f, degZ.valueDegrees()))
+		{
 			degZ = 0.0f;
-
-		Ogre::Radian pRad(degX);
+		}
+		
 		Ogre::Radian yRad(degY);
+		Ogre::Radian pRad(degX);
 		Ogre::Radian rRad(degZ);
 
 		Ogre::Matrix3 mat;
+
 		mat.FromEulerAnglesYXZ(yRad, pRad, rRad);
 		Ogre::Quaternion quat;
 		quat.FromRotationMatrix(mat);
@@ -542,7 +561,7 @@ namespace NOWA
 		// Calculate the cross product to know if the entity is turning left or right 
 		Ogre::Vector3 rotationAxis = curHeading.crossProduct(goalHeading).normalisedCopy();
 
-		if (rotationAxis.y < 0)
+		if (rotationAxis.y < 0.0f)
 			deltaAngle = -deltaAngle;
 		//----------------------------------------------------------------------------------------------
 		return deltaAngle;

@@ -6,6 +6,7 @@
 #include "AnimationComponent.h"
 #include "JointComponents.h"
 #include "PhysicsRagDollComponent.h"
+#include "PhysicsActiveKinematicComponent.h"
 #include "main/AppStateManager.h"
 
 namespace NOWA
@@ -29,26 +30,30 @@ namespace NOWA
 		{
 			if (nullptr != sourcePhysicsActiveComponent)
 			{
-				auto& existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
-				if (nullptr == existingJointKinematicCompPtr)
+				auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(sourcePhysicsActiveComponent);
+				if (nullptr == sourcePhysicsActiveKinematicComponent)
 				{
-					boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
-					this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
-					jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
-					jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
-					jointKinematicCompPtr->setPickingMode(4);
-					jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
-					jointKinematicCompPtr->createJoint();
-					this->jointKinematicComponent = jointKinematicCompPtr.get();
-				}
-				else
-				{
-					this->jointKinematicComponent = existingJointKinematicCompPtr.get();
-					auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObject->getComponent<JointComponent>());
-					if (nullptr != jointCompPtr)
+					auto& existingJointKinematicCompPtr = NOWA::makeStrongPtr(this->sourcePhysicsActiveComponent->getOwner()->getComponent<JointKinematicComponent>());
+					if (nullptr == existingJointKinematicCompPtr)
 					{
-						this->jointKinematicComponent->connectPredecessorId(jointCompPtr->getId());
-						this->jointKinematicComponent->createJoint();
+						boost::shared_ptr<JointKinematicComponent> jointKinematicCompPtr(boost::make_shared<JointKinematicComponent>());
+						this->sourcePhysicsActiveComponent->getOwner()->addDelayedComponent(jointKinematicCompPtr, true);
+						jointKinematicCompPtr->setOwner(this->sourcePhysicsActiveComponent->getOwner());
+						jointKinematicCompPtr->setBody(this->sourcePhysicsActiveComponent->getBody());
+						jointKinematicCompPtr->setPickingMode(4);
+						jointKinematicCompPtr->setMaxLinearAngleFriction(10000.0f, 10000.0f);
+						jointKinematicCompPtr->createJoint();
+						this->jointKinematicComponent = jointKinematicCompPtr.get();
+					}
+					else
+					{
+						this->jointKinematicComponent = existingJointKinematicCompPtr.get();
+						auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObject->getComponent<JointComponent>());
+						if (nullptr != jointCompPtr)
+						{
+							this->jointKinematicComponent->connectPredecessorId(jointCompPtr->getId());
+							this->jointKinematicComponent->createJoint();
+						}
 					}
 				}
 			}
@@ -73,49 +78,27 @@ namespace NOWA
 
 		virtual void OldNodeUpdated(const Ogre::v1::OldNode* updatedNode) override
 		{
-			if (nullptr == this->sourcePhysicsActiveComponent)
-			{
-				// Note: realNode is relative to update node, so no need for world transform, calculation is local
-				Ogre::Quaternion newOrientation = updatedNode->_getDerivedOrientation() * this->offsetOrientation;
-				Ogre::Vector3 newPosition = (updatedNode->_getDerivedPosition() + (newOrientation * this->offsetPosition)) * this->realNode->getScale();
+			// Note: realNode is relative to update node, so no need for world transform, calculation is local
+			Ogre::Quaternion newOrientation = updatedNode->_getDerivedOrientation() * this->offsetOrientation;
+			Ogre::Vector3 newPosition = (updatedNode->_getDerivedPosition() + (newOrientation * this->offsetPosition)) * this->realNode->getScale();
 
-				this->realNode->setOrientation(newOrientation);
-				// this->realNode->setScale(updatedNode->_getDerivedScale());
-				this->realNode->setPosition(newPosition);
-			}
-			else
-			{
-				// Different case: world transform is required, as physics do work on world transform
-				Ogre::Vector3 worldPosition = updatedNode->_getDerivedPosition();
-				Ogre::Quaternion worldOrientation = updatedNode->_getDerivedOrientation();
+			// This approach is working!!
+			this->realNode->setOrientation(newOrientation);
+			// this->realNode->setScale(updatedNode->_getDerivedScale());
+			this->realNode->setPosition(newPosition);
 
-				//multiply with the parent derived transformation
-				Ogre::Node* parentNode = this->gameObject->getMovableObject()->getParentNode();
-				Ogre::SceneNode* sceneNode = this->gameObject->getMovableObject()->getParentSceneNode();
-				while (parentNode != nullptr)
+			if (nullptr != this->sourcePhysicsActiveComponent)
+			{
+				auto sourcePhysicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(sourcePhysicsActiveComponent);
+				if (nullptr == sourcePhysicsActiveKinematicComponent)
 				{
-					// Process the current i_Node
-					if (parentNode != sceneNode)
-					{
-						// This is a tag point (a connection point between 2 entities). which means it has a parent i_Node to be processed
-						worldPosition = ((Ogre::v1::TagPoint*)parentNode)->_getFullLocalTransform() * worldPosition;
-						parentNode = ((Ogre::v1::TagPoint*)parentNode)->getParentEntity()->getParentNode();
-						worldOrientation = ((Ogre::v1::TagPoint*)parentNode)->_getDerivedOrientation() * worldOrientation;
-					}
-					else
-					{
-						// This is the scene i_Node meaning this is the last i_Node to process
-						worldPosition = parentNode->_getFullTransform() * worldPosition;
-						worldOrientation = parentNode->_getDerivedOrientation() * worldOrientation;
-						break;
-					}
+					this->jointKinematicComponent->setTargetPositionRotation(this->realNode->_getDerivedPositionUpdated(), this->realNode->_getDerivedOrientationUpdated());
 				}
-
-				Ogre::Quaternion newOrientation = updatedNode->_getDerivedOrientation() * this->offsetOrientation;
-				Ogre::Vector3 newPosition = (updatedNode->_getDerivedPosition() + (newOrientation * this->offsetPosition)) * this->realNode->getScale();
-
-				this->jointKinematicComponent->setTargetPositionRotation(newPosition, newOrientation);
-				
+				else
+				{
+					sourcePhysicsActiveKinematicComponent->setOrientation(this->realNode->_getDerivedOrientationUpdated());
+					sourcePhysicsActiveKinematicComponent->setPosition(this->realNode->_getDerivedPositionUpdated());
+				}
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TagPointComponent] position: " + Ogre::StringConverter::toString(newPosition) + " orientation: " + Ogre::StringConverter::toString(newOrientation));
 			}
 		}
@@ -320,7 +303,7 @@ namespace NOWA
 					std::vector<Ogre::MovableObject*> movableObjects;
 					Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
 					auto& it = sourceSceneNode->getAttachedObjectIterator();
-					// First detach and reatach all movable objects, that are belonging to the source scene node (e.g. mesh, light)
+					// Attach all entities (weapon etc.) to the node
 					while (it.hasMoreElements())
 					{
 						// It is const, so no manipulation possible

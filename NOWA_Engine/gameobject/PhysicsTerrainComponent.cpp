@@ -139,7 +139,8 @@ namespace NOWA
 
 			// this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
 
-			this->physicsBody->setPositionOrientation(this->gameObjectPtr->getSceneNode()->getPosition(), this->gameObjectPtr->getSceneNode()->getOrientation());
+			this->setPosition(this->gameObjectPtr->getSceneNode()->getPosition());
+			this->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
 
 			this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
 
@@ -159,6 +160,18 @@ namespace NOWA
 
 		delete[] elevation;
 		delete[] attibutesCol;
+	}
+
+	void PhysicsTerrainComponent::changeCollisionFaceId(unsigned int id)
+	{
+		if (nullptr != this->collisionPtr)
+		{
+			auto heightFieldCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::HeightField>(this->collisionPtr);
+			if (nullptr != heightFieldCollision)
+			{
+				heightFieldCollision->setFaceId(id);
+			}
+		}
 	}
 
 	void PhysicsTerrainComponent::actualizeValue(Variant* attribute)

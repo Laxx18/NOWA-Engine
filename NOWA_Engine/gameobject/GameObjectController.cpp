@@ -637,14 +637,20 @@ namespace NOWA
 		{
 			return ogreNewt->getDefaultMaterialID();
 		}*/
+		OgreNewt::MaterialID* pMaterialID = nullptr;
 		std::map<Ogre::String, OgreNewt::MaterialID*>::const_iterator& it = this->materialIDMap.find(category);
 		// if there is the corresponding category, deliver it, else deliver nullptr
 		if (it != this->materialIDMap.end())
 		{
-			return it->second;
+			pMaterialID = it->second;
+		}
+		else
+		{
+			pMaterialID = new OgreNewt::MaterialID(ogreNewt);
+			this->materialIDMap.insert(std::make_pair(category, pMaterialID));
 		}
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] A material for the category id: " + category + " does not exist!");
-		return nullptr;
+		return pMaterialID;
 	}
 
 	void GameObjectController::destroyContent(std::vector<Ogre::String>& excludeGameObjectNames)
@@ -1859,10 +1865,11 @@ namespace NOWA
 		auto& gameObjectPtr = this->getGameObjectFromId(referenceId);
 		if (nullptr == gameObjectPtr)
 		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not activate game object components, because there is no game object for the given reference id: " + Ogre::StringConverter::toString(referenceId));
 			return;
 		}
 
-		// Search for a component with the same id
+		// Search for a components with the same reference id's
 		GameObjectComponents* gameobjectComponents = gameObjectPtr->getComponents();
 
 		for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)

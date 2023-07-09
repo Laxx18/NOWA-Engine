@@ -975,6 +975,12 @@ namespace NOWA
 				return false;
 			}
 
+			Ogre::String strCategory;
+			if (boneXmlElement->Attribute("Category"))
+			{
+				strCategory = boneXmlElement->Attribute("Category");
+			}
+
 			Ogre::Vector3 offset = Ogre::Vector3::ZERO;
 
 			if (boneXmlElement->Attribute("Offset"))
@@ -1015,7 +1021,7 @@ namespace NOWA
 
 			///////////////////////////////////////////////////////////////////////////////
 
-			RagBone* currentRagBone = new RagBone(boneNameFromFile, this, parentRagBone, ogreBone, this->mesh, constraintDirection->getVector3(), shape, size, mass, partial, offset);
+			RagBone* currentRagBone = new RagBone(boneNameFromFile, this, parentRagBone, ogreBone, this->mesh, constraintDirection->getVector3(), shape, size, mass, partial, offset, strCategory);
 
 			// add a name from file, if it exists, because it could be, that someone that rigged the mesh, did not name it properly, so this can be done in the *.xml file
 			
@@ -1819,7 +1825,7 @@ namespace NOWA
 	/*********************************Inner bone class*****************************************************************/
 
 	PhysicsRagDollComponent::RagBone::RagBone(const Ogre::String& name, PhysicsRagDollComponent* physicsRagDollComponent, RagBone* parentRagBone, Ogre::v1::OldBone* ogreBone, 
-		Ogre::v1::MeshPtr mesh, const Ogre::Vector3& pose, RagBone::BoneShape shape, Ogre::Vector3& size, Ogre::Real mass, bool partial, const Ogre::Vector3& offset)
+		Ogre::v1::MeshPtr mesh, const Ogre::Vector3& pose, RagBone::BoneShape shape, Ogre::Vector3& size, Ogre::Real mass, bool partial, const Ogre::Vector3& offset, const Ogre::String& category)
 		: name(name),
 		physicsRagDollComponent(physicsRagDollComponent),
 		parentRagBone(parentRagBone),
@@ -2046,15 +2052,28 @@ namespace NOWA
 		this->body->setMassMatrix(mass, inertia);
 		this->body->setCenterOfMass(massOrigin);
 
-		// Important: Set the type and material group id for each piece the same as the root body for material pair functionality and collision callbacks
-		this->body->setType(this->physicsRagDollComponent->getOwner()->getCategoryId());
-		this->body->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsRagDollComponent->getOwner().get(), this->physicsRagDollComponent->ogreNewt));
+		// Important: Set the type and material group id for each piece for material pair functionality and collision callbacks
+		unsigned int categoryId = this->physicsRagDollComponent->getOwner()->getCategoryId();
+		if (false == category.empty())
+		{
+			categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory(category);
+			this->body->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialIDFromCategory(category, this->physicsRagDollComponent->ogreNewt));
+		}
+		else
+		{
+			this->body->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsRagDollComponent->getOwner().get(), this->physicsRagDollComponent->ogreNewt));
+		}
+
+		this->body->setType(categoryId);
+		this->body->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this->physicsRagDollComponent)));
 
 		if (nullptr != this->parentRagBone)
 		// if (false == this->partial)
 		{
 			this->body->setCustomForceAndTorqueCallback<PhysicsRagDollComponent::RagBone>(&PhysicsRagDollComponent::RagBone::moveCallback, this);
 		}
+
+
 
 		// pin the object stand in pose and not fall down
 		/*if (this->physicsRagDollComponent->pose != Ogre::Vector3::ZERO) {
@@ -2081,6 +2100,9 @@ namespace NOWA
 		{
 			this->sceneNode = this->physicsRagDollComponent->gameObjectPtr->getSceneNode();
 			this->physicsRagDollComponent->physicsBody = this->body;
+
+			this->physicsRagDollComponent->setPosition(this->initialBonePosition);
+			this->physicsRagDollComponent->setOrientation(this->initialBoneOrientation);
 		}
 		else
 		{

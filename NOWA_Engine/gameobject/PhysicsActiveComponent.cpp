@@ -41,6 +41,7 @@ namespace NOWA
 		constraintAxis(new Variant(PhysicsActiveComponent::AttrConstraintAxis(), Ogre::Vector3::ZERO, this->attributes)),
 		asSoftBody(new Variant(PhysicsActiveComponent::AttrAsSoftBody(), false, this->attributes)),
 		gyroscopicTorque(new Variant(PhysicsActiveComponent::AttrEnableGyroscopicTorque(), false, this->attributes)),
+		onContactFunctionName(new Variant(PhysicsActiveComponent::AttrOnContactFunctionName(), Ogre::String(""), this->attributes)),
 		height(0.0f),
 		rise(0.0f),
 		upVector(nullptr),
@@ -92,6 +93,9 @@ namespace NOWA
 
 		this->constraintDirection->setDescription("Sets the axis around which the game object only can be rotated.");
 		this->constraintAxis->setDescription("Sets the normal axis at which the game object only can be moved. E.g. setting (0, 0, 1), the game object can be moved at x-y axis.");
+
+		this->onContactFunctionName->setDescription("Sets the function name to react in lua script at the moment when a game object collided with another game object. E.g. onContact(otherGameObject, contact).");
+		this->onContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onContactFunctionName->getString() + "(otherGameObject, contact)");
 	}
 
 	PhysicsActiveComponent::~PhysicsActiveComponent()
@@ -233,6 +237,12 @@ namespace NOWA
 			this->collidable->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnContactFunctionName")
+		{
+			this->onContactFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		// Snapshot loaded, game object pointer should exist, set transform
 		if (nullptr != this->gameObjectPtr)
 		{
@@ -281,7 +291,7 @@ namespace NOWA
 		clonedCompPtr->setCollisionDirection(this->collisionDirection->getVector3());
 		clonedCompPtr->setAsSoftBody(this->asSoftBody->getBool());
 		clonedCompPtr->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
-		
+		clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -306,7 +316,7 @@ namespace NOWA
 		auto& physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsCompoundConnectionComponent>());
 		if (nullptr == physicsCompoundConnectionCompPtr)
 		{
-			if (!this->createDynamicBody())
+			if (false == this->createDynamicBody())
 			{
 				return false;
 			}
@@ -318,6 +328,8 @@ namespace NOWA
 	bool PhysicsActiveComponent::connect(void)
 	{
 		PhysicsComponent::connect();
+
+		this->setOnContactFunctionName(this->onContactFunctionName->getString());
 
 		this->lastTime = static_cast<double>(this->timer.getMilliseconds()) * 0.001;
 
@@ -426,7 +438,7 @@ namespace NOWA
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
 			collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
-
+		
 		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
 		{
 			calculatedMassOrigin = this->massOrigin->getVector3();
@@ -470,7 +482,9 @@ namespace NOWA
 		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
 		this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 
-		this->physicsBody->setPositionOrientation(this->initialPosition, this->initialOrientation);
+		this->setPosition(this->initialPosition);
+		this->setOrientation(this->initialOrientation);
+
 		// Must be set after body set its position! And also the current orientation (initialOrientation) must be correct! Else weird rotation behavior occurs
 		this->setConstraintAxis(this->constraintAxis->getVector3());
 		// Pin the object stand in pose and not fall down
@@ -1232,7 +1246,7 @@ namespace NOWA
 
 	void PhysicsActiveComponent::actualizeCommonValue(Variant* attribute)
 	{
-		GameObjectComponent::actualizeValue(attribute);
+		PhysicsComponent::actualizeValue(attribute);
 
 		if (PhysicsActiveComponent::AttrActivated() == attribute->getName())
 		{
@@ -1345,6 +1359,10 @@ namespace NOWA
 		else if (PhysicsComponent::AttrCollidable() == attribute->getName())
 		{
 			this->setCollidable(attribute->getBool());
+		}
+		else if (PhysicsActiveComponent::AttrOnContactFunctionName() == attribute->getName())
+		{
+			this->setOnContactFunctionName(attribute->getString());
 		}
 	}
 
@@ -1488,6 +1506,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Collidable"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->collidable->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OnContactFunctionName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onContactFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -1708,10 +1732,106 @@ namespace NOWA
 		Ogre::Real height = 500.0f; // Default invalid value for checking
 		Ogre::Real slope = 0.0f;
 		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-		//Anfangsposition
+		// Anfangsposition
 		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + offset;
-		//Straht von Anfangsposition bis 500 Meter nach unten erzeugen
+		// Strahl von Anfangsposition bis 500 Meter nach unten erzeugen
 		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f, true);
+
+		if (true == this->bShowDebugData || true == forceDrawLine)
+		{
+			Ogre::Vector3 fromPosition = charPoint;
+			Ogre::Vector3 toPosition = charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f;
+
+			// Get a key from id and user index to match a line, when line drawing is set to on
+			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactBelow";
+			auto& it = this->drawLineMap.find(key);
+			if (it == this->drawLineMap.cend())
+			{
+				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				debugLineObject->setQueryFlags(0 << 0);
+				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+				debugLineObject->setCastShadows(false);
+				debugLineNode->attachObject(debugLineObject);
+				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(fromPosition);
+				debugLineObject->index(0);
+				debugLineObject->position(toPosition);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+			else
+			{
+				Ogre::ManualObject* debugLineObject = it->second.second;
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(fromPosition);
+				debugLineObject->index(0);
+				debugLineObject->position(toPosition);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+		}
+
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		if (info.mBody)
+		{
+			unsigned int type = info.mBody->getType();
+			unsigned int finalType = type & categoryIds;
+			if (type == finalType)
+			{
+				//* 500 da bei der distanz ein Wert zwischen [0,1] rauskommt also zb. 0.0019
+				//Die Distanz ist relativ zur Länge des Raystrahls
+				//d. h. wenn der Raystrahl nichts mehr trifft wird in diesem Fall
+				//die Distanz > 500, da prozentural, es wird vorher skaliert
+				height = info.mDistance * 500.0f;
+
+				//Y
+				//|
+				//|___ Normale
+				//Winkel zwischen Y-Richtung und der normalen eines Objektes errechnen
+				Ogre::Vector3 vec = Ogre::Vector3::UNIT_Y;
+				normal = info.mNormal;
+				slope = Ogre::Math::ACos(vec.dotProduct(normal) / (vec.length() * normal.length())).valueDegrees();
+
+				try
+				{
+					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+					if (tempNode)
+					{
+						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
+						// PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(info.mBody->getUserData());
+						// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
+						// return physicsComponent->getOwner().get();
+					}
+					else
+					{
+						return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
+					}
+				}
+				catch (...)
+				{
+					// if its a game object or else, catch the throw and return from the function
+					return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
+				}
+			}
+		}
+		return std::move(PhysicsActiveComponent::ContactData(gameObject, height, normal, slope));
+	}
+
+	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds)
+	{
+		GameObject* gameObject = nullptr;
+		Ogre::Real height = 500.0f; // Default invalid value for checking
+		Ogre::Real slope = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+		// Anfangsposition
+		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + offset;
+		// Strahl von Anfangsposition bis 500 Meter nach unten erzeugen
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::UNIT_Y * 500.0f, true);
 
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -1977,6 +2097,10 @@ namespace NOWA
 
 	void PhysicsActiveComponent::setContactSolvingEnabled(bool enable)
 	{
+		if (nullptr == this->gameObjectPtr->getLuaScript() || true == this->onContactFunctionName->getString().empty() || nullptr == this->physicsBody)
+		{
+			return;
+		}
 		if (true == enable)
 		{
 			this->physicsBody->setContactCallback<PhysicsActiveComponent>(&PhysicsActiveComponent::contactCallback, this);
@@ -2070,6 +2194,20 @@ namespace NOWA
 		if (0 == this->physicsAttractors.size())
 		{
 			this->hasAttraction = false;
+		}
+	}
+
+	void PhysicsActiveComponent::setOnContactFunctionName(const Ogre::String& onContactFunctionName)
+	{
+		this->onContactFunctionName->setValue(onContactFunctionName);
+		if (false == onContactFunctionName.empty())
+		{
+			this->onContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onContactFunctionName + "(otherGameObject, contact)");
+			this->setContactSolvingEnabled(true);
+		}
+		else
+		{
+			this->setContactSolvingEnabled(false);
 		}
 	}
 
@@ -2282,14 +2420,11 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody)
+	void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact)
 	{
-		if (nullptr != this->gameObjectPtr->getLuaScript())
-		{
-			PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
-
-			this->gameObjectPtr->getLuaScript()->callTableFunction("onContactSolving", otherPhysicsComponent);
-		}
+		PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+		
+		this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
 	}
 
 	void PhysicsActiveComponent::updateCallback(OgreNewt::Body* body)

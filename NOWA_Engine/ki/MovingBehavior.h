@@ -50,7 +50,9 @@ namespace NOWA
 				ARRIVE_2D = 1 << 25,
 				PATROL_2D = 1 << 26,
 				WANDER_2D = 1 << 27,
-				FOLLOW_PATH_2D = 1 << 28
+				FOLLOW_PATH_2D = 1 << 28,
+				PURSUIT_2D = 1 << 29,
+				FOLLOW_TRACE_2D = 1 << 30
 				//wall_avoidance     = 1 << 9,
 				
 				//interpose          = 1 << 13,
@@ -357,6 +359,8 @@ namespace NOWA
 			// This behavior predicts where an target will be in time T and seeks towards that point to intercept it
 			Ogre::Vector3 pursuit(Ogre::Real dt);
 
+			Ogre::Vector3 pursuit2D(Ogre::Real dt);
+
 			// This behavior produces a steering force that keeps an agent at a specified offset from a target
 			Ogre::Vector3 offsetPursuit(Ogre::Real dt);
 
@@ -369,6 +373,8 @@ namespace NOWA
 			Ogre::Vector3 followPath(Ogre::Real dt);
 			
 			Ogre::Vector3 followPath2D(Ogre::Real dt);
+
+			Ogre::Vector3 followTrace2D(Ogre::Real dt);
 
 			Ogre::Vector3 interpose(Ogre::Real dt);
 

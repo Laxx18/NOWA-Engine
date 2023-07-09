@@ -6,7 +6,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="code\EquipmentComponent.cpp">
+    <ClCompile Include="code\ReferenceComponent.cpp">
       <Filter>code</Filter>
     </ClCompile>
     <ClCompile Include="code\NOWAPrecompiled.cpp">
@@ -17,7 +17,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="code\EquipmentComponent.h">
+    <ClInclude Include="code\ReferenceComponent.h">
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\NOWAPrecompiled.h">

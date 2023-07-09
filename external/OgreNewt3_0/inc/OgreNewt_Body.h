@@ -27,6 +27,9 @@ some changes by melven
 // OgreNewt namespace.  all functions and classes use this namespace.
 namespace OgreNewt
 {
+	class ContactJoint;
+	class Contact;
+
 	/*
 	CLASS DEFINITION:
 
@@ -70,7 +73,7 @@ namespace OgreNewt
 		You can set this as the custom contact callback for a body by using the setContactCallback() function.
 		Using boost::function means OgreNewt can now accept pointers to member functions of specific classes.
 		*/
-		typedef OgreNewt::function<void(OgreNewt::Body*)> ContactCallback;
+		typedef OgreNewt::function<void(OgreNewt::Body*, OgreNewt::Contact*)> ContactCallback;
 
 
 		//! buoyancy plane callback
@@ -215,9 +218,9 @@ namespace OgreNewt
 		void setContactCallback(ContactCallback callback);
 
 		template<class c>
-		void setContactCallback(OgreNewt::function<void(c*, OgreNewt::Body*)> callback, c* instancedClassPointer)
+		void setContactCallback(OgreNewt::function<void(c*, OgreNewt::Body*, OgreNewt::Contact*)> callback, c* instancedClassPointer)
 		{
-			setContactCallback(OgreNewt::bind(callback, instancedClassPointer, std::tr1::placeholders::_1));
+			setContactCallback(OgreNewt::bind(callback, instancedClassPointer, std::tr1::placeholders::_1, std::tr1::placeholders::_2));
 		}
 
 		void removeContactCallback() { m_contactCallback = nullptr; }

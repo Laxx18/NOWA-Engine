@@ -4,8 +4,8 @@ Copyright (c) 2023 Lukas Kalinowski
 GPL v3
 */
 
-#ifndef EQUIPMENTCOMPONENT_H
-#define EQUIPMENTCOMPONENT_H
+#ifndef REFERENCECOMPONENT_H
+#define REFERENCECOMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
@@ -15,20 +15,20 @@ namespace NOWA
 {
 
 	/**
-	  * @brief		Usage: This component can be used to give more specific information about the game objects equipment(s). That is, several things can be equipped.
-	  *				Hence give each component a proper name. For example, if the player has a sword, which is an own game object, add for the player an EquipmentComponent with the name
-	  *				'RightHandSword' and set the target id to the id of the sword game object. In lua e.g. call player:getEquipmentComponentFromName('RightHandSword'):getTargetId() to get the currently equipped sword.
-	  *				You can also use another EquipmentComponent e.g. 'Shoes' to store the currently equipped shoes.
+	  * @brief		Usage: This component can be used to give more specific information about the game objects reference(s). That is, several things can be referenced.
+	  *				Hence give each component a proper name. For example, if the player has a sword, which is an own game object, add for the player an ReferenceComponent with the name
+	  *				'RightHandSword' and set the target id to the id of the sword game object. In lua e.g. call player:getReferenceComponentFromName('RightHandSword'):getTargetId() or getTargetGameObject() to get the currently equipped sword.
+	  *				You can also use another ReferenceComponent e.g. 'Shoes' to store the currently equipped shoes.
 	  */
-	class EXPORTED EquipmentComponent : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED ReferenceComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
-		typedef boost::shared_ptr<EquipmentComponent> EquipmentComponentPtr;
+		typedef boost::shared_ptr<ReferenceComponent> ReferenceComponentPtr;
 	public:
 
-		EquipmentComponent();
+		ReferenceComponent();
 
-		virtual ~EquipmentComponent();
+		virtual ~ReferenceComponent();
 
 		/**
 		* @see		Ogre::Plugin::install
@@ -144,17 +144,23 @@ namespace NOWA
 		virtual bool isActivated(void) const override;
 
 		/**
-		 * @brief Sets target id for the game object, which is equipped.
+		 * @brief Sets target id for the game object, which is referenced.
 		 * @param[in] targetId The target id to set
-		 * @note	If target id is set to 0, nothing is equipped anymore.
+		 * @note	If target id is set to 0, nothing is referenced anymore.
 		 */
 		void setTargetId(unsigned long targetId);
 
 		/**
-		 * @brief Gets the target id for the game object, which is equipped.
+		 * @brief Gets the target id for the game object, which is referenced.
 		 * @return targetId The target id to get
 		 */
 		unsigned long getTargetId(void) const;
+
+		/**
+		 * @brief Gets the target game object for the given target id, which is referenced.
+		 * @return targetId The target game object to get, or null if does not exist.
+		 */
+		GameObject* getTargetGameObject(void) const;
 
 	public:
 		/**
@@ -162,7 +168,7 @@ namespace NOWA
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("EquipmentComponent");
+			return NOWA::getIdFromName("ReferenceComponent");
 		}
 
 		/**
@@ -170,7 +176,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "EquipmentComponent";
+			return "ReferenceComponent";
 		}
 	
 		/**
@@ -184,9 +190,9 @@ namespace NOWA
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: This component can be used to give more specific information about the game objects equipment(s). That is, several things can be equipped. "
-				"Hence give each component a proper name.For example, if the player has a sword, which is an own game object, add for the player an EquipmentComponent with the name "
-				"'RightHandSword' and set the target id to the id of the sword game object.In lua e.g.call player : getEquipmentComponentFromName('RightHandSword') : getTargetId() to get the currently equipped sword. "
-				"You can also use another EquipmentComponent e.g. 'Shoes' to store the currently equipped shoes.";
+				"Hence give each component a proper name.For example, if the player has a sword, which is an own game object, add for the player an ReferenceComponent with the name "
+				"'RightHandSword' and set the target id to the id of the sword game object.In lua e.g.call player : getReferenceComponentFromName('RightHandSword') : getTargetId() to get the currently equipped sword. "
+				"You can also use another ReferenceComponent e.g. 'Shoes' to store the currently equipped shoes.";
 		}
 		
 		/**
@@ -196,8 +202,10 @@ namespace NOWA
 	public:
 		static const Ogre::String AttrTargetId(void) { return "Target Id"; }
 	private:
+		void deleteGameObjectDelegate(EventDataPtr eventData);
+	private:
 		Ogre::String name;
-
+		GameObject* targetGameObject;
 		Variant* targetId;
 	};
 

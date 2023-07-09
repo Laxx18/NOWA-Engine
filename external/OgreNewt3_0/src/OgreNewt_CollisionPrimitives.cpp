@@ -1062,7 +1062,7 @@ namespace OgreNewt
 			return interception;
 		}
 
-		void TreeCollision::setRayCastCallbackactive(bool active, const NewtonCollision *col)
+		void TreeCollision::setRayCastCallbackActive(bool active, const NewtonCollision *col)
 		{
 			if (active)
 				NewtonTreeCollisionSetUserRayCastCallback(col, newtonRayCastCallback);
@@ -1107,12 +1107,39 @@ namespace OgreNewt
 
 		}
 
-		void HeightField::setRayCastCallbackactive(bool active, const NewtonCollision *col )
+		void HeightField::setRayCastCallbackActive(bool active, const NewtonCollision *col )
 		{
 			if(active)
 				NewtonHeightFieldSetUserRayCastCallback(col, newtonRayCastCallback);
 			else
 				NewtonHeightFieldSetUserRayCastCallback(col, nullptr);
+		}
+
+		void HeightField::setFaceId(unsigned int faceId)
+		{
+			NewtonTreeCollisionForEachFace(m_col, CountFaces, this);
+
+			m_faceCount = 0;
+			NewtonTreeCollisionForEachFace(m_col, MarkFaces, this);
+		}
+
+		int HeightField::CountFaces(void* const context, const dFloat* const polygon, int strideInBytes, const int* const indexArray, int indexCount)
+		{
+			HeightField* const me = (HeightField*)context;
+			me->m_faceCount++;
+			return 1;
+		}
+
+		int HeightField::MarkFaces(void* const context, const dFloat* const polygon, int strideInBytes, const int* const indexArray, int indexCount)
+		{
+			HeightField* const me = (HeightField*)context;
+
+			// repmap material index, by enumerating the face and storing the user material info at each face index
+			int faceIndex = NewtonTreeCollisionGetFaceAttribute(me->m_col, indexArray, indexCount);
+			NewtonTreeCollisionSetFaceAttribute(me->m_col, indexArray, indexCount, /*me->m_faceCount*/ me->m_categoryId);
+
+			me->m_faceCount++;
+			return 1;
 		}
 
 		int TreeCollisionSceneParser::count = 0;

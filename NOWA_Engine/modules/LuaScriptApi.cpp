@@ -7767,46 +7767,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("Body", "class", "OgreNewt physics body.");
-
-		/*
-		module(lua)
-		[
-			class_<OgreNewt::MaterialID>("MaterialID")
-			.def("getID", &OgreNewt::MaterialID::getID)
-		];
-
-		module(lua)
-		[
-			class_<OgreNewt::World>("World")
-			.def("getDefaultMaterialID", &OgreNewt::World::getDefaultMaterialID)
-			.def("getBodyCount", &OgreNewt::World::getBodyCount)
-			.def("getConstraintCount", &OgreNewt::World::getConstraintCount)
-			.def("getFirstBody", &OgreNewt::World::getFirstBody)
-		];
-
-		module(lua)
-		[
-			class_<OgreNewt::Contact>("Contact")
-			.def("getFaceAttribute", &OgreNewt::Contact::getFaceAttribute)
-			.def("getNormalSpeed", &OgreNewt::Contact::getNormalSpeed)
-			.def("getForce", &OgreNewt::Contact::getForce)
-			.def("getPositionAndNormal", &OgreNewt::Contact::getPositionAndNormal)
-			.def("getTangentDirections", &OgreNewt::Contact::getTangentDirections)
-			.def("getTangentSpeed", &OgreNewt::Contact::getTangentSpeed)
-			.def("setSoftness", &OgreNewt::Contact::setSoftness)
-			.def("setElasticity", &OgreNewt::Contact::setElasticity)
-			.def("setFrictionState", &OgreNewt::Contact::setFrictionState)
-			.def("setFrictionCoef", &OgreNewt::Contact::setFrictionCoef)
-			.def("setTangentAcceleration", &OgreNewt::Contact::setTangentAcceleration)
-			.def("rotateTangentDirections", &OgreNewt::Contact::rotateTangentDirections)
-			.def("setNormalDirection", &OgreNewt::Contact::setNormalDirection)
-			.def("setNormalAcceleration", &OgreNewt::Contact::setNormalAcceleration)
-			.def("remove", &OgreNewt::Contact::remove)
-		];*/
-
-		// MaterialID class to be done
-		// OgreNewt World to be done
-		// CollisionPtr
 	}
 
 	JointComponent* getPredecessorJointComponent(JointComponent* instance)
@@ -10270,18 +10230,45 @@ namespace NOWA
 
 	PhysicsActiveComponent::ContactData getContactAhead(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactAhead(index, offset, length, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
+		return instance->getContactAhead(index, offset, length, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactAhead2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, const Ogre::String& categoryNames)
+	{
+		return instance->getContactAhead(index, offset, length, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
 	}
 
 	PhysicsActiveComponent::ContactData getContactToDirection(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
 							   Ogre::Real from, Ogre::Real to, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
+		// Note: Unsigned int must be used, all all category id will be 0 if converted to int, because int is unsigned int / 2
+		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactToDirection2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
+															   Ogre::Real from, Ogre::Real to, bool forceDrawLine, const Ogre::String& categoryNames)
+	{
+		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
 	}
 
 	PhysicsActiveComponent::ContactData getContactBelow(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
 	{
-		return instance->getContactBelow(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(categoryIds));
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactBelow2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames)
+	{
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
+	}
+
+	PhysicsActiveComponent::ContactData getContactAbove(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
+	{
+		return instance->getContactAbove(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+	}
+
+	PhysicsActiveComponent::ContactData getContactAbove2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames)
+	{
+		return instance->getContactAbove(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
 	}
 
 	void bindPhysicsActiveComponent(lua_State* lua)
@@ -10352,8 +10339,14 @@ namespace NOWA
 
 			// .def("getContactAhead", (OgreNewt::BasicRaycast::BasicRaycastInfo (PhysicsActiveComponent::*)(Ogre::Vector3 , Ogre::Real )) &PhysicsActiveComponent::getContactAhead)
 			.def("getContactAhead", &getContactAhead)
+			.def("getContactAhead2", &getContactAhead2)
 			.def("getContactToDirection", &getContactToDirection)
+			.def("getContactToDirection2", &getContactToDirection2)
 			.def("getContactBelow", &getContactBelow)
+			.def("getContactBelow2", &getContactBelow2)
+			.def("getContactAbove", &getContactAbove)
+			.def("getContactAbove2", &getContactAbove2)
+
 			.def("setBounds", &PhysicsActiveComponent::setBounds)
 		];
 
@@ -10453,14 +10446,41 @@ namespace NOWA
 			"The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
 			"The length of the ray in meters. If 'drawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
 
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAhead2(int index,  Vector3 offset, float length, bool forceDrawLine, string categoryNames)", "Gets a contact data if there was a physics ray contact a head of the physics body. "
+							 "The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
+							 "The length of the ray in meters. If 'drawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+
 		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactToDirection(int index, const Vector3 direction, Vector3 offset, "
 							 "float from, float to, bool forceDrawLine, string categoryIds)", "Gets a contact data if there was a physics ray contact with a physics body. "
 			"The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
 			"The value 'from' is from which distance to shoot the ray and the value 'to' is the length of the ray in meters. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
 
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactToDirection2(int index, const Vector3 direction, Vector3 offset, "
+							 "float from, float to, bool forceDrawLine, string categoryNames)", "Gets a contact data if there was a physics ray contact with a physics body. "
+							 "The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "
+							 "The value 'from' is from which distance to shoot the ray and the value 'to' is the length of the ray in meters. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+
+
 		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow(int index, Vector3 offset, bool forceDrawLine, string categoryIds)", "Gets a contact data below the physics body. "
 			"The offset is used to set the offset position away from the physics component. "
 			"If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
+		
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow2(int index, Vector3 offset, bool forceDrawLine, string categoryNames)", "Gets a contact data below the physics body. "
+							 "The offset is used to set the offset position away from the physics component. "
+							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove(int index, Vector3 offset, bool forceDrawLine, string categoryIds)", "Gets a contact data above the physics body. "
+							 "The offset is used to set the offset position away from the physics component. "
+							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
+
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove2(int index, Vector3 offset, bool forceDrawLine, string categoryNames)", "Gets a contact data above the physics body. "
+							 "The offset is used to set the offset position away from the physics component. "
+							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+
 		AddClassToCollection("PhysicsActiveComponent", "void setBounds(Vector3 minBounds, Vector3 maxBounds)", "Sets the min max bounds, until which this body can be moved.");
      }
 
@@ -10539,17 +10559,18 @@ namespace NOWA
 	void bindPhysicsArtifactComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PhysicsArtifactComponent, PhysicsComponent>("PhysicsArtifactComponent")
-				// .def("getClassName", &PhysicsArtifactComponent::getClassName)
+		[
+			class_<PhysicsArtifactComponent, PhysicsComponent>("PhysicsArtifactComponent")
 			.def("getParentClassName", &PhysicsArtifactComponent::getParentClassName)
-			// .def("clone", &PhysicsArtifactComponent::clone)
-			// .def("getClassId", &PhysicsArtifactComponent::getClassId)
-			// .def("reCreateCollision", &PhysicsArtifactComponent::reCreateCollision)
-			// .def("setSerialize", &PhysicsArtifactComponent::setSerialize)
-			// .def("getSerialize", &PhysicsArtifactComponent::getSerialize)
-			];
+			.def("changeCollisionFaceId", &PhysicsArtifactComponent::changeCollisionFaceId)// .def("getClassName", &PhysicsArtifactComponent::getClassName)
+		];
 		AddClassToCollection("PhysicsArtifactComponent", "class inherits PhysicsComponent", "Derived class of PhysicsActiveComponent. " + PhysicsArtifactComponent::getStaticInfoText());
+		AddClassToCollection("PhysicsArtifactComponent", "void setCollisionFaceId(number id)", "Changes the user defined collision attribute stored with faces of the collision mesh. "
+							 "This function is used to obtain the user data stored in faces of the collision geometry. "
+							 "The application can use this user data to achieve per polygon material behavior in large static collision meshes. "
+							 "By changing the value of this user data the application can achieve modifiable surface behavior with the collision geometry. "
+							 "For example, in a driving game, the surface of a polygon that represents the street can changed from pavement to oily or wet after "
+							 "some collision event occurs.");
 	}
 
 	void bindPhysicsCompoundConnectionComponent(lua_State* lua)
@@ -10711,9 +10732,9 @@ namespace NOWA
 	void bindPhysicsMaterialComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<OgreNewt::Contact>("Contact")
-				.def("getNormalSpeed", &OgreNewt::Contact::getNormalSpeed)
+		[
+			class_<OgreNewt::Contact>("Contact")
+			.def("getNormalSpeed", &OgreNewt::Contact::getNormalSpeed)
 			// .def("getForce", &OgreNewt::Contact::getForce)
 			.def("setContactPosition", &OgreNewt::Contact::setContactPosition)
 			.def("getPositionAndNormal", &getPositionAndNormal)
@@ -10735,7 +10756,8 @@ namespace NOWA
 			.def("getContactPruningTolerance", &OgreNewt::Contact::getContactPruningTolerance)
 			.def("getContactPenetration", &OgreNewt::Contact::getContactPenetration)
 			.def("getClosestDistance", &OgreNewt::Contact::getClosestDistance)
-			];
+			.def("getFaceAttribute", &OgreNewt::Contact::getFaceAttribute)
+		];
 
 		AddClassToCollection("Contact", "class", "Contact can be used, to get details information when a collision of two bodies occured and to control, what should happen with them.");
 		AddClassToCollection("Contact", "float getNormalSpeed()", "Gets the speed at the contact normal.");
@@ -11013,7 +11035,20 @@ namespace NOWA
 
 	void bindPhysicsTerrainComponent(lua_State* lua)
 	{
-
+		module(lua)
+		[
+			class_<PhysicsTerrainComponent, PhysicsComponent>("PhysicsTerrainComponent")
+			// .def("getClassName", &PhysicsArtifactComponent::getClassName)
+			.def("getParentClassName", &PhysicsArtifactComponent::getParentClassName)
+			.def("changeCollisionFaceId", &PhysicsArtifactComponent::changeCollisionFaceId)
+		];
+		AddClassToCollection("PhysicsTerrainComponent", "class inherits PhysicsComponent", "Derived class of PhysicsActiveComponent. " + PhysicsArtifactComponent::getStaticInfoText());
+		AddClassToCollection("PhysicsTerrainComponent", "void setCollisionFaceId(number id)", "Changes the user defined collision attribute stored with faces of the collision mesh. "
+								"This function is used to obtain the user data stored in faces of the collision geometry. "
+								"The application can use this user data to achieve per polygon material behavior in large static collision meshes. "
+								"By changing the value of this user data the application can achieve modifiable surface behavior with the collision geometry. "
+								"For example, in a driving game, the surface of a polygon that represents the street can changed from pavement to oily or wet after "
+								"some collision event occurs.");
 	}
 
 	void bindSimpleSoundComponent(lua_State* lua)
@@ -11340,7 +11375,9 @@ namespace NOWA
 				value("ARRIVE_2D", KI::MovingBehavior::BehaviorType::ARRIVE_2D),
 				value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D),
 				value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D),
-				value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D)
+				value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
+				value("FOLLOW_TRACE_2D", KI::MovingBehavior::BehaviorType::FOLLOW_TRACE_2D),
+				value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)
 			]
 		    .def("getPath", &KI::MovingBehavior::getPath)
 			.def("setRotationSpeed", &KI::MovingBehavior::setRotationSpeed)

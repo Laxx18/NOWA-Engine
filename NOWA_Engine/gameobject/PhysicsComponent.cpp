@@ -82,6 +82,11 @@ namespace NOWA
 		return true;
 	}
 
+	void PhysicsComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+	}
+
 	OgreNewt::CollisionPtr PhysicsComponent::createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition,
 		const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId)
 	{
@@ -215,7 +220,6 @@ namespace NOWA
 	OgreNewt::CollisionPtr PhysicsComponent::createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionPosition,
 		const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId)
 	{
-		OgreNewt::CollisionPtr collisionPtr;
 		if (this->collisionType->getListSelectedValue() == "ConvexHull")
 		{
 			Ogre::v1::Entity* entity = nullptr;
@@ -241,7 +245,7 @@ namespace NOWA
 			}
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			// calculate interia and mass center of the body
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
@@ -250,7 +254,7 @@ namespace NOWA
 			OgreNewt::CollisionPrimitives::ConcaveHull* col = new OgreNewt::CollisionPrimitives::ConcaveHull(
 				this->ogreNewt, this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>(), categoryId, 0.001, this->gameObjectPtr->getSceneNode()->getScale());
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			// calculate interia and mass center of the body
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
@@ -259,7 +263,7 @@ namespace NOWA
 			OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, this->gameObjectPtr->getSize(), categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "Capsule")
@@ -269,7 +273,7 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize().x / 2.0f, this->gameObjectPtr->getSize().y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "ChamferCylinder")
@@ -278,7 +282,7 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize().x / 2.0f, this->gameObjectPtr->getSize().y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "Cone")
@@ -287,7 +291,7 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize().x / 2.0f, this->gameObjectPtr->getSize().y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "Cylinder")
@@ -296,7 +300,7 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize().x / 2.0f, this->gameObjectPtr->getSize().y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "Ellipsoid") // can also be a sphere
@@ -305,7 +309,7 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize() / 2.0f, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else if (this->collisionType->getListSelectedValue() == "Pyramid")
@@ -314,29 +318,29 @@ namespace NOWA
 				this->ogreNewt, this->gameObjectPtr->getSize(), categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 			col->calculateInertialMatrix(inertia, massOrigin);
 		}
 		else
 		{
 			OgreNewt::CollisionPrimitives::Null* col = new OgreNewt::CollisionPrimitives::Null(this->ogreNewt);
-			collisionPtr = OgreNewt::CollisionPtr(col);
+			this->collisionPtr = OgreNewt::CollisionPtr(col);
 		}
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] calculated volume: "
 			+ Ogre::StringConverter::toString(this->volume) + " for: " + this->gameObjectPtr->getName());
-		return collisionPtr;
+		return this->collisionPtr;
 	}
 
-	OgreNewt::CollisionPtr PhysicsComponent::createCollisionPrimitive(const Ogre::String& _collisionType, const Ogre::Vector3& collisionPosition,
-		const Ogre::Quaternion collisionOrientation, const Ogre::Vector3& collisionSize, Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned categoryId)
+	OgreNewt::CollisionPtr PhysicsComponent::createCollisionPrimitive(const Ogre::String& collisionType, const Ogre::Vector3& collisionPosition,
+		const Ogre::Quaternion &collisionOrientation, const Ogre::Vector3& collisionSize, Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId)
 	{
 		// convex hull is not possible, because an entity would be required
-		if (_collisionType == "ConvexHull")
+		if (collisionType == "ConvexHull")
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Could not create convex hull collision, because this type is no primitive type!");
 			return OgreNewt::CollisionPtr();
 		}
-		else if (_collisionType == "ConcaveHull")
+		else if (collisionType == "ConcaveHull")
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsComponent] Could not create concave hull collision, because this type is no primitive type!");
 			return OgreNewt::CollisionPtr();
@@ -344,7 +348,7 @@ namespace NOWA
 		
 		OgreNewt::CollisionPtr collisionPtr;
 
-		if (_collisionType == "Box")
+		if (collisionType == "Box")
 		{
 			OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, collisionSize, categoryId, collisionOrientation, collisionPosition);
 
@@ -352,7 +356,7 @@ namespace NOWA
 			col->calculateInertialMatrix(inertia, massOrigin);
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "Capsule")
+		else if (collisionType == "Capsule")
 		{
 			// strangly the position must have an offset of size.y / 2
 			OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(
@@ -362,7 +366,7 @@ namespace NOWA
 			col->calculateInertialMatrix(inertia, massOrigin);
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "ChamferCylinder")
+		else if (collisionType == "ChamferCylinder")
 		{
 			OgreNewt::CollisionPrimitives::ChamferCylinder* col = new OgreNewt::CollisionPrimitives::ChamferCylinder(
 				this->ogreNewt, collisionSize.x, collisionSize.y, categoryId, collisionOrientation, collisionPosition);
@@ -370,7 +374,7 @@ namespace NOWA
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "Cone")
+		else if (collisionType == "Cone")
 		{
 			OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(
 				this->ogreNewt, collisionSize.x, collisionSize.y, categoryId, collisionOrientation, collisionPosition);
@@ -379,7 +383,7 @@ namespace NOWA
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "Cylinder")
+		else if (collisionType == "Cylinder")
 		{
 			OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(
 				this->ogreNewt, collisionSize.x, collisionSize.y, categoryId, collisionOrientation, collisionPosition);
@@ -388,7 +392,7 @@ namespace NOWA
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "Ellipsoid") // can also be a sphere
+		else if (collisionType == "Ellipsoid") // can also be a sphere
 		{
 			OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(
 				this->ogreNewt, collisionSize, categoryId, collisionOrientation, collisionPosition);
@@ -397,7 +401,7 @@ namespace NOWA
 			col->calculateInertialMatrix(inertia, massOrigin);
 			collisionPtr = OgreNewt::CollisionPtr(col);
 		}
-		else if (_collisionType == "Pyramid")
+		else if (collisionType == "Pyramid")
 		{
 			OgreNewt::CollisionPrimitives::Pyramid* col = new OgreNewt::CollisionPrimitives::Pyramid(
 				this->ogreNewt, collisionSize, categoryId, collisionOrientation, collisionPosition);
@@ -615,14 +619,16 @@ namespace NOWA
 					item, true, categoryId));
 			}
 		}
+		else
+		{
+			Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
+			OgreNewt::CollisionSerializer loadWorldCollision;
+			// Import collision from file for faster loading
+			col = loadWorldCollision.importCollision(streamFile, ogreNewt);
 
-		Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
-		OgreNewt::CollisionSerializer loadWorldCollision;
-		// Import collision from file for faster loading
-		col = loadWorldCollision.importCollision(streamFile, ogreNewt);
-
-		streamFile.close();
-		fclose(file);
+			streamFile.close();
+			fclose(file);
+		}
 
 		return col;
 	}
@@ -671,6 +677,25 @@ namespace NOWA
 		
 	}
 
+	void PhysicsComponent::actualizeValue(Variant* attribute)
+	{
+		GameObjectComponent::actualizeValue(attribute);
+
+		if (GameObject::AttrPosition() == attribute->getName())
+		{
+			this->setPosition(attribute->getVector3());
+		}
+		else if (GameObject::AttrScale() == attribute->getName())
+		{
+			this->setScale(attribute->getVector3());
+		}
+		else if (GameObject::AttrOrientation() == attribute->getName())
+		{
+			unsigned long test = this->gameObjectPtr->getId();
+			this->setOrientation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
+		}
+	}
+
 	void PhysicsComponent::setBody(OgreNewt::Body* body)
 	{
 		this->physicsBody = body;
@@ -695,7 +720,7 @@ namespace NOWA
 
 	void PhysicsComponent::translate(const Ogre::Vector3& relativePosition)
 	{
-		//TODO: set attribute translate, or get attribute position + position
+		this->gameObjectPtr->setAttributePosition(this->physicsBody->getPosition() + relativePosition);
 		if (nullptr != this->physicsBody)
 			this->physicsBody->setPositionOrientation(this->physicsBody->getPosition() + relativePosition, this->getOrientation());
 	}

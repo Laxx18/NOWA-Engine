@@ -367,7 +367,7 @@ namespace NOWA
 		// can be overwritten
 		virtual void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 
-		virtual void contactCallback(OgreNewt::Body* otherBody);
+		virtual void contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact);
 
 		void updateCallback(OgreNewt::Body* body);
 
@@ -389,6 +389,9 @@ namespace NOWA
 
 		ContactData getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
 			unsigned int categoryIds = 0xFFFFFFFF);
+
+		ContactData getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
+									unsigned int categoryIds = 0xFFFFFFFF);
 
 		Ogre::Real determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, 
 			unsigned int categoryIds = 0xFFFFFFFF);
@@ -439,6 +442,12 @@ namespace NOWA
 		void addJointAttractorComponent(unsigned long id);
 
 		void removeJointAttractorComponent(unsigned long id);
+
+		/**
+		 * @brief Sets the lua function name, to react when a game object collided with another game object.
+		 * @param[in]	onContactFunctionName		The function name to set
+		 */
+		void setOnContactFunctionName(const Ogre::String& onContactFunctionName);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrForce(void) { return "Force"; }
@@ -459,7 +468,7 @@ namespace NOWA
 		static const Ogre::String AttrConstraintAxis(void) { return "Constraint Axis"; }
 		static const Ogre::String AttrAsSoftBody(void) { return "As Softbody"; }
 		static const Ogre::String AttrEnableGyroscopicTorque(void) { return "Enable Gyroscopic Torque"; }
-		
+		static const Ogre::String AttrOnContactFunctionName(void) { return "On Contact Function Name"; }
 	protected:
 		void parseCommonProperties(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename);
 
@@ -500,8 +509,9 @@ namespace NOWA
 		Variant* angularDamping;
 		Variant* constraintAxis;
 		Variant* gyroscopicTorque;
-
 		Variant* asSoftBody;
+		Variant* onContactFunctionName;
+
 		// Ogre::String defaultPoseName;
 
 		bool hasAttraction;

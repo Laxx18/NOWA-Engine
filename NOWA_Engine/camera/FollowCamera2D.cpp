@@ -68,10 +68,11 @@ namespace NOWA
 
 	void FollowCamera2D::setBounds(Ogre::Vector3& minimumBounds, Ogre::Vector3& maximumBounds)
 	{
-		this->minimumBounds = minimumBounds + this->borderOffset;
-		this->maximumBounds = maximumBounds - this->borderOffset;
+		this->minimumBounds = minimumBounds/* + this->borderOffset*/;
+		this->maximumBounds = maximumBounds/* - this->borderOffset*/;
 
-		// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] minimumBounds: " + Ogre::StringConverter::toString(this->minimumBounds));
+		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[FollowCamera2D] minimum bounds: " + Ogre::StringConverter::toString(this->minimumBounds)
+		 + "maximum bounds: " + Ogre::StringConverter::toString(this->maximumBounds));
 
 		if (nullptr == this->camera)
 		{
@@ -87,8 +88,8 @@ namespace NOWA
 
 		// Note: 2.5 is exactly the value! Even when fovy is changed, the value is correct
 		this->mostRightUp = (this->camera->getViewMatrix(true) * corners[4] / 2.5f) / this->camera->getAspectRatio();
-		this->mostRightUp += this->borderOffset;
-
+		// this->mostRightUp += this->borderOffset;
+		this->mostRightUp -= Ogre::Vector3(this->borderOffset.z, this->borderOffset.z, 0.0f);
 		this->firstTimeValueSet = true;
 		this->firstTimeMoveValueSet = true;
 	}
@@ -463,22 +464,22 @@ namespace NOWA
 		Ogre::Real mostRightUpX = this->mostRightUp.x;
 		Ogre::Real borderXRight = cameraPositionX + mostRightUpX;
 		Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
-		if (borderXRight > this->maximumBounds.x + this->borderOffset.x)
+		if (borderXRight > this->maximumBounds.x/* + this->borderOffset.x*/)
 		{
 			this->camera->setPosition(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z);
 		}
-		else if (borderXLeft < this->minimumBounds.x - this->borderOffset.x)
+		else if (borderXLeft < this->minimumBounds.x/* - this->borderOffset.x*/)
 		{
-			Ogre::Vector3 newPos = Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x + this->borderOffset.x, cameraPosition.y, cameraPosition.z);
+			Ogre::Vector3 newPos = Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x/* + this->borderOffset.x*/, cameraPosition.y, cameraPosition.z);
 			this->camera->setPosition(newPos);
 		}
 
 		// y bounds
-		if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y + this->borderOffset.y)
+		if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y/* + this->borderOffset.y*/)
 		{
 			this->camera->setPosition(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z);
 		}
-		else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y - this->borderOffset.y)
+		else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y/* - this->borderOffset.y*/)
 		{
 			this->camera->setPosition(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z);
 		}
