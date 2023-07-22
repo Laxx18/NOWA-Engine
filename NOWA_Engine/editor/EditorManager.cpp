@@ -2275,15 +2275,15 @@ namespace NOWA
 			{
 				canBeV2Mesh = true;
 			}
-			else if (serializerVersion == "1.100")
-			{
-				canBeV2Mesh = true;
-			}
 			else if (serializerVersion == "1.8")
 			{
 				canBeV2Mesh = true;
 			}
 			else if (serializerVersion == "1.4")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.41")
 			{
 				canBeV2Mesh = true;
 			}
@@ -2305,7 +2305,7 @@ namespace NOWA
 			}
 
 			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.
-			canBeV2Mesh &= Core::getSingletonPtr()->getUseV2Mesh();
+			canBeV2Mesh &= !Core::getSingletonPtr()->getUseEntityType();
 
 			// See OgreMesh.h
 			/*

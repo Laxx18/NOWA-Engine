@@ -1381,8 +1381,8 @@ namespace NOWA
 					tempChildCompPtr->setMinMaxAngleLimit1(minTwistAngle, maxTwistAngle);
 					tempChildCompPtr->setLimits1Enabled(true);
 					tempChildCompPtr->setMinMaxAngleLimit0(minTwistAngle2, maxTwistAngle2);
-					tempChildCompPtr->setSpring0(useSpring);
-					tempChildCompPtr->setSpring1(useSpring);
+					tempChildCompPtr->setSpring0(useSpring, 1024.0f, 512.0f, 0.9f);
+					tempChildCompPtr->setSpring1(useSpring, 1024.0f, 512.0f, 0.9f);
 					tempChildCompPtr->createJoint();
 					// tempChildCompPtr->setMinMaxConeAngleLimit(minTwistAngle, maxTwistAngle, maxConeAngle);
 					if (-1.0f != friction)

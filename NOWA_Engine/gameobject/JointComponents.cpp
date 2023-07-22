@@ -11186,7 +11186,7 @@ namespace NOWA
 		OgreNewt::Universal* universalJoint = dynamic_cast<OgreNewt::Universal*>(this->joint);
 		if (nullptr != universalJoint)
 		{
-			universalJoint->setAsSpringDamper0(this->asSpringDamper0->getBool(), this->springDamperRelaxation0->getReal(), this->springK0->getReal(), this->springD0->getReal());
+			universalJoint->setAsSpringDamper0(this->asSpringDamper1->getBool(), this->springDamperRelaxation1->getReal(), this->springK1->getReal(), this->springD1->getReal());
 		}
 	}
 

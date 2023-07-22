@@ -65,6 +65,9 @@ namespace NOWA
 		this->animationScales.resize(this->textureCount->getUInt());
 		this->animationRotations.resize(this->textureCount->getUInt());
 
+		// Texture tiling approach!
+		// https://forums.ogre3d.org/viewtopic.php?t=97074
+
 		this->textureCount->addUserData(GameObject::AttrActionNeedRefresh());
 		this->subEntityIndex->setDescription("Specifies the sub entity index, for which the datablock should be shown.");
 		this->subEntityIndex->addUserData(GameObject::AttrActionNeedRefresh());
@@ -79,7 +82,7 @@ namespace NOWA
 		if (true == this->alreadyCloned)
 		{
 			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			if (nullptr != entity && nullptr != this->datablock)
 			{
 				Ogre::String dataBlockName = *this->datablock->getNameStr();
 				if (nullptr != this->originalDatablock)
@@ -178,6 +181,11 @@ namespace NOWA
 			this->setBackgroundColor(XMLConverter::getAttribVector4(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TextureCount")
+		{
+			this->textureCount->setValue(XMLConverter::getAttribInt(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		if (this->detailTextureNames.size() < this->textureCount->getUInt())
 		{
@@ -190,6 +198,8 @@ namespace NOWA
 			this->animationRotations.resize(this->textureCount->getUInt());
 		}
 
+
+
 		for (size_t i = 0; i < this->textureCount->getUInt(); i++)
 		{
 			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DetailTextureName" + Ogre::StringConverter::toString(i))
@@ -198,10 +208,12 @@ namespace NOWA
 				{
 					this->detailTextureNames[i] = new Variant(DatablockUnlitComponent::AttrDetailTexture() + Ogre::StringConverter::toString(i),
 						XMLConverter::getAttrib(propertyElement, "data"), this->attributes);
+					this->detailTextureNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 				}
 				else
 				{
 					this->detailTextureNames[i]->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+					this->detailTextureNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 				}
 				propertyElement = propertyElement->next_sibling("property");
 			}
@@ -341,33 +353,38 @@ namespace NOWA
 
 	void DatablockUnlitComponent::internalSetTextureName(unsigned char textureIndex, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
 	{
+		Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+
 		Ogre::String previousTextureName = attribute->getString();
 		// If the data block component has just been created, get texture name from existing data block
 		Ogre::String tempTextureName = textureName;
+
+		
+		// If the data block component has just been created, get texture name from existing data block
 		if (true == newlyCreated && nullptr != this->datablock)
 		{
-			tempTextureName = this->getUnlitTextureName(this->datablock, textureIndex);
+			tempTextureName = this->getUnlitTextureName(this->datablock, textureType);
 		}
-
 		attribute->setValue(tempTextureName);
+		this->addAttributeFilePathData(attribute);
+
 		// Store the old texture name as user data
 		if (false == tempTextureName.empty())
 		{
-			attribute->addUserData(tempTextureName);
+			attribute->addUserData("OldTexture", tempTextureName);
+		}
+		else if (nullptr != this->datablock)
+		{
+			attribute->addUserData("OldTexture", this->getUnlitTextureName(this->datablock, textureType));
 		}
 
-		this->addAttributeFilePathData(attribute);
-
-		if (nullptr != this->datablock/* && false == newlyCreated*/)
+		if (nullptr != this->datablock /*&& false == newlyCreated*/)
 		{
 			// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
 			if (true == attribute->getUserDataValue("OldTexture").empty())
 			{
-				tempTextureName = this->getUnlitTextureName(this->datablock, textureIndex);
+				tempTextureName = this->getUnlitTextureName(this->datablock, textureType);
 				attribute->addUserData(tempTextureName);
-				this->addAttributeFilePathData(attribute);
-				// Retrieve the texture and remove it from data block
-				tempTextureName = "";
 			}
 
 			// createOrRetrieveTexture crashes, when texture alias name is empty
@@ -377,27 +394,32 @@ namespace NOWA
 				if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Cannot set texture: '" + oldTextureName +
-						"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
+																	"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
 					attribute->setValue(previousTextureName);
 					this->addAttributeFilePathData(attribute);
 					return;
 				}
 
-				Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-				// Attention: Which type here? for unlit?
-				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName, Ogre::GpuPageOutStrategy::SaveToSystemRam,
-					textureType, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, 0); // Attention: Poolid = 0, is that correct?
+				Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
 
-				// hlmsTextureManager->getDefaultTextureParameters()[TEXTURE_TYPE_DIFFUSE].hwGammaCorrection = false
+				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
+				
+				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
 
+				// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+				// it will be filled with correct data when setDataBlock is called
+				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
+																						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
+																						Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
+				// Check if its a valid texture
 				if (nullptr != texture)
 				{
 					// Really important: GpuResidency must be set to 'OnSystemRam', else cloning a datablock does not work!
-					if (texture->getResidencyStatus() != Ogre::GpuResidency::Resident)
+					if (texture->getResidencyStatus() != Ogre::GpuResidency::OnSystemRam)
 					{
 						try
 						{
-							texture->scheduleTransitionTo(Ogre::GpuResidency::OnSystemRam);
+							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
 							bool canUseSynchronousUpload = texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident && texture->isDataReady();
 
@@ -411,7 +433,7 @@ namespace NOWA
 							Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
 							Ogre::LogManager::getSingleton().logMessage("[DatablockUnlitComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
 							attribute->setValue(previousTextureName);
-							attribute->setDescription("Texture location: '" + getResourceFilePathName(previousTextureName) + "'");
+							this->addAttributeFilePathData(attribute);
 							return;
 						}
 					}
@@ -428,12 +450,10 @@ namespace NOWA
 					// If texture has been removed, set null texture, so that it will be removed from data block
 					if (true == tempTextureName.empty())
 					{
-						// Attention: Is that correct?
 						hlmsTextureManager->destroyTexture(texture);
 						texture = nullptr;
 					}
-// Attention: Here with index, instead of type and name, is that correct, and in pbsdatablockcomponent its done differently, check it!
-					datablock->setTexture(textureIndex, oldTextureName);
+					datablock->setTexture(textureType, texture);
 				}
 				else
 				{
@@ -566,7 +586,11 @@ namespace NOWA
 		this->originalDatablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
 		// Datablock could not be received, pbs entity got unlit data block component?
 		if (nullptr == this->originalDatablock)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Warning: Could not use datablock unlit component, because this game object has a pbs data block for game object: "
+															+ this->gameObjectPtr->getName());
 			return false;
+		}
 
 		// Store also the original name
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
@@ -919,6 +943,7 @@ namespace NOWA
 			for (size_t i = oldSize; i < this->detailTextureNames.size(); i++)
 			{
 				this->detailTextureNames[i] = new Variant(DatablockUnlitComponent::AttrDetailTexture() + Ogre::StringConverter::toString(i), Ogre::String(), this->attributes);
+				this->detailTextureNames[i]->addUserData(GameObject::AttrActionFileOpenDialog(), "Models");
 
 				this->blendModes[i] = new Variant(DatablockUnlitComponent::AttrBlendMode() + Ogre::StringConverter::toString(i), 
 					{ "UNLIT_BLEND_NORMAL_NON_PREMUL", "UNLIT_BLEND_NORMAL_PREMUL", "UNLIT_BLEND_ADD"

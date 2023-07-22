@@ -66,7 +66,7 @@ namespace NOWA
 				if (nullptr == this->attributeTypes[i])
 				{
 					this->attributeTypes[i] = new Variant(AttributesComponent::AttrAttributeType() + Ogre::StringConverter::toString(i),
-						{ "Bool", "Int", "Float", "String", "Vector2", "Vector3", "Vector4"/*, "StringList"*/ }, this->attributes);
+						{ "Bool", "Int", "Real", "String", "Vector2", "Vector3", "Vector4"/*, "StringList"*/ }, this->attributes);
 
 					this->attributeTypes[i]->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
 				}

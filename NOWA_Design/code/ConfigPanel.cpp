@@ -122,7 +122,7 @@ void ConfigPanel::buttonHit(MyGUI::Widget* sender)
 
 		projectParameter.ignoreGlobalScene = std::get<6>(this->configPanelProject->getParameter());
 		projectParameter.useV2Item = std::get<7>(this->configPanelProject->getParameter());
-		NOWA::Core::getSingletonPtr()->setUseV2Mesh(projectParameter.useV2Item);
+		NOWA::Core::getSingletonPtr()->setUseEntityType(!projectParameter.useV2Item);
 		
 		projectParameter.ambientLightUpperHemisphere = std::get<0>(this->configPanelSceneManager->getParameter());
 		projectParameter.ambientLightLowerHemisphere = std::get<1>(this->configPanelSceneManager->getParameter());
@@ -350,7 +350,7 @@ void ConfigPanelProject::resetSettings(void)
 	this->openProjectCheck->setStateCheck(false);
 	this->createStateCheck->setStateCheck(false);
 	this->ignoreGlobalSceneCheck->setStateCheck(false);
-	this->useV2ItemCheck->setStateCheck(false);
+	this->useV2ItemCheck->setStateCheck(!NOWA::Core::getSingletonPtr()->getUseEntityType());
 
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "*.*");
 	for (auto filePathName : filePathNames)

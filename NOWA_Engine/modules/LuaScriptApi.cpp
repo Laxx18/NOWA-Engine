@@ -5349,12 +5349,12 @@ namespace NOWA
 	void bindAnimationComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<Ogre::v1::AnimationState>("AnimationState")
-				.def("getTimePosition", &Ogre::v1::AnimationState::getTimePosition)
+		[
+			class_<Ogre::v1::AnimationState>("AnimationState")
+			.def("getTimePosition", &Ogre::v1::AnimationState::getTimePosition)
 			.def("getLength", &Ogre::v1::AnimationState::getLength)
 			.def("setTimePosition", &Ogre::v1::AnimationState::setTimePosition)
-			];
+		];
 		AddClassToCollection("AnimationState", "class", "The v1 animation state.");
 		AddClassToCollection("AnimationState", "float getTimePosition()", "Gets the current time position of this animation state.");
 		AddClassToCollection("AnimationState", "float getLength()", "Gets the animation length.");
@@ -5554,10 +5554,10 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "AnimID getAnimationIdFromString(String animationName)", "Gets the mapped animation id from the given animation name.");
 		AddClassToCollection("AnimationBlender", "bool hasAnimation(String animationName)", "Gets whether the given animation name does exist.");
 		AddClassToCollection("AnimationBlender", "bool isAnimationActive(String animationName)", "Gets whether the given animation name is being currently played.");
-		AddClassToCollection("AnimationBlender", "void setSpeed(float speed)", "Sets the animation speed. E.g. setting speed = 2, the animation will be played two times faster.");
-		AddClassToCollection("AnimationBlender", "float getSpeed()", "Gets the animation speed.");
-		AddClassToCollection("AnimationBlender", "void setRepeat(bool repeat)", "Sets whether to repeat the animation.");
-		AddClassToCollection("AnimationBlender", "bool getRepeat()", "Gets gets whether the animation is played in a loop.");
+		// AddClassToCollection("AnimationBlender", "void setSpeed(float speed)", "Sets the animation speed. E.g. setting speed = 2, the animation will be played two times faster.");
+		// AddClassToCollection("AnimationBlender", "float getSpeed()", "Gets the animation speed.");
+		// AddClassToCollection("AnimationBlender", "void setRepeat(bool repeat)", "Sets whether to repeat the animation.");
+		// AddClassToCollection("AnimationBlender", "bool getRepeat()", "Gets gets whether the animation is played in a loop.");
 		AddClassToCollection("AnimationBlender", "void setTimePosition(float timePosition)", "Sets the time position for the animation.");
 		AddClassToCollection("AnimationBlender", "float getTimePosition()", "Gets the current animation time position.");
 		AddClassToCollection("AnimationBlender", "float getLength()", "Gets the animation length.");
@@ -5590,6 +5590,7 @@ namespace NOWA
 			.def("getWeight", &AnimationComponent::getWeight)
 			.def("getLocalToWorldPosition", &AnimationComponent::getLocalToWorldPosition)
 			.def("getLocalToWorldOrientation", &AnimationComponent::getLocalToWorldOrientation)
+			.def("reactOnAnimationFinished", &AnimationComponent::reactOnAnimationFinished)
 		];
 
 		AddClassToCollection("AnimationComponent", "class inherits GameObjectComponent", AnimationComponent::getStaticInfoText());
@@ -5614,6 +5615,8 @@ namespace NOWA
 		AddClassToCollection("AnimationComponent", "float getLength()", "Gets the animation length.");
 		AddClassToCollection("AnimationComponent", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved.");
 		AddClassToCollection("AnimationComponent", "float getWeight()", "Gets the current animation weight.");
+		AddClassToCollection("AnimationComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
+							 "Sets whether to react when the given animation has finished.");
 	}
 
 	void addAttributeBool(AttributesComponent* instance, const Ogre::String& name, bool value)
@@ -6131,6 +6134,9 @@ namespace NOWA
 			.def("getScale", &ParticleUniverseComponent::getParticleScale)
 			.def("setPlaySpeed", &ParticleUniverseComponent::setParticlePlaySpeed)
 			.def("getPlaySpeed", &ParticleUniverseComponent::getParticlePlaySpeed)
+			.def("isPlaying", &ParticleUniverseComponent::isPlaying)
+			.def("setGlobalPosition", &ParticleUniverseComponent::setGlobalPosition)
+			.def("setGlobalOrientation", &ParticleUniverseComponent::setGlobalOrientation)
 			];
 
 		AddClassToCollection("ParticleUniverseComponent", "class inherits GameObjectComponent", ParticleUniverseComponent::getStaticInfoText());
@@ -6156,6 +6162,9 @@ namespace NOWA
 		AddClassToCollection("ParticleUniverseComponent", "Vector3 getScale()", "Gets scale of the particle effect.");
 		AddClassToCollection("ParticleUniverseComponent", "void setPlaySpeed(float playSpeed)", "Sets particle play speed. E.g. 2 will play the particle at double speed.");
 		AddClassToCollection("ParticleUniverseComponent", "float getPlaySpeed()", "Gets particle play play speed.");
+		AddClassToCollection("ParticleUniverseComponent", "bool isPlaying()", "Gets whether the particle is playing. Note: This affects the value of @PlayTimeMS.");
+		AddClassToCollection("ParticleUniverseComponent", "void setGlobalPosition(Vector3 globalPosition)", "Sets a global play position for the particle.");
+		AddClassToCollection("ParticleUniverseComponent", "void setGlobalOrientation(Vector3 globalOrientation)", "Sets a global player orientation (as vector3(degree, degree, degree)) of the particle effect.");
 	}
 
 	Ogre::String getCategoriesId(PlayerControllerClickToPointComponent* instance)
@@ -10762,7 +10771,9 @@ namespace NOWA
 		AddClassToCollection("Contact", "class", "Contact can be used, to get details information when a collision of two bodies occured and to control, what should happen with them.");
 		AddClassToCollection("Contact", "float getNormalSpeed()", "Gets the speed at the contact normal.");
 		AddClassToCollection("Contact", "void setContactPosition(Vector3 contactPosition)", "Sets the contact position.");
-		AddClassToCollection("Contact", "table[position][normal] getPositionAndNormal()", "Gets the contact position and normal.");
+		AddClassToCollection("Contact", "table[position][normal] getPositionAndNormal()", "Gets the contact position and normal. Usage: local data = contact:getPositionAndNormal(); "
+							 "local position = data[0]; "
+							 "local normal = data[1]");
 		AddClassToCollection("Contact", "table[direction1][direction2] getTangentDirections()", "Gets the contact tangent vector. Returns the contact primary tangent vector and the contact secondary tangent vector.");
 		AddClassToCollection("Contact", "float getTangentSpeed()", "Gets the speed of this contact along the tangent vector of the contact.");
 		AddClassToCollection("Contact", "void setSoftness(float softness)", "Overrides the default softness for this contact.");

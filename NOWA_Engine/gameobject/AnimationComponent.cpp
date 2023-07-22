@@ -9,6 +9,52 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
+	AnimationComponent::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
+		: AnimationBlender::IAnimationBlenderObserver(),
+		closureFunction(closureFunction),
+		oneTime(oneTime)
+	{
+
+	}
+
+	AnimationComponent::AnimationBlenderObserver::~AnimationBlenderObserver()
+	{
+
+	}
+
+	void AnimationComponent::AnimationBlenderObserver::onAnimationFinished(void)
+	{
+		if (this->closureFunction.is_valid())
+		{
+			try
+			{
+				luabind::call_function<void>(this->closureFunction);
+			}
+			catch (luabind::error& error)
+			{
+				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+				std::stringstream msg;
+				msg << errorMsg;
+
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what())
+															+ " details: " + msg.str());
+			}
+		}
+	}
+
+	bool AnimationComponent::AnimationBlenderObserver::shouldReactOneTime(void) const
+	{
+		return this->oneTime;
+	}
+
+	void AnimationComponent::AnimationBlenderObserver::setNewFunctionName(luabind::object closureFunction, bool oneTime)
+	{
+		this->closureFunction = closureFunction;
+		this->oneTime = oneTime;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	AnimationComponent::AnimationComponent()
 		: GameObjectComponent(),
 		activated(new Variant(AnimationComponent::AttrActivated(), true, this->attributes)),
@@ -18,7 +64,8 @@ namespace NOWA
 		showSkeleton(new Variant(AnimationComponent::AttrShowSkeleton(), false, this->attributes)),
 		animationBlender(nullptr),
 		skeletonVisualizer(nullptr),
-		isInSimulation(false)
+		isInSimulation(false),
+		animationBlenderObserver(nullptr)
 	{
 		
 	}
@@ -26,7 +73,11 @@ namespace NOWA
 	AnimationComponent::~AnimationComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Destructor animation component for game object: " + this->gameObjectPtr->getName());
-
+		if (nullptr != this->animationBlenderObserver)
+		{
+			delete this->animationBlenderObserver;
+			this->animationBlenderObserver = nullptr;
+		}
 		if (this->animationBlender)
 		{
 			delete this->animationBlender;
@@ -145,12 +196,19 @@ namespace NOWA
 		{
 			this->activateAnimation();
 		}
+
+		if (nullptr != this->animationBlender)
+		{
+			this->animationBlender->setDebugLog(this->bShowDebugData);
+		}
+
 		return true;
 	}
 
 	bool AnimationComponent::disconnect(void)
 	{
 		this->resetAnimation();
+
 		return true;
 	}
 
@@ -503,6 +561,25 @@ namespace NOWA
 			return this->animationBlender->getSource()->getWeight();
 		}
 		return 0.0f;
+	}
+
+	void AnimationComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
+	{
+		if (nullptr == this->animationBlender)
+		{
+			return;
+		}
+
+		if (nullptr == this->animationBlenderObserver)
+		{
+			this->animationBlenderObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+		}
+		else
+		{
+			static_cast<AnimationBlenderObserver*>(this->animationBlenderObserver)->setNewFunctionName(closureFunction, oneTime);
+		}
+		// Note: animation blender will delete observer automatically
+		this->animationBlender->setAnimationBlenderObserver(this->animationBlenderObserver);
 	}
 	
 }; // namespace end

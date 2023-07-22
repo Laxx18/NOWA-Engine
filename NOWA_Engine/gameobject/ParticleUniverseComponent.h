@@ -97,6 +97,12 @@ namespace NOWA
 		Ogre::Vector3 getParticleScale(void);
 
 		ParticleUniverse::ParticleSystem* getParticle(void) const;
+
+		bool isPlaying(void) const;
+
+		void setGlobalPosition(const Ogre::Vector3& particlePosition);
+
+		void setGlobalOrientation(const Ogre::Vector3& particleOrientation);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrParticleName(void) { return "Particle Name"; }
@@ -123,6 +129,7 @@ namespace NOWA
 		Variant* particleScale;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
+		bool isInSimulation;
 	};
 
 }; //namespace end

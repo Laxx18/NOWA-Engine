@@ -607,10 +607,6 @@ namespace NOWA
 
 		inline Ogre::Timer* getOgreTimer(void) const { return this->timer; }
 
-		void setUseV2Mesh(bool useV2Mesh) { this->useV2Mesh = useV2Mesh; };
-
-		bool getUseV2Mesh(void) const { return this->useV2Mesh; }
-
 		/**
 		 * @brief		Gets all the available texture names
 		 * @param[in]	filters			The filters to set for texture name extensions. When empty, all formats will be delivered. E.g. { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" }
@@ -663,6 +659,14 @@ namespace NOWA
 		* @return		the key number
 		*/
 		int getCryptKey(void) const;
+
+		/**
+		* @brief		Gets whether by default game objects are created via entity type or item type.
+		* @return		true if entity type is used, else item type.
+		*/
+		bool getUseEntityType(void) const;
+
+		void setUseEntityType(bool useEntityType);
 
 		void encodeAllFiles(void);
 
@@ -840,6 +844,7 @@ namespace NOWA
 
 		int cryptKey;
 		bool projectEncoded;
+		bool useEntityType;
 
 		Ogre::String logName;
 
@@ -850,7 +855,6 @@ namespace NOWA
 		Ogre::TextureGpuManager::BudgetEntryVec defaultBudget;
 
 		HlmsBaseListenerContainer* baseListenerContainer;
-		bool useV2Mesh;
 	};
 
 }; //end namespace

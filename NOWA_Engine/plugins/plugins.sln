@@ -33,6 +33,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PickerComponent", "PickerCo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReferenceComponent", "ReferenceComponent\ReferenceComponent.vcxproj", "{406E22F5-C83F-4B20-828A-5011C45C8302}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rect2DComponent", "Rect2DComponent\Rect2DComponent.vcxproj", "{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -99,6 +101,10 @@ Global
 		{406E22F5-C83F-4B20-828A-5011C45C8302}.Debug|x64.Build.0 = Debug|x64
 		{406E22F5-C83F-4B20-828A-5011C45C8302}.Release|x64.ActiveCfg = Release|x64
 		{406E22F5-C83F-4B20-828A-5011C45C8302}.Release|x64.Build.0 = Release|x64
+		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Debug|x64.ActiveCfg = Debug|x64
+		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Debug|x64.Build.0 = Debug|x64
+		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.ActiveCfg = Release|x64
+		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

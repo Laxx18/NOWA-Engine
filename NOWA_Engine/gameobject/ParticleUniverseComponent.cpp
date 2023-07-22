@@ -17,6 +17,7 @@ namespace NOWA
 		particleNode(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
+		isInSimulation(false),
 		activated(new Variant(ParticleUniverseComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleUniverseComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleUniverseComponent::AttrRepeat(), false, this->attributes)),
@@ -80,7 +81,7 @@ namespace NOWA
 
 		// Activated variable is set to false again, when particle has played and repeat is off, so tell it the gui that it must be refreshed
 		this->activated->addUserData(GameObject::AttrActionNeedRefresh());
-		this->particleInitialPlayTime->setDescription("The particle play time, if set to 0, the particle effect will not stop automatically.");
+		this->particleInitialPlayTime->setDescription("The particle play time in milliseconds, if set to 0, the particle effect will not stop automatically.");
 	}
 
 	ParticleUniverseComponent::~ParticleUniverseComponent()
@@ -268,6 +269,7 @@ namespace NOWA
 
 	bool ParticleUniverseComponent::connect(void)
 	{
+		this->isInSimulation = true;
 		bool success = this->createParticleEffect();
 		if (true == success)
 		{
@@ -284,6 +286,7 @@ namespace NOWA
 
 	bool ParticleUniverseComponent::disconnect(void)
 	{
+		this->isInSimulation = false;
 		// this->destroyParticleEffect();
 		if (nullptr != this->particle)
 		{
@@ -306,7 +309,7 @@ namespace NOWA
 
 	void ParticleUniverseComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (false == notSimulating && nullptr != this->particle)
 		{
 			// Only play activated particle effect
 			if (true == this->activated->getBool())
@@ -328,7 +331,8 @@ namespace NOWA
 				}
 				else
 				{
-					this->particle->stopFade();
+					// this->particle->stopFade();
+					this->particle->stop();
 					// Set activated to false, so that the particle can be activated at a later time
 					if (false == this->repeat->getBool())
 					{
@@ -339,6 +343,9 @@ namespace NOWA
 						this->particlePlayTime = this->particleInitialPlayTime->getReal();
 					}
 				}
+
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "#######play time: "
+				// 												+ Ogre::StringConverter::toString(this->particlePlayTime) + " for: " + this->gameObjectPtr->getName());
 			}
 		}
 	}
@@ -444,7 +451,7 @@ namespace NOWA
 	void ParticleUniverseComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (nullptr != this->particle)
+		if (nullptr != this->particle && true == this->isInSimulation)
 		{
 			if (false == activated)
 			{
@@ -479,6 +486,7 @@ namespace NOWA
 	void ParticleUniverseComponent::setRepeat(bool repeat)
 	{
 		this->repeat->setValue(repeat);
+		this->destroyParticleEffect();
 	}
 
 	bool ParticleUniverseComponent::getRepeat(void) const
@@ -490,6 +498,7 @@ namespace NOWA
 	{
 		this->particleInitialPlayTime->setValue(playTime);
 		this->particlePlayTime = playTime;
+		this->destroyParticleEffect();
 	}
 
 	Ogre::Real ParticleUniverseComponent::getParticlePlayTimeMS(void) const
@@ -500,6 +509,7 @@ namespace NOWA
 	void ParticleUniverseComponent::setParticlePlaySpeed(Ogre::Real playSpeed)
 	{
 		this->particlePlaySpeed->setValue(playSpeed);
+		this->destroyParticleEffect();
 	}
 
 	Ogre::Real ParticleUniverseComponent::getParticlePlaySpeed(void) const
@@ -556,6 +566,30 @@ namespace NOWA
 	ParticleUniverse::ParticleSystem* ParticleUniverseComponent::getParticle(void) const
 	{
 		return this->particle;
+	}
+
+	bool ParticleUniverseComponent::isPlaying(void) const
+	{
+		return this->particlePlayTime > 0.0f;
+	}
+
+	void ParticleUniverseComponent::setGlobalPosition(const Ogre::Vector3& particlePosition)
+	{
+		if (nullptr != this->particleNode)
+		{
+			Ogre::Vector3 resultPosition = this->particleNode->convertWorldToLocalPosition(particlePosition);
+			this->particleNode->setPosition(resultPosition);
+		}
+	}
+
+	void ParticleUniverseComponent::setGlobalOrientation(const Ogre::Vector3& particleOrientation)
+	{
+		if (nullptr != this->particleNode)
+		{
+			Ogre::Quaternion globalOrientation = MathHelper::getInstance()->degreesToQuat(particleOrientation);
+			Ogre::Quaternion resultOrientation = this->particleNode->convertWorldToLocalOrientation(globalOrientation);
+			this->particleNode->setOrientation(resultOrientation);
+		}
 	}
 
 }; // namespace end

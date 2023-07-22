@@ -13,6 +13,24 @@ namespace NOWA
 
 		typedef boost::shared_ptr<AnimationComponent> AnimationCompPtr;
 	public:
+		class EXPORTED AnimationBlenderObserver : public AnimationBlender::IAnimationBlenderObserver
+		{
+		public:
+			AnimationBlenderObserver(luabind::object closureFunction, bool oneTime);
+
+			virtual ~AnimationBlenderObserver();
+
+			virtual void onAnimationFinished(void) override;
+
+			virtual bool shouldReactOneTime(void) const override;
+
+			void setNewFunctionName(luabind::object closureFunction, bool oneTime);
+
+		private:
+			luabind::object closureFunction;
+			bool oneTime;
+		};
+	public:
 		AnimationComponent();
 
 		virtual ~AnimationComponent();
@@ -138,6 +156,8 @@ namespace NOWA
 		void setWeight(Ogre::Real weight);
 		
 		Ogre::Real getWeight(void) const;
+
+		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrName(void) { return "Animation Name"; }
@@ -156,6 +176,7 @@ namespace NOWA
 		AnimationBlender* animationBlender;
 		SkeletonVisualizer* skeletonVisualizer;
 		bool isInSimulation;
+		AnimationBlenderObserver* animationBlenderObserver;
 	};
 
 }; //namespace end

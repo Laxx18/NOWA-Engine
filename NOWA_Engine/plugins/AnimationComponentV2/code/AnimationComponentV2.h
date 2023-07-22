@@ -20,7 +20,6 @@ namespace Ogre
 
 namespace NOWA
 {
-
 	/**
 	  * @brief		Play one animation with Ogre Item (v2). Requirements: Item must have a skeleton with animations.
 	  */
@@ -28,6 +27,24 @@ namespace NOWA
 	{
 	public:
 		typedef boost::shared_ptr<AnimationComponentV2> AnimationComponentV2Ptr;
+	public:
+		class EXPORTED AnimationBlenderObserver : public AnimationBlenderV2::IAnimationBlenderObserver
+		{
+		public:
+			AnimationBlenderObserver(luabind::object closureFunction, bool oneTime);
+
+			virtual ~AnimationBlenderObserver();
+
+			virtual void onAnimationFinished(void) override;
+
+			virtual bool shouldReactOneTime(void) const override;
+
+			void setNewFunctionName(luabind::object closureFunction, bool oneTime);
+
+		private:
+			luabind::object closureFunction;
+			bool oneTime;
+		};
 	public:
 
 		AnimationComponentV2();
@@ -180,6 +197,8 @@ namespace NOWA
 
 		Ogre::Real getWeight(void) const;
 
+		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -231,6 +250,7 @@ namespace NOWA
 		Variant* animationSpeed;
 		Variant* animationRepeat;
 		AnimationBlenderV2* animationBlender;
+		AnimationBlenderObserver* animationBlenderObserver;
 	};
 
 }; // namespace end

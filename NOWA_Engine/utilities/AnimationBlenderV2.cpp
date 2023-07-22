@@ -447,18 +447,18 @@ namespace NOWA
 
 					this->internalInit(this->source->getName().getFriendlyText());
 
-					// Check if there is an animation blender observer, and call when animation is finished
-					if (nullptr != this->animationBlenderObserver && false == skipReactOnAnimation)
-					{
-						this->animationBlenderObserver->onAnimationFinished();
-	
-						if (true == this->animationBlenderObserver->shouldReactOneTime())
-						{
-							this->skipReactOnAnimation = true;
-						}
-					}
-
 					this->blend(this->source->getName().getFriendlyText(), this->transition, this->duration, this->loop);
+				}
+
+				// Check if there is an animation blender observer, and call when animation is finished
+				if (nullptr != this->animationBlenderObserver && false == skipReactOnAnimation)
+				{
+					this->animationBlenderObserver->onAnimationFinished();
+
+					if (true == this->animationBlenderObserver->shouldReactOneTime())
+					{
+						this->skipReactOnAnimation = true;
+					}
 				}
 			}
 			else

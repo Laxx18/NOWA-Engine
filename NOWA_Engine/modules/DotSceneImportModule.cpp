@@ -1225,7 +1225,7 @@ namespace NOWA
 				if (subElement)
 				{
 					this->projectParameter.useV2Item = XMLConverter::getAttribBool(subElement, "value");
-					Core::getSingletonPtr()->setUseV2Mesh(this->projectParameter.useV2Item);
+					Core::getSingletonPtr()->setUseEntityType(!this->projectParameter.useV2Item);
 				}
 			}
 		}

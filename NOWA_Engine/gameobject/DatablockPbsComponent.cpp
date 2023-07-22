@@ -822,6 +822,13 @@ namespace NOWA
 
 		// Get the cloned data block, so that it can be manipulated individually
 		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
+		// Datablock could not be received, pbs entity got unlit data block component?
+		if (nullptr == this->originalDatablock)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Warning: Could not use datablock pbs component, because this game object has a unlit data block for game object: "
+															+ this->gameObjectPtr->getName());
+			return false;
+		}
 
 		// Store also the original name
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
@@ -838,10 +845,24 @@ namespace NOWA
 
 		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
 		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName
-				+ "__" + Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-
-			Ogre::String clonedDataBlockName = *this->datablock->getNameStr();
+			bool alreadyExists = false;
+			unsigned char index = 0;
+			do
+			{
+				try
+				{
+					alreadyExists = false;
+					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
+																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				}
+				catch (const Ogre::Exception& exception)
+				{
+					alreadyExists = true;
+					// Already exists, try again:
+					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
+																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				}
+			} while (false == alreadyExists);
 
 			this->alreadyCloned = true;
 		}
@@ -880,19 +901,6 @@ namespace NOWA
 			}
 		}
 
-		if (this->subEntityIndex->getUInt() >= static_cast<unsigned int>(item->getNumSubItems()))
-		{
-			this->datablock = nullptr;
-			Ogre::String message = "[DatablockPbsComponent] Datablock reading failed, because there is no such sub entity index: "
-				+ Ogre::StringConverter::toString(this->subEntityIndex->getUInt()) + " for game object: "
-				+ this->gameObjectPtr->getName();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
-			return false;
-		}
-
 		// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
 		if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
 		{
@@ -901,26 +909,41 @@ namespace NOWA
 		}
 
 		// Get the cloned data block, so that it can be manipulated individually
-	    // Get it from game object, because the correct datablock is stored there. (Ogre somehow does store Missing for planes, hence use the name from game object)
-		Ogre::String dataBlock = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(this->subEntityIndex->getUInt()))->getString();
-
-		item->setDatablock(dataBlock);
 		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
 
 		// Store also the original name
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
 
 		if ("Missing" == originalDataBlockName)
-		{
-			// originalDataBlockName = this->gameObjectPtr->getDatablockNames()[this->subEntityIndex->getUInt()];
-
 			return false;
+
+		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
+		size_t found = originalDataBlockName.find("__");
+		if (found != Ogre::String::npos)
+		{
+			originalDataBlockName = originalDataBlockName.substr(0, found);
 		}
 
-		if (false == this->alreadyCloned && nullptr != this->originalDatablock)
+		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
 		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName
-				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+			bool alreadyExists = false;
+			unsigned char index = 0;
+			do
+			{
+				try
+				{
+					alreadyExists = false;
+					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
+																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				}
+				catch (const Ogre::Exception& exception)
+				{
+					alreadyExists = true;
+					// Already exists, try again:
+					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
+																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				}
+			} while (false == alreadyExists);
 
 			this->alreadyCloned = true;
 		}
@@ -932,7 +955,7 @@ namespace NOWA
 		if (nullptr == this->datablock)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Datablock reading failed, because there is no data block for game object: "
-				+ this->gameObjectPtr->getName());
+															+ this->gameObjectPtr->getName());
 			return false;
 		}
 

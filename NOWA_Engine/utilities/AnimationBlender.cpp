@@ -2,6 +2,7 @@
 #include "AnimationBlender.h"
 #include "OgreTagPoint.h"
 #include "main/AppStateManager.h"
+#include "utilities/Mathhelper.h"
 
 namespace NOWA
 {
@@ -439,11 +440,14 @@ namespace NOWA
 					}
 				}
 			}
-			
+
+			this->source->addTime(time);
+
 			// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
-			if (this->source->getTimePosition() >= this->source->getLength() - 0.05f)
+			if (this->source->getTimePosition() + 0.02f >= this->source->getLength())
 			{
 				this->complete = true;
+
 				if (nullptr != this->previousSource)
 				{
 					this->source = this->previousSource;
@@ -454,18 +458,18 @@ namespace NOWA
 
 					this->internalInit(this->source->getAnimationName());
 
-					// Check if there is an animation blender observer, and call when animation is finished
-					if (nullptr != this->animationBlenderObserver && false == skipReactOnAnimation)
-					{
-						this->animationBlenderObserver->onAnimationFinished();
-	
-						if (true == this->animationBlenderObserver->shouldReactOneTime())
-						{
-							this->skipReactOnAnimation = true;
-						}
-					}
-
 					this->blend(this->source->getAnimationName(), this->transition, this->duration, this->loop);
+				}
+
+				// Check if there is an animation blender observer, and call when animation is finished
+				if (nullptr != this->animationBlenderObserver && false == skipReactOnAnimation)
+				{
+					this->animationBlenderObserver->onAnimationFinished();
+
+					if (true == this->animationBlenderObserver->shouldReactOneTime())
+					{
+						this->skipReactOnAnimation = true;
+					}
 				}
 			}
 			else
@@ -484,7 +488,6 @@ namespace NOWA
 					}*/
 				}
 			}
-			this->source->addTime(time);
 
 			if (true == this->debugLog)
 			{

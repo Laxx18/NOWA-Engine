@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Main-Configuration>
-<Core RAM="1024" VRAM="512" DiscSpace="1024" CPUSpeed="1300" Language="0" Border="none" UserData="Mg=="/>
-<Graphics QualityLevel="1" LODBias="2" TextureFiltering="2" AnisotropyLevel="4" DesiredFramesUpdates="144" DesiredSimulationUpdates="60" RenderDistance="100"/>
+<Core RAM="1024" VRAM="512" DiscSpace="1024" CPUSpeed="1300" Language="0" Border="none" UserData="Mg==" UseEntityType="false"/>
+<Graphics QualityLevel="1" LODBias="2" TextureFiltering="2" AnisotropyLevel="4" DesiredFramesUpdates="0" DesiredSimulationUpdates="144" RenderDistance="100"/>
 <Audio SoundVolume="70" MusicVolume="50"/>
 <Log Level="3"/>
 <Server StartAsServer="false" AreaOfInterest="0" PacketSendRate="5"/>

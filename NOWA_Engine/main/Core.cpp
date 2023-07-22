@@ -160,8 +160,8 @@ namespace NOWA
 		resourceLoadingListener(nullptr),
 		cryptKey(2),
 		projectEncoded(false),
-		baseListenerContainer(nullptr),
-		useV2Mesh(false)
+		useEntityType(true),
+		baseListenerContainer(nullptr)
 	{
 		this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
 		this->optionDesiredSimulationUpdates = 30;
@@ -2555,6 +2555,16 @@ namespace NOWA
 		return this->cryptKey;
 	}
 
+	bool Core::getUseEntityType(void) const
+	{
+		return this->useEntityType;
+	}
+
+	void Core::setUseEntityType(bool useEntityType)
+	{
+		this->useEntityType = useEntityType;
+	}
+
 	void Core::encodeAllFiles(void)
 	{
 		std::vector<Ogre::String> fileNames = this->getFilePathNamesInProject(this->projectName, "*.*");
@@ -2830,6 +2840,10 @@ namespace NOWA
 			{
 				 this->cryptKey = Ogre::StringConverter::parseInt(this->decode64(pSubElement->first_attribute("UserData")->value(), false));
 			}
+			if (pSubElement->first_attribute("UseEntityType"))
+			{
+				this->useEntityType = Ogre::StringConverter::parseBool(pSubElement->first_attribute("UserData")->value());
+			}
 		}
 		// retrieve graphics configuration
 		pSubElement = XMLRoot->first_node("Graphics");
@@ -3082,6 +3096,7 @@ namespace NOWA
 			<< " Language=\"" << Ogre::StringConverter::toString(this->optionLanguage) << "\""
 			<< " Border=\"" << this->borderType << "\""
 			<< " UserData=\"" << this->encode64(Ogre::StringConverter::toString(this->cryptKey), false) << "\""
+			<< " UseEntityType=\"" << Ogre::StringConverter::toString(this->useEntityType) << "\""
 			<< "/>\n";
 		// Graphics-Configuration
 		outfile << "<Graphics QualityLevel=\"" << Ogre::StringConverter::toString(this->optionQualityLevel) << "\""

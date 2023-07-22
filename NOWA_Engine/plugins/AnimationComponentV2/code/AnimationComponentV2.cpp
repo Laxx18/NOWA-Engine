@@ -17,6 +17,52 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
+	AnimationComponentV2::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
+		: AnimationBlenderV2::IAnimationBlenderObserver(),
+		closureFunction(closureFunction),
+		oneTime(oneTime)
+	{
+
+	}
+
+	AnimationComponentV2::AnimationBlenderObserver::~AnimationBlenderObserver()
+	{
+
+	}
+
+	void AnimationComponentV2::AnimationBlenderObserver::onAnimationFinished(void)
+	{
+		if (this->closureFunction.is_valid())
+		{
+			try
+			{
+				luabind::call_function<void>(this->closureFunction);
+			}
+			catch (luabind::error& error)
+			{
+				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+				std::stringstream msg;
+				msg << errorMsg;
+
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what())
+															+ " details: " + msg.str());
+			}
+		}
+	}
+
+	bool AnimationComponentV2::AnimationBlenderObserver::shouldReactOneTime(void) const
+	{
+		return this->oneTime;
+	}
+
+	void AnimationComponentV2::AnimationBlenderObserver::setNewFunctionName(luabind::object closureFunction, bool oneTime)
+	{
+		this->closureFunction = closureFunction;
+		this->oneTime = oneTime;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	AnimationComponentV2::AnimationComponentV2()
 		: GameObjectComponent(),
 		name("AnimationComponentV2"),
@@ -26,7 +72,8 @@ namespace NOWA
 		activated(new Variant(AnimationComponentV2::AttrActivated(), true, this->attributes)),
 		animationName(new Variant(AnimationComponentV2::AttrName(), std::vector<Ogre::String>(), this->attributes)),
 		animationSpeed(new Variant(AnimationComponentV2::AttrSpeed(), 1.0f, this->attributes)),
-		animationRepeat(new Variant(AnimationComponentV2::AttrRepeat(), true, this->attributes))
+		animationRepeat(new Variant(AnimationComponentV2::AttrRepeat(), true, this->attributes)),
+		animationBlenderObserver(nullptr)
 	{
 		
 	}
@@ -191,6 +238,11 @@ namespace NOWA
 
 	void AnimationComponentV2::onRemoveComponent(void)
 	{
+		if (nullptr != this->animationBlenderObserver)
+		{
+			delete this->animationBlenderObserver;
+			this->animationBlenderObserver = nullptr;
+		}
 		if (nullptr != this->animationBlender)
 		{
 			delete this->animationBlender;
@@ -529,11 +581,14 @@ namespace NOWA
 			class_<AnimationComponentV2, GameObjectComponent>("AnimationComponentV2")
 			.def("setActivated", &AnimationComponentV2::setActivated)
 			.def("isActivated", &AnimationComponentV2::isActivated)
+			.def("reactOnAnimationFinished", &AnimationComponentV2::reactOnAnimationFinished)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "class inherits GameObjectComponent", AnimationComponentV2::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
+							 "Sets whether to react when the given animation has finished.");
 
 		gameObjectClass.def("getAnimationComponentV2FromName", &getAnimationComponentV2FromName);
 		gameObjectClass.def("getAnimationComponentV2", (AnimationComponentV2 * (*)(GameObject*)) & getAnimationComponentV2);
@@ -565,6 +620,25 @@ namespace NOWA
 			}
 		}
 		return false;
+	}
+
+	void AnimationComponentV2::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
+	{
+		if (nullptr == this->animationBlender)
+		{
+			return;
+		}
+
+		if (nullptr == this->animationBlenderObserver)
+		{
+			this->animationBlenderObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+		}
+		else
+		{
+			static_cast<AnimationBlenderObserver*>(this->animationBlenderObserver)->setNewFunctionName(closureFunction, oneTime);
+		}
+		// Note: animation blender will delete observer automatically
+		this->animationBlender->setAnimationBlenderObserver(this->animationBlenderObserver);
 	}
 
 }; //namespace end
