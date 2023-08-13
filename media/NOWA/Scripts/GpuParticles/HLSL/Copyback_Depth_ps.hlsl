@@ -3,7 +3,7 @@ struct PS_INPUT
 	float2 uv0			: TEXCOORD0;
 };
 
-Texture2D<float> depthTexture	: register(t0);
+Texture2D<float> depthTexture2	: register(t0);
 
 float main
 (
@@ -12,5 +12,5 @@ float main
 ) : SV_Depth
 {
 //    return 1.0;
-	return depthTexture.Load( int3( int2(gl_FragCoord.xy), 0 ) ).x;
+	return depthTexture2.Load( int3( int2(gl_FragCoord.xy), 0 ) ).x;
 }

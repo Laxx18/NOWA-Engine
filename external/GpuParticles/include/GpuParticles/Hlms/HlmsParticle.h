@@ -56,7 +56,7 @@ public:
 class __declspec( dllexport ) HlmsParticle : public Ogre::HlmsUnlit
 {
 public:
-    static const Ogre::HlmsTypes ParticleHlmsType = Ogre::HLMS_USER0;
+    static const Ogre::HlmsTypes ParticleHlmsType = Ogre::HLMS_USER2;
 
 private:
 

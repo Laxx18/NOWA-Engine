@@ -4,7 +4,7 @@ fragment_program Postprocess/Copyback_Depth_ps_GLSL glsl
 	source Copyback_Depth_ps.glsl
 	default_params
 	{
-		param_named depthTexture int 0
+		param_named depthTexture2 int 0
 	}
 }
 
@@ -57,7 +57,7 @@ material Postprocess/Copyback_Depth
 			{
 			}
 
-			texture_unit depthTexture
+			texture_unit depthTexture2
 			{
 				filtering			none
 				tex_address_mode	clamp

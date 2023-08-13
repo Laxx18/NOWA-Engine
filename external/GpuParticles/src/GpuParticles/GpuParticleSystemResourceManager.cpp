@@ -17,8 +17,6 @@
 #include <GpuParticles/Affectors/GpuParticleSetSizeTrackAffector.h>
 #include <GpuParticles/Affectors/GpuParticleSetVelocityTrackAffector.h>
 
-template<> GpuParticleSystemResourceManager *Ogre::Singleton<GpuParticleSystemResourceManager>::msSingleton = 0;
-
 GpuParticleSystemResourceManager::GpuParticleSystemResourceManager()
 {
 

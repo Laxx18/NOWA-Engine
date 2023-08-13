@@ -16,6 +16,7 @@ compositor_node NOWAPbsRenderingNode
 	
 	texture oldLumRt	           1             1 PFG_R16_FLOAT depth_pool 0
 
+
 	target rt0
 	{
 		pass render_scene

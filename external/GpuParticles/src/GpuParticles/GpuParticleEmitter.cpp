@@ -8,8 +8,6 @@
 #include "GpuParticles/GpuParticleEmitter.h"
 #include <OgreStringConverter.h>
 
-const float GpuParticleEmitter::Epsilon = 0.001f;
-
 GpuParticleEmitter::GpuParticleEmitter()
 {
 

@@ -646,6 +646,9 @@
     <ClInclude Include="utilities\AnimationBlenderV2.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="modules\GpuParticlesModule.h">
+      <Filter>modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1196,6 +1199,9 @@
     </ClCompile>
     <ClCompile Include="utilities\XMLConverter.cpp">
       <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\GpuParticlesModule.cpp">
+      <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

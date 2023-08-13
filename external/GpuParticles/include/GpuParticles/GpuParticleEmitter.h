@@ -14,11 +14,11 @@
 #include "GpuParticleAffector.h"
 
 /// Recipe how to create/update particles. Is tied to one datablock.
-class __declspec( dllexport ) GpuParticleEmitter
+class GpuParticleEmitter
 {  
 public:
 
-    enum class __declspec( dllexport ) SpriteMode
+    enum class __declspec(dllexport) SpriteMode
     {
         None = 0,
         ChangeWithTrack,
@@ -27,7 +27,7 @@ public:
 
     /// Fader takes into consideration particle lifetime
     /// which may be different for each particle.
-    enum class __declspec( dllexport ) FaderMode
+    enum class __declspec(dllexport) FaderMode
     {
         /// No fader.
         None = 0,
@@ -39,7 +39,7 @@ public:
         AlphaOnly = 2
     };
 
-    enum class __declspec( dllexport ) SpawnShape
+    enum class __declspec(dllexport) SpawnShape
     {
         Point = 0,
 
@@ -55,30 +55,28 @@ public:
 
     typedef HlmsParticleDatablock::SpriteCoord SpriteCoord;
 
-    static const float Epsilon;
+    static __declspec(dllexport) Ogre::String spriteModeToStr(SpriteMode value);
+    static __declspec(dllexport) SpriteMode strToSpriteMode(const Ogre::String& str);
 
-    static Ogre::String spriteModeToStr(SpriteMode value);
-    static SpriteMode strToSpriteMode(const Ogre::String& str);
+    static __declspec(dllexport) Ogre::String faderModeToStr(FaderMode value);
+    static __declspec(dllexport) FaderMode strToFaderMode(const Ogre::String& str);
 
-    static Ogre::String faderModeToStr(FaderMode value);
-    static FaderMode strToFaderMode(const Ogre::String& str);
+    static __declspec(dllexport) Ogre::String spawnShapeToStr(SpawnShape value);
+    static __declspec(dllexport) SpawnShape strToSpawnShape(const Ogre::String& str);
 
-    static Ogre::String spawnShapeToStr(SpawnShape value);
-    static SpawnShape strToSpawnShape(const Ogre::String& str);
-
-    static Ogre::String billboardTypeToStr(Ogre::v1::BillboardType value);
-    static Ogre::v1::BillboardType strToBillboardType(const Ogre::String& str);
+    static __declspec(dllexport) Ogre::String billboardTypeToStr(Ogre::v1::BillboardType value);
+    static __declspec(dllexport) Ogre::v1::BillboardType strToBillboardType(const Ogre::String& str);
 
 public:
 
-    GpuParticleEmitter();
-    ~GpuParticleEmitter();
-    GpuParticleEmitter(const GpuParticleEmitter& other);
-    GpuParticleEmitter& operator=(const GpuParticleEmitter& other);
+    __declspec(dllexport) GpuParticleEmitter();
+    __declspec(dllexport) ~GpuParticleEmitter();
+    __declspec(dllexport) GpuParticleEmitter(const GpuParticleEmitter& other);
+    __declspec(dllexport) GpuParticleEmitter& operator=(const GpuParticleEmitter& other);
 
-    float getMaxParticleLifetime() const { return mParticleLifetimeMax; }
+    __declspec(dllexport) float getMaxParticleLifetime() const { return mParticleLifetimeMax; }
 
-    Ogre::uint32 getMaxParticles() const
+    __declspec(dllexport) Ogre::uint32 getMaxParticles() const
     {
         if(mBurstMode) {
             return mBurstParticles;
@@ -86,30 +84,30 @@ public:
         return (Ogre::uint32)ceilf(mEmissionRate * getMaxParticleLifetime());
     }
 
-    void setBurst(int particles, float timeToSpawnAllParticles) {
+    __declspec(dllexport) void setBurst(int particles, float timeToSpawnAllParticles) {
         mBurstMode = true;
         mBurstParticles = particles;
         mEmitterLifetime = timeToSpawnAllParticles;
     }
 
-    void setLooped(float emissionRate) {
+    __declspec(dllexport) void setLooped(float emissionRate) {
         mBurstMode = false;
         mEmissionRate = emissionRate;
     }
 
     /// Calculate time needed to spawn 1 particle.
-    float getTimeToSpawnParticle() const;
+    __declspec(dllexport) float getTimeToSpawnParticle() const;
 
     /// Not appliable when 'isImmediateBurst() == true' (will return 0.0 then).
-    float getEmissionRate() const;
+    __declspec(dllexport) float getEmissionRate() const;
 
     /// Is burst mode and mEmitterLifetime == 0 ?
-    bool isImmediateBurst() const;
+    __declspec(dllexport) bool isImmediateBurst() const;
 
     /// Is mEmitterLifetime == 0 ?
-    inline bool isImmediate() const { return fabs(mEmitterLifetime) < Epsilon; }
+    __declspec(dllexport) inline bool isImmediate() const { return fabs(mEmitterLifetime) < 0.001f; }
 
-    GpuParticleEmitter* clone();
+    __declspec(dllexport) GpuParticleEmitter* clone();
 
 public:
 
@@ -126,8 +124,8 @@ public:
     /// For flipbook (row, col). For atlas row = 0.
     std::vector<SpriteCoord> mSpriteFlipbookCoords;
     std::vector<float> mSpriteTimes;
-    static const int MaxSprites = 8;
-    static const int MaxTrackValues = 8;
+    static __declspec(dllexport) const int MaxSprites = 8;
+    static __declspec(dllexport) const int MaxTrackValues = 8;
 
     /// Used when 'mBurstMode' is true.
     float mEmitterLifetime = 0.0f;
@@ -172,12 +170,12 @@ public:
 
     typedef std::map<Ogre::String, GpuParticleAffector*> AffectorByNameMap;
     typedef std::map<Ogre::IdString, GpuParticleAffector*> AffectorByHashMap;
-    const AffectorByNameMap& getAffectorByNameMap() const;
-    const AffectorByHashMap& getAffectorByHashMap() const;
-    const GpuParticleAffector* getAffectorNoThrow(const Ogre::String& affectorPropertyName) const;
-    const GpuParticleAffector* getAffectorByIdStringNoThrow(const Ogre::IdString& affectorPropertyNameHash) const;
-    void addAffector(GpuParticleAffector* affector);
-    void removeAndDestroyAffector(const Ogre::String& affectorPropertyName);
+    __declspec(dllexport) const AffectorByNameMap& getAffectorByNameMap() const;
+    __declspec(dllexport) const AffectorByHashMap& getAffectorByHashMap() const;
+    __declspec(dllexport) const GpuParticleAffector* getAffectorNoThrow(const Ogre::String& affectorPropertyName) const;
+    __declspec(dllexport) const GpuParticleAffector* getAffectorByIdStringNoThrow(const Ogre::IdString& affectorPropertyNameHash) const;
+    __declspec(dllexport) void addAffector(GpuParticleAffector* affector);
+    __declspec(dllexport) void removeAndDestroyAffector(const Ogre::String& affectorPropertyName);
 
 private:
     AffectorByNameMap mAffectorByStringMap;

@@ -29,6 +29,7 @@ namespace NOWA
 		luaScriptModule(nullptr),
 		eventManager(nullptr),
 		scriptEventManager(nullptr),
+		gpuParticlesModule(nullptr),
 		hasStarted(false),
 		workspaceBaseComponent(nullptr)
 	{
@@ -230,6 +231,7 @@ namespace NOWA
 			this->luaScriptModule = new LuaScriptModule(this->appStateName);
 			this->eventManager = new EventManager(this->appStateName);
 			this->scriptEventManager = new ScriptEventManager(this->appStateName);
+			this->gpuParticlesModule = new GpuParticlesModule(this->appStateName);
 		}
 
 		if (true == initSceneManager)
@@ -343,6 +345,9 @@ namespace NOWA
 
 			OgreALModule::getInstance()->init(this->sceneManager);
 
+			// TODO: Like in OgreRecastModule: config the other parameters!
+			// this->gpuParticlesModule->init(this->sceneManager);
+
 			// Set unused mask for all camera, because log is spammed with exceptions
 			/*Ogre::SceneManager::CameraIterator it = this->sceneManager->getCameraIterator();
 			while (it.hasMoreElements())
@@ -404,6 +409,10 @@ namespace NOWA
 			this->scriptEventManager->destroyContent();
 			delete this->scriptEventManager;
 			this->scriptEventManager = nullptr;
+
+			this->gpuParticlesModule->destroyContent();
+			delete this->gpuParticlesModule;
+			this->gpuParticlesModule = nullptr;
 
 			if (nullptr != this->rakNetModule)
 			{

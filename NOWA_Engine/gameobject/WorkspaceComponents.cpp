@@ -24,6 +24,8 @@
 
 #include "TerraShadowMapper.h"
 
+// #define GPU_PARTICLES
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -1161,20 +1163,91 @@ namespace NOWA
 		{
 			Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(this->finalRenderingNodeName);
 
-			finalNodeDef->addTextureSourceName("rt_output", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			finalNodeDef->addTextureSourceName("rtN", 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+			unsigned int textureIndex = 0;
+
+			finalNodeDef->addTextureSourceName("rt_output", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+			textureIndex++;
+			finalNodeDef->addTextureSourceName("rtN", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+
+
+			// GpuParticles
+#ifdef GPU_PARTICLES
+			{
+				// depthTexture2
+				{
+					Ogre::TextureDefinitionBase::TextureDefinition* depthTexDef = finalNodeDef->addTextureDefinition("depthTexture2");
+					depthTexDef->width = 0; // target_width
+					depthTexDef->height = 0; // target_height
+					depthTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+					depthTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+					depthTexDef->preferDepthTexture = true;
+					// Attention depth_pool?
+					// depthTexDef->depthBufferId = 2;
+					// depthTexDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+					depthTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+				}
+
+				Ogre::RenderTargetViewDef* rtv = finalNodeDef->getRenderTargetViewDefNonConstNoThrow("rtN");
+				// Ogre::RenderTargetViewEntry attachment;
+				// attachment.textureName = "rtN";
+				// rtv->depthAttachment = attachment;
+
+				rtv->stencilAttachment.textureName = "depthTexture2";
+				// rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
+
+				// depthTextureCopy2
+				{
+					Ogre::TextureDefinitionBase::TextureDefinition* depthTexDef = finalNodeDef->addTextureDefinition("depthTextureCopy2");
+					depthTexDef->width = 0; // target_width
+					depthTexDef->height = 0; // target_height
+					depthTexDef->format = Ogre::PFG_RGBA16_FLOAT;
+					depthTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
+					depthTexDef->preferDepthTexture = true;
+					
+					// Attention depth_pool?
+					// depthTexDef->depthBufferId = 2;
+					// depthTexDef->depthBufferId = Ogre::DepthBuffer::POOL_NO_DEPTH;
+					depthTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
+					// keep_content
+					depthTexDef->textureFlags &= static_cast<unsigned int>(~Ogre::TextureFlags::DiscardableContent);
+
+					{
+						Ogre::RenderTargetViewDef* rtv = finalNodeDef->addRenderTextureView("depthTextureCopy2");
+						Ogre::RenderTargetViewEntry attachment;
+						attachment.textureName = "depthTextureCopy2";
+						rtv->colourAttachments.push_back(attachment);
+						
+						// rtv->depthAttachment.textureName = "depthTextureCopy2";
+						rtv->stencilAttachment.textureName = "depthTextureCopy2";
+					}
+				}
+
+			}
+#endif
 
 			if (true == this->useSSAO->getBool())
 			{
-				finalNodeDef->addTextureSourceName("gBufferNormals", 2, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				finalNodeDef->addTextureSourceName("depthTexture", 3, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				finalNodeDef->addTextureSourceName("depthTextureCopy", 4, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				finalNodeDef->addTextureSourceName("ssaoTexture", 5, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				finalNodeDef->addTextureSourceName("blurTextureHorizontal", 6, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-				finalNodeDef->addTextureSourceName("blurTextureVertical", 7, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("gBufferNormals", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("depthTexture", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("depthTextureCopy", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("ssaoTexture", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("blurTextureHorizontal", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				textureIndex++;
+				finalNodeDef->addTextureSourceName("blurTextureVertical", textureIndex, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 			}
 
 			unsigned short numTargetPass = 1;
+
+#ifdef GPU_PARTICLES
+			numTargetPass++;
+#endif
 			finalNodeDef->setNumTargetPass(numTargetPass);
 
 			if (true == this->useSSAO->getBool())
@@ -1295,6 +1368,23 @@ namespace NOWA
 					passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
 				}
 			}
+
+#ifdef GPU_PARTICLES
+
+			// depthTextureCopy2 target
+			{
+				Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("depthTextureCopy2");
+
+				// Render Quad
+				{
+					Ogre::CompositorPassQuadDef* passQuad;
+					passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = "Postprocess/Copyback_Depth";
+					passQuad->addQuadTextureSource(0, "depthTexture2");
+				}
+			}
+#endif
 		}
 	}
 
@@ -4214,7 +4304,7 @@ namespace NOWA
 			samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
 			samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
 			samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mMaxAnisotropy = 0;
+			samplerblock.mMaxAnisotropy = 1;
 			samplerblock.mMagFilter = Ogre::FO_POINT;
 			samplerblock.mMinFilter = Ogre::FO_POINT;
 			samplerblock.mMipFilter = Ogre::FO_NONE;

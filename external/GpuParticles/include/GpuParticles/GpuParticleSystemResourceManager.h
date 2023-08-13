@@ -14,8 +14,8 @@
 #include <map>
 #include <GpuParticles/GpuParticleAffectorCommon.h>
 
-class __declspec( dllexport ) GpuParticleSystem;
-class __declspec( dllexport ) GpuParticleAffector;
+class GpuParticleSystem;
+class GpuParticleAffector;
 
 /// Class managing particle systems as resources.
 class __declspec( dllexport ) GpuParticleSystemResourceManager
@@ -74,5 +74,7 @@ private:
     GpuParticleSystemMap mGpuParticleSystemMap;
     AffectorByIdStringMap mAffectorByIdStringMap;
 };
+
+template<> GpuParticleSystemResourceManager* Ogre::Singleton<GpuParticleSystemResourceManager>::msSingleton = 0;
 
 #endif

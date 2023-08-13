@@ -352,6 +352,7 @@ namespace NOWA
 #include "modules/DeployResourceModule.h"
 #include "modules/InputDeviceModule.h"
 #include "modules/MeshDecalGeneratorModule.h"
+#include "modules/GpuParticlesModule.h"
 
 // Editor
 #include "editor/Picker.h"

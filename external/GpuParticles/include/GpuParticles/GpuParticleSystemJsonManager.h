@@ -38,28 +38,28 @@ namespace rapidjson
 }
 
 /// Reads scripts in '*.gpuparticle.json' files
-class __declspec( dllexport ) GpuParticleSystemJsonManager
+class GpuParticleSystemJsonManager
         : public Ogre::Singleton<GpuParticleSystemJsonManager>
         , public Ogre::ScriptLoader
 {
 public:
 
-    GpuParticleSystemJsonManager();
+    __declspec(dllexport) GpuParticleSystemJsonManager();
 
-    virtual const Ogre::StringVector& getScriptPatterns(void) const override;
-    virtual void parseScript(Ogre::DataStreamPtr& stream, const Ogre::String& groupName) override;
-    virtual Ogre::Real getLoadingOrder(void) const override;
+    __declspec(dllexport) virtual const Ogre::StringVector& getScriptPatterns(void) const override;
+    __declspec(dllexport) virtual void parseScript(Ogre::DataStreamPtr& stream, const Ogre::String& groupName) override;
+    __declspec(dllexport) virtual Ogre::Real getLoadingOrder(void) const override;
 
-    void loadGpuParticleSystems( const Ogre::String &filename,
+    __declspec(dllexport) void loadGpuParticleSystems( const Ogre::String &filename,
                                  const Ogre::String &resourceGroup,
                                  const char *jsonString,
                                  const Ogre::String &additionalTextureExtension );
 
-    static void loadGpuParticleSystem( const rapidjson::Value &json, GpuParticleSystem *gpuParticleSystem );
-    static void loadGpuParticleEmitter(const rapidjson::Value &json, GpuParticleEmitter *gpuParticleEmitter );
+    static __declspec(dllexport) void loadGpuParticleSystem( const rapidjson::Value &json, GpuParticleSystem *gpuParticleSystem );
+    static __declspec(dllexport) void loadGpuParticleEmitter(const rapidjson::Value &json, GpuParticleEmitter *gpuParticleEmitter );
 
-    static void saveGpuParticleSystem( const GpuParticleSystem *gpuParticleSystem, Ogre::String &outString );
-    static void saveGpuParticleEmitter( const GpuParticleEmitter *gpuParticleEmitter, Ogre::String &outString );
+    static __declspec(dllexport) void saveGpuParticleSystem( const GpuParticleSystem *gpuParticleSystem, Ogre::String &outString );
+    static __declspec(dllexport) void saveGpuParticleEmitter( const GpuParticleEmitter *gpuParticleEmitter, Ogre::String &outString );
 
 public:
     typedef Ogre::map<Ogre::String, Ogre::String>::type ResourceToTexExtensionMap;
@@ -72,30 +72,30 @@ private:
     static void writeGpuEmitterVariable( const Ogre::String& var,  Ogre::String& outString);
 
 public:
-    static void readVector3Value(const rapidjson::Value &json, Ogre::Vector3& value);
-    static void readVector2Value(const rapidjson::Value &json, Ogre::Vector2& value);
-    static void readQuaternionValue(const rapidjson::Value &json, Ogre::Quaternion& value);
-    static void readColourValue(const rapidjson::Value &json, Ogre::ColourValue& value);
-    static void readMinMaxFloatValue(const rapidjson::Value &json, float& valueMin, float& valueMax);
-    static void readFloatTrack(const rapidjson::Value &array, GpuParticleAffectorCommon::FloatTrack& valueMax);
-    static void readVector2Track(const rapidjson::Value &array, GpuParticleAffectorCommon::Vector2Track& valueMax);
-    static void readVector3Track(const rapidjson::Value &array, GpuParticleAffectorCommon::Vector3Track& valueMax);
+    static __declspec(dllexport) void readVector3Value(const rapidjson::Value &json, Ogre::Vector3& value);
+    static __declspec(dllexport) void readVector2Value(const rapidjson::Value &json, Ogre::Vector2& value);
+    static __declspec(dllexport) void readQuaternionValue(const rapidjson::Value &json, Ogre::Quaternion& value);
+    static __declspec(dllexport) void readColourValue(const rapidjson::Value &json, Ogre::ColourValue& value);
+    static __declspec(dllexport) void readMinMaxFloatValue(const rapidjson::Value &json, float& valueMin, float& valueMax);
+    static __declspec(dllexport) void readFloatTrack(const rapidjson::Value &array, GpuParticleAffectorCommon::FloatTrack& valueMax);
+    static __declspec(dllexport) void readVector2Track(const rapidjson::Value &array, GpuParticleAffectorCommon::Vector2Track& valueMax);
+    static __declspec(dllexport) void readVector3Track(const rapidjson::Value &array, GpuParticleAffectorCommon::Vector3Track& valueMax);
 
-    static void toStr( const Ogre::ColourValue &value, Ogre::String &outString );
-    static void toStr( const Ogre::Vector2 &value, Ogre::String &outString );
-    static void toStr( const Ogre::Vector3 &value, Ogre::String &outString );
-    static void toStr( const Ogre::Vector4 &value, Ogre::String &outString );
-    static void toStr( const Ogre::Quaternion &value, Ogre::String &outString );
-    static void toStr( const bool &value, Ogre::String &outString );
-    static void toStrMinMax( float valueMin, float valueMax, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const Ogre::ColourValue &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const Ogre::Vector2 &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const Ogre::Vector3 &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const Ogre::Vector4 &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const Ogre::Quaternion &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStr( const bool &value, Ogre::String &outString );
+    static __declspec(dllexport) void toStrMinMax( float valueMin, float valueMax, Ogre::String &outString );
 
     /// writeGpuAffectorVariable differs from writeGpuEmitterVariable with number indentations ('\t')
-    static void writeGpuAffectorVariable( const Ogre::String& var,  Ogre::String& outString);
-    static Ogre::String quote( const Ogre::String& value );
+    static __declspec(dllexport) void writeGpuAffectorVariable( const Ogre::String& var,  Ogre::String& outString);
+    static __declspec(dllexport) Ogre::String quote( const Ogre::String& value );
 
-    static void writeFloatTrack(const GpuParticleAffectorCommon::FloatTrack& valueTrack, Ogre::String& outString);
-    static void writeVector2Track(const GpuParticleAffectorCommon::Vector2Track& valueTrack, Ogre::String& outString);
-    static void writeVector3Track(const GpuParticleAffectorCommon::Vector3Track& valueTrack, Ogre::String& outString);
+    static __declspec(dllexport) void writeFloatTrack(const GpuParticleAffectorCommon::FloatTrack& valueTrack, Ogre::String& outString);
+    static __declspec(dllexport) void writeVector2Track(const GpuParticleAffectorCommon::Vector2Track& valueTrack, Ogre::String& outString);
+    static __declspec(dllexport) void writeVector3Track(const GpuParticleAffectorCommon::Vector3Track& valueTrack, Ogre::String& outString);
 };
 
 #endif

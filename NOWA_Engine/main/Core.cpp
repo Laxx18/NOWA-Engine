@@ -6,6 +6,7 @@
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbsDatablock.h"
 #include "OgreHlmsSamplerblock.h"
+#include "GpuParticles/Hlms/HlmsParticle.h"
 #include "OgreArchiveManager.h"
 #include "OgreFrameStats.h"
 #include "OgreRectangle2D.h"
@@ -1094,6 +1095,7 @@ namespace NOWA
 		// Ocean
 		{
 			// Note: Ocean uses HLMS_USER2
+			// ATTENTION: GPUParticles already uses 2!! Check for other options
 			//// Register Ocean
 			//// https://forums.ogre3d.org/viewtopic.php?f=25&t=93592&hilit=ocean
 
@@ -1146,6 +1148,14 @@ namespace NOWA
 
 		}
 #endif
+
+		// HlmsParticles
+		{
+			// Note: HlmsParticles uses HLMS_USER2
+
+			//Create and register the Gpu Particles Hlms
+			HlmsParticle::registerHlms(dataFolder, dataFolder);
+		}
 
 		if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
 		{

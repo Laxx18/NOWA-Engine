@@ -35,6 +35,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReferenceComponent", "Refer
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rect2DComponent", "Rect2DComponent\Rect2DComponent.vcxproj", "{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GpuParticlesComponent", "GpuParticlesComponent\GpuParticlesComponent.vcxproj", "{B658BB13-4DC3-47CB-846E-A972F4D1B05A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -105,6 +107,10 @@ Global
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Debug|x64.Build.0 = Debug|x64
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.ActiveCfg = Release|x64
 		{57CAD8D9-4120-4CE9-A9F8-44C7B3305C3E}.Release|x64.Build.0 = Release|x64
+		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Debug|x64.ActiveCfg = Debug|x64
+		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Debug|x64.Build.0 = Debug|x64
+		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Release|x64.ActiveCfg = Release|x64
+		{B658BB13-4DC3-47CB-846E-A972F4D1B05A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
