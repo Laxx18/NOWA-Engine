@@ -4,7 +4,7 @@
 #include "GameObjectComponent.h"
 #include "ki/StateMachine.h"
 #include "ki/MovingBehavior.h"
-#include "utilities/AnimationBlender.h"
+#include "utilities/IAnimationBlender.h"
 #include "camera/CameraManager.h"
 #include "modules/OgreALModule.h"
 #include "modules/LuaScript.h"
@@ -23,7 +23,7 @@ namespace NOWA
 		typedef boost::shared_ptr<PlayerControllerComponent> PlayerControllerCompPtr;
 	public:
 
-		class EXPORTED AnimationBlenderObserver : public AnimationBlender::IAnimationBlenderObserver
+		class EXPORTED AnimationBlenderObserver : public IAnimationBlender::IAnimationBlenderObserver
 		{
 		public:
 			AnimationBlenderObserver(luabind::object closureFunction, bool oneTime);
@@ -136,7 +136,7 @@ namespace NOWA
 			return this->gameObjectPtr.get();
 		}
 
-		AnimationBlender* getAnimationBlender(void) const;
+		IAnimationBlender* getAnimationBlender(void) const;
 
 		PhysicsActiveComponent* getPhysicsComponent(void) const;
 
@@ -215,7 +215,7 @@ namespace NOWA
 
 		PhysicsActiveComponent* physicsActiveComponent;
 		CameraBehaviorComponent* cameraBehaviorComponent;
-		AnimationBlender* animationBlender;
+		IAnimationBlender* animationBlender;
 		Ogre::Real moveWeight;
 		Ogre::String moveLockOwner;
 		Ogre::Real jumpWeight;

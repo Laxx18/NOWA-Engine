@@ -9,7 +9,7 @@ namespace NOWA
 {
 	class GameObject;
 	class PhysicsActiveComponent;
-	class AnimationBlender;
+	class IAnimationBlender;
 	class CrowdComponent;
 
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;
@@ -417,7 +417,7 @@ namespace NOWA
 			unsigned long agentId;
 			bool autoOrientation;
 			bool autoAnimation;
-			AnimationBlender* animationBlender;
+			IAnimationBlender* animationBlender;
 			Ogre::Real oldAnimationSpeed;
 			Ogre::Vector3 oldGravity;
 			// Target object

@@ -912,6 +912,14 @@ namespace NOWA
 		this->debugLog = debugLog;
 	}
 
+	void AnimationBlender::setSourceEnabled(bool bEnable)
+	{
+		if (nullptr != this->source)
+		{
+			this->source->setEnabled(bEnable);
+		}
+	}
+
 	Ogre::Vector3 AnimationBlender::getLocalToWorldPosition(Ogre::v1::OldBone* bone)
 	{
 		//Ogre::Vector3 globalPos = bone->_getDerivedPosition();

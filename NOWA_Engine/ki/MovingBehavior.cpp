@@ -2395,7 +2395,7 @@ namespace NOWA
 			if (true == autoAnimation)
 			{
 				bool hasAnimation = false;
-				AnimationBlender* animationBlender;
+				IAnimationBlender* animationBlender;
 				auto animationCompPtr = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponent>());
 				if (nullptr == animationCompPtr)
 				{

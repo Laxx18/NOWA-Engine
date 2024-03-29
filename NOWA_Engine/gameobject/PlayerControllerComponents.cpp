@@ -25,13 +25,16 @@
 #include "modules/ParticleUniverseModule.h"
 #include "AiComponents.h"
 
+#include "utilities/AnimationBlender.h"
+#include "utilities/AnimationBlenderV2.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;
 	using namespace luabind;
 
 	PlayerControllerComponent::AnimationBlenderObserver::AnimationBlenderObserver(luabind::object closureFunction, bool oneTime)
-		: AnimationBlender::IAnimationBlenderObserver(),
+		: IAnimationBlender::IAnimationBlenderObserver(),
 		closureFunction(closureFunction),
 		oneTime(oneTime)
 	{
@@ -196,15 +199,14 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{
-			
+			this->animationBlender = new NOWA::AnimationBlender(entity);
 		}
 		else
 		{
 			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
 			if (nullptr != item)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerComponent]: Only Ogre v1 entities are supported yet and no Items!");
-				return false;
+				this->animationBlender = new NOWA::AnimationBlenderV2(item);
 			}
 			else
 			{
@@ -215,8 +217,6 @@ namespace NOWA
 		// Component must be dynamic, because it will be moved
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
-
-		this->animationBlender = new NOWA::AnimationBlender(entity);
 
 		return true;
 	}
@@ -537,7 +537,7 @@ namespace NOWA
 		return this->goalRadius->getReal();
 	}
 
-	AnimationBlender* PlayerControllerComponent::getAnimationBlender(void) const
+	IAnimationBlender* PlayerControllerComponent::getAnimationBlender(void) const
 	{
 		return this->animationBlender;
 	}
@@ -967,8 +967,7 @@ namespace NOWA
 			// this->animationBlender->clearAnimations();
 			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
 			// Reset animation to T-Pose
-			if (nullptr != this->animationBlender->getSource())
-				this->animationBlender->getSource()->setEnabled(false);
+			this->animationBlender->setSourceEnabled(false);
 
 			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->removeParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 		}

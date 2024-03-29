@@ -135,30 +135,6 @@ namespace NOWA
 
 		void setMissingGameObjectIds(const std::vector<unsigned long>& missingGameObjectIds);
 
-
-#ifndef CAELUM_NOT_PORTED
-		/**
-		* @brief		Gets the caelum module to adapt the dynamic sky
-		* @return		caelumModule	The caelum sky module
-		*/
-		// CaelumModule* getCaelumModule(void) const;
-#endif
-
-#ifndef PAGEDGEOMETRY_NOT_PORTED
-		/**
-		* @brief		Gets the paged geometry module to adapt the instanced objects
-		* @return		pagedGeometryModule	The paged geometry module
-		*/
-		// PagedGeometryModule* getPagedGeometryModule(void) const;
-#endif
-
-#ifndef HYDRAX_NOT_PORTED
-		/**
-		* @brief		Gets the hydrax module to adapt water effects and visualization
-		* @return		hydraxModule	The hydrax module
-		*/
-		// HydraxModule* getHydraxModule(void) const;
-#endif
 		Ogre::SceneManager* getSceneManager(void) const;
 
 		Ogre::Camera* getMainCamera(void) const;
@@ -213,11 +189,6 @@ namespace NOWA
 		void processScene(rapidxml::xml_node<>* xmlRoot, bool justSetValues = false);
 		void processResourceLocations(rapidxml::xml_node<>* xmlNode);
 		void processEnvironment(rapidxml::xml_node<>* xmlNode);
-		void processTerrainPage(rapidxml::xml_node<>* xmlNode);
-		void processGrassLayers(rapidxml::xml_node<>* xmlNode);
-		void processPagedGeometry(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent);
-		void processCaelum(rapidxml::xml_node<>* xmlNode);
-		void processHydrax(rapidxml::xml_node<>* xmlNode);
 		void processOgreNewt(rapidxml::xml_node<>* xmlNode);
 		void processOgreRecast(rapidxml::xml_node<>* xmlNode);
 
@@ -227,8 +198,6 @@ namespace NOWA
 		void processManualObject(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent);
 		void processTerra(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
 		void processPlane(rapidxml::xml_node<>* xmlNode, Ogre::SceneNode* parent, bool justSetValues = false);
-
-		void acceptTerrainShadows(void);
 	private:
 		void parseGameObjectDelegate(EventDataPtr eventData);
 	protected:
@@ -245,22 +214,10 @@ namespace NOWA
 		int	pagesCount;
 		bool needCollisionRebuild;
 		Ogre::Light* sunLight;
-		bool hasCaelumSystem;
 		bool showProgress;
 		bool forceCreation;
 		bool bSceneParsed;
 		std::vector<unsigned long> parsedGameObjectIds;
-
-#ifndef CAELUM_NOT_PORTED
-		// CaelumModule* caelumModule;
-#endif
-#ifndef PAGEDGEOMETRY_NOT_PORTED
-		// PagedGeometryModule* pagedGeometryModule;
-#endif
-		OgreRecastConfigParams ogreRecastConfigParams;
-#ifndef HYDRAX_NOT_PORTED
-		// HydraxModule* hydraxModule;
-#endif
 		
 		ProjectParameter projectParameter;
 		

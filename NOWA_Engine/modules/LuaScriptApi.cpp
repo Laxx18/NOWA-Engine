@@ -5362,114 +5362,129 @@ namespace NOWA
 
 		module(lua)
 		[
-			class_<AnimationBlender>("AnimationBlender")
+			class_<IAnimationBlender>("IAnimationBlender")
 			.enum_("BlendingTransition")
 			[
-				value("BLEND_SWITCH", AnimationBlender::BlendSwitch),
-				value("BLEND_WHILE_ANIMATING", AnimationBlender::BlendWhileAnimating),
-				value("BLEND_THEN_ANIMATE", AnimationBlender::BlendThenAnimate)
+				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
+				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
+				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
 			]
 			.enum_("AnimID")
 			[
-				value("ANIM_IDLE_1", AnimationBlender::ANIM_IDLE_1),
-				value("ANIM_IDLE_2", AnimationBlender::ANIM_IDLE_2),
-				value("ANIM_IDLE_3", AnimationBlender::ANIM_IDLE_3),
-				value("ANIM_IDLE_4", AnimationBlender::ANIM_IDLE_4),
-				value("ANIM_IDLE_5", AnimationBlender::ANIM_IDLE_5),
-				value("ANIM_WALK_NORTH", AnimationBlender::ANIM_WALK_NORTH),
-				value("ANIM_WALK_SOUTH", AnimationBlender::ANIM_WALK_SOUTH),
-				value("ANIM_WALK_WEST", AnimationBlender::ANIM_WALK_WEST),
-				value("ANIM_WALK_EAST", AnimationBlender::ANIM_WALK_EAST),
-				value("ANIM_RUN", AnimationBlender::ANIM_RUN),
-				value("ANIM_CLIMB", AnimationBlender::ANIM_CLIMB),
-				value("ANIM_SNEAK", AnimationBlender::ANIM_SNEAK),
-				value("ANIM_HANDS_CLOSED", AnimationBlender::ANIM_HANDS_CLOSED),
-				value("ANIM_HANDS_RELAXED", AnimationBlender::ANIM_HANDS_RELAXED),
-				value("ANIM_DRAW_WEAPON", AnimationBlender::ANIM_DRAW_WEAPON),
-				value("ANIM_SLICE_VERTICAL", AnimationBlender::ANIM_SLICE_VERTICAL),
-				value("ANIM_SLICE_HORIZONTAL", AnimationBlender::ANIM_SLICE_HORIZONTAL),
-				value("ANIM_JUMP_START", AnimationBlender::ANIM_JUMP_START),
-				value("ANIM_JUMP_LOOP", AnimationBlender::ANIM_JUMP_LOOP),
-				value("ANIM_JUMP_END", AnimationBlender::ANIM_JUMP_END),
-				value("ANIM_HIGH_JUMP_END", AnimationBlender::ANIM_HIGH_JUMP_END),
-				value("ANIM_JUMP_WALK", AnimationBlender::ANIM_JUMP_WALK),
-				value("ANIM_FALL", AnimationBlender::ANIM_FALL),
-				value("ANIM_EAT_1", AnimationBlender::ANIM_EAT_1),
-				value("ANIM_EAT_2", AnimationBlender::ANIM_EAT_2),
-				value("ANIM_PICKUP_1", AnimationBlender::ANIM_PICKUP_1),
-				value("ANIM_PICKUP_2", AnimationBlender::ANIM_PICKUP_2),
-				value("ANIM_ATTACK_1", AnimationBlender::ANIM_ATTACK_1),
-				value("ANIM_ATTACK_2", AnimationBlender::ANIM_ATTACK_2),
-				value("ANIM_ATTACK_3", AnimationBlender::ANIM_ATTACK_3),
-				value("ANIM_ATTACK_4", AnimationBlender::ANIM_ATTACK_4),
-				value("ANIM_SWIM", AnimationBlender::ANIM_SWIM),
-				value("ANIM_THROW_1", AnimationBlender::ANIM_THROW_1),
-				value("ANIM_THROW_2", AnimationBlender::ANIM_THROW_2),
-				value("ANIM_DEAD_1", AnimationBlender::ANIM_DEAD_1),
-				value("ANIM_DEAD_2", AnimationBlender::ANIM_DEAD_2),
-				value("ANIM_DEAD_3", AnimationBlender::ANIM_DEAD_3),
-				value("ANIM_SPEAK_1", AnimationBlender::ANIM_SPEAK_1),
-				value("ANIM_SPEAK_2", AnimationBlender::ANIM_SPEAK_2),
-				value("ANIM_SLEEP", AnimationBlender::ANIM_SLEEP),
-				value("ANIM_DANCE", AnimationBlender::ANIM_DANCE),
-				value("ANIM_DUCK", AnimationBlender::ANIM_DUCK),
-				value("ANIM_CROUCH", AnimationBlender::ANIM_CROUCH),
-				value("ANIM_HALT", AnimationBlender::ANIM_HALT),
-				value("ANIM_ROAR", AnimationBlender::ANIM_ROAR),
-				value("ANIM_SIGH", AnimationBlender::ANIM_SIGH),
-				value("ANIM_GREETINGS", AnimationBlender::ANIM_GREETINGS),
-				value("ANIM_NO_IDEA", AnimationBlender::ANIM_NO_IDEA),
-				value("ANIM_ACTION_1", AnimationBlender::ANIM_ACTION_1),
-				value("ANIM_ACTION_2", AnimationBlender::ANIM_ACTION_2),
-				value("ANIM_ACTION_3", AnimationBlender::ANIM_ACTION_3),
-				value("ANIM_ACTION_4", AnimationBlender::ANIM_ACTION_4),
-				value("ANIM_NONE", AnimationBlender::ANIM_NONE)
+				value("ANIM_IDLE_1", IAnimationBlender::ANIM_IDLE_1),
+				value("ANIM_IDLE_2", IAnimationBlender::ANIM_IDLE_2),
+				value("ANIM_IDLE_3", IAnimationBlender::ANIM_IDLE_3),
+				value("ANIM_IDLE_4", IAnimationBlender::ANIM_IDLE_4),
+				value("ANIM_IDLE_5", IAnimationBlender::ANIM_IDLE_5),
+				value("ANIM_WALK_NORTH", IAnimationBlender::ANIM_WALK_NORTH),
+				value("ANIM_WALK_SOUTH", IAnimationBlender::ANIM_WALK_SOUTH),
+				value("ANIM_WALK_WEST", IAnimationBlender::ANIM_WALK_WEST),
+				value("ANIM_WALK_EAST", IAnimationBlender::ANIM_WALK_EAST),
+				value("ANIM_RUN", IAnimationBlender::ANIM_RUN),
+				value("ANIM_CLIMB", IAnimationBlender::ANIM_CLIMB),
+				value("ANIM_SNEAK", IAnimationBlender::ANIM_SNEAK),
+				value("ANIM_HANDS_CLOSED", IAnimationBlender::ANIM_HANDS_CLOSED),
+				value("ANIM_HANDS_RELAXED", IAnimationBlender::ANIM_HANDS_RELAXED),
+				value("ANIM_DRAW_WEAPON", IAnimationBlender::ANIM_DRAW_WEAPON),
+				value("ANIM_SLICE_VERTICAL", IAnimationBlender::ANIM_SLICE_VERTICAL),
+				value("ANIM_SLICE_HORIZONTAL", IAnimationBlender::ANIM_SLICE_HORIZONTAL),
+				value("ANIM_JUMP_START", IAnimationBlender::ANIM_JUMP_START),
+				value("ANIM_JUMP_LOOP", IAnimationBlender::ANIM_JUMP_LOOP),
+				value("ANIM_JUMP_END", IAnimationBlender::ANIM_JUMP_END),
+				value("ANIM_HIGH_JUMP_END", IAnimationBlender::ANIM_HIGH_JUMP_END),
+				value("ANIM_JUMP_WALK", IAnimationBlender::ANIM_JUMP_WALK),
+				value("ANIM_FALL", IAnimationBlender::ANIM_FALL),
+				value("ANIM_EAT_1", IAnimationBlender::ANIM_EAT_1),
+				value("ANIM_EAT_2", IAnimationBlender::ANIM_EAT_2),
+				value("ANIM_PICKUP_1", IAnimationBlender::ANIM_PICKUP_1),
+				value("ANIM_PICKUP_2", IAnimationBlender::ANIM_PICKUP_2),
+				value("ANIM_ATTACK_1", IAnimationBlender::ANIM_ATTACK_1),
+				value("ANIM_ATTACK_2", IAnimationBlender::ANIM_ATTACK_2),
+				value("ANIM_ATTACK_3", IAnimationBlender::ANIM_ATTACK_3),
+				value("ANIM_ATTACK_4", IAnimationBlender::ANIM_ATTACK_4),
+				value("ANIM_SWIM", IAnimationBlender::ANIM_SWIM),
+				value("ANIM_THROW_1", IAnimationBlender::ANIM_THROW_1),
+				value("ANIM_THROW_2", IAnimationBlender::ANIM_THROW_2),
+				value("ANIM_DEAD_1", IAnimationBlender::ANIM_DEAD_1),
+				value("ANIM_DEAD_2", IAnimationBlender::ANIM_DEAD_2),
+				value("ANIM_DEAD_3", IAnimationBlender::ANIM_DEAD_3),
+				value("ANIM_SPEAK_1", IAnimationBlender::ANIM_SPEAK_1),
+				value("ANIM_SPEAK_2", IAnimationBlender::ANIM_SPEAK_2),
+				value("ANIM_SLEEP", IAnimationBlender::ANIM_SLEEP),
+				value("ANIM_DANCE", IAnimationBlender::ANIM_DANCE),
+				value("ANIM_DUCK", IAnimationBlender::ANIM_DUCK),
+				value("ANIM_CROUCH", IAnimationBlender::ANIM_CROUCH),
+				value("ANIM_HALT", IAnimationBlender::ANIM_HALT),
+				value("ANIM_ROAR", IAnimationBlender::ANIM_ROAR),
+				value("ANIM_SIGH", IAnimationBlender::ANIM_SIGH),
+				value("ANIM_GREETINGS", IAnimationBlender::ANIM_GREETINGS),
+				value("ANIM_NO_IDEA", IAnimationBlender::ANIM_NO_IDEA),
+				value("ANIM_ACTION_1", IAnimationBlender::ANIM_ACTION_1),
+				value("ANIM_ACTION_2", IAnimationBlender::ANIM_ACTION_2),
+				value("ANIM_ACTION_3", IAnimationBlender::ANIM_ACTION_3),
+				value("ANIM_ACTION_4", IAnimationBlender::ANIM_ACTION_4),
+				value("ANIM_NONE", IAnimationBlender::ANIM_NONE)
 			]
 
-			.def("init1", (void (AnimationBlender::*)(AnimationBlender::AnimID, bool)) & AnimationBlender::init)
-			.def("init2", (void (AnimationBlender::*)(const Ogre::String&, bool)) & AnimationBlender::init)
-			.def("blend1", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition)) & AnimationBlender::blend)
-			.def("blend2", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition)) & AnimationBlender::blend)
-			.def("blend3", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition, bool)) & AnimationBlender::blend)
-			.def("blend4", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition, bool)) & AnimationBlender::blend)
-			.def("blend5", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition, Ogre::Real, bool)) & AnimationBlender::blend)
-			.def("blend6", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition, Ogre::Real, bool)) & AnimationBlender::blend)
-			.def("blendExclusive1", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition)) & AnimationBlender::blendExclusive)
-			.def("blendExclusive2", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition)) & AnimationBlender::blendExclusive)
-			.def("blendExclusive3", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition, bool)) & AnimationBlender::blendExclusive)
-			.def("blendExclusive4", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition, bool)) & AnimationBlender::blendExclusive)
-			.def("blendExclusive5", (void (AnimationBlender::*)(AnimationBlender::AnimID, AnimationBlender::BlendingTransition, Ogre::Real, bool)) & AnimationBlender::blendExclusive)
-			.def("blendExclusive6", (void (AnimationBlender::*)(const Ogre::String&, AnimationBlender::BlendingTransition, Ogre::Real, bool)) & AnimationBlender::blendExclusive)
-			.def("blendAndContinue1", (void (AnimationBlender::*)(AnimationBlender::AnimID)) & AnimationBlender::blendAndContinue)
-			.def("blendAndContinue2", (void (AnimationBlender::*)(const Ogre::String&)) & AnimationBlender::blendAndContinue)
-			.def("blendAndContinue3", (void (AnimationBlender::*)(AnimationBlender::AnimID, Ogre::Real)) & AnimationBlender::blendAndContinue)
-			.def("blendAndContinue4", (void (AnimationBlender::*)(const Ogre::String&, Ogre::Real)) & AnimationBlender::blendAndContinue)
-			.def("getProgress", &AnimationBlender::getProgress)
+			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
+			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
+			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("getProgress", &IAnimationBlender::getProgress)
+			
+			.def("isComplete", &IAnimationBlender::isComplete)
+			.def("registerAnimation", &IAnimationBlender::registerAnimation)
+			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
+			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
+			.def("addTime", &IAnimationBlender::addTime)
+			.def("setTimePosition", &IAnimationBlender::setTimePosition)
+			.def("getTimePosition", &IAnimationBlender::getTimePosition)
+			.def("getLength", &IAnimationBlender::getLength)
+			.def("setWeight", &IAnimationBlender::setWeight)
+			.def("getWeight", &IAnimationBlender::getWeight)
+			.def("resetBones", &IAnimationBlender::resetBones)
+			.def("setDebugLog", &IAnimationBlender::setDebugLog)
+			/*.def("setSpeed", &IAnimationBlender::setSpeed)
+			.def("getSpeed", &IAnimationBlender::getSpeed)
+			.def("setRepeat", &IAnimationBlender::setRepeat)
+			.def("getRepeat", &IAnimationBlender::getRepeat)*/
+		];
+
+		module(lua)
+		[
+			class_<AnimationBlender, IAnimationBlender>("AnimationBlender")
 			.def("getSource", &AnimationBlender::getSource)
 			.def("getTarget", &AnimationBlender::getTarget)
-			.def("isComplete", &AnimationBlender::isComplete)
-			.def("registerAnimation", &AnimationBlender::registerAnimation)
-			.def("getAnimationIdFromString", &AnimationBlender::getAnimationIdFromString)
-			.def("hasAnimation", (bool (AnimationBlender::*)(AnimationBlender::AnimID)) & AnimationBlender::hasAnimation)
-			.def("hasAnimation", (bool (AnimationBlender::*)(const Ogre::String&)) & AnimationBlender::hasAnimation)
-			.def("isAnimationActive", &AnimationBlender::isAnimationActive)
-			.def("addTime", &AnimationBlender::addTime)
-			.def("setTimePosition", &AnimationBlender::setTimePosition)
-			.def("getTimePosition", &AnimationBlender::getTimePosition)
-			.def("getLength", &AnimationBlender::getLength)
-			.def("setWeight", &AnimationBlender::setWeight)
-			.def("getWeight", &AnimationBlender::getWeight)
 			.def("getBone", &AnimationBlender::getBone)
-			.def("resetBones", &AnimationBlender::resetBones)
 			.def("setBoneWeight", &AnimationBlender::setBoneWeight)
-			.def("setDebugLog", &AnimationBlender::setDebugLog)
 			.def("getLocalToWorldPosition", &AnimationBlender::getLocalToWorldPosition)
 			.def("getLocalToWorldOrientation", &AnimationBlender::getLocalToWorldOrientation)
+		];
 
-			/*.def("setSpeed", &AnimationBlender::setSpeed)
-			.def("getSpeed", &AnimationBlender::getSpeed)
-			.def("setRepeat", &AnimationBlender::setRepeat)
-			.def("getRepeat", &AnimationBlender::getRepeat)*/
+		module(lua)
+		[
+			class_<AnimationBlenderV2, IAnimationBlender>("AnimationBlenderV2")
+			/*.def("getSource", &AnimationBlenderV2::getSource)
+			.def("getTarget", &AnimationBlenderV2::getTarget)
+			.def("getBone", &AnimationBlenderV2::getBone)
+			.def("getLocalToWorldPosition", &AnimationBlenderV2::getLocalToWorldPosition)
+			.def("getLocalToWorldOrientation", &AnimationBlenderV2::getLocalToWorldOrientation)*/
 		];
 
 		AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");

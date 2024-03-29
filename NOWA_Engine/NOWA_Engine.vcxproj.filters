@@ -649,6 +649,9 @@
     <ClInclude Include="modules\GpuParticlesModule.h">
       <Filter>modules</Filter>
     </ClInclude>
+    <ClInclude Include="IAnimationBlender.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
