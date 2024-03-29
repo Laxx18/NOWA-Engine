@@ -291,10 +291,13 @@ namespace NOWA
 		clonedCompPtr->setCollisionDirection(this->collisionDirection->getVector3());
 		clonedCompPtr->setAsSoftBody(this->asSoftBody->getBool());
 		clonedCompPtr->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
-		clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		// Gameobject available
+
+		clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -841,6 +844,30 @@ namespace NOWA
 	Ogre::Vector3 PhysicsActiveComponent::getOmegaVelocity(void) const
 	{
 		return this->physicsBody->getOmega();
+	}
+
+	void PhysicsActiveComponent::setOmegaVeclocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
+	{
+		if (nullptr == this->physicsBody)
+			return;
+
+		Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
+		Ogre::Vector3 resultVector = Ogre::Vector3::ZERO;
+
+		if (axes.x == 1.0f)
+		{
+			resultVector.x = diffOrientation.getPitch().valueRadians() * strength;
+		}
+		if (axes.y == 1.0f)
+		{
+			resultVector.y = diffOrientation.getYaw().valueRadians() * strength;
+		}
+		if (axes.z == 1.0f)
+		{
+			resultVector.z = diffOrientation.getRoll().valueRadians() * strength;
+		}
+
+		this->setOmegaVelocity(resultVector);
 	}
 
 	void PhysicsActiveComponent::applyOmegaForce(const Ogre::Vector3& omegaForce)
@@ -2097,7 +2124,7 @@ namespace NOWA
 
 	void PhysicsActiveComponent::setContactSolvingEnabled(bool enable)
 	{
-		if (nullptr == this->gameObjectPtr->getLuaScript() || true == this->onContactFunctionName->getString().empty() || nullptr == this->physicsBody)
+		if (nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getLuaScript() || true == this->onContactFunctionName->getString().empty() || nullptr == this->physicsBody)
 		{
 			return;
 		}

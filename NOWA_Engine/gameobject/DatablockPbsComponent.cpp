@@ -74,12 +74,16 @@ namespace NOWA
 		uvScale(new Variant(DatablockPbsComponent::AttrUVScale(), static_cast<unsigned int>(1), this->attributes)),
 		useEmissiveAsLightMap(new Variant(DatablockPbsComponent::AttrUseEmissiveAsLightMap(), false, this->attributes)),
 		shadowConstBias(new Variant(DatablockPbsComponent::AttrShadowConstBias(), 0.001f, this->attributes)),
+		bringToFront(new Variant(DatablockPbsComponent::AttrBringToFront(), false, this->attributes)),
+		cutOff(new Variant(DatablockPbsComponent::AttrCutOff(), false, this->attributes)),
 		datablock(nullptr),
 		originalDatablock(nullptr),
 		alreadyCloned(false),
 		isCloned(false),
 		newlyCreated(true),
-		oldSubIndex(0)
+		oldSubIndex(0),
+		originalMacroblock(nullptr),
+		originalBlendblock(nullptr)
 	{
 		this->subEntityIndex->setDescription("Specifies the sub entity index, for which the datablock should be shown.");
 		this->subEntityIndex->addUserData(GameObject::AttrActionNeedRefresh());
@@ -127,6 +131,8 @@ namespace NOWA
 		this->roughness->setDescription("If some areas are saturated with white spots, like a shine reflection. The following can be done for dimming: "
 										"1) Directly through metalness: Lower this value to a minimum."
 										"2) Indirectly through roughness: Increase this value to dim it");
+
+		this->cutOff->setDescription("Cuts off this mesh from all other meshes which are touching this mesh.");
 	}
 
 	DatablockPbsComponent::~DatablockPbsComponent()
@@ -177,6 +183,9 @@ namespace NOWA
 				}
 			}
 		}
+
+		this->originalMacroblock = nullptr;
+		this->originalBlendblock = nullptr;
 	}
 
 	bool DatablockPbsComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -418,6 +427,16 @@ namespace NOWA
 			this->setShadowConstBias(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BringToFront")
+		{
+			this->setBringToFront(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CutOff")
+		{
+			this->setCutOff(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		this->newlyCreated = false;
 
 		return true;
@@ -478,6 +497,8 @@ namespace NOWA
 		clonedCompPtr->setUVScale(this->uvScale->getUInt());
 		clonedCompPtr->setUseEmissiveAsLightMap(this->useEmissiveAsLightMap->getBool());
 		clonedCompPtr->setShadowConstBias(this->shadowConstBias->getReal());
+		clonedCompPtr->setBringToFront(this->bringToFront->getBool());
+		clonedCompPtr->setCutOff(this->cutOff->getBool());
 
 		clonedCompPtr->isCloned = true;
 		
@@ -1085,6 +1106,10 @@ namespace NOWA
 		this->setUseEmissiveAsLightMap(this->useEmissiveAsLightMap->getBool());
 
 		this->setShadowConstBias(this->shadowConstBias->getReal());
+
+		this->setBringToFront(this->bringToFront->getBool());
+
+		this->setCutOff(this->cutOff->getBool());
 		
 		// Does not help
 		// this->datablock->mShadowConstantBias = 0.001f;
@@ -1302,6 +1327,14 @@ namespace NOWA
 		else if (DatablockPbsComponent::AttrShadowConstBias() == attribute->getName())
 		{
 			this->setShadowConstBias(attribute->getReal());
+		}
+		else if (DatablockPbsComponent::AttrBringToFront() == attribute->getName())
+		{
+			this->setBringToFront(attribute->getBool());
+		}
+		else if (DatablockPbsComponent::AttrCutOff() == attribute->getName())
+		{
+			this->setCutOff(attribute->getBool());
 		}
 	}
 
@@ -1591,7 +1624,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShadowConstBias"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shadowConstBias->getReal())));
 		propertiesXML->append_node(propertyXML);
-		
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BringToFront"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->bringToFront->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CutOff"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cutOff->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void DatablockPbsComponent::internalSetTextureName(Ogre::PbsTextureTypes pbsTextureType, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
@@ -2590,6 +2634,70 @@ namespace NOWA
 	Ogre::Real DatablockPbsComponent::getShadowConstBias(void) const
 	{
 		return this->shadowConstBias->getReal();
+	}
+
+	void DatablockPbsComponent::setBringToFront(bool bringToFront)
+	{
+		this->bringToFront->setValue(bringToFront);
+		
+		if (true == bringToFront)
+		{
+			this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
+			Ogre::HlmsMacroblock macroblock;
+			macroblock.mDepthWrite = true;
+			macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
+			macroblock.mScissorTestEnabled = true;
+			this->datablock->setMacroblock(macroblock);
+		}
+		else
+		{
+			if (nullptr != this->originalMacroblock)
+			{
+				this->datablock->setMacroblock(*this->originalMacroblock);
+			}
+		}
+	}
+
+	bool DatablockPbsComponent::getIsInFront(void) const
+	{
+		return this->bringToFront->getBool();
+	}
+
+	void DatablockPbsComponent::setCutOff(bool cutOff)
+	{
+		this->cutOff->setValue(cutOff);
+
+		if (true == cutOff)
+		{
+			this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
+			this->originalBlendblock = const_cast<Ogre::HlmsBlendblock*>(this->datablock->getBlendblock());
+			Ogre::HlmsMacroblock macroblock;
+			macroblock.mDepthWrite = true;
+			macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
+			// macroblock.mScissorTestEnabled = true;
+			this->datablock->setMacroblock(macroblock);
+
+			Ogre::HlmsBlendblock blendblock;
+			blendblock.mBlendChannelMask = Ogre::HlmsBlendblock::BlendChannelForceDisabled;
+
+			this->datablock->setBlendblock(blendblock);
+		}
+		else
+		{
+			if (nullptr != this->originalMacroblock)
+			{
+				this->datablock->setMacroblock(*this->originalMacroblock);
+			}
+			if (nullptr != this->originalBlendblock)
+			{
+				this->datablock->setBlendblock(*this->originalBlendblock);
+			}
+		}
+	}
+
+	bool DatablockPbsComponent::getCutOff(void) const
+	{
+		return this->cutOff->getBool();
 	}
 
 	void DatablockPbsComponent::setUseEmissiveAsLightMap(bool useEmissiveAsLightMap)

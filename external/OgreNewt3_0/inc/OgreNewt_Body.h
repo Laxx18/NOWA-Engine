@@ -185,7 +185,7 @@ namespace OgreNewt
 		void setCustomForceAndTorqueCallback(ForceCallback callback);
 		template<class c> void setCustomForceAndTorqueCallback(OgreNewt::function<void(c*, Body*, float, int)> callback, c *instancedClassPointer)
 		{
-			setCustomForceAndTorqueCallback(OgreNewt::bind(callback, instancedClassPointer, std::tr1::placeholders::_1, std::tr1::placeholders::_2, std::tr1::placeholders::_3));
+			setCustomForceAndTorqueCallback(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 		}
 
 		//! remove any force callbacks.
@@ -207,7 +207,7 @@ namespace OgreNewt
 		template<class c>
 		void setNodeUpdateNotify(OgreNewt::function<void(c*, OgreNewt::Body*)> callback, c* instancedClassPointer)
 		{
-			setNodeUpdateNotify(OgreNewt::bind(callback, instancedClassPointer, std::tr1::placeholders::_1));
+			setNodeUpdateNotify(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1));
 		}
 
 		void removeTransformCallback(void);
@@ -220,7 +220,7 @@ namespace OgreNewt
 		template<class c>
 		void setContactCallback(OgreNewt::function<void(c*, OgreNewt::Body*, OgreNewt::Contact*)> callback, c* instancedClassPointer)
 		{
-			setContactCallback(OgreNewt::bind(callback, instancedClassPointer, std::tr1::placeholders::_1, std::tr1::placeholders::_2));
+			setContactCallback(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1, std::placeholders::_2));
 		}
 
 		void removeContactCallback() { m_contactCallback = nullptr; }

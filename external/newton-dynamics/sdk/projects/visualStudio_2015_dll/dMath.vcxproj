@@ -63,6 +63,7 @@
     <ProjectGuid>{2928F15F-0650-4261-B759-36C7792267DC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>dMath</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -253,6 +254,7 @@
       <AdditionalIncludeDirectories>../../;../../dgCore;../../dMath;../../dCustomJoints;../../dgNewton;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -351,6 +353,7 @@
       <AdditionalIncludeDirectories>../../;../../dgCore;../../dMath;../../dCustomJoints;../../dgNewton;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

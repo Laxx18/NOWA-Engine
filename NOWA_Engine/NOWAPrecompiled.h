@@ -26,6 +26,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+// https://stackoverflow.com/questions/48882439/how-to-restore-auto-ptr-in-visual-studio-c17
+// std::auto_ptr has been deleted, but luabind needs it, hence enable it again
+#define _HAS_AUTO_PTR_ETC 1
+
 #include "Ogre.h"
 #include "OgreWindow.h"
 #include "OgreDepthBuffer.h"

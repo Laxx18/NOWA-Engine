@@ -30,6 +30,8 @@
 #  include <memory>
 # endif
 
+#define _HAS_AUTO_PTR_ETC 1
+
 namespace luabind { namespace detail {
 
 namespace has_get_pointer_

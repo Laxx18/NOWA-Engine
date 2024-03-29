@@ -36,6 +36,9 @@ THE SOFTWARE.
 #include "ProceduralGeometryHelpers.h"
 #include "ProceduralShape.h"
 
+#include <algorithm>
+#include <execution>
+
 namespace Procedural
 {
 /**
@@ -419,7 +422,7 @@ public:
 		for (std::map<PathCoordinate, PathIntersection>::const_iterator it = mIntersectionsMap.begin(); it != mIntersectionsMap.end(); ++it)
 			if (it->first.pathIndex == pathIndex)
 				intersections.push_back(it->first.pointIndex);
-		std::sort(intersections.begin(), intersections.end());
+		std::sort(std::execution::par, intersections.begin(), intersections.end());
 		int begin = 0;
 		for (std::vector<int>::iterator it = intersections.begin(); it!= intersections.end(); ++it)
 		{

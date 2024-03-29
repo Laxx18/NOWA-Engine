@@ -30,6 +30,8 @@
 //#define NOWA_DEFINE_VERSION(major, minor, patch) ((major << 16) | (minor << 8) | patch)
 //#define NOWA_VERSION   NOWA_DEFINE_VERSION(NOWA_VERSION_MAJOR, NOWA_VERSION_MINOR, NOWA_VERSION_PATCH)
 
+#define _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+
 namespace NOWA
 {
 	enum eGizmoVisibilityMask

@@ -142,7 +142,6 @@ namespace NOWA
 	{
 		this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
 		this->movingBehaviorPtr->setFlyMode(this->flyMode->getBool());
-		this->movingBehaviorPtr->setDefaultDirection(this->gameObjectPtr->getDefaultDirection());
 
 		this->setActivated(this->activated->getBool());
 		return true;

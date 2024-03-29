@@ -37,6 +37,9 @@
 #include "OgreALSoundManager.h"
 #include <sstream>
 
+#include <algorithm>
+#include <execution>
+
 template<> OgreAL::SoundManager* Ogre::Singleton<OgreAL::SoundManager>::msSingleton = 0;
 
 #if OGREAL_THREADED
@@ -976,8 +979,8 @@ namespace OgreAL {
 			}
 		}
 		// Sort the active and queued sounds
-		std::sort(mActiveSounds.begin(), mActiveSounds.end(), SortLowToHigh());
-		std::sort(mQueuedSounds.begin(), mQueuedSounds.end(), SortHighToLow());
+		std::sort(std::execution::par, mActiveSounds.begin(), mActiveSounds.end(), SortLowToHigh());
+		std::sort(std::execution::par, mQueuedSounds.begin(), mQueuedSounds.end(), SortHighToLow());
 		// Revert back to live states.
 		for (auto it = mSoundContainer.cbegin(); it != mSoundContainer.cend(); ++it)
 		{

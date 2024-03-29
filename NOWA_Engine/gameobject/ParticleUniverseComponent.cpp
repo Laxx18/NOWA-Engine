@@ -161,7 +161,6 @@ namespace NOWA
 	{
 		ParticleUniverseCompPtr clonedCompPtr(boost::make_shared<ParticleUniverseComponent>());
 
-		
 		clonedCompPtr->setParticleTemplateName(this->particleTemplateName->getListSelectedValue());
 		clonedCompPtr->setRepeat(this->repeat->getBool());
 		clonedCompPtr->setParticlePlayTimeMS(this->particleInitialPlayTime->getReal());
@@ -257,6 +256,7 @@ namespace NOWA
 			{
 				this->particleNode->detachObject(particle);
 			}
+			// ATTENTION: Remove resource when stopping particle effect??? Really?
 			DeployResourceModule::getInstance()->removeResource(this->particle->getTemplateName());
 			ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(this->particle, this->gameObjectPtr->getSceneManager());
 			this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->particleNode);
@@ -579,6 +579,25 @@ namespace NOWA
 		{
 			Ogre::Vector3 resultPosition = this->particleNode->convertWorldToLocalPosition(particlePosition);
 			this->particleNode->setPosition(resultPosition);
+
+			// Test this:
+#if 0
+			Ogre::Matrix4 mat;
+			if (!emitter.mNode)
+			{
+				mat.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+			}
+			else
+			{
+				Ogre::Matrix4 matNode;
+				matNode = emitter.mNode->_getFullTransformUpdated();
+				Ogre::Matrix4 matOffset;
+				matOffset.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+
+				mat = matNode * matOffset;
+			}
+		}
+#endif
 		}
 	}
 
@@ -589,6 +608,24 @@ namespace NOWA
 			Ogre::Quaternion globalOrientation = MathHelper::getInstance()->degreesToQuat(particleOrientation);
 			Ogre::Quaternion resultOrientation = this->particleNode->convertWorldToLocalOrientation(globalOrientation);
 			this->particleNode->setOrientation(resultOrientation);
+
+			// Test this:
+#if 0
+			Ogre::Matrix4 mat;
+			if (!emitter.mNode)
+			{
+				mat.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+			}
+			else
+			{
+				Ogre::Matrix4 matNode;
+				matNode = emitter.mNode->_getFullTransformUpdated();
+				Ogre::Matrix4 matOffset;
+				matOffset.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+
+				mat = matNode * matOffset;
+			}
+#endif
 		}
 	}
 

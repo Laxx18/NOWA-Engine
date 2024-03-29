@@ -596,6 +596,8 @@ namespace Ogre
         m_oldBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
         m_newBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
 
+        // Note: If crash occurs, check if offsetscale0 etc. is 1 and not 128, also check the datablock.json in the workspace terra folder!
+
         memcpy(&m_oldBlendWeightData[0], texBox.data, m_blendWeightStagingTexture->_getSizeBytes());
         memcpy(&m_newBlendWeightData[0], texBox.data, m_blendWeightStagingTexture->_getSizeBytes());
 

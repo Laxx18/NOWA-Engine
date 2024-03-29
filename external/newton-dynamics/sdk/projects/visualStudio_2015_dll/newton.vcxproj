@@ -67,6 +67,7 @@
     <ProjectGuid>{F8604C1C-867D-4EFD-AFAC-15404F17084E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>newton</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -255,6 +256,7 @@ rem xcopy  "$(OutDir)$(TargetName).pdb" "C:\Users\julio\Downloads\camera_collisi
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -365,6 +367,7 @@ rem xcopy  "$(OutDir)$(TargetName).pdb" "C:\Users\julio\Downloads\camera_collisi
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

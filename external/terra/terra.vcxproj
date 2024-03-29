@@ -159,6 +159,7 @@
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/boost;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -222,6 +223,7 @@
       </DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/boost;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ShowIncludes>false</ShowIncludes>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

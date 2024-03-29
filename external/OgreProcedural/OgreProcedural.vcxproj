@@ -128,6 +128,7 @@
       <OmitFramePointers>false</OmitFramePointers>
       <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
@@ -190,6 +191,7 @@
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>PROCEDURAL_USE_FREETYPE</UndefinePreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

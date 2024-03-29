@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "ParticleUniversePCH.h"
+#include <algorithm>
+#include <execution>
 
 #ifndef PARTICLE_UNIVERSE_EXPORTS
 #define PARTICLE_UNIVERSE_EXPORTS
@@ -248,7 +250,7 @@ namespace ParticleUniverse
 		if (mControlPoints.empty())
 			return;
 
-		std::sort(mControlPoints.begin(), mControlPoints.end(), ControlPointSorter());
+		std::sort(std::execution::par, mControlPoints.begin(), mControlPoints.end(), ControlPointSorter());
 		mRange = (*_getLastValidIterator()).x - (*_getFirstValidIterator()).x;
 
 		if (mInterpolationType == IT_SPLINE)

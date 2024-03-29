@@ -536,13 +536,12 @@ void GpuParticleSystemWorld::createEmitterInstance(const GpuParticleEmitter* gpu
     emitter.mEmitterInstanceRemoveListener = emitterInstanceRemoveListener;
 
     Ogre::Matrix4 matOffset;
-    matOffset.makeTransform(gpuParticleEmitterCore->mPos, Ogre::Vector3::UNIT_SCALE, gpuParticleEmitterCore->mRot);
+    matOffset.makeTransform(gpuParticleEmitterCore->mPos, gpuParticleEmitterCore->mScale, gpuParticleEmitterCore->mRot);
 
     Ogre::Matrix4 mat;
     mat = matParent * matOffset;
 
-    Ogre::Vector3 scaleTemp;
-    mat.decomposition(emitter.mPos, scaleTemp, emitter.mRot);
+    mat.decomposition(emitter.mPos, emitter.mScale, emitter.mRot);
 
     emitter.mNode = parentNode;
     bool ok = requestBuckets(emitter);
@@ -618,6 +617,7 @@ void GpuParticleSystemWorld::destroyAllEmitterInstances()
 Ogre::uint64 GpuParticleSystemWorld::start(const GpuParticleEmitter* emitterCore,
                                            Ogre::Node* parentNode,
                                            const Ogre::Vector3& parentPos,
+                                           const Ogre::Vector3& parentScale,
                                            const Ogre::Quaternion& parentRot,
                                            bool burstAutoDelete,
                                            EmitterInstanceRemoveListener* emitterInstanceRemoveListener)
@@ -644,7 +644,7 @@ Ogre::uint64 GpuParticleSystemWorld::start(const GpuParticleEmitter* emitterCore
     Ogre::uint64 idCounter = getNextId();
 
     Ogre::Matrix4 matParent;
-    matParent.makeTransform(parentPos, Ogre::Vector3::UNIT_SCALE, parentRot);
+    matParent.makeTransform(parentPos, parentScale, parentRot);
 
     createEmitterInstance(emitterCore, matParent, parentNode, idCounter, burstAutoDelete, emitterInstanceRemoveListener);
 
@@ -654,6 +654,7 @@ Ogre::uint64 GpuParticleSystemWorld::start(const GpuParticleEmitter* emitterCore
 uint64 GpuParticleSystemWorld::start(const std::vector<GpuParticleEmitter*>& emitters,
                                      Node* parentNode,
                                      const Ogre::Vector3& parentPos,
+                                     const Ogre::Vector3& parentScale,
                                      const Ogre::Quaternion& parentRot,
                                      bool burstAutoDelete,
                                      EmitterInstanceRemoveListener* emitterInstanceRemoveListener)
@@ -685,7 +686,7 @@ uint64 GpuParticleSystemWorld::start(const std::vector<GpuParticleEmitter*>& emi
     Ogre::uint64 idCounter = getNextId();
 
     Ogre::Matrix4 matParent;
-    matParent.makeTransform(parentPos, Ogre::Vector3::UNIT_SCALE, parentRot);
+    matParent.makeTransform(parentPos, parentScale, parentRot);
 
     for (size_t i = 0; i < emitters.size(); ++i) {
         const GpuParticleEmitter* gpuParticleEmitterCore = emitters[i];
@@ -698,11 +699,12 @@ uint64 GpuParticleSystemWorld::start(const std::vector<GpuParticleEmitter*>& emi
 uint64 GpuParticleSystemWorld::start(const GpuParticleSystem* particleSystem,
                                      Node* parentNode,
                                      const Vector3& parentPos,
+                                     const Ogre::Vector3& parentScale,
                                      const Quaternion& parentRot,
                                      bool burstAutoDelete,
                                      EmitterInstanceRemoveListener* emitterInstanceRemoveListener)
 {
-    return start(particleSystem->getEmitters(), parentNode, parentPos, parentRot, burstAutoDelete, emitterInstanceRemoveListener);
+    return start(particleSystem->getEmitters(), parentNode, parentPos, parentScale, parentRot, burstAutoDelete, emitterInstanceRemoveListener);
 }
 
 void GpuParticleSystemWorld::updateInstances(float elapsedTime)
@@ -1478,13 +1480,13 @@ void GpuParticleSystemWorld::uploadToGpuEmitterInstances()
 
         Ogre::Matrix4 mat;
         if(!emitter.mNode) {
-            mat.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+            mat.makeTransform(emitter.mPos, emitter.mScale, emitter.mRot);
         }
         else {
             Ogre::Matrix4 matNode;
             matNode = emitter.mNode->_getFullTransformUpdated();
             Ogre::Matrix4 matOffset;
-            matOffset.makeTransform(emitter.mPos, Ogre::Vector3::UNIT_SCALE, emitter.mRot);
+            matOffset.makeTransform(emitter.mPos, emitter.mScale, emitter.mRot);
 
             mat = matNode * matOffset;
         }

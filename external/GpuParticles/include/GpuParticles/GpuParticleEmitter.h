@@ -114,6 +114,7 @@ public:
     /// Emitter position offset.
     Ogre::Vector3 mPos = Ogre::Vector3::ZERO;
 
+    Ogre::Vector3 mScale = Ogre::Vector3::UNIT_SCALE;
     /// Emitter rotatation offset.
     Ogre::Quaternion mRot;
 

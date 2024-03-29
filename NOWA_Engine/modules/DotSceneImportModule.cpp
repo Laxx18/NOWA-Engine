@@ -462,6 +462,8 @@ namespace NOWA
 			mainGameObject->postInit();
 		}
 
+		std::vector<GameObject*> clampGameObjects;
+
 		// Now that all gameobject's have been fully created, run the post init phase (now all other components are also available for each game object)
 		for (auto& it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin();
 				it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
@@ -475,6 +477,21 @@ namespace NOWA
 				{
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObjectImmediately(gameObjectPtr->getId());
 				}
+				else if (true == gameObjectPtr->getClampY())
+				{
+					clampGameObjects.emplace_back(gameObjectPtr.get());
+				}
+			}
+		}
+
+		for (const auto& clampGameObject : clampGameObjects)
+		{
+			if (clampGameObject->getId() != NOWA::GameObjectController::MAIN_CAMERA_ID
+				&& clampGameObject->getId() != NOWA::GameObjectController::MAIN_LIGHT_ID
+				&& clampGameObject->getId() != NOWA::GameObjectController::MAIN_GAMEOBJECT_ID)
+			{
+				// If everything is loaded, perform raycast for y clamping for each game object, which has the corresponding attribute activated
+				clampGameObject->performRaycastForYClamping();
 			}
 		}
 

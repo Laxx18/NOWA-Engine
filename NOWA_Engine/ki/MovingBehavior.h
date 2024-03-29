@@ -315,8 +315,6 @@ namespace NOWA
 
 			bool getIsStuck(void) const;
 
-			void setDefaultDirection(const Ogre::Vector3& defaultDirection);
-
 			void setAutoOrientation(bool autoOrientation);
 
 			bool getIsAutoOrientated(void) const;
@@ -386,19 +384,19 @@ namespace NOWA
 
 			Ogre::Vector3 flocking(Ogre::Real dt);
 
-			Ogre::Vector3 flockingRuleCohesion(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleCohesion(void);
 
-			Ogre::Vector3 flockingRuleSeparation(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleSeparation(void);
 
-			Ogre::Vector3 flockingRuleAlignment(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleAlignment(void);
 
-			Ogre::Vector3 flockingRuleFlee(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleFlee(void);
 
-			Ogre::Vector3 flockingRuleSeek(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleSeek(void);
 
-			Ogre::Vector3 flockingRuleBorder(void);
+			std::pair<bool, Ogre::Vector3> flockingRuleBorder(void);
 
-			Ogre::Vector3 flockingObstacleAvoidance(void);
+			std::pair<bool, Ogre::Vector3> flockingObstacleAvoidance(void);
 
 			Ogre::Vector3 calculatePrioritized(Ogre::Real dt);
 
@@ -417,7 +415,6 @@ namespace NOWA
 			PhysicsActiveComponent* agent;
 			CrowdComponent* crowdComponent;
 			unsigned long agentId;
-			Ogre::Vector3 defaultDirection;
 			bool autoOrientation;
 			bool autoAnimation;
 			AnimationBlender* animationBlender;

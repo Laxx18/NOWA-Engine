@@ -183,6 +183,8 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 
 	this->internalApplySettings();
 	this->projectParameter = projectParameter;
+
+	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 	
 	NOWA::Core::getSingletonPtr()->setProjectName(this->projectParameter.projectName);
 
@@ -265,8 +267,6 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 
 	NOWA::DeployResourceModule::getInstance()->createLuaInitScript(this->projectParameter.projectName);
 
-	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
-
 	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::NEW));
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 }
@@ -312,6 +312,8 @@ void ProjectManager::loadProject(const Ogre::String& filePathName)
 	Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
 	MyGUI::PointerManager::getInstancePtr()->setPointer("link");
 	this->destroyScene();
+
+	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 
 	this->additionalMeshResources.clear();
 
@@ -401,8 +403,6 @@ void ProjectManager::loadProject(const Ogre::String& filePathName)
 
 	// No workspace creation, because its created in DotSceneImportModule
 	// this->createWorkspace();
-
-	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 
 	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::LOAD));
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);

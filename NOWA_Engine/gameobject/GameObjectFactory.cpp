@@ -610,12 +610,6 @@ namespace NOWA
 				gameObjectPtr->resetVariants();
 			}
 
-			// Calls raycast (internally checks if game object should be clamped, when loaded and components like physics component etc. has been created)
-			if (true == forceClampY)
-			{
-				gameObjectPtr->performRaycastForYClamping();
-			}
-
 			if (nullptr != existingGameObjectPtr)
 			{
 				boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(gameObjectPtr->getId()));

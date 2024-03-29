@@ -11,6 +11,8 @@
 #include <map>
 #include <set>
 #include <stdio.h>
+#include <algorithm>
+#include <execution>
 #include "Autotriangulation.h"
 
 std::list<int>::iterator
@@ -360,7 +362,7 @@ TriangulatePolygons(const std::vector<SVertex>& vertices, const std::vector<std:
 		//check which loops are being cut an uneven times and the order in which this happens
 
 		//sort by distance
-		std::sort(vCuts.begin(), vCuts.end(), compPairFirst<float, std::pair<unsigned int, unsigned int> >);
+		std::sort(std::execution::par, vCuts.begin(), vCuts.end(), compPairFirst<float, std::pair<unsigned int, unsigned int> >);
 		std::map<unsigned int, unsigned int> mCuts;
 		//traverse the cuts
 		std::map<unsigned int, unsigned int>::iterator itCut;

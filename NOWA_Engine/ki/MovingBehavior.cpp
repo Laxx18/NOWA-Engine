@@ -23,7 +23,6 @@ namespace NOWA
 			targetAgent2(nullptr),
 			pathGoalObserver(nullptr),
 			agentStuckObserver(nullptr),
-			defaultDirection(Ogre::Vector3::UNIT_Z),
 			autoOrientation(true),
 			autoAnimation(false),
 			animationBlender(nullptr),
@@ -64,7 +63,7 @@ namespace NOWA
 			weightCohesion(1.0f),
 			weightAlignment(1.0f),
 			timeUntilNextRandomTurn(3.0f),
-			neighborDistance(1.6f),
+			neighborDistance(0.0f),
 			stuckCount(0),
 			stuckCheckTime(0.0f),
 			timeSinceLastStuckCheck(0.0f),
@@ -84,7 +83,6 @@ namespace NOWA
 					this->agent = physicsActiveComponent.get();
 					this->oldGravity = this->agent->getGravity();
 					this->oldAgentPositionForStuck = this->agent->getPosition();
-					this->defaultDirection = this->agent->getOwner()->getDefaultDirection();
 				}
 
 				auto crowdComponent = NOWA::makeStrongPtr(agentGameObjectPtr->getComponent<CrowdComponent>());
@@ -210,7 +208,6 @@ namespace NOWA
 					this->agent = physicsActiveComponent.get();
 					this->oldGravity = this->agent->getGravity();
 					this->oldAgentPositionForStuck = this->agent->getPosition();
-					this->defaultDirection = this->agent->getOwner()->getDefaultDirection();
 				}
 				else
 				{
@@ -315,7 +312,9 @@ namespace NOWA
 		void MovingBehavior::setActualizePathDelaySec(Ogre::Real actualizePathDelay)
 		{
 			if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
+			{
 				this->actualizePathDelay = actualizePathDelay;
+			}
 			else
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Could not set actualize path delay data for game object: "
@@ -582,7 +581,7 @@ namespace NOWA
 
 		Ogre::Vector3 MovingBehavior::move(void)
 		{
-			return (this->agent->getOrientation() * this->defaultDirection) * this->agent->getSpeed();
+			return (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()) * this->agent->getSpeed();
 		}
 
 		Ogre::Vector3 MovingBehavior::moveRandomly(Ogre::Real dt)
@@ -625,7 +624,7 @@ namespace NOWA
 				}
 			}
 
-			Ogre::Vector3 resultVelocity((this->agent->getOrientation() * this->defaultDirection) * this->agent->getSpeed());
+			Ogre::Vector3 resultVelocity((this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()) * this->agent->getSpeed());
 
 			return resultVelocity;
 		}
@@ -759,7 +758,7 @@ namespace NOWA
 			Ogre::Vector3 toEvader = this->targetAgent->getPosition() - this->agent->getPosition();
 
 			// get the relative heading
-			Ogre::Vector3 heading = this->agent->getOrientation() * this->defaultDirection;
+			Ogre::Vector3 heading = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
 			Ogre::Real relativeHeading = heading.dotProduct(this->targetAgent->getOrientation() * this->targetAgent->getOwner()->getDefaultDirection());
 
 			//acos(0.95)=18 degs 
@@ -795,7 +794,7 @@ namespace NOWA
 
 
 			// get the relative heading
-			Ogre::Vector3 heading = this->agent->getOrientation() * this->defaultDirection;
+			Ogre::Vector3 heading = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
 			Ogre::Real relativeHeading = heading.dotProduct(this->targetAgent->getOrientation() * this->targetAgent->getOwner()->getDefaultDirection());
 
 			//acos(0.95)=18 degs 
@@ -1191,7 +1190,7 @@ namespace NOWA
 				circleCenter *= this->wanderDistance;
 
 				// Calculates the displacement force
-				Ogre::Vector3 displacement(this->defaultDirection);
+				Ogre::Vector3 displacement(this->agent->getOwner()->getDefaultDirection());
 				displacement *= this->wanderRadius;
 
 				// Randomly changes the vector direction by making it change its current angle
@@ -1267,7 +1266,7 @@ namespace NOWA
 		{
 			Ogre::Vector3 steeringForce = Ogre::Vector3::ZERO;
 			// Raycast in direction of the object
-			Ogre::Vector3 direction = this->agent->getOrientation() * this->defaultDirection;
+			Ogre::Vector3 direction = this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection();
 			// Get the position relative to direction and an offset
 			Ogre::Vector3 position = this->agent->getPosition() 
 				+ (this->agent->getOrientation() * Ogre::Vector3(0.0f, this->agent->getOwner()->getSize().y / 2.0f, 0.0f));
@@ -1462,26 +1461,66 @@ namespace NOWA
 			Ogre::Vector3 v5 = Ogre::Vector3::ZERO;
 			Ogre::Vector3 v6 = Ogre::Vector3::ZERO;
 			Ogre::Vector3 v7 = Ogre::Vector3::ZERO;
+
+			bool valid = false;
 			
 			if (true == this->isSwitchOn(FLOCKING_COHESION))
-				v1 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->flockingRuleCohesion() * this->weightCohesion;
+			{
+				auto result = this->flockingRuleCohesion();
+				v1 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/result.second * this->weightCohesion;
+				valid |= result.first;
+			}
 			if (true == this->isSwitchOn(FLOCKING_SEPARATION))
-				v2 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->flockingRuleSeparation() * this->weightSeparation;
+			{
+				auto result = this->flockingRuleSeparation();
+				v2 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightSeparation;
+				valid |= result.first;
+			}
 			if (true == this->isSwitchOn(FLOCKING_ALIGNMENT))
-				v3 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->flockingRuleAlignment() * this->weightAlignment;
-			// v4 = Ogre::Vector3(1.0f, 0.0f, 1.0f) * this->flockingRuleBorder();
+			{
+				auto result = this->flockingRuleAlignment();
+				v3 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightAlignment;
+				valid |= result.first;
+			}
+			// v4 = Ogre::Vector3(1.0f, 0.0f, 1.0f) * this->flockingRuleBorder().second;
 			if (true == this->isSwitchOn(FLOCKING_FLEE))
-				v5 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->flockingRuleFlee() * this->weightFlee;
+			{
+				auto result = this->flockingRuleFlee();
+				v5 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightFlee;
+				valid |= result.first;
+			}
 			if (true == this->isSwitchOn(FLOCKING_SEEK))
-				v6 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->flockingRuleSeek() * this->weightSeek;
+			{
+				auto result = this->flockingRuleSeek();
+				v6 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightSeek;
+				valid |= result.first;
+			}
 			// if (true == this->isSwitchOn(FLOCKING_OBSTACLE_AVOIDANCE))
+			// {
+			//	auto result = ...
 			// 	v7 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->weightObstacleAvoidance;
+			// valid |= result.first;
+			// }
+
+
+			if (false == valid && this->neighborDistance > 0.0f)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use flocking behavior, because the agents are not close enough to each other. "
+																" Their position is bigger as the specified neighbor distance of " + Ogre::StringConverter::toString(this->neighborDistance) + " In game object : '"
+																+ this->agent->getOwner()->getName() + "'");
+				this->setBehavior(NONE);
+
+				if (nullptr != this->agentStuckObserver)
+				{
+					this->agentStuckObserver->onAgentStuck();
+				}
+			}
 
 			Ogre::Vector3 sumVector = v1 + v2 + v3 + v4 + v5 + v6 + v7;
-			if (false == this->flyMode)
+			/*if (false == this->flyMode)
 			{
 				sumVector *= Ogre::Vector3(1.0f, 0.0f, 1.0f);
-			}
+			}*/
 			sumVector *= this->agent->getSpeed();
 
 			return sumVector;
@@ -1519,10 +1558,13 @@ namespace NOWA
 		//					  //		ziel-position = richtung
 		//}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleCohesion(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleCohesion(void)
 		{
+			bool valid = false;
 			if (0 == this->flockingAgents.size())
-				return Ogre::Vector3::ZERO;
+			{
+				return std::make_pair(valid, Ogre::Vector3::ZERO);
+			}
 
 			// First find the center of mass of all the agents
 			Ogre::Vector3 centerOfMass = Ogre::Vector3::ZERO;
@@ -1533,18 +1575,18 @@ namespace NOWA
 			// Iterate through the neighbors and sum up all the position vectors
 			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
 			{
-				//make sure *this* agent isn't included in the calculations and that
-				//the agent being examined is close enough ***also make sure it does not
-				//include the evade target ***
+				// Makes sure this agent is not included in the calculations and
+				// the agent being examined is close enough. If neighbor distance is used.
 				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
 				Ogre::Real distanceSquared = toAgent.squaredLength();
-				if (distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
+				if (this->neighborDistance == 0.0f || distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
 				{
 					centerOfMass += (*it)->getPosition();
 					neighborCount++;
 				}
 			}
 
+			
 			if (neighborCount > 0 && centerOfMass.squaredLength() > 0.0f)
 			{
 				//the center of mass is the average of the sum of positions
@@ -1552,17 +1594,20 @@ namespace NOWA
 
 				//now seek towards that position (dt is not interested
 				steeringForce = this->seek(centerOfMass, 0);
+				valid = true;
 			}
 
-			//the magnitude of cohesion is usually much larger than separation or
-			//allignment so it usually helps to normalize it.
-			return steeringForce.normalisedCopy();
+			// The magnitude of cohesion is usually much larger than separation or alignment so it usually helps to normalize it.
+			return std::make_pair(valid, steeringForce.normalisedCopy());
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleSeparation(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeparation(void)
 		{
+			bool valid = false;
 			if (0 == this->flockingAgents.size())
-				return Ogre::Vector3::ZERO;
+			{
+				return std::make_pair(valid, Ogre::Vector3::ZERO);
+			}
 
 			unsigned int neighborCount = 0;
 			// Keep a minimum distance to another neighbour
@@ -1571,7 +1616,7 @@ namespace NOWA
 			{
 				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
 				Ogre::Real distance = toAgent.length();
-				if (distance > 0.0f && distance < this->neighborDistance)
+				if (this->neighborDistance == 0.0f || distance > 0.0f && distance < this->neighborDistance)
 				{
 					// Scale the force inversely proportional to the agents distance from its neighbor.
 					toAgent.normalise();
@@ -1585,15 +1630,19 @@ namespace NOWA
 			if (neighborCount > 0 && distVector.squaredLength() > 0.0f)
 			{
 				distVector /= static_cast<Ogre::Real>(neighborCount);
+				valid = true;
 			}
 
-			return distVector;
+			return std::make_pair(valid, distVector);
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleAlignment(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleAlignment(void)
 		{
+			bool valid = false;
 			if (0 == this->flockingAgents.size())
-				return Ogre::Vector3::ZERO;
+			{
+				return std::make_pair(valid, Ogre::Vector3::ZERO);
+			}
 
 			//http://www.red3d.com/cwr/boids/
 
@@ -1605,7 +1654,7 @@ namespace NOWA
 			{
 				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
 				Ogre::Real distanceSquared = toAgent.squaredLength();
-				if (distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
+				if (this->neighborDistance == 0.0f || distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
 				{
 					sumVelocity += (*it)->getBody()->getVelocity();
 					neighborCount++;
@@ -1614,25 +1663,24 @@ namespace NOWA
 			if (neighborCount > 0 && sumVelocity.squaredLength() > 0.0f)
 			{
 				sumVelocity /= static_cast<Ogre::Real>(neighborCount);
-				sumVelocity -= this->agent->getVelocity();
+				sumVelocity.normalise();
+				valid = true;
 			}
-			// Ogre::Vector3 retVelocity = ((sumVelocity - this->agent->getBody()->getVelocity()) / 8.0f);
-
-			//this->pGameGui->pLifeLabel->setCaption(" sum: " + Ogre::StringConverter::toString(sumVelocity) +
-			//" vel: " + Ogre::StringConverter::toString(retVelocity));
-			//Ogre::LogManager::getSingleton().logMessage("vel: "  + Ogre::StringConverter::toString(sumVelocity));
-
-			return sumVelocity;
+			
+			return std::make_pair(valid, sumVelocity);
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleFlee(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleFlee(void)
 		{
-			if (nullptr == this->targetAgent)
-				return Ogre::Vector3::ZERO;
-			// Agenten sollen vor einem anderen agent fliehen
+			if(0 == this->flockingAgents.size())
+			{
+				return std::make_pair(false, Ogre::Vector3::ZERO);
+			}
+
+			// Agents shall flee from another agent
 			Ogre::Vector3 fleeVec = Ogre::Vector3::ZERO;
 
-			//Distanz vom zu betrachtenden Schaaf zum Hund berechnen
+			// Calculates the distance from agent to the target agent
 			Ogre::Real distance = (this->agent->getPosition() - this->targetAgent->getPosition()).squaredLength();
 			if (Ogre::Math::RealEqual(distance, 0.0f))
 				distance = 0.1f;
@@ -1640,21 +1688,23 @@ namespace NOWA
 			// if (distance < 4.0f)
 			// 	dynamic_cast<Sheep *>(currentSheep)->baaHelp();
 
-			//In negative Richtung abhängig von der Position des Hundes bewegen
-			//je größer die Distanz zum hund, desto wenig wird sich in die entgegende Richtung bewegt
+			// Moves in inverse direction of the target agent, the more the distance the less the inverted direction comes into account
 			fleeVec = -(1.0f / distance) * this->targetAgent->getPosition();
 
-			return fleeVec;
+			return std::make_pair(true, fleeVec);
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleSeek(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeek(void)
 		{
-			if (nullptr == this->targetAgent)
-				return Ogre::Vector3::ZERO;
-			// Agenten sollen vor einem anderen agent fliehen
+			if (0 == this->flockingAgents.size())
+			{
+				return std::make_pair(false, Ogre::Vector3::ZERO);
+			}
+
+			// Agents shall seek the target agent
 			Ogre::Vector3 seekVec = Ogre::Vector3::ZERO;
 
-			//Distanz vom zu betrachtenden Schaaf zum Hund berechnen
+			// Calculates the distance from agent to the target agent
 			Ogre::Real distance = (this->agent->getPosition() - this->targetAgent->getPosition()).squaredLength();
 			if (distance < 0.5f)
 				distance = 0.5f;
@@ -1662,14 +1712,13 @@ namespace NOWA
 			// if (distance < 4.0f)
 			// 	dynamic_cast<Sheep *>(currentSheep)->baaHelp();
 
-			//In negative Richtung abhängig von der Position des Hundes bewegen
-			//je größer die Distanz zum hund, desto wenig wird sich in die entgegende Richtung bewegt
+			// Moves in direction of the target agent, the more the distance the less the direction comes into account
 			seekVec = (1.0f / distance) * this->targetAgent->getPosition();
 
-			return seekVec;
+			return std::make_pair(true, seekVec);
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingRuleBorder(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleBorder(void)
 		{
 			// Agenten sollen sich innerhalb der Weltgrenzen bewegen
 			Ogre::Vector3 fleeVec = Ogre::Vector3::ZERO;
@@ -1708,10 +1757,10 @@ namespace NOWA
 					currentSheep->setAngularVelocity(-2.0f);*/
 				}
 			}
-			return fleeVec;
+			return std::make_pair(true, fleeVec);
 		}
 
-		Ogre::Vector3 MovingBehavior::flockingObstacleAvoidance(void)
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingObstacleAvoidance(void)
 		{
 			auto contact = this->agent->getContactAhead(12, Ogre::Vector3(0.0f, 0.4f, 0.0f), 2.0f);
 			if (contact.getHitGameObject())
@@ -1726,11 +1775,12 @@ namespace NOWA
 						this->agent->applyOmegaForce(Ogre::Vector3(0.0f, 2.0f, 0.0f));
 					else
 						this->agent->applyOmegaForce(Ogre::Vector3(0.0f, -2.0f, 0.0f));
-					return Ogre::Vector3::ZERO;
+					return std::make_pair(true, Ogre::Vector3::ZERO);
 				}
 			}
 			this->agent->applyOmegaForce(Ogre::Vector3::ZERO);
-			return Ogre::Vector3::ZERO;
+
+			return std::make_pair(true, Ogre::Vector3::ZERO);
 		}
 
 		MovingBehavior::BehaviorType MovingBehavior::mapBehavior(const Ogre::String& behavior)
@@ -2141,11 +2191,11 @@ namespace NOWA
 				// If there is a ai movement going on, set the new orientation
 				if (Ogre::Vector3::ZERO != resultVelocity)
 				{
-					// Ogre::Quaternion newOrientation = ((this->agent->getInitialOrientation() /** this->agent->getOrientation()*/) * this->defaultDirection).getRotationTo(this->resultVelocity);
+					// Ogre::Quaternion newOrientation = ((this->agent->getInitialOrientation() /** this->agent->getOrientation()*/) * this->agent->getOwner()->getDefaultDirection()).getRotationTo(this->resultVelocity);
 
 					if (true == this->autoOrientation)
 					{
-						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->defaultDirection, dt, this->rotationSpeed);
+						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 						heading = resultOrientation.getYaw();
 
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] ratio: " + Ogre::StringConverter::toString(ratio));
@@ -2195,12 +2245,12 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							newOrientation = (this->agent->getOrientation() * this->defaultDirection).getRotationTo(resultVelocity);
+							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
 							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
 						{
-							this->agent->applyOmegaForceRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
+							this->agent->setOmegaVeclocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
 						}
 					}
 				}
@@ -2208,11 +2258,15 @@ namespace NOWA
 				else
 				{
 					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
+					Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
 					if (false == this->flyMode)
 					{
-						resultVelocity.y = 0.0f;
+						forceForVelocity.y = 0.0f;
 					}
-					this->agent->applyRequiredForceForVelocity(this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] GO: " + this->agent->getOwner()->getName() + " force: " + Ogre::StringConverter::toString(forceForVelocity));
+					this->agent->applyRequiredForceForVelocity(forceForVelocity);
+					// This works, but is wrong, because force calculation must be used
+					// this->agent->setVelocity(forceForVelocity);
 
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] vel: " + Ogre::StringConverter::toString(resultVelocity));
 
@@ -2223,7 +2277,8 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							newOrientation = (this->agent->getOrientation() * this->defaultDirection).getRotationTo(resultVelocity);
+							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							// this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 							this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
@@ -2319,11 +2374,6 @@ namespace NOWA
 			}
 		}
 
-		void MovingBehavior::setDefaultDirection(const Ogre::Vector3& defaultDirection)
-		{
-			this->defaultDirection = defaultDirection;
-		}
-
 		void MovingBehavior::setAutoOrientation(bool autoOrientation)
 		{
 			this->autoOrientation = autoOrientation;
@@ -2336,7 +2386,7 @@ namespace NOWA
 
 		void MovingBehavior::setAutoAnimation(bool autoAnimation)
 		{
-			if (nullptr == this->agent)
+			if (nullptr == this->agent && true == autoAnimation)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] Warning: Cannot use auto animation, because the agent is null.");
 				return;

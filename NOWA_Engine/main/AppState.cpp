@@ -345,8 +345,7 @@ namespace NOWA
 
 			OgreALModule::getInstance()->init(this->sceneManager);
 
-			// TODO: Like in OgreRecastModule: config the other parameters!
-			// this->gpuParticlesModule->init(this->sceneManager);
+			this->gpuParticlesModule->init(this->sceneManager);
 
 			// Set unused mask for all camera, because log is spammed with exceptions
 			/*Ogre::SceneManager::CameraIterator it = this->sceneManager->getCameraIterator();

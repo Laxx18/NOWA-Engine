@@ -1219,6 +1219,12 @@ namespace NOWA
 		// if the parent bone has no joint handler, create a default one (this one of course does not join anything, its just a placeholder to connect joint handlers together,
 		// because a joint connection is just required for 2 bones)
 
+		if (nullptr == parentRagBone)
+		{
+			 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsRagDollComponent]: Error: Cannot joint bones, because the corresponding rag bone is null for game object: " + this->gameObjectPtr->getName());
+			 return;
+		}
+
 		if (type != PhysicsRagDollComponent::JT_KINEMATIC)
 		{
 			if (nullptr == parentRagBone->getJointComponent())

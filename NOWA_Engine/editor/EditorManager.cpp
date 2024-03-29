@@ -2307,6 +2307,12 @@ namespace NOWA
 			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.
 			canBeV2Mesh &= !Core::getSingletonPtr()->getUseEntityType();
 
+			// Does crash if v2 on node.mesh
+			if (meshName == "Node.mesh")
+			{
+				canBeV2Mesh = false;
+			}
+
 			// See OgreMesh.h
 			/*
 			friend class MeshSerializerImpl_v1_10;

@@ -24,6 +24,8 @@
 #ifndef LUABIND_CLASS_HPP_INCLUDED
 #define LUABIND_CLASS_HPP_INCLUDED
 
+#define _HAS_AUTO_PTR_ETC 1
+
 /*
     ISSUES:
     ------------------------------------------------------

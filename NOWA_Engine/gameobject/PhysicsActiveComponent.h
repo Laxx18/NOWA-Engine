@@ -240,6 +240,15 @@ namespace NOWA
 		virtual void setOmegaVelocity(const Ogre::Vector3& omegaVelocity);
 
 		/**
+		 * @brief		Applies the omega velocity in order to rotate the game object to the given orientation.
+		 * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
+		 * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
+		 * @param[in]	strength The strength at which the rotation should occur
+		 * @Note		This should only be used for kinematic bodies.
+		 */
+		virtual void setOmegaVeclocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+
+		/**
 		 * @brief		Applies the omega force in move callback function
 		 * @param[in]	omegaForce The omega force vector to apply
 		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
@@ -254,6 +263,7 @@ namespace NOWA
 		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
 		 */
 		virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+
 		
 		Ogre::Vector3 getOmegaVelocity(void) const;
 

@@ -111,6 +111,7 @@ public:
 
         /// Node's offset.
         Ogre::Vector3 mPos = Ogre::Vector3::ZERO;
+        Ogre::Vector3 mScale = Ogre::Vector3::UNIT_SCALE;
         Ogre::Quaternion mRot;
 
         /// If emitter is movable, set the mNode.
@@ -288,6 +289,7 @@ public:
     Ogre::uint64 start(const GpuParticleEmitter* emitterCore,
                        Ogre::Node* parentNode,
                        const Ogre::Vector3& parentPos = Ogre::Vector3::ZERO,
+                       const Ogre::Vector3& parentScale = Ogre::Vector3::UNIT_SCALE,
                        const Ogre::Quaternion& parentRot = Ogre::Quaternion(),
                        bool burstAutoDelete = true,
                        EmitterInstanceRemoveListener* emitterInstanceRemoveListener = nullptr);
@@ -300,12 +302,14 @@ public:
     Ogre::uint64 start(const std::vector<GpuParticleEmitter*>& emitters,
                        Ogre::Node* parentNode = NULL,
                        const Ogre::Vector3& parentPos = Ogre::Vector3::ZERO,
+                       const Ogre::Vector3& parentScale = Ogre::Vector3::UNIT_SCALE,
                        const Ogre::Quaternion& parentRot = Ogre::Quaternion(),
                        bool burstAutoDelete = true,
                        EmitterInstanceRemoveListener* emitterInstanceRemoveListener = nullptr);
     Ogre::uint64 start(const GpuParticleSystem* particleSystem,
                        Ogre::Node* parentNode = NULL,
                        const Ogre::Vector3& parentPos = Ogre::Vector3::ZERO,
+                       const Ogre::Vector3& parentScale = Ogre::Vector3::UNIT_SCALE,
                        const Ogre::Quaternion& parentRot = Ogre::Quaternion(),
                        bool burstAutoDelete = true,
                        EmitterInstanceRemoveListener* emitterInstanceRemoveListener = nullptr);

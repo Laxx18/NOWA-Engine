@@ -1292,7 +1292,7 @@ namespace NOWA
 
 	AiFlockingComponent::AiFlockingComponent()
 		: AiComponent(),
-		neighborDistance(new Variant(AiFlockingComponent::AttrNeighborDistance(), 1.6f, this->attributes)),
+		neighborDistance(new Variant(AiFlockingComponent::AttrNeighborDistance(), 0.0f, this->attributes)),
 		cohesion(new Variant(AiFlockingComponent::AttrCohesion(), true, this->attributes)),
 		separation(new Variant(AiFlockingComponent::AttrSeparation(), true, this->attributes)),
 		alignment(new Variant(AiFlockingComponent::AttrAlignment(), true, this->attributes)),
@@ -1304,6 +1304,8 @@ namespace NOWA
 	{
 		this->flee->setDescription("Flee can only work with an valid target id, that is not part of the flocking group.");
 		this->seek->setDescription("Seek can only work with an valid target id, that is not part of the flocking group.");
+		this->neighborDistance->setDescription("The neighbor distance between each flocking neighbor to set. If set only neighbors within this distance form a flocking cloud. "
+												"Please place the game objects close enough to each other, so that the flocking can work. A good neighbor distance is 2 meters. If set to 0, all neighbors form the flocking cloud.");
 		this->behaviorTypeId = KI::MovingBehavior::FLOCKING;
 		
 		this->flee->addUserData(GameObject::AttrActionNeedRefresh());

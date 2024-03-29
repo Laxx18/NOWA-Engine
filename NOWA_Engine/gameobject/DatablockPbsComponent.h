@@ -678,6 +678,14 @@ namespace NOWA
 
 		Ogre::Real getShadowConstBias(void) const;
 
+		void setBringToFront(bool bringToFront);
+
+		bool getIsInFront(void) const;
+
+		void setCutOff(bool cutOff);
+
+		bool getCutOff(void) const;
+
 		Ogre::HlmsPbsDatablock* getDataBlock(void) const;
 
 		void doNotCloneDataBlock(void);
@@ -728,6 +736,8 @@ namespace NOWA
 		static const Ogre::String AttrUVScale(void) { return "UV Scale"; }
 		static const Ogre::String AttrUseEmissiveAsLightMap(void) { return "Use Emissive As LightMap"; }
 		static const Ogre::String AttrShadowConstBias(void) { return "Shadow Const Bias"; }
+		static const Ogre::String AttrBringToFront(void) { return "Bring To Front"; }
+		static const Ogre::String AttrCutOff(void) { return "Cut Off"; }
 	private:
 		bool preReadDatablock(void);
 		bool readDatablockEntity(Ogre::v1::Entity* entity);
@@ -802,9 +812,13 @@ namespace NOWA
 		Variant* uvScale;
 		Variant* useEmissiveAsLightMap;
 		Variant* shadowConstBias;
+		Variant* bringToFront;
+		Variant* cutOff;
 
 		Ogre::HlmsPbsDatablock* datablock;
 		Ogre::HlmsPbsDatablock* originalDatablock;
+		Ogre::HlmsMacroblock* originalMacroblock;
+		Ogre::HlmsBlendblock* originalBlendblock;
 		bool alreadyCloned;
 		bool isCloned;
 		bool newlyCreated;

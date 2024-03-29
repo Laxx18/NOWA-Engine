@@ -562,6 +562,8 @@ namespace NOWA
 		}
 #endif
 
+		SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+
 		Ogre::ConfigOptionMap::iterator opt = cfgOpts.find("Video Mode");
 		if(opt != cfgOpts.end() && !opt->second.currentValue.empty())
 		{

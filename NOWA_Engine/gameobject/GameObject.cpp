@@ -2019,8 +2019,8 @@ namespace NOWA
 	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)
 	{
 		bool success = false;
-		// Ogre::Vector3 result = Ogre::Vector3::ZERO;
-		Ogre::Real closestDistance = 0.0f;
+
+		Ogre::Vector3 resultPoint = Ogre::Vector3::ZERO;
 
 		if (true == this->clampY->getBool())
 		{
@@ -2040,10 +2040,12 @@ namespace NOWA
 			std::vector<Ogre::MovableObject*> excludeMovableObjects(1);
 			excludeMovableObjects[0] = this->getMovableObject();
 
-			if (MathHelper::getInstance()->getRaycastHeight(this->sceneNode->getPosition().x, this->sceneNode->getPosition().z, this->clampObjectQuery, closestDistance, &excludeMovableObjects))
+			// Goes up 10 times size and throws down the ray 5000 meters, excludes itself
+			Ogre::Vector3 position(this->sceneNode->getPosition().x, (this->sceneNode->getPosition().y + this->getSize().y * 10.0f), this->sceneNode->getPosition().z);
+			if (MathHelper::getInstance()->getRaycastResult(position, Ogre::Vector3::NEGATIVE_UNIT_Y * 5000.0f, this->clampObjectQuery, resultPoint, (size_t&)hitMovableObject, &excludeMovableObjects))
 			{
 				// Move the game object to the bottom center of the entity mesh
-				closestDistance += this->getBottomOffset().y;
+				resultPoint.y += this->getBottomOffset().y;
 
 				bool nonDynamicGameObject = false;
 				if (false == this->isDynamic())
@@ -2051,7 +2053,7 @@ namespace NOWA
 					nonDynamicGameObject = true;
 					this->setDynamic(true);
 				}
-				this->sceneNode->setPosition(this->sceneNode->getPosition().x, closestDistance, this->sceneNode->getPosition().z);
+				this->sceneNode->setPosition(this->sceneNode->getPosition().x, resultPoint.y, this->sceneNode->getPosition().z);
 				if (true == nonDynamicGameObject)
 				{
 					this->setDynamic(false);
@@ -2060,7 +2062,7 @@ namespace NOWA
 			}
 		}
 
-		return std::make_pair(success, closestDistance);
+		return std::make_pair(success, resultPoint.y);
 	}
 
 	void GameObject::showBoundingBox(bool show)

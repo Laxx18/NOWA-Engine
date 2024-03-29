@@ -19,7 +19,7 @@ namespace NOWA
 {
 
 	/**
-	  * @brief		Your documentation
+	  * @brief		This component is a particle effect system, which runs on the gpu and is really performant.
 	  */
 	class EXPORTED GpuParticlesComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -144,6 +144,42 @@ namespace NOWA
 		*/
 		virtual bool isActivated(void) const override;
 
+		void setParticleTemplateName(const Ogre::String& particleTemplateName);
+
+		Ogre::String getParticleTemplateName(void) const;
+
+		void setRepeat(bool repeat);
+
+		bool getRepeat(void) const;
+
+		void setParticlePlayTimeMS(Ogre::Real playTime);
+
+		Ogre::Real getParticlePlayTimeMS(void) const;
+
+		void setParticlePlaySpeed(Ogre::Real playSpeed);
+
+		Ogre::Real getParticlePlaySpeed(void) const;
+
+		void setParticleOffsetPosition(const Ogre::Vector3& particleOffsetPosition);
+
+		Ogre::Vector3 getParticleOffsetPosition(void);
+
+		void setParticleOffsetOrientation(const Ogre::Vector3& particleOffsetOrientation);
+
+		Ogre::Vector3 getParticleOffsetOrientation(void);
+
+		void setParticleScale(const Ogre::Vector3& particleScale);
+
+		Ogre::Vector3 getParticleScale(void);
+
+		GpuParticleSystem* getParticle(void) const;
+
+		bool isPlaying(void) const;
+
+		void setGlobalPosition(const Ogre::Vector3& particlePosition);
+
+		void setGlobalOrientation(const Ogre::Vector3& particleOrientation);
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -171,7 +207,7 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: My usage text.";
+			return "This component is a particle effect system, which runs on the gpu and is really performant.";
 		}
 		
 		/**
@@ -180,12 +216,37 @@ namespace NOWA
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrParticleName(void) { return "Particle Name"; }
+		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
+		static const Ogre::String AttrPlayTime(void) { return "Play Time"; }
+		static const Ogre::String AttrPlaySpeed(void) { return "Play Speed"; }
+		static const Ogre::String AttrOffsetPosition(void) { return "Offset Position"; }
+		static const Ogre::String AttrOffsetOrientation(void) { return "Offset Orientation"; }
+		static const Ogre::String AttrScale(void) { return "Scale"; }
+	private:
+		bool createParticleEffect(void);
+		void startParticleEffect(void);
+		void destroyParticleEffect(void);
 	private:
 		Ogre::String name;
 		GpuParticleSystem* gpuParticleSystem;
 		GpuParticleSystemWorld* gpuParticleSystemWorld;
 
 		Variant* activated;
+		Variant* particleTemplateName;
+		Variant* repeat;
+		Ogre::Real particlePlayTime;
+		Variant* particleInitialPlayTime;
+		Variant* particlePlaySpeed;
+		Variant* particleOffsetPosition;
+		Variant* particleOffsetOrientation;
+		Variant* particleScale;
+		Ogre::String oldParticleTemplateName;
+		bool oldActivated;
+		bool isInSimulation;
+		Ogre::uint64 particleInstanceId;
+		Ogre::Vector3 globalPosition;
+		Ogre::Quaternion globalOrientation;
 	};
 
 }; // namespace end

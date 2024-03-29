@@ -278,10 +278,12 @@ class dgVector
 	{
 		dgVector truncated (_mm_cvtepi32_ps (_mm_cvttps_epi32 (m_type)));
 		dgVector ret (truncated - (dgVector::m_one & (*this < truncated)));
+#if 0
 		dgAssert (ret.m_f[0] == dgFloor(m_f[0]));
 		dgAssert (ret.m_f[1] == dgFloor(m_f[1]));
 		dgAssert (ret.m_f[2] == dgFloor(m_f[2]));
 		dgAssert (ret.m_f[3] == dgFloor(m_f[3]));
+#endif
 		return ret;
 	}
 

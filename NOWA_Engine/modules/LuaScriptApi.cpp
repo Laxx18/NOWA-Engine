@@ -7887,7 +7887,6 @@ namespace NOWA
 		// AddClassToCollection("AiComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("AiComponent", "void setActivated(bool activated)", "Sets the ai component is activated. If true, it will move according to its specified behavior.");
 		AddClassToCollection("AiComponent", "bool isActivated()", "Gets whether ai component is activated. If true, it will move according to its specified behavior.");
-		AddClassToCollection("AiComponent", "void setDefaultDirection(Vector3 direction)", "Sets the default mesh direction. According this direction, all ai behavior will move.");
 		AddClassToCollection("AiComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the ai controller game object.");
 		AddClassToCollection("AiComponent", "float getRotationSpeed()", "Gets the rotation speed for the ai controller game object.");
 		AddClassToCollection("AiComponent", "void setFlyMode(bool flyMode)", "Sets the ai controller game object should be clamped at the floor or can fly.");
@@ -8674,7 +8673,11 @@ namespace NOWA
 			.def("getTransparency", &DatablockPbsComponent::getTransparency)
 			.def("setUseAlphaFromTextures", &DatablockPbsComponent::setUseAlphaFromTextures)
 			.def("getUseAlphaFromTextures", &DatablockPbsComponent::getUseAlphaFromTextures)
-			];
+			.def("setBringToFront", &DatablockPbsComponent::setBringToFront)
+			.def("getBringToFront", &DatablockPbsComponent::getIsInFront)
+			.def("setCutOff", &DatablockPbsComponent::setCutOff)
+			.def("getCutOff", &DatablockPbsComponent::getCutOff)
+		];
 
 		AddClassToCollection("DatablockPbsComponent", "class inherits GameObjectComponent", DatablockPbsComponent::getStaticInfoText());
 		// AddClassToCollection("DatablockPbsComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -8778,6 +8781,12 @@ namespace NOWA
 
 		AddClassToCollection("DatablockPbsComponent", "void setUseEmissiveAsLightMap(bool useEmissiveAsLightMap)", "When set, it treats the emissive map as a lightmap; which means it will be multiplied against the diffuse component.");
 		AddClassToCollection("DatablockPbsComponent", "bool getUseEmissiveAsLightMap()", "Gets whether to use the emissive as light map.");
+
+		AddClassToCollection("DatablockPbsComponent", "void setBringToFront(bool bringToFront)", "When set, it brings this mesh to front of all other meshes.");
+		AddClassToCollection("DatablockPbsComponent", "bool getIsInFront()", "Gets whether this mesh is in front of all other meshes.");
+
+		AddClassToCollection("DatablockPbsComponent", "void setCutOff(bool cutOff)", "When set, it cuts off this mesh from all other meshes which are touching this mesh.");
+		AddClassToCollection("DatablockPbsComponent", "bool getCutOff()", "Gets whether this mesh is cut off from all other meshes which are touching this mesh..");
 
 		module(lua)
 			[
@@ -11393,7 +11402,6 @@ namespace NOWA
 		    .def("getPath", &KI::MovingBehavior::getPath)
 			.def("setRotationSpeed", &KI::MovingBehavior::setRotationSpeed)
 			.def("isSwitchOn", &KI::MovingBehavior::isSwitchOn)
-			.def("setDefaultDirection", &KI::MovingBehavior::setDefaultDirection)
 			.def("getTargetAgent", &KI::MovingBehavior::getTargetAgent)
 			.def("getTargetAgent2", &KI::MovingBehavior::getTargetAgent2)
 			.def("setTargetAgentId", &setTargetAgentId)
@@ -11469,7 +11477,6 @@ namespace NOWA
 		AddClassToCollection("MovingBehavior", "Path getPath()", "Gets path for waypoints manipulation.");
 		AddClassToCollection("MovingBehavior", "void setRotationSpeed(float speed)", "Sets the agent rotation speed. Default value is 0.1.");
 		AddClassToCollection("MovingBehavior", "bool isSwitchOn(BehaviorType behaviorType)", "Gets whether a specifig behavior is switched on.");
-		AddClassToCollection("MovingBehavior", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
 		AddClassToCollection("MovingBehavior", "GameObject getTargetAgent()", "Gets the target agent or nil, if does not exist.");
 		AddClassToCollection("MovingBehavior", "GameObject getTargetAgent2()", "Gets the target agent 2 or nil, if does not exist.");
 		// AddClassToCollection("MovingBehavior", "String getTargetAgentId()", "Gets the target agent id.");

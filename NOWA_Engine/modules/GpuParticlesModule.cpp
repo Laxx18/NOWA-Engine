@@ -25,11 +25,13 @@ namespace NOWA
 	void GpuParticlesModule::init(Ogre::SceneManager* sceneManager, Ogre::uint32 maxParticles, Ogre::uint16 maxEmitterInstances, Ogre::uint16 maxEmitterCores,
 								  Ogre::uint16 bucketSize, Ogre::uint16 gpuThreadsPerGroup)
 	{
-		this->sceneManager = sceneManager;
-		if (nullptr != this->gpuParticleSystemResourceManager)
+		// if (nullptr != this->gpuParticleSystemResourceManager)
+		if (nullptr != this->sceneManager)
 		{
 			this->destroyContent();
 		}
+
+		this->sceneManager = sceneManager;
 
 		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
 		// TODO: Wind or ocean is user0??
@@ -78,6 +80,17 @@ namespace NOWA
 		this->sceneNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
 		this->sceneNode->setName("GpuParticlesSystemWorldNode");
 		this->sceneNode->attachObject(this->gpuParticleSystemWorld);
+
+		// Loads all available particle scripts
+		Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames("GpuParticles", "*.json");
+		for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
+		{
+			Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingletonPtr()->openResource(*itName, "GpuParticles");
+			if (stream != nullptr)
+			{
+				this->gpuParticleSystemJsonManager->parseScript(stream, "GpuParticles");
+			}
+		}
 	}
 
 	void GpuParticlesModule::destroyContent(void)
