@@ -268,7 +268,9 @@ namespace NOWA
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] weight: " + Ogre::StringConverter::toString(this->animationState->getWeight()));
 			if (nullptr != this->animationBlender)
+			{
 				this->animationBlender->addTime(dt * this->animationSpeed->getReal() / this->animationBlender->getSource()->getDuration());
+			}
 		}
 		/*else if (true == notSimulating && nullptr != this->animationBlender)
 		{

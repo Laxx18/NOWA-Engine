@@ -15,7 +15,7 @@ namespace NOWA
 	AiLuaComponent::AiLuaComponent()
 		: GameObjectComponent(),
 		activated(new Variant(AiLuaComponent::AttrActivated(), true, this->attributes)),
-		rotationSpeed(new Variant(AiLuaComponent::AttrRotationSpeed(), 0.1f, this->attributes)),
+		rotationSpeed(new Variant(AiLuaComponent::AttrRotationSpeed(), 10.0f, this->attributes)),
 		flyMode(new Variant(AiLuaComponent::AttrFlyMode(), false, this->attributes)),
 		startStateName(new Variant(AiLuaComponent::AttrStartStateName(), "MyState", this->attributes)),
 		luaStateMachine(nullptr),
@@ -370,9 +370,19 @@ namespace NOWA
 
 	void AiLuaComponent::setRotationSpeed(Ogre::Real rotationSpeed)
 	{
+		if (rotationSpeed < 5.0f)
+		{
+			rotationSpeed = 5.0f;
+		}
+		else if (rotationSpeed > 15.0f)
+		{
+			rotationSpeed = 15.0f;
+		}
 		this->rotationSpeed->setValue(rotationSpeed);
 		if (nullptr != this->movingBehaviorPtr)
+		{
 			this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
+		}
 	}
 
 	Ogre::Real AiLuaComponent::getRotationSpeed(void) const

@@ -124,6 +124,8 @@ namespace OgreNewt
 
 		Ogre::Vector3 m_startPosition;
 		Ogre::Quaternion m_startOrientation;
+		Ogre::Vector3 m_oldStartPosition;
+		Ogre::Quaternion m_oldStartOrientation;
 		Ogre::Vector3 m_direction;
 		Ogre::Real m_mass;
 		Ogre::Real m_radius;

@@ -28,6 +28,8 @@
 #include "utilities/AnimationBlender.h"
 #include "utilities/AnimationBlenderV2.h"
 
+#include "Animation/OgreSkeletonInstance.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -511,9 +513,13 @@ namespace NOWA
 
 	void PlayerControllerComponent::setRotationSpeed(Ogre::Real rotationSpeed)
 	{
-		if (rotationSpeed < 0.0f)
+		if (rotationSpeed < 5.0f)
 		{
-			rotationSpeed = 0.01f;
+			rotationSpeed = 5.0f;
+		}
+		else if (rotationSpeed > 15.0f)
+		{
+			rotationSpeed = 15.0f;
 		}
 		this->rotationSpeed->setValue(rotationSpeed);
 	}
@@ -1530,24 +1536,33 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Init player controller click to point component for game object: " + this->gameObjectPtr->getName());
 
+		bool success = PlayerControllerComponent::postInit();
+
 		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
 
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{
-			std::vector<Ogre::String> animationNames;
+			std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
 			// Add also none, so that when choosen, no animation will be done, because it does not exist
-			animationNames.emplace_back("None");
-			Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
-			if (nullptr != set)
+			animationNames.insert(animationNames.cbegin(), "None");
+			
+			// Add all available animation names to list
+			for (unsigned short i = 0; i < this->animationsCount; i++)
 			{
-				Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-				// list all animations
-				while (it.hasMoreElements())
-				{
-					Ogre::v1::AnimationState* anim = it.getNext();
-					animationNames.emplace_back(anim->getAnimationName());
-				}
+				this->animations[i]->setValue(animationNames);
+			}
+			
+		}
+		else
+		{
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
+			{
+				std::vector<Ogre::String> animationNames = this->animationBlender->getAllAvailableAnimationNames();
+				// Add also none, so that when choosen, no animation will be done, because it does not exist
+				animationNames.insert(animationNames.cbegin(), "None");
+
 				// Add all available animation names to list
 				for (unsigned short i = 0; i < this->animationsCount; i++)
 				{
@@ -1570,7 +1585,7 @@ namespace NOWA
 		this->movingBehaviorPtr->setStuckCheckTime(1000.0f);
 		this->movingBehaviorPtr->setFlyMode(false);
 
-		return PlayerControllerComponent::postInit();
+		return success;
 	}
 
 	bool PlayerControllerClickToPointComponent::connect(void)

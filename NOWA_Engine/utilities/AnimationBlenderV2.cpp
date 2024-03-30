@@ -27,26 +27,15 @@ namespace NOWA
 		skipReactOnAnimation(false),
 		canAnimate(true)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationBlenderV2] List all animations for mesh '" + this->item->getMesh()->getName() + "':");
-
-		std::vector<Ogre::String> animationNames;
-
 		this->skeleton = this->item->getSkeletonInstance();
 		if (nullptr != this->skeleton)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation Blender] Cannot initialize animation blender, because the skeleton resource for item: "
 															+ item->getName() + " is missing!");
 			return;
-
-			for (auto& anim : this->skeleton->getAnimationsNonConst())
-			{
-				anim.setEnabled(false);
-				anim.mWeight = 0.0f;
-				anim.setTime(0.0f);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim.getName().getFriendlyText()
-																+ " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
-			}
 		}
+
+		this->getAllAvailableAnimationNames(false);
 
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AnimationBlenderV2::gameObjectIsInRagDollStateDelegate), EventDataGameObjectIsInRagDollingState::getStaticEventType());
 	}
@@ -68,6 +57,32 @@ namespace NOWA
 	void AnimationBlenderV2::init(const Ogre::String& animationName, bool loop)
 	{
 		this->internalInit(animationName, loop);
+	}
+
+	std::vector<Ogre::String> AnimationBlenderV2::getAllAvailableAnimationNames(bool skipLogging) const
+	{
+		std::vector<Ogre::String> animationNames;
+
+		if (false == skipLogging)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] List all animations for mesh '" + this->item->getMesh()->getName() + "':");
+		}
+
+		for (auto& anim : this->skeleton->getAnimationsNonConst())
+		{
+			anim.setEnabled(false);
+			anim.mWeight = 0.0f;
+			anim.setTime(0.0f);
+			animationNames.emplace_back(anim.getName().getFriendlyText());
+
+			if (false == skipLogging)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim.getName().getFriendlyText()
+																+ " length: " + Ogre::StringConverter::toString(anim.getDuration()) + " seconds");
+			}
+		}
+
+		return animationNames;
 	}
 
 	void NOWA::AnimationBlenderV2::setAnimationBlenderObserver(IAnimationBlenderObserver* animationBlenderObserver)

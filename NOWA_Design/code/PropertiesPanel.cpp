@@ -1734,8 +1734,9 @@ void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget
 void PropertiesPanelDynamic::mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus)
 {
 	// When leaving an edit widget it loses the focus, so store the value
-	if (false == bFocus)
+	if (false == bFocus && false== MyGUI::InputManager::getInstancePtr()->isFocusMouse())
 	{
+
 		MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 		if (nullptr != editBox)
 		{

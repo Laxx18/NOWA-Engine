@@ -103,12 +103,24 @@ namespace NOWA
 
 		/**
 		* @brief		Inits the animation blender, also sets and start the first current animation.
-		* @param[in]	animationId		The animation name to start with
+		* @param[in]	animationId		The animation id to start with
 		* @param[in]	loop			Whether to loop the new animation or not.
 		*/
 		virtual void init(AnimID animationId, bool loop = true) = 0;
 
+		/**
+		* @brief		Inits the animation blender, also sets and start the first current animation.
+		* @param[in]	animationName	The animation name to start with
+		* @param[in]	loop			Whether to loop the new animation or not.
+		*/
 		virtual void init(const Ogre::String& animationName, bool loop = true) = 0;
+
+		/**
+		* @brief		Gets all available animation names.
+		* @param[in]	skipLogging		Whether to skip the internal logging.
+		* @return		A string list with all animation names. If none found, empty list will be delivered.
+		*/
+		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) const = 0;
 
 		/**
 		 * @brief		Sets the animation blender observer to react when an animation, that is started via blendAndContinue is finished.

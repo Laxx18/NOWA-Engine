@@ -649,7 +649,7 @@
     <ClInclude Include="modules\GpuParticlesModule.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="IAnimationBlender.h">
+    <ClInclude Include="utilities\IAnimationBlender.h">
       <Filter>utilities</Filter>
     </ClInclude>
   </ItemGroup>

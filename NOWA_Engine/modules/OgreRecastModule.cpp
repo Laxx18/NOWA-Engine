@@ -475,7 +475,10 @@ namespace NOWA
 			this->ogreRecast->recreateDrawer();
 
 			auto gameObjectsWithCrowdComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent<CrowdComponent>();
-			this->detourCrowd->setMaxAgents(gameObjectsWithCrowdComponent.size());
+			if (gameObjectsWithCrowdComponent.size() > 0)
+			{
+				this->detourCrowd->setMaxAgents(gameObjectsWithCrowdComponent.size());
+			}
 
 			this->mustRegenerate = false;
 		}

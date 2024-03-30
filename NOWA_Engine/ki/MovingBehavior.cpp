@@ -28,7 +28,7 @@ namespace NOWA
 			animationBlender(nullptr),
 			oldAnimationSpeed(1.0f),
 			oldGravity(Ogre::Vector3::ZERO),
-			rotationSpeed(0.1f),
+			rotationSpeed(1.0f),
 			deceleration(FAST),
 			wanderJitter(1.0f),
 			wanderRadius(1.2f),
@@ -2245,7 +2245,8 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							// newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
@@ -2277,7 +2278,8 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							// newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 							// this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 							this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}

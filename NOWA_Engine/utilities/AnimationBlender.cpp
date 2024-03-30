@@ -24,27 +24,7 @@ namespace NOWA
 		skipReactOnAnimation(false),
 		canAnimate(true)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] List all animations for mesh '" + this->entity->getMesh()->getName() + "':");
-		Ogre::v1::AnimationStateSet* set = this->entity->getAllAnimationStates();
-		if (nullptr == set)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation Blender] Cannot initialize animation blender, because the skeleton resource for entity: "
-				+ entity->getName() + " is missing!");
-			return;
-		}
-
-		Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-		// Manual pose loading: http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Generic+Manual+Pose+Loading
-		// reset all animations
-		while (it.hasMoreElements())
-		{
-			Ogre::v1::AnimationState* anim = it.getNext();
-			anim->setEnabled(false);
-			anim->setWeight(0.0f);
-			anim->setTimePosition(0.0f);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] Animation name: " + anim->getAnimationName() 
-				+ " length: " + Ogre::StringConverter::toString(anim->getLength()) + " seconds");
-		}
+		this->getAllAvailableAnimationNames(false);
 
 		Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
 		if (nullptr != skeleton)
@@ -72,6 +52,43 @@ namespace NOWA
 	void AnimationBlender::init(const Ogre::String& animationName, bool loop)
 	{
 		this->internalInit(animationName, loop);
+	}
+
+	std::vector<Ogre::String> AnimationBlender::getAllAvailableAnimationNames(bool skipLogging) const
+	{
+		std::vector<Ogre::String> animationNames;
+
+		if (false == skipLogging)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] List all animations for mesh '" + this->entity->getMesh()->getName() + "':");
+		}
+		Ogre::v1::AnimationStateSet* set = this->entity->getAllAnimationStates();
+		if (nullptr == set)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation Blender] Cannot initialize animation blender, because the skeleton resource for entity: "
+															+ entity->getName() + " is missing!");
+			return animationNames;
+		}
+
+		Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
+		// Manual pose loading: http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Generic+Manual+Pose+Loading
+		// reset all animations
+		while (it.hasMoreElements())
+		{
+			Ogre::v1::AnimationState* anim = it.getNext();
+			anim->setEnabled(false);
+			anim->setWeight(0.0f);
+			anim->setTimePosition(0.0f);
+			animationNames.emplace_back(anim->getAnimationName());
+
+			if (false == skipLogging)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] Animation name: " + anim->getAnimationName()
+																+ " length: " + Ogre::StringConverter::toString(anim->getLength()) + " seconds");
+			}
+		}
+
+		return animationNames;
 	}
 
 	void NOWA::AnimationBlender::setAnimationBlenderObserver(IAnimationBlenderObserver* animationBlenderObserver)

@@ -56,6 +56,8 @@ namespace OgreNewt
 		world(world),
 		m_startOrientation(startOrientation),
 		m_startPosition(startPosition),
+		m_oldStartPosition(Ogre::Vector3(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
+		m_oldStartOrientation(Ogre::Quaternion(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, 1.0f)),
 		m_direction(direction),
 		m_mass(mass),
 		m_collisionPositionOffset(Ogre::Vector3::ZERO),
@@ -146,13 +148,20 @@ namespace OgreNewt
 	{
 		m_startOrientation = startOrientation;
 		m_startPosition = startPosition;
+
+		if (m_oldStartPosition == m_startPosition && m_oldStartOrientation == m_startOrientation)
+		{
+			return;
+		}
+
+		m_oldStartPosition = m_startPosition;
+		m_oldStartOrientation = m_startOrientation;
+
 		m_direction = direction;
 		m_mass = mass;
 		m_radius = radius;
 		m_height = height;
 		m_stepHeight = stepHeight;
-		m_startHeading = m_startOrientation.getYaw();
-		m_startHeading = Ogre::Radian(normalizeRadianAngle(m_startHeading.valueRadians()));
 
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "----->: " + Ogre::StringConverter::toString(m_startHeading.valueDegrees()));
 
@@ -165,8 +174,6 @@ namespace OgreNewt
 
 		dFloat positionOrientation[16];
 		OgreNewt::Converters::QuatPosToMatrix(m_startOrientation, m_startPosition, positionOrientation);
-
-		Ogre::Vector3 orientationVector = m_startOrientation * m_direction;
 
 		for (unsigned short i = 0; i < 16; i++)
 		{
@@ -201,6 +208,9 @@ namespace OgreNewt
 
 		// set the transform callback
 		NewtonBodySetTransformCallback(m_body, Body::newtonTransformCallback);
+
+		// Important, so that the current start heading is actualized for start up orientation of the body
+		this->move(0.0f, 0.0f, m_startOrientation.getYaw());
 
 		m_playerControllerManager->getPlayerController()->SetHeadingAngle(m_startHeading.valueRadians());
 

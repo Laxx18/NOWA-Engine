@@ -5346,6 +5346,19 @@ namespace NOWA
 			];
 	}
 
+	luabind::object getAllAvailableAnimationNames(AnimationBlender* instance, bool skipLogging)
+	{
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		auto animationNames = instance->getAllAvailableAnimationNames(skipLogging);
+		for (size_t i = 0; i < animationNames.size(); i++)
+		{
+			obj[i] = animationNames[i];
+		}
+
+		return obj;
+	}
+
 	void bindAnimationComponent(lua_State* lua)
 	{
 		module(lua)
@@ -5428,6 +5441,7 @@ namespace NOWA
 
 			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
 			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
+			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
 			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
 			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
 			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
@@ -5547,6 +5561,7 @@ namespace NOWA
 		AddClassToCollection("AnimID", "ANIM_NONE", "None animation (default).");
 		AddClassToCollection("AnimationBlender", "void init1(AnimID animationId, bool loop)", "Inits the animation blender, also sets and start the first current animation id.");
 		AddClassToCollection("AnimationBlender", "void init2(String animationName, bool loop)", "Inits the animation blender, also sets and start the first current animation name.");
+		AddClassToCollection("AnimationBlender", "table[String] getAllAvailableAnimationNames(bool skipLogging)", "Gets all available animation names. A string list with all animation names. If none found, empty list will be delivered.");
 		AddClassToCollection("AnimationBlender", "void blend1(AnimID animationId, BlendingTransition transition)", "Blends from the current animation to the new animationId.");
 		AddClassToCollection("AnimationBlender", "void blend2(String animationName, BlendingTransition transition)", "Blends from the current animation to the new animation name.");
 		AddClassToCollection("AnimationBlender", "void blend3(AnimID animationId, BlendingTransition transition, bool loop)", "Blends from the current animation to the new animationId and sets whether the animation should be looped.");
@@ -6227,7 +6242,7 @@ namespace NOWA
 		// AddClassToCollection("PlayerControllerComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
 		AddClassToCollection("PlayerControllerComponent", "AnimationBlender getAnimationBlender()", "Gets the used animation blender so that the animations may be manipulated manually.");
-		AddClassToCollection("PlayerControllerComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the player.");
+		AddClassToCollection("PlayerControllerComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the player. Valid values are: [5, 15]. Default is 10.");
 		AddClassToCollection("PlayerControllerComponent", "float getRotationSpeed()", "Gets the player rotation speed.");
 		AddClassToCollection("PlayerControllerComponent", "void setAnimationSpeed(float animationSpeed)", "Sets the animation speed for the player.");
 		AddClassToCollection("PlayerControllerComponent", "float getAnimationSpeed()", "Gets the player animation speed.");

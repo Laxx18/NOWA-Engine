@@ -138,7 +138,9 @@ namespace NOWA
 
 	void EngineResourceRotateListener::resourceGroupLoadStarted(const Ogre::String& resourceGroupName, size_t resourceCount)
 	{
-		this->loadInc = this->groupLoadProportion / resourceCount;
+		// this->loadInc = this->groupLoadProportion / resourceCount;
+		this->loadInc = (2.0f / Ogre::Math::PI * 100.0f) * Ogre::Math::ATan(this->groupLoadProportion / resourceCount * 100 / 50).valueRadians();
+
 		this->actionLabel->setCaptionWithReplacing("#00ff00#{Loading}...");
 		Core::getSingletonPtr()->getOgreRoot()->renderOneFrame();
 	}

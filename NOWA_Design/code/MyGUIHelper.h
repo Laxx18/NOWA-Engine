@@ -161,6 +161,11 @@ public:
 				}
 			}
 		}
+		else
+		{
+			// Keep focus when typing something
+			MyGUI::InputManager::getInstance().setKeyFocusWidget(sender);
+		}
 	}
 
 	void setScrollPosition(unsigned long id, int scrollPosition)
@@ -267,8 +272,8 @@ private:
 	MyGUIHelper()
 		: editBox(nullptr),
 		attribute(nullptr),
-		defaultTextColour(MyGUI::Colour::Black),
-		importantTextColour(MyGUI::Colour::White),
+		defaultTextColour(MyGUI::Colour(0.96f, 0.96f, 0.96f)),
+		importantTextColour(MyGUI::Colour(1.0f, 0.6f, 0.4f)),
 		toolTip(nullptr),
 		textDescription(nullptr)
 	{

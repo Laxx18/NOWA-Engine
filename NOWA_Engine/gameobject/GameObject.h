@@ -888,7 +888,7 @@ namespace NOWA
 		static const Ogre::String AttrPosition(void) { return "Position"; }
 		static const Ogre::String AttrScale(void) { return "Scale"; }
 		static const Ogre::String AttrOrientation(void) { return "Orientation"; }
-		static const Ogre::String AttrDefaultDirection(void) { return "Default Direction"; }
+		static const Ogre::String AttrDefaultDirection(void) { return "Global Mesh Direction"; }
 		static const Ogre::String AttrGlobal(void) { return "Global"; }
 		static const Ogre::String AttrClampY(void) { return "Clamp Y"; }
 		static const Ogre::String AttrReferenceId(void) { return "Reference Id"; }

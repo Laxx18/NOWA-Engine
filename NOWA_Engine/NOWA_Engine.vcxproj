@@ -447,7 +447,6 @@
     <ClInclude Include="gameobject\Vehicle.h" />
     <ClInclude Include="gameobject\VehicleComponent.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
-    <ClInclude Include="IAnimationBlender.h" />
     <ClInclude Include="ki\Edge.h" />
     <ClInclude Include="ki\Goal.h" />
     <ClInclude Include="ki\GoalComposite.h" />
@@ -529,6 +528,7 @@
     <ClInclude Include="utilities\ConcurrentQueue.h" />
     <ClInclude Include="utilities\FastDelegate.h" />
     <ClInclude Include="utilities\FastDelegateBind.h" />
+    <ClInclude Include="utilities\IAnimationBlender.h" />
     <ClInclude Include="utilities\LensFlare.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
     <ClInclude Include="utilities\MathHelper.h" />

@@ -20,7 +20,7 @@ namespace NOWA
 		: GameObjectComponent(),
 		behaviorTypeId(NOWA::KI::MovingBehavior::NONE),
 		activated(new Variant(AiComponent::AttrActivated(), true, this->attributes)),
-		rotationSpeed(new Variant(AiComponent::AttrRotationSpeed(), 0.1f, this->attributes)),
+		rotationSpeed(new Variant(AiComponent::AttrRotationSpeed(), 10.0f, this->attributes)),
 		flyMode(new Variant(AiComponent::AttrFlyMode(), false, this->attributes)),
 		stuckTime(new Variant(AiComponent::AttrStuckTime(), 0.0f, this->attributes)),
 		autoOrientation(new Variant(AiComponent::AttrAutoOrientation(), true, this->attributes)),
@@ -369,6 +369,14 @@ namespace NOWA
 
 	void AiComponent::setRotationSpeed(Ogre::Real rotationSpeed)
 	{
+		if (rotationSpeed < 5.0f)
+		{
+			rotationSpeed = 5.0f;
+		}
+		else if (rotationSpeed > 15.0f)
+		{
+			rotationSpeed = 15.0f;
+		}
 		this->rotationSpeed->setValue(rotationSpeed);
 	}
 

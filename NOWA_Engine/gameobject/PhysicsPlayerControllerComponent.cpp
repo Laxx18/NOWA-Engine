@@ -250,6 +250,8 @@ namespace NOWA
 
 	void PhysicsPlayerControllerComponent::setPosition(const Ogre::Vector3& position)
 	{
+		PhysicsComponent::setPosition(this->initialPosition);
+
 		this->gameObjectPtr->setAttributePosition(position);
 		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
 		if (nullptr != playerControllerBody)
@@ -261,12 +263,13 @@ namespace NOWA
 				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
-			PhysicsComponent::setPosition(this->initialPosition);
 		}
 	}
 
 	void PhysicsPlayerControllerComponent::setOrientation(const Ogre::Quaternion& orientation)
 	{
+		PhysicsComponent::setOrientation(this->initialOrientation);
+
 		this->gameObjectPtr->setAttributeOrientation(orientation);
 		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
 		if (nullptr != playerControllerBody)
@@ -279,7 +282,6 @@ namespace NOWA
 				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
-			PhysicsComponent::setOrientation(this->initialOrientation);
 		}
 	}
 
@@ -519,8 +521,8 @@ namespace NOWA
 		this->setJumpSpeed(this->jumpSpeed->getReal());
 
 		// Set the body initial transform
-		this->setPosition(this->initialPosition);
 		this->setOrientation(this->initialOrientation);
+		this->setPosition(this->initialPosition);
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 
