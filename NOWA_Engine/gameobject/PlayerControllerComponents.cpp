@@ -2601,8 +2601,9 @@ namespace NOWA
 
 		if (true == this->playerController->getGameObject()->isSelected() && true == ms.buttonDown(OIS::MB_Middle))
 		{
-			AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
+			// Attention: Why has this been used? Because during simulation the camera transform will be slow
+			/*AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
+			AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);*/
 
 			// Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
 			if (nullptr != this->playerController->getCameraBehaviorComponent())

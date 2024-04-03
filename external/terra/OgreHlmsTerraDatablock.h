@@ -216,15 +216,13 @@ namespace Ogre
         void uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags) override;
 
     public:
-        HlmsTerraDatablock( IdString name, HlmsTerra *creator,
-                          const HlmsMacroblock *macroblock,
-                          const HlmsBlendblock *blendblock,
-                          const HlmsParamVec &params );
-        virtual ~HlmsTerraDatablock();
+        HlmsTerraDatablock( IdString name, HlmsTerra *creator, const HlmsMacroblock *macroblock,
+                            const HlmsBlendblock *blendblock, const HlmsParamVec &params );
+        ~HlmsTerraDatablock() override;
 
         /// Sets overall diffuse colour. The colour will be divided by PI for energy conservation.
         void setDiffuse( const Vector3 &diffuseColour );
-        Vector3 getDiffuse(void) const;
+        Vector3 getDiffuse() const;
 
         /// Sets the roughness
         void setRoughness( uint8 detailMapIdx, float roughness );
@@ -256,7 +254,7 @@ namespace Ogre
         const Vector4& getDetailMapOffsetScale( uint8 detailMap ) const;
 
         /// Overloaded to tell it's unsupported
-        virtual void setAlphaTestThreshold( float threshold );
+        void setAlphaTestThreshold( float threshold ) override;
 
         /// Unlike most Hlms implementations, directly modifying mShadowConstantBias is not enough
         /// Call this function instead

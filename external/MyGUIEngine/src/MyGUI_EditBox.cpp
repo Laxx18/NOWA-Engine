@@ -156,6 +156,9 @@ namespace MyGUI
 
 		if (_id == MouseButton::Left)
 			mMouseLeftPressed = true;
+
+		/* Fix by Lax 31.03.2024, because when using editbox the eventMouseButtonPressed has not been triggered */
+		_riseMouseButtonPressed(_left, _top, _id);
 	}
 
 	void EditBox::notifyMouseReleased(Widget* _sender, int _left, int _top, MouseButton _id)
@@ -1317,7 +1320,8 @@ namespace MyGUI
 			return;
 
 		// сбрасываем выделение
-		resetSelect();
+		// Fix by Lax 31.03.2024: Reset select is done to early, hence it was not possible to select whole text and erase the selected text at once
+		// resetSelect();
 
 		// история изменений
 		VectorChangeInfo* history = nullptr;

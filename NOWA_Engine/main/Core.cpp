@@ -61,6 +61,10 @@
 #include "../res/resource.h"
 #endif
 
+#if OGRE_PROFILING
+#include "OgreProfiler.h"
+#endif
+
 namespace NOWA
 {
 	ResourceLoadingListenerImpl::ResourceLoadingListenerImpl()
@@ -352,6 +356,7 @@ namespace NOWA
 			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->open(filename);
 			Ogre::GpuProgramManager::getSingleton().loadMicrocodeCache(shaderCacheFile);
 
+			const size_t numThreads = std::max<size_t>(1u, Ogre::PlatformInformation::getNumLogicalCores());
 			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
 			{
 				Ogre::Hlms *hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
@@ -365,7 +370,7 @@ namespace NOWA
 						{
 							Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->open(filename);
 							diskCache.loadFrom(diskCacheFile);
-							diskCache.applyTo(hlms);
+							diskCache.applyTo(hlms, numThreads);
 						}
 					}
 					catch (Ogre::Exception&)
@@ -410,7 +415,7 @@ namespace NOWA
 			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
 			{
 				Ogre::Hlms* hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
-				if (hlms)
+				if (hlms && hlms->isShaderCodeCacheDirty())
 				{
 					diskCache.copyFrom(hlms);
 
@@ -592,6 +597,8 @@ namespace NOWA
 
 		params.insert(std::make_pair("FSAA", cfgOpts["FSAA"].currentValue));
 		params.insert(std::make_pair("VSync", cfgOpts["VSync"].currentValue));
+		if (cfgOpts.find("VSync Method") != cfgOpts.end())
+			params.insert(std::make_pair("vsync_method", cfgOpts["VSync Method"].currentValue));
 		params.insert(std::make_pair("reverse_depth", "Yes"));
 		Ogre::String useVsync = cfgOpts["VSync"].currentValue;
 
@@ -946,6 +953,17 @@ namespace NOWA
 		// setTightMemoryBudget();
 		setRelaxedMemoryBudget();
 		this->defaultBudget = textureGpuManager->getBudget();
+
+#if OGRE_PROFILING
+		Ogre::Profiler::getSingleton().setEnabled(true);
+#if OGRE_PROFILING == OGRE_PROFILING_INTERNAL
+		Ogre::Profiler::getSingleton().endProfile("");
+#endif
+#if OGRE_PROFILING == OGRE_PROFILING_INTERNAL_OFFLINE
+		Ogre::Profiler::getSingleton().getOfflineProfiler().setDumpPathsOnShutdown(
+			this->writeAccessFolder + "ProfilePerFrame", this->writeAccessFolder + "ProfileAccum");
+#endif
+#endif
 		
 		return true;
 	}
@@ -1037,7 +1055,7 @@ namespace NOWA
 			hlmsPbs->setListener(this->baseListenerContainer);
 			hlmsManager->registerHlms(hlmsPbs);
 
-			hlmsPbs->setIndustryCompatible(true);
+			// hlmsPbs->setIndustryCompatible(true);
 		}
 
 		// HlmsTerra
@@ -3344,9 +3362,10 @@ namespace NOWA
 				{
 					const Ogre::FrameStats* frameStats = this->root->getFrameStats();
 
-					float avgTime = frameStats->getAvgTime();
+					Ogre::Real avgTime = frameStats->getRollingAverage();
+					Ogre::Real avgFps = frameStats->getRollingAverageFps();
 					char m[32];
-					sprintf(m, "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
+					sprintf(m, "%.2fms - %.2ffps", avgTime, avgFps);
 					this->info->change("FPS", Ogre::String(m));
 					this->info->change("Best FPS", Ogre::StringConverter::toString(frameStats->getBestTime()) + " ms");
 					this->info->change("Worst FPS", Ogre::StringConverter::toString(frameStats->getWorstTime()) + " ms");

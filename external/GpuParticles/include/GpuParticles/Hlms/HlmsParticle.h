@@ -81,7 +81,7 @@ public:
 
     ~HlmsParticle() override = default;
 
-    void setupRootLayout( Ogre::RootLayout &rootLayout ) override;
+    void setupRootLayout( Ogre::RootLayout &rootLayout, size_t tid) override;
 
     Ogre::HlmsCache preparePassHash( const Ogre::CompositorShadowNode *shadowNode, bool casterPass,
                                      bool dualParaboloid, Ogre::SceneManager *sceneManager ) override;
@@ -90,7 +90,7 @@ public:
 
     void notifyPropertiesMergedPreGenerationStep(void) {
 
-        HlmsUnlit::notifyPropertiesMergedPreGenerationStep();
+        HlmsUnlit::notifyPropertiesMergedPreGenerationStep(kNoTid);
 
         // setTextureReg(Ogre::VertexShader, "texParticleData", ParticleDataTexSlot);
     }

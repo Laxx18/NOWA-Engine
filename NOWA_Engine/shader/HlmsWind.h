@@ -43,7 +43,7 @@ namespace NOWA
 
 		void shutdown(Ogre::SceneManager* sceneManager);
 
-		void notifyPropertiesMergedPreGenerationStep(void);
+		void notifyPropertiesMergedPreGenerationStep(size_t tid);
 
 		Ogre::uint32 fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable,
 			bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer);

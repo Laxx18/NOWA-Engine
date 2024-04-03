@@ -96,11 +96,11 @@ namespace NOWA
 		this->noiseSamplerBlock = nullptr;
 	}
 
-	void HlmsWind::notifyPropertiesMergedPreGenerationStep(void)
+	void HlmsWind::notifyPropertiesMergedPreGenerationStep(size_t tid)
 	{
-		HlmsPbs::notifyPropertiesMergedPreGenerationStep();
+		HlmsPbs::notifyPropertiesMergedPreGenerationStep(tid);
 
-		setTextureReg(Ogre::VertexShader, "texPerlinNoise", 14);
+		setTextureReg(tid, Ogre::VertexShader, "texPerlinNoise", 14);
 	}
 
 	Ogre::uint32 HlmsWind::fillBuffersForV1(const Ogre::HlmsCache* cache, const Ogre::QueuedRenderable& queuedRenderable, bool casterPass, Ogre::uint32 lastCacheHash, Ogre::CommandBuffer* commandBuffer)
@@ -146,7 +146,7 @@ namespace NOWA
 	void HlmsWind::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces)
 	{
 		HlmsPbs::calculateHashForPreCreate(renderable, inOutPieces);
-		setProperty("wind_enabled", 1);
+		setProperty(kNoTid, "wind_enabled", 1);
 	}
 
 	void HlmsWind::loadTexturesAndSamplers(Ogre::SceneManager* sceneManager)

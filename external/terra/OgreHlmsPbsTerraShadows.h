@@ -48,7 +48,7 @@ namespace Ogre
 
     public:
         HlmsPbsTerraShadows();
-        ~HlmsPbsTerraShadows();
+        virtual~HlmsPbsTerraShadows();
 
         void setTerra( Terra *terra );
 
@@ -59,7 +59,8 @@ namespace Ogre
                                                 const HlmsPropertyVec &renderableCacheProperties,
                                                 const PiecesMap renderableCachePieces[NumShaderTypes],
                                                 const HlmsPropertyVec & properties,
-                                                const QueuedRenderable &queuedRenderable ) override;
+                                                const QueuedRenderable &queuedRenderable,
+                                                size_t                  tid ) override;
 
         void preparePassHash( const CompositorShadowNode *shadowNode, bool casterPass,
                               bool dualParaboloid, SceneManager *sceneManager, Hlms *hlms ) override;
@@ -67,7 +68,8 @@ namespace Ogre
         uint32 getPassBufferSize( const CompositorShadowNode *shadowNode, bool casterPass,
                                   bool dualParaboloid, SceneManager *sceneManager ) const override;
 
-        float* prepareConcretePassBuffer(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, float*& passBufferPtr);
+        // Note: Custom function of NOWA::HlmsBaseListenerContainer
+        virtual float* prepareConcretePassBuffer(const Ogre::CompositorShadowNode* shadowNode, bool casterPass, bool dualParaboloid, Ogre::SceneManager* sceneManager, float*& passBufferPtr);
 
 
         void hlmsTypeChanged( bool casterPass, CommandBuffer *commandBuffer,

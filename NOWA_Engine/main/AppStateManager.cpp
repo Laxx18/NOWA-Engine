@@ -423,6 +423,8 @@ namespace NOWA
 		while (false == this->bShutdown)
 		{
 			double dt = (static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001) - currentTime;
+			// Prevents from going haywire.
+			dt = std::min(1.0, dt);
 			currentTime += dt;
 
 			// Process signals from system

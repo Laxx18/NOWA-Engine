@@ -59,73 +59,69 @@ namespace Ogre
         MovableObject const *mLastMovableObject;
 
         FastArray<Terra *> mLinkedTerras;
-    protected:
-        virtual HlmsDatablock* createDatablockImpl( IdString datablockName,
-                                                    const HlmsMacroblock *macroblock,
-                                                    const HlmsBlendblock *blendblock,
-                                                    const HlmsParamVec &paramVec );
 
-        void setDetailMapProperties( HlmsTerraDatablock *datablock, PiecesMap *inOutPieces );
-        void setTextureProperty( const char *propertyName, HlmsTerraDatablock *datablock,
+    protected:
+        HlmsDatablock *createDatablockImpl( IdString datablockName, const HlmsMacroblock *macroblock,
+                                                    const HlmsBlendblock *blendblock,
+                                            const HlmsParamVec   &paramVec ) override;
+
+        void setDetailMapProperties(size_t tid, HlmsTerraDatablock *datablock, PiecesMap *inOutPieces );
+        void setTextureProperty( size_t tid, const char *propertyName, HlmsTerraDatablock *datablock,
                                  TerraTextureTypes texType );
-        void setDetailTextureProperty( const char *propertyName, HlmsTerraDatablock *datablock,
-                                       TerraTextureTypes baseTexType, uint8 detailIdx );
+        void setDetailTextureProperty( size_t tid, const char *propertyName,
+                                       HlmsTerraDatablock *datablock, TerraTextureTypes baseTexType,
+                                       uint8 detailIdx );
 
         void calculateHashFor( Renderable *renderable, uint32 &outHash, uint32 &outCasterHash ) override;
         void calculateHashForPreCreate( Renderable *renderable, PiecesMap *inOutPieces ) override;
         void calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces ) override;
 
-        void notifyPropertiesMergedPreGenerationStep() override;
+        void notifyPropertiesMergedPreGenerationStep( size_t tid ) override;
 
         FORCEINLINE uint32 fillBuffersFor( const HlmsCache *cache,
-                                           const QueuedRenderable &queuedRenderable,
-                                           bool casterPass, uint32 lastCacheHash,
-                                           CommandBuffer *commandBuffer, bool isV1 );
+                                           const QueuedRenderable &queuedRenderable, bool casterPass,
+                                           uint32 lastCacheHash, CommandBuffer *commandBuffer,
+                                           bool isV1 );
 
     public:
         HlmsTerra( Archive *dataFolder, ArchiveVec *libraryFolders );
-        virtual ~HlmsTerra();
+        ~HlmsTerra() override;
 
-        const FastArray<Terra *> &getLinkedTerras( void ) const { return mLinkedTerras; }
+        const FastArray<Terra *> &getLinkedTerras() const { return mLinkedTerras; }
 
         void _linkTerra( Terra *terra );
         void _unlinkTerra( Terra *terra );
 
-        virtual void _changeRenderSystem( RenderSystem *newRs );
+        void _changeRenderSystem( RenderSystem *newRs ) override;
 
-        virtual void analyzeBarriers( BarrierSolver &barrierSolver,
-                                      ResourceTransitionArray &resourceTransitions,
-                                      Camera *renderingCamera, const bool bCasterPass );
+        void analyzeBarriers( BarrierSolver &barrierSolver, ResourceTransitionArray &resourceTransitions,
+                              Camera *renderingCamera, const bool bCasterPass ) override;
 
-        virtual uint32 fillBuffersFor( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
-                                       bool casterPass, uint32 lastCacheHash,
-                                       uint32 lastTextureHash );
+        uint32 fillBuffersFor( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
+                               bool casterPass, uint32 lastCacheHash, uint32 lastTextureHash ) override;
 
-        virtual uint32 fillBuffersForV1( const HlmsCache *cache,
-                                         const QueuedRenderable &queuedRenderable,
+        uint32 fillBuffersForV1( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
                                          bool casterPass, uint32 lastCacheHash,
-                                         CommandBuffer *commandBuffer );
-        virtual uint32 fillBuffersForV2( const HlmsCache *cache,
-                                         const QueuedRenderable &queuedRenderable,
+                                 CommandBuffer *commandBuffer ) override;
+        uint32 fillBuffersForV2( const HlmsCache *cache, const QueuedRenderable &queuedRenderable,
                                          bool casterPass, uint32 lastCacheHash,
-                                         CommandBuffer *commandBuffer );
+                                 CommandBuffer *commandBuffer ) override;
 
         static void getDefaultPaths( String& outDataFolderPath, StringVector& outLibraryFoldersPaths );
 
 #if !OGRE_NO_JSON
         /// @copydoc Hlms::_loadJson
-        virtual void _loadJson( const rapidjson::Value &jsonValue, const HlmsJson::NamedBlocks &blocks,
+        void _loadJson( const rapidjson::Value &jsonValue, const HlmsJson::NamedBlocks &blocks,
                                 HlmsDatablock *datablock, const String &resourceGroup,
                                 HlmsJsonListener *listener,
-                                const String &additionalTextureExtension ) const;
+                        const String     &additionalTextureExtension ) const override;
         /// @copydoc Hlms::_saveJson
-        virtual void _saveJson( const HlmsDatablock *datablock, String &outString,
-                                HlmsJsonListener *listener,
-                                const String &additionalTextureExtension ) const;
+        void _saveJson( const HlmsDatablock *datablock, String &outString, HlmsJsonListener *listener,
+                        const String &additionalTextureExtension ) const override;
 
         /// @copydoc Hlms::_collectSamplerblocks
-        virtual void _collectSamplerblocks( set<const HlmsSamplerblock*>::type &outSamplerblocks,
-                                            const HlmsDatablock *datablock ) const;
+        void _collectSamplerblocks( set<const HlmsSamplerblock *>::type &outSamplerblocks,
+                                    const HlmsDatablock                 *datablock ) const override;
 #endif
     };
 

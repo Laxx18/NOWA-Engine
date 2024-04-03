@@ -116,9 +116,9 @@ HlmsParticleListener* HlmsParticle::getParticleListener()
     return &mParticleListener;
 }
 
-void HlmsParticle::setupRootLayout( Ogre::RootLayout &rootLayout )
+void HlmsParticle::setupRootLayout( Ogre::RootLayout &rootLayout, size_t tid)
 {
-    HlmsUnlit::setupRootLayout( rootLayout );
+    HlmsUnlit::setupRootLayout( rootLayout, tid );
 
     Ogre::DescBindingRange *descBindingRanges = rootLayout.mDescBindingRanges[0];
     descBindingRanges[Ogre::DescBindingTypes::ReadOnlyBuffer].end = 6u;
@@ -131,16 +131,16 @@ Ogre::HlmsCache HlmsParticle::preparePassHash(const Ogre::CompositorShadowNode* 
 
 void HlmsParticle::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre::PiecesMap* inOutPieces) {
 
-    setProperty( *Ogre::HlmsBaseProp::UvCountPtrs[0], 2);
+    setProperty(kNoTid, *Ogre::HlmsBaseProp::UvCountPtrs[0], 2);
 
     HlmsUnlit::calculateHashForPreCreate(renderable, inOutPieces);
 
-    setProperty( "hlms_colour",  1);
+    setProperty(kNoTid, "hlms_colour",  1);
 
     const Ogre::Renderable::CustomParameterMap &customParams = renderable->getCustomParameters();
     if( customParams.find( GpuParticleSystemWorld::RenderableTypeId ) != customParams.end() )
     {
-        setProperty( "particleWorldEnabled", 1 );
+        setProperty(kNoTid, "particleWorldEnabled", 1 );
 
         GpuParticleSystemWorld::ParticleRenderable* particleRenderable = dynamic_cast<GpuParticleSystemWorld::ParticleRenderable*>(renderable);
         GpuParticleSystemWorld* particleSystemWorld = particleRenderable->getGpuParticleSystemWorld();
@@ -148,10 +148,10 @@ void HlmsParticle::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre:
         const GpuParticleSystemWorld::AffectorList& affectorList = particleSystemWorld->getRegisteredAffectorList();
         for (size_t i = 0; i < affectorList.size(); ++i) {
             const GpuParticleAffector* affector = affectorList[i];
-            setProperty(affector->getAffectorProperty(), 1 );
+            setProperty(kNoTid, affector->getAffectorProperty(), 1 );
         }
 
-        setProperty( "BucketSize", particleSystemWorld->getBucketSize());
+        setProperty(kNoTid, "BucketSize", particleSystemWorld->getBucketSize());
 
         // Generate piece with order of inserting affector pieces for emitters.
         // Data will be uploaded to gpu in the same order.
@@ -160,10 +160,10 @@ void HlmsParticle::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre:
             Ogre::String affectorEmitterCode;
             mParticleListener.generateEmitterCoreDataAffectorsCode(affectorEmitterCode, affectorList);
             inOutPieces[Ogre::VertexShader][pieceKey] = affectorEmitterCode;
-            setProperty(pieceKey, Ogre::IdString(affectorEmitterCode).mHash);
+            setProperty(kNoTid, pieceKey, Ogre::IdString(affectorEmitterCode).mHash);
 
             inOutPieces[Ogre::PixelShader][pieceKey] = affectorEmitterCode;
-            setProperty(pieceKey, Ogre::IdString(affectorEmitterCode).mHash);
+            setProperty(kNoTid, pieceKey, Ogre::IdString(affectorEmitterCode).mHash);
         }
 
         // Generate piece with order of inserting affector pieces for particles.
@@ -173,10 +173,10 @@ void HlmsParticle::calculateHashForPreCreate(Ogre::Renderable* renderable, Ogre:
             Ogre::String affectorParticleCode;
             mParticleListener.generateParticleDataAffectorsCode(affectorParticleCode, affectorList);
             inOutPieces[Ogre::VertexShader][pieceKey] = affectorParticleCode;
-            setProperty(pieceKey, Ogre::IdString(affectorParticleCode).mHash);
+            setProperty(kNoTid, pieceKey, Ogre::IdString(affectorParticleCode).mHash);
 
             inOutPieces[Ogre::PixelShader][pieceKey] = affectorParticleCode;
-            setProperty(pieceKey, Ogre::IdString(affectorParticleCode).mHash);
+            setProperty(kNoTid, pieceKey, Ogre::IdString(affectorParticleCode).mHash);
         }
     }
 }

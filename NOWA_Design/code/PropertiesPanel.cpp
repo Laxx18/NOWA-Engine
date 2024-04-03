@@ -943,6 +943,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		MyGUI::Button* checkBox = mWidgetClient->createWidget<MyGUI::Button>("CheckBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 		// checkBox->setCaption(Ogre::StringConverter::toString(attribute->getInt()));
 		checkBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		checkBox->setColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		checkBox->setUserData(MyGUI::Any(attribute));
 		// Store also if all values are the same
 		checkBox->setStateCheck(attribute->getBool());
@@ -975,6 +976,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			{
 				edit->setOnlyText("0");
 			}
+			edit->setInvertSelected(false);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
 			edit->setMouseHitThreshold(6, 6, 3, 3);
@@ -983,10 +985,10 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
@@ -1024,14 +1026,15 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			{
 				edit->setEditReadOnly(true);
 			}
+			edit->setInvertSelected(false);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
@@ -1065,14 +1068,15 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
 			edit->setMouseHitThreshold(6, 6, 3, 3);
+			edit->setInvertSelected(false);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
@@ -1105,16 +1109,17 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			{
 				edit->setOnlyText("0");
 			}
+			edit->setInvertSelected(false);
 			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 			edit->setEditReadOnly(attribute->isReadOnly());
 			edit->setMouseHitThreshold(6, 6, 3, 3);
 			edit->setUserData(MyGUI::Any(attribute));
 			edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 			edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-			// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+			edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 			edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 			edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-			// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+			edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 			edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 			edit->setNeedKeyFocus(true);
 			edit->setNeedMouseFocus(true);
@@ -1145,6 +1150,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		{
 			edit->setOnlyText("0 0");
 		}
+		edit->setInvertSelected(false);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
 		edit->setMouseHitThreshold(6, 6, 3, 3);
@@ -1152,10 +1158,10 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
@@ -1183,16 +1189,17 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		{
 			edit->setOnlyText("0 0 0");
 		}
+		edit->setInvertSelected(false);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
 		edit->setMouseHitThreshold(6, 6, 3, 3);
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
@@ -1228,6 +1235,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		{
 			edit->setOnlyText("0 0 0 0");
 		}
+		edit->setInvertSelected(false);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setEditReadOnly(attribute->isReadOnly());
 		edit->setMouseHitThreshold(6, 6, 3, 3);
@@ -1235,10 +1243,10 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 		edit->setNeedKeyFocus(true);
 		edit->setNeedMouseFocus(true);
@@ -1267,7 +1275,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		if (false == attribute->hasUserDataKey(NOWA::GameObject::AttrActionImage()))
 		{
 			MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
-			comboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+			comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
 			comboBox->setMouseHitThreshold(6, 6, 3, 3);
 			if (attribute->getName() == NOWA::GameObject::AttrCategory())
 			{
@@ -1294,17 +1302,18 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				this->itemsText.push_back(keyTextBox);
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+				edit->setInvertSelected(false);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 				edit->setMouseHitThreshold(6, 6, 3, 3);
 				edit->setUserData(MyGUI::Any(attribute));
 				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-				// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+				edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 				edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 				edit->setNeedKeyFocus(true);
 				edit->setNeedMouseFocus(true);
 				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
-				// // // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+				// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 
 				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
 				{
@@ -1396,6 +1405,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 	{
 		// String
 		MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+		edit->setInvertSelected(false);
 		edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		edit->setMouseHitThreshold(6, 6, 3, 3);
 
@@ -1446,10 +1456,10 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		edit->setUserData(MyGUI::Any(attribute));
 		edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 		edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-		// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+		edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 		edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 		edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-		// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+		edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 		edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
 
 		edit->setNeedKeyFocus(true);
@@ -1536,16 +1546,17 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+	edit->setInvertSelected(false);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 	edit->setMouseHitThreshold(6, 6, 3, 3);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-	// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+	edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
 	// Pair the edit to the scrollbar and vice versa
 	slider->setUserData(edit);
@@ -1594,16 +1605,17 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+	edit->setInvertSelected(false);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 	edit->setMouseHitThreshold(6, 6, 3, 3);
 	edit->setOnlyText(Ogre::StringConverter::toString(attribute->getReal()));
 	edit->setUserData(MyGUI::Any(attribute));
 	edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
 	edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
-	// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
-	// edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+	edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
 	// Pair the edit to the scrollbar and vice versa
 	slider->setUserData(edit);
@@ -1695,6 +1707,7 @@ void PropertiesPanelDynamic::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldW
 	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
 	if (nullptr != editBox)
 	{
+		// MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(editBox);
 		Ogre::String name = editBox->getName();
 		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LMENU))
 		{
@@ -1709,14 +1722,13 @@ void PropertiesPanelDynamic::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldW
 				MyGUIHelper::getInstance()->setDataForPairing(editBox, *attribute);
 			}
 		}
-
-		editBox->setTextSelection(0, 0);
 	}
 }
 
 void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
 {
-	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
+	// Does not work correctly
+	/*MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 	if (nullptr != editBox)
 	{
 		Ogre::String adapted = sender->getUserString("Adapted");
@@ -1726,18 +1738,15 @@ void PropertiesPanelDynamic::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget
 			sender->setUserString("Adapted", "false");
 		}
 		editBox->setTextSelection(0, 0);
-	}
-	// MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
-	// MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(editBox);
+	}*/
 }
 
 void PropertiesPanelDynamic::mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus)
 {
 	// When leaving an edit widget it loses the focus, so store the value
-	if (false == bFocus && false== MyGUI::InputManager::getInstancePtr()->isFocusMouse())
+	if (false == bFocus)
 	{
-
-		MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
+		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
 		if (nullptr != editBox)
 		{
 			Ogre::String adapted = sender->getUserString("Adapted");
@@ -1746,7 +1755,6 @@ void PropertiesPanelDynamic::mouseRootChangeFocus(MyGUI::Widget* sender, bool bF
 				this->notifyEditSelectAccept(editBox);
 				sender->setUserString("Adapted", "false");
 			}
-			// editBox->setTextSelection(0, 0);
 		}
 	}
 }
@@ -1778,6 +1786,11 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 
 void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 {
+	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+	if (nullptr != editBox)
+	{
+		// editBox->getSe
+	}
 	sender->setUserString("Adapted", "true");
 	// If user is entering something, do not move camera, if the user entered something like asdf
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
@@ -1785,17 +1798,21 @@ void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 
 void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
 {
-	MyGUI::TextBox* textBox = sender->castType<MyGUI::TextBox>(false);
-	if (nullptr != textBox)
+	if (nullptr != sender->getParent())
 	{
-		// Select whole text
-		textBox->getSubWidgetText()->setTextSelection(0, textBox->getCaption().size());
+		MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
+		if (nullptr != editBox)
+		{
+			editBox->setTextSelection(0, editBox->getCaption().size());
+		}
 	}
 }
 
 void PropertiesPanelDynamic::onMouseClick(MyGUI::Widget* sender, int left, int top, MyGUI::MouseButton id)
 {
 	// this->showDescription(sender);
+	// Resets text selection of other edit boxes if focus to a current one is set.
+	MyGUIHelper::getInstance()->resetTextSelection(sender, this->itemsEdit);
 }
 
 void PropertiesPanelDynamic::showDescription(MyGUI::Widget* sender)
@@ -1908,6 +1925,7 @@ void PropertiesPanelGameObject::initialise()
 	// Add component button to list available components
 	this->listComponentsButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(10, 5, 22, 22), MyGUI::Align::Left | MyGUI::Align::Top, "listComponentsButton");
 	this->listComponentsButton->setCaption("C");
+	this->listComponentsButton->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 	this->listComponentsButton->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyMouseAddComponentClick);
 	this->listComponentsButton->eventMouseSetFocus += MyGUI::newDelegate(static_cast<PropertiesPanelDynamic*>(this), &PropertiesPanelDynamic::setFocus);
 	this->listComponentsButton->setUserString("Description", "Show components");
@@ -1968,56 +1986,58 @@ void PropertiesPanelGameObject::setNewAttributeValue(MyGUI::EditBox* sender, NOW
 
 	switch (attribute->getType())
 	{
-	case NOWA::Variant::VAR_INT:
-	{
-		attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
+		case NOWA::Variant::VAR_INT:
+		{
+			attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
 
-		sender->setOnlyText(attribute->getString());
-		break;
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_UINT:
+		{
+			attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_ULONG:
+		{
+			attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_REAL:
+		{
+			attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_VEC2:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_VEC3:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_VEC4:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
+		case NOWA::Variant::VAR_STRING:
+		{
+			attribute->setValue(sender->getOnlyText());
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
 	}
-	case NOWA::Variant::VAR_UINT:
-	{
-		attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_ULONG:
-	{
-		attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_REAL:
-	{
-		attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_VEC2:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_VEC3:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_VEC4:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_STRING:
-	{
-		attribute->setValue(sender->getOnlyText());
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	}
+
+	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
 void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
@@ -2453,78 +2473,80 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 
 	switch (attribute->getType())
 	{
-	case NOWA::Variant::VAR_INT:
-	{
-		attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_UINT:
-	{
-		attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_ULONG:
-	{
-		attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	case NOWA::Variant::VAR_REAL:
-	{
-		attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
-		// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-		size_t found = attribute->getString().find("e");
-		if (Ogre::String::npos == found)
+		case NOWA::Variant::VAR_INT:
 		{
+			attribute->setValue(Ogre::StringConverter::parseInt(sender->getOnlyText()));
 			sender->setOnlyText(attribute->getString());
+			break;
 		}
-		break;
-	}
-	case NOWA::Variant::VAR_VEC2:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
-		// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-		size_t found = attribute->getString().find("e");
-		if (Ogre::String::npos == found)
+		case NOWA::Variant::VAR_UINT:
 		{
+			attribute->setValue(Ogre::StringConverter::parseUnsignedInt(sender->getOnlyText()));
 			sender->setOnlyText(attribute->getString());
+			break;
 		}
-		break;
-	}
-	case NOWA::Variant::VAR_VEC3:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
-		// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-		size_t found = attribute->getString().find("e");
-		if (Ogre::String::npos == found)
+		case NOWA::Variant::VAR_ULONG:
 		{
+			attribute->setValue(Ogre::StringConverter::parseUnsignedLong(sender->getOnlyText()));
 			sender->setOnlyText(attribute->getString());
+			break;
 		}
-		break;
-	}
-	case NOWA::Variant::VAR_VEC4:
-	{
-		attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
-		// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
-		size_t found = attribute->getString().find("e");
-		if (Ogre::String::npos == found)
+		case NOWA::Variant::VAR_REAL:
 		{
-			sender->setOnlyText(attribute->getString());
+			attribute->setValue(Ogre::StringConverter::parseReal(sender->getOnlyText()));
+			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+			size_t found = attribute->getString().find("e");
+			if (Ogre::String::npos == found)
+			{
+				sender->setOnlyText(attribute->getString());
+			}
+			break;
 		}
-		break;
+		case NOWA::Variant::VAR_VEC2:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector2(sender->getOnlyText()));
+			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+			size_t found = attribute->getString().find("e");
+			if (Ogre::String::npos == found)
+			{
+				sender->setOnlyText(attribute->getString());
+			}
+			break;
+		}
+		case NOWA::Variant::VAR_VEC3:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector3(sender->getOnlyText()));
+			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+			size_t found = attribute->getString().find("e");
+			if (Ogre::String::npos == found)
+			{
+				sender->setOnlyText(attribute->getString());
+			}
+			break;
+		}
+		case NOWA::Variant::VAR_VEC4:
+		{
+			attribute->setValue(Ogre::StringConverter::parseVector4(sender->getOnlyText()));
+			// Only set formatted number, if not an e number, because else it will not be accepted and set to 0
+			size_t found = attribute->getString().find("e");
+			if (Ogre::String::npos == found)
+			{
+				sender->setOnlyText(attribute->getString());
+			}
+			break;
+		}
+		default:
+		{
+			// Remove all hashes, because its an internal code character for MyGUI
+			Ogre::String text = sender->getOnlyText();
+			text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
+			attribute->setValue(text);
+			sender->setOnlyText(attribute->getString());
+			break;
+		}
 	}
-	default:
-	{
-		// Remove all hashes, because its an internal code character for MyGUI
-		Ogre::String text = sender->getOnlyText();
-		text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
-		attribute->setValue(text);
-		sender->setOnlyText(attribute->getString());
-		break;
-	}
-	}
+
+	MyGUIHelper::getInstance()->showAcceptedImage(Ogre::Vector2(sender->getAbsolutePosition().left, sender->getAbsolutePosition().top), Ogre::Vector2(10.0f, 10.0f), 1.0f);
 }
 
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)

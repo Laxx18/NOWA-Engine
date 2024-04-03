@@ -106,6 +106,16 @@ public:
 		this->importantTextColour = importantTextColour;
 	}
 
+	MyGUI::Colour getTextSelectColour(void) const
+	{
+		return this->textSelectColour;
+	}
+
+	void setTextSelectColour(const MyGUI::Colour& textSelectColour)
+	{
+		this->textSelectColour = textSelectColour;
+	}
+
 	void adaptFocus(MyGUI::Widget* sender, MyGUI::KeyCode code, const MyGUI::VectorWidgetPtr& items)
 	{
 		// Accept value
@@ -165,6 +175,25 @@ public:
 		{
 			// Keep focus when typing something
 			MyGUI::InputManager::getInstance().setKeyFocusWidget(sender);
+		}
+	}
+
+	void resetTextSelection(MyGUI::Widget* sender, const MyGUI::VectorWidgetPtr& items)
+	{
+		/*MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
+		MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(sender);*/
+
+		for (size_t i = 0; i < items.size(); i++)
+		{
+			if (items[i] != sender && i < items.size() - 1)
+			{
+				// MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i + 1]);
+				MyGUI::EditBox* otherEditBox = items[i]->castType<MyGUI::EditBox>(false);
+				if (nullptr != otherEditBox)
+				{
+					otherEditBox->setTextSelection(0, 0);
+				}
+			}
 		}
 	}
 
@@ -268,16 +297,48 @@ public:
 		moving->setPosition(boundedpoint);
 	}
 
+	void showAcceptedImage(const Ogre::Vector2& position, const Ogre::Vector2& size, Ogre::Real duration)
+	{
+		acceptedImageBox->setPosition(static_cast<int>(position.x), static_cast<int>(position.y));
+		acceptedImageBox->setSize(static_cast<int>(size.x), static_cast<int>(size.y));
+		acceptedImageBox->setVisible(true);
+
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(duration));
+		// Shows for a specific amount of time
+		auto ptrFunction = [this]()
+			{
+				acceptedImageBox->setVisible(false);
+			};
+		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+		delayProcess->attachChild(closureProcess);
+		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+	}
+
+	void setOldFocusWidget(MyGUI::Widget* oldFocusWidget)
+	{
+		this->oldFocusWidget = oldFocusWidget;
+	}
+
+	MyGUI::Widget* getOldFocusWidget(void) const
+	{
+		return this->oldFocusWidget;
+	}
+
 private:
 	MyGUIHelper()
 		: editBox(nullptr),
 		attribute(nullptr),
 		defaultTextColour(MyGUI::Colour(0.96f, 0.96f, 0.96f)),
 		importantTextColour(MyGUI::Colour(1.0f, 0.6f, 0.4f)),
+		textSelectColour(MyGUI::Colour(0.9411764705882353f, 0.9411764705882353f, 0.9411764705882353f)),
 		toolTip(nullptr),
-		textDescription(nullptr)
+		textDescription(nullptr),
+		acceptedImageBox(nullptr),
+		oldFocusWidget(nullptr)
 	{
-
+		acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
+		acceptedImageBox->setImageTexture("circleGlow.png");
+		acceptedImageBox->setVisible(false);
 	}
 
 private:
@@ -286,8 +347,11 @@ private:
 	std::unordered_map<unsigned long, int> scrollPositions;
 	MyGUI::Colour defaultTextColour;
 	MyGUI::Colour importantTextColour;
+	MyGUI::Colour textSelectColour;
 	MyGUI::Widget* toolTip;
 	MyGUI::EditBox* textDescription;
+	MyGUI::ImageBox* acceptedImageBox;
+	MyGUI::Widget* oldFocusWidget;
 };
 
 #endif

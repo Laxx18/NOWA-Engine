@@ -680,9 +680,9 @@ namespace Ogre{
 
         HlmsManager *hlmsManager = Root::getSingleton().getHlmsManager();
         Hlms *hlms = 0;
-        HlmsParamVec paramVec;
-
-        paramVec.reserve( obj->children.size() );
+        // We need a map to deal with materials that define the same setting multiple times.
+        // The last defined version must win.
+        map<IdString, String>::type paramMap;
 
         const IdString idType( type );
         for( size_t i=0; i<HLMS_MAX && !hlms; ++i )
@@ -1228,7 +1228,7 @@ namespace Ogre{
                             ++itor;
                         }
                     }
-                    paramVec.emplace_back( prop->name, value );
+                    paramMap[prop->name] = value;
                     }
                 }
             }
@@ -1239,7 +1239,10 @@ namespace Ogre{
             }
         }
 
-        std::sort( paramVec.begin(), paramVec.end(), OrderParamVecByKey );
+        HlmsParamVec paramVec;
+        paramVec.reserve( paramMap.size() );
+        paramVec.insert( paramVec.begin(), paramMap.begin(), paramMap.end() );
+
         blendblock.calculateSeparateBlendMode();
         hlms->createDatablock( obj->name, obj->name, macroblock, blendblock, paramVec, true,
                                obj->file, compiler->getResourceGroup() );
@@ -2486,7 +2489,18 @@ namespace Ogre{
                                 ++i2;
                             }
 
-                            mPass->setFog(val, mode, clr, dens, start, end);
+#if OGRE_COMPILER == OGRE_COMPILER_MSVC
+#    pragma warning( push, 0 )
+#else
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+                            mPass->setFog( val, mode, clr, dens, start, end );
+#if OGRE_COMPILER == OGRE_COMPILER_MSVC
+#    pragma warning( pop )
+#else
+#    pragma GCC diagnostic pop
+#endif
                         }
                         else
                             compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
@@ -11126,7 +11140,26 @@ namespace Ogre{
                         if( str == "off" )
                             passWarmUp->mShadowNode = IdString();
                         else
+                        {
                             passWarmUp->mShadowNode = IdString( str );
+                            passWarmUp->mShadowNodeRecalculation = SHADOW_NODE_FIRST_ONLY;
+
+                            if( prop->values.size() > 1 && getString( *it1, &str ) )
+                            {
+                                if( str == "reuse" )
+                                    passWarmUp->mShadowNodeRecalculation = SHADOW_NODE_REUSE;
+                                else if( str == "recalculate" )
+                                    passWarmUp->mShadowNodeRecalculation = SHADOW_NODE_RECALCULATE;
+                                else if( str == "first" )
+                                    passWarmUp->mShadowNodeRecalculation = SHADOW_NODE_FIRST_ONLY;
+                                else
+                                {
+                                    compiler->addError(
+                                        ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
+                                        "Valid options are reuse, recalculate and first" );
+                                }
+                            }
+                        }
                     }
                     else
                     {
@@ -11134,6 +11167,36 @@ namespace Ogre{
                             ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
                             "shadow property can be either 'shadow off' or 'shadow myNodeName "
                             "[first|reuse|recalculate]'" );
+                    }
+                    break;
+                }
+                case ID_MODE:
+                {
+                    if( prop->values.empty() )
+                    {
+                        compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line );
+                        return;
+                    }
+
+                    AbstractNodeList::const_iterator it0 = prop->values.begin();
+                    String str;
+                    if( getString( *it0, &str ) )
+                    {
+                        if( str == "collect" )
+                            passWarmUp->mMode = CompositorPassWarmUpDef::Collect;
+                        else if( str == "trigger" )
+                            passWarmUp->mMode = CompositorPassWarmUpDef::Trigger;
+                        else if( str == "collect_and_trigger" )
+                            passWarmUp->mMode = CompositorPassWarmUpDef::CollectAndTrigger;
+                        else
+                        {
+                            compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file,
+                                                prop->line );
+                        }
+                    }
+                    else
+                    {
+                        compiler->addError( ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line );
                     }
                     break;
                 }

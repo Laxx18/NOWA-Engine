@@ -67,7 +67,7 @@ namespace Ogre
         {
             RenderableArray m_renderables;
             size_t m_currentCell;
-            Camera *m_camera;
+            Camera const* m_camera;
         };
 
         std::vector<float>          m_heightMap;
@@ -123,8 +123,8 @@ namespace Ogre
         SavedState m_savedState;
 
         //Ogre stuff
-        CompositorManager2      *m_compositorManager;
-        Camera                  *m_camera;
+        CompositorManager2*     m_compositorManager;
+        Camera const*           m_camera;
         std::vector<float>      m_brushData;
         uint8                   m_brushSize;
         uint8                   m_blendLayer;
@@ -249,8 +249,8 @@ namespace Ogre
          /// Swaps current state with a saved one. Useful for rendering shadow maps
         void _swapSavedState( void );
 
-        Camera* getCamera() const                       { return m_camera; }
-        void setCamera( Camera *camera )                { m_camera = camera; }
+        const Camera* getCamera() const                       { return m_camera; }
+        void setCamera(const Camera *camera )                { m_camera = camera; }
 
         bool isZUp( void ) const { return m_zUp; }
 

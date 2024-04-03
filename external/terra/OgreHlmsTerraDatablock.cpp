@@ -52,7 +52,7 @@ namespace Ogre
 {
     const uint32 HlmsTerraDatablock::MaterialSizeInGpu = 4 * 10 * 4;
     const uint32 HlmsTerraDatablock::MaterialSizeInGpuAligned =
-        alignToNextMultiple<uint32>( HlmsTerraDatablock::MaterialSizeInGpu, 4 * 4 );
+        alignToNextMultiple<uint32>(HlmsTerraDatablock::MaterialSizeInGpu, 4 * 4);
 
     //-----------------------------------------------------------------------------------
     HlmsTerraDatablock::HlmsTerraDatablock(IdString name, HlmsTerra* creator,
@@ -86,86 +86,86 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     HlmsTerraDatablock::~HlmsTerraDatablock()
     {
-        if( mAssignedPool )
-            static_cast<HlmsTerra*>(mCreator)->releaseSlot( this );
+        if (mAssignedPool)
+            static_cast<HlmsTerra*>(mCreator)->releaseSlot(this);
     }
     //-----------------------------------------------------------------------------------
     void HlmsTerraDatablock::calculateHash()
     {
         IdString hash;
 
-        if( mTexturesDescSet )
+        if (mTexturesDescSet)
         {
             FastArray<const TextureGpu*>::const_iterator itor = mTexturesDescSet->mTextures.begin();
-            FastArray<const TextureGpu*>::const_iterator end  = mTexturesDescSet->mTextures.end();
-            while( itor != end )
+            FastArray<const TextureGpu*>::const_iterator end = mTexturesDescSet->mTextures.end();
+            while (itor != end)
             {
                 hash += (*itor)->getName();
                 ++itor;
             }
         }
-        if( mSamplersDescSet )
+        if (mSamplersDescSet)
         {
-            FastArray<const HlmsSamplerblock *>::const_iterator itor =
+            FastArray<const HlmsSamplerblock*>::const_iterator itor =
                 mSamplersDescSet->mSamplers.begin();
             FastArray<const HlmsSamplerblock*>::const_iterator end = mSamplersDescSet->mSamplers.end();
-            while( itor != end )
+            while (itor != end)
             {
-                hash += IdString( (*itor)->mId );
+                hash += IdString((*itor)->mId);
                 ++itor;
             }
         }
 
-        if( static_cast<HlmsTerra *>( mCreator )->getOptimizationStrategy() ==
-            HlmsTerra::LowerGpuOverhead )
+        if (static_cast<HlmsTerra*>(mCreator)->getOptimizationStrategy() ==
+            HlmsTerra::LowerGpuOverhead)
         {
-            const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex( this );
-            const uint32 finalHash = ( hash.getU32Value() & 0xFFFFFE00 ) | ( poolIdx & 0x000001FF );
+            const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex(this);
+            const uint32 finalHash = (hash.getU32Value() & 0xFFFFFE00) | (poolIdx & 0x000001FF);
             mTextureHash = finalHash;
         }
         else
         {
-            const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex( this );
-            const uint32 finalHash = ( hash.getU32Value() & 0xFFFFFFF0 ) | ( poolIdx & 0x0000000F );
+            const size_t poolIdx = static_cast<HlmsTerra*>(mCreator)->getPoolIndex(this);
+            const uint32 finalHash = (hash.getU32Value() & 0xFFFFFFF0) | (poolIdx & 0x0000000F);
             mTextureHash = finalHash;
         }
     }
     //-----------------------------------------------------------------------------------
     void HlmsTerraDatablock::scheduleConstBufferUpdate()
     {
-        static_cast<HlmsTerra*>(mCreator)->scheduleForUpdate( this );
+        static_cast<HlmsTerra*>(mCreator)->scheduleForUpdate(this);
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::uploadToConstBuffer( char *dstPtr, uint8 dirtyFlags )
+    void HlmsTerraDatablock::uploadToConstBuffer(char* dstPtr, uint8 dirtyFlags)
     {
-        if( dirtyFlags & (ConstBufferPool::DirtyTextures|ConstBufferPool::DirtySamplers) )
+        if (dirtyFlags & (ConstBufferPool::DirtyTextures | ConstBufferPool::DirtySamplers))
         {
-            //Must be called first so mTexIndices[i] gets updated before uploading to GPU.
-            updateDescriptorSets( (dirtyFlags & ConstBufferPool::DirtyTextures) != 0,
-                                  (dirtyFlags & ConstBufferPool::DirtySamplers) != 0 );
+            // Must be called first so mTexIndices[i] gets updated before uploading to GPU.
+            updateDescriptorSets((dirtyFlags & ConstBufferPool::DirtyTextures) != 0,
+                                 (dirtyFlags & ConstBufferPool::DirtySamplers) != 0);
         }
 
         uint16 texIndices[OGRE_NumTexIndices];
-        for( size_t i=0; i<OGRE_NumTexIndices; ++i )
+        for (size_t i = 0; i < OGRE_NumTexIndices; ++i)
             texIndices[i] = mTexIndices[i] & ~ManualTexIndexBit;
 
-        const size_t numOffsetScale = sizeof( mDetailsOffsetScale ) / sizeof( mDetailsOffsetScale[0] );
+        const size_t numOffsetScale = sizeof(mDetailsOffsetScale) / sizeof(mDetailsOffsetScale[0]);
         float4 detailsOffsetScale[numOffsetScale];
-        for( size_t i = 0u; i < numOffsetScale; ++i )
+        for (size_t i = 0u; i < numOffsetScale; ++i)
             detailsOffsetScale[i] = mDetailsOffsetScale[i];
 
-        memcpy( dstPtr, &mkDr,
-                MaterialSizeInGpu - numOffsetScale * sizeof( float4 ) - sizeof( mTexIndices ) );
-        dstPtr += MaterialSizeInGpu - numOffsetScale * sizeof( float4 ) - sizeof( mTexIndices );
+        memcpy(dstPtr, &mkDr,
+               MaterialSizeInGpu - numOffsetScale * sizeof(float4) - sizeof(mTexIndices));
+        dstPtr += MaterialSizeInGpu - numOffsetScale * sizeof(float4) - sizeof(mTexIndices);
 
-        memcpy( dstPtr, &detailsOffsetScale, numOffsetScale * sizeof( float4 ) );
-        dstPtr += numOffsetScale * sizeof( float4 );
+        memcpy(dstPtr, &detailsOffsetScale, numOffsetScale * sizeof(float4));
+        dstPtr += numOffsetScale * sizeof(float4);
 
-        memcpy( dstPtr, texIndices, sizeof( texIndices ) );
-        dstPtr += sizeof( texIndices );
+        memcpy(dstPtr, texIndices, sizeof(texIndices));
+        dstPtr += sizeof(texIndices);
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDiffuse( const Vector3 &diffuseColour )
+    void HlmsTerraDatablock::setDiffuse(const Vector3& diffuseColour)
     {
         const float invPI = 0.318309886f;
         mkDr = diffuseColour.x * invPI;
@@ -176,46 +176,46 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     Vector3 HlmsTerraDatablock::getDiffuse() const
     {
-        return Vector3( mkDr, mkDg, mkDb ) * Ogre::Math::PI;
+        return Vector3(mkDr, mkDg, mkDb) * Ogre::Math::PI;
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setRoughness( uint8 detailMapIdx, float roughness )
+    void HlmsTerraDatablock::setRoughness(uint8 detailMapIdx, float roughness)
     {
         mRoughness[detailMapIdx] = roughness;
-        if( mRoughness[detailMapIdx] <= 1e-6f )
+        if (mRoughness[detailMapIdx] <= 1e-6f)
         {
-            LogManager::getSingleton().logMessage( "WARNING: TERRA Datablock '" +
-                                                   mName.getFriendlyText() +
-                                                   "' Very low roughness values can "
-                                                  "cause NaNs in the pixel shader!" );
+            LogManager::getSingleton().logMessage("WARNING: TERRA Datablock '" +
+                                                  mName.getFriendlyText() +
+                                                  "' Very low roughness values can "
+                                                  "cause NaNs in the pixel shader!");
         }
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    float HlmsTerraDatablock::getRoughness( uint8 detailMapIdx ) const
+    float HlmsTerraDatablock::getRoughness(uint8 detailMapIdx) const
     {
         return mRoughness[detailMapIdx];
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setMetalness( uint8 detailMapIdx, float metalness )
+    void HlmsTerraDatablock::setMetalness(uint8 detailMapIdx, float metalness)
     {
         mMetalness[detailMapIdx] = metalness;
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    float HlmsTerraDatablock::getMetalness( uint8 detailMapIdx ) const
+    float HlmsTerraDatablock::getMetalness(uint8 detailMapIdx) const
     {
         return mMetalness[detailMapIdx];
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDetailMapOffsetScale( uint8 detailMap, const Vector4 &offsetScale )
+    void HlmsTerraDatablock::setDetailMapOffsetScale(uint8 detailMap, const Vector4& offsetScale)
     {
-        assert( detailMap < 4u );
-        bool wasDisabled = mDetailsOffsetScale[detailMap] == Vector4( 0, 0, 1, 1 );
+        assert(detailMap < 4u);
+        bool wasDisabled = mDetailsOffsetScale[detailMap] == Vector4(0, 0, 1, 1);
 
         mDetailsOffsetScale[detailMap] = offsetScale;
 
-        if( wasDisabled != (mDetailsOffsetScale[detailMap] == Vector4( 0, 0, 1, 1 )) )
+        if (wasDisabled != (mDetailsOffsetScale[detailMap] == Vector4(0, 0, 1, 1)))
         {
             flushRenderables();
         }
@@ -223,30 +223,30 @@ namespace Ogre
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    const Vector4& HlmsTerraDatablock::getDetailMapOffsetScale( uint8 detailMap ) const
+    const Vector4& HlmsTerraDatablock::getDetailMapOffsetScale(uint8 detailMap) const
     {
-        assert( detailMap < 8 );
+        assert(detailMap < 8);
         return mDetailsOffsetScale[detailMap];
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setAlphaTestThreshold( float threshold )
+    void HlmsTerraDatablock::setAlphaTestThreshold(float threshold)
     {
-        OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Alpha testing not supported on Terra Hlms",
-                     "HlmsTerraDatablock::setAlphaTestThreshold" );
+        OGRE_EXCEPT(Exception::ERR_NOT_IMPLEMENTED, "Alpha testing not supported on Terra Hlms",
+                    "HlmsTerraDatablock::setAlphaTestThreshold");
 
-        HlmsDatablock::setAlphaTestThreshold( threshold );
+        HlmsDatablock::setAlphaTestThreshold(threshold);
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setShadowConstantBias( float shadowConstantBias )
+    void HlmsTerraDatablock::setShadowConstantBias(float shadowConstantBias)
     {
         mShadowConstantBiasGpu = mShadowConstantBias = shadowConstantBias;
         scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setBrdf( TerraBrdf::TerraBrdf brdf )
+    void HlmsTerraDatablock::setBrdf(TerraBrdf::TerraBrdf brdf)
     {
-        if( mBrdf != brdf )
+        if (mBrdf != brdf)
         {
             mBrdf = brdf;
             flushRenderables();
@@ -255,9 +255,9 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     uint32 HlmsTerraDatablock::getBrdf() const { return mBrdf; }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDetailTriplanarDiffuseEnabled( bool enabled )
+    void HlmsTerraDatablock::setDetailTriplanarDiffuseEnabled(bool enabled)
     {
-        if( mDetailTriplanarDiffuseEnabled != enabled )
+        if (mDetailTriplanarDiffuseEnabled != enabled)
         {
             mDetailTriplanarDiffuseEnabled = enabled;
 
@@ -265,19 +265,19 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDetailTriplanarNormalEnabled( bool enabled )
+    void HlmsTerraDatablock::setDetailTriplanarNormalEnabled(bool enabled)
     {
-        if( mDetailTriplanarNormalEnabled != enabled )
-    {
+        if (mDetailTriplanarNormalEnabled != enabled)
+        {
             mDetailTriplanarNormalEnabled = enabled;
 
             flushRenderables();
         }
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDetailTriplanarRoughnessEnabled( bool enabled )
+    void HlmsTerraDatablock::setDetailTriplanarRoughnessEnabled(bool enabled)
     {
-        if( mDetailTriplanarRoughnessEnabled != enabled )
+        if (mDetailTriplanarRoughnessEnabled != enabled)
         {
             mDetailTriplanarRoughnessEnabled = enabled;
 
@@ -285,9 +285,9 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerraDatablock::setDetailTriplanarMetalnessEnabled( bool enabled )
+    void HlmsTerraDatablock::setDetailTriplanarMetalnessEnabled(bool enabled)
     {
-        if( mDetailTriplanarMetalnessEnabled != enabled )
+        if (mDetailTriplanarMetalnessEnabled != enabled)
         {
             mDetailTriplanarMetalnessEnabled = enabled;
 
@@ -295,12 +295,12 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    bool HlmsTerraDatablock::suggestUsingSRGB( TerraTextureTypes type ) const
+    bool HlmsTerraDatablock::suggestUsingSRGB(TerraTextureTypes type) const
     {
-        if( type == TERRA_DETAIL_WEIGHT ||
+        if (type == TERRA_DETAIL_WEIGHT ||
             (type >= TERRA_DETAIL_METALNESS0 && type <= TERRA_DETAIL_METALNESS3) ||
             (type >= TERRA_DETAIL_ROUGHNESS0 && type <= TERRA_DETAIL_ROUGHNESS3) ||
-            (type >= TERRA_DETAIL0_NM && type <= TERRA_DETAIL3_NM) )
+            (type >= TERRA_DETAIL0_NM && type <= TERRA_DETAIL3_NM))
         {
             return false;
         }
@@ -308,9 +308,9 @@ namespace Ogre
         return true;
     }
     //-----------------------------------------------------------------------------------
-    uint32 HlmsTerraDatablock::suggestFiltersForType( TerraTextureTypes type ) const
+    uint32 HlmsTerraDatablock::suggestFiltersForType(TerraTextureTypes type) const
     {
-        switch( type )
+        switch (type)
         {
         case TERRA_DETAIL0_NM:
         case TERRA_DETAIL1_NM:

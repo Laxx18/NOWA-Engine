@@ -2146,6 +2146,7 @@ namespace NOWA
 			}
 
 			Ogre::Real velocityLength = this->agent->getVelocity().length();
+			// Ogre::Real velocityLength = (this->agent->getPosition() - this->oldAgentPositionForStuck).length();
 			if (true == Ogre::Math::RealEqual(velocityLength, 0.0f))
 			{
 
@@ -2153,6 +2154,10 @@ namespace NOWA
 			else
 			{
 				this->motionDistanceChange = velocityLength / this->agent->getSpeed();
+				if (this->motionDistanceChange < 0.1f)
+				{
+					this->motionDistanceChange = 0.1f;
+				}
 
 				this->motionDistanceChange = NOWA::MathHelper::getInstance()->lowPassFilter(this->motionDistanceChange, this->lastMotionDistanceChange, 0.5f);
 			}
@@ -2165,12 +2170,12 @@ namespace NOWA
 			// Apply animation speed
 			if (nullptr != this->animationBlender)
 			{
-				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange /*/ this->animationBlender->getSource()->getLength()*/);
+				this->animationBlender->addTime(dt * this->oldAnimationSpeed * this->motionDistanceChange / this->animationBlender->getLength());
 			}
 
 			this->lastMotionDistanceChange = this->motionDistanceChange;
-
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] resultVelocity: " + Ogre::StringConverter::toString(resultVelocity));
+			
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] velocityLength: " + Ogre::StringConverter::toString(velocityLength) + " lastMotionDistanceChange: " + Ogre::StringConverter::toString(lastMotionDistanceChange));
 
 			this->detectAgentMotionChange(dt);
 

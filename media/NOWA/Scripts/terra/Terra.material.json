@@ -46,7 +46,7 @@
 			"detail0" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",
@@ -57,7 +57,7 @@
 			"detail1" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "Water02.jpg",
@@ -68,7 +68,7 @@
 			"detail2" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",
@@ -79,7 +79,7 @@
 			"detail3" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",
@@ -133,7 +133,7 @@
 			"detail0" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",
@@ -144,7 +144,7 @@
 			"detail1" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "Water02.jpg",
@@ -155,7 +155,7 @@
 			"detail2" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",
@@ -166,7 +166,7 @@
 			"detail3" :
             {
                 "offset" : [0, 0],
-                "scale" : [1, 1],
+                "scale": [128, 128],
 				"roughness" : 1,
 				"metalness" : 1,
                 "diffuse_map" : "BeachStones.jpg",

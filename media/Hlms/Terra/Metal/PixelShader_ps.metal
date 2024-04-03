@@ -72,7 +72,6 @@ fragment @insertpiece( output_type ) main_metal
 		@insertpiece( TerraMaterialDecl )
 		@insertpiece( PccManualProbeDecl )
 	@end
-	@insertpiece( AtmosphereNprSkyDecl )
 	@insertpiece( custom_ps_uniformDeclaration )
 	// END UNIFORM DECLARATION
 

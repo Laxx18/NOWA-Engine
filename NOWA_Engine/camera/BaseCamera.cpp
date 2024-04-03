@@ -181,9 +181,12 @@ namespace NOWA
 		// Same as camera->moveRelative
 		// Ogre::Vector3 trans = this->camera->getParentSceneNode()->getOrientation() * moveValue;
 		// this->camera->getParentSceneNode()->translate(trans);
-		this->camera->moveRelative(moveValue * dt);
-
-		this->lastMoveValue = moveValue;
+		if (Ogre::Vector3::ZERO != moveValue)
+		{
+			this->camera->moveRelative(moveValue * dt);
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BaseCamera]: move dt " + Ogre::StringConverter::toString(dt) + " move value: " + Ogre::StringConverter::toString(moveValue * dt));
+			this->lastMoveValue = moveValue;
+		}
 	}
 
 	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
@@ -256,11 +259,14 @@ namespace NOWA
 		this->camera->getParentSceneNode()->pitch(Ogre::Degree(rotationValue.y));
 		this->camera->getParentSceneNode()->roll(Ogre::Radian(0.0f));*/
 
-		this->camera->yaw(Ogre::Degree(rotationValue.x * dt));
-		this->camera->pitch(Ogre::Degree(rotationValue.y * dt));
-		this->camera->roll(Ogre::Radian(0.0f));
+		if (Ogre::Vector2::ZERO != rotationValue)
+		{
+			this->camera->yaw(Ogre::Degree(rotationValue.x * dt));
+			this->camera->pitch(Ogre::Degree(rotationValue.y * dt));
+			this->camera->roll(Ogre::Radian(0.0f));
 
-		this->lastValue = rotationValue;
+			this->lastValue = rotationValue;
+		}
 	}
 
 	Ogre::Vector3 BaseCamera::getPosition(void)
