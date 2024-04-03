@@ -4,6 +4,7 @@
 #include "LightDirectionalComponent.h"
 #include "WorkspaceComponents.h"
 #include "main/AppStateManager.h"
+#include "main/ProcessManager.h"
 
 namespace NOWA
 {
@@ -155,7 +156,21 @@ namespace NOWA
 
 		// Apply loaded effect
 		this->setEffectName(this->effectName->getListSelectedValue());
+
+		this->postApplySunPower();
 		
+		return true;
+	}
+
+	bool HdrEffectComponent::connect(void)
+	{
+		this->postApplySunPower();
+		return true;
+	}
+
+	bool HdrEffectComponent::disconnect(void)
+	{
+		this->postApplySunPower();
 		return true;
 	}
 
@@ -319,6 +334,25 @@ namespace NOWA
 		this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.03375f, 0.05625f, 0.07875f), Ogre::ColourValue(0.04388f, 0.03291f, 0.02194f, 0.07312f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 	}
 
+	void HdrEffectComponent::postApplySunPower(void)
+	{
+		// Strange thing fix:
+		// If Loading hdr effect, scene is dark, even if the powerscale is set properly.
+		// If setting it afterwards some frames, it does work^^
+		if (nullptr != this->lightDirectionalComponent)
+		{
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+			// Shows for a specific amount of time
+			auto ptrFunction = [this]()
+				{
+					this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+				};
+			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+			delayProcess->attachChild(closureProcess);
+			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+		}
+	}
+
 	void HdrEffectComponent::applyHdrSkyColor(const Ogre::ColourValue& color, Ogre::Real multiplier)
 	{
 		if (nullptr == this->workspaceBaseComponent || false == this->workspaceBaseComponent->getUseHdr() || nullptr == this->workspaceBaseComponent->getWorkspace())
@@ -399,7 +433,6 @@ namespace NOWA
 
 		Ogre::ColourValue oldUpperHemisphere;
 		Ogre::ColourValue oldLowerHemisphere;
-		Ogre::Real oldPowerScale;
 
 		if ("Bright, sunny day" == effectName)
 		{
@@ -516,15 +549,15 @@ namespace NOWA
 		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
 
-		if (nullptr != this->lightDirectionalComponent)
-		{
-			this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
-		}
-
 		Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
 		Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
 
 		this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+
+		if (nullptr != this->lightDirectionalComponent)
+		{
+			this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+		}
 	}
 
 	Ogre::String HdrEffectComponent::getEffectName(void) const

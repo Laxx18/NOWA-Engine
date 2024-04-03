@@ -18,7 +18,7 @@ namespace NOWA
 		diffuseColor(new Variant(LightDirectionalComponent::AttrDiffuseColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		specularColor(new Variant(LightDirectionalComponent::AttrSpecularColor(), Ogre::Vector3::UNIT_SCALE, this->attributes)),
 		powerScale(new Variant(LightDirectionalComponent::AttrPowerScale(), 3.14159f, this->attributes)),
-		direction(new Variant(LightDirectionalComponent::AttrDirection(), Ogre::Vector3::ZERO, this->attributes)),
+		direction(new Variant(LightDirectionalComponent::AttrDirection(), Ogre::Vector3(-1.0f, -1.0f, -1.0f), this->attributes)),
 		affectParentNode(new Variant(LightDirectionalComponent::AttrAffectParentNode(), true, this->attributes)),
 		attenuationRadius(new Variant(LightDirectionalComponent::AttrAttenuationRadius(), 10.0f, this->attributes)),
 		attenuationLumThreshold(new Variant(LightDirectionalComponent::AttrAttenuationLumThreshold(), 0.00192f, this->attributes)),
@@ -201,8 +201,8 @@ namespace NOWA
 					item->setCastShadows(false);
 				}
 			}
-			// this->light->setDirection(this->direction->getVector3());
-			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-40.0f, 29.0f, 29.0f)));
+			this->light->setDirection(this->direction->getVector3());
+			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-90.0f, -90.0f, -90.0f)));
 		}
 	}
 
@@ -224,7 +224,7 @@ namespace NOWA
 		}
 		else if (LightDirectionalComponent::AttrDirection() == attribute->getName())
 		{
-			this->setDirection(attribute->getVector3());
+			// this->setDirection(attribute->getVector3());
 		}
 		else if (LightDirectionalComponent::AttrAffectParentNode() == attribute->getName())
 		{
@@ -384,7 +384,7 @@ namespace NOWA
 		this->direction->setValue(direction);
 		if (nullptr != this->light)
 		{
-			// this->light->setDirection(this->direction->getVector3());
+			this->light->setDirection(this->direction->getVector3());
 			// Actualize the ambient light, when the direction changed
 			this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
 				this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);

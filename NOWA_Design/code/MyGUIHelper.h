@@ -123,6 +123,7 @@ public:
 		{
 			MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
 			MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(sender);
+			sender->eventRootMouseChangeFocus(sender, false);
 		}
 
 		// Propagate via tab to next widget
@@ -170,11 +171,6 @@ public:
 					}
 				}
 			}
-		}
-		else
-		{
-			// Keep focus when typing something
-			MyGUI::InputManager::getInstance().setKeyFocusWidget(sender);
 		}
 	}
 
@@ -314,16 +310,6 @@ public:
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
-	void setOldFocusWidget(MyGUI::Widget* oldFocusWidget)
-	{
-		this->oldFocusWidget = oldFocusWidget;
-	}
-
-	MyGUI::Widget* getOldFocusWidget(void) const
-	{
-		return this->oldFocusWidget;
-	}
-
 private:
 	MyGUIHelper()
 		: editBox(nullptr),
@@ -333,8 +319,7 @@ private:
 		textSelectColour(MyGUI::Colour(0.9411764705882353f, 0.9411764705882353f, 0.9411764705882353f)),
 		toolTip(nullptr),
 		textDescription(nullptr),
-		acceptedImageBox(nullptr),
-		oldFocusWidget(nullptr)
+		acceptedImageBox(nullptr)
 	{
 		acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
 		acceptedImageBox->setImageTexture("circleGlow.png");
@@ -351,7 +336,6 @@ private:
 	MyGUI::Widget* toolTip;
 	MyGUI::EditBox* textDescription;
 	MyGUI::ImageBox* acceptedImageBox;
-	MyGUI::Widget* oldFocusWidget;
 };
 
 #endif

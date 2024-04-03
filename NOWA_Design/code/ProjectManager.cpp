@@ -89,9 +89,8 @@ Ogre::Light* ProjectManager::createSunLight(void)
 		NOWA::LightDirectionalCompPtr lightComponentPtr = boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(
 			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
 
-		Ogre::Vector3 lightdir(0.0f, -0.882948f, -0.469471f);
-		lightdir.normalise();
-		lightComponentPtr->setDirection(lightdir);
+		lightComponentPtr->setPowerScale(Ogre::Math::PI);
+		lightComponentPtr->setDirection(Ogre::Vector3(-1, -1, -1).normalisedCopy());
 		lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
 		sunLight = lightComponentPtr->getOgreLight();
 		sunLight->setName("SunLight");

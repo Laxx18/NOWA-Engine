@@ -1707,7 +1707,6 @@ void PropertiesPanelDynamic::setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldW
 	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
 	if (nullptr != editBox)
 	{
-		// MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(editBox);
 		Ogre::String name = editBox->getName();
 		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LMENU))
 		{
@@ -1781,19 +1780,28 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 		}
 	}
 #endif
-	MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
+	
+	if (GetAsyncKeyState(VK_LCONTROL) && code == MyGUI::KeyCode::V)
+	{
+		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+		if (nullptr != editBox)
+		{
+			this->notifyEditSelectAccept(editBox);
+			MyGUIHelper::getInstance()->adaptFocus(sender, MyGUI::KeyCode::Return, this->itemsEdit);
+		}
+	}
+	else
+	{
+		MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
+	}
 }
 
 void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 {
-	MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
-	if (nullptr != editBox)
-	{
-		// editBox->getSe
-	}
 	sender->setUserString("Adapted", "true");
 	// If user is entering something, do not move camera, if the user entered something like asdf
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 }
 
 void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
@@ -1898,6 +1906,11 @@ bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, cons
 	this->openSaveFileDialog->setFileName("");
 	this->openSaveFileDialog->doModal();
 	MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+	MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+	
+	// If user is in dialog prevent camera movement (asdf)
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 
 	return true;
 }
@@ -2044,6 +2057,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
 	// Let the camera move again
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 
 	// Send the text box change to the game object and internally actualize the data
 	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
@@ -2276,6 +2290,7 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 			this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
 
 			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 
 			this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
 		}
@@ -2553,6 +2568,7 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
 	// Let the camera move again
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 	// Send the text box change to the game object and internally actualize the data
 	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 	NOWA::Variant* variantCopy = (*attribute)->clone();
@@ -2849,6 +2865,7 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 
 			this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
 			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 			// this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyEndDialog);
 
 			this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
@@ -3115,6 +3132,7 @@ void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool resul
 		if (this->openSaveFileDialog->getMode() == "FileOpen")
 		{
 			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 			NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
 			Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
 			(*copiedAttribute)->setValue(tempFileName);
@@ -3148,5 +3166,9 @@ void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool resul
 	{
 		this->openSaveFileDialog->endModal();
 		MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
+		MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget();
+		// Lets the camera move again
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 	}
 }

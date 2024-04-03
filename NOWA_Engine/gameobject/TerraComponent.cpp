@@ -191,7 +191,7 @@ namespace NOWA
 			//Force update the shadow map every frame to avoid the feeling we're "cheating" the
 			//user in this sample with higher framerates than what he may encounter in many of
 			//his possible uses.
-			const float lightEpsilon = 0.0f;
+			const float lightEpsilon = 1.0f;
 			if (nullptr != this->sunLight)
 				this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
 			else
@@ -321,7 +321,7 @@ namespace NOWA
 			if (nullptr != this->terra)
 			{
 				// Note: Default terra datablock must first always be used from json. On that base the data block may be adapted in datablock terra component.
-				Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraExampleMaterial");
+				Ogre::HlmsDatablock* datablock = WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial");
 				if (nullptr != datablock)
 				{
 					//        Ogre::HlmsDatablock *datablock = hlmsManager->getHlms( Ogre::HLMS_USER3 )->getDefaultDatablock();
@@ -333,8 +333,8 @@ namespace NOWA
 				}
 				else
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName());
-					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[TerraComponent] Error cannot create terra because there is no data block 'TerraExampleMaterial' for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Error cannot create terra because there is no data block 'TerraDefaultMaterial' for game object: " + this->gameObjectPtr->getName());
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[TerraComponent] Error cannot create terra because there is no data block 'TerraDefaultMaterial' for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
 				}
 			}
 

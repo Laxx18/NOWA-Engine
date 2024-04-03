@@ -80,6 +80,16 @@ namespace NOWA
 		virtual bool postInit(void) override;
 
 		/**
+		 * @see		GameObjectComponent::connect
+		 */
+		virtual bool connect(void) override;
+
+		/**
+		 *@see		GameObjectComponent::connect
+		 */
+		virtual bool disconnect(void) override;
+
+		/**
 		 * @see		GameObjectComponent::getClassName
 		 */
 		virtual Ogre::String getClassName(void) const override;
@@ -230,7 +240,9 @@ namespace NOWA
 		*/
 		void applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullColorThreshold);
 	private:
-			void resetShining(void);
+		void resetShining(void);
+
+		void postApplySunPower(void);
 	public:
 		static const Ogre::String AttrEffectName(void) { return "Effect Name"; }
 		static const Ogre::String AttrSkyColor(void) { return "Sky Color"; }

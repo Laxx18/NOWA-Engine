@@ -47,131 +47,48 @@
             {
                 "offset" : [0, 0],
                 "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "BeachStones.jpg",
-				"metalness_map" : "BeachStones.jpg"
+				"roughness" : 0.5,
+				"metalness" : 0.1,
+                "diffuse_map" : "ground_dirt_gardenD.png",
+				"roughness_map" : "ground_dirt_gardenR.png",
+				"metalness_map" : "ground_dirt_gardenS.png",
+				"normal_map" : "ground_dirt_gardenN.png"
             },
 
 			"detail1" :
             {
                 "offset" : [0, 0],
                 "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "Water02.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
+				"roughness" : 0.5,
+				"metalness" : 0.1,
+                "diffuse_map" : "grass_green_d.jpg",
+				"roughness_map" : "grass_green_r.jpg",
+				"metalness_map" : "grass_green_s.jpg",
+				"normal_map" : "grass_green_n.jpg"
             },
 			
 			"detail2" :
             {
                 "offset" : [0, 0],
                 "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
+				"roughness" : 0.5,
+				"metalness" : 0.1,
+                "diffuse_map" : "island_sand_d.jpg",
+				"roughness_map" : "island_sand_r.jpg",
+				"metalness_map" : "island_sand_s.jpg",
+				"normal_map" : "island_sand_n.png"
             },
 			
 			"detail3" :
             {
                 "offset" : [0, 0],
                 "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
-            }
-        },
-		
-		"TerraExampleMaterial" :
-        {
-            "diffuse" :
-            {
-                "value" : [1, 1, 1],
-                "texture" : "DiffuseTerrain.png"
-            },
-			
-			"detail_weight" :
-            {
-                "texture" : "DetailMap.png",
-                "sampler" : "unique_name",
-                "normalize" : true,
-				"autogenerate" :
-				[
-					{
-						"slope_min" : 0,
-						"slope_max" : 0,
-						"elevation_min" : 0,
-						"elevation_max" : 0
-					},
-					{
-						"slope_min" : 0,
-						"slope_max" : 0,
-						"elevation_min" : 0,
-						"elevation_max" : 0
-					},
-					{
-						"slope_min" : 0,
-						"slope_max" : 0,
-						"elevation_min" : 0,
-						"elevation_max" : 0
-					},
-					{
-						"slope_min" : 0,
-						"slope_max" : 0,
-						"elevation_min" : 0,
-						"elevation_max" : 0
-					}
-				]
-            },
-			
-			"detail0" :
-            {
-                "offset" : [0, 0],
-                "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "BeachStones.jpg",
-				"metalness_map" : "BeachStones.jpg"
-            },
-
-			"detail1" :
-            {
-                "offset" : [0, 0],
-                "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "Water02.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
-            },
-			
-			"detail2" :
-            {
-                "offset" : [0, 0],
-                "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
-            },
-			
-			"detail3" :
-            {
-                "offset" : [0, 0],
-                "scale": [128, 128],
-				"roughness" : 1,
-				"metalness" : 1,
-                "diffuse_map" : "BeachStones.jpg",
-				"roughness_map" : "Water02.jpg",
-				"metalness_map" : "Water02.jpg"
+				"roughness" : 0.5,
+				"metalness" : 0.1,
+                "diffuse_map" : "mntn_black_d.jpg",
+				"roughness_map" : "mntn_black_r.jpg",
+				"metalness_map" : "mntn_black_s.jpg",
+				"normal_map" : "mntn_black_n.jpg"
             }
         }
     }

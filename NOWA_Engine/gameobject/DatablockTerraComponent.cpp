@@ -277,7 +277,7 @@ namespace NOWA
 		{
 			if (nullptr != terraCompPtr->getTerra())
 			{
-				terraCompPtr->getTerra()->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraExampleMaterial"), false);
+				terraCompPtr->getTerra()->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial"), false);
 			}
 		}*/
 

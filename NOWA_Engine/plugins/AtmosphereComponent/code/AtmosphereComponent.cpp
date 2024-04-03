@@ -27,7 +27,8 @@ namespace NOWA
 		timeOfDay(Ogre::Math::PI),
 		azimuth(0.0f),
 		hasLoaded(false),
-		dayTimeCurrentMinutes(0)
+		dayTimeCurrentMinutes(0),
+		oldLightDirection(Ogre::Vector3(-1.0f, -1.0f, -1.0f))
 	{
 		this->activated->setDescription("If activated, the atmospheric effects will take place.");
 		this->enableSky->setDescription("Sets whether sky is enabled and visible.");
@@ -803,6 +804,7 @@ namespace NOWA
 
 		this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
 
+		this->oldLightDirection = this->lightDirectionalComponent->getDirection();
 		// Todo: If terra is set, update for terra, see sample
 		this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
 
@@ -848,6 +850,8 @@ namespace NOWA
 
 		this->atmosphereNpr->setPresets(presets);
 
+		this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
+
 		return true;
 	}
 
@@ -860,6 +864,8 @@ namespace NOWA
 		{
 			this->update(0.016, false);
 		}
+
+		this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
 
 		return true;
 	}
@@ -875,14 +881,6 @@ namespace NOWA
 			sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 				sceneManager->getAmbientLightLowerHemisphere(),
 				sceneManager->getAmbientLightHemisphereDir());
-
-			const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
-
-			// TODO: What here?
-			/*if (mMultiplePresets)
-				mAtmosphere->updatePreset(sunDir, mTimeOfDay / Ogre::Math::PI);
-			else
-				mAtmosphere->setSunDir(sunDir, fabsf(mTimeOfDay) / Ogre::Math::PI);*/
 
 #if 0
 			this->timeOfDay += this->timeMultiplicator->getReal() * dt;
@@ -930,7 +928,13 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
+			const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
+
+			this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
+			// Not used, because multpile presets and updatePreset is used
+			// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
 			this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay);
+
 		}
 	}
 
@@ -1024,6 +1028,7 @@ namespace NOWA
 		if (true == this->bShowDebugData)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] SunPower: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
 		}
 		return time;
 	}

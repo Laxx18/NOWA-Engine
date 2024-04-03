@@ -573,6 +573,7 @@ namespace NOWA
 		Ogre::AtmosphereNpr* atmosphereNpr;
 		int dayTimeCurrentMinutes;
 		bool hasLoaded;
+		Ogre::Vector3 oldLightDirection;
 	};
 
 }; // namespace end
