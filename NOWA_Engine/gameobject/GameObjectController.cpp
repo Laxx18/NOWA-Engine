@@ -1651,6 +1651,20 @@ namespace NOWA
 		return GameObjectPtr();
 	}
 
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromComponent(const Ogre::String& componentClassName)
+	{
+		std::vector<GameObjectPtr> vec;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			auto gameObjectPtr = NOWA::makeStrongPtr(it->second->getComponentFromName<GameObjectComponent>(componentClassName, true));
+			if (nullptr != gameObjectPtr)
+			{
+				vec.emplace_back(it->second);
+			}
+		}
+		return std::move(vec);
+	}
+
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategory(const Ogre::String& category)
 	{
 		std::vector<GameObjectPtr> vec;

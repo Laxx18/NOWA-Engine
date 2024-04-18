@@ -94,7 +94,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.01f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.01f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI * 10.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -105,21 +105,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -145,8 +145,8 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI, this->attributes);
-				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI * 20.0f, this->attributes);
+				this->linkedLightPowers[i]->setConstraints(1.0f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
 				this->linkedSceneAmbientLowerPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientLowerPower() + Ogre::StringConverter::toString(i), 0.01f * Math::PI, this->attributes);
@@ -156,21 +156,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -196,7 +196,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI * 10.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -207,21 +207,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -247,7 +247,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Ogre::Math::PI * 7.5f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI * 0.001f, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -258,21 +258,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (1; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -298,7 +298,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.005f, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 1.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI * 0.001f, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -309,21 +309,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -349,7 +349,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 0.01f, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), 5.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI * 0.001f, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -360,21 +360,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -401,7 +401,7 @@ namespace NOWA
 				this->fogBreakMinBrightnesses[i]->setConstraints(0.001f, 1.0f);
 				this->fogBreakFalloffs[i] = new Variant(AtmosphereComponent::AttrFogBreakFalloff() + Ogre::StringConverter::toString(i), 0.1f, this->attributes);
 				this->fogBreakFalloffs[i]->setConstraints(0.001f, 1.0f);
-				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI, this->attributes);
+				this->linkedLightPowers[i] = new Variant(AtmosphereComponent::AttrLinkedLightPower() + Ogre::StringConverter::toString(i), Math::PI * 10.0f, this->attributes);
 				this->linkedLightPowers[i]->setConstraints(0.01f, 100.0f);
 				this->linkedSceneAmbientUpperPowers[i] = new Variant(AtmosphereComponent::AttrLinkedAmbientUpperPower() + Ogre::StringConverter::toString(i), 0.1f * Math::PI, this->attributes);
 				this->linkedSceneAmbientUpperPowers[i]->setConstraints(0.01f, 1.0f);
@@ -412,21 +412,21 @@ namespace NOWA
 				this->envmapScales[i]->addUserData(GameObject::AttrActionSeparator());
 
 				this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+				this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+				this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+				this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+				this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+				this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+				this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+				this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 				this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 					"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-					"becoming more visible.Range: [0; inf).");
+					"becoming more visible.Range: [0; 100).");
 				this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+					"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+				this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+				this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+				this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 				this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 
 				break;
@@ -733,21 +733,21 @@ namespace NOWA
 			}
 
 			this->times[i]->setDescription(" Sets the time for the preset in the format hh:mm, e.g. 16:45. The time must be in range [0; 24[.");
-			this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; inf).");
-			this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; inf).");
-			this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; inf). Most relevant in sunsets and sunrises.");
-			this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; inf). For HDR (affects the sun on the sky).");
-			this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-			this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; inf). Sky must be enabled.");
-			this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; inf). Affects objects' fog (not sky).");
+			this->densityCoefficients[i]->setDescription("Sets the density coefficient for the preset. Valid values are in range [0; 100).");
+			this->densityDiffusions[i]->setDescription("Sets the density diffusion for the preset. Valid values are in range [0; 100).");
+			this->horizonLimits[i]->setDescription("Sets the horizon limit for the preset. Valid values are in range [0; 100). Most relevant in sunsets and sunrises.");
+			this->sunPowers[i]->setDescription("Sets the sun power for the preset. Valid values are in range [0; 100). For HDR (affects the sun on the sky).");
+			this->skyPowers[i]->setDescription("Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+			this->skyColors[i]->setDescription("Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 100). Sky must be enabled.");
+			this->fogDensities[i]->setDescription("Sets the fog density for the preset. In range [0; 100). Affects objects' fog (not sky).");
 			this->fogBreakMinBrightnesses[i]->setDescription("Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 				"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-				"becoming more visible.Range: [0; inf).");
+				"becoming more visible.Range: [0; 100).");
 			this->fogBreakFalloffs[i]->setDescription("Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-				"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-			this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-			this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-			this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+				"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+			this->linkedLightPowers[i]->setDescription("Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+			this->linkedSceneAmbientUpperPowers[i]->setDescription("Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+			this->linkedSceneAmbientLowerPowers[i]->setDescription("Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 			this->envmapScales[i]->setDescription("Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 		}
 
@@ -850,7 +850,7 @@ namespace NOWA
 
 		this->atmosphereNpr->setPresets(presets);
 
-		this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
+		// this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
 
 		return true;
 	}
@@ -874,13 +874,18 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			getCurrentTimeOfDay();
+			Ogre::String time = getCurrentTimeOfDay();
 
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 			// Reupdate ambient light for better render results and getting rid of strange flimmer. See: https://forums.ogre3d.org/viewtopic.php?t=96576&start=25
 			sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 				sceneManager->getAmbientLightLowerHemisphere(),
 				sceneManager->getAmbientLightHemisphereDir());
+
+			//sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
+			//							  	sceneManager->getAmbientLightLowerHemisphere(),
+			//							   -this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated() + Ogre::Vector3::UNIT_Y * 0.2f);
+			
 
 #if 0
 			this->timeOfDay += this->timeMultiplicator->getReal() * dt;
@@ -930,11 +935,20 @@ namespace NOWA
 
 			const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
 
-			this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
+			// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
+			Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), dt, 60.0f);
+			this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
 			// Not used, because multpile presets and updatePreset is used
 			// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
-			this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay);
+			this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
 
+			if (true == this->bShowDebugData)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] OgreLight PowerScale: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset SunPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().sunPower));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Preset LinkedLightPower: " + Ogre::StringConverter::toString(this->atmosphereNpr->getPreset().linkedLightPower));
+			}
 		}
 	}
 
@@ -1025,11 +1039,6 @@ namespace NOWA
 		time += minutes < 10 ? "0" + Ogre::StringConverter::toString(minutes) : Ogre::StringConverter::toString(minutes);
 
 		this->dayTimeCurrentMinutes = (hours * 60) + minutes;
-		if (true == this->bShowDebugData)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] Time: " + time + " timeOfDayNormalized: " + Ogre::StringConverter::toString(this->timeOfDay));
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AtmosphereComponent] SunPower: " + Ogre::StringConverter::toString(this->lightDirectionalComponent->getOgreLight()->getPowerScale()));
-		}
 		return time;
 	}
 
@@ -1882,28 +1891,28 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getHorizonLimit(unsigned int index)", "Gets the horizon limit for the preset. Valid values are in range [0; 1]. Most relevant in sunsets and sunrises.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSunPower(unsigned int index, float sunPower)", "Sets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSunPower(unsigned int index)", "Gets the sun power for the preset. Valid values are in range [0; ]. For HDR (affects the sun on the sky).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyPower(unsigned int index, float skyPower)", "Sets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSkyPower(unsigned int index)", "Gets the sky power for the preset. Valid values are in range [0; inf). For HDR (affects skyColour). Sky must be enabled.");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyPower(unsigned int index, float skyPower)", "Sets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getSkyPower(unsigned int index)", "Gets the sky power for the preset. Valid values are in range [0; 100). For HDR (affects skyColour). Sky must be enabled.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setSkyColor(unsigned int index, Vector3 skyColor)", "Sets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "Vector3 getSkyColor(unsigned int index)", "Gets the sky color for the preset. In range [0; 1], [0; 1], [0; 1]. Sky must be enabled.");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogDensity(unsigned int index, float fogDensity)", "Sets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogDensity(unsigned int index)", "Gets the fog density for the preset. In range [0; 1]. Affects objects' fog (not sky).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakMinBrightness(unsigned int index, float fogBreakMinBrightness)", "Sets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 			"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-			"becoming more visible.Range: [0; inf).");
+			"becoming more visible.Range: [0; 100).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakMinBrightness(unsigned int index)", "Gets the fog break min brightness for the preset. Very bright objects (i.e. reflect lots of light) manage to 'breakthrough' the fog."
 			"A value of fogBreakMinBrightness = 3 means that pixels that have a luminance of >= 3 (i.e.in HDR) will start "
-			"becoming more visible.Range: [0; inf).");
+			"becoming more visible.Range: [0; 100).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setFogBreakFalloff(unsigned int index, float fogBreakFalloff)", "Sets the fog break falloff for the preset. How fast bright objects appear in fog."
-			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
+			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getFogBreakFalloff(unsigned int index)", "Gets the fog break falloff for the preset. How fast bright objects appear in fog."
-			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedLightPower(unsigned int index, float linkedLightPower)", "Sets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedLightPower(unsigned int index)", "Gets the linked light power for the preset. Power scale for the linked light. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientUpperPower(unsigned int index, float linkedAmbientUpperPower)", "Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientUpperPower(unsigned int index)", "Gets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientLowerPower(unsigned int index, float linkedAmbientLowerPower)", "Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
-		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientLowerPower(unsigned int index)", "Gets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; inf).");
+			"Small values make objects appear very slowly after luminance > fogBreakMinBrightness. Large values make objects appear very quickly. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedLightPower(unsigned int index, float linkedLightPower)", "Sets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedLightPower(unsigned int index)", "Gets the linked light power for the preset. Power scale for the linked light. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientUpperPower(unsigned int index, float linkedAmbientUpperPower)", "Sets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientUpperPower(unsigned int index)", "Gets the linked ambient upper power for the preset. Power scale for the upper hemisphere ambient light. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setLinkedAmbientLowerPower(unsigned int index, float linkedAmbientLowerPower)", "Sets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
+		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getLinkedAmbientLowerPower(unsigned int index)", "Gets the linked ambient lower power for the preset. Power scale for the lower hemisphere ambient light. Range: (0; 100).");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "void setEnvmapScale(unsigned int index, float envmapScale)", "Sets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "float getEnvmapScale(unsigned int index)", "Gets the envmap scale for the preset. Value to send to SceneManager::setAmbientLight. Range: (0; 1].");
 		LuaScriptApi::getInstance()->addClassToCollection("AtmosphereComponent", "string getCurrentTimeOfDay()", "Gets current time of day as string.");

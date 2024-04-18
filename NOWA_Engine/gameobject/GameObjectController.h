@@ -314,7 +314,7 @@ namespace NOWA
 
 		/**
 		 * @brief		Gets all game objects which contain at least one of this component type.
-		*  @tparam		ComponentType				The concrete component type to get the game objects for.
+		 * @tparam		ComponentType				The concrete component type to get the game objects for.
 		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
 		 */
 
@@ -332,6 +332,14 @@ namespace NOWA
 			}
 			return std::move(vec);
 		}
+
+		/**
+		 * @brief		Gets all game objects which contain at least one of this component class name.
+		 * @tparam		componentClassName	The component class name to get the game objects for.
+		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 */
+
+		std::vector<GameObjectPtr> getGameObjectsFromComponent(const Ogre::String& componentClassName);
 		
 		/**
 		 * @brief		Gets all game objects belonging to the given category id.

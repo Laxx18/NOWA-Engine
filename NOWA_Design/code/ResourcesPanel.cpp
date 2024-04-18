@@ -508,6 +508,11 @@ void ResourcesPanelGameObjects::initialise()
 	this->resourcesSearchEdit->setEditReadOnly(false);
 	this->resourcesSearchEdit->eventEditTextChange += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
 	this->resourcesSearchEdit->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+	this->resourcesSearchEdit->setNeedToolTip(true);
+	// Silly bug: edit: the one pixel border must be hit via mouse in order to see the tooltip
+	this->resourcesSearchEdit->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+	this->resourcesSearchEdit->eventMouseLostFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+	this->resourcesSearchEdit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
 
 	this->imageBox->setVisible(false);
 }
@@ -528,11 +533,29 @@ void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
 	this->clear();
 
 	this->refresh(editBox->getOnlyText());
+
+	// If user is entering something, do not move camera, if the user entered something like asdf
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+}
+
+void ResourcesPanelGameObjects::mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget)
+{
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+}
+
+void ResourcesPanelGameObjects::mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus)
+{
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 }
 
 void ResourcesPanelGameObjects::onMouseClick(MyGUI::Widget* sender)
 {
 	this->editTextChange(sender);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 }
 
 void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
@@ -582,8 +605,13 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 				}
 				else
 				{
-					// Add resource to the search
-					this->autoCompleteSearch.addSearchText(gameObjectPtr->getName());
+					// Adds resource to the search and its id for faster search
+					this->autoCompleteSearch.addSearchText(gameObjectPtr->getName(), Ogre::StringConverter::toString(gameObjectPtr->getId()));
+					// Adds also its components to the search
+					for (auto it = gameObjectPtr->getComponents()->cbegin(); it != gameObjectPtr->getComponents()->cend(); ++it)
+					{
+						this->autoCompleteSearch.addSearchText(std::get<NOWA::COMPONENT>(*it)->getClassName());
+					}
 				}
 			}
 		}
@@ -599,8 +627,14 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 			}
 			else
 			{
-				// Add resource to the search
-				this->autoCompleteSearch.addSearchText(gameObjectPtr->getName());
+				// Adds resource to the search and its id for faster search
+				this->autoCompleteSearch.addSearchText(gameObjectPtr->getName(), Ogre::StringConverter::toString(gameObjectPtr->getId()));
+
+				// Adds also its components to the search
+				for (auto it = gameObjectPtr->getComponents()->cbegin(); it != gameObjectPtr->getComponents()->cend(); ++it)
+				{
+					this->autoCompleteSearch.addSearchText(std::get<NOWA::COMPONENT>(*it)->getClassName());
+				}
 			}
 			/*if (nullptr != this->editorManager)
 			{
@@ -625,12 +659,44 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 		// Get the matched results and add to tree
 		auto& matchedResources = this->autoCompleteSearch.findMatchedItemWithInText(filter);
 
+		std::set<Ogre::String> tempGameObjectSet;
+
 		for (size_t i = 0; i < matchedResources.getResults().size(); i++)
 		{
 			Ogre::String resourceName = matchedResources.getResults()[i].getMatchedItemText();
-			child = new MyGUI::TreeControl::Node(resourceName, "Data");
+			Ogre::String resourceId = matchedResources.getResults()[i].getUserData();
 
-			root->add(child);
+			// Found gameobject, by id, get it
+			if (false == resourceId.empty())
+			{
+				// Do not allow duplicates later in mygui tree
+				const auto foundIt = tempGameObjectSet.find(resourceName);
+				if (tempGameObjectSet.cend() == foundIt)
+				{
+					child = new MyGUI::TreeControl::Node(resourceName, "Data");
+					root->add(child);
+					tempGameObjectSet.insert(resourceName);
+				}
+			}
+			else
+			{
+				// Id empty, no direct game object, but component. Hence checks components and gets all game objects which do contain the component class name
+				const auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(resourceName);
+
+				this->resourcesSearchEdit->setUserString("tooltip", resourceName);
+
+				for (size_t j = 0; j < gameObjects.size(); j++)
+				{
+					// Do not allow duplicates later in mygui tree
+					const auto foundIt = tempGameObjectSet.find(gameObjects[j]->getName());
+					if (tempGameObjectSet.cend() == foundIt)
+					{
+						child = new MyGUI::TreeControl::Node(gameObjects[j]->getName(), "Data");
+						root->add(child);
+						tempGameObjectSet.insert(gameObjects[j]->getName());
+					}
+				}
+			}
 		}
 	}
 

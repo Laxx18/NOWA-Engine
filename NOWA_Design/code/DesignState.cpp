@@ -1941,6 +1941,9 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		return true;
 	}
 
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+
 	if (true == validScene)
 	{
 		// Snapshot camera orientation when used pressed the right mouse key

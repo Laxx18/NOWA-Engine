@@ -170,6 +170,8 @@ protected:
 	void notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node);
 	void keyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char _char);
 	void editTextChange(MyGUI::Widget* sender);
+	void mouseLostFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget);
+	void mouseRootChangeFocus(MyGUI::Widget* sender, bool bFocus);
 	void onMouseClick(MyGUI::Widget* sender);
 private:
 	// Event delegates

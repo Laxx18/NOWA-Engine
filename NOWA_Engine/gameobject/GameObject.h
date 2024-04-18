@@ -774,7 +774,8 @@ namespace NOWA
 			{
 				if (false == allowDerivatives)
 				{
-					if (std::get<COMPONENT>(component)->getName() == componentName)
+					// Note: Name is a custom component name, which can be set by the designer, class name is the real component name
+					if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getClassName() == componentName)
 					{
 						GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
 						// If already tagged for destruction, do not get it!
@@ -794,7 +795,8 @@ namespace NOWA
 				}
 				else
 				{
-					if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getParentClassName() == componentName || std::get<COMPONENT>(component)->getParentParentClassName() == componentName)
+					// Note: Name is a custom component name, which can be set by the designer, class name is the real component name
+					if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getClassName() == componentName || std::get<COMPONENT>(component)->getParentClassName() == componentName || std::get<COMPONENT>(component)->getParentParentClassName() == componentName)
 					{
 						GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
 						// If already tagged for destruction, do not get it!
