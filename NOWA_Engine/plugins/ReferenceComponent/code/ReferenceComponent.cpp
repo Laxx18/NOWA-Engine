@@ -60,11 +60,11 @@ namespace NOWA
 	GameObjectCompPtr ReferenceComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		ReferenceComponentPtr clonedCompPtr(boost::make_shared<ReferenceComponent>());
-
-		clonedCompPtr->setTargetId(this->targetId->getULong());
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setTargetId(this->targetId->getULong());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="code\PluginTemplate.cpp" />
+    <ClCompile Include="code\TransformHistoryComponent.cpp" />
     <ClCompile Include="code\NOWAPrecompiled.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -19,13 +19,13 @@
     <ClCompile Include="code\startDll.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="code\PluginTemplate.h" />
+    <ClInclude Include="code\TransformHistoryComponent.h" />
     <ClInclude Include="code\NOWAPrecompiled.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{42F31C93-38C2-40B0-AD33-EAD1E691952C}</ProjectGuid>
+    <ProjectGuid>{0990E680-4CC1-4D95-970E-EC42CE758BE3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>PluginTemplate</RootNamespace>
+    <RootNamespace>TransformHistoryComponent</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -91,6 +91,7 @@
       </UndefinePreprocessorDefinitions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <UseFullPaths>false</UseFullPaths>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -139,6 +140,7 @@
       <AdditionalOptions>/Zm1000 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <UseFullPaths>false</UseFullPaths>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
