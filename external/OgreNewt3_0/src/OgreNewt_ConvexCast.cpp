@@ -26,7 +26,7 @@ namespace OgreNewt
 	}
 
 
-	void Convexcast::go(const OgreNewt::World* world, const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex)
+	void Convexcast::go(const OgreNewt::World* world, const NewtonCollision* col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex)
 	{
 
 		if( world->getDebugger().isRaycastRecording() )
@@ -51,7 +51,7 @@ namespace OgreNewt
 
 
 		mReturnInfoListLength = 
-			NewtonWorldConvexCast( world->getNewtonWorld(), &matrix[0], (float*)&endpt, col->getNewtonCollision(),
+			NewtonWorldConvexCast( world->getNewtonWorld(), &matrix[0], (float*)&endpt, col,
 			&mFirstContactDistance, this, OgreNewt::Convexcast::newtonConvexcastPreFilter,
 			mReturnInfoList, mReturnInfoListSize, threadIndex);
 
@@ -103,7 +103,7 @@ namespace OgreNewt
 	{
 	}
 
-	BasicConvexcast::BasicConvexcast(const OgreNewt::World* world, const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex, OgreNewt::Body* ignoreBody)
+	BasicConvexcast::BasicConvexcast(const OgreNewt::World* world, const NewtonCollision* col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex, OgreNewt::Body* ignoreBody)
 	{
 		mIgnoreBody = ignoreBody;
 

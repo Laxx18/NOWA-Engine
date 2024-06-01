@@ -53,6 +53,7 @@ namespace NOWA
 		class EXPORTED GameObjectStateHistory
 		{
 		public:
+			GameObjectStateHistory();
 
 			void init(RakNet::TimeMS maxWriteInterval, RakNet::TimeMS maxHistoryTime, bool useIntervall = true);
 
@@ -64,9 +65,11 @@ namespace NOWA
 			GameObjectState getLastState(void);
 
 			void clear(void);
+
+			size_t getHistoryLength(void) const;
 		private:
 			DataStructures::Queue<GameObjectState> history;
-			unsigned maxLength;
+			unsigned int maxLength;
 			RakNet::TimeMS writeInterval;
 			bool useIntervall;
 		};

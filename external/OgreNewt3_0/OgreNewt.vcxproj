@@ -194,7 +194,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/newton-dynamics/sdk/dModel;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -229,7 +229,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalOptions> /STACK:10000000 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreMain_d.lib;OgreOverlay_d.lib;OgreHlmsUnlit_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;dModel_d.lib;OgreMain_d.lib;OgreOverlay_d.lib;OgreHlmsUnlit_d.lib</AdditionalDependencies>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <Version>2.0</Version>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
@@ -345,7 +345,7 @@
       <AdditionalOptions> /Zm1000 %(AdditionalOptions)</AdditionalOptions>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dVehicle;$(NOWA)/external/newton-dynamics/sdk/dAnimation;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/newton-dynamics/sdk/dModel;$(NOWA)/external/Ogre2.2SDK/;$(NOWA)/external/Ogre2.2SDK/OgreMain/include/;$(NOWA)/external/Ogre2.2SDK/VCBuild/include/;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/Include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/boost;.\inc</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_OGRENEWT_EXPORTS;_OGRENEWT_DYNAMIC;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -377,7 +377,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalOptions> /STACK:10000000 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>dMath.lib;newton.lib;dScene.lib;dCustomJoints.lib;dNewton.lib;dContainers.lib;dVehicle.lib;OgreMain.lib;OgreOverlay.lib;OgreHlmsUnlit.lib</AdditionalDependencies>
+      <AdditionalDependencies>dMath.lib;newton.lib;dScene.lib;dCustomJoints.lib;dNewton.lib;dContainers.lib;dVehicle.lib;dModel.lib;OgreMain.lib;OgreOverlay.lib;OgreHlmsUnlit.lib</AdditionalDependencies>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <Version>2.0</Version>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
@@ -436,6 +436,7 @@
     <ClCompile Include="src\OgreNewt_TriggerBody.cpp" />
     <ClCompile Include="src\OgreNewt_TriggerControllerManager.cpp" />
     <ClCompile Include="src\OgreNewt_Vehicle.cpp" />
+    <ClCompile Include="src\OgreNewt_VehicleOld.cpp" />
     <ClCompile Include="src\OgreNewt_World.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -465,6 +466,7 @@
     <ClInclude Include="inc\OgreNewt_TriggerBody.h" />
     <ClInclude Include="inc\OgreNewt_TriggerControllerManager.h" />
     <ClInclude Include="inc\OgreNewt_Vehicle.h" />
+    <ClInclude Include="inc\OgreNewt_VehicleOld.h" />
     <ClInclude Include="inc\OgreNewt_World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

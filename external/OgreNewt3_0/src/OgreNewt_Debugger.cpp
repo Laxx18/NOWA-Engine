@@ -880,7 +880,7 @@ namespace OgreNewt
 #endif
 	}
 
-	void Debugger::addConvexRay(const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3 &startpt, const Ogre::Quaternion &colori, const Ogre::Vector3 &endpt)
+	void Debugger::addConvexRay(const NewtonCollision* col, const Ogre::Vector3 &startpt, const Ogre::Quaternion &colori, const Ogre::Vector3 &endpt)
 	{
 		if (!m_raycastsnode)
 			return;
@@ -927,12 +927,12 @@ namespace OgreNewt
 		float matrix[16];
 		
 		Converters::QuatPosToMatrix(colori, startpt, &matrix[0]);
-		NewtonCollisionForEachPolygonDo(col->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
+		NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
 
 		if (endpt != startpt)
 		{
 			Converters::QuatPosToMatrix(colori, endpt, &matrix[0]);
-			NewtonCollisionForEachPolygonDo(col->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
+			NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
 		}
 
 		line->end();

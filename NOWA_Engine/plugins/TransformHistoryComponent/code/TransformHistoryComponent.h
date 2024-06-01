@@ -13,6 +13,9 @@ GPL v3
 #include "main/Events.h"
 #include "network/GameObjectStateHistory.h"
 
+class PhysicsActiveComponent;
+class PhysicsActiveKinematicComponent;
+
 namespace NOWA
 {
 
@@ -265,9 +268,13 @@ namespace NOWA
 		static const Ogre::String AttrStopImmediately(void) { return "Stop Immediately"; }
 	private:
 		void handleTargetGameObjectDeleted(NOWA::EventDataPtr eventData);
+		Ogre::Vector3 seek(PhysicsActiveComponent* physicsActiveComponent, Ogre::Vector3 targetPosition, Ogre::Real dt);
+		Ogre::Vector3 arrive(PhysicsActiveComponent* physicsActiveComponent, Ogre::Vector3 targetPosition, Ogre::Real dt);
 	private:
 		Ogre::String name;
 		GameObject* targetGameObject;
+		PhysicsActiveComponent* physicsActiveComponent;
+		PhysicsActiveKinematicComponent* physicsActiveKinematicComponent;
 		bool isTransforming;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;

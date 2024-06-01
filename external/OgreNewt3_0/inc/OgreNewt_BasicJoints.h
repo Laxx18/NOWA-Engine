@@ -14,7 +14,7 @@
 
 #include "OgreNewt_Prerequisites.h"
 #include "OgreNewt_Joint.h"
-
+#include "OgreNewt_Vehicle.h"
 
 // OgreNewt namespace.  all functions and classes use this namespace.
 namespace OgreNewt
@@ -885,6 +885,71 @@ namespace OgreNewt
 
 		//! get the steering rate
 		Ogre::Real GetSteerRate() const;
+	};
+
+	//! Vehicle Tire joint.
+	class _OgreNewtExport VehicleTire : public Joint
+	{
+
+	public:
+		//! constructor
+		/*!
+		\param child pointer to the child rigid body.
+		\param parent pointer to the parent rigid body. pass nullptr to make the world itself the parent (aka a rigid joint)
+		\param pos position of the joint in global space
+		*/
+		VehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos, const Ogre::Vector3& pin, Vehicle* parent, Ogre::Real radius);
+
+		//! destructor.
+		virtual ~VehicleTire();
+
+		void setVehicleTireSide(VehicleTireSide tireSide);
+
+		VehicleTireSide getVehicleTireSide(void) const;
+
+		void setVehicleTireSteer(VehicleTireSteer tireSteer);
+
+		VehicleTireSteer getVehicleTireSteer(void) const;
+
+		void setVehicleSteerSide(VehicleSteerSide steerSide);
+
+		VehicleSteerSide getVehicleSteerSide(void) const;
+
+		void setVehicleTireAccel(VehicleTireAccel tireAccel);
+
+		VehicleTireAccel getVehicleTireAccel(void) const;
+
+		void setVehicleTireBrake(VehicleTireBrake brakeMode);
+		
+		VehicleTireBrake getVehicleTireBrake(void) const;
+
+		void setLateralFriction(Ogre::Real lateralFriction);
+
+		Ogre::Real getLateralFriction(void) const;
+
+		void setLongitudinalFriction(Ogre::Real longitudinalFriction);
+
+		Ogre::Real getLongitudinalFriction(void) const;
+
+		void setSpringLength(Ogre::Real springLength);
+
+		Ogre::Real getSpringLength(void) const;
+		
+		void setSmass(Ogre::Real smass);
+
+		Ogre::Real getSmass(void) const;
+
+		void setSpringConst(Ogre::Real springConst);
+
+		Ogre::Real getSpringConst(void) const;
+
+		void setSpringDamp(Ogre::Real springDamp);
+
+		Ogre::Real getSpringDamp(void) const;
+
+		RayCastTire* getRayCastTire(void);
+	private:
+		RayCastTire::TireConfiguration m_tireConfiguration;
 	};
 
 }   // end NAMESPACE OgreNewt

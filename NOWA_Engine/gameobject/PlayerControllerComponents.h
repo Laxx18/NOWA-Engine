@@ -79,7 +79,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::clone
 		*/
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) = 0;
+		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
 		/**
 		* @see		GameObjectComponent::onRemoveComponent

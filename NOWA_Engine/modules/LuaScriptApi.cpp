@@ -2109,6 +2109,11 @@ namespace NOWA
 		return makeStrongPtr<PhysicsPlayerControllerComponent>(gameObject->getComponent<PhysicsPlayerControllerComponent>()).get();
 	}
 
+	PhysicsActiveVehicleComponent* getPhysicsActiveVehicleComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<PhysicsActiveVehicleComponent>(gameObject->getComponent<PhysicsActiveVehicleComponent>()).get();
+	}
+	
 	PlaneComponent* getPlaneComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<PlaneComponent>(gameObject->getComponent<PlaneComponent>()).get();
@@ -2839,6 +2844,11 @@ namespace NOWA
 		return makeStrongPtr<PhysicsPlayerControllerComponent>(gameObject->getComponentFromName<PhysicsPlayerControllerComponent>(name)).get();
 	}
 
+	PhysicsActiveVehicleComponent* getPhysicsActiveVehicleComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<PhysicsActiveVehicleComponent>(gameObject->getComponentFromName<PhysicsActiveVehicleComponent>(name)).get();
+	}
+	
 	PlaneComponent* getPlaneComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<PlaneComponent>(gameObject->getComponentFromName<PlaneComponent>(name)).get();
@@ -3589,8 +3599,8 @@ namespace NOWA
 		gameObject.def("getPhysicsCompoundConnectionComponent", &getPhysicsCompoundConnectionComponent);
 		gameObject.def("getPhysicsMaterialComponent", (PhysicsMaterialComponent * (*)(GameObject*)) & getPhysicsMaterialComponent);
 		gameObject.def("getPhysicsMaterialComponent2", (PhysicsMaterialComponent * (*)(GameObject*, unsigned int)) & getPhysicsMaterialComponent);
-
 		gameObject.def("getPhysicsPlayerControllerComponent", &getPhysicsPlayerControllerComponent);
+		gameObject.def("getPhysicsActiveVehicleComponent", &getPhysicsActiveVehicleComponent);
 		gameObject.def("getPlaneComponent", &getPlaneComponent);
 		gameObject.def("getSimpleSoundComponent", (SimpleSoundComponent * (*)(GameObject*)) & getSimpleSoundComponent);
 		gameObject.def("getSimpleSoundComponent2", (SimpleSoundComponent * (*)(GameObject*, unsigned int)) & getSimpleSoundComponent);
@@ -3739,6 +3749,7 @@ namespace NOWA
 		gameObject.def("getPhysicsCompoundConnectionComponentFromName", &getPhysicsCompoundConnectionComponentFromName);
 		gameObject.def("getPhysicsMaterialComponentFromName", &getPhysicsMaterialComponentFromName);
 		gameObject.def("getPhysicsPlayerControllerComponentFromName", &getPhysicsPlayerControllerComponentFromName);
+		gameObject.def("getPhysicsActiveVehicleComponentFromName", &getPhysicsActiveVehicleComponentFromName);
 		gameObject.def("getPlaneComponentFromName", &getPlaneComponentFromName);
 		gameObject.def("getSimpleSoundComponentFromName", &getSimpleSoundComponentFromName);
 		gameObject.def("getSoundComponentFromName", &getSoundComponentFromName);
@@ -3904,6 +3915,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponent2(unsigned int occurrenceIndex)", "Gets the physics material component by the given occurence index, since a game object may have besides other components several physics material components.");
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponent()", "Gets the physics material component. This can be used if the game object just has one physics material component.");
 		AddClassToCollection("GameObject", "PhysicsPlayerControllerComponent getPhysicsPlayerControllerComponent()", "Gets the physics player controller component.");
+		AddClassToCollection("GameObject", "PhysicsActiveVehicleComponent getPhysicsActiveVehicleComponent()", "Gets the physics active vehicle component.");
 		AddClassToCollection("GameObject", "PlaneComponent getPlaneComponent()", "Gets the plane component.");
 		AddClassToCollection("GameObject", "SimpleSoundComponent getSimpleSoundComponent2(unsigned int occurrenceIndex)", "Gets the simple sound component by the given occurence index, since a game object may have besides other components several simple sound components.");
 		AddClassToCollection("GameObject", "SimpleSoundComponent getSimpleSoundComponent()", "Gets the simple sound component. This can be used if the game object just has one simple sound component.");
@@ -4044,6 +4056,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PhysicsCompoundConnectionComponent getPhysicsCompoundConnectionComponentFromName(String name)", "Gets the physics compound connection component.");
 		AddClassToCollection("GameObject", "PhysicsMaterialComponent getPhysicsMaterialComponentFromName(String name)", "Gets the physics material component.");
 		AddClassToCollection("GameObject", "PhysicsPlayerControllerComponent getPhysicsPlayerControllerComponentFromName(String name)", "Gets the physics player controller component.");
+		AddClassToCollection("GameObject", "PhysicsActiveVehicleComponent getPhysicsActiveVehicleComponentFromName(String name)", "Gets the physics active vehicle component.");
 		AddClassToCollection("GameObject", "PlaneComponent getPlaneComponentFromName(String name)", "Gets the plane component.");
 		AddClassToCollection("GameObject", "SimpleSoundComponent getSimpleSoundComponentFromName(String name)", "Gets the simple sound component.");
 		AddClassToCollection("GameObject", "SoundComponent getSoundComponentFromName(String name)", "Gets the sound component.");
@@ -5058,6 +5071,7 @@ namespace NOWA
 		gameObjectController.def("castPhysicsCompoundConnectionComponent", &GameObjectController::cast<PhysicsCompoundConnectionComponent>);
 		gameObjectController.def("castPhysicsMaterialComponent", &GameObjectController::cast<PhysicsMaterialComponent>);
 		gameObjectController.def("castPhysicsPlayerControllerComponent", &GameObjectController::cast<PhysicsPlayerControllerComponent>);
+		gameObjectController.def("castPhysicsActiveVehicleComponent", &GameObjectController::cast<PhysicsActiveVehicleComponent>);
 		gameObjectController.def("castPlaneComponent", &GameObjectController::cast<PlaneComponent>);
 		gameObjectController.def("castSimpleSoundComponent", &GameObjectController::cast<SimpleSoundComponent>);
 		gameObjectController.def("castSoundComponent", &GameObjectController::cast<SoundComponent>);
@@ -5215,6 +5229,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "PhysicsCompoundConnectionComponent castPhysicsCompoundConnectionComponent(PhysicsCompoundConnectionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsMaterialComponent castPhysicsMaterialComponent(PhysicsMaterialComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsPlayerControllerComponent castPhysicsPlayerControllerComponent(PhysicsPlayerControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "PhysicsActiveVehicleComponent castPhysicsActiveVehicleComponent(PhysicsActiveVehicleComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlaneComponent castPlaneComponent(PlaneComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "SimpleSoundComponent castSimpleSoundComponent(SimpleSoundComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "SoundComponent castSoundComponent(SoundComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -10747,6 +10762,41 @@ namespace NOWA
 		AddClassToCollection("PlayerContact", "void setResultFriction(float resultFriction)", "Sets the result friction. With that its possible to control how much friction the player will get on the ground.");
 	}
 
+	void bindPhysicsVehicleComponent(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<PhysicsActiveVehicleComponent, PhysicsActiveComponent>("PhysicsActiveVehicleComponent")
+			// .def("getClassName", &PhysicsActiveVehicleComponent::getClassName)
+			.def("getParentClassName", &PhysicsActiveVehicleComponent::getParentClassName)
+			// .def("clone", &PhysicsActiveVehicleComponent::clone)
+			// .def("getClassId", &PhysicsActiveVehicleComponent::getClassId)
+		];
+		AddClassToCollection("PhysicsActiveVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.");
+
+		module(lua)
+		[
+			class_<VehicleDrivingManipulation>("VehicleDrivingManipulation")
+			.def("setSteerAngle", &VehicleDrivingManipulation::setSteerAngle)
+			.def("getSteerAngle", &VehicleDrivingManipulation::getSteerAngle)
+			.def("setMotorForce", &VehicleDrivingManipulation::setMotorForce)
+			.def("getMotorForce", &VehicleDrivingManipulation::getMotorForce)
+			.def("setHandBrake", &VehicleDrivingManipulation::setHandBrake)
+			.def("getHandBrake", &VehicleDrivingManipulation::getHandBrake)
+			.def("setBrake", &VehicleDrivingManipulation::setBrake)
+			.def("getBrake", &VehicleDrivingManipulation::getBrake)
+		];
+		AddClassToCollection("VehicleDrivingManipulation", "VehicleDrivingManipulation", "It can be used in the vehicle component vehicle driving callback to manipulate the driving behavior.");
+		AddClassToCollection("VehicleDrivingManipulation", "void setSteerAngle(float steerAngle)", "Sets the steering angle e.g. via input device.");
+		AddClassToCollection("VehicleDrivingManipulation", "float getSteerAngle()", "Gets the steering angle.");
+		AddClassToCollection("VehicleDrivingManipulation", "void setMotorForce(float motorForce)", "Sets the motor force e.g. via input device.");
+		AddClassToCollection("VehicleDrivingManipulation", "float getMotorForce()", "Gets the motor force.");
+		AddClassToCollection("VehicleDrivingManipulation", "void setHandBrake(float handBrake)", "Sets hand brake force e.g. via input device.");
+		AddClassToCollection("VehicleDrivingManipulation", "float getHandBrake()", "Gets hand brake force.");
+		AddClassToCollection("VehicleDrivingManipulation", "void setBrake(float brake)", "Sets brake force e.g. via input device.");
+		AddClassToCollection("VehicleDrivingManipulation", "float getBrake()", "Gets brake force.");
+	}
+
 	luabind::object getPositionAndNormal(OgreNewt::Contact* instance)
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
@@ -13181,6 +13231,7 @@ namespace NOWA
 				bindPhysicsCompoundConnectionComponent(this->lua);
 				bindPhysicsExplosionComponent(this->lua);
 				bindPhysicsPlayerControllerComponent(this->lua);
+				bindPhysicsVehicleComponent(this->lua);
 				bindPhysicsMaterialComponent(this->lua);
 				bindPhysicsRagDollComponent(this->lua);
 				bindPlaneComponent(this->lua);

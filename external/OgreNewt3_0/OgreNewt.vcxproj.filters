@@ -57,7 +57,7 @@
     <ClCompile Include="src\OgreNewt_Tools.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\OgreNewt_Vehicle.cpp">
+    <ClCompile Include="src\OgreNewt_VehicleOld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\OgreNewt_World.cpp">
@@ -79,6 +79,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\OgreNewt_TriggerBody.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OgreNewt_Vehicle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -137,7 +140,7 @@
     <ClInclude Include="inc\OgreNewt_Tools.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\OgreNewt_Vehicle.h">
+    <ClInclude Include="inc\OgreNewt_VehicleOld.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\OgreNewt_World.h">
@@ -162,6 +165,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\OgreNewt_TriggerBody.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\OgreNewt_Vehicle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

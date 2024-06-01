@@ -485,6 +485,30 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
+	GameObjectCompPtr PlayerControllerComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		PlayerControllerCompPtr clonedCompPtr(boost::make_shared<PlayerControllerComponent>());
+
+		// Do not clone activated, since its no visible and switched manually in game object controller
+		// clonedCompPtr->setActivated(this->activated->getBool());
+		clonedCompPtr->setRotationSpeed(this->rotationSpeed->getReal());
+		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
+		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
+		clonedCompPtr->setAcceleration(this->acceleration->getReal());
+		clonedCompPtr->setCategories(this->categories->getString());
+
+		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
+		{
+			clonedCompPtr->setAnimationName(this->animations[i]->getListSelectedValue(), i);
+		}
+
+		clonedGameObjectPtr->addComponent(clonedCompPtr);
+		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
+		return clonedCompPtr;
+	}
+
 	void PlayerControllerComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);

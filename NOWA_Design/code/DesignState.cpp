@@ -1765,13 +1765,13 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				}
 				return true;
 			}
-			case OIS::KC_F7:
+			case OIS::KC_7:
 			{
 				// NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(true);
 				this->showDebugCollisionLines(true);
 				return true;
 			}
-			case OIS::KC_F8:
+			case OIS::KC_8:
 			{
 				// NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(false);
 				this->showDebugCollisionLines(false);

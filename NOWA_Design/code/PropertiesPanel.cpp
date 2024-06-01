@@ -2179,8 +2179,7 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				auto& physicsComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
 				if (nullptr != physicsComponent)
 				{
-					Ogre::Vector4 degreeOrientation = (*attribute)->getVector4();
-					physicsComponent->rotate(Ogre::Quaternion(Ogre::Degree(degreeOrientation.x), Ogre::Vector3(degreeOrientation.y, degreeOrientation.z, degreeOrientation.w)));
+					physicsComponent->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat((*attribute)->getVector3()));
 				}
 				else
 				{

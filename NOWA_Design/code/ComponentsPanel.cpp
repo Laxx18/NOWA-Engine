@@ -458,8 +458,10 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 			}
 			else if (NOWA::WorkspaceBaseComponent::getStaticClassName() == tempComponentName)
 			{
+				validToEnable = false;
 				NOWA::CameraCompPtr cameraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::CameraComponent>());
-				if (nullptr != cameraCompPtr)
+				NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
+				if (nullptr != cameraCompPtr && nullptr == workspaceCompPtr)
 				{
 					validToEnable = true;
 				}

@@ -45,7 +45,7 @@ public:
         \param maxcontactscount maximum number of contacts that should be saved,
                set to 0 if you only need the distance to the first intersection
     */
-    void go( const OgreNewt::World* world, const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex);
+    void go( const OgreNewt::World* world, const NewtonCollision* col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex);
 
     //! user callback pre-filter function.
     /*!
@@ -116,7 +116,7 @@ public:
 		\param threadIndex Thread index
 		\param ignoreBody Body to ignore in filter, use if you're casting from inside other body and need to ignore it
     */
-	BasicConvexcast( const OgreNewt::World* world, const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex, OgreNewt::Body* ignoreBody = nullptr);
+	BasicConvexcast( const OgreNewt::World* world, const NewtonCollision* col, const Ogre::Vector3& startpt, const Ogre::Quaternion &colori, const Ogre::Vector3& endpt, int maxcontactscount, int threadIndex, OgreNewt::Body* ignoreBody = nullptr);
 
     //! destuctor.
     ~BasicConvexcast();

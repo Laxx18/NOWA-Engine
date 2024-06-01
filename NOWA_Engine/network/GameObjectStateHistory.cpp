@@ -63,6 +63,13 @@ namespace NOWA
 
 		//////////////////////////////////////////////
 
+		GameObjectStateHistory::GameObjectStateHistory()
+			: maxLength(10),
+			writeInterval(100),
+			useIntervall(false)
+		{
+		}
+
 		void GameObjectStateHistory::init(RakNet::TimeMS maxWriteInterval, RakNet::TimeMS maxHistoryTime, bool useIntervall)
 		{
 			//Intervall benutzen?
@@ -149,7 +156,7 @@ namespace NOWA
 			outPosition = (1.0f - progress) * this->history[i].position + progress * this->history[i + 1].position;
 			outOrientation = Ogre::Quaternion::Slerp(progress, this->history[i].orientation, this->history[i + 1].orientation, true);
 
-			//NOWA::Ogre::LogManager::getSingletonPtr()->logMessage("position: " + Ogre::StringConverter::toString(position));
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "out position: " + Ogre::StringConverter::toString(outPosition));
 			//NOWA::Ogre::LogManager::getSingletonPtr()->logMessage("zwischen zwei Werten: " + Ogre::StringConverter::toString(u));
 			return;
 		}
@@ -170,6 +177,11 @@ namespace NOWA
 		void GameObjectStateHistory::clear(void)
 		{
 			this->history.Clear(_FILE_AND_LINE_);
+		}
+
+		size_t GameObjectStateHistory::getHistoryLength(void) const
+		{
+			return this->history.Size();
 		}
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

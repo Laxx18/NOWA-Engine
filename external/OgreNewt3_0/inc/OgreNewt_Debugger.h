@@ -86,7 +86,7 @@ namespace OgreNewt
         void addRay(const Ogre::Vector3 &startpt, const Ogre::Vector3 &endpt);
 
         //! this function is used internally
-        void addConvexRay(const OgreNewt::ConvexCollisionPtr& col, const Ogre::Vector3 &startpt, const Ogre::Quaternion &colori, const Ogre::Vector3 &endpt);
+        void addConvexRay(const NewtonCollision* col, const Ogre::Vector3 &startpt, const Ogre::Quaternion &colori, const Ogre::Vector3 &endpt);
 
         //! this function is used internally
         void addDiscardedBody(const OgreNewt::Body* body);

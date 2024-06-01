@@ -106,7 +106,7 @@ namespace OgreNewt
 
 			// Attention, its possible to create an unproportional body, by settigs radius1 and radius2 different
 			// m_col = NewtonCreateCapsule(m_world->getNewtonWorld(), radius, radius, height, id, &matrix[0]);
-			m_col = NewtonCreateCapsule(m_world->getNewtonWorld(), (float)radius, (float)radius, (float)(height - (radius * 2.0)), id, &matrix[0]);
+			m_col = NewtonCreateCapsule(m_world->getNewtonWorld(), (float)radius, (float)radius, height/* (float)(height - (radius * 2.0))*/, id, &matrix[0]);
 			NewtonCollisionSetUserData(m_col, this);
 		}
 

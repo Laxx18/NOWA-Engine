@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "PhysicsPlayerControllerComponent.h"
+#include "LuaScriptComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
@@ -258,9 +259,26 @@ namespace NOWA
 		{
 			this->initialPosition = position;
 
+			LuaScript* luaScript = nullptr;
+			auto& luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
+			if (nullptr != luaScriptCompPtr)
+			{
+				luaScript = luaScriptCompPtr->getLuaScript();
+				if (nullptr == luaScript)
+				{
+					luaScriptCompPtr->postInit();
+				}
+			}
+
+			if (nullptr == luaScript)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsPlayerControllerComponent] Physics active vehicle cannot be controlled, because this game object: "
+																+ this->gameObjectPtr->getName() + " has no lua script component.");
+			}
+
 			static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 				this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), luaScript, this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
 		}

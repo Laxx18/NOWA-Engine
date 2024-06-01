@@ -181,7 +181,7 @@ namespace NOWA
 	bool LuaScriptComponent::postInit(void)
 	{
 		// Do not set script a second time
-		if (true == this->componentCloned)
+		if (true == this->componentCloned || nullptr != this->luaScript)
 			return true;
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LuaScriptComponent] Init lua script component for game object: " + this->gameObjectPtr->getName());

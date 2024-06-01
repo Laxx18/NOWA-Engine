@@ -398,7 +398,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Requirements: A kind of player controller component must exist.";
+			return "Requirements: A kind of player controller component must exist. Note: If player is not in front of camera, adjust the game object's global mesh direction.";
 		}
 
 		/**

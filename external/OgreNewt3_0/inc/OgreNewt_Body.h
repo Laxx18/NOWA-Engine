@@ -44,6 +44,7 @@ namespace OgreNewt
 	public:
 		friend class PlayerController;
 		friend class Vehicle;
+		friend class RayCastVehicleManager;
 		//! Custom force callback.
 		/*!
 		This function is called from within the OgreNewt::World::update() command when applying forces to Rigid Bodies, such as

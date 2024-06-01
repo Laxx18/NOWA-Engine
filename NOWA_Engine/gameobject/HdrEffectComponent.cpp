@@ -341,7 +341,7 @@ namespace NOWA
 		// If setting it afterwards some frames, it does work^^
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
 			// Shows for a specific amount of time
 			auto ptrFunction = [this]()
 				{

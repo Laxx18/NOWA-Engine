@@ -3,6 +3,7 @@
 #include "modules/OgreNewtModule.h"
 #include "modules/LuaScriptApi.h"
 #include "PhysicsActiveComponent.h"
+#include "PhysicsActiveVehicleComponent.h"
 #include "utilities/XMLConverter.h"
 #include "main/Events.h"
 #include "utilities/MathHelper.h"
@@ -43,8 +44,9 @@ namespace NOWA
 	typedef boost::shared_ptr<Joint6DofComponent> Joint6DofCompPtr;
 	typedef boost::shared_ptr<JointFlexyPipeHandleComponent> JointFlexyPipeHandleCompPtr;
 	typedef boost::shared_ptr<JointFlexyPipeSpinnerComponent> JointFlexyPipeSpinnerCompPtr;
+	typedef boost::shared_ptr<JointVehicleTireComponent> JointVehicleTireCompPtr;
+	typedef boost::shared_ptr<JointWheelComponent> JointWheelCompPtr;
 	
-
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
 
@@ -1150,6 +1152,11 @@ namespace NOWA
 			// joint already created so skip
 			return true;
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		
 		if (nullptr == this->body)
 		{
@@ -2012,6 +2019,11 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointHingeActuatorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
@@ -2586,6 +2598,11 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -2999,6 +3016,11 @@ namespace NOWA
 	//		{
 	//		this->connect();
 	//		}
+	// // Still null, creation to early, skip for now
+	// 	if (nullptr == this->body)
+	// 	{
+	// 		return true;
+	// 	}
 	//	if (Ogre::Vector3::ZERO == customJointPosition)
 	//	{
 	//		Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -3300,9 +3322,16 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		// Special type of joint, which cannot be created with world as precessor body
 		if (nullptr == this->predecessorJointCompPtr)
+		{
 			return true;
+		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -3661,9 +3690,14 @@ namespace NOWA
 		//	return true;
 		//}
 //		if (nullptr == this->body)
-//			{
+//		{
 //			this->connect();
-//			}
+//		}
+//		// Still null, creation to early, skip for now
+		// if (nullptr == this->body)
+		// {
+		// 	return true;
+		// }
 //if (Ogre::Vector3::ZERO == customJointPosition)
 //		{
 //			Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -3960,6 +3994,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
@@ -4152,6 +4192,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -4431,6 +4477,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 
 		this->jointPosition = this->body->getPosition();
@@ -4751,6 +4803,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		this->jointPosition = this->body->getPosition();
 
 		return true;
@@ -5046,6 +5104,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -5498,6 +5562,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -6060,6 +6130,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -6653,6 +6729,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointSlidingContactComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
@@ -7114,6 +7196,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
@@ -8745,6 +8833,12 @@ namespace NOWA
 			this->connect();
 		}
 
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
+
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
 			this->jointPosition = this->body->getPosition() + this->anchorPosition->getVector3();
@@ -9094,11 +9188,19 @@ namespace NOWA
 		}*/
 
 		if (false == this->activated->getBool())
+		{
 			return true;
+		}
 
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -9416,6 +9518,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		
 		if (true == this->jointAlreadyCreated)
 		{
@@ -9618,6 +9726,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 
 		//if (true == this->jointAlreadyCreated)
@@ -9867,6 +9981,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		
 		if (nullptr == this->targetJointCompPtr)
 		{
@@ -10092,6 +10212,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
+
 		if (nullptr == this->targetJointCompPtr)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointWormGearComponent] Error could not create worm gear for joint: " + this->gameObjectPtr->getName()
@@ -10327,6 +10453,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 		
 		//if (true == this->jointAlreadyCreated)
@@ -10712,6 +10844,12 @@ namespace NOWA
 		if (nullptr == this->body)
 		{
 			this->connect();
+		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
 		}
 
 		if (Ogre::Vector3::ZERO == customJointPosition)
@@ -11697,6 +11835,12 @@ namespace NOWA
 			this->connect();
 		}
 
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
+
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
 			Ogre::Vector3 size = this->body->getAABB().getSize();
@@ -12250,6 +12394,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		
 		if (Ogre::Vector3::ZERO == customJointPosition)
 		{
@@ -12708,6 +12858,12 @@ namespace NOWA
 		{
 			this->connect();
 		}
+
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin0->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointMotorComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin 0 is zero.");
@@ -13074,6 +13230,11 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointWheelComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
@@ -13426,6 +13587,11 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		if (Ogre::Vector3::ZERO == this->pin->getVector3())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPinComponent] Cannot create joint for: " + this->gameObjectPtr->getName() + " because the pin is zero.");
@@ -13653,6 +13819,11 @@ namespace NOWA
 		{
 			this->connect();
 		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
 		
 		OgreNewt::Body* predecessorBody = nullptr;
 		if (this->predecessorJointCompPtr)
@@ -13686,6 +13857,744 @@ namespace NOWA
 	void JointFlexyPipeSpinnerComponent::actualizeValue(Variant* attribute)
 	{
 		JointComponent::actualizeValue(attribute);
+	}
+
+	/*******************************JointVehicleTireComponent*******************************/
+
+	JointVehicleTireComponent::JointVehicleTireComponent()
+		: JointComponent()
+	{
+		// Note that also in JointComponent internalBaseInit() is called, which sets the values for JointComponent, so this is called for already existing values
+		// But luckely in Variant, no new attributes are added, but the values changed via interalAdd(...) in Variant
+		this->type->setReadOnly(false);
+		this->type->setValue(this->getClassName());
+		this->type->setReadOnly(true);
+		this->type->setDescription("An object attached to a hinge joint can only rotate around one dimension perpendicular to the axis it is attached to. A good real-life example would be a swinging door or a propeller.");
+
+		this->anchorPosition = new Variant(JointVehicleTireComponent::AttrAnchorPosition(), Ogre::Vector3::ZERO, this->attributes);
+		this->pin = new Variant(JointVehicleTireComponent::AttrPin(), Ogre::Vector3(0.0f, 0.0f, 1.0f), this->attributes);
+		this->tireSide = new Variant(JointVehicleTireComponent::AttrTireSide(), Ogre::StringVector({ "Tire Side Right", "Tire Side Left" }), this->attributes);
+		this->tireSteer = new Variant(JointVehicleTireComponent::AttrTireSteer(), Ogre::StringVector({ "No Steer", "Steer" }), this->attributes);
+		this->steerSide = new Variant(JointVehicleTireComponent::AttrSteerSide(), Ogre::StringVector({ "Steer Side Right", "Steer Side Left" }), this->attributes);
+		this->tireAccel = new Variant(JointVehicleTireComponent::AttrTireAccel(), Ogre::StringVector({ "No Accel", "Accel" }), this->attributes);
+		this->brakeMode = new Variant(JointVehicleTireComponent::AttrBrakeMode(), Ogre::StringVector({ "No Brake", "Brake" }), this->attributes);
+		this->lateralFriction = new Variant(JointVehicleTireComponent::AttrLateralFriction(), 0.125f, this->attributes);
+
+		this->longitudinalFriction = new Variant(JointVehicleTireComponent::AttrLongitudinalFriction(), 2.65f, this->attributes);
+		this->springLength = new Variant(JointVehicleTireComponent::AttrSpringLength(), 0.2f, this->attributes);
+		this->springConst = new Variant(JointVehicleTireComponent::AttrSpringConst(), 200.0f, this->attributes);
+		this->springDamp = new Variant(JointVehicleTireComponent::AttrSpringDamp(), 12.0f, this->attributes);
+
+		this->springLength->setDescription("Important value, if to low, no raycast will hit the object (like floor) below and vehicle tires will not rotate. Adjust this value until everything works.");
+
+		this->targetId->setVisible(false);
+	}
+
+	JointVehicleTireComponent::~JointVehicleTireComponent()
+	{
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointVehicleTireComponent] Destroyed");
+	}
+
+	bool JointVehicleTireComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	{
+		JointComponent::init(propertyElement, filename);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
+		{
+			this->anchorPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.0f, 0.0f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointPin")
+		{
+			this->pin->setValue(XMLConverter::getAttribVector3(propertyElement, "data", Ogre::Vector3(0.0f, 0.0f, 0.0f)));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TireSide")
+		{
+			this->tireSide->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TireSteer")
+		{
+			this->tireSteer->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SteerSide")
+		{
+			this->steerSide->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TireAccel")
+		{
+			this->tireAccel->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BrakeMode")
+		{
+			this->brakeMode->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LateralFriction")
+		{
+			this->lateralFriction->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LongitudinalFriction")
+		{
+			this->longitudinalFriction->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringLength")
+		{
+			this->springLength->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringConst")
+		{
+			this->springConst->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpringDamp")
+		{
+			this->springDamp->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		return true;
+	}
+
+	bool JointVehicleTireComponent::postInit(void)
+	{
+		JointComponent::postInit();
+
+		// Component must be dynamic, because it will be moved
+		this->gameObjectPtr->setDynamic(true);
+		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Init joint vehicle tire component for game object: " + this->gameObjectPtr->getName());
+
+		return true;
+	}
+
+	void JointVehicleTireComponent::onRemoveComponent(void)
+	{
+		JointComponent::onRemoveComponent();
+
+		if (nullptr != this->predecessorJointCompPtr)
+		{
+			// Removes the tire from vehicle, if tire joint will be removed
+			auto& physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
+			if (nullptr != physicsActiveVehicleCompPtr)
+			{
+				OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+				if (vehicleTire)
+				{
+					physicsActiveVehicleCompPtr->getVehicle()->RemoveTire(vehicleTire->getRayCastTire());
+				}
+			}
+		}
+	}
+
+	bool JointVehicleTireComponent::connect(void)
+	{
+		bool success = JointComponent::connect();
+
+		this->internalShowDebugData(true, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+
+		return success;
+	}
+
+	bool JointVehicleTireComponent::disconnect(void)
+	{
+		bool success = JointComponent::disconnect();
+
+		this->internalShowDebugData(false, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+
+		return success;
+	}
+
+	Ogre::String JointVehicleTireComponent::getClassName(void) const
+	{
+		return "JointVehicleTireComponent";
+	}
+
+	Ogre::String JointVehicleTireComponent::getParentClassName(void) const
+	{
+		return "JointComponent";
+	}
+
+	void JointVehicleTireComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		if (nullptr != this->joint)
+		{
+
+		}
+	}
+
+	GameObjectCompPtr JointVehicleTireComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	{
+		JointVehicleTireCompPtr clonedJointCompPtr(boost::make_shared<JointVehicleTireComponent>());
+
+		clonedJointCompPtr->setType(this->type->getString());
+		clonedJointCompPtr->internalSetPriorId(this->id->getULong());
+		clonedJointCompPtr->setPredecessorId(this->predecessorId->getULong());
+		clonedJointCompPtr->setTargetId(this->targetId->getULong());
+		clonedJointCompPtr->setJointPosition(this->jointPosition);
+		clonedJointCompPtr->setJointRecursiveCollisionEnabled(this->jointRecursiveCollision->getBool());
+		clonedJointCompPtr->stiffness->setValue(this->stiffness->getReal()); // Do not call setter, because internally a bool flag is set, so that stiffness is always used
+
+		clonedJointCompPtr->setAnchorPosition(this->anchorPosition->getVector3());
+		clonedJointCompPtr->setPin(this->pin->getVector3());
+		clonedJointCompPtr->setVehicleTireSide(this->tireSide->getListSelectedValue());
+		clonedJointCompPtr->setVehicleTireSteer(this->tireSteer->getListSelectedValue());
+		clonedJointCompPtr->setVehicleTireAccel(this->tireAccel->getListSelectedValue());
+		clonedJointCompPtr->setVehicleSteerSide(this->steerSide->getListSelectedValue());
+		clonedJointCompPtr->setVehicleTireBrake(this->brakeMode->getListSelectedValue());
+		clonedJointCompPtr->setLateralFriction(this->lateralFriction->getReal());
+		clonedJointCompPtr->setLongitudinalFriction(this->longitudinalFriction->getReal());
+		clonedJointCompPtr->setSpringLength(this->springLength->getReal());
+		clonedJointCompPtr->setSpringConst(this->springConst->getReal());
+		clonedJointCompPtr->setSpringDamp(this->springDamp->getReal());
+
+		clonedGameObjectPtr->addComponent(clonedJointCompPtr);
+		clonedJointCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedJointCompPtr->setActivated(this->activated->getBool());
+
+		return clonedJointCompPtr;
+	}
+
+	bool JointVehicleTireComponent::createJoint(const Ogre::Vector3& customJointPosition)
+	{
+		// Joint base created but not activated, return false, but its no error, hence after that return true.
+		if (false == JointComponent::createJoint(customJointPosition))
+		{
+			return true;
+		}
+
+		Ogre::String gameObjectName = this->gameObjectPtr->getName();
+
+		if (true == this->jointAlreadyCreated)
+		{
+			// joint already created so skip
+			return true;
+		}
+		// Still null, creation to early, skip for now
+		if (nullptr == this->body)
+		{
+			return true;
+		}
+
+		if (nullptr == this->body)
+		{
+			bool success = this->connect();
+			if (false == success)
+			{
+				return false;
+			}
+		}
+		if (Ogre::Vector3::ZERO == this->pin->getVector3())
+		{
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Cannot create joint for: " + gameObjectName + " because the pin is zero.");
+			return false;
+		}
+
+		if (Ogre::Vector3::ZERO == customJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			this->jointPosition = (this->body->getPosition() + offset);
+		}
+		else
+		{
+			this->hasCustomJointPosition = true;
+			this->jointPosition = customJointPosition;
+		}
+
+		OgreNewt::Body* predecessorBody = nullptr;
+		if (this->predecessorJointCompPtr)
+		{
+			predecessorBody = this->predecessorJointCompPtr->getBody();
+			if (nullptr != this->predecessorJointCompPtr->getOwner() && nullptr != this->gameObjectPtr)
+			{
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Creating tire vehicle tire joint for body1 name: "
+															+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + gameObjectName);
+			}
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Cannot create joint for: " + gameObjectName + " because there is no predecessor.");
+			return false;
+		}
+
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
+
+		auto& physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(this->predecessorJointCompPtr->getOwner()->getComponent<PhysicsActiveVehicleComponent>());
+		if (nullptr == physicsActiveVehicleCompPtr)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Cannot create joint for: " + gameObjectName + " because there is no predecessor.");
+			return false;
+		}
+		
+		// Attention: A test!
+		this->body->removeForceAndTorqueCallback();
+		this->body->removeTransformCallback();
+
+		// this->predecessorJointCompPtr->setJointRecursiveCollisionEnabled(false);
+		// this->setJointRecursiveCollisionEnabled(false);
+
+		this->joint = new OgreNewt::VehicleTire(this->body, predecessorBody, this->jointPosition, this->pin->getVector3(), physicsActiveVehicleCompPtr->getVehicle(), this->getOwner()->getSize().y / 2.0f);
+
+		// Attention: in Hinge this is used at last:
+		// this->body->getOrientation()* this->pin->getVector3()
+
+		this->joint->setBodyMassScale(this->bodyMassScale->getVector2().x, this->bodyMassScale->getVector2().y);
+
+		this->joint->setCollisionState(this->jointRecursiveCollision->getBool() == true ? 1 : 0);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setSmass(this->body->getMass());
+			this->setVehicleTireSide(this->tireSide->getListSelectedValue());
+			this->setVehicleTireSteer(this->tireSteer->getListSelectedValue());
+			this->setVehicleSteerSide(this->steerSide->getListSelectedValue());
+			this->setVehicleTireAccel(this->tireAccel->getListSelectedValue());
+			this->setVehicleTireBrake(this->brakeMode->getListSelectedValue());
+
+			this->setLateralFriction(this->lateralFriction->getReal());
+			this->setLongitudinalFriction(this->longitudinalFriction->getReal());
+			this->setSpringLength(this->springLength->getReal());
+			this->setSpringConst(this->springConst->getReal());
+			this->setSpringDamp(this->springDamp->getReal());
+
+			physicsActiveVehicleCompPtr->getVehicle()->AddTire(vehicleTire->getRayCastTire());
+		}
+		
+		if (nullptr != this->gameObjectPtr)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Created joint: " + gameObjectName);
+		}
+
+		this->jointAlreadyCreated = true;
+
+		return true;
+	}
+
+	void JointVehicleTireComponent::forceShowDebugData(bool activate)
+	{
+		this->internalShowDebugData(activate, 0, this->getUpdatedJointPosition(), this->pin->getVector3());
+	}
+
+	void JointVehicleTireComponent::actualizeValue(Variant* attribute)
+	{
+		JointComponent::actualizeValue(attribute);
+
+		if (JointVehicleTireComponent::AttrAnchorPosition() == attribute->getName())
+		{
+			this->setAnchorPosition(attribute->getVector3());
+		}
+		else if (JointVehicleTireComponent::AttrPin() == attribute->getName())
+		{
+			this->setPin(attribute->getVector3());
+		}
+		else if (JointVehicleTireComponent::AttrTireSide() == attribute->getName())
+		{
+			this->setVehicleTireSide(attribute->getListSelectedValue());
+		}
+		else if (JointVehicleTireComponent::AttrTireSteer() == attribute->getName())
+		{
+			this->setVehicleTireSteer(attribute->getListSelectedValue());
+		}
+		else if (JointVehicleTireComponent::AttrSteerSide() == attribute->getName())
+		{
+			this->setVehicleSteerSide(attribute->getListSelectedValue());
+		}
+		else if (JointVehicleTireComponent::AttrTireAccel() == attribute->getName())
+		{
+			this->setVehicleTireAccel(attribute->getListSelectedValue());
+		}
+		else if (JointVehicleTireComponent::AttrBrakeMode() == attribute->getName())
+		{
+			this->setVehicleTireBrake(attribute->getListSelectedValue());
+		}
+		else if (JointVehicleTireComponent::AttrLateralFriction() == attribute->getName())
+		{
+			this->setLateralFriction(attribute->getReal());
+		}
+		else if (JointVehicleTireComponent::AttrLongitudinalFriction() == attribute->getName())
+		{
+			this->setLongitudinalFriction(attribute->getReal());
+		}
+		else if (JointVehicleTireComponent::AttrSpringLength() == attribute->getName())
+		{
+			this->setSpringLength(attribute->getReal());
+		}
+		else if (JointVehicleTireComponent::AttrSpringConst() == attribute->getName())
+		{
+			this->setSpringConst(attribute->getReal());
+		}
+		else if (JointVehicleTireComponent::AttrSpringDamp() == attribute->getName())
+		{
+			this->setSpringDamp(attribute->getReal());
+		}
+	}
+
+	void JointVehicleTireComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	{
+		JointComponent::writeXML(propertiesXML, doc, filePath);
+
+		// 2 = int
+		// 6 = real
+		// 7 = string
+		// 8 = vector2
+		// 9 = vector3
+		// 10 = vector4 -> also quaternion
+		// 12 = bool
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointAnchorPosition"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->anchorPosition->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "JointPin"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pin->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TireSide"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireSide->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TireSteer"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireSteer->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "SteerSide"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->steerSide->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TireAccel"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tireAccel->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BrakeMode"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->brakeMode->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "LateralFriction"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lateralFriction->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "LongitudinalFriction"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->longitudinalFriction->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "SpringLength"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springLength->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "SpringConst"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springConst->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "SpringDamp"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->springDamp->getReal())));
+		propertiesXML->append_node(propertyXML);
+	}
+
+	Ogre::Vector3 JointVehicleTireComponent::getUpdatedJointPosition(void)
+	{
+		if (nullptr == this->body)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointVehicleTireComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
+			return Ogre::Vector3::ZERO;
+		}
+
+		if (false == this->hasCustomJointPosition)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			return this->body->getPosition() + offset;
+		}
+		else
+		{
+			return this->jointPosition;
+		}
+	}
+
+	void JointVehicleTireComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
+	{
+		this->anchorPosition->setValue(anchorPosition);
+
+		if (nullptr != this->body)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			//Ogre::Vector3 aPos = Ogre::Vector3(-this->anchorPosition.x, -this->anchorPosition.y, -this->anchorPosition.z);
+			//// relative anchor pos: 0.5 0 0 means 50% in X of the size of the parent object
+			//Ogre::Vector3 offset = (aPos * size);
+			//// take orientation into account, so that orientated joints are processed correctly
+			//this->jointPosition = this->body->getPosition() - (this->body->getOrientation() * offset);
+
+			// without rotation
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			this->jointPosition = (this->body->getPosition() + offset);
+			this->jointAlreadyCreated = false;
+		}
+
+		if (nullptr != this->debugGeometryNode)
+		{
+			this->debugGeometryNode->setPosition(this->jointPosition);
+		}
+	}
+
+	Ogre::Vector3 JointVehicleTireComponent::getAnchorPosition(void) const
+	{
+		return this->anchorPosition->getVector3();
+	}
+
+	void JointVehicleTireComponent::setPin(const Ogre::Vector3& pin)
+	{
+		this->pin->setValue(pin);
+		if (nullptr != this->debugGeometryNode)
+		{
+			this->debugGeometryNode->setDirection(pin);
+		}
+	}
+
+	Ogre::Vector3 JointVehicleTireComponent::getPin(void) const
+	{
+		return this->pin->getVector3();
+	}
+
+	void JointVehicleTireComponent::setVehicleTireSide(const Ogre::String& tireSide)
+	{
+		OgreNewt::VehicleTireSide vehicleTireSide;
+		if (tireSide == "Tire Side Right")
+		{
+			vehicleTireSide = OgreNewt::tsTireSideA;
+		}
+		else if (tireSide == "Tire Side Left")
+		{
+			vehicleTireSide = OgreNewt::tsTireSideB;
+		}
+
+		this->tireSide->setListSelectedValue(tireSide);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setVehicleTireSide(vehicleTireSide);
+		}
+	}
+
+	Ogre::String JointVehicleTireComponent::getVehicleTireSide(void)
+	{
+		return this->tireSide->getListSelectedValue();
+	}
+
+	void JointVehicleTireComponent::setVehicleTireSteer(const Ogre::String& tireSteer)
+	{
+		OgreNewt::VehicleTireSteer vehicleTireSteer;
+		if (tireSteer == "No Steer")
+		{
+			vehicleTireSteer = OgreNewt::tsNoSteer;
+		}
+		else if (tireSteer == "Steer")
+		{
+			vehicleTireSteer = OgreNewt::tsSteer;
+		}
+
+		this->tireSteer->setListSelectedValue(tireSteer);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setVehicleTireSteer(vehicleTireSteer);
+		}
+	}
+
+	Ogre::String JointVehicleTireComponent::getVehicleTireSteer(void)
+	{
+		return this->tireSteer->getListSelectedValue();
+	}
+
+	void JointVehicleTireComponent::setVehicleSteerSide(const Ogre::String& steerSide)
+	{
+		OgreNewt::VehicleSteerSide vehicleSteerSide;
+		if (steerSide == "Steer Side Right")
+		{
+			vehicleSteerSide = OgreNewt::tsSteerSideA;
+		}
+		else if (steerSide == "Steer Side Left")
+		{
+			vehicleSteerSide = OgreNewt::tsSteerSideB;
+		}
+
+		this->steerSide->setListSelectedValue(steerSide);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setVehicleSteerSide(vehicleSteerSide);
+		}
+	}
+
+	Ogre::String JointVehicleTireComponent::getVehicleSteerSide(void)
+	{
+		return this->steerSide->getListSelectedValue();
+	}
+
+	void JointVehicleTireComponent::setVehicleTireAccel(const Ogre::String& tireAccel)
+	{
+		OgreNewt::VehicleTireAccel vehicleTireAccel;
+		if (tireAccel == "No Accel")
+		{
+			vehicleTireAccel = OgreNewt::tsNoAccel;
+		}
+		else if (tireAccel == "Accel")
+		{
+			vehicleTireAccel = OgreNewt::tsAccel;
+		}
+
+		this->tireAccel->setListSelectedValue(tireAccel);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setVehicleTireAccel(vehicleTireAccel);
+		}
+	}
+
+	Ogre::String JointVehicleTireComponent::getVehicleTireAccel(void)
+	{
+		return this->tireAccel->getListSelectedValue();
+	}
+
+	void JointVehicleTireComponent::setVehicleTireBrake(const Ogre::String& brakeMode)
+	{
+		OgreNewt::VehicleTireBrake vehicleTireBrake;
+		if (brakeMode == "No Brake")
+		{
+			vehicleTireBrake = OgreNewt::tsNoBrake;
+		}
+		else if (brakeMode == "Brake")
+		{
+			vehicleTireBrake = OgreNewt::tsBrake;
+		}
+
+		this->brakeMode->setListSelectedValue(brakeMode);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setVehicleTireBrake(vehicleTireBrake);
+		}
+	}
+
+	Ogre::String JointVehicleTireComponent::getVehicleTireBrake(void)
+	{
+		return this->brakeMode->getListSelectedValue();
+	}
+
+	void JointVehicleTireComponent::setLateralFriction(Ogre::Real lateralFriction)
+	{
+		this->lateralFriction->setValue(lateralFriction);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setLateralFriction(lateralFriction);
+		}
+	}
+
+	Ogre::Real JointVehicleTireComponent::getLateralFriction(void) const
+	{
+		return this->lateralFriction->getReal();
+	}
+
+	void JointVehicleTireComponent::setLongitudinalFriction(Ogre::Real longitudinalFriction)
+	{
+		this->longitudinalFriction->setValue(longitudinalFriction);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setLongitudinalFriction(longitudinalFriction);
+		}
+	}
+
+	Ogre::Real JointVehicleTireComponent::getLongitudinalFriction(void) const
+	{
+		return this->longitudinalFriction->getReal();
+	}
+
+	void JointVehicleTireComponent::setSpringLength(Ogre::Real springLength)
+	{
+		this->springLength->setValue(springLength);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setSpringLength(springLength);
+		}
+	}
+
+	Ogre::Real JointVehicleTireComponent::getSpringLength(void) const
+	{
+		return this->springLength->getReal();
+	}
+
+	void JointVehicleTireComponent::setSpringConst(Ogre::Real springConst)
+	{
+		this->springConst->setValue(springConst);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setSpringConst(springConst);
+		}
+	}
+
+	Ogre::Real JointVehicleTireComponent::getSpringConst(void) const
+	{
+		return this->springConst->getReal();
+	}
+
+	void JointVehicleTireComponent::setSpringDamp(Ogre::Real springDamp)
+	{
+		this->springDamp->setValue(springDamp);
+
+		OgreNewt::VehicleTire* vehicleTire = dynamic_cast<OgreNewt::VehicleTire*>(this->joint);
+		if (vehicleTire)
+		{
+			vehicleTire->setSpringDamp(springDamp);
+		}
+	}
+
+	Ogre::Real JointVehicleTireComponent::getSpringDamp(void) const
+	{
+		return this->springDamp->getReal();
 	}
 
 }; // namespace end

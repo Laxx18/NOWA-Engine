@@ -154,9 +154,12 @@ namespace NOWA
 		}
 		else if (this->collisionType->getListSelectedValue() == "Capsule")
 		{
+			if (Ogre::Vector3::ZERO == collisionSize)
+				tempCollisionSize.y *= 0.5f;
+
 			// strangly the position must have an offset of size.y / 2
 			OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(
-				this->ogreNewt, tempCollisionSize.x / 2.0f, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+				this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
@@ -164,8 +167,11 @@ namespace NOWA
 		}
 		else if (this->collisionType->getListSelectedValue() == "ChamferCylinder")
 		{
+			if (Ogre::Vector3::ZERO == collisionSize)
+				tempCollisionSize.y *= 0.5f;
+
 			OgreNewt::CollisionPrimitives::ChamferCylinder *col = new OgreNewt::CollisionPrimitives::ChamferCylinder(
-				this->ogreNewt, tempCollisionSize.x / 2.0f, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+				this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
@@ -173,8 +179,11 @@ namespace NOWA
 		}
 		else if (this->collisionType->getListSelectedValue() == "Cone")
 		{
+			if (Ogre::Vector3::ZERO == collisionSize)
+				tempCollisionSize.y *= 0.5f;
+
 			OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(
-				this->ogreNewt, tempCollisionSize.x / 2.0f, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+				this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
@@ -182,8 +191,11 @@ namespace NOWA
 		}
 		else if (this->collisionType->getListSelectedValue() == "Cylinder")
 		{
+			if (Ogre::Vector3::ZERO == collisionSize)
+				tempCollisionSize.y *= 0.5f;
+
 			OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(
-				this->ogreNewt, tempCollisionSize.x / 2.0f, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+				this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
@@ -192,7 +204,7 @@ namespace NOWA
 		else if (this->collisionType->getListSelectedValue() == "Ellipsoid") // can also be a sphere
 		{
 			OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(
-				this->ogreNewt, tempCollisionSize / 2.0f, categoryId, collisionOrientation, collisionPosition);
+				this->ogreNewt, tempCollisionSize, categoryId, collisionOrientation, collisionPosition);
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);
@@ -691,7 +703,6 @@ namespace NOWA
 		}
 		else if (GameObject::AttrOrientation() == attribute->getName())
 		{
-			unsigned long test = this->gameObjectPtr->getId();
 			this->setOrientation(MathHelper::getInstance()->degreesToQuat(attribute->getVector3()));
 		}
 	}
@@ -720,14 +731,14 @@ namespace NOWA
 
 	void PhysicsComponent::translate(const Ogre::Vector3& relativePosition)
 	{
-		this->gameObjectPtr->setAttributePosition(this->physicsBody->getPosition() + relativePosition);
+		this->gameObjectPtr->setAttributePosition(this->gameObjectPtr->getSceneNode()->_getDerivedPosition() + relativePosition);
 		if (nullptr != this->physicsBody)
 			this->physicsBody->setPositionOrientation(this->physicsBody->getPosition() + relativePosition, this->getOrientation());
 	}
 
 	void PhysicsComponent::rotate(const Ogre::Quaternion& relativeRotation)
 	{
-		this->gameObjectPtr->setAttributeOrientation(this->getOrientation() * relativeRotation);
+		this->gameObjectPtr->setAttributeOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation() * relativeRotation);
 		if (nullptr != this->physicsBody)
 			this->physicsBody->setPositionOrientation(this->physicsBody->getPosition(), this->getOrientation() * relativeRotation);
 	}

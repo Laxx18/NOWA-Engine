@@ -2069,4 +2069,188 @@ namespace OgreNewt
 		return joint->GetSteerRate();
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	VehicleTire::VehicleTire(OgreNewt::Body* child, OgreNewt::Body* parentBody, const Ogre::Vector3& pos, const Ogre::Vector3& pin, Vehicle* parent, Ogre::Real radius)
+		: Joint(),
+		m_tireConfiguration(RayCastTire::TireConfiguration())
+	{
+		dCustomJoint* supportJoint;
+
+		// make the joint matrix 
+		dVector dir(pin.x, pin.y, pin.z, 0.0f);
+		dMatrix pinsAndPivoFrame(dGrammSchmidt(dir));
+		pinsAndPivoFrame.m_posit = dVector(pos.x, pos.y, pos.z, 1.0f);
+
+		// New command: NewtonBodySetGyroscopicTorque(box0, 1);
+
+		// create a Newton Custom joint and set it at the support joint	
+		supportJoint = new RayCastTire(child->getWorld()->getNewtonWorld(), pinsAndPivoFrame, dir, child, parentBody, parent, m_tireConfiguration, radius);
+		SetSupportJoint(supportJoint);
+	}
+
+	VehicleTire::~VehicleTire()
+	{
+	}
+
+	void VehicleTire::setVehicleTireSide(VehicleTireSide tireSide)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		// TODO: Check if each time the config is reset, due to bad reference management
+		m_tireConfiguration.tireSide = tireSide;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	VehicleTireSide VehicleTire::getVehicleTireSide(void) const
+	{
+		return m_tireConfiguration.tireSide;
+	}
+
+	void VehicleTire::setVehicleTireSteer(VehicleTireSteer tireSteer)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.tireSteer = tireSteer;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	VehicleTireSteer VehicleTire::getVehicleTireSteer(void) const
+	{
+		return m_tireConfiguration.tireSteer;
+	}
+
+	void VehicleTire::setVehicleSteerSide(VehicleSteerSide steerSide)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.steerSide = steerSide;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	VehicleSteerSide VehicleTire::getVehicleSteerSide(void) const
+	{
+		return m_tireConfiguration.steerSide;
+	}
+
+	void VehicleTire::setVehicleTireAccel(VehicleTireAccel tireAccel)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.tireAccel = tireAccel;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	VehicleTireAccel VehicleTire::getVehicleTireAccel(void) const
+	{
+		return m_tireConfiguration.tireAccel;
+	}
+
+	void VehicleTire::setVehicleTireBrake(VehicleTireBrake brakeMode)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.brakeMode = brakeMode;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	VehicleTireBrake VehicleTire::getVehicleTireBrake(void) const
+	{
+		return m_tireConfiguration.brakeMode;
+	}
+
+	void VehicleTire::setLateralFriction(Ogre::Real lateralFriction)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.lateralFriction = lateralFriction;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getLateralFriction(void) const
+	{
+		return m_tireConfiguration.lateralFriction;
+	}
+
+	void VehicleTire::setLongitudinalFriction(Ogre::Real longitudinalFriction)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.longitudinalFriction = longitudinalFriction;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getLongitudinalFriction(void) const
+	{
+		return m_tireConfiguration.longitudinalFriction;
+	}
+
+	void VehicleTire::setSpringLength(Ogre::Real springLength)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.springLength = springLength;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getSpringLength(void) const
+	{
+		return m_tireConfiguration.springLength;
+	}
+
+	void VehicleTire::setSmass(Ogre::Real smass)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.smass = smass;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getSmass(void) const
+	{
+		return m_tireConfiguration.smass;
+	}
+
+	void VehicleTire::setSpringConst(Ogre::Real springConst)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.springConst = springConst;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getSpringConst(void) const
+	{
+		return m_tireConfiguration.springConst;
+	}
+
+	void VehicleTire::setSpringDamp(Ogre::Real springDamp)
+	{
+		RayCastTire* joint = (RayCastTire*)GetSupportJoint();
+
+		m_tireConfiguration.springDamp = springDamp;
+
+		joint->SetTireConfiguration(m_tireConfiguration);
+	}
+
+	Ogre::Real VehicleTire::getSpringDamp(void) const
+	{
+		return m_tireConfiguration.springDamp;
+	}
+
+	RayCastTire* VehicleTire::getRayCastTire(void)
+	{
+		return (RayCastTire*)GetSupportJoint();
+	}
+
 }   // end NAMESPACE OgreNewt

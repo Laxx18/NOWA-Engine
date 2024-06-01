@@ -20,6 +20,9 @@ namespace NOWA
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
 		gameObjectStateHistory(nullptr),
+		targetGameObject(nullptr),
+		physicsActiveComponent(nullptr),
+		physicsActiveKinematicComponent(nullptr),
 		activated(new Variant(TransformHistoryComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(TransformHistoryComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		historyLength(new Variant(TransformHistoryComponent::AttrHistoryLength(), static_cast<unsigned int>(10), this->attributes)),
@@ -139,8 +142,37 @@ namespace NOWA
 		if (nullptr != targetGameObjectPtr)
 		{
 			this->targetGameObject = targetGameObjectPtr.get();
+
+			// Must come first, because it is derived from PhysicsActiveComponent
+			const auto& tempPhyisicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->targetGameObject->getComponent<PhysicsActiveKinematicComponent>());
+			if (nullptr != tempPhyisicsActiveKinematicCompPtr)
+			{
+				this->physicsActiveKinematicComponent = tempPhyisicsActiveKinematicCompPtr.get();
+			}
+			else
+			{
+				auto physicsPlayerControllerComponent = NOWA::makeStrongPtr(targetGameObject->getComponent<PhysicsPlayerControllerComponent>());
+				if (nullptr != physicsPlayerControllerComponent)
+				{
+					// Not possible
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TransformHistoryComponent] Cannot use transform history, because the target game object is a player controller. Affected game object: " + this->gameObjectPtr->getName());
+					return true;
+				}
+
+				const auto& tempPhyisicsActiveCompPtr = NOWA::makeStrongPtr(this->targetGameObject->getComponent<PhysicsActiveComponent>());
+				if (nullptr != tempPhyisicsActiveCompPtr)
+				{
+					this->physicsActiveComponent = tempPhyisicsActiveCompPtr.get();
+				}
+			}
+
 			this->gameObjectStateHistory = new GameObjectStateHistory();
 			this->gameObjectStateHistory->init(100, this->historyLength->getUInt() * 100, false == this->useDelay->getBool());
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TransformHistoryComponent] Cannot use transform history, because there is no target game object for the given id: " + Ogre::StringConverter::toString(this->targetId->getULong()) 
+															+ " Affected game object: " + this->gameObjectPtr->getName());
 		}
 		return true;
 	}
@@ -149,7 +181,9 @@ namespace NOWA
 	{
 		this->isTransforming = false;
 		this->targetGameObject = nullptr;
-
+		this->physicsActiveComponent = nullptr;
+		this->physicsActiveKinematicComponent = nullptr;
+		
 		if (nullptr != this->gameObjectStateHistory)
 		{
 			delete this->gameObjectStateHistory;
@@ -206,13 +240,51 @@ namespace NOWA
 			if (castEventData->getGameObjectId() == this->targetGameObject->getId())
 			{
 				this->targetGameObject = nullptr;
+				this->physicsActiveComponent = nullptr;
+				this->physicsActiveKinematicComponent = nullptr;
 			}
 		}
+	}
+
+	Ogre::Vector3 TransformHistoryComponent::seek(PhysicsActiveComponent* physicsActiveComponent, Ogre::Vector3 targetPosition, Ogre::Real dt)
+	{
+		Ogre::Vector3 desiredVelocity = targetPosition - this->targetGameObject->getPosition();
+
+		desiredVelocity.normalise();
+		desiredVelocity *= physicsActiveComponent->getSpeed();
+
+		// Moves to the calculated direction
+		return std::move(desiredVelocity);
+		return Ogre::Vector3::ZERO;
+	}
+
+	Ogre::Vector3 TransformHistoryComponent::arrive(PhysicsActiveComponent* physicsActiveComponent, Ogre::Vector3 targetPosition, Ogre::Real dt)
+	{
+		Ogre::Vector3 resultDirection = targetPosition - physicsActiveComponent->getPosition();
+
+		// Calculates the distance to the target
+		Ogre::Real distance = resultDirection.length();
+		// Prevents jitter
+		if (distance > 0.06f)
+		{
+			// because Deceleration is enumerated as an int, this value is required
+			// to provide fine tweaking of the deceleration..
+			// calculate the speed required to reach the target given the desired
+			// deceleration
+			Ogre::Real speed = distance / (static_cast<Ogre::Real>(0.3f));
+			// make sure the velocity does not exceed the max
+			speed = std::min(speed, physicsActiveComponent->getMaxSpeed());
+			// from here proceed just like Seek except we don't need to normalize 
+			// the ToTarget vector because we have already gone to the trouble
+			// of calculating its length: dist. 
+			return resultDirection * speed / distance;
+		}
+		return Ogre::Vector3::ZERO;
 	}
 	
 	void TransformHistoryComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && true == this->activated->getBool())
+		if (false == notSimulating && true == this->activated->getBool() && nullptr != this->gameObjectStateHistory)
 		{
 			this->isTransforming = false;
 
@@ -236,6 +308,10 @@ namespace NOWA
 			{
 				this->gameObjectStateHistory->enqeue(this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(), RakNet::GetTimeMS());
 			}
+			/*else
+			{
+				this->gameObjectStateHistory->clear();
+			}*/
 
 			if (nullptr != this->targetGameObject)
 			{
@@ -244,38 +320,90 @@ namespace NOWA
 
 				this->gameObjectStateHistory->readPiecewiseLinearInterpolated(sourcePosition, sourceOrientation, RakNet::GetTimeMS() - this->pastTime->getUInt());
 
-				auto physicsActiveComponent = NOWA::makeStrongPtr(targetGameObject->getComponent<PhysicsActiveComponent>());
-				if (nullptr != physicsActiveComponent)
+				if (nullptr != this->physicsActiveComponent)
 				{
-					physicsActiveComponent->setPosition(sourcePosition);
+					Ogre::Vector3 resultVelocity = Ogre::Vector3::ZERO;
+					
+					/*if (this->gameObjectStateHistory->getHistoryLength() > 0)
+					{
+						resultVelocity = this->seek(sourcePosition, dt);
+					}
+					else if (this->gameObjectStateHistory->getHistoryLength() == 0)
+					{
+						resultVelocity = this->arrive(sourcePosition, dt);
+					}*/
+
+					// Does not work well
+#if 0
+					Ogre::Vector3 resultDirection = this->gameObjectPtr->getPosition() - this->physicsActiveComponent->getPosition();
+
+					// Calculates the distance to the target
+					Ogre::Real distanceSQ = resultDirection.squaredLength();
+					// Prevents jitter
+					if (distanceSQ < 4.0f * 4.0f)
+					{
+						resultVelocity = this->arrive(this->physicsActiveComponent, sourcePosition, dt);
+					}
+					else
+					{
+						resultVelocity = this->seek(this->physicsActiveComponent, sourcePosition, dt);
+					}
+#endif
+
+					resultVelocity = this->arrive(this->physicsActiveComponent, sourcePosition, dt);
+
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TransformHistoryComponent] history: " + Ogre::StringConverter::toString(this->gameObjectStateHistory->getHistoryLength()));
+					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
+					Ogre::Vector3 forceForVelocity = this->physicsActiveComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+					this->physicsActiveComponent->applyRequiredForceForVelocity(forceForVelocity);
+
 					if (true == this->orientate->getBool())
 					{
-						// TODO: Check this
-						physicsActiveComponent->setOrientation(sourceOrientation);
+						Ogre::Quaternion delta = Ogre::Quaternion::Slerp(0.5f, this->physicsActiveComponent->getOrientation(), sourceOrientation, true);
+						// Ogre::Quaternion delta = MathHelper::getInstance()->faceDirectionSlerp(this->physicsActiveComponent->getOrientation(), resultVelocity, this->physicsActiveComponent->getOwner()->getDefaultDirection(), dt, 0.5f);
+						this->physicsActiveComponent->applyOmegaForce(Ogre::Vector3(delta.getPitch().valueDegrees() * 0.1f, delta.getYaw().valueDegrees() * 0.1f, delta.getRoll().valueDegrees() * 0.1f));
 					}
 				}
 				else
 				{
-					auto physicsKinematicComponent = NOWA::makeStrongPtr(targetGameObject->getComponent<PhysicsActiveKinematicComponent>());
-					if (nullptr != physicsKinematicComponent)
+					if (nullptr != this->physicsActiveKinematicComponent)
 					{
-						// TODO: Check this
-					}
-					else
-					{
-						auto physicsPlayerControllerComponent = NOWA::makeStrongPtr(targetGameObject->getComponent<PhysicsPlayerControllerComponent>());
-						if (nullptr != physicsKinematicComponent)
+						// Wutzischer Effekt :)
+#if 0
+						Ogre::Vector3 resultDirection = sourcePosition - this->physicsActiveKinematicComponent->getPosition();
+
+						// Calculates the distance to the target
+						Ogre::Real distanceSQ = resultDirection.squaredLength();
+						// Prevents jitter
+						if (distanceSQ < 0.5f * 0.5f)
 						{
-							// TODO: Check this
+							Ogre::Vector3 resultVelocity = this->arrive(this->physicsActiveKinematicComponent, sourcePosition, dt);
+
+							this->physicsActiveKinematicComponent->setVelocity(this->physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
 						}
 						else
 						{
-							// No physics component
-							this->targetGameObject->getSceneNode()->setPosition(sourcePosition);
-							if (true == this->orientate->getBool())
-							{
-								this->targetGameObject->getSceneNode()->setOrientation(sourceOrientation);
-							}
+							this->physicsActiveKinematicComponent->setPosition(sourcePosition);
+						}
+						if (true == this->orientate->getBool())
+						{
+							this->physicsActiveKinematicComponent->setOrientation(sourceOrientation);
+						}
+#endif
+
+						this->physicsActiveKinematicComponent->setPosition(sourcePosition);
+						if (true == this->orientate->getBool())
+						{
+							this->physicsActiveKinematicComponent->setOrientation(sourceOrientation);
+						}
+					}
+					else
+					{
+						// No physics component
+						this->targetGameObject->getSceneNode()->setPosition(sourcePosition);
+						if (true == this->orientate->getBool())
+						{
+							this->targetGameObject->getSceneNode()->setOrientation(sourceOrientation);
 						}
 					}
 				}

@@ -165,10 +165,7 @@ namespace NOWA
 
 	void SelectionManager::handleKeyRelease(const OIS::KeyEvent& keyEventRef)
 	{
-		if (NOWA_K_SELECT == keyEventRef.key)
-		{
-			this->shiftDown = false;
-		}
+		this->shiftDown = false;
 	}
 
 	void SelectionManager::handleMouseMove(const OIS::MouseEvent& evt)
@@ -188,6 +185,10 @@ namespace NOWA
 	void SelectionManager::handleMousePress(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
 		this->isSelecting = false;
+
+		// Ugly workaround, because shit OIS is not possible to handle mouse release and key release at once!
+		// That means, if user holds shift and selects game objects and at the same moment release the shift key at the same time as the mouse release, only the mouse release is detected and shift variable remains switched on!
+		this->shiftDown = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_SELECT);
 		
 		if (id == this->mouseButtonId)
 		{

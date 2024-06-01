@@ -523,7 +523,7 @@ namespace NOWA
 		Ogre::Degree degX(degrees.x);
 		Ogre::Degree degY(degrees.y);
 		Ogre::Degree degZ(degrees.z);
-		if (true == this->realEquals(-0.0f, degX.valueDegrees()))
+		/*if (true == this->realEquals(-0.0f, degX.valueDegrees()))
 		{
 			degX = 0.0f;
 		}
@@ -534,7 +534,7 @@ namespace NOWA
 		if (true == this->realEquals(-0.0f, degZ.valueDegrees()))
 		{
 			degZ = 0.0f;
-		}
+		}*/
 		
 		Ogre::Radian yRad(degY);
 		Ogre::Radian pRad(degX);

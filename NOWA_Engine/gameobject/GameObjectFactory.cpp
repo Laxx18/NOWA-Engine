@@ -29,6 +29,7 @@
 #include "PhysicsPlayerControllerComponent.h"
 #include "PhysicsTriggerComponent.h"
 #include "PhysicsActiveKinematicComponent.h"
+#include "PhysicsActiveVehicleComponent.h"
 #include "PhysicsBuoyancyComponent.h"
 #include "AiLuaComponent.h"
 #include "PlaneComponent.h"
@@ -191,6 +192,7 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsPlayerControllerComponent>(PhysicsPlayerControllerComponent::getStaticClassId(), PhysicsPlayerControllerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsTriggerComponent>(PhysicsTriggerComponent::getStaticClassId(), PhysicsTriggerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());
+		this->componentFactory.registerClass<PhysicsActiveVehicleComponent>(PhysicsActiveVehicleComponent::getStaticClassId(), PhysicsActiveVehicleComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsBuoyancyComponent>(PhysicsBuoyancyComponent::getStaticClassId(), PhysicsBuoyancyComponent::getStaticClassName());
 
 // Attention: is this correct?, since this component is also in joints now!
@@ -229,7 +231,8 @@ namespace NOWA
 		this->componentFactory.registerClass<JointWheelComponent>(JointWheelComponent::getStaticClassId(), JointWheelComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointFlexyPipeHandleComponent>(JointFlexyPipeHandleComponent::getStaticClassId(), JointFlexyPipeHandleComponent::getStaticClassName());
 		this->componentFactory.registerClass<JointFlexyPipeSpinnerComponent>(JointFlexyPipeSpinnerComponent::getStaticClassId(), JointFlexyPipeSpinnerComponent::getStaticClassName());
-
+		this->componentFactory.registerClass<JointVehicleTireComponent>(JointVehicleTireComponent::getStaticClassId(), JointVehicleTireComponent::getStaticClassName());
+		
 		// AI Components
 		this->componentFactory.registerClass<AiMoveComponent>(AiMoveComponent::getStaticClassId(), AiMoveComponent::getStaticClassName());
 		this->componentFactory.registerClass<AiMoveRandomlyComponent>(AiMoveRandomlyComponent::getStaticClassId(), AiMoveRandomlyComponent::getStaticClassName());
@@ -244,6 +247,7 @@ namespace NOWA
 		this->componentFactory.registerClass<AiWanderComponent2D>(AiWanderComponent2D::getStaticClassId(), AiWanderComponent2D::getStaticClassName());
 
 		// Player Controller Components
+		this->componentFactory.registerClass<PlayerControllerComponent>(PlayerControllerComponent::getStaticClassId(), PlayerControllerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlayerControllerJumpNRunComponent>(PlayerControllerJumpNRunComponent::getStaticClassId(), PlayerControllerJumpNRunComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlayerControllerJumpNRunLuaComponent>(PlayerControllerJumpNRunLuaComponent::getStaticClassId(), PlayerControllerJumpNRunLuaComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlayerControllerClickToPointComponent>(PlayerControllerClickToPointComponent::getStaticClassId(), PlayerControllerClickToPointComponent::getStaticClassName());
