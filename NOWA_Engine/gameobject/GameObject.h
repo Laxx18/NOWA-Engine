@@ -925,6 +925,7 @@ namespace NOWA
 		void resetVariants();
 		void resetChanges();
 		void actualizeComponentsIndices(void);
+		bool connectPriority(void);
 	protected:
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;

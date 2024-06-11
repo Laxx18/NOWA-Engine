@@ -109,6 +109,51 @@ namespace OgreNewt
 
 		CalculateLocalMatrix(chassisMatrix, m_localMatrix0, m_localMatrix1);
 
+		// chassisMatrix = dYawMatrix(90.0f * dDegreeToRad) * chassisMatrix;
+
+#if 0
+		//m_frameLocalMatrix[0] = dVector(0.0f, 1.0f, 0.0f, 0.0f); // the y axis is the character up vector
+//m_frameLocalMatrix[1] = vehicle->m_defaultDirection;
+//m_frameLocalMatrix[2] = m_frameLocalMatrix[0].CrossProduct(m_frameLocalMatrix[1]);
+
+//dMatrix localAxis(dGetIdentityMatrix());
+//localAxis[0] = dVector(0.0f, 1.0f, 0.0f, 0.0f); // the y axis is the character up vector
+//localAxis[1] = vehicle->m_defaultDirection;
+//localAxis[2] = localAxis[0].CrossProduct(localAxis[1]);
+
+		dMatrix pinsAndPivoFrame(dGrammSchmidt(parent->m_defaultDirection));
+		m_localMatrix0.m_front = pinsAndPivoFrame.m_front;
+		m_localMatrix0.m_up = pinsAndPivoFrame.m_up;
+		m_localMatrix0.m_right = pinsAndPivoFrame.m_right;
+
+		dMatrix chassisMatrix;
+		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
+		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
+		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
+		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
+
+		// tireMatrix = dYawMatrix(90.0f * dDegreeToRad) * tireMatrix;
+
+		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
+		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
+		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
+		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
+
+
+		// create the vehicle controller
+		dMatrix chassisMatrix;
+#if 1
+		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
+#else
+		chassisMatrix.m_front = dVector(0.0f, 0.0f, 1.0f, 0.0f);			// this is the vehicle direction of travel
+#endif
+		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
+		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
+		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
+#endif
+
+
+
 		dMatrix tireMatrix;
 		// Transform of this tire
 		NewtonBodyGetMatrix(child->getNewtonBody(), &tireMatrix[0][0]);
@@ -175,6 +220,7 @@ namespace OgreNewt
 			NewtonBodySetSleepState(info.m_hitBody, 0);
 			dFloat ixx, iyy, izz, bmass;
 			NewtonBodyGetMass(info.m_hitBody, &bmass, &ixx, &iyy, &izz);
+
 			if (bmass > 0.0f)
 			{
 				//dVector bodyVel = m_realvelocity.Scale(-0.01f);
@@ -243,10 +289,10 @@ namespace OgreNewt
 
 	void RayCastTire::LongitudinalAndLateralFriction(dVector tireposit, dVector lateralpin, dFloat turnfriction, dFloat sidingfriction, dFloat timestep)
 	{
-		dFloat invMag2,
-			frictionCircleMag,
-			lateralFrictionForceMag,
-			longitudinalFrictionForceMag = 0;
+		dFloat invMag2 = 0.0f;
+		dFloat frictionCircleMag = 0.0f;
+		dFloat lateralFrictionForceMag = 0.0f;
+		dFloat longitudinalFrictionForceMag = 0.0f;
 		//
 		if (m_tireLoad > 0.0f)
 		{
@@ -288,8 +334,9 @@ namespace OgreNewt
 		dMatrix bodyMatrix;
 		NewtonBodyGetMatrix(m_body0, &bodyMatrix[0][0]);
 
-		 dMatrix AbsoluteChassisMatrix(bodyMatrix * m_localMatrix0);
-		 m_frameLocalMatrix = m_localMatrix0;
+		dMatrix absoluteChassisMatrix(bodyMatrix * m_localMatrix0);
+
+		m_frameLocalMatrix = m_localMatrix0;
 		
 		if (m_tireConfiguration.tireSteer == tsSteer)
 		{
@@ -299,7 +346,7 @@ namespace OgreNewt
 		//
 		m_posit_y = m_tireConfiguration.springLength;
 		
-		dMatrix curSuspenssionMatrix = m_suspensionMatrix * AbsoluteChassisMatrix;
+		dMatrix curSuspenssionMatrix = m_suspensionMatrix * absoluteChassisMatrix;
 		
 		dFloat tiredist = m_tireConfiguration.springLength;
 		//
@@ -315,60 +362,71 @@ namespace OgreNewt
 			//
 			NewtonWorldRayCast(dCustomJoint::m_world, &p0[0], &p1[0], VehicleRayCastFilter, this, VehicleRayPrefilterCallback, threadID);
 		}
-		else
-			if (m_vehicle->m_raytype == rctConvex)
-			{
-				tiredist = (m_tireConfiguration.springLength);
+		else if (m_vehicle->m_raytype == rctConvex)
+		{
+			tiredist = (m_tireConfiguration.springLength);
 				
 #if 1
-				dVector mRayDestination = curSuspenssionMatrix.TransformVector(m_frameLocalMatrix.m_up.Scale(-tiredist));
-				if (NewtonWorldConvexCast(dCustomJoint::m_world, &curSuspenssionMatrix[0][0], &mRayDestination[0], m_collision, &m_hitParam, m_vehicle,
-					VehicleRayPrefilterCallback, &info, 1, threadID))
+			dVector mRayDestination = curSuspenssionMatrix.TransformVector(m_frameLocalMatrix.m_up.Scale(-tiredist));
+			if (NewtonWorldConvexCast(dCustomJoint::m_world, &curSuspenssionMatrix[0][0], &mRayDestination[0], m_collision, &m_hitParam, m_vehicle,
+				VehicleRayPrefilterCallback, &info, 1, threadID))
+			{
+				m_hitBody = (NewtonBody*)info.m_hitBody;
+				Body* m_hitOgreNewtBody = (Body*)NewtonBodyGetUserData(m_hitBody);
+
+				// Tires should not hit other tires
+				for (dList<RayCastTire*>::dListNode* node = vehicle->m_tires.GetFirst(); node; node = node->GetNext())
 				{
-					m_hitBody = (NewtonBody*)info.m_hitBody;
-					Body* thisBody = (Body*)NewtonBodyGetUserData(m_hitBody);
-					Ogre::String name = thisBody->getOgreNode()->getName();
-					m_hitContact = dVector(info.m_point[0], info.m_point[1], info.m_point[2], info.m_point[3]);
-					m_hitNormal = dVector(info.m_normal[0], info.m_normal[1], info.m_normal[2], info.m_normal[3]);
-					m_penetration = info.m_penetration;
-					m_contactID = info.m_contactID;
-				}
-				else
-				{
-					vehicle->m_noHitCounter++;
-					if (200 == vehicle->m_noHitCounter)
+					RayCastTire* otherTire = node->GetInfo();
+					if (m_hitOgreNewtBody == otherTire->m_thisBody)
 					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Vehicle] Cannot hit the floor with tire: " + m_thisBody->getOgreNode()->getName() + " with the spring length of:  " + Ogre::StringConverter::toString(m_tireConfiguration.springLength)
-						 + " or because of the collision hull. Try to adjust the spring length. Or use a different collision hull like capsule and adjust the collision position etc.");
+						return;
 					}
 				}
-#else
-				dVector mRayDestination = CurSuspenssionMatrix.TransformVector(m_frameLocalMatrix.m_up.Scale(-tiredist * 4.0f));
 
-				Ogre::Quaternion vehicleOrient;
-				Ogre::Vector3 vehiclePos;
+				m_hitContact = dVector(info.m_point[0], info.m_point[1], info.m_point[2], info.m_point[3]);
+				m_hitNormal = dVector(info.m_normal[0], info.m_normal[1], info.m_normal[2], info.m_normal[3]);
+				m_penetration = info.m_penetration;
+				m_contactID = info.m_contactID;
 
-				OgreNewt::Converters::MatrixToQuatPos(&CurSuspenssionMatrix[0][0], vehicleOrient, vehiclePos);
-
-				// OgreNewt::RayCast ray(m_vehicle->getWorld(), vehiclePos, Ogre::Vector3(mRayDestination.m_x, mRayDestination.m_y, mRayDestination.m_z), true);
-
-				OgreNewt::BasicConvexcast ray(m_vehicle->getWorld(), m_thisBody->getNewtonCollision(), vehiclePos, vehicleOrient, Ogre::Vector3(mRayDestination.m_x, 
-											  mRayDestination.m_y, mRayDestination.m_z), 1, threadID);
-
-				int contactCount = ray.getContactsCount();
-				OgreNewt::BasicConvexcast::ConvexcastContactInfo info = ray.getInfoAt(contactCount - 1);
-				if (info.mBody)
-				{
-					m_hitBody = (NewtonBody*)info.mBody->getNewtonBody();
-					Body* thisBody = (Body*)NewtonBodyGetUserData(m_hitBody);
-					Ogre::String name = thisBody->getOgreNode()->getName();
-					m_hitContact = dVector(info.mContactPoint.x, info.mContactPoint.y, info.mContactPoint.z);
-					m_hitNormal = dVector(info.mContactNormal.x, info.mContactNormal.y, info.mContactNormal.z);
-					m_penetration = info.mContactPenetration;
-					m_contactID = info.mCollisionID;
-				}
-#endif
+				vehicle->GetVehicleCallback()->onTireContact(this, m_thisBody->getOgreNode()->getName(), m_hitOgreNewtBody, Ogre::Vector3(m_hitContact.m_x, m_hitContact.m_y, m_hitContact.m_z), Ogre::Vector3(m_hitNormal.m_x, m_hitNormal.m_y, m_hitNormal.m_z), m_penetration);
 			}
+			else
+			{
+				/*vehicle->m_noHitCounter++;
+				if (200 == vehicle->m_noHitCounter)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Vehicle] Cannot hit the floor with tire: " + m_thisBody->getOgreNode()->getName() + " with the spring length of:  " + Ogre::StringConverter::toString(m_tireConfiguration.springLength)
+						+ " or because of the collision hull. Try to adjust the spring length. Or use a different collision hull like capsule and adjust the collision position etc.");
+				}*/
+			}
+#else
+			dVector mRayDestination = CurSuspenssionMatrix.TransformVector(m_frameLocalMatrix.m_up.Scale(-tiredist * 4.0f));
+
+			Ogre::Quaternion vehicleOrient;
+			Ogre::Vector3 vehiclePos;
+
+			OgreNewt::Converters::MatrixToQuatPos(&CurSuspenssionMatrix[0][0], vehicleOrient, vehiclePos);
+
+			// OgreNewt::RayCast ray(m_vehicle->getWorld(), vehiclePos, Ogre::Vector3(mRayDestination.m_x, mRayDestination.m_y, mRayDestination.m_z), true);
+
+			OgreNewt::BasicConvexcast ray(m_vehicle->getWorld(), m_thisBody->getNewtonCollision(), vehiclePos, vehicleOrient, Ogre::Vector3(mRayDestination.m_x, 
+											mRayDestination.m_y, mRayDestination.m_z), 1, threadID);
+
+			int contactCount = ray.getContactsCount();
+			OgreNewt::BasicConvexcast::ConvexcastContactInfo info = ray.getInfoAt(contactCount - 1);
+			if (info.mBody)
+			{
+				m_hitBody = (NewtonBody*)info.mBody->getNewtonBody();
+				Body* thisBody = (Body*)NewtonBodyGetUserData(m_hitBody);
+				Ogre::String name = thisBody->getOgreNode()->getName();
+				m_hitContact = dVector(info.mContactPoint.x, info.mContactPoint.y, info.mContactPoint.z);
+				m_hitNormal = dVector(info.mContactNormal.x, info.mContactNormal.y, info.mContactNormal.z);
+				m_penetration = info.mContactPenetration;
+				m_contactID = info.mCollisionID;
+			}
+#endif
+		}
 		//
 		if (m_hitBody)
 		{
@@ -404,9 +462,9 @@ namespace OgreNewt
 			//
 			NewtonBodyGetVelocity(m_vehicle->getNewtonBody(), &mChassisVelocity[0]);
 			NewtonBodyGetOmega(m_vehicle->getNewtonBody(), &mChassisOmega[0]);
-			//  
-			m_TireAxelPosit = AbsoluteChassisMatrix.TransformVector(m_hardPoint - m_frameLocalMatrix.m_up.Scale(m_posit_y));
-			m_LocalAxelPosit = m_TireAxelPosit - AbsoluteChassisMatrix.m_posit;
+			 
+			m_TireAxelPosit = absoluteChassisMatrix.TransformVector(m_hardPoint - m_frameLocalMatrix.m_up.Scale(m_posit_y));
+			m_LocalAxelPosit = m_TireAxelPosit - absoluteChassisMatrix.m_posit;
 			m_TireAxelVeloc = mChassisVelocity + mChassisOmega.CrossProduct(m_LocalAxelPosit);
 			//
 			//dVector anorm = AbsoluteChassisMatrix.m_right;
@@ -416,22 +474,20 @@ namespace OgreNewt
 				//
 				dVector hitBodyVeloc;
 				NewtonBodyGetVelocity(m_hitBody, &hitBodyVeloc[0]);
-				//
-				dVector relVeloc = m_TireAxelVeloc - hitBodyVeloc;
-				//
+
+				const dVector relVeloc = m_TireAxelVeloc - hitBodyVeloc;
 				m_realvelocity = relVeloc;
-				//
-				m_tireSpeed = -m_realvelocity.DotProduct3(AbsoluteChassisMatrix.m_up);
-				//
-				dFloat distance = ApplySuspenssionLimit();
-				//
+				m_tireSpeed = -m_realvelocity.DotProduct3(absoluteChassisMatrix.m_up);
+
+				const dFloat distance = ApplySuspenssionLimit();
+
 				m_tireLoad = -NewtonCalculateSpringDamperAcceleration(timestep, m_tireConfiguration.springConst, distance, m_tireConfiguration.springDamp, m_tireSpeed);
 				// The method is a bit wrong here, I need to find a better method for integrate the tire mass.
-				// Thid method use the tire mass and interacting on the spring smoothness.
+				// This method uses the tire mass and interacting on the spring smoothness.
 				m_tireLoad = (m_tireLoad * m_vehicle->m_mass * (m_tireConfiguration.smass / m_radius) * m_suspenssionFactor * m_suspenssionStep);
-				//
-				dVector SuspensionForce = AbsoluteChassisMatrix.m_up.Scale(m_tireLoad);
-				m_vehicle->ApplyForceAndTorque(m_body0, SuspensionForce, m_TireAxelPosit);
+				
+				const dVector suspensionForce = absoluteChassisMatrix.m_up.Scale(m_tireLoad);
+				m_vehicle->ApplyForceAndTorque(m_body0, suspensionForce, m_TireAxelPosit);
 				//
 				// Only with handbrake
 				if (m_handForce > 0.0f)
@@ -443,7 +499,7 @@ namespace OgreNewt
 				{
 					if (dAbs(m_motorForce) > 0.0f)
 					{
-						dVector r_tireForce(AbsoluteChassisMatrix.m_front.Scale(m_motorForce));
+						const dVector r_tireForce(absoluteChassisMatrix.m_front.Scale(m_motorForce));
 						m_vehicle->ApplyForceAndTorque(m_body0, r_tireForce, m_TireAxelPosit);
 					}
 				}
@@ -482,9 +538,9 @@ namespace OgreNewt
 		dMatrix absoluteChassisMatrix;
 		//
 		NewtonBodySetSleepState(m_body0, 0);
-		NewtonBodySetSleepState(m_thisBody->getNewtonBody(), 0);
+		// NewtonBodySetSleepState(m_thisBody->getNewtonBody(), 0);
 		
-		// calculate the position of the pivot point and the Jacobian direction vectors, in global space. 
+		// Calculates the position of the pivot point and the Jacobian direction vectors, in global space. 
 		CalculateGlobalMatrix(matrix0, matrix1);
 		NewtonBodyGetMatrix(m_body0, &absoluteChassisMatrix[0][0]);
 		
@@ -544,16 +600,18 @@ namespace OgreNewt
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	Vehicle::Vehicle(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& massOrigin, const Ogre::Vector3& collisionPosition, VehicleCallback* vehicleCallback)
+	Vehicle::Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& massOrigin, const Ogre::Vector3& collisionPosition, VehicleCallback* vehicleCallback)
 		: Body(world, sceneManager, col)
 		, dModelRootNode(nullptr, dGetIdentityMatrix())
 		// , m_raytype(rctWorld)
 		, m_raytype(rctConvex)
 		, m_tireCount(0)
 		, m_tires()
+		, m_defaultDirection(dVector(defaultDirection.x, defaultDirection.y, defaultDirection.z))
 		, m_mass(vhmass)
 		, m_massOrigin(dVector(massOrigin.x, massOrigin.y, massOrigin.z))
 		, m_collisionPosition(dVector(collisionPosition.x, collisionPosition.y, collisionPosition.z))
+		, m_vehicleForce(Ogre::Vector3::ZERO)
 		, m_vehicleCallback(vehicleCallback)
 		, m_debugtire(false)
 		, m_initMassDataDone(false)
@@ -572,9 +630,9 @@ namespace OgreNewt
 		dFloat Iyy;
 		dFloat Izz;
 		NewtonBodyGetMass(Body::m_body, &mass, &Ixx, &Iyy, &Izz);
-		Ixx *= 1.5f;
-		Iyy *= 1.5f;
-		Izz *= 1.5f;
+		Ixx /= 1.5f;
+		Iyy /= 1.5f;
+		Izz /= 1.5f;
 
 		NewtonBodySetMassMatrix(Body::m_body, mass, Ixx, Iyy, Izz);
 
@@ -682,12 +740,12 @@ namespace OgreNewt
 		// Finds the support points that can be used to define the width and height of the tire collision mesh
 		dVector extremePoint(0.0f);
 		// Attention:
-		dVector upDir(tire->m_localTireMatrix.UnrotateVector(dVector(0.0f, 1.0f, 0.0f, 0.0f)));
+		dVector upDir(tire->GetLocalMatrix0().UnrotateVector(dVector(0.0f, 1.0f, 0.0f, 0.0f)));
 		NewtonCollisionSupportVertex(collision, &upDir[0], &extremePoint[0]);
 		tire->m_radius = dAbs(upDir.DotProduct3(extremePoint));
 
 		// Attention:
-		dVector widthDir(tire->m_localTireMatrix.UnrotateVector(dVector(1.0f, 0.0f, 0.0f, 0.0f)));
+		dVector widthDir(tire->GetLocalMatrix0().UnrotateVector(dVector(1.0f, 0.0f, 0.0f, 0.0f)));
 		NewtonCollisionSupportVertex(collision, &widthDir[0], &extremePoint[0]);
 		tire->m_width = widthDir.DotProduct3(extremePoint);
 
@@ -705,6 +763,7 @@ namespace OgreNewt
 #endif
 
 		tire->SetBodiesCollisionState(0);
+		// NewtonBodySetCollidable(tire->m_thisBody->getNewtonBody(), 0);
 
 		// tire->SetUserDestructorCallback(nullptr);
 		// Equivalent to demo:
@@ -713,7 +772,7 @@ namespace OgreNewt
 
 		tire->m_arealpos = (tire->m_localTireMatrix * m_chassisMatrix).m_posit.m_y;
 		
-		tire->m_localAxis = tire->m_localTireMatrix.UnrotateVector(dVector(0.0f, 0.0f, 1.0f, 0.0f));
+		tire->m_localAxis = tire->GetLocalMatrix0().UnrotateVector(dVector(0.0f, 0.0f, 1.0f, 0.0f));
 		tire->m_localAxis.m_w = 0.0f;
 		
 		// Must be local, but in demo there are 2 local tire matrices:
@@ -729,6 +788,8 @@ namespace OgreNewt
 
 		tire->m_suspensionMatrix.m_posit = tire->m_localTireMatrix.m_posit;
 		tire->m_hardPoint = tire->GetLocalMatrix0().UntransformVector(tire->m_localTireMatrix.m_posit);
+
+		// dYawMatrix(90.0f).TransformVector
 
 		// tire->m_hardPoint = tire->m_localTireMatrix.m_posit;
 
@@ -776,6 +837,7 @@ namespace OgreNewt
 
 	void Vehicle::ApplyForceAndTorque(NewtonBody* vBody, dVector vForce, dVector vPoint)
 	{
+		m_vehicleForce = Ogre::Vector3(vForce.m_x, vForce.m_y, vForce.m_z);
 		AddForceAtPos(vBody, vForce, vPoint);
 	}
 
@@ -787,6 +849,11 @@ namespace OgreNewt
 	VehicleCallback* Vehicle::GetVehicleCallback(void) const
 	{
 		return m_vehicleCallback;
+	}
+
+	Ogre::Vector3 Vehicle::getVehicleForce(void) const
+	{
+		return m_vehicleForce;
 	}
 
 	void Vehicle::InitMassData(void)
@@ -859,20 +926,49 @@ namespace OgreNewt
 			RayCastTire* tire = node->GetInfo();
 
 			
-#if 1
+#if 0
 			dMatrix absoluteTireMatrix = dGetIdentityMatrix();
+
+			Ogre::Real sign = 1.0f;
+			if (tire->m_pin.m_x != 0.0f)
+			{
+				sign = tire->m_pin.m_x;
+			}
+			else if (tire->m_pin.m_y != 0.0f)
+			{
+				sign = tire->m_pin.m_y;
+			}
+			else if (tire->m_pin.m_z != 0.0f)
+			{
+				sign = tire->m_pin.m_z;
+			}
+
+			Ogre::String tireName = tire->m_thisBody->getOgreNode()->getName();
 
 			// Adjust the right and left tire mesh side and rotation side.
 			if (tire->m_tireConfiguration.tireSide == tsTireSideA)
 			{
-				absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(-1.0f) * dYawMatrix(-90.0f * dDegreeToRad * tire->m_pin.m_z));
+				absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(-1.0f) * dYawMatrix(-90.0f * dDegreeToRad * sign));
 			}
 			else
 			{
-				absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(1.0f) * dYawMatrix(-90.0f * dDegreeToRad * tire->m_pin.m_z));
+				absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(1.0f) * dYawMatrix(-90.0f * dDegreeToRad * sign));
 			}
 #else
-			dMatrix absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(-1.0f) * dYawMatrix(-90.0f * dDegreeToRad * tire->m_pin.m_z));
+			Ogre::Real sign = 1.0f;
+			if (tire->m_pin.m_x != 0.0f)
+			{
+				sign = tire->m_pin.m_x;
+			}
+			else if (tire->m_pin.m_y != 0.0f)
+			{
+				sign = tire->m_pin.m_y;
+			}
+			else if (tire->m_pin.m_z != 0.0f)
+			{
+				sign = tire->m_pin.m_z;
+			}
+			dMatrix absoluteTireMatrix = (tire->CalculateTireMatrixAbsolute(1.0f * sign) * dYawMatrix(-90.0f * dDegreeToRad * sign));
 #endif
 
 			dVector atireposit = tire->m_globalTireMatrix.m_posit;
@@ -888,6 +984,7 @@ namespace OgreNewt
 			Ogre::Vector3 localTirePos;
 
 			OgreNewt::Converters::MatrixToQuatPos(&tire->m_localTireMatrix[0][0], localTireOrient, localTirePos);
+			
 
 			/*if (tirecnt == 0)
 			{

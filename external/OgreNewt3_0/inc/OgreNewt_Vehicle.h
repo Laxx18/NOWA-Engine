@@ -247,7 +247,7 @@ namespace OgreNewt
 	public:
 		friend class RayCastVehicleManager;
 	public:
-		Vehicle(World* world, Ogre::SceneManager* sceneManager, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin, VehicleCallback* vehicleCallback);
+		Vehicle(World* world, Ogre::SceneManager* sceneManager, const Ogre::Vector3& defaultDirection, const OgreNewt::CollisionPtr& col, Ogre::Real vhmass, const Ogre::Vector3& collisionPosition, const Ogre::Vector3& massOrigin, VehicleCallback* vehicleCallback);
 
 		virtual ~Vehicle();
 		//
@@ -277,16 +277,20 @@ namespace OgreNewt
 		void SetChassisMatrix(dMatrix vhmatrix);
 
 		VehicleCallback* GetVehicleCallback(void) const;
+
+		Ogre::Vector3 getVehicleForce(void) const;
 	private:
 		void InitMassData(void);
 	public:
 		int m_tireCount;
 		bool m_debugtire;
 		bool m_initMassDataDone;
+		dVector m_defaultDirection;
 		dFloat m_mass;
 		dVector m_massOrigin;
 		dVector m_collisionPosition;
 		dVector m_combackup;
+		Ogre::Vector3 m_vehicleForce;
 		VehicleRaycastType m_raytype;
 		dList<RayCastTire*> m_tires;
 		int m_noHitCounter;
@@ -335,12 +339,20 @@ namespace OgreNewt
 		}
 
 		/**
-		 * @brief Controsl via device input the brake force.
+		 * @brief Controls via device input the brake force.
 		 * @note  A good value is 7.5.
 		 */
 		virtual Ogre::Real onBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real timestep)
 		{
 			return 0.0f;
+		}
+
+		/**
+		 * @brief Is called if the tire hits another game object below.
+		 */
+		virtual void onTireContact(const OgreNewt::RayCastTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration)
+		{
+
 		}
 	};
 

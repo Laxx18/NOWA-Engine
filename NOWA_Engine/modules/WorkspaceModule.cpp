@@ -1,6 +1,7 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "WorkspaceModule.h"
 #include "gameobject/GameObjectController.h"
+#include "gameobject/CameraComponent.h"
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 #include "gameObject/WorkspaceComponents.h"
@@ -20,7 +21,10 @@ namespace NOWA
 		hlmsManager(nullptr),
 		compositorManager(nullptr),
 		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
-		ambientLightMode(Ogre::HlmsPbs::AmbientAuto)
+		ambientLightMode(Ogre::HlmsPbs::AmbientAuto),
+		useSplitScreen(false),
+		executionMask(0xFF),
+		viewportModifierMask(0x00)
 	{
 		// Get hlms data
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -445,6 +449,17 @@ namespace NOWA
 
 				found->second.workspaceBaseComponent = workspaceBaseComponent;
 				found->second.workspace = workspaceBaseComponent->getWorkspace();
+				// If its the main camera, or an active one, set as primary
+				unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
+				if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
+				{
+					found->second.isPrimary = true;
+				}
+				else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
+				{
+					found->second.isPrimary = true;
+				}
+
 				// No dummy workspace
 				found->second.isDummy = false;
 			}
@@ -481,6 +496,61 @@ namespace NOWA
 				workspaceData.workspaceBaseComponent = workspaceBaseComponent;
 				workspaceData.workspace = workspaceBaseComponent->getWorkspace();
 				workspaceData.isDummy = false;
+				// If its the main camera, or an active one, set as primary
+				unsigned int countCameras = AppStateManager::getSingletonPtr()->getCameraManager()->getCountCameras();
+				if (1 == countCameras && AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() == camera)
+				{
+					workspaceData.isPrimary = true;
+				}
+				else if (workspaceBaseComponent->getOwner()->getId() == GameObjectController::MAIN_CAMERA_ID)
+				{
+					workspaceData.isPrimary = true;
+				}
+
+				this->workspaceMap.emplace(camera, workspaceData);
+			}
+		}
+	}
+
+	void WorkspaceModule::addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
+	{
+		auto found = this->workspaceMap.find(camera);
+		if (found != this->workspaceMap.cend())
+		{
+			// If there is no external workspace, create a dummy one
+			if (nullptr == workspaceBaseComponent)
+			{
+				found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+				found->second.workspaceBaseComponent = nullptr;
+				// Its a dummy workspace
+				found->second.isDummy = true;
+			}
+			else
+			{
+				found->second.workspaceBaseComponent = workspaceBaseComponent;
+				found->second.workspace = workspaceBaseComponent->getWorkspace();
+
+				// No dummy workspace
+				found->second.isDummy = false;
+			}
+		}
+		else
+		{
+			// If there is no external workspace, create a dummy one
+			if (nullptr == workspaceBaseComponent)
+			{
+				WorkspaceData workspaceData;
+				workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
+				workspaceData.isDummy = true;
+
+				this->workspaceMap.emplace(camera, workspaceData);
+			}
+			else
+			{
+				WorkspaceData workspaceData;
+				workspaceData.workspaceBaseComponent = workspaceBaseComponent;
+				workspaceData.workspace = workspaceBaseComponent->getWorkspace();
+				workspaceData.isDummy = false;
 
 				this->workspaceMap.emplace(camera, workspaceData);
 			}
@@ -492,7 +562,10 @@ namespace NOWA
 		auto found = this->workspaceMap.find(camera);
 		if (found != this->workspaceMap.cend())
 		{
-			return found->second.workspace;
+			if (true == found->second.isPrimary)
+			{
+				return found->second.workspace;
+			}
 		}
 		return nullptr;
 	}
@@ -503,10 +576,40 @@ namespace NOWA
 		auto found = this->workspaceMap.find(camera);
 		if (found != this->workspaceMap.cend())
 		{
-			return found->second.workspaceBaseComponent;
+			if (true == found->second.isPrimary)
+			{
+				return found->second.workspaceBaseComponent;
+			}
 		}
 		
 		/*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '" 
+			+ camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
+			"Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+		throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, message + "\n", "NOWA");*/
+		return nullptr;
+	}
+
+	Ogre::CompositorWorkspace* WorkspaceModule::getWorkspace(Ogre::Camera* camera)
+	{
+		auto found = this->workspaceMap.find(camera);
+		if (found != this->workspaceMap.cend())
+		{
+			return found->second.workspace;
+		}
+		return nullptr;
+	}
+
+	WorkspaceBaseComponent* WorkspaceModule::getWorkspaceComponent(void)
+	{
+		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+		auto found = this->workspaceMap.find(camera);
+		if (found != this->workspaceMap.cend())
+		{
+			return found->second.workspaceBaseComponent;
+		}
+
+		/*Ogre::String message = "[WorkspaceModule] Error: Could not get primary workspace component, because the camera: '"
 			+ camera->getName() + "' does not belong to the workspace map. Thus further rendering is not possible!\n"
 			"Please make sure when calling 'setPrimaryWorkspace', that the correct camera is set!";
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
@@ -528,10 +631,16 @@ namespace NOWA
 				this->compositorManager->removeWorkspace(found->second.workspace);
 				found->second.workspace = nullptr;
 			}
-			found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
-			found->second.workspaceBaseComponent = nullptr;
-			// Its a dummy workspace
-			found->second.isDummy = true;
+
+			if (this->workspaceMap.size() == 1)
+			{
+				found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+				found->second.workspaceBaseComponent = nullptr;
+				// Its a dummy workspace
+				found->second.isDummy = true;
+			}
+
+			this->workspaceMap.erase(camera);
 		}
 	}
 
@@ -565,6 +674,101 @@ namespace NOWA
 	bool WorkspaceModule::hasMoreThanOneWorkspace(void) const
 	{
 		return this->workspaceMap.size() > 1;
+	}
+
+	void WorkspaceModule::setUseSplitScreen(bool useSplitScreen)
+	{
+		/*if (this->oldUseSplitScreen == useSplitScreen)
+		{
+			return;
+		}*/
+
+		/*
+			Each workspace contains an offset and scale to be applied to each pass; passed as a Vector4 to CompositorManager2::addWorkspace. The XY components contain the offset, the ZW contain the scale.
+			On each pass, its final viewport is calculated this way:
+			Real left   = mDefinition->mVpLeft      + vpModifier.x;
+			Real top    = mDefinition->mVpTop       + vpModifier.y;
+			Real width  = mDefinition->mVpWidth     * vpModifier.z;
+			Real height = mDefinition->mVpHeight    * vpModifier.w;
+			This means that to render to the left eye, you would need to specify Vector4( 0.0f, 0.0f, 0.5f, 1.0f ) and to render to the right eye you would specify Vector4( 0.5f, 0.0f, 0.5f, 1.0f ).
+		
+			Viewport modifier mask
+			You don't want the modifier to affect all passes. The viewport modifer mask is a per-pass 8-bit value that is AND'ed with the workspace's mask. 
+			If the result is non-zero, the offset and scale is applied.
+			For example, you can apply postprocessing passes to entire screen instead of just a single eye.
+			The most common use for this mask is clearing: The GPU prefers that you clear the entire buffer in one go, rather than two partial clears. 
+			Therefore you can use the mask to prevent the clear's viewport from being affected, and end up affecting the whole screen.
+			There's still a problem though: You have two workspaces (one per eye). The first workspace will work as intended. 
+			However the workspace will execute the clear again, and remove the contents drawn to the left eye. 
+			The Execution Mask solves this problem.
+
+			Execution mask
+			The execution mask is per-pass 8-bit value that is AND'ed with the workspace's execution mask. When zero, the pass is skipped, when non-zero, the pass is executed.
+			Continuing the example from the previous section, you can use an execution mask to cause the clear to only be executed when rendering the first left eye; 
+			and the clear pass will not be performed when rendering the right eye.
+			As another example, you could use two render_pass to perform Anaglyph 3D, i.e. red tint on the left eye, cyan tint on the right eye. 
+			You would set the viewport modifier mask to 0 so that it's not be affected by the workspace's offset and scale; but set the execution masks so that the red tint pass only gets executed for the left eye's workspace, 
+			and the cyan pass only gets executed for the right eye's workspace.
+		*/
+
+		
+
+		this->useSplitScreen = useSplitScreen;
+
+		if (true == useSplitScreen)
+		{
+			this->executionMask = 0x00;
+			this->viewportModifierMask = 0x00;
+		}
+		else
+		{
+			this->executionMask = 0xFF;
+			this->viewportModifierMask = 0x00;
+		}
+
+		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+
+		for (size_t i = 0; i < gameObjects.size(); i++)
+		{
+			const auto& gameObjectPtr = gameObjects[i];
+			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+			if (nullptr != cameraCompPtr)
+			{
+				if (true == this->useSplitScreen)
+				{
+					this->executionMask++;
+					this->viewportModifierMask++;
+				}
+				cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask);
+			}
+		}
+	}
+
+	bool WorkspaceModule::getUseSplitScreen(void) const
+	{
+		return this->useSplitScreen;
+	}
+
+	Ogre::uint8 WorkspaceModule::getLastExecutionMask(void) const
+	{
+		return this->executionMask;
+	}
+
+	Ogre::uint8 WorkspaceModule::getCountCameras(void)
+	{
+		Ogre::uint8 count = 0;
+		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+
+		for (size_t i = 0; i < gameObjects.size(); i++)
+		{
+			const auto& gameObjectPtr = gameObjects[i];
+			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+			if (nullptr != cameraCompPtr)
+			{
+				count++;
+			}
+		}
+		return count;
 	}
 
 	Ogre::CompositorWorkspace* WorkspaceModule::createDummyWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)

@@ -155,11 +155,23 @@ namespace NOWA
 		else if (this->collisionType->getListSelectedValue() == "Capsule")
 		{
 			if (Ogre::Vector3::ZERO == collisionSize)
+			{
 				tempCollisionSize.y *= 0.5f;
+			}
 
-			// strangly the position must have an offset of size.y / 2
-			OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(
-				this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+			OgreNewt::CollisionPrimitives::Capsule* col;
+			// Check if all vector components are used. In this case the developer may construct a really custom capsule
+			if (tempCollisionSize.z != 0.0f)
+			{
+				 col = new OgreNewt::CollisionPrimitives::Capsule(
+					this->ogreNewt, tempCollisionSize, categoryId, collisionOrientation, collisionPosition);
+			}
+			else
+			{
+				// strangly the position must have an offset of size.y / 2
+				col = new OgreNewt::CollisionPrimitives::Capsule(
+					this->ogreNewt, tempCollisionSize.x, tempCollisionSize.y, categoryId, collisionOrientation, collisionPosition);
+			}
 
 			this->volume = col->calculateVolume();
 			collisionPtr = OgreNewt::CollisionPtr(col);

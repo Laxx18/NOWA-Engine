@@ -10771,8 +10771,10 @@ namespace NOWA
 			.def("getParentClassName", &PhysicsActiveVehicleComponent::getParentClassName)
 			// .def("clone", &PhysicsActiveVehicleComponent::clone)
 			// .def("getClassId", &PhysicsActiveVehicleComponent::getClassId)
+			.def("getVehicleForce", &PhysicsActiveVehicleComponent::getVehicleForce)
 		];
 		AddClassToCollection("PhysicsActiveVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "Vector3 getVehicleForce()", "Gets current vehicle force.");
 
 		module(lua)
 		[

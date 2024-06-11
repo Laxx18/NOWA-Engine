@@ -34,6 +34,15 @@
 
 	#define OGRE_UNPACK_X_2x16( packedInt ) ((packedInt) & 0x0000FFFFu)
 	#define OGRE_UNPACK_Y_2x16( packedInt ) ((packedInt) >> 16u)
+
+	@insertpiece( DeclDetailTriplanarFuncs )
+
+	@property( detail_triplanar )
+		midf3 pow3( midf3 v, midf e )
+		{
+			return midf3_c( pow( v.x, e ), pow( v.y, e ), pow( v.z, e ) );
+		}
+	@end
 @end
 
 //-----------------------------------------------------------------------------
@@ -127,13 +136,13 @@
 	/// SPECUlAR MAP
 	@foreach( 4, n )
 		@property( metalness_map@n )
-			midf metalness@n = SampleMetalness@n( textureMaps@value( metalness_map@n_idx ),
+			midf metalness@n = SampleMetalness@n@property( detail_triplanar_metalness )Triplanar@end ( textureMaps@value( metalness_map@n_idx ),
 												  samplerState@value(metalness_map@n_sampler),
-												  inPs.uv0.xy * material.detailOffsetScale[@n].zw +
+												  @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.worldSpaceNormal )@else inPs.uv0.xy@end  * material.detailOffsetScale[@n].zw +
 												  material.detailOffsetScale[@n].xy,
 												  texIndex_detailMetalnessIdx@n ).x;
 		@else
-			midf metalness@n = _h( 0 );
+			midf metalness@n = _h( 1.0 );
 		@end
 	@end
 
@@ -152,13 +161,13 @@
 	/// ROUGHNESS MAP
 	@foreach( 4, n )
 		@property( roughness_map@n )
-			midf roughness@n = SampleRoughness@n( textureMaps@value( roughness_map@n_idx ),
+			midf roughness@n = SampleRoughness@n@property( detail_triplanar_roughness )Triplanar@end ( textureMaps@value( roughness_map@n_idx ),
 												  samplerState@value(roughness_map@n_sampler),
-												  inPs.uv0.xy * material.detailOffsetScale[@n].zw +
+												  @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.worldSpaceNormal )@else inPs.uv0.xy@end  * material.detailOffsetScale[@n].zw +
 												  material.detailOffsetScale[@n].xy,
 												  texIndex_detailRoughnessIdx@n ).x;
 		@else
-			midf roughness@n = _h( 0 );
+			midf roughness@n = _h( 1.0 );
 		@end
 	@end
 
@@ -173,6 +182,7 @@
 	@end
 @end
 
+@undefpiece( LoadGeomNormalData )
 @undefpiece( LoadNormalData )
 @piece( LoadNormalData )
 	// Geometric normal
@@ -180,7 +190,16 @@
 	@property( z_up )
 		  pixelData.geomNormal.yz = midf2_c( -pixelData.geomNormal.z, pixelData.geomNormal.y );
 	@end
+
+	@property( detail_triplanar )
+		pixelData.worldSpaceNormal = pixelData.geomNormal;
+		// https://bgolus.medium.com/normal-mapping-for-a-triplanar-shader-10bf39dca05a
+		midf3 triplanarBlend = pow3( pixelData.worldSpaceNormal, _h( 4.0 ) );
+		triplanarBlend /= dot( triplanarBlend, midf3_c( 1.0, 1.0, 1.0 ) );
+	@end
+
 	pixelData.geomNormal = mul( pixelData.geomNormal, toMidf3x3( passBuf.view ) );
+
 	@property( normal_map )
 		//Get the TBN matrix
 		midf3 viewSpaceUnitX	= mul( midf3_c( 1, 0, 0 ), toMidf3x3( passBuf.view ) );
@@ -193,6 +212,13 @@
 @piece( DefaultTerraBodyPS )
 	PixelData pixelData;
 
+	@property( hlms_emulate_clip_distances && hlms_global_clip_planes && hlms_pso_clip_distances && syntax == glslvk)
+		@foreach( hlms_pso_clip_distances, n )
+			if( inPs.clipDistance@n < 0.0 )
+				discard;
+		@end
+	@end
+
 	@insertpiece( LoadMaterial )
 	@insertpiece( UnpackTextureIndices0 )
 	@insertpiece( UnpackTextureIndices1 )
@@ -200,6 +226,12 @@
 	@insertpiece( custom_ps_posMaterialLoad )
 
 	@insertpiece( LoadDetailWeights )
+
+	@property( !hlms_use_prepass )
+		@insertpiece( LoadGeomNormalData )
+		@insertpiece( LoadNormalData )
+		@insertpiece( SampleAndApplyDetailNormalMaps@property( detail_triplanar_normal )Triplanar@end )
+	@end
 
 	@insertpiece( SampleDetailMaps )
 
@@ -213,15 +245,16 @@
 	@insertpiece( forwardPlusDoDecals )
 
 	@property( !hlms_use_prepass )
-		@insertpiece( LoadNormalData )
-		@insertpiece( SampleAndApplyDetailNormalMaps )
-
 		@insertpiece( custom_ps_posSampleNormal )
 
 		@insertpiece( forwardPlusApplyDecalsNormal )
 
 		@property( normal_map )
-			pixelData.normal = normalize( mul( TBN, pixelData.normal ) );
+			@property( detail_triplanar_normal )
+				pixelData.normal = mul( pixelData.normal, toMidf3x3( passBuf.view ) );
+			@else
+				pixelData.normal = normalize( mul( TBN, pixelData.normal ) );
+			@end
 		@end
 
 		@insertpiece( DoDirectionalShadowMaps )
@@ -363,6 +396,18 @@
 		@property( needs_env_brdf )
 			@insertpiece( BRDF_EnvMap )
 		@end
+
+		@property( hlms_fog )
+			const float distToCamera = length( inPs.pos.xyz );
+			const midf luminance = dot( finalColour.xyz,
+										midf3_c( _h( 0.212655 ), _h( 0.715158 ), _h( 0.072187 ) ) );
+			const midf lumFogWeight = max( exp2( atmoSettings.fogBreakFalloff * luminance +
+												 atmoSettings.fogBreakMinBrightness ),
+										   _h( 0.0 ) );
+			midf fogWeight = midf_c( exp2( -distToCamera * atmoSettings.fogDensity ) );
+			fogWeight = lerp( _h( 1.0 ), fogWeight, lumFogWeight );
+			finalColour.xyz = lerp( inPs.fog.xyz, finalColour.xyz, fogWeight );
+		@end
 	@end ///!hlms_prepass
 
 	@property( !hlms_render_depth_only )
@@ -385,7 +430,7 @@
 			@end
 
 			@property( debug_pssm_splits )
-				outPs_colour0.xyz = mix( outPs_colour0.xyz, debugPssmSplit.xyz, _h( 0.2f ) );
+				outPs_colour0.xyz = lerp( outPs_colour0.xyz, debugPssmSplit.xyz, _h( 0.2f ) );
 			@end
 
 			@property( hlms_gen_normals_gbuffer )

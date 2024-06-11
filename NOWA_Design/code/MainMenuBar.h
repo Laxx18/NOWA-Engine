@@ -38,6 +38,10 @@ public:
 
 	void refreshLuaApi(const Ogre::String& filter);
 
+	void refreshMeshes(const Ogre::String& filter);
+
+	void showMeshToolWindow(void);
+
 	void showAboutWindow(void);
 
 	void showComponentPlugin(void);
@@ -55,6 +59,10 @@ private:
 	void createLuaAnalysisWindow(void);
 
 	void createLuaApiWindow(void);
+
+	void createMeshToolWindow(void);
+
+	void applyMeshToolOperations(void);
 
 	void updateRecentFilesMenu();
 private:
@@ -115,6 +123,8 @@ private:
 	MyGUI::Window* createComponentPluginWindow;
 	MyGUI::VectorWidgetPtr luaApiWidgets;
 	MyGUI::Window* luaApiWindow;
+	MyGUI::VectorWidgetPtr meshToolWidgets;
+	MyGUI::Window* meshToolWindow;
 
 	MyGUI::EditBox* keyEdit;
 	
@@ -128,6 +138,9 @@ private:
 	NOWA::AutoCompleteSearch luaApiAutoCompleteSearch;
 	MyGUI::TreeControl* luaApiTree;
 	MyGUI::Button* luaApiButton;
+
+	MyGUI::ComboBox* meshSearchCombo;
+	NOWA::AutoCompleteSearch meshAutoCompleteSearch;
 
 	MyGUI::Window* simulationWindow;
 

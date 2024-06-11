@@ -273,7 +273,22 @@ namespace NOWA
 			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(new NOWA::BaseCamera());
 			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(NOWA::BaseCamera::BehaviorType());
 			// Create dummy workspace
-			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
+
+			if (false == WorkspaceModule::getInstance()->getUseSplitScreen())
+			{
+				WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
+			}
+			else
+			{
+				if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+				{
+					WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
+				}
+				else
+				{
+					WorkspaceModule::getInstance()->setNthWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
+				}
+			}
 		}
 
 		WorkspaceModule::getInstance()->removeCamera(this->camera);
@@ -539,14 +554,33 @@ namespace NOWA
 					this->hideEntity = true;
 					this->dummyEntity->setVisible(false);
 
-					// Create and switch workspace
-					workspaceBaseCompPtr->createWorkspace();
-
 					// if ("MainCamera" == this->camera->getName())
 					{
 						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+#if 1
 						WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+#else
+						if (false == WorkspaceModule::getInstance()->getUseSplitScreen())
+						{
+							WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+						}
+						else
+						{
+							auto primaryWorkSpaceComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+							if (workspaceBaseCompPtr.get() == primaryWorkSpaceComponent)
+							{
+								WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+							}
+							else
+							{
+								WorkspaceModule::getInstance()->addNthWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+							}
+						}
+#endif
 					}
+
+					// Create and switch workspace
+					workspaceBaseCompPtr->createWorkspace();
 				}
 				else
 				{
@@ -644,6 +678,61 @@ namespace NOWA
 	bool CameraComponent::isActivated(void) const
 	{
 		return this->active->getBool();
+	}
+
+	void CameraComponent::applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask)
+	{
+		if (nullptr != this->camera)
+		{
+			auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+			if (nullptr != workspaceBaseCompPtr)
+			{
+				// All split screen cameras must be activated!
+				this->active->setValue(true);
+
+				workspaceBaseCompPtr->setUseSplitScreen(useSplitScreen);
+				workspaceBaseCompPtr->setExecutionMask(executionMask);
+				workspaceBaseCompPtr->setViewportModifierMask(viewportModifierMask);
+
+				this->hideEntity = true;
+				this->dummyEntity->setVisible(false);
+
+				if (true == useSplitScreen)
+				{
+					AppStateManager::getSingletonPtr()->getCameraManager()->addSplitCamera(this->camera);
+				}
+			
+				auto primaryWorkSpaceComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+				if (workspaceBaseCompPtr.get() == primaryWorkSpaceComponent)
+				{
+					// Creates the workspace
+					workspaceBaseCompPtr->createWorkspace();
+					WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+				}
+				else if (true == useSplitScreen)
+				{
+					// Creates the workspace
+					workspaceBaseCompPtr->createWorkspace();
+					WorkspaceModule::getInstance()->addNthWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
+				}
+				else
+				{
+					WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->camera);
+					// Not a primary workspace remove
+					workspaceBaseCompPtr->nullWorkspace();
+				}
+			}
+			else
+			{
+				// Illegal case
+				this->active->setValue(false);
+				Ogre::String message = "[CameraComponent] Could not switch workspace, because this camera component has no corresponding workspace component! Affected game object: " + this->gameObjectPtr->getName();
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+				boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+			}
+		}
 	}
 
 	void CameraComponent::setCameraPosition(const Ogre::Vector3& position)

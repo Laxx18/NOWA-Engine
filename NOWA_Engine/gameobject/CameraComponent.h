@@ -97,6 +97,8 @@ namespace NOWA
 
 		virtual bool isActivated(void) const override;
 
+		void applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask);
+
 		/**
 		 * @brief	Just sets internally the actived flag
 		 * @param[in] activated Whether the activate flag is set to true or false

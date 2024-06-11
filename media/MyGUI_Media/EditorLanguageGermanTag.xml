@@ -224,7 +224,14 @@
 	<Tag name="LuaScriptCompileError">Fehler beim Kompilieren des Lua Skriptes gefunden:</Tag>
 	<Tag name="ControlSelectedPlayer">Selektierten Spieler kontrollieren</Tag>
 	<Tag name="OptimizeScene">Szene optimieren</Tag>
-	<Tag name="StartGameFailed">Spiel konnte nicht gestartet werden, da im Ausführungsordner die Datei nicht verfügbar ist.</Tag>
+	<Tag name="StartGameFailed">Spiel konnte nicht gestartet werden, da im Ausführungsordner die Datei nicht verfuegbar ist.</Tag>
+	<Tag name="MeshInUse">Die Mesh Datei wird von einem Game Object benutzt. Am besten das Mesh Tool in einer leeren Szene ausfuehren.</Tag>
+	<Tag name="MeshRotate">Rotieren (Winkel/x/y/z):</Tag>
+	<Tag name="MeshScale">Skalieren (x/y/z):</Tag>
+	<Tag name="MeshTransform">Translieren (x/y/z):</Tag>
+	<Tag name="MeshAxesChange">Axen veraendern (x/y/z):</Tag>
+	<Tag name="MeshOperationFail">Konnte die Operation in OgreMeshMagick.exe nicht korrekt ausfuehren.</Tag>
+	
 	
 	<Tag name="ForwardMode">Licht Modus</Tag>
 	<Tag name="LightWidth">Licht Breite</Tag>

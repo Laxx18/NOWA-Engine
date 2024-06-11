@@ -77,6 +77,11 @@ namespace NOWA
 	//	return true;
 	//}
 
+	unsigned int CameraManager::getCountCameras(void) const
+	{
+		return this->cameras.size();
+	}
+
 	void CameraManager::addCameraBehavior(BaseCamera* baseCamera)
 	{
 		if (this->cameraBehaviorType != baseCamera->getBehaviorType())
@@ -202,6 +207,25 @@ namespace NOWA
 				break;
 			}
 		}
+	}
+
+	void CameraManager::addSplitCamera(Ogre::Camera* camera)
+	{
+		this->cameras.emplace(camera, true);
+
+		for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+		{
+			it->second = true;
+			it->first->setVisible(true);
+		}
+		// Set active camera
+		this->camera = camera;
+		auto activeBehavior = this->getActiveCameraBehavior();
+		if (nullptr != activeBehavior)
+		{
+			activeBehavior->postInitialize(this->camera);
+		}
+		
 	}
 
 	void CameraManager::removeCamera(Ogre::Camera* camera)

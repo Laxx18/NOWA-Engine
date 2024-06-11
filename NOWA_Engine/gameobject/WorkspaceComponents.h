@@ -122,6 +122,8 @@ namespace NOWA
 
 		virtual void removeWorkspace(void);
 
+		void nullWorkspace(void);
+
 		void setBackgroundColor(const Ogre::Vector3& backgroundColor);
 
 		Ogre::Vector3 getBackgroundColor(void) const;
@@ -217,6 +219,18 @@ namespace NOWA
 		void setShadowSplitPadding(Ogre::Real shadowSplitPadding);
 
 		Ogre::Real getShadowSplitPadding(void) const;
+
+		void setUseSplitScreen(bool useSplitScreen);
+
+		bool getUseSplitScreen(void) const;
+
+		void setExecutionMask(Ogre::uint8 executionMask);
+
+		Ogre::uint8 getExecutionMask(void) const;
+
+		void setViewportModifierMask(Ogre::uint8 viewportModifierMask);
+
+		Ogre::uint8 getViewportModifierMask(void) const;
 	public:
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrViewportRect(void) { return "Viewport Rect"; }
@@ -247,11 +261,13 @@ namespace NOWA
 
 		virtual void createDistortionNode(void);
 
+		void addWorkspace(void);
+
 		Ogre::String getDistortionNode(void) const;
 
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);
 
-		void changeViewportRect(unsigned short viewportIndex, const Ogre::Vector4& viewportRect);
+		void changeViewportRect(unsigned short viewportIndex, const Ogre::Vector4& viewportRect, const Ogre::String& compositorNodeName);
 
 		unsigned char getMSAA(void);
 
@@ -301,6 +317,8 @@ namespace NOWA
 		void setUseOcean(bool useOcean);
 
 		void createSSAONoiseTexture(void);
+
+		void applySplitScreenModifier(Ogre::CompositorPassDef* pass, bool isOverlay = false, bool isSky = false);
 	private:
 		void reconnectAllNodes(void);
 	protected:
@@ -361,6 +379,10 @@ namespace NOWA
 		Ogre::HlmsListener* hlmsListener;
 
 		HlmsWind* hlmsWind;
+
+		bool useSplitScreen;
+		Ogre::uint8 executionMask;
+		Ogre::uint8 viewportModifierMask;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

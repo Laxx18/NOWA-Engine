@@ -501,6 +501,13 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromTagName(const Ogre::String& tagName) const;
 
 		/**
+		 * @brief		Gets a list of game object's that are using the given mesh name.
+		 * @param[in]	meshname	The mesh name to set
+		 * @return		gameObjectPtrList	The game object shared ptr list. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<GameObjectPtr> getGameObjectsFromMeshName(const Ogre::String& meshName) const;
+
+		/**
 		 * @brief		Gets a list of game object's which do overlap each other.
 		 * @return		gameObjectPtrList	The game object shared ptr list. If nothing can be found, an empty list will be delivered.
 		 */

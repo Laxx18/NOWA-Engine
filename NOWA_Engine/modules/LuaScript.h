@@ -224,6 +224,35 @@ namespace NOWA
 			}
 		}
 
+		template <typename PARAM1, typename PARAM2, typename PARAM3, typename PARAM4, typename PARAM5, typename PARAM6>
+		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2, PARAM3 param3, PARAM4 param4, PARAM5 param5, PARAM6 param6)
+		{
+			if (true == functionName.empty())
+			{
+				return;
+			}
+
+			if (this->compiledScript.is_valid())
+			{
+				try
+				{
+					// Call the entry method of the new state
+					auto& function = this->compiledScript[functionName];
+					if (function)
+						function(param1, param2, param3, param4, param5, param6);
+				}
+				catch (luabind::error& error)
+				{
+					this->printErrorMessage(functionName, error);
+				}
+			}
+			else
+			{
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'callTableFunction' for function name: '"
+															+ functionName + "' because the script has not been compiled and is invalid.");
+			}
+		}
+
 		void createLuaScriptFile(void);
 
 		void compile(void);

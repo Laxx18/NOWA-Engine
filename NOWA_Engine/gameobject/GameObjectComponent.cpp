@@ -50,6 +50,7 @@ namespace NOWA
 		bConnectedSuccess(true),
 		bIsExpanded(true),
 		bTaggedForRemovement(false),
+		bConnectPriority(false),
 		name(new Variant(GameObjectComponent::AttrName(), "", this->attributes)),
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		referenceId(new Variant(GameObjectComponent::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false))
@@ -289,6 +290,11 @@ namespace NOWA
 	bool GameObjectComponent::getIsExpanded(void) const
 	{
 		return this->bIsExpanded;
+	}
+
+	bool GameObjectComponent::getConnectPriority(void) const
+	{
+		return this->bConnectPriority;
 	}
 
 	void GameObjectComponent::eraseVariants(std::vector<Variant*>& container, size_t offset)

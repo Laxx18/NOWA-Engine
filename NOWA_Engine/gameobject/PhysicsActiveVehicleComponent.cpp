@@ -13,7 +13,8 @@ namespace NOWA
 	using namespace luabind;
 
 	PhysicsActiveVehicleComponent::PhysicsVehicleCallback::PhysicsVehicleCallback(GameObject* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName,
-																				  const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName)
+																				  const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, 
+																				  const Ogre::String& onBrakeChangedFunctionName, const Ogre::String& onTireContactFunctionName)
 		: OgreNewt::VehicleCallback(),
 		owner(owner),
 		luaScript(luaScript),
@@ -22,6 +23,7 @@ namespace NOWA
 		onMotorForceChangedFunctionName(onMotorForceChangedFunctionName),
 		onHandBrakeChangedFunctionName(onHandBrakeChangedFunctionName),
 		onBrakeChangedFunctionName(onBrakeChangedFunctionName),
+		onTireContactFunctionName(onTireContactFunctionName),
 		vehicleDrivingManipulation(new VehicleDrivingManipulation())
 	{
 		if (nullptr == luaScript)
@@ -48,11 +50,9 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			GameObject* gameObject = visitorPhysicsComponent->getOwner().get();
-
 			if (nullptr != this->luaScript && false == this->onSteerAngleChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, gameObject, this->vehicleDrivingManipulation, dt);
+				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->steerAngle;
 			}
 		}
@@ -66,11 +66,9 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			GameObject* gameObject = visitorPhysicsComponent->getOwner().get();
-
 			if (nullptr != this->luaScript && false == this->onMotorForceChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, gameObject, this->vehicleDrivingManipulation, dt);
+				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->motorForce;
 			}
 		}
@@ -84,11 +82,9 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			GameObject* gameObject = visitorPhysicsComponent->getOwner().get();
-
 			if (nullptr != this->luaScript && false == this->onHandBrakeChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, gameObject, this->vehicleDrivingManipulation, dt);
+				this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->handBrake;
 			}
 		}
@@ -102,15 +98,25 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			GameObject* gameObject = visitorPhysicsComponent->getOwner().get();
-
 			if (nullptr != this->luaScript && false == this->onBrakeChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, gameObject, this->vehicleDrivingManipulation, dt);
+				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->brake;
 			}
 		}
 		return 0.0f;
+	}
+
+	void PhysicsActiveVehicleComponent::PhysicsVehicleCallback::onTireContact(const OgreNewt::RayCastTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration)
+	{
+		PhysicsComponent* hitPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(hitBody->getUserData());
+		if (nullptr != hitPhysicsComponent)
+		{
+			if (nullptr != this->luaScript && false == this->onTireContactFunctionName.empty())
+			{
+				this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
+			}
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,28 +126,32 @@ namespace NOWA
 		onSteerAngleChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onMotorForceChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onHandBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
-		onBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnBrakeChangedFunctionName(), Ogre::String(""), this->attributes))
+		onBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
+		onTireContactFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnTireContactFunctionName(), Ogre::String(""), this->attributes))
 	{
 		this->asSoftBody->setVisible(false);
 		this->mass->setValue(1200.0f);
 		this->massOrigin->setValue(Ogre::Vector3(0.025f, -0.25f, 0.0f));
 		this->massOrigin->setDescription("For valid vehicle data, adjust this mass origin point to a valid vehicle mass center.");
 
-		this->onSteerAngleChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the steering angle for the specific tires shall change. E.g. onSteerAngleChanged(gameObject, vehicleDrivingManipulation, dt)."
+		this->onSteerAngleChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the steering angle for the specific tires shall change. E.g. onSteerAngleChanged(vehicleDrivingManipulation, dt)."
 															"The function should set in the resulting steering angle via vehicle driving manipulation object, e.g. depending on user device input.");
-		this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSteerAngleChangedFunctionName->getString() + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSteerAngleChangedFunctionName->getString() + "(vehicleDrivingManipulation, dt)");
 
-		this->onMotorForceChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the motor force for the specific tires shall change. E.g. onMotorForceChanged(gameObject, vehicleDrivingManipulation, dt)."
+		this->onMotorForceChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the motor force for the specific tires shall change. E.g. onMotorForceChanged(vehicleDrivingManipulation, dt)."
 															  "The function should set in the resulting motor force via vehicle driving manipulation object, e.g. depending on user device input.");
-		this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onMotorForceChangedFunctionName->getString() + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onMotorForceChangedFunctionName->getString() + "(vehicleDrivingManipulation, dt)");
 
-		this->onHandBrakeChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the hand brake force shall change. E.g. onHandBrakeChanged(gameObject, vehicleDrivingManipulation, dt)."
+		this->onHandBrakeChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the hand brake force shall change. E.g. onHandBrakeChanged(vehicleDrivingManipulation, dt)."
 															  "The function should set in the resulting hand brake force via vehicle driving manipulation object, e.g. depending on user device input.");
-		this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onHandBrakeChangedFunctionName->getString() + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onHandBrakeChangedFunctionName->getString() + "(vehicleDrivingManipulation, dt)");
 
-		this->onBrakeChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the brake force shall change. E.g. onBrakeChanged(gameObject, vehicleDrivingManipulation, dt)."
+		this->onBrakeChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the brake force shall change. E.g. onBrakeChanged(vehicleDrivingManipulation, dt)."
 															 "The function should set in the resulting brake force via vehicle driving manipulation object, e.g. depending on user device input.");
-		this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onBrakeChangedFunctionName->getString() + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onBrakeChangedFunctionName->getString() + "(physicsComponent, vehicleDrivingManipulation, dt)");
+
+		this->onTireContactFunctionName->setDescription("Sets the function name to react in lua script to react when the tire has hit a game object below. E.g. onTireContact(tireName, contactPosition, contactNormal, penetration).");
+		this->onTireContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onTireContactFunctionName->getString() + "(tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration)");
 	}
 
 	PhysicsActiveVehicleComponent::~PhysicsActiveVehicleComponent()
@@ -171,6 +181,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnBrakeChangedFunctionName")
 		{
 			this->setOnBrakeChangedFunctionName(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnTireContactFunctionName")
+		{
+			this->setOnTireContactFunctionName(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -212,6 +227,7 @@ namespace NOWA
 		clonedCompPtr->setOnMotorForceChangedFunctionName(this->onMotorForceChangedFunctionName->getString());
 		clonedCompPtr->setOnHandBrakeChangedFunctionName(this->onHandBrakeChangedFunctionName->getString());
 		clonedCompPtr->setOnBrakeChangedFunctionName(this->onBrakeChangedFunctionName->getString());
+		clonedCompPtr->setOnTireContactFunctionName(this->onTireContactFunctionName->getString());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -248,6 +264,11 @@ namespace NOWA
 	bool PhysicsActiveVehicleComponent::connect(void)
 	{
 		bool success = PhysicsActiveComponent::connect();
+
+		// Note: Since vehicle is created on the fly during connect, also its init position must be set there, instead like in physicsactivecomponent in postinit!
+		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
+		this->initialScale = this->gameObjectPtr->getSceneNode()->getScale();
+		this->initialOrientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
 		// Special case: Must be done in connect, because lua script is involved, and order important.
 		// Else: E.g. if creating this component, creating body to early, lua script would be 0, because the user would add the lua script component later
@@ -304,6 +325,10 @@ namespace NOWA
 		{
 			this->setOnBrakeChangedFunctionName(attribute->getString());
 		}
+		else if (PhysicsActiveVehicleComponent::AttrOnTireContactFunctionName() == attribute->getName())
+		{
+			this->setOnTireContactFunctionName(attribute->getString());
+		}
 	}
 
 	void PhysicsActiveVehicleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -341,12 +366,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OnBrakeChangedFunctionName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onBrakeChangedFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OnTireContactFunctionName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onTireContactFunctionName->getString())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void PhysicsActiveVehicleComponent::setOnSteerAngleChangedFunctionName(const Ogre::String& onSteerAngleChangedFunctionName)
 	{
 		this->onSteerAngleChangedFunctionName->setValue(onSteerAngleChangedFunctionName);
-		this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSteerAngleChangedFunctionName + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSteerAngleChangedFunctionName + "(vehicleDrivingManipulation, dt)");
 	}
 
 	Ogre::String PhysicsActiveVehicleComponent::getOnSteerAngleChangedFunctionName(void) const
@@ -357,7 +388,7 @@ namespace NOWA
 	void PhysicsActiveVehicleComponent::setOnMotorForceChangedFunctionName(const Ogre::String& onMotorForceChangedFunctionName)
 	{
 		this->onMotorForceChangedFunctionName->setValue(onMotorForceChangedFunctionName);
-		this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onMotorForceChangedFunctionName + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onMotorForceChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onMotorForceChangedFunctionName + "(vehicleDrivingManipulation, dt)");
 	}
 
 	Ogre::String PhysicsActiveVehicleComponent::getOnMotorForceChangedFunctionName(void) const
@@ -368,7 +399,7 @@ namespace NOWA
 	void PhysicsActiveVehicleComponent::setOnHandBrakeChangedFunctionName(const Ogre::String& onHandBrakeChangedFunctionName)
 	{
 		this->onHandBrakeChangedFunctionName->setValue(onHandBrakeChangedFunctionName);
-		this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onHandBrakeChangedFunctionName + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onHandBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onHandBrakeChangedFunctionName + "(vehicleDrivingManipulation, dt)");
 	}
 
 	Ogre::String PhysicsActiveVehicleComponent::getOnHandBrakeChangedFunctionName(void) const
@@ -379,12 +410,18 @@ namespace NOWA
 	void PhysicsActiveVehicleComponent::setOnBrakeChangedFunctionName(const Ogre::String& onBrakeChangedFunctionName)
 	{
 		this->onBrakeChangedFunctionName->setValue(onBrakeChangedFunctionName);
-		this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onBrakeChangedFunctionName + "(gameObject, vehicleDrivingManipulation, dt)");
+		this->onBrakeChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onBrakeChangedFunctionName + "(vehicleDrivingManipulation, dt)");
 	}
 
 	Ogre::String PhysicsActiveVehicleComponent::getOnBrakeChangedFunctionName(void) const
 	{
 		return this->onBrakeChangedFunctionName->getString();
+	}
+
+	void PhysicsActiveVehicleComponent::setOnTireContactFunctionName(const Ogre::String& onTireContactFunctionName)
+	{
+		this->onTireContactFunctionName->setValue(onTireContactFunctionName);
+		this->onTireContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onTireContactFunctionName + "(tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration)");
 	}
 
 	Ogre::String PhysicsActiveVehicleComponent::getClassName(void) const
@@ -402,11 +439,19 @@ namespace NOWA
 		return "PhysicsComponent";
 	}
 
-
+	Ogre::String PhysicsActiveVehicleComponent::getOnTireContactFunctionName(void) const
+	{
+		return Ogre::String();
+	}
 
 	OgreNewt::Vehicle* PhysicsActiveVehicleComponent::getVehicle(void) const
 	{
 		return static_cast<OgreNewt::Vehicle*>(this->physicsBody);
+	}
+
+	Ogre::Vector3 PhysicsActiveVehicleComponent::getVehicleForce(void) const
+	{
+		return static_cast<OgreNewt::Vehicle*>(this->physicsBody)->getVehicleForce();
 	}
 
 	bool PhysicsActiveVehicleComponent::createDynamicBody(void)
@@ -422,9 +467,10 @@ namespace NOWA
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 		Ogre::Real weightedMass = this->mass->getReal(); /** scale.x * scale.y * scale.z;*/ // scale is not used anymore, because if big game objects are scaled down, the mass is to low!
 
-		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
+		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
 												  collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()), weightedMass, this->massOrigin->getVector3(), this->collisionPosition->getVector3(), new PhysicsVehicleCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
-												  this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(), this->onHandBrakeChangedFunctionName->getString(), this->onBrakeChangedFunctionName->getString()));
+												  this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(), this->onHandBrakeChangedFunctionName->getString(), 
+												  this->onBrakeChangedFunctionName->getString(), this->onTireContactFunctionName->getString()));
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 

@@ -276,6 +276,12 @@ namespace NOWA
 		 * @return true if the component is expanded, else false.
 		 */
 		bool getIsExpanded(void) const;
+
+		/**
+		 * @brief Gets whether this component has the flag connect priority set. In this case this component will be connected before all other components.
+		 * @return true if the component has the flag connect priority set, else false.
+		 */
+		bool getConnectPriority(void) const;
 	public:
 		static unsigned int getStaticClassId(void)
 		{
@@ -405,6 +411,7 @@ namespace NOWA
 		short index;
 		bool bShowDebugData;
 		Ogre::String customDataString;
+		bool bConnectPriority;
 	private:
 		bool bConnectedSuccess;
 		bool bIsExpanded;

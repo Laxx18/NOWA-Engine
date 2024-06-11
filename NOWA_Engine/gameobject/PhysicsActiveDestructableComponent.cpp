@@ -446,7 +446,7 @@ namespace NOWA
 		if (nullptr == entity)
 		{
 			item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr == entity)
+			if (nullptr == item)
 			{
 				return Ogre::DataStreamPtr();
 			}

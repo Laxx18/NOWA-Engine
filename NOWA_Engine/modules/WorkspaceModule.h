@@ -56,9 +56,15 @@ namespace NOWA
 
 		void setPrimaryWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent);
 
+		void addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent);
+
 		Ogre::CompositorWorkspace* getPrimaryWorkspace(Ogre::Camera* camera);
 
 		WorkspaceBaseComponent* getPrimaryWorkspaceComponent(void);
+
+		Ogre::CompositorWorkspace* getWorkspace(Ogre::Camera* camera);
+
+		WorkspaceBaseComponent* getWorkspaceComponent(void);
 
 		void removeWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera);
 
@@ -67,6 +73,14 @@ namespace NOWA
 		bool hasAnyWorkspace(void) const;
 
 		bool hasMoreThanOneWorkspace(void) const;
+
+		void setUseSplitScreen(bool useSplitScreen);
+
+		bool getUseSplitScreen(void) const;
+
+		Ogre::uint8 getLastExecutionMask(void) const;
+
+		Ogre::uint8 getCountCameras(void);
 	public:
 		static WorkspaceModule* getInstance();
 		const Ogre::String workspaceNamePbs = "NOWAPbsWorkspace";
@@ -117,11 +131,16 @@ namespace NOWA
 		Ogre::HlmsPbs::ShadowFilter shadowFilter;
 		Ogre::HlmsPbs::AmbientLightMode ambientLightMode;
 
+		bool useSplitScreen;
+		Ogre::uint8 executionMask;
+		Ogre::uint8 viewportModifierMask;
+
 		struct WorkspaceData
 		{
 			Ogre::CompositorWorkspace* workspace = nullptr;
 			WorkspaceBaseComponent* workspaceBaseComponent = nullptr;
 			bool isDummy = false;
+			bool isPrimary = false;
 		};
 
 		std::map<Ogre::Camera*, WorkspaceData> workspaceMap;

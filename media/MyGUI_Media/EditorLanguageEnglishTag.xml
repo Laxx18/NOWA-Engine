@@ -223,6 +223,12 @@
 	<Tag name="ControlSelectedPlayer">Control selected player</Tag>
 	<Tag name="OptimizeScene">Optimize scene</Tag>
 	<Tag name="StartGameFailed">Could not start game, because the file is missing in the execution folder.</Tag>
+	<Tag name="MeshInUse">The mesh file is used by a game object. It is best to run the mesh tool in an empty scene.</Tag>
+	<Tag name="MeshRotate">Rotate (degree/x/y/z):</Tag>
+	<Tag name="MeshScale">Scale (x/y/z):</Tag>
+	<Tag name="MeshTransform">Translate (x/y/z):</Tag>
+	<Tag name="MeshAxesChange">Change axes (x/y/z):</Tag>
+	<Tag name="MeshOperationFail">Could not execute operation properly in OgreMeshMagick.exe.</Tag>
 	
 	<Tag name="ForwardMode">Forward mode</Tag>
 	<Tag name="LightWidth">Light width</Tag>

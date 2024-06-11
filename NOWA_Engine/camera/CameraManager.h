@@ -38,6 +38,8 @@ namespace NOWA
 
 		// bool attachToSceneNode(Ogre::SceneNode* sceneNode);
 
+		unsigned int getCountCameras(void) const;
+
 		void addCameraBehavior(BaseCamera* baseCamera);
 
 		/**
@@ -54,6 +56,8 @@ namespace NOWA
 		BaseCamera* getActiveCameraBehavior(void) const;
 
 		void addCamera(Ogre::Camera* camera, bool activate);
+
+		void addSplitCamera(Ogre::Camera* camera);
 
 		void removeCamera(Ogre::Camera* camera);
 

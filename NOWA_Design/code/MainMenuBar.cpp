@@ -41,6 +41,8 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	luaApiWindow(nullptr),
 	luaApiTree(nullptr),
 	luaApiSearchEdit(nullptr),
+	meshSearchCombo(nullptr),
+	meshToolWindow(nullptr),
 	simulationWindow(nullptr),
 	aboutWindow(nullptr),
 	createComponentPluginWindow(nullptr),
@@ -327,6 +329,11 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
+		menuItem = utilitiesMenuControl->addItem("meshToolMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		menuItem->setCaptionWithReplacing("Mesh Tool");
+		menuItem->hideItemChild();
+		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
 		menuItem = utilitiesMenuControl->addItem("drawNavigationMeshMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		menuItem->setCaptionWithReplacing("#{DrawNavigationMesh}");
 		menuItem->hideItemChild();
@@ -448,8 +455,9 @@ void MainMenuBar::enableMenuEntries(bool enable)
 	this->utilitiesMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // deploy
 	this->utilitiesMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable); // lua analysis
 	this->utilitiesMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // lua api
-	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
-	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable); // Optimize scene
+	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // mesh utils
+	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
+	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable); // Optimize scene
 
 	this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
 	this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
@@ -743,18 +751,23 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->showLuaApiWindow();
 			break;
 		}
-		case 47: // Draw Navigation Mesh
+		case 47: // Mesh Tool
+		{
+			this->showMeshToolWindow();
+			break;
+		}
+		case 48: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 48: // Optimize scene
+		case 49: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 49: // Control selected player
+		case 50: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -767,7 +780,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 50: // Test selected game objects
+		case 51: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -775,7 +788,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 51: // About
+		case 52: // About
 		{
 			this->showAboutWindow();
 			break;
@@ -800,6 +813,14 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 	else if (this->luaApiButton == sender)
 	{
 		this->luaApiWindow->setVisible(false);
+	}
+	else if ("meshToolButtonClose" == sender->getName())
+	{
+		this->meshToolWindow->setVisible(false);
+	}
+	else if ("meshToolButtonApply" == sender->getName())
+	{
+		this->applyMeshToolOperations();
 	}
 	else if ("aboutOkButton" == sender->getName())
 	{
@@ -868,10 +889,20 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	// Start a new search each time for data that do match the search caption string
-	this->luaApiAutoCompleteSearch.reset();
+	if (sender->getName() == "luaApiSearchEdit")
+	{
+		// Start a new search each time for data that do match the search caption string
+		this->luaApiAutoCompleteSearch.reset();
 
-	this->refreshLuaApi(editBox->getOnlyText());
+		this->refreshLuaApi(editBox->getOnlyText());
+	}
+	else if (sender->getName() == "meshSearchCombo")
+	{
+		// Start a new search each time for data that do match the search caption string for meshes
+		this->meshAutoCompleteSearch.reset();
+
+		this->refreshMeshes(editBox->getOnlyText());
+	}
 }
 
 void MainMenuBar::updateRecentFilesMenu()
@@ -1076,7 +1107,7 @@ void MainMenuBar::createLuaApiWindow(void)
 		this->luaApiWindow->setMinSize(400, 400);
 		MyGUI::IntCoord coord = this->luaApiWindow->getClientCoord();
 
-		this->luaApiSearchEdit = this->luaApiWindow->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(0, 0, coord.width, 24), MyGUI::Align::Top | MyGUI::Align::HStretch);
+		this->luaApiSearchEdit = this->luaApiWindow->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(0, 0, coord.width, 24), MyGUI::Align::Top | MyGUI::Align::HStretch, "luaApiSearchEdit");
 		this->luaApiSearchEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
 		this->luaApiSearchEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		this->luaApiSearchEdit->setEditStatic(false);
@@ -1219,6 +1250,164 @@ void MainMenuBar::refreshLuaApi(const Ogre::String& filter)
 	}
 
 	root->setExpanded(true);
+}
+
+void MainMenuBar::refreshMeshes(const Ogre::String& filter)
+{
+	this->meshSearchCombo->removeAllItems();
+
+	Ogre::StringVector groups = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceGroups();
+	std::vector<Ogre::String>::iterator groupIt = groups.begin();
+	while (groupIt != groups.end())
+	{
+		Ogre::String groupName = (*groupIt);
+		if (groupName != "Essential" && groupName != "General" && groupName != "PostProcessing" && groupName != "Hlms"
+			&& groupName != "NOWA" && groupName != "Internal" && groupName != "AutoDetect" && groupName != "Lua")
+		{
+			Ogre::StringVectorPtr dirs = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames((*groupIt), "*.mesh");
+			std::vector<Ogre::String>::iterator meshIt = dirs->begin();
+
+			while (meshIt != dirs->end())
+			{
+				// Add resource to the search
+				this->luaApiAutoCompleteSearch.addSearchText(*meshIt);
+				++meshIt;
+			}
+		}
+		++groupIt;
+	}
+
+	auto& matchedResources = this->luaApiAutoCompleteSearch.findMatchedItemWithInText(filter);
+
+	for (size_t i = 0; i < matchedResources.getResults().size(); i++)
+	{
+		Ogre::String data = matchedResources.getResults()[i].getMatchedItemText();
+		// Ogre::String userData = matchedResources.getResults()[i].getUserData();
+
+		this->meshSearchCombo->addItem(data);
+	}
+	// Steals the focus from input
+	// this->meshSearchCombo->showList();
+}
+
+void MainMenuBar::createMeshToolWindow(void)
+{
+	if (0 == this->meshToolWidgets.size())
+	{
+		this->meshToolWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("MeshToolWindow.layout");
+
+		MyGUI::EditBox* rotateLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("rotateLabel");
+		rotateLabel->setCaptionWithReplacing("#{MeshRotate}");
+		MyGUI::EditBox* scaleLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("scaleLabel");
+		scaleLabel->setCaptionWithReplacing("#{MeshScale}");
+		MyGUI::EditBox* transformOriginLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("transformOriginLabel");
+		transformOriginLabel->setCaptionWithReplacing("#{MeshTransform}");
+		MyGUI::EditBox* changeAxesLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("changeAxesLabel");
+		changeAxesLabel->setCaptionWithReplacing("#{MeshAxesChange}");
+
+		this->meshSearchCombo = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("meshSearchCombo");
+		this->meshSearchCombo->eventEditTextChange += MyGUI::newDelegate(this, &MainMenuBar::editTextChange);
+
+		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshToolButtonClose")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("meshToolButtonApply")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		this->refreshMeshes("");
+	}
+
+	MyGUI::FloatPoint windowPosition;
+	windowPosition.left = 0.3f;
+	windowPosition.top = 0.3f;
+	this->meshToolWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("meshToolWindow");
+	this->meshToolWindow->setRealPosition(windowPosition);
+	this->meshToolWindow->setVisible(true);
+}
+
+void MainMenuBar::applyMeshToolOperations(void)
+{
+	MyGUI::EditBox* rotateEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("rotateEdit");
+	MyGUI::EditBox* scaleEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("scaleEdit");
+	MyGUI::EditBox* transformOriginEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("transformOriginEdit");
+	MyGUI::EditBox* changeAxesEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("changeAxesEdit");
+	MyGUI::EditBox* meshInfoLabel = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("meshInfoLabel");
+
+	Ogre::String meshName = this->meshSearchCombo->getOnlyText();
+
+	auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(this->meshSearchCombo->getOnlyText());
+
+	if (false == gameObjects.empty())
+	{
+		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Feedback", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{MeshInUse}"),
+																	  MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+
+		return;
+	}
+	
+	/*
+	 * MeshMagick transform -rotate=90/0/1/0 robot.mesh
+	 */
+
+	// TODO: DIfferent folder
+	// "D:\Ogre\GameEngineDevelopment\media\models\Destructable\"
+	// Ogre::String destinationFolder = rootFolder + "/media/models/Destructable/";
+	// destinationFolder = NOWA::Core::getSingletonPtr()->replaceSlashes(destinationFolder, false);
+
+	Ogre::String rotateText = rotateEdit->getOnlyText();
+	// MeshMagick transform -rotate=90/0/1/0 robot.mesh
+	if (false == rotateText.empty())
+	{ 
+		Ogre::String params;
+		params += "transform ";
+		params += "-rotate=";
+		params += rotateText;
+
+		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
+	}
+	
+	Ogre::String scaleText = scaleEdit->getOnlyText();
+	if (false == scaleText.empty())
+	{
+		Ogre::String params;
+		params += "transform ";
+		params += "-scale=";
+		params += scaleText;
+
+		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
+	}
+
+	Ogre::String transformOriginText = transformOriginEdit->getOnlyText();
+	if (false == transformOriginText.empty())
+	{
+		Ogre::String params;
+		params += "transform ";
+		params += "-transform=";
+		params += transformOriginText;
+
+		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
+	}
+
+	Ogre::String changeAxesText = changeAxesEdit->getOnlyText();
+	if (false == changeAxesText.empty())
+	{
+		Ogre::String params;
+		params += "transform ";
+		params += "-axes=";
+		params += changeAxesText;
+
+		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
+	}
+
+
+	// Ogre::String params;
+	// params += "info  ";
+	// NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
+
+	// TODO: How to get info result for meshInfoLabel??
+}
+
+void MainMenuBar::showMeshToolWindow(void)
+{
+	this->createMeshToolWindow();
+	this->meshToolWindow->setVisible(true);
 }
 
 void MainMenuBar::notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch, const std::string& selectedText)

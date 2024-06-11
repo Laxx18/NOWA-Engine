@@ -159,6 +159,9 @@ namespace OgreNewt
 			Capsule(const World* world, Ogre::Real radius, Ogre::Real height, unsigned int id,
 				const Ogre::Quaternion& orient = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& pos = Ogre::Vector3::ZERO);
 
+			Capsule(const World* world, const Ogre::Vector3& size, unsigned int id,
+					const Ogre::Quaternion& orient = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& pos = Ogre::Vector3::ZERO);
+
 			//! destructor
 			~Capsule()
 			{

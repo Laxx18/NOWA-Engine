@@ -510,6 +510,7 @@ namespace NOWA
 				tickCount++;
 			}
 
+// Attention: Is never called!
 			// Update the renderwindow if the window is not active too, for server/client analysis
 			if (false == renderWindow->isVisible() && this->renderWhenInactive)
 			{

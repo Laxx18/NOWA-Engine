@@ -18,7 +18,8 @@ namespace NOWA
 		{
 		public:
 			PhysicsVehicleCallback(GameObject* owner, LuaScript* luaScript, OgreNewt::World* ogreNewt, const Ogre::String& onSteerAngleChangedFunctionName,
-								   const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, const Ogre::String& onBrakeChangedFunctionName);
+								   const Ogre::String& onMotorForceChangedFunctionName, const Ogre::String& onHandBrakeChangedFunctionName, 
+								   const Ogre::String& onBrakeChangedFunctionName, const Ogre::String& onTireContactFunctionName);
 
 			virtual ~PhysicsVehicleCallback();
 
@@ -39,10 +40,15 @@ namespace NOWA
 			virtual Ogre::Real onHandBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
 
 			/**
-			 * @brief Controsl via device input the brake force.
+			 * @brief Controls via device input the brake force.
 			 * @note  A good value is 7.5.
 			 */
 			virtual Ogre::Real onBrakeChanged(const OgreNewt::Vehicle* visitor, const OgreNewt::RayCastTire* tire, Ogre::Real dt) override;
+
+			/**
+			 * @brief Is called if the tire hits another game object below.
+			 */
+			virtual void onTireContact(const OgreNewt::RayCastTire* tire, const Ogre::String& tireName, OgreNewt::Body* hitBody, const Ogre::Vector3& contactPosition, const Ogre::Vector3& contactNormal, Ogre::Real penetration) override;
 		private:
 			GameObject* owner;
 			LuaScript* luaScript;
@@ -51,6 +57,7 @@ namespace NOWA
 			Ogre::String onMotorForceChangedFunctionName;
 			Ogre::String onHandBrakeChangedFunctionName;
 			Ogre::String onBrakeChangedFunctionName;
+			Ogre::String onTireContactFunctionName;
 			VehicleDrivingManipulation* vehicleDrivingManipulation;
 		};
 	public:
@@ -147,7 +154,8 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: This component can be used in conjunction with JointVehicleTire component's, builing a vehicle like a car.";
+			return "Usage: This component can be used in conjunction with JointVehicleTire component's, builing a vehicle like a car. Note: The mesh's default model axis should be in x-direction. Else the car will not drive properly. "
+				" Use the Mesh Tool to rotate the mesh's origin axis properly.";
 		}
 
 		/**
@@ -198,12 +206,28 @@ namespace NOWA
 		 */
 		Ogre::String getOnBrakeChangedFunctionName(void) const;
 
+
+		/**
+		 * @brief Sets the lua function name, to react when the brake force shall change.
+		 * @param[in]	onEnterFunctionName		The function name to set
+		 */
+		void setOnTireContactFunctionName(const Ogre::String& onTireContactFunctionName);
+
+		/**
+		 * @brief Gets the lua function name.
+		 * @return lua function name to get
+		 */
+		Ogre::String getOnTireContactFunctionName(void) const;
+		
 		OgreNewt::Vehicle* getVehicle(void) const;
+
+		Ogre::Vector3 getVehicleForce(void) const;
 	public:
 		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }
 		static const Ogre::String AttrOnMotorForceChangedFunctionName(void) { return "On Motor Force Function Name"; }
 		static const Ogre::String AttrOnHandBrakeChangedFunctionName(void) { return "On Hand Brake Function Name"; }
 		static const Ogre::String AttrOnBrakeChangedFunctionName(void) { return "On Brake Function Name"; }
+		static const Ogre::String AttrOnTireContactFunctionName(void) { return "On Tire Function Name"; }
 	protected:
 		virtual bool createDynamicBody(void);
 	private:
@@ -211,6 +235,7 @@ namespace NOWA
 		Variant* onMotorForceChangedFunctionName;
 		Variant* onHandBrakeChangedFunctionName;
 		Variant* onBrakeChangedFunctionName;
+		Variant* onTireContactFunctionName;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

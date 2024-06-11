@@ -2163,6 +2163,25 @@ namespace NOWA
 		return (std::string::npos == pos) ? "" : filePathName.substr(0, pos);
 	}
 
+	Ogre::String Core::getRootFolderName(void)
+	{
+		Ogre::String applicationFilePathName = this->replaceSlashes(this->getApplicationFilePathName(), false);
+		Ogre::String applicationFolder = this->getDirectoryNameFromFilePathName(applicationFilePathName);
+		Ogre::String rootFolder;
+
+		size_t found = applicationFolder.find("/bin/");
+		if (found != Ogre::String::npos)
+		{
+			rootFolder = applicationFolder.substr(0, found);
+		}
+		else
+		{
+			return Ogre::String();
+		}
+
+		return rootFolder;
+	}
+
 	Ogre::String Core::replaceSlashes(const Ogre::String& filePath, bool useBackwardSlashes)
 	{
 		char separator = useBackwardSlashes ? L'\\' : L'/';
@@ -3610,6 +3629,161 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 			return Screen.dmDisplayFrequency;
 		}
 		return 0;
+	}
+
+	bool Core::processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters)
+	{
+		Ogre::String rootFolder = this->getRootFolderName();
+		if (true == rootFolder.empty())
+		{
+			return false;
+		}
+
+		// "Material/SOLID/TEX/case1.png"
+		Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(meshName);
+
+		Ogre::FileInfoListPtr fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, meshName));
+		if (fileInfoList->empty())
+		{
+			return false;
+		}
+
+		// "D:\Ogre\GameEngineDevelopment\media/models/Objects"
+		Ogre::String sourceFolder = fileInfoList->at(0).archive->getName();
+		sourceFolder = rootFolder + "/" + sourceFolder.substr(6, sourceFolder.length());
+
+		// "D:\Ogre\GameEngineDevelopment\media\models\Objects\Case1.mesh"
+		Ogre::String sourceFile = sourceFolder + "/" + meshName;
+
+		sourceFile = this->replaceSlashes(sourceFile, false);
+
+		Ogre::String destFile = sourceFile + "_backup";
+
+		// Makes a backup of the file
+		CopyFile(sourceFile.data(), destFile.data(), TRUE);
+
+		STARTUPINFO startupInfo;
+		memset(&startupInfo, 0, sizeof(startupInfo));
+		startupInfo.cb = sizeof(startupInfo);
+		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		startupInfo.wShowWindow = SW_HIDE;
+		PROCESS_INFORMATION processInformation;
+
+#if 0
+		Ogre::String param;
+		param += "-smooth ";
+		param += "-relsize ";
+		param += "0.35 ";
+		param += "-cut_surface ";
+		param += "\"";
+		param += datablockName;
+		param += "\" ";
+		param += "-random ";
+		param += "\"";
+		param += sourceFile;
+		param += "\" ";
+		param += "\"";
+		param += destinationFolder;
+		param += "\"";
+#endif
+
+		Ogre::String applicationFolder = rootFolder + "/development/MeshUtils/1.8";
+
+		// Copies the file to the targed folder
+		Ogre::String destinationFilePathName = applicationFolder + "/" + meshName;
+		CopyFile(sourceFile.data(), destinationFilePathName.data(), TRUE);
+
+		Ogre::String meshMagickFilePathName = applicationFolder + "\\OgreMeshMagick.exe";
+		meshMagickFilePathName = this->replaceSlashes(meshMagickFilePathName, true);
+
+		Ogre::String tempParameters = meshMagickFilePathName + " " + parameters;
+		tempParameters += " " + sourceFile;
+
+		// 90/0/1/0
+
+		Ogre::String meshMagickCallerFilePathName = applicationFolder + "\\MeshMagickCaller.exe";
+		meshMagickCallerFilePathName = this->replaceSlashes(meshMagickCallerFilePathName, true);
+
+#if 0
+		DWORD creationFlags = DETACHED_PROCESS /*NORMAL_PRIORITY_CLASS | CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP*/;
+		BOOL result = ::CreateProcess(
+			meshMagickCallerFilePathName.data(), // Path to executable
+			tempParameters.data(),            // Command line
+			NULL,            // Process handle not inheritable
+			NULL,            // Thread handle not inheritable
+			FALSE,           // Set handle inheritance to FALSE
+			creationFlags,               // No creation flags
+			NULL,            // Use parent's environment block
+			"", // Set the working directory
+			&startupInfo,             // Pointer to STARTUPINFO structure
+			&processInformation);
+
+		if (result)
+		{
+			// Wait for external application to finish
+			WaitForSingleObject(processInformation.hProcess, INFINITE);
+
+			DWORD exitCode = 0;
+			// Get the exit code.
+			result = GetExitCodeProcess(processInformation.hProcess, &exitCode);
+
+			// Close the handles.
+			CloseHandle(processInformation.hProcess);
+			CloseHandle(processInformation.hThread);
+
+			if (FALSE == result)
+			{
+				// Could not get exit code.
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Coure] Could not get exit code from OgreMeshMagick.exe.");
+
+				return false;
+			}
+		}
+		else
+		{
+			Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
+			Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: "
+															+ meshName + ".");
+
+			// Sent event with feedback
+			boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
+			return false;
+		}
+#endif
+
+		// 90/0/1/0
+
+		SHELLEXECUTEINFO shRun = { 0 };
+		shRun.cbSize = sizeof(SHELLEXECUTEINFO);
+		shRun.fMask = SEE_MASK_NOCLOSEPROCESS;
+		shRun.hwnd = NULL;
+		shRun.lpVerb = NULL;
+		shRun.lpFile = meshMagickCallerFilePathName.data();
+		shRun.lpParameters = tempParameters.data();
+		shRun.nShow = SW_SHOW;
+		shRun.hInstApp = NULL;
+
+		if (!ShellExecuteEx(&shRun))
+		{
+			Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
+			Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: "
+															+ meshName + ".");
+
+			// Sent event with feedback
+			boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
+			return false;
+		}
+
+		WaitForSingleObject(shRun.hProcess, INFINITE);
+		CloseHandle(shRun.hProcess);
+
+		return true;
 	}
 
 	template <typename T, size_t MaxNumTextures>

@@ -1437,6 +1437,15 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->start();
 
 		LuaScriptApi::getInstance()->runInitScript("init.lua");
+
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			const auto& gameObjectPtr = it->second;
+			if (nullptr != gameObjectPtr)
+			{
+				gameObjectPtr->connectPriority();
+			}
+		}
 		
 		GameObjectPtr mainGameObjectPtr = nullptr;
 		// If all game objects had been loaded finally initialize all components of all objects
@@ -1501,6 +1510,20 @@ namespace NOWA
 				throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");
 			}
 		}
+
+		// TODO: What about this?
+#if 0
+		// Process all priority connect components
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			const auto& gameObjectPtr = it->second;
+			auto componentPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<GameObjectComponent>());
+			if (true == componentPtr->getConnectPriority())
+			{
+				componentPtr->disconnect();
+			}
+		}
+#endif
 
 		LuaScriptApi::getInstance()->stopInitScript("init.lua");
 		
@@ -1780,7 +1803,7 @@ namespace NOWA
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromTagName(const Ogre::String& tagName) const
 	{
 		std::vector<GameObjectPtr> vec;
-		// only search for game objects that are controlled by a client. Client id 0 means, it is not controlled
+
 		if (true == tagName.empty())
 		{
 			return std::move(vec);
@@ -1791,6 +1814,40 @@ namespace NOWA
 			if (it->second->getTagName() == tagName)
 			{
 				vec.emplace_back(it->second);
+			}
+		}
+		return std::move(vec);
+	}
+
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(const Ogre::String& meshName) const
+	{
+		std::vector<GameObjectPtr> vec;
+
+		if (true == meshName.empty())
+		{
+			return std::move(vec);
+		}
+
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			Ogre::v1::Entity* entity = it->second->getMovableObjectUnsafe<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				if (entity->getMesh()->getName() == meshName)
+				{
+					vec.emplace_back(it->second);
+				}
+			}
+			else
+			{
+				Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+				if (nullptr != item)
+				{
+					if (item->getMesh()->getName() == meshName)
+					{
+						vec.emplace_back(it->second);
+					}
+				}
 			}
 		}
 		return std::move(vec);

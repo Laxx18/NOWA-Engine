@@ -6,6 +6,10 @@
 		#version 430 core
 	@else
 		#version 330 core
+
+		@property( !hlms_readonly_is_tex )
+			#extension GL_ARB_shader_storage_buffer_object: require
+		@end
 	@end
 @end
 
@@ -71,6 +75,8 @@
 #define toFloat3x3( x ) mat3( x )
 #define buildFloat3x3( row0, row1, row2 ) mat3( row0, row1, row2 )
 
+#define buildFloat4x4( row0, row1, row2, row3 ) mat4( row0, row1, row2, row3 )
+
 // Let's explain this madness:
 //
 // We use the keyword "midf" because "half" is already taken on Metal.
@@ -121,6 +127,8 @@
 	#define midf3x3_c mat3
 	#define midf4x4_c mat4
 
+	#define midf_tex
+
 	#define toMidf3x3( x ) mat3( x )
 	#define buildMidf3x3( row0, row1, row2 ) mat3( row0, row1, row2 )
 
@@ -147,6 +155,8 @@
 	#define midf2x2_c f16mat2x2
 	#define midf3x3_c f16mat3x3
 	#define midf4x4_c f16mat4x4
+
+	#define midf_tex mediump
 
 	#define toMidf3x3( x ) f16mat3x3( x )
 	#define buildMidf3x3( row0, row1, row2 ) f16mat3x3( row0, row1, row2 )
@@ -185,6 +195,8 @@
 	#define midf2x2_c mat2
 	#define midf3x3_c mat3
 	#define midf4x4_c mat4
+
+	#define midf_tex mediump
 
 	#define toMidf3x3( x ) mat3( x )
 	#define buildMidf3x3( row0, row1, row2 ) mat3( row0, row1, row2 )
@@ -233,7 +245,11 @@
 
 #define outVs_Position gl_Position
 #define outVs_viewportIndex gl_ViewportIndex
+@property( hlms_emulate_clip_distances )
+#define outVs_clipDistance0 outVs.clipDistance0
+@else
 #define outVs_clipDistance0 gl_ClipDistance[0]
+@end
 
 #define gl_SampleMaskIn0 gl_SampleMaskIn[0]
 #define reversebits bitfieldReverse
@@ -309,7 +325,9 @@
 
 #define OGRE_Load3D( tex, iuv, lod ) texelFetch( tex, ivec3( iuv ), lod )
 
-#define bufferFetch1( buffer, idx ) texelFetch( buffer, idx ).x
+@property( GL_ARB_texture_buffer_range )
+	#define bufferFetch1( buffer, idx ) texelFetch( buffer, idx ).x
+@end
 
 @property( syntax != glslvk )
 	#define OGRE_SAMPLER_ARG_DECL( samplerName )
@@ -381,6 +399,22 @@
 		{
 			ivec2 pos = ivec2( mod( pixelIdx, 2048 ), int( uint(pixelIdx) >> 11u ) );
 			return texelFetch( sampl, pos, 0 );
+		}
+
+		float bufferFetch1( in sampler2D sampl, in int pixelIdx )
+		{
+			ivec2 pos = ivec2( mod( pixelIdx, 2048 ), int( uint(pixelIdx) >> 11u ) );
+			return texelFetch( sampl, pos, 0 ).x;
+		}
+		int bufferFetch1(in isampler2D sampl, in int pixelIdx)
+		{
+			ivec2 pos = ivec2( mod( pixelIdx, 2048 ), int( uint(pixelIdx) >> 11u ) );
+			return texelFetch( sampl, pos, 0 ).x;
+		}
+		uint bufferFetch1( in usampler2D sampl, in int pixelIdx )
+		{
+			ivec2 pos = ivec2( mod( pixelIdx, 2048 ), int( uint(pixelIdx) >> 11u ) );
+			return texelFetch( sampl, pos, 0 ).x;
 		}
 	@end
 @end

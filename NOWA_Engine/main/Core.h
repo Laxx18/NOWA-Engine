@@ -409,6 +409,8 @@ namespace NOWA
 
 		Ogre::String getDirectoryNameFromFilePathName(const Ogre::String& filePathName);
 
+		Ogre::String getRootFolderName(void);
+
 		Ogre::String replaceSlashes(const Ogre::String& filePath, bool useBackwardSlashes);
 
 		std::vector<Ogre::String> getSceneFileNames(const Ogre::String& resourceGroupName, const Ogre::String& projectName);
@@ -716,6 +718,15 @@ namespace NOWA
 		Ogre::String getLogName(void) const { return this->logName; }
 
 		unsigned int getScreenRefreshRate(void);
+
+		/**
+		* @brief		Processes the MeshMagick mesh operations like rotation, resize, transform, origin, axes.
+		* @see			https://wiki.ogre3d.org/MeshMagick
+		* @param[in]	meshName	The mesh name (without path) to set.
+		* @param[in]	parameters	The operation parameters to set without the mesh name. E.g. 'transform -rotate=90/0/1/0'
+		* @return		True		If the operation was successful, else false.
+		*/
+		bool processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters);
 		
 	public:
 

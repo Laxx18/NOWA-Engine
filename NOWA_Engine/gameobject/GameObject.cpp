@@ -485,6 +485,20 @@ namespace NOWA
 		}
 	}
 
+	bool GameObject::connectPriority(void)
+	{
+		// Process all priority connect components
+		for (const auto& component : this->gameObjectComponents)
+		{
+			const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+			if (true == gameObjectCompPtr->getConnectPriority())
+			{
+				gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+			}
+		}
+		return true;
+	}
+
 	bool GameObject::connect(void)
 	{
 		// Get a possible lua script from corresponding component
@@ -506,6 +520,11 @@ namespace NOWA
 			for (const auto& component : this->gameObjectComponents)
 			{
 				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+				if (true == gameObjectCompPtr->getConnectPriority())
+				{
+					continue;
+				}
+
 				if (luaScriptCompPtr != gameObjectCompPtr && aiLuaCompPtr != gameObjectCompPtr)
 				{
 					gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
