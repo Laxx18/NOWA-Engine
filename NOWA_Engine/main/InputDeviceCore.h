@@ -80,7 +80,7 @@ namespace NOWA
 
 		std::vector<InputDeviceModule*> getInputDeviceModules(void) const;
 
-
+		bool isSelectDown(void) const;
 	private:
 		InputDeviceCore();
 
@@ -115,6 +115,8 @@ namespace NOWA
 
 		unsigned short joystickIndex;
 		bool listenerAboutToBeRemoved;
+
+		bool bSelectDown;
 	};
 
 }; //namespace end

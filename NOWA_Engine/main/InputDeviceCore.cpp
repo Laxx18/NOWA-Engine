@@ -12,7 +12,8 @@ namespace NOWA
 		keyboard(nullptr),
 		inputSystem(nullptr),
 		joystickIndex(0),
-		listenerAboutToBeRemoved(false)
+		listenerAboutToBeRemoved(false),
+		bSelectDown(false)
 	{
 		
 	}
@@ -444,6 +445,11 @@ namespace NOWA
 			break;
 		}
 
+		if (NOWA_K_SELECT == tempKeyEvent.key)
+		{
+			this->bSelectDown = true;
+		}
+
 		MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
 
 		//// Do not react on input if there is any interaction with a mygui widget
@@ -469,6 +475,11 @@ namespace NOWA
 
 	bool InputDeviceCore::keyReleased(const OIS::KeyEvent& e)
 	{
+		if (NOWA_K_SELECT == e.key)
+		{
+			this->bSelectDown = false;
+		}
+
 		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
 
 		// Do not react on input if there is any interaction with a mygui widget
@@ -552,6 +563,8 @@ namespace NOWA
 
 	bool InputDeviceCore::mousePressed(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
+		this->bSelectDown = this->getKeyboard()->isKeyDown(NOWA_K_SELECT);
+
 		MyGUI::InputManager::getInstancePtr()->injectMousePress(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
 
 		// Do not react on input if there is any interaction with a mygui widget
@@ -703,6 +716,11 @@ namespace NOWA
 	std::vector<InputDeviceModule*> InputDeviceCore::getInputDeviceModules(void) const
 	{
 		return this->inputDeviceModules;
+	}
+
+	bool InputDeviceCore::isSelectDown(void) const
+	{
+		return this->bSelectDown;
 	}
 
 } // namespace end

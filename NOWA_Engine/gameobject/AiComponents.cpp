@@ -10,6 +10,7 @@
 
 #include "main/AppStateManager.h"
 #include "main/ProcessManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -332,7 +333,7 @@ namespace NOWA
 			if (nullptr != this->movingBehaviorPtr)
 			{
 				// Only delete later if not in the middle of destruction of all game objects
-				if (false == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+				if (false == Core::getSingletonPtr()->getIsWorldBeingDestroyed())
 				{
 					// Delete later, as this may be called from lua script and cause trouble else
 					NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));

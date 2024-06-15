@@ -328,7 +328,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -350,8 +350,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-6.90434" y="9.77893" z="-17.8516"/>
-			<rotation qw="-0.19663" qx="0.0436735" qy="0.956207" qz="0.21236"/>
+			<position x="1.33735" y="5.36925" z="-13.5446"/>
+			<rotation qw="0.502477" qx="-0.119899" qy="0.832853" qz="0.198741"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -378,8 +378,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="1.33735 5.36925 -13.5446"/>
-					<property type="9" name="CameraOrientation" data="-26.8423 117.793 0.000629623"/>
+					<property type="9" name="CameraPosition" data="6.67786 10.7841 3.96704"/>
+					<property type="9" name="CameraOrientation" data="-44.9102 80.6302 0.000964425"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>

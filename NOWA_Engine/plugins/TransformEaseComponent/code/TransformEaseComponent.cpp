@@ -471,7 +471,7 @@ namespace NOWA
 					}
 					else
 					{
-						this->physicsComponent->setPosition(resultVec * this->translationOppositeDir);
+						this->physicsComponent->setPosition(this->oldTranslationResult + resultVec);
 					}
 
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "transProgress: " + Ogre::StringConverter::toString(this->translationProgress) + " time: " + Ogre::StringConverter::toString(t) + " pos: "

@@ -5,6 +5,7 @@
 #include "WorkspaceComponents.h"
 #include "main/AppStateManager.h"
 #include "main/ProcessManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -322,7 +323,7 @@ namespace NOWA
 
 	void HdrEffectComponent::resetShining(void)
 	{
-		if (true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying())
+		if (true == Core::getSingletonPtr()->getIsWorldBeingDestroyed())
 		{
 			return;
 		}

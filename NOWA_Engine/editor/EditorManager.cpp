@@ -1352,7 +1352,9 @@ namespace NOWA
 		}
 
 		if (false == this->isInSimulation)
+		{
 			this->selectionManager->handleKeyPress(keyEventRef);
+		}
 
 		return handled;
 	}
@@ -1365,7 +1367,9 @@ namespace NOWA
 			this->currentKey = OIS::KC_END;
 		}
 		if (false == this->isInSimulation)
+		{
 			this->selectionManager->handleKeyRelease(keyEventRef);
+		}
 	}
 
 	void EditorManager::handleMouseMove(const OIS::MouseEvent& evt)
@@ -1438,6 +1442,13 @@ namespace NOWA
 
 	void EditorManager::handleMousePress(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
+		// Ugly workaround, because shit OIS is not possible to handle mouse release and key release at once!
+		// See selection manager same function for more details
+		if (true == InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_GRID))
+		{
+			this->currentKey = NOWA_K_GRID;
+		}
+
 		Ogre::Real x = 0.0f;
 		Ogre::Real y = 0.0f;
 		MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
@@ -2112,7 +2123,7 @@ namespace NOWA
 
 					// Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
 
-					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(this->tempPlaceMovableNode->getAttachedObject(0)->getLocalAabb().getSize(), this->tempPlaceMovableNode->_getDerivedOrientationUpdated());
+					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(this->tempPlaceMovableNode->getAttachedObject(0), this->tempPlaceMovableNode->_getDerivedOrientationUpdated());
 					
 					if (this->constraintAxis.x != 0.0f)
 						translationOffset = Ogre::Vector3(this->constraintAxis.x, translationOffset.y, translationOffset.z);
@@ -2850,10 +2861,9 @@ namespace NOWA
 					phyicsComponent->rotate(rotation);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
-						// Ogre::Vector3 position = this->gizmo->getPosition() + (this->gizmo->getOrientation() * selectedGameObject.second.gameObject->getSceneNode()->getPosition());
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						// Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getSceneNode()->getOrientation().Inverse() * rotation) * offset);
-						Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset);
+						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
+
 						if (true == success)
 						{
 							position = Ogre::Vector3(position.x, height, position.z);
@@ -2872,7 +2882,7 @@ namespace NOWA
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset);
+						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
 						if (true == success)
 						{
 							position = Ogre::Vector3(position.x, height, position.z);
@@ -2899,7 +2909,7 @@ namespace NOWA
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						physicsComponent->setPosition(this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset));
+						physicsComponent->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
 					}
 				}
 				else
@@ -2916,7 +2926,7 @@ namespace NOWA
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition() + (selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta * offset));
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
 					}
 				}
 				i++;
@@ -3023,13 +3033,13 @@ namespace NOWA
 			else
 			{
 				//first calculate the old grid position
-				oldGridPos = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
+				oldGridPos = MathHelper::getInstance()->calculateGridValue(1.0f, this->gizmo->getPosition());
 
 				//translate the select node to the new position
 				this->gizmo->translate(offset);
 
 				// then calculate the new grid position after the select node has been translated
-				newGridPos = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
+				newGridPos = MathHelper::getInstance()->calculateGridValue(1.0f, this->gizmo->getPosition());
 			}
 			//translate the objects to the new mouse position
 			offset = newGridPos - oldGridPos;
@@ -3075,10 +3085,15 @@ namespace NOWA
 					physicsComponent->setPosition(physicsComponent->getPosition().x, height, physicsComponent->getPosition().z);
 				}
 
-				Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getSize(), selectedGameObject.second.gameObject->getOrientation());
-
-				physicsComponent->translate(translationOffset);
-				// physicsComponent->setPosition(translationOffset);
+				if (NOWA_K_GRID == this->currentKey)
+				{
+					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getMovableObject(), selectedGameObject.second.gameObject->getOrientation());
+					physicsComponent->translate(translationOffset);
+				}
+				else
+				{
+					physicsComponent->translate(offset);
+				}
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					physicsComponent->setDirection(normal, Ogre::Vector3::NEGATIVE_UNIT_Y);
@@ -3100,11 +3115,16 @@ namespace NOWA
 						selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 				}
 
-				Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getSize(), selectedGameObject.second.gameObject->getOrientation());
-
-				selectedGameObject.second.gameObject->getSceneNode()->translate(translationOffset);
+				if (NOWA_K_GRID == this->currentKey)
+				{
+					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getMovableObject(), selectedGameObject.second.gameObject->getOrientation());
+					selectedGameObject.second.gameObject->getSceneNode()->translate(translationOffset);
+				}
+				else
+				{
+					selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
+				}
 				
-				// selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);

@@ -79,11 +79,11 @@ namespace NOWA
 		isSelectingRectangle(false),
 		isSelecting(false),
 		mouseIdPressed(false),
-		shiftDown(false),
 		selectBegin(Ogre::Vector2::ZERO),
 		selectEnd(Ogre::Vector2::ZERO),
 		categoryId(0),
-		selectionObserver(nullptr)
+		selectionObserver(nullptr),
+		shiftDown(false)
 	{
 
 	}
@@ -188,7 +188,7 @@ namespace NOWA
 
 		// Ugly workaround, because shit OIS is not possible to handle mouse release and key release at once!
 		// That means, if user holds shift and selects game objects and at the same moment release the shift key at the same time as the mouse release, only the mouse release is detected and shift variable remains switched on!
-		this->shiftDown = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_SELECT);
+		this->shiftDown = InputDeviceCore::getSingletonPtr()->isSelectDown();
 		
 		if (id == this->mouseButtonId)
 		{

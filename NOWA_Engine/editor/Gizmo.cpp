@@ -1146,14 +1146,33 @@ namespace NOWA
 		return direction;
 	}
 
-	Ogre::Vector3 Gizmo::calculateGridTranslation(const Ogre::Vector3& gridSize, const Ogre::Quaternion& sourceOrientation)
+	Ogre::Vector3 Gizmo::calculateGridTranslation(Ogre::MovableObject* movableObject, const Ogre::Quaternion& sourceOrientation)
 	{
 		Ogre::Vector3 translationOffset = Ogre::Vector3::ZERO;
 
 		Ogre::Vector3 direction = this->getCurrentDirection();
 
-		Ogre::Vector3 distanceVec = this->getPosition() - this->oldGizmoPosition;
-		Ogre::Real distance = this->oldGizmoPosition.distance(this->getPosition());
+		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
+		Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
+		Ogre::Vector3 scale = movableObject->getParentNode()->getScale();
+
+		Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * scale;
+
+		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * movableObject->getParentNode()->getScale();
+		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * movableObject->getParentNode()->getScale();
+		Ogre::Vector3 tempSize = ((maximumScaled - minimumScaled) /*- padding * 2.0f*/);
+
+		Ogre::Vector3 centerOffset = minimumScaled + /*padding +*/ (tempSize / 2.0f);
+		Ogre::Real lowestObjectY = minimumScaled.y /*- (padding.y * 2.0f)*/;
+		centerOffset.y = 0.0f - lowestObjectY;
+
+		Ogre::Vector3 offsetPosition = (this->getPosition()/* - centerOffset*/);
+		// Ogre::Vector3 distanceVec = offsetPosition - this->oldGizmoPosition;
+		
+		Ogre::Vector3 distanceVec = offsetPosition - this->oldGizmoPosition;
+		
+		// Ogre::Vector3 distanceVec = this->getPosition() - this->oldGizmoPosition;
+		Ogre::Real distance = this->oldGizmoPosition.distance(offsetPosition);
 		// Determines, whether the gizmo has been moved forward according its axis or backward
 		Ogre::Real dot = direction.dotProduct(distanceVec);
 
@@ -1169,7 +1188,9 @@ namespace NOWA
 			realDirection = direction * -1.0f;
 		}
 
-		Ogre::Vector3 gridFactor = gridSize;
+
+
+		Ogre::Vector3 gridFactor = size;
 		if (0.0f == gridFactor.x)
 		{
 			gridFactor.x = 0.1f;
@@ -1222,7 +1243,7 @@ namespace NOWA
 		{
 			// Calculates the translation offset only if the gizmo has been moved the given object size axis distance
 			// Takes the relative local source orientation into account
-			translationOffset = (sourceOrientation.Inverse() * this->getOrientation()) * (realDirection * gridFactor);
+			translationOffset = (sourceOrientation.Inverse() * this->getOrientation()) * (realDirection * gridFactorOfCurrentAxis);
 			// translationOffset = this->getPosition();
 			// selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition());
 			this->cumulatedGizmoTranslationDistance = 0.0f;

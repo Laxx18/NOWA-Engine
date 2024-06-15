@@ -137,7 +137,7 @@ namespace NOWA
 
 		Ogre::Vector3 getCurrentDirection(void);
 
-		Ogre::Vector3 calculateGridTranslation(const Ogre::Vector3& gridSize, const Ogre::Quaternion& sourceOrientation);
+		Ogre::Vector3 calculateGridTranslation(Ogre::MovableObject* movableObject, const Ogre::Quaternion& sourceOrientation);
 	private:
 		void setupFlag(void);
 		void createLine(void);
