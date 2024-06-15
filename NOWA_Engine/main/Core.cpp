@@ -1560,6 +1560,11 @@ namespace NOWA
 		return this->mostRightFarPosition;
 	}
 
+	bool Core::getIsWorldBeingDestroyed(void) const
+	{
+		return true == AppStateManager::getSingletonPtr()->getIsShutdown() || true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying();
+	}
+
 	bool Core::getIsGame(void) const
 	{
 		return this->isGame;

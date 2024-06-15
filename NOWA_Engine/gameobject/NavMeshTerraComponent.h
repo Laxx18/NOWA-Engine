@@ -79,10 +79,23 @@ namespace NOWA
 		virtual void setActivated(bool activated) override;
 
 		virtual bool isActivated(void) const override;
+
+		void setTerraLayers(const Ogre::String& terraLayers);
+
+		Ogre::String getTerraLayers(void) const;
+
+		std::vector<int> getTerraLayerList(void) const;
+
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrTerraLayers(void) { return "Terra Layers"; }
 	private:
+		void checkAndSetTerraLayers(const Ogre::String& terraLayers);
+	private:
+		std::vector<int> terraLayerList;
+
 		Variant* activated;
+		Variant* terraLayers;
 	};
 
 }; //namespace end

@@ -108,6 +108,13 @@ int rcGetChunksOverlappingSegment(const rcChunkyTriMesh* cm, float p[2], float q
 class __declspec( dllexport ) InputGeom
 {
 public:
+
+    struct __declspec(dllexport) TerraData
+    {
+        Ogre::Terra* terra = nullptr;
+        std::vector<int> terraLayerList;
+    };
+
     /**
       * Create recast compatible inputgeom from the specified entities. The entities have to be added to the
       * scene before this call, as we need to calculate the world coordinates of the entity.
@@ -129,7 +136,7 @@ public:
     InputGeom(Ogre::Item* srcItem);
 
     /**
-      * Construct __declspec( dllexport ) inputGeom from the specified entities, only geometry that falls within the specified bounds
+      * Construct inputGeom from the specified entities, only geometry that falls within the specified bounds
       * is stored. Note: this is not done optimally, only bounding box intersections are used. But tile building
       * is further optimized due to the use of the chunky tri mesh structure that is built within this inputGeom.
       * Further this constructor is the same as @see{InputGeom(std::vector<Ogre::v1::Entity*>)}
@@ -140,13 +147,13 @@ public:
     InputGeom(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems, const Ogre::AxisAlignedBox &tileBounds);
 
     /**
-      * Construct __declspec( dllexport ) inputGeom from terrain geometry and specified entities.
+      * Construct inputGeom from terrain geometry and specified entities.
       * The entity part is the same as @see{InputGeom(std::vector<Ogre::v1::Entity*>)}
       * Terrain geometry is added from highest LOD level of terrain.
       **/
-#if 1
-     InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& srcMeshes = std::vector<Ogre::v1::Entity*>(), const std::vector<Ogre::Item*>& srcItems = std::vector<Ogre::Item*>());
-#endif
+
+     InputGeom(const std::vector<TerraData>& terraDataList, const std::vector<Ogre::v1::Entity*>& srcMeshes = std::vector<Ogre::v1::Entity*>(), const std::vector<Ogre::Item*>& srcItems = std::vector<Ogre::Item*>());
+
     /**
       * Create inputGeom from terrain and entity polys that fall within specified bounding box, for rebuilding only tiles that fall within the box.
       * For terrain, only the x-z bounding plane of the box is looked at (height is ignored), and only the necessary tris from the terrain are copied into inputGeom.
@@ -356,7 +363,7 @@ public:
     int addConvexVolume(ConvexVolume *vol);
     bool deleteConvexVolume(int i, ConvexVolume** = NULL);
     // Not implemented
-    void drawConvexVolumes(struct __declspec( dllexport ) duDebugDraw* dd, bool hilight = false);
+    void drawConvexVolumes(struct duDebugDraw* dd, bool hilight = false);
     int getConvexVolumeId(ConvexVolume *convexHull);
     ///@}
 

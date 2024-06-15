@@ -62,8 +62,8 @@
 				"roughness" : 0.5,
 				"metalness" : 0.1,
                 "diffuse_map" : "grass_green_d.jpg",
-				"roughness_map" : "grass_green_r.jpg",
-				"metalness_map" : "grass_green_s.jpg",
+				"roughness_map" : "grass_green_r.png",
+				"metalness_map" : "grass_green_s.png",
 				"normal_map" : "grass_green_n.jpg"
             },
 			
@@ -74,8 +74,8 @@
 				"roughness" : 0.5,
 				"metalness" : 0.1,
                 "diffuse_map" : "island_sand_d.jpg",
-				"roughness_map" : "island_sand_r.jpg",
-				"metalness_map" : "island_sand_s.jpg",
+				"roughness_map" : "island_sand_r.png",
+				"metalness_map" : "island_sand_s.png",
 				"normal_map" : "island_sand_n.png"
             },
 			
@@ -86,8 +86,8 @@
 				"roughness" : 0.5,
 				"metalness" : 0.1,
                 "diffuse_map" : "mntn_black_d.jpg",
-				"roughness_map" : "mntn_black_r.jpg",
-				"metalness_map" : "mntn_black_s.jpg",
+				"roughness_map" : "mntn_black_r.png",
+				"metalness_map" : "mntn_black_s.png",
 				"normal_map" : "mntn_black_n.jpg"
             }
         }

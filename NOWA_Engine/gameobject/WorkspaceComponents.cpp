@@ -330,7 +330,7 @@ namespace NOWA
 	bool WorkspaceBaseComponent::connect(void)
 	{
 		// Do only for the first camera and not twice
-		if (this->viewportModifierMask == 0x01)
+		if (this->viewportModifierMask == 0x01 || false == this->useSplitScreen)
 		{
 			if (nullptr != this->workspace)
 			{
@@ -664,7 +664,7 @@ namespace NOWA
 
 		bool success = this->internalCreateWorkspace(workspaceDef);
 
-		if (this->viewportModifierMask == 0x01)
+		if (this->viewportModifierMask == 0x01 || false == this->useSplitScreen)
 		{
 			if (true == this->usePlanarReflection->getBool() && true == success)
 			{
@@ -842,8 +842,11 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::nullWorkspace(void)
 	{
-		this->compositorManager->removeWorkspace(this->workspace);
-		this->workspace = nullptr;
+		if (nullptr != this->workspace)
+		{
+			this->compositorManager->removeWorkspace(this->workspace);
+			this->workspace = nullptr;
+		}
 	}
 
 	void WorkspaceBaseComponent::onOtherComponentRemoved(unsigned int index)
@@ -885,6 +888,8 @@ namespace NOWA
 		{
 			WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
 		}
+
+		this->nullWorkspace();
 	}
 
 	void WorkspaceBaseComponent::actualizeValue(Variant* attribute)
@@ -3288,12 +3293,11 @@ namespace NOWA
 						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 						passScene->mClearColour[0] = color;
 
-						passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-
 						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-						// passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
-						// passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						// passScene->mClearStencil = Ogre::StoreAction::DontCare;
+
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
+						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 						// passScene->mFirstRQ = 10;
 						// passScene->mLastRQ = 253;
@@ -3457,7 +3461,7 @@ namespace NOWA
 							// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-							passScene->mClearStencil = Ogre::StoreAction::DontCare;
+							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 							// passScene->mFirstRQ = 10;
 							// passScene->mLastRQ = 253;
@@ -3750,7 +3754,7 @@ namespace NOWA
 						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mClearStencil = Ogre::StoreAction::DontCare;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 // Attention: There is another place with shadow!
 						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
@@ -3936,7 +3940,7 @@ namespace NOWA
 							// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-							passScene->mClearStencil = Ogre::StoreAction::DontCare;
+							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 							passScene->mFirstRQ = 0;
 							passScene->mLastRQ = 2;
@@ -4328,7 +4332,7 @@ namespace NOWA
 						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mClearStencil = Ogre::StoreAction::DontCare;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 
 						passScene->mFirstRQ = 0;
@@ -4577,7 +4581,7 @@ namespace NOWA
 								// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 								passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 								passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-								passScene->mClearStencil = Ogre::StoreAction::DontCare;
+								passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 
 								passScene->mFirstRQ = 0;
 								passScene->mLastRQ = 2;

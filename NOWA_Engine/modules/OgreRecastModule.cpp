@@ -2,6 +2,7 @@
 #include "OgreRecastModule.h"
 #include "gameobject/GameObject.h"
 #include "gameobject/NavMeshComponent.h"
+#include "gameobject/NavMeshTerraComponent.h"
 #include "gameobject/CrowdComponent.h"
 #include "main/AppStateManager.h"
 
@@ -434,21 +435,28 @@ namespace NOWA
 			}
 			else
 			{
-				
+				std::vector<InputGeom::TerraData> terraDataList;
 				for (auto it = this->terraInputGeomCells.begin(); it != this->terraInputGeomCells.end(); ++it)
 				{
 					auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(it->first);
 					if (nullptr != gameObjectPtr)
 					{
-						Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
-						if (nullptr != terra)
+						auto& navMeshTerraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshTerraComponent>());
+						if (nullptr != navMeshTerraCompPtr)
 						{
-							// Attention: Does only work at the moment for one cell, no idea how this could work for several cells?
-							// Because this is done in a loop, but entitites are just for one tile!
-							this->hasValidNavMesh = this->detourTileCache->TileCacheBuild(terra, entities, items);
+							Ogre::Terra* terra = gameObjectPtr->getMovableObject<Ogre::Terra>();
+							if (nullptr != terra)
+							{
+								InputGeom::TerraData terraData;
+								terraData.terra = terra;
+								terraData.terraLayerList = navMeshTerraCompPtr->getTerraLayerList();
+								terraDataList.push_back(terraData);
+							}
 						}
 					}
 				}
+
+				this->hasValidNavMesh = this->detourTileCache->TileCacheBuild(terraDataList, entities, items);
 			}
 
 			// Create input geom after TileCacheBuild is finished

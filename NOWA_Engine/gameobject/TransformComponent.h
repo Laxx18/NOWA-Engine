@@ -7,6 +7,10 @@ namespace NOWA
 {
 	class PhysicsComponent;
 
+	/*
+	 * @brief This component can be used to transform (translate and/or rotate and/or scale) a game object, like a rotating coin etc.
+	 */
+
 	class EXPORTED TransformComponent : public GameObjectComponent
 	{
 	public:

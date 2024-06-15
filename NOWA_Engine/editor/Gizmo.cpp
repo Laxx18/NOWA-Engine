@@ -61,7 +61,9 @@ namespace NOWA
 		thirdPlaneEntity(nullptr),
 		thirdPlaneNode(nullptr),
 		gizmoState(GIZMO_NONE),
-		constraintAxis(Ogre::Vector3::ZERO)
+		constraintAxis(Ogre::Vector3::ZERO),
+		oldGizmoPosition(Ogre::Vector3::ZERO),
+		cumulatedGizmoTranslationDistance(0.0f)
 	{
 		
 	}
@@ -324,6 +326,7 @@ namespace NOWA
 
 	void Gizmo::changeToTranslateGizmo(void)
 	{
+		this->cumulatedGizmoTranslationDistance = 0.0f;
 		// Change the look of the gizmo
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
@@ -393,6 +396,8 @@ namespace NOWA
 
 	void Gizmo::changeToScaleGizmo(void)
 	{
+		this->cumulatedGizmoTranslationDistance = 0.0f;
+
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
 			this->sceneManager->destroyEntity(this->arrowEntityX);
@@ -447,6 +452,8 @@ namespace NOWA
 
 	void Gizmo::changeToRotateGizmo(void)
 	{
+		this->cumulatedGizmoTranslationDistance = 0.0f;
+
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
 			this->sceneManager->destroyEntity(this->arrowEntityX);
@@ -1013,6 +1020,7 @@ namespace NOWA
 
 	void Gizmo::translate(const Ogre::Vector3& translateVector)
 	{
+		this->oldGizmoPosition = this->getPosition();
 		Ogre::Vector3 internalTranslateVector = translateVector;
 		if (this->constraintAxis.x != 0.0f)
 		{
@@ -1065,6 +1073,166 @@ namespace NOWA
 		{
 			this->arrowNodeZ->setVisible(false);
 		}
+	}
+
+	Ogre::Vector3 Gizmo::getCurrentDirection(void)
+	{
+		Ogre::Vector3 direction = Ogre::Vector3::ZERO;
+
+		switch (this->getState())
+		{
+		case Gizmo::GIZMO_ARROW_X:
+		{
+			direction = this->getOrientation().xAxis();
+			break;
+		}
+		case Gizmo::GIZMO_ARROW_Y:
+		{
+			direction = this->getOrientation().yAxis();
+			break;
+		}
+		case Gizmo::GIZMO_ARROW_Z:
+		{
+			direction = this->getOrientation().zAxis();
+			break;
+		}
+		case Gizmo::GIZMO_SPHERE:
+		{
+			/*gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
+			gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
+			gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();*/
+
+			direction = (this->getPosition() - this->oldGizmoPosition).normalisedCopy();
+			if (direction.x >= 0.9f)
+			{
+				direction = this->getOrientation().xAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_X);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X+");
+			}
+			else if (direction.x <= -0.9f)
+			{
+				direction = this->getOrientation().xAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_X_MINUS);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X-");
+			}
+			else if (direction.y >= 0.9f)
+			{
+				direction = this->getOrientation().yAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_Y);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y+");
+			}
+			else if (direction.y <= -0.9f)
+			{
+				direction = this->getOrientation().yAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_Y_MINUS);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y-");
+			}
+			else if (direction.z >= 0.9f)
+			{
+				direction = this->getOrientation().zAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_Z);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z+");
+			}
+			else if (direction.z <= -0.9f)
+			{
+				direction = this->getOrientation().zAxis();
+				this->setState(eGizmoState::GIZMO_ARROW_Z_MINUS);
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z-");
+			}
+			break;
+		}
+		}
+
+		return direction;
+	}
+
+	Ogre::Vector3 Gizmo::calculateGridTranslation(const Ogre::Vector3& gridSize, const Ogre::Quaternion& sourceOrientation)
+	{
+		Ogre::Vector3 translationOffset = Ogre::Vector3::ZERO;
+
+		Ogre::Vector3 direction = this->getCurrentDirection();
+
+		Ogre::Vector3 distanceVec = this->getPosition() - this->oldGizmoPosition;
+		Ogre::Real distance = this->oldGizmoPosition.distance(this->getPosition());
+		// Determines, whether the gizmo has been moved forward according its axis or backward
+		Ogre::Real dot = direction.dotProduct(distanceVec);
+
+		Ogre::Vector3 realDirection = direction;
+
+		if (dot > 0.0f)
+		{
+			this->cumulatedGizmoTranslationDistance += distance;
+		}
+		else if (dot < 0.0f)
+		{
+			this->cumulatedGizmoTranslationDistance -= distance;
+			realDirection = direction * -1.0f;
+		}
+
+		Ogre::Vector3 gridFactor = gridSize;
+		if (0.0f == gridFactor.x)
+		{
+			gridFactor.x = 0.1f;
+		}
+		if (0.0f == gridFactor.y)
+		{
+			gridFactor.y = 0.1f;
+		}
+		if (0.0f == gridFactor.z)
+		{
+			gridFactor.z = 0.1f;
+		}
+
+		Ogre::String axisName;
+
+		Ogre::Real gridFactorOfCurrentAxis = gridFactor.x;
+
+		if (this->getState() == eGizmoState::GIZMO_ARROW_X)
+		{
+			axisName = "X+";
+			gridFactorOfCurrentAxis = gridFactor.x;
+		}
+		else if (this->getState() == eGizmoState::GIZMO_ARROW_X_MINUS)
+		{
+			axisName = "X-";
+			gridFactorOfCurrentAxis = gridFactor.x;
+		}
+		else if (this->getState() == eGizmoState::GIZMO_ARROW_Y)
+		{
+			axisName = "Y+";
+			gridFactorOfCurrentAxis = gridFactor.y;
+		}
+		else if (this->getState() == eGizmoState::GIZMO_ARROW_Y_MINUS)
+		{
+			axisName = "Y-";
+			gridFactorOfCurrentAxis = gridFactor.y;
+		}
+		else if (this->getState() == eGizmoState::GIZMO_ARROW_Z)
+		{
+			axisName = "Z+";
+			gridFactorOfCurrentAxis = gridFactor.z;
+		}
+		else if (this->getState() == eGizmoState::GIZMO_ARROW_Z_MINUS)
+		{
+			axisName = "Z-";
+			gridFactorOfCurrentAxis = gridFactor.z;
+		}
+
+		if (this->cumulatedGizmoTranslationDistance >= gridFactorOfCurrentAxis || this->cumulatedGizmoTranslationDistance <= -gridFactorOfCurrentAxis)
+		{
+			// Calculates the translation offset only if the gizmo has been moved the given object size axis distance
+			// Takes the relative local source orientation into account
+			translationOffset = (sourceOrientation.Inverse() * this->getOrientation()) * (realDirection * gridFactor);
+			// translationOffset = this->getPosition();
+			// selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition());
+			this->cumulatedGizmoTranslationDistance = 0.0f;
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "distance: " + Ogre::StringConverter::toString(distance) + " cumDistance: " + Ogre::StringConverter::toString(this->cumulatedGizmoTranslationDistance)
+														+ " realDirection: " + Ogre::StringConverter::toString(realDirection) + " offset: " + Ogre::StringConverter::toString(translationOffset) + " dot: " + Ogre::StringConverter::toString(dot)
+														+ " AxisName: " + axisName);
+
+		return translationOffset;
 	}
 
 }; // namespace end

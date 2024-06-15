@@ -415,7 +415,7 @@ public:
       **/
     bool TileCacheBuild(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems);
 
-    bool TileCacheBuild(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems);
+    bool TileCacheBuild(const std::vector<InputGeom::TerraData>& terraDataList, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems);
 
     /**
       * Build all navmesh tiles from specified input geom.
@@ -425,7 +425,7 @@ public:
       *
       * @see OgreDetourTileCache::TileCacheBuild(std::vector<Ogre::v1::Entity*>)
       **/
-    bool TileCacheBuild(InputGeom *inputGeom);
+    bool TileCacheBuild(InputGeom* inputGeom);
 
 // TODO maybe provide isLoaded(tx, ty) method
 

@@ -520,6 +520,12 @@ namespace NOWA
 		Ogre::Vector3 getCurrentWorldBoundRightFar(void);
 
 		/**
+		 * @brief		Gets whether the current world is being destroyed (maybe the applicatoin about to quit, causing the destruction, or the world being changed).
+		 * @return		True, if the world is being destroyed, else false.
+		 */
+		bool getIsWorldBeingDestroyed(void) const;
+
+		/**
 		 * @brief		Gets whether the engine is used in a game and not in an editor.
 		 * @return		True, if engine is used in a game, else false.
 		 */

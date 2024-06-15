@@ -21,7 +21,10 @@ namespace NOWA
 			GIZMO_ARROW_X = 1,
 			GIZMO_ARROW_Y = 2,
 			GIZMO_ARROW_Z = 3,
-			GIZMO_SPHERE = 4
+			GIZMO_ARROW_X_MINUS = 4,
+			GIZMO_ARROW_Y_MINUS = 5,
+			GIZMO_ARROW_Z_MINUS = 6,
+			GIZMO_SPHERE = 7
 		};
 
 		Gizmo();
@@ -131,6 +134,10 @@ namespace NOWA
 		void rotate(const Ogre::Quaternion& rotateQuaternion);
 
 		void setConstraintAxis(const Ogre::Vector3& constraintAxis);
+
+		Ogre::Vector3 getCurrentDirection(void);
+
+		Ogre::Vector3 calculateGridTranslation(const Ogre::Vector3& gridSize, const Ogre::Quaternion& sourceOrientation);
 	private:
 		void setupFlag(void);
 		void createLine(void);
@@ -183,6 +190,9 @@ namespace NOWA
 		Ogre::SceneNode* thirdPlaneNode;
 		bool debugPlane;
 		Ogre::Vector3 constraintAxis;
+
+		Ogre::Vector3 oldGizmoPosition;
+		Ogre::Real cumulatedGizmoTranslationDistance;
 	};
 
 }; // namespace end

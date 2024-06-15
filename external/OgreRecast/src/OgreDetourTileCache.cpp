@@ -242,9 +242,9 @@ bool OgreDetourTileCache::TileCacheBuild(const std::vector<Ogre::v1::Entity*>& s
     return TileCacheBuild(inputGeom);
 }
 
-bool OgreDetourTileCache::TileCacheBuild(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
+bool OgreDetourTileCache::TileCacheBuild(const std::vector<InputGeom::TerraData>& terraDataList, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
 {
-    InputGeom *inputGeom = new InputGeom(terra, srcMeshes, srcItems);
+    InputGeom *inputGeom = new InputGeom(terraDataList, srcMeshes, srcItems);
     return TileCacheBuild(inputGeom);
 }
 

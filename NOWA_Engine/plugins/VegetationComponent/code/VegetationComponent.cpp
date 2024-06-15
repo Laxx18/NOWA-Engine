@@ -862,7 +862,6 @@ namespace NOWA
 												 bool layerMatches = true;
 												 // Exclude maybe terra layers from vegetation placing
 												 std::vector<int> layers = terra->getLayerAt(objPosition);
-												 int k = layers[0];
 
 												 // Ogre::String str;
 												 for (size_t i = 0; i < this->terraLayerList.size(); i++)

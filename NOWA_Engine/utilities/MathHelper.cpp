@@ -123,6 +123,32 @@ namespace NOWA
 		return interpolatedValue;
 	}
 
+	Ogre::Vector3 MathHelper::interpolate(const Ogre::Vector3& v1, const Ogre::Vector3& v2, Ogre::Real t)
+	{
+		 
+#if 0
+		t = this->clamp(t, 0.0f, 1.0f);
+		return Ogre::Vector3(
+			v1.x + t * (v2.x - v1.x),
+			v1.y + t * (v2.y - v1.y),
+			v1.z + t * (v2.z - v1.z)
+		);
+#else
+		return  Ogre::Vector3(
+			v1.x * (1.0f - t) + v2.x * t,
+			v1.y * (1.0f - t) + v2.y * t,
+			v1.z * (1.0f - t) + v2.z * t
+		);
+#endif
+	}
+
+	Ogre::Real MathHelper::interpolate(Ogre::Real v1, Ogre::Real v2, Ogre::Real t)
+	{
+		// t = this->clamp(t, 0.0f, 1.0f);
+		// return v1 * (1.0f - t) + v2 * t;
+		return v1 + t * (v2 - v1);
+	}
+
 	void MathHelper::mouseToViewPort(int mx, int my, Ogre::Real& x, Ogre::Real& y, Ogre::Window* renderWindow)
 	{
 		x = (Ogre::Real)((Ogre::Real)mx / (Ogre::Real)renderWindow->getWidth());
@@ -642,123 +668,21 @@ namespace NOWA
 		return pos + v;
 	}
 
-	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::Real step, Ogre::Vector3 value)
+	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::Real step, const Ogre::Vector3& sourcePosition)
 	{
+		Ogre::Vector3 value = Ogre::Vector3::ZERO;
 		if (0.0f == step)
 		{
-			return std::move(value);
+			return std::move(sourcePosition);
 		}
 		//calculate the gridvalue
 		//only move the object if it passes the critical distance
 		//do it without the y coordinate because its for placing an object and would cause that the objects gains high
-		value.x = ((round(value.x / step)) * step);
-		value.y = ((round(value.y / step)) * step);
-		value.z = ((round(value.z / step)) * step);
+		value.x = ((round(sourcePosition.x / step)) * step);
+		value.y = ((round(sourcePosition.y / step)) * step);
+		value.z = ((round(sourcePosition.z / step)) * step);
 
 		return std::move(value);
-	}
-
-	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::MovableObject* movableObject, const Ogre::Vector3& objectScale, const Ogre::Quaternion& objectOrientation, Ogre::Real step,
-		const Ogre::Vector3& direction, Ogre::Vector3 value)
-	{
-		//calculate the gridvalue
-		//only move the object if it passes the critical distance
-		//do it without the y coordinate because its for placing an object and would cause that the objects gains high
-		if (0.0f == step)
-		{
-			return std::move(value);
-		}
-
-		// Ogre::Vector3 gridFactor = entity->getMesh()->getBounds().getSize();
-		Ogre::Vector3 gridFactor = (movableObject->getLocalAabb().getSize() * objectScale);
-		if (0.0f == gridFactor.x)
-		{
-			gridFactor.x = 0.1f;
-		}
-		if (0.0f == gridFactor.y)
-		{
-			gridFactor.y = 0.1f;
-		}
-		if (0.0f == gridFactor.z)
-		{
-			gridFactor.z = 0.1f;
-		}
-		value.x = ((round(value.x / (gridFactor.x * step))) * gridFactor.x * step);
-		value.y = ((round(value.y / (gridFactor.y * step))) * gridFactor.y * step);
-		value.z = ((round(value.z / (gridFactor.z * step))) * gridFactor.z * step);
-
-		value = objectOrientation * value;
-
-		Ogre::Vector3 translateVector = (direction.dotProduct(value) * direction);
-
-		return std::move(translateVector);
-	}
-
-	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::MovableObject* movableObject, const Ogre::Vector3& objectScale, const Ogre::Quaternion& objectOrientation, Ogre::Real step, Ogre::Vector3 value)
-	{
-		//calculate the gridvalue
-		Ogre::Vector3 size = (movableObject->getLocalAabb().getSize() * objectScale);
-		if (0.0f == size.x)
-			size.x = 0.1f;
-		if (0.0f == size.y)
-			size.y = 0.1f;
-		if (0.0f == size.z)
-			size.z = 0.1f;
-		Ogre::Vector3 halfSize = size * 0.5f;
-		// Ogre::Vector3 gridValue = (objectOrientation * halfSize);
-
-		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
-		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * objectScale;
-		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * objectScale;
-		// Do not use padding, as all objects will be a bit above the ground!
-		// Ogre::Vector3 padding = (maximumScaled - minimumScaled) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 tempSize = ((maximumScaled - minimumScaled) /*- padding * 2.0f*/);
-		Ogre::Vector3 centerOffset = minimumScaled + /*padding +*/ (tempSize / 2.0f);
-		Ogre::Real lowestObjectY = minimumScaled.y /*- (padding.y * 2.0f)*/;
-		centerOffset.y = 0.0f - lowestObjectY;
-		// this->gizmo->getPosition() + (gizmoRotationDelta * offset);
-		/*Ogre::Vector3 gridValue = (movableObject->getParentNode()->getPosition() - centerOffset) + (objectOrientation * halfSize);
-		gridValue = gridValue - value;*/
-
-		// Ogre::Vector3 gridValue = Ogre::Vector3(0.866f, 1.0f, 0.5f); // 30 degree
-		/*Ogre::Vector3 gridValue;
-		gridValue.x = halfSize.x * Ogre::Math::Cos(objectOrientation.getYaw().valueRadians());
-		gridValue.y = halfSize.y;
-		gridValue.z = halfSize.z * Ogre::Math::Sin(objectOrientation.getYaw().valueRadians());*/
-
-		//only move the object if it passes the critical distance
-		//do it without the y coordinate because its for placing an object and would cause that the objects gains high
-
-		// Get rotated hit point
-		Ogre::Vector3 destPoint = objectOrientation * value;
-
-		// Works only for bounding box equal extensions! and only for 45 degree!
-		Ogre::Vector3 gridValue = centerOffset + size/* * 0.8f*/;
-
-		Ogre::Vector3 newGridValue;
-		newGridValue.x = ((round(value.x / gridValue.x * step)) * gridValue.x * step);
-		newGridValue.y = ((round(value.y / gridValue.y * step)) * gridValue.y * step);
-		newGridValue.z = ((round(value.z / gridValue.z * step)) * gridValue.z * step);
-
-		Ogre::Vector3 directionX = objectOrientation.xAxis();
-		Ogre::Vector3 directionY = objectOrientation.yAxis();
-		Ogre::Vector3 directionZ = objectOrientation.zAxis();
-
-		// Get movment direction weight
-		Ogre::Vector3 vPos1 = (directionX.dotProduct(destPoint) * directionX);
-		Ogre::Vector3 vPos2 = (directionY.dotProduct(destPoint) * directionY);
-		Ogre::Vector3 vPos3 = (directionZ.dotProduct(destPoint) * directionZ);
-		Ogre::Vector3 translateVector = vPos1 + vPos2 + vPos3;
-
-		// Translate to grid
-		translateVector.x = ((round(translateVector.x / gridValue.x * step)) * gridValue.x * step);
-		translateVector.y = ((round(translateVector.y / gridValue.y * step)) * gridValue.y * step);
-		translateVector.z = ((round(translateVector.z / gridValue.z * step)) * gridValue.z * step);
-
-		// Remove orientation
-		translateVector = objectOrientation.Inverse() * translateVector;
-
-		return std::move(translateVector);
 	}
 
 #if 0
@@ -2358,6 +2282,307 @@ namespace NOWA
 		}
 
 		return aabb;
+	}
+
+	Ogre::Real MathHelper::mapValue(Ogre::Real valueToMap, Ogre::Real targetMin, Ogre::Real targetMax)
+	{
+		return targetMin + valueToMap * (targetMax - targetMin);
+	}
+
+	Ogre::Real MathHelper::mapValue2(Ogre::Real valueToMap, Ogre::Real sourceMin, Ogre::Real sourceMax, Ogre::Real targetMin, Ogre::Real targetMax)
+	{
+		return targetMin + ((targetMax - targetMin) * (valueToMap - sourceMin)) / (sourceMax - sourceMin);
+	}
+
+	Ogre::Real MathHelper::calculateBezierYT(Ogre::Real t, bool invert)
+	{
+		Ogre::Vector2 p0 = Ogre::Vector2::ZERO;
+		Ogre::Vector2 p1 = invert ? Ogre::Vector2(0.5f, 0.0f) : Ogre::Vector2(0.5f, -0.9f);
+		Ogre::Vector2 p2 = invert ? Ogre::Vector2(0.5f, 0.1f) : Ogre::Vector2(0.5f, -1.0f);
+		Ogre::Vector2 p3 = invert ? Ogre::Vector2(1.0f, 1.0f) : Ogre::Vector2(1.0f, -1.0f);
+
+		Ogre::Real cy = 3.0f * (p1.y - p0.y);
+		Ogre::Real by = 3.0f * (p2.y - p1.y) - cy;
+		Ogre::Real ay = p3.y - p0.y - cy - by;
+
+		Ogre::Real yt = ay * (t * t * t) + by * (t * t) + cy * t + p0.y;
+		return invert ? yt : yt + 1;
+
+	}
+
+	Ogre::Real MathHelper::calcBezierYTPoints(Ogre::Real t, bool invert)
+	{
+		Ogre::Vector2 p0 = Ogre::Vector2::ZERO;
+		Ogre::Vector2 p1 = invert ? Ogre::Vector2(0.0f, 0.9f) : Ogre::Vector2(1.0f, -0.0f);
+		Ogre::Vector2 p2 = invert ? Ogre::Vector2(0.5f, 0.1f) : Ogre::Vector2(0.5f, -0.1f);
+		Ogre::Vector2 p3 = invert ? Ogre::Vector2(1.0f, 1.0f) : Ogre::Vector2(1.0f, -1.0f);
+		Ogre::Real cy = 3.0f * (p1.y - p0.y);
+		Ogre::Real by = 3.0f * (p2.y - p1.y) - cy;
+		Ogre::Real ay = p3.y - p0.y - cy - by;
+		Ogre::Real yt = ay * (t * t * t) + by * (t * t) + cy * t + p0.y;
+		return invert ? yt : yt + 1;
+	}
+
+	Ogre::Real MathHelper::clamp(Ogre::Real value, Ogre::Real min, Ogre::Real max)
+	{
+		return std::max(min, std::min(max, value));
+	}
+
+	Ogre::Real MathHelper::easeInSine(Ogre::Real t)
+	{
+		return -1.0f * Ogre::Math::Cos(t * (Ogre::Math::PI / 2.0f)) + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeOutSine(Ogre::Real t)
+	{
+		return Ogre::Math::Sin(t * (Ogre::Math::PI / 2.0f));
+	}
+
+	Ogre::Real MathHelper::easeInOutSine(Ogre::Real t)
+	{
+		return -0.5f * (Ogre::Math::Cos(Ogre::Math::PI * t) - 1.0f);
+	}
+
+	Ogre::Real MathHelper::easeInQuad(Ogre::Real t)
+	{
+		return t * t;
+	}
+
+	Ogre::Real MathHelper::easeOutQuad(Ogre::Real t)
+	{
+		return t * (2.0f - t);
+	}
+
+	Ogre::Real MathHelper::easeInOutQuad(Ogre::Real t)
+	{
+		return t < 0.5f ? 2.0f * t * t : -1.0f + (4 - 2.0f * t) * t;
+	}
+
+	Ogre::Real MathHelper::easeInCubic(Ogre::Real t)
+	{
+		return t * t * t;
+	}
+
+	Ogre::Real MathHelper::easeOutCubic(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return t1 * t1 * t1 + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeInOutCubic(Ogre::Real t)
+	{
+		return t < 0.5f ? 4.0f * t * t * t : (t - 1.0f) * (2.0f * t - 2.0f) * (2.0f * t - 2.0f) + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeInQuart(Ogre::Real t)
+	{
+		return t * t * t * t;
+	}
+
+	Ogre::Real MathHelper::easeOutQuart(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return 1.0f - t1 * t1 * t1 * t1;
+	}
+
+	Ogre::Real MathHelper::easeInOutQuart(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return t < 0.5f ? 8.0f * t * t * t * t : 1.0f - 8.0f * t1 * t1 * t1 * t1;
+	}
+
+	Ogre::Real MathHelper::easeInQuint(Ogre::Real t)
+	{
+		return t * t * t * t * t;
+	}
+
+	Ogre::Real MathHelper::easeOutQuint(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return 1.0f + t1 * t1 * t1 * t1 * t1;
+	}
+
+	Ogre::Real MathHelper::easeInOutQuint(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return t < 0.5f ? 16.0f * t * t * t * t * t : 1 + 16 * t1 * t1 * t1 * t1 * t1;
+	}
+
+	Ogre::Real MathHelper::easeInExpo(Ogre::Real t)
+	{
+		if (t == 0.0f)
+		{
+			return 0.0f;
+		}
+		return Ogre::Math::Pow(2.0f, 10.0f * (t - 1.0f));
+	}
+
+	Ogre::Real MathHelper::easeOutExpo(Ogre::Real t)
+	{
+		if (t == 1.0f)
+		{
+			return 1.0f;
+		}
+		return (-Ogre::Math::Pow(2.0f, -10.0f * t) + 1.0f);
+	}
+
+	Ogre::Real MathHelper::easeInOutExpo(Ogre::Real t)
+	{
+		if (t == 0.0f || t == 1.0f)
+		{
+			return t;
+		}
+
+		const Ogre::Real scaledTime = t * 2.0f;
+		const Ogre::Real scaledTime1 = scaledTime - 1.0f;
+
+		if (scaledTime < 1.0f)
+		{
+			return 0.5f * Ogre::Math::Pow(2.0f, 10.0 * (scaledTime1));
+		}
+		return 0.5f * (-Ogre::Math::Pow(2.0f, -10.0f * scaledTime1) + 2.0f);
+
+	}
+
+	Ogre::Real MathHelper::easeInCirc(Ogre::Real t)
+	{
+		const Ogre::Real scaledTime = t / 1.0f;
+		return -1.0f * (Ogre::Math::Sqrt(1.0f - scaledTime * t) - 1.0f);
+	}
+
+	Ogre::Real MathHelper::easeOutCirc(Ogre::Real t)
+	{
+		const Ogre::Real t1 = t - 1.0f;
+		return Ogre::Math::Sqrt(1.0f - t1 * t1);
+	}
+
+	Ogre::Real MathHelper::easeInOutCirc(Ogre::Real t)
+	{
+		const Ogre::Real scaledTime = t * 2.0f;
+		const Ogre::Real scaledTime1 = scaledTime - 2;
+
+		if (scaledTime < 1.0f)
+		{
+			return -0.5f * (Ogre::Math::Sqrt(1.0f - scaledTime * scaledTime) - 1.0f);
+		}
+
+		return 0.5f * (Ogre::Math::Sqrt(1.0f - scaledTime1 * scaledTime1) + 1.0f);
+	}
+
+	Ogre::Real MathHelper::easeInBack(Ogre::Real t, Ogre::Real magnitude)
+	{
+		return t * t * ((magnitude + 1.0f) * t - magnitude);
+	}
+
+	Ogre::Real MathHelper::easeOutBack(Ogre::Real t, Ogre::Real magnitude)
+	{
+		const Ogre::Real scaledTime = (t / 1.0f) - 1.0f;
+
+		return (scaledTime * scaledTime * ((magnitude + 1.0f) * scaledTime + magnitude)) + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeInOutBack(Ogre::Real t, Ogre::Real magnitude)
+	{
+		const Ogre::Real scaledTime = t * 2.0f;
+		const Ogre::Real scaledTime2 = scaledTime - 2.0f;
+		const Ogre::Real s = magnitude * 1.525f;
+
+		if (scaledTime < 1.0f)
+		{
+			return 0.5f * scaledTime * scaledTime * (((s + 1.0f) * scaledTime) - s);
+		}
+
+		return 0.5f * (scaledTime2 * scaledTime2 * ((s + 1.0f) * scaledTime2 + s) + 2.0f);
+	}
+
+	Ogre::Real MathHelper::easeInElastic(Ogre::Real t, Ogre::Real magnitude)
+	{
+		if (t == 0.0f || t == 1.0f)
+		{
+			return t;
+		}
+
+		const Ogre::Real scaledTime = t / 1.0f;
+		const Ogre::Real scaledTime1 = scaledTime - 1.0f;
+
+		const Ogre::Real p = 1.0f - magnitude;
+		const Ogre::Real s = p / ((2.0f * Ogre::Math::PI) * Ogre::Math::ASin(1.0f)).valueRadians();
+
+		return -(Ogre::Math::Pow(2.0f, 10.0f * scaledTime1) * Ogre::Math::Sin((scaledTime1 - s) * (2.0f * Ogre::Math::PI) / p));
+	}
+
+	Ogre::Real MathHelper::easeOutElastic(Ogre::Real t, Ogre::Real magnitude)
+	{
+		const Ogre::Real p = 1.0f - magnitude;
+		const Ogre::Real scaledTime = t * 2.0f;
+
+		if (t == 0.0f || t == 1.0f)
+		{
+			return t;
+		}
+
+		const Ogre::Real s = p / ((2.0f * Ogre::Math::PI) * Ogre::Math::ASin(1.0f)).valueRadians();
+		return (Ogre::Math::Pow(2.0f, -10.0f * scaledTime) * Ogre::Math::Sin((scaledTime - s) * (2.0f * Ogre::Math::PI) / p)) + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeInOutElastic(Ogre::Real t, Ogre::Real magnitude)
+	{
+		const Ogre::Real p = 1.0f - magnitude;
+
+		if (t == 0.0f || t == 1.0f)
+		{
+			return t;
+		}
+
+		const Ogre::Real scaledTime = t * 2.0f;
+		const Ogre::Real scaledTime1 = scaledTime - 1.0f;
+		const Ogre::Real s = p / ((2.0f * Ogre::Math::PI) * Ogre::Math::ASin(1.0f)).valueRadians();
+
+		if (scaledTime < 1.0f)
+		{
+			return -0.5f * (Ogre::Math::Pow(2.0f, 10.0f * scaledTime1) * Ogre::Math::Sin((scaledTime1 - s) * (2.0f * Ogre::Math::PI) / p));
+		}
+
+		return (Ogre::Math::Pow(2.0f, -10.0f * scaledTime1) * Ogre::Math::Sin((scaledTime1 - s) * (2.0f * Ogre::Math::PI) / p) * 0.5f) + 1.0f;
+	}
+
+	Ogre::Real MathHelper::easeOutBounce(Ogre::Real t)
+	{
+		const Ogre::Real scaledTime = t / 1.0f;
+
+		if (scaledTime < (1.0f / 2.75f))
+		{
+			return 7.5625f * scaledTime * scaledTime;
+		}
+		else if (scaledTime < (2.0f / 2.75f))
+		{
+			const Ogre::Real scaledTime2 = scaledTime - (1.5f / 2.75f);
+			return (7.5625f * scaledTime2 * scaledTime2) + 0.75f;
+		}
+		else if (scaledTime < (2.5f / 2.75f))
+		{
+			const Ogre::Real scaledTime2 = scaledTime - (2.25f / 2.75f);
+			return (7.5625f * scaledTime2 * scaledTime2) + 0.9375f;
+		}
+		else
+		{
+			const Ogre::Real scaledTime2 = scaledTime - (2.625f / 2.75f);
+			return (7.5625f * scaledTime2 * scaledTime2) + 0.984375f;
+		}
+	}
+
+	Ogre::Real MathHelper::easeInBounce(Ogre::Real t)
+	{
+		return 1.0f - easeOutBounce(1.0f - t);
+	}
+
+	Ogre::Real MathHelper::easeInOutBounce(Ogre::Real t)
+	{
+		if (t < 0.5f)
+		{
+			return easeInBounce(t * 2.0f) * 0.5f;
+		}
+		return (easeOutBounce((t * 2.0f) - 1.0f) * 0.5f) + 0.5f;
 	}
 
 	Ogre::Vector3 MathHelper::pointToLocalSpace(const Ogre::Vector3& point, Ogre::Vector3& heading, Ogre::Vector3& side, Ogre::Vector3& position)

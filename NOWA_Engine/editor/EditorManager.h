@@ -331,7 +331,6 @@ namespace NOWA
 		Ogre::Quaternion rotateStartOrientationGizmoY;
 		Ogre::Quaternion rotateStartOrientationGizmoZ;
 		Ogre::Quaternion oldGizmoOrientation;
-		Ogre::Vector3 oldGizmoPosition;
 		Ogre::Vector3 startHitPoint;
 		Ogre::Real absoluteAngle;
 		Ogre::Real stepAngleDelta;

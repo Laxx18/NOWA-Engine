@@ -84,8 +84,7 @@ namespace NOWA
 
 	bool SplitScreenComponent::disconnect(void)
 	{
-		// Do not create a work space if engine is being shut down
-		if (false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		if (false == NOWA::Core::getSingletonPtr()->getIsWorldBeingDestroyed())
 		{
 			WorkspaceModule::getInstance()->setUseSplitScreen(false);
 		}
@@ -100,8 +99,7 @@ namespace NOWA
 
 	void SplitScreenComponent::onRemoveComponent(void)
 	{
-		// TODO: What if editor is exited, in this case nothing must be done!
-		if (false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		if (false == NOWA::Core::getSingletonPtr()->getIsWorldBeingDestroyed())
 		{
 			WorkspaceModule::getInstance()->setUseSplitScreen(false);
 		}

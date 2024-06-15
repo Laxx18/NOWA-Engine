@@ -108,9 +108,9 @@ namespace NOWA
 		Ogre::Vector3 smoothDamp(const Ogre::Vector3& current, Ogre::Vector3& target, Ogre::Vector3& currentVelocity, Ogre::Real& smoothTime, Ogre::Real maxSpeed = Ogre::Math::POS_INFINITY, Ogre::Real deltaTime = 0.016f);
 
 		/**
-		* @brief		Linear interpolation is a method useful for curve fitting using linear polynomials. 
-		*				It helps in building new data points within the range of a discrete set of already known data points. 
-		*				Therefore, the Linear interpolation is the simplest method for estimating a channel from the vector of the given channels estimates. 
+		* @brief		Linear interpolation is a method useful for curve fitting using linear polynomials.
+		*				It helps in building new data points within the range of a discrete set of already known data points.
+		*				Therefore, the Linear interpolation is the simplest method for estimating a channel from the vector of the given channels estimates.
 		*				It is very useful for data prediction and many other mathematical and scientific applications.
 		* @param[in]	value				The point to perform the interpolation
 		* @param[in]	xLowBorder			The x low border from which the interpolation shall start.
@@ -123,6 +123,16 @@ namespace NOWA
 		*/
 		Ogre::Real linearInterpolation(Ogre::Real value, Ogre::Real xLowBorder, Ogre::Real xHighBorder, Ogre::Real yLowBorder, Ogre::Real yHighBorder);
 
+		/**
+		 * @brief		Interpolates between two vectors at the given time t.
+		 */
+		Ogre::Vector3 interpolate(const Ogre::Vector3& v1, const Ogre::Vector3& v2, Ogre::Real t);
+
+		/**
+		 * @brief		Interpolates between two vectors at the given time t.
+		 */
+		Ogre::Real interpolate(Ogre::Real v1, Ogre::Real v2, Ogre::Real t);
+	
 		/**
 		* @brief		Gets the mouse coordinates relative to the viewport.
 		* @param[in]	mx				The current mouse x coordinate
@@ -155,7 +165,7 @@ namespace NOWA
 		 * @return		roundedVector	The rounded vector
 		 */
 		Ogre::Vector2 round(Ogre::Vector2 vec, unsigned int places);
-		
+
 		/**
 		 * @brief		Rounds a vector according to the number of places.
 		 * @param[in]	vec				The vec to round (x, y, z)
@@ -204,7 +214,7 @@ namespace NOWA
 		* @return		rollQuaternion	The quaternion that holds the roll difference
 		*/
 		Ogre::Quaternion diffDegree(Ogre::Quaternion dest, Ogre::Quaternion src, int mode);
-		
+
 		/**
 		* @brief		Gets the orientation in order to face a target, this orientation can be set directly.
 		* @param[in]	source			The source scene node
@@ -285,14 +295,14 @@ namespace NOWA
 		* @return		normalizedDegree	The normalized degree angle
 		*/
 		Ogre::Real normalizeDegreeAngle(Ogre::Real degree);
-		
+
 		/**
 		* @brief		Normalizes the radian angle, e.g. a value bigger pi would normally be set to -pi, so after normalization even pi + 0.03 degree are possible
 		* @param[in]	radian				The radian to normalize
 		* @return		normalizedRadian	The normalized radian angle
 		*/
 		Ogre::Real normalizeRadianAngle(Ogre::Real radian);
-		
+
 		/**
 		* @brief		Checks whether the given degree angles are equal. Internally the angles are normalized.
 		* @param[in]	degree0				The degree0 to compare
@@ -300,7 +310,7 @@ namespace NOWA
 		* @return		success	true, When degree1 does equal degree0, else false
 		*/
 		bool degreeAngleEquals(Ogre::Real degree0, Ogre::Real degree1);
-		
+
 		/**
 		* @brief		Checks whether the given radian angles are equal. Internally the radians are normalized.
 		* @param[in]	radian0				The radian0 to compare
@@ -348,14 +358,14 @@ namespace NOWA
 		* @return		success	true, When first quaternion does equal second quaternion considering given tolerance
 		*/
 		bool quaternionEquals(const Ogre::Quaternion& first, const Ogre::Quaternion& second, Ogre::Real tolerance = std::numeric_limits<Ogre::Real>::epsilon());
-		
+
 		/**
 		* @brief		Converts degree angle to radian
 		* @param[in]	degree	The degree to convert
 		* @return		radian	The converted radian
 		*/
 		Ogre::Real degreeAngleToRadian(Ogre::Real degree);
-		
+
 		/**
 		* @brief		Converts radian angle to degree
 		* @param[in]	degree	The degree to convert
@@ -390,18 +400,18 @@ namespace NOWA
 		 * @return		values	The quaternion
 		 */
 		Ogre::Quaternion degreesToQuat(const Ogre::Vector3& degrees);
-		
+
 		/**
 		 * @brief		Gets the angle, for the given target location
 		 * @param[in]	currentLocation		The current location of the object
 		 * @param[in]	currentOrientation	The current orientation of the object
 		 * @param[in]	targetLocation		The target location at which the object should be rotated
 		 * @param[in]	defaultOrientation	The default orientation axis, at which the object is orientated (normally NEGATIVE_UNIT_Z)
-		 
+
 		 * @return		angle	The angle that is required to rotate the object based on its current location and orientation to the target location
 		 */
 		Ogre::Radian getAngleForTargetLocation(const Ogre::Vector3& currentLocation, const Ogre::Quaternion& currentOrientation, const Ogre::Vector3& targetLocation, const Ogre::Vector3& defaultOrientation);
-		
+
 		/**
 		 * @brief		Computes a quaternion between UNIT_Z and direction. It keeps the "up" vector to UNIT_Y.
 		 * @param[in]	direction			The direction vector
@@ -458,11 +468,11 @@ namespace NOWA
 		 */
 		Ogre::Degree getRandomAngle();
 
-			/**
-			 * @brief		Gets a random vector3.
-			 * @return		rndVector				The random vector3 to get.
-			 */
-			Ogre::Vector3 getRandomVector();
+		/**
+		 * @brief		Gets a random vector3.
+		 * @return		rndVector				The random vector3 to get.
+		 */
+		Ogre::Vector3 getRandomVector();
 
 		/**
 		 * @brief		Gets a random direction.
@@ -478,14 +488,14 @@ namespace NOWA
 		 */
 		Ogre::Vector3 addRandomVectorOffset(const Ogre::Vector3& pos, Ogre::Real offset);
 
-		 /**
-		  * @brief		An extend version of the standard modulo, in that int values are "wrapped"
-		  *				in both directions, whereas with standard modulo, (-1)%2 == -1
-		  *				Always return an int between 0 and cap-1
-		  * @param[in]	n					The first number
-		  * @param[in]	cap					The modulo number
-		  * @return		result				The wrapped modulo result.
-		  */
+		/**
+		 * @brief		An extend version of the standard modulo, in that int values are "wrapped"
+		 *				in both directions, whereas with standard modulo, (-1)%2 == -1
+		 *				Always return an int between 0 and cap-1
+		 * @param[in]	n					The first number
+		 * @param[in]	cap					The modulo number
+		 * @return		result				The wrapped modulo result.
+		 */
 		int wrappedModulo(int n, int cap);
 
 		/**
@@ -500,34 +510,6 @@ namespace NOWA
 		Ogre::Real calculateRotationGridValue(const Ogre::Quaternion& orientation, Ogre::Real step, Ogre::Real angle);
 
 		/**
-		* @brief		Calculates the grid value takes an entity size into account and the given direction (e.g. for gizmo axis). E.g. entity = "Box" and step = 2 would calculate a grid that is 2x the size of the "Box".
-		* @param[in]	movableObject The movable object to get the grid size from
-		* @param[in]	objectScale			The scale of the movable object
-		* @param[in]	objectOrientation	The orientation of the movable object
-		* @param[in]	step				The grid step
-		* @param[in]	direction			The given direction in which the object should be moved in grid
-		* @param[in]	sourcePosition		The source position vector (hit point)
-		* @return		gridValue			The calculated grid value
-		* @note			A object will be only moved if it passes the critical distance.
-		*				Do it without the y coordinate because its for placing an object and would cause that the objects gains high
-		*/
-		Ogre::Vector3 calculateGridValue(Ogre::MovableObject* movableObject, const Ogre::Vector3& objectScale, const Ogre::Quaternion& objectOrientation, Ogre::Real step,
-			const Ogre::Vector3& direction, Ogre::Vector3 sourcePosition);
-
-		/**
-		* @brief		Calculates the grid value takes an entity size into account. E.g. entity = "Box" and step = 2 would calculate a grid that is 2x the size of the "Box".
-		* @param[in]	movableObject The movable object to get the grid size from
-		* @param[in]	objectScale			The scale of the movable object
-		* @param[in]	objectOrientation	The orientation of the movable object
-		* @param[in]	step				The grid step
-		* @param[in]	sourcePosition		The source position vector (hit point)
-		* @return		gridValue			The calculated grid value
-		* @note			A object will be only moved if it passes the critical distance. 
-		*				Do it without the y coordinate because its for placing an object and would cause that the objects gains high
-		*/
-		Ogre::Vector3 calculateGridValue(Ogre::MovableObject* movableObject, const Ogre::Vector3& objectScale, const Ogre::Quaternion& objectOrientation, Ogre::Real step, Ogre::Vector3 sourcePosition);
-
-		/**
 		* @brief		Calculates the grid value. E.g. step = 2 would calculate a grid that is 2x2 meters in x and z
 		* @param[in]	step			The grid step
 		* @param[in]	sourcePosition	The source position vector
@@ -535,7 +517,7 @@ namespace NOWA
 		* @note			A object will be only moved if it passes the critical distance.
 		*				Do it without the y coordinate because its for placing an object and would cause that the objects gains high
 		*/
-		Ogre::Vector3 calculateGridValue(Ogre::Real step, Ogre::Vector3 sourcePosition);
+		Ogre::Vector3 calculateGridValue(Ogre::Real step, const Ogre::Vector3& sourcePosition);
 
 		/**
 		 * @brief		Gets the bottom center point of the given movable object mesh
@@ -558,13 +540,13 @@ namespace NOWA
 		* @note				The vertices-, indices-data can be used to perform raycast on the model. See @raycastFromPoint
 		*/
 		void getMeshInformationWithSkeleton(Ogre::v1::Entity* entity, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
-			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+											const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		void getMeshInformation(const Ogre::v1::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertexBuffer, size_t& indexCount, unsigned long*& indexBuffer,
-			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
-		
+								const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+
 		void getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
-			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+								 const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		/**
 		* @brief			Gets geometry information about a given manual object
@@ -579,13 +561,13 @@ namespace NOWA
 		* @note				The vertices-, indices-data can be used to perform raycast on the model. See @raycastFromPoint
 		*/
 		void getManualMeshInformation(const Ogre::v1::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
-			size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+									  size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		/**
 		* @see	getManualMeshInformation
 		*/
 		void getManualMeshInformation2(const Ogre::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
-			size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
+									   size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
 		/**
 		* @brief			Performs a raycast on model base to get a position on the model
@@ -608,8 +590,8 @@ namespace NOWA
 		* @param[in]		excludeMovableObjects		Optional list of movable objects (entity, item, etc.), that should be excluded from the ray cast
 		* @return		True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
 		*/
-		bool getRaycastFromPoint(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery, 
-			Ogre::Vector3& resultPositionOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
+		bool getRaycastFromPoint(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery,
+								 Ogre::Vector3& resultPositionOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
 
 		/**
 		* @brief			Performs a raycast on model from the given x and z coordinate
@@ -631,7 +613,7 @@ namespace NOWA
 		* @return		True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
 		*/
 		bool getRaycastResult(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject,
-			std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
+							  std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
 
 		/**
 		* @brief			Performs a raycast on model from the given x and z coordinate
@@ -656,7 +638,7 @@ namespace NOWA
 		* @return			True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
 		*/
 		bool getRaycastFromPoint(Ogre::RaySceneQuery* raySceneQuery, Ogre::Camera* camera, Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance,
-			Ogre::Vector3& normalOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr, bool forGizmo = false);
+								 Ogre::Vector3& normalOnModel, std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr, bool forGizmo = false);
 
 		/**
 		* @brief			Performs a raycast on model based on current mouse position. (More convenient function as the other raycastFromPoint function, but as powerful and complex)
@@ -675,8 +657,8 @@ namespace NOWA
 		* @return			True if the raycast could be performed or hit the object, else false if e.g. the object category was not in the ray scene query filter
 		*/
 		bool getRaycastFromPoint(int mouseX, int mouseY, Ogre::Camera* camera, Ogre::Window* renderWindow, Ogre::RaySceneQuery* raySceneQuery,
-			Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance, Ogre::Vector3& normalOnModel,
-			std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr, bool forGizmo = false);
+								 Ogre::Vector3& resultPositionOnModel, size_t& targetMovableObject, float& closestDistance, Ogre::Vector3& normalOnModel,
+								 std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr, bool forGizmo = false);
 
 		/// Ogre Matrix inverse really sucks (it use a full Gaussian pivoting when a simple transpose follow by vector rotation will do.
 		inline Ogre::Matrix4 matrixTransposeInverse(const Ogre::Matrix4& matrix)
@@ -712,16 +694,13 @@ namespace NOWA
 		Ogre::Aabb getWorldAABB(Ogre::SceneNode* sceneNode);
 
 		/**
-		* @brief			Remaps a normalized value (between 0 and 1) to a target range.
+		* @brief			Remaps a normalized value (between 0 and 1.0f) to a target range.
 		* @param[in]		valueToMap		The value to map
 		* @param[in]		targetMin		The target minimum
 		* @param[in]		targetMax		The target maximum
 		* @return			The mapped value
 		*/
-		Ogre::Real mapValue(Ogre::Real valueToMap, Ogre::Real targetMin, Ogre::Real targetMax)
-		{
-			return targetMin + valueToMap * (targetMax - targetMin);
-		}
+		Ogre::Real mapValue(Ogre::Real valueToMap, Ogre::Real targetMin, Ogre::Real targetMax);
 
 		/**
 		* @brief			Remaps a value from a source range to a target range.
@@ -732,10 +711,7 @@ namespace NOWA
 		* @param[in]		targetMax		The target maximum
 		* @return			The mapped value
 		*/
-		Ogre::Real mapValue2(Ogre::Real valueToMap, Ogre::Real sourceMin, Ogre::Real sourceMax, Ogre::Real targetMin, Ogre::Real targetMax)
-		{
-			return targetMin + ((targetMax - targetMin) * (valueToMap - sourceMin)) / (sourceMax - sourceMin);
-		}
+		Ogre::Real mapValue2(Ogre::Real valueToMap, Ogre::Real sourceMin, Ogre::Real sourceMax, Ogre::Real targetMin, Ogre::Real targetMax);
 
 		/**
 		* @brief			Limits the value by the given borders
@@ -750,16 +726,214 @@ namespace NOWA
 		}
 
 		/**
+		 * @brief Calculates the bezier y at the given time t.
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real calculateBezierYT(Ogre::Real t, bool invert);
+
+		/**
+		 * @brief Calculates the bezier y points at the given time t.
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real calcBezierYTPoints(Ogre::Real t, bool invert);
+
+		/**
+		 * @brief Clamps the value between min and max.
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real clamp(Ogre::Real value, Ogre::Real min, Ogre::Real max);
+
+		/**
+		 * @brief Slight acceleration from zero to full speed
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInSine(Ogre::Real t);
+
+		/**
+		 * @brief Slight deceleration at the end
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutSine(Ogre::Real t);
+
+		/**
+		 * @brief Slight acceleration at beginning and slight deceleration at end
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutSine(Ogre::Real t);
+
+		/**
+		 * @brief Accelerating from zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInQuad(Ogre::Real t);
+
+		/**
+		 * @brief Decelerating to zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutQuad(Ogre::Real t);
+
+		/**
+		 * @brief Acceleration until halfway, then deceleration
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutQuad(Ogre::Real t);
+
+		/**
+		 * @brief Accelerating from zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInCubic(Ogre::Real t);
+
+		/**
+		 * @brief Decelerating to zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutCubic(Ogre::Real t);
+
+		/**
+		 * @brief Acceleration until halfway, then deceleration
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutCubic(Ogre::Real t);
+
+		/**
+		 * @brief Accelerating from zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInQuart(Ogre::Real t);
+
+		/**
+		 * @brief Decelerating to zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutQuart(Ogre::Real t);
+
+		/**
+		 * @brief Acceleration until halfway, then deceleration
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutQuart(Ogre::Real t);
+
+		/**
+		 * @brief Accelerating from zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInQuint(Ogre::Real t);
+
+		/**
+		 * @brief Decelerating to zero velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutQuint(Ogre::Real t);
+
+		/**
+		 * @brief Acceleration until halfway, then deceleration
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutQuint(Ogre::Real t);
+
+		/**
+		 * @brief Accelerate exponentially until finish
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInExpo(Ogre::Real t);
+
+		/**
+		 * @brief Initial exponential acceleration slowing to stop
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutExpo(Ogre::Real t);
+
+		/**
+		 * @brief Exponential acceleration and deceleration
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutExpo(Ogre::Real t);
+
+		/**
+		 * @brief Increasing velocity until stop
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInCirc(Ogre::Real t);
+
+		/**
+		 * @brief Start fast, decreasing velocity until stop
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutCirc(Ogre::Real t);
+
+		/**
+		 * @brief Fast increase in velocity, fast decrease in velocity
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutCirc(Ogre::Real t);
+
+		/**
+		 * @brief Slow movement backwards then fast snap to finish
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInBack(Ogre::Real t, Ogre::Real magnitude = 1.70158f);
+
+		/**
+		 * @brief Fast snap to backwards point then slow resolve to finish
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutBack(Ogre::Real t, Ogre::Real magnitude = 1.70158f);
+
+		/**
+		 * @brief Slow movement backwards, fast snap to past finish, slow resolve to finish
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutBack(Ogre::Real t, Ogre::Real magnitude = 1.70158f);
+
+		/**
+		 * @brief Bounces slowly then quickly to finish
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInElastic(Ogre::Real t, Ogre::Real magnitude = 0.7f);
+
+		/**
+		 * @brief Fast acceleration, bounces to zero
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutElastic(Ogre::Real t, Ogre::Real magnitude = 0.7f);
+
+		/**
+		 * @brief Slow start and end, two bounces sandwich a fast motion
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutElastic(Ogre::Real t, Ogre::Real magnitude = 0.65f);
+
+		/**
+		 * @brief Bounce to completion
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeOutBounce(Ogre::Real t);
+
+		/**
+		 * @brief Bounce increasing in velocity until completion
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInBounce(Ogre::Real t);
+
+		/**
+		 * Bounce in and bounce out
+		 * @param[in] t		The time to set e.g. t = (time - animationStart) / duration;
+		 */
+		Ogre::Real easeInOutBounce(Ogre::Real t);
+
+		/**
 		* @brief			Converts the given amplitude to decibels
 		* @param[in]		amplitude		The amplitude to convert
 		* @return			The decibel value
 		*/
 		inline Ogre::Real amplitudeToDecibels(Ogre::Real amplitude)
 		{
-		  // return 20.0f * log10(amplitude);
-			return amplitude > Ogre::Real() ? std::max (Ogre::Math::NEG_INFINITY, static_cast<Ogre::Real> (std::log10 (amplitude)) * Ogre::Real (20.0f)) : Ogre::Math::NEG_INFINITY;
+			// return 20.0f * log10(amplitude);
+			return amplitude > Ogre::Real() ? std::max(Ogre::Math::NEG_INFINITY, static_cast<Ogre::Real> (std::log10(amplitude)) * Ogre::Real(20.0f)) : Ogre::Math::NEG_INFINITY;
 		}
- 
+
 		/**
 		* @brief			Converts the given decibel value to amplitude value
 		* @param[in]		decibels		The decibels to convert
@@ -767,7 +941,7 @@ namespace NOWA
 		*/
 		inline Ogre::Real decibelsToAmplitude(Ogre::Real decibels)
 		{
-		  return pow(10.0f, decibels / 20.0f);
+			return pow(10.0f, decibels / 20.0f);
 		}
 
 		inline Ogre::Real divf(Ogre::Real val1, Ogre::Real val2)

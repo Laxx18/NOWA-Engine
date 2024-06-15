@@ -181,7 +181,6 @@ namespace NOWA
 	{
 		TransformCompPtr clonedCompPtr(boost::make_shared<TransformComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRotationActivated(this->rotationActivated->getBool());
 		clonedCompPtr->setRotationAxis(this->rotationAxis->getVector3());

@@ -243,7 +243,7 @@ InputGeom::InputGeom(const std::vector<Ogre::v1::Entity*>& srcMeshes, const std:
 	buildChunkyTriMesh();
 }
 
-InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
+InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, const std::vector<Ogre::v1::Entity*>& srcMeshes, const std::vector<Ogre::Item*>& srcItems)
 	: mSrcMeshes(srcMeshes),
 	mSrcItems(srcItems),
 	nverts(0),
@@ -258,7 +258,6 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	verts(0),
 	tris(0)
 {
-	
 	// PARTS OF THE FOLLOWING CODE WERE TAKEN AND MODIFIED FROM AN OGRE3D FORUM POST
 	const int numNodes = srcMeshes.size() + srcItems.size();
 
@@ -277,31 +276,9 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	bmin = new float[3]; bmin[0] = FLT_MAX; bmin[1] = FLT_MAX; bmin[2] = FLT_MAX;
 	bmax = new float[3]; bmax[0] = FLT_MIN; bmax[1] = FLT_MIN; bmax[2] = FLT_MIN;
 
-	// Calculate terrain bounds
-	auto& ti = terra->getTerrainCells().cbegin();
-
-	// For the moment just one terra page is supported
-	size_t trnCount = 1;
-
-	int sizeX = (int)terra->getXZDimensions().x;
-	int sizeZ = (int)terra->getXZDimensions().y;
-
-	Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, terra->getHeight(), terra->getXZDimensions().y) / 2.0f);
-
-	int startX = (int)terra->getTerrainOrigin().x;
-	int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
-
-	int startZ = (int)terra->getTerrainOrigin().z;
-	int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
-
-	/*auto aabb = Ogre::Aabb::newFromExtents(Ogre::Vector3(startX - center.x, terra->getTerrainOrigin().y, startZ - center.z),
-		Ogre::Vector3(endX - sizeX, sizeZ, endZ - center.z));*/
-
-	auto aabb = Ogre::Aabb::newFromExtents(Ogre::Vector3(startX - center.x, -(terra->getTerrainOrigin().y) + (center.y), startZ - center.z),
-		Ogre::Vector3(endX - center.x, (terra->getTerrainOrigin().y) + (center.y), endZ - center.z));
-
-	// TODO: Later x-terra pages (chunks)
-	int pagesTotal = 1;
+	// TODO: For the moment just one terra page is supported
+		// Or will it work, by calling this function with different terra objects? Because each terra will have 
+	int pagesTotal = terraDataList.size();
 	int pageId = pagesTotal - 1;
 
 	nverts = 0;
@@ -311,88 +288,106 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	size_t* meshIndexCount = new size_t[totalMeshes];
 	Ogre::Vector3** meshVertices = new Ogre::Vector3 * [totalMeshes];
 	unsigned long** meshIndices = new unsigned long* [totalMeshes];
-	
-	size_t sizeVertices = sizeX * sizeZ;
 
-	// vertices = OGRE_ALLOC_T(Ogre::Vector3, size, Ogre::MEMCATEGORY_GEOMETRY);
-	meshVertices[pageId] = new Ogre::Vector3[sizeVertices];
+	Ogre::Aabb aabb;
 
-	int xx = 0;
-	int zz = 0;
 
 	size_t i = 0;
-	for (int x = startX; x < endX; x++)
-	{
-		for (int z = startZ; z < endZ; z++)
-		{
-			Ogre::Vector3 pos((Ogre::Real)x, 0.0f, (Ogre::Real)z);
-			bool res = terra->getHeightAt(pos);
 
-			meshVertices[pageId][i].x = x;
-			meshVertices[pageId][i].y = pos.y;
-			meshVertices[pageId][i].z = z;
-			i++;
+	for (size_t k = 0; k < terraDataList.size(); k++)
+	{
+
+		Ogre::Terra* terra = terraDataList[k].terra;
+
+		int sizeX = (int)terra->getXZDimensions().x;
+		int sizeZ = (int)terra->getXZDimensions().y;
+
+		Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, terra->getHeight(), terra->getXZDimensions().y) / 2.0f);
+
+		int startX = (int)terra->getTerrainOrigin().x;
+		int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
+
+		int startZ = (int)terra->getTerrainOrigin().z;
+		int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
+
+		// Attention: Check this, if its still correct!
+		aabb.setExtents(Ogre::Vector3(startX - center.x, -(terra->getTerrainOrigin().y) + (center.y), startZ - center.z),
+											   Ogre::Vector3(endX - center.x, (terra->getTerrainOrigin().y) + (center.y), endZ - center.z));
+
+		
+
+		size_t sizeVertices = sizeX * sizeZ;
+
+		meshVertices[pageId] = new Ogre::Vector3[sizeVertices];
+
+		int xx = 0;
+		int zz = 0;
+
+		for (int x = startX; x < endX; x++)
+		{
+			for (int z = startZ; z < endZ; z++)
+			{
+				Ogre::Vector3 pos((Ogre::Real)x, 0.0f, (Ogre::Real)z);
+
+				bool layerMatches = true;
+				// Exclude maybe terra layers from vegetation placing
+				std::vector<int> layers = terra->getLayerAt(pos);
+
+				for (size_t w = 0; w < terraDataList[k].terraLayerList.size(); i++)
+				{
+					layerMatches &= layers[w] <= terraDataList[k].terraLayerList[w];
+				}
+
+				if (false == layerMatches)
+				{
+					// Skip this terra position
+					// TODO: Or set high y value!, so that the algorithm of recast will skip it!
+					continue;
+				}
+
+				bool res = terra->getHeightAt(pos);
+
+				meshVertices[pageId][i].x = x;
+				meshVertices[pageId][i].y = pos.y;
+				meshVertices[pageId][i].z = z;
+				i++;
+			}
 		}
-	}
 
-	int newWidth = sizeX - 1;
-	int newDepth = sizeZ - 1;
+		int newWidth = sizeX - 1;
+		int newDepth = sizeZ - 1;
 
-	size_t sizeIndices = newWidth * newDepth * 6;
-	meshIndices[pageId] = new unsigned long[sizeIndices];
+		size_t sizeIndices = newWidth * newDepth * 6;
+		meshIndices[pageId] = new unsigned long[sizeIndices];
 
-	int counter = 0;
-	int offset = 0;
-	for (int y = 0; y < newDepth; y++)
-	{
-		for (int x = 0; x < newWidth; x++)
+		int counter = 0;
+		int offset = 0;
+		for (int y = 0; y < newDepth; y++)
 		{
-			// Write out two triangles
-			// Note: All algorithms are valid, but order seems to be important and using the other algorithms, no sloping for terra is possible!
-			meshIndices[pageId][counter++] = offset + 0;
-			meshIndices[pageId][counter++] = offset + 1;
-			meshIndices[pageId][counter++] = offset + (newWidth + 1);
+			for (int x = 0; x < newWidth; x++)
+			{
+				// Write out two triangles
+				// Note: All algorithms are valid, but order seems to be important and using the other algorithms, no sloping for terra is possible!
+				meshIndices[pageId][counter++] = offset + 0;
+				meshIndices[pageId][counter++] = offset + 1;
+				meshIndices[pageId][counter++] = offset + (newWidth + 1);
 
-			meshIndices[pageId][counter++] = offset + 1;
-			meshIndices[pageId][counter++] = offset + (newWidth + 1) + 1;
-			meshIndices[pageId][counter++] = offset + (newWidth + 1);
+				meshIndices[pageId][counter++] = offset + 1;
+				meshIndices[pageId][counter++] = offset + (newWidth + 1) + 1;
+				meshIndices[pageId][counter++] = offset + (newWidth + 1);
 
-			/*meshIndices[pageId][counter++] = x + y * newWidth;
-			meshIndices[pageId][counter++] = x + 1 + (y + 1) * newWidth;
-			meshIndices[pageId][counter++] = x + 1 + y * newWidth;
-
-			meshIndices[pageId][counter++] = x + y * newWidth;
-			meshIndices[pageId][counter++] = x + 1 + (y + 1) * newWidth;
-			meshIndices[pageId][counter++] = x + (y + 1) * newWidth;*/
-
-
-			/*meshIndices[pageId][counter++] = offset + 0;
-			meshIndices[pageId][counter++] = offset + 1;
-			meshIndices[pageId][counter++] = offset + newWidth;
-
-			meshIndices[pageId][counter++] = offset + 1;
-			meshIndices[pageId][counter++] = offset + 1 + newWidth;
-			meshIndices[pageId][counter++] = offset + newWidth;*/
-
-			/*meshIndices[pageId][counter++] = offset + newWidth;
-			meshIndices[pageId][counter++] = offset + 0;
-			meshIndices[pageId][counter++] = offset + 1 + newWidth;
-
-			meshIndices[pageId][counter++] = offset + 1 + newWidth;
-			meshIndices[pageId][counter++] = offset + 0;
-			meshIndices[pageId][counter++] = offset + 1;*/
-
-
+				offset++;
+			}
 			offset++;
 		}
-		offset++;
+
+		meshVertexCount[pageId] = sizeVertices;
+		meshIndexCount[pageId] = sizeIndices;
+
+		nverts += meshVertexCount[pageId];
+		ntris += meshIndexCount[pageId];
+
 	}
-
-	meshVertexCount[pageId] = sizeVertices;
-	meshIndexCount[pageId] = sizeIndices;
-
-	nverts += meshVertexCount[pageId];
-	ntris += meshIndexCount[pageId];
 
 
 	// Attention: What about different y-of terra?
@@ -402,7 +397,7 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	//-----------------------------------------------------------------------------------------
 	// ENTITY DATA BUILDING
 
-
+	// Attention: Setting i = 0, resets everything for a terra page?
 	i = 0;
 	for (std::vector<Ogre::v1::Entity*>::iterator iter = mSrcMeshes.begin(); iter != mSrcMeshes.end(); iter++)
 	{
@@ -449,29 +444,27 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	int prevVerticiesCount = 0;
 	int prevIndexCountTotal = 0;
 
-	for (size_t i = 0; i < pagesTotal; ++i)
+	for (size_t m = 0; m < pagesTotal; ++m)
 	{
 		//We don't need to transform terrain verts, they are already in world space!
 		Ogre::Vector3 vertexPos;
-		for (size_t j = 0; j < meshVertexCount[i]; ++j)
+		for (size_t n = 0; n < meshVertexCount[m]; ++n)
 		{
-			vertexPos = meshVertices[i][j];
+			vertexPos = meshVertices[m][n];
 			verts[vertsIndex] = vertexPos.x;
 			verts[vertsIndex + 1] = vertexPos.y;
 			verts[vertsIndex + 2] = vertexPos.z;
 			vertsIndex += 3;
 		}
 
-		for (size_t j = 0; j < meshIndexCount[i]; j++)
+		for (size_t n = 0; n < meshIndexCount[m]; n++)
 		{
-			tris[prevIndexCountTotal + j] = meshIndices[i][j] + prevVerticiesCount;
+			tris[prevIndexCountTotal + n] = meshIndices[m][n] + prevVerticiesCount;
 		}
-		prevIndexCountTotal += meshIndexCount[i];
-		prevVerticiesCount += meshVertexCount[i];
+		prevIndexCountTotal += meshIndexCount[m];
+		prevVerticiesCount += meshVertexCount[m];
 
 	}
-
-
 
 	//-----------------------------------------------------------------------------------------
 	// RECAST TERRAIN ENTITY DATA BUILDING
@@ -483,6 +476,7 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	// overwriting our terrain data, which really is a pain ;)
 
 	//set the reference node
+	// Attention: Setting i = 0, resets everything for a terra page?
 	i = 0;
 	for (std::vector<Ogre::v1::Entity*>::iterator iter = mSrcMeshes.begin(); iter != mSrcMeshes.end(); iter++)
 	{
@@ -534,22 +528,12 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 		i++;
 	}
 
-	// TODO fix this (memory leak)
-	/*
-		//delete tempory arrays
-		//TODO These probably could member varibles, this would increase performance slightly
-		for(size_t i = 0; i < totalMeshes; ++i)
-		{
-			delete [] meshVertices[i];
-
-		}
-	*/
 	// first 4 were created differently, without getMeshInformation();
 	// throws an exception if we delete the first 4
 	// TODO - FIX THIS MEMORY LEAK - its only small, but its still not good
-	for (size_t i = pagesTotal; i < totalMeshes; ++i)
+	for (size_t j = pagesTotal; j < totalMeshes; ++j)
 	{
-		delete[] meshIndices[i];
+		delete[] meshIndices[j];
 	}
 
 	delete[] meshVertices;
@@ -560,16 +544,16 @@ InputGeom::InputGeom(Ogre::Terra* terra, const std::vector<Ogre::v1::Entity*>& s
 	Ogre::LogManager::getSingletonPtr()->logMessage("Recast terra and entities: " + Ogre::StringConverter::toString(mSrcMeshes.size()) + " items: " + Ogre::StringConverter::toString(mSrcItems.size()));
 
 	Ogre::LogManager::getSingletonPtr()->logMessage("Entities: ");
-	for (size_t i = 0; i < mSrcMeshes.size(); i++)
+	for (size_t j = 0; j < mSrcMeshes.size(); j++)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage("Name: " + mSrcMeshes[i]->getMesh()->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage("Name: " + mSrcMeshes[j]->getMesh()->getName());
 	}
 	if (false == mSrcItems.empty())
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage("Items: ");
-		for (size_t i = 0; i < mSrcItems.size(); i++)
+		for (size_t j = 0; j < mSrcItems.size(); j++)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage("Name: " + mSrcItems[i]->getMesh()->getName());
+			Ogre::LogManager::getSingletonPtr()->logMessage("Name: " + mSrcItems[j]->getMesh()->getName());
 		}
 	}
 

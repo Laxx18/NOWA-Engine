@@ -1205,7 +1205,6 @@ namespace NOWA
 		rotateStartOrientationGizmoY(Ogre::Quaternion::IDENTITY),
 		rotateStartOrientationGizmoZ(Ogre::Quaternion::IDENTITY),
 		oldGizmoOrientation(Ogre::Quaternion::IDENTITY),
-		oldGizmoPosition(Ogre::Vector3::ZERO),
 		absoluteAngle(0.0f),
 		stepAngleDelta(0.0f),
 		currentKey(OIS::KC_END),
@@ -2108,17 +2107,22 @@ namespace NOWA
 				if (this->currentKey == NOWA_K_GRID)
 				{
 					Ogre::Vector3 direction = (this->tempPlaceMovableNode->_getDerivedPositionUpdated() - internalHitPoint).normalisedCopy();
+					// Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->tempPlaceMovableObject,
+					// 	this->tempPlaceMovableNode->_getDerivedScaleUpdated(), this->tempPlaceMovableNode->_getDerivedOrientationUpdated(), 1.0f, internalHitPoint, this->gizmo->getOrientation());
 
-					Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->tempPlaceMovableObject,
-						this->tempPlaceMovableNode->_getDerivedScaleUpdated(), this->tempPlaceMovableNode->_getDerivedOrientationUpdated(), 1.0f, internalHitPoint);
+					// Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
+
+					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(this->tempPlaceMovableNode->getAttachedObject(0)->getLocalAabb().getSize(), this->tempPlaceMovableNode->_getDerivedOrientationUpdated());
 					
 					if (this->constraintAxis.x != 0.0f)
-						resultVector = Ogre::Vector3(this->constraintAxis.x, resultVector.y, resultVector.z);
+						translationOffset = Ogre::Vector3(this->constraintAxis.x, translationOffset.y, translationOffset.z);
 					if (this->constraintAxis.y != 0.0f)
-						resultVector = Ogre::Vector3(resultVector.x, this->constraintAxis.y, resultVector.z);
+						translationOffset = Ogre::Vector3(translationOffset.x, this->constraintAxis.y, translationOffset.z);
 					if (this->constraintAxis.z != 0.0f)
-						resultVector = Ogre::Vector3(resultVector.x, resultVector.y, this->constraintAxis.z);
-					this->placeNode->_setDerivedPosition(resultVector);
+						translationOffset = Ogre::Vector3(translationOffset.x, translationOffset.y, this->constraintAxis.z);
+
+					this->placeNode->translate(translationOffset);
+					// this->placeNode->_setDerivedPosition(resultVector);
 				}
 			}
 			else
@@ -2847,9 +2851,9 @@ namespace NOWA
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						// Ogre::Vector3 position = this->gizmo->getPosition() + (this->gizmo->getOrientation() * selectedGameObject.second.gameObject->getSceneNode()->getPosition());
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getSceneNode()->getPosition() - this->gizmo->getPosition();
+						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
 						// Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getSceneNode()->getOrientation().Inverse() * rotation) * offset);
-						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
+						Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset);
 						if (true == success)
 						{
 							position = Ogre::Vector3(position.x, height, position.z);
@@ -2867,8 +2871,8 @@ namespace NOWA
 					selectedGameObject.second.gameObject->getSceneNode()->setOrientation(this->gizmo->getOrientation() * rotation);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getSceneNode()->getPosition() - this->gizmo->getPosition();
-						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
+						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
+						Ogre::Vector3 position = this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset);
 						if (true == success)
 						{
 							position = Ogre::Vector3(position.x, height, position.z);
@@ -2894,8 +2898,8 @@ namespace NOWA
 					physicsComponent->setOrientation(physicsComponent->getOrientation() * rotation);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getSceneNode()->getPosition() - this->gizmo->getPosition();
-						physicsComponent->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
+						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
+						physicsComponent->setPosition(this->gizmo->getPosition() + ((selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta) * offset));
 					}
 				}
 				else
@@ -2907,12 +2911,12 @@ namespace NOWA
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(this->gizmo->getOrientation() * this->selectedObjectsStartOrientations[i]);
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(selectedGameObject.second.gameObject->getSceneNode()->getOrientation() * gizmoRotationDelta);
 
-					selectedGameObject.second.gameObject->getSceneNode()->setOrientation(selectedGameObject.second.gameObject->getSceneNode()->getOrientation() * rotation);
+					selectedGameObject.second.gameObject->getSceneNode()->setOrientation(selectedGameObject.second.gameObject->getOrientation() * rotation);
 
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getSceneNode()->getPosition() - this->gizmo->getPosition();
-						selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
+						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition() + (selectedGameObject.second.gameObject->getOrientation().Inverse() * gizmoRotationDelta * offset));
 					}
 				}
 				i++;
@@ -3004,73 +3008,6 @@ namespace NOWA
 	{
 		if (this->gridStep > 0.0f)
 		{
-			Ogre::Vector3 gizmoDirectionX = Ogre::Vector3::ZERO;
-			Ogre::Vector3 gizmoDirectionY = Ogre::Vector3::ZERO;
-			Ogre::Vector3 gizmoDirectionZ = Ogre::Vector3::ZERO;
-
-			Ogre::Vector3 direction = Ogre::Vector3::ZERO;
-
-			switch (this->gizmo->getState())
-			{
-				case Gizmo::GIZMO_ARROW_X:
-				{
-					gizmoDirectionX = this->gizmo->getOrientation().xAxis();
-					direction = gizmoDirectionX;
-					break;
-				}
-				case Gizmo::GIZMO_ARROW_Y:
-				{
-					gizmoDirectionY = this->gizmo->getOrientation().yAxis();
-					direction = gizmoDirectionY;
-					break;
-				}
-				case Gizmo::GIZMO_ARROW_Z:
-				{
-					gizmoDirectionZ = this->gizmo->getOrientation().zAxis();
-					direction = gizmoDirectionZ;
-					break;
-				}
-				case Gizmo::GIZMO_SPHERE:
-				{
-					/*gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
-					gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
-					gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();*/
-
-					direction = (this->gizmo->getPosition() - this->oldGizmoPosition).normalisedCopy();
-					if (direction.x > 0.9f)
-					{
-						direction = this->gizmo->getOrientation().xAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X+");
-					}
-					else if (direction.x < -0.9f)
-					{
-						direction = this->gizmo->getOrientation().xAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X-");
-					}
-					else if (direction.y > 0.9f)
-					{
-						direction = this->gizmo->getOrientation().yAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y+");
-					}
-					else if (direction.y < -0.9f)
-					{
-						direction = this->gizmo->getOrientation().yAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y-");
-					}
-					else if (direction.z > 0.9f)
-					{
-						direction = this->gizmo->getOrientation().zAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z+");
-					}
-					else if (direction.z < -0.9f)
-					{
-						direction = this->gizmo->getOrientation().zAxis();
-						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z-");
-					}
-					break;
-				}
-			}
-
 			Ogre::Vector3 oldGridPos;
 			Ogre::Vector3 newGridPos;
 			// Special case, the grid has the size of the objects bounding box
@@ -3078,14 +3015,10 @@ namespace NOWA
 			{
 				auto& gameObject = this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject;
 
-				oldGridPos = MathHelper::getInstance()->calculateGridValue(gameObject->getMovableObject(),
-					gameObject->getScale(), gameObject->getOrientation(), 1.0f, direction, this->gizmo->getPosition());
+				oldGridPos = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
 
-				this->oldGizmoPosition = this->gizmo->getPosition();
 				this->gizmo->translate(offset);
-
-				newGridPos = MathHelper::getInstance()->calculateGridValue(gameObject->getMovableObject(),
-					gameObject->getScale(), gameObject->getOrientation(), 1.0f, direction, this->gizmo->getPosition());
+				newGridPos = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
 			}
 			else
 			{
@@ -3141,7 +3074,11 @@ namespace NOWA
 				{
 					physicsComponent->setPosition(physicsComponent->getPosition().x, height, physicsComponent->getPosition().z);
 				}
-				physicsComponent->translate(offset);
+
+				Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getSize(), selectedGameObject.second.gameObject->getOrientation());
+
+				physicsComponent->translate(translationOffset);
+				// physicsComponent->setPosition(translationOffset);
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					physicsComponent->setDirection(normal, Ogre::Vector3::NEGATIVE_UNIT_Y);
@@ -3162,7 +3099,12 @@ namespace NOWA
 					selectedGameObject.second.gameObject->getSceneNode()->setPosition(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height, 
 						selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 				}
-				selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
+
+				Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getSize(), selectedGameObject.second.gameObject->getOrientation());
+
+				selectedGameObject.second.gameObject->getSceneNode()->translate(translationOffset);
+				
+				// selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
@@ -3229,7 +3171,19 @@ namespace NOWA
 				offset = newGridPos - oldGridPos;
 			}
 
-			Ogre::Vector3 scaleFactor = (entry.second.gameObject->getMovableObject()->getLocalAabb().getSize() + offset) / entry.second.gameObject->getMovableObject()->getLocalAabb().getSize();
+#if 0
+			Ogre::Vector3 distanceVec = this->hitPoint - this->oldHitPoint;
+			Ogre::Real distance = this->oldHitPoint.distance(this->hitPoint);
+			Ogre::Real dot = this->gizmo->getCurrentDirection().dotProduct(distanceVec);
+
+			Ogre::Real sign = 1.0f;
+			if (dot < 0.0f)
+			{
+				sign = -1.0f;
+			}
+#endif
+
+			Ogre::Vector3 scaleFactor = (entry.second.gameObject->getMovableObject()->getLocalAabb().getSize() + (offset/* * sign*/)) / entry.second.gameObject->getMovableObject()->getLocalAabb().getSize();
 			if (scaleFactor * entry.second.gameObject->getSceneNode()->getScale() > Ogre::Vector3::ZERO)
 			{
 				// vertices[i + subMeshOffset] = (orientation * (vec * scale)) + pos;
@@ -3258,14 +3212,13 @@ namespace NOWA
 
 	Ogre::Vector3 EditorManager::calculateUnitScaleFactor(const Ogre::Vector3& translateVector)
 	{
-		Ogre::Real direction = this->hitPoint.dotProduct(this->oldHitPoint);
-
-		// Ogre::Vector3 moveDirection = (this->hitPoint - this->oldHitPoint).normalisedCopy();
-
+		Ogre::Vector3 distanceVec = this->hitPoint - this->oldHitPoint;
+		Ogre::Real distance = this->oldHitPoint.distance(this->hitPoint);
+		Ogre::Real dot = this->gizmo->getCurrentDirection().dotProduct(distanceVec);
+		
 		Ogre::Vector3 unitScale;
-		// Look if any component is > 0
-		// if (translateVector.x > 0.0f || translateVector.y > 0.0f || translateVector.z > 0.0f)
-		if (direction < 0.0f)
+
+		if (dot < 0.0f)
 		{
 			//scale the object with the half length of the vector in the negative direction
 			unitScale.x = -translateVector.length() / 2.0f;
@@ -3273,7 +3226,7 @@ namespace NOWA
 			unitScale.z = -translateVector.length() / 2.0f;
 
 		}
-		else /*if (translateVector.x < 0.0f || translateVector.y < 0.0f || translateVector.z < 0.0f)*/
+		else
 		{
 			//scale the object with the half length of the vector
 			unitScale.x = translateVector.length() / 2.0f;

@@ -350,8 +350,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-10.4989" y="2.39775" z="-12.844"/>
-			<rotation qw="-0.457882" qx="-0.033088" qy="0.886086" qz="-0.0640414"/>
+			<position x="-6.90434" y="9.77893" z="-17.8516"/>
+			<rotation qw="-0.19663" qx="0.0436735" qy="0.956207" qz="0.21236"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -378,8 +378,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-10.6771 2.36601 -12.9703"/>
-					<property type="9" name="CameraOrientation" data="8.2674 -125.345 0.00053"/>
+					<property type="9" name="CameraPosition" data="1.33735 5.36925 -13.5446"/>
+					<property type="9" name="CameraOrientation" data="-26.8423 117.793 0.000629623"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -1247,6 +1247,33 @@
 					<property type="6" name="ShadowSplitPadding" data="1"/>
 				</userData>
 			</entity>
+		</node>
+		<node name="Case3_0" id="1801113553">
+			<position x="-3.49812" y="0" z="-12.179"/>
+			<rotation qw="0.967533" qx="0" qy="0.252746" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1240424072"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+				</userData>
+			</item>
 		</node>
 	</nodes>
 </scene>
