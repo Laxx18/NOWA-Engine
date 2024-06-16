@@ -35,6 +35,11 @@
 #   include <OgreStringConverter.h>
 #endif
 
+namespace
+{
+	const unsigned char findKnotSubSteps = 10;
+}
+
 namespace OgreNewt
 {
 	PointToPoint::PointToPoint(const OgreNewt::Body* child, const OgreNewt::Body* parent, const Ogre::Vector3& pos1, const Ogre::Vector3& pos2)
@@ -1553,7 +1558,14 @@ namespace OgreNewt
 
 			dVector p(matrix.UntransformVector(location));
 			dBigVector point;
-			dFloat64 knot = spline.FindClosestKnot(point, p, 4);
+			// 4 steps are not enough, setting to 8!
+			dFloat64 knot = spline.FindClosestKnot(point, p, findKnotSubSteps);
+
+			/*if (knot > 0.95)
+			{
+				knot = 0.0;
+			}*/
+
 			dBigVector tangent(spline.CurveDerivative(knot));
 			tangent = tangent.Scale(1.0 / sqrt(tangent.DotProduct3(tangent)));
 
@@ -1572,7 +1584,7 @@ namespace OgreNewt
 		m_pathBody(pathBody),
 		m_pos(pos)
 	{
-		NewtonBodySetMassMatrix(m_pathBody->getNewtonBody(), 0.0f, 0.0f, 0.0f, 0.0f);
+		// NewtonBodySetMassMatrix(m_pathBody->getNewtonBody(), 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	PathFollow::~PathFollow()
@@ -1590,32 +1602,117 @@ namespace OgreNewt
 		// create a Bezier Spline path
 		dBezierSpline spline;
 
-		std::vector<dFloat64> knotsIndices(knots.size() + 1);
-		for (size_t i = 0; i < knotsIndices.size(); i++)
-			knotsIndices[i] = static_cast<dFloat64>(i) / static_cast<dFloat64>(knotsIndices.size() - 1);
+		std::vector<dFloat64> internalKnots(knots.size() - 1);
+		for (size_t i = 0; i < internalKnots.size(); i++)
+		{
+			internalKnots[i] = static_cast<dFloat64>(i) / static_cast<dFloat64>(internalKnots.size() - 1);
+		}
 
-		std::vector<dBigVector> internalKnots(knots.size() + 1);
+		m_internalControlPoints.resize(knots.size() + 1);
 
 		for (size_t i = 0; i < knots.size(); i++)
-			internalKnots[i] = dBigVector(knots[i].x, knots[i].y, knots[i].z);
+		{
+			m_internalControlPoints[i] = dBigVector(knots[i].x, knots[i].y, knots[i].z);
+		}
 
-		internalKnots[knots.size()] = internalKnots[0];
+		m_internalControlPoints[knots.size()] = m_internalControlPoints[0];
 
-		spline.CreateFromKnotVectorAndControlPoints(3, knotsIndices.size(), &knotsIndices[0], &internalKnots[0]);
+		/*
+		A Bézier curve is defined by a set of control points P0 through Pn, where n is called the order of the curve (n = 1 for linear, 2 for quadratic, 3 for cubic, etc.). 
+		The first and last control points are always the endpoints of the curve; however, the intermediate control points generally do not lie on the curve. 
+
+		As the algorithm is recursive, we can build Bezier curves of any order, that is: using 5, 6 or more control points. But in practice many points are less useful. Usually we take 2-3 points, and for complex lines glue several curves together.
+		* */
+
+		spline.CreateFromKnotVectorAndControlPoints(3, internalKnots.size(), &internalKnots[0], &m_internalControlPoints[0]);
 
 		m_pathBody->setSpline(spline);
 
+		return true;
+	}
+
+	void PathFollow::createPathJoint(void)
+	{
 		dCustomJoint* supportJoint;
 
-		// make the joint matrix 
-		dMatrix pinsAndPivoFrame(dGetIdentityMatrix());
-		pinsAndPivoFrame.m_posit = dVector(m_pos.x, m_pos.y, m_pos.z, 1.0f);
+		dMatrix pathBodyMatrix;
+		NewtonBodyGetMatrix(m_pathBody->getNewtonBody(), &pathBodyMatrix[0][0]);
+
+		// make the joint matrix
+		const Ogre::Vector3 dir = this->getMoveDirection(0);
+		dVector newtonDir = dVector(dir.x, dir.y, dir.z);
+
+		dMatrix pinsAndPivoFrame(dGrammSchmidt(newtonDir));
+		// pinsAndPivoFrame.m_posit = dVector(m_pos.x, m_pos.y, m_pos.z, 1.0f);
+		pinsAndPivoFrame.m_posit = pathBodyMatrix.TransformVector(dVector(m_pos.x, m_pos.y, m_pos.z, 1.0));
+
+#if 0
+		dMatrix matrix;
+		matrix.m_front = newtonDir;
+		matrix.m_right = matrix.m_front.CrossProduct(matrix.m_up);
+		matrix.m_right = matrix.m_right.Scale(1.0f / dSqrt(matrix.m_right.DotProduct3(matrix.m_right)));
+		matrix.m_up = matrix.m_right.CrossProduct(matrix.m_front);
+		matrix.m_posit = pathBodyMatrix.TransformVector(dVector(m_pos.x, m_pos.y, m_pos.z, 1.0));
+#endif
 
 		// crate a Newton Custom joint and set it at the support joint	
 		supportJoint = new CustomPathFollow(pinsAndPivoFrame, m_childBody->getNewtonBody(), m_pathBody->getNewtonBody());
 		SetSupportJoint(supportJoint);
+	}
 
-		return true;
+	Ogre::Vector3 PathFollow::getCurrentMoveDirection(const Ogre::Vector3& currentBodyPosition)
+	{
+		dBigVector point0;
+		const auto& spline = m_pathBody->getSpline();
+		Ogre::Real knot = static_cast<Ogre::Real>(spline.FindClosestKnot(point0, dBigVector(dVector(currentBodyPosition.x, currentBodyPosition.y, currentBodyPosition.z, 0.0f)), findKnotSubSteps));
+
+		dBigVector point1;
+		dBigVector tangent(spline.CurveDerivative(knot));
+		tangent = tangent.Scale(1.0 / dSqrt(tangent.DotProduct3(tangent)));
+		knot = spline.FindClosestKnot(point1, dBigVector(point0 + tangent.Scale(2.0f)), findKnotSubSteps);
+
+		dBigVector dir = point1 - point0;
+		dir = dir.Normalize();
+
+		return Ogre::Vector3(dir.m_x, dir.m_y, dir.m_z);
+	}
+
+	Ogre::Vector3 PathFollow::getMoveDirection(unsigned int index)
+	{
+		if (index >= m_internalControlPoints.size())
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		dBigVector point0;
+		const auto& spline = m_pathBody->getSpline();
+		double knot = spline.FindClosestKnot(point0, dBigVector(m_internalControlPoints[index].m_x, m_internalControlPoints[index].m_y, m_internalControlPoints[index].m_z), findKnotSubSteps);
+
+		dBigVector point1;
+		dBigVector tangent(spline.CurveDerivative(knot));
+		tangent = tangent.Scale(1.0 / dSqrt(tangent.DotProduct3(tangent)));
+		knot = spline.FindClosestKnot(point1, dBigVector(point0 + tangent.Scale(2.0f)), findKnotSubSteps);
+
+		dBigVector dir = point1 - point0;
+		dir = dir.Normalize();
+
+		return Ogre::Vector3(dir.m_x, dir.m_y, dir.m_z);
+	}
+
+	Ogre::Real PathFollow::getPathLength(void)
+	{
+		const auto& spline = m_pathBody->getSpline();
+		return spline.CalculateLength(0.1);
+	}
+
+	std::pair<Ogre::Real, Ogre::Vector3> PathFollow::getPathProgressAndPosition(const Ogre::Vector3& currentBodyPosition)
+	{
+		dBigVector point0;
+		const auto& spline = m_pathBody->getSpline();
+		Ogre::Real knot = static_cast<Ogre::Real>(spline.FindClosestKnot(point0, dBigVector(dVector(currentBodyPosition.x, currentBodyPosition.y, currentBodyPosition.z, 0.0f)), findKnotSubSteps));
+		Ogre::Vector3 ogrePoint = Ogre::Vector3(point0.m_x, point0.m_y, point0.m_z);
+
+		return std::make_pair(knot, ogrePoint);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

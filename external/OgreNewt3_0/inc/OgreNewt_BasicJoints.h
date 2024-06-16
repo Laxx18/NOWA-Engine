@@ -537,10 +537,27 @@ namespace OgreNewt
 		~PathFollow();
 
 		bool setKnots(const std::vector<Ogre::Vector3>& knots);
+
+		void createPathJoint(void);
+
+		Ogre::Vector3 getMoveDirection(unsigned int index);
+
+		Ogre::Vector3 getCurrentMoveDirection(const Ogre::Vector3& currentBodyPosition);
+
+		/*!
+		* Gets the path length in meters
+		*/
+		Ogre::Real getPathLength(void);
+
+		/*!
+		* Gets the path progress in percent and the body position on the path for the given current body position
+		*/
+		std::pair<Ogre::Real, Ogre::Vector3> getPathProgressAndPosition(const Ogre::Vector3& currentBodyPosition);
 	private:
 		OgreNewt::Body* m_childBody;
 		OgreNewt::Body* m_pathBody;
 		Ogre::Vector3 m_pos;
+		std::vector<dBigVector> m_internalControlPoints;
 	};
 
 	///! CustomDryRollingFriction

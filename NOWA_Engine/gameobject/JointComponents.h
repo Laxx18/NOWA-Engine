@@ -2183,12 +2183,18 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Requirements: A kind of physics component must exist.";
+			return "Requirements: A kind of physics component must exist. Note: Set draw path to true, in activate the simulation in order to see the path. If the curve is to sticky, adjust the waypoints. "
+				"The newton algorithm seems to be really squeamish. Hence it may happen, that the game object will vanish from the path, due to force errors inside newton. Try to play around with the anchor position, "
+				"set some more waypoints and test several rounds, until the game object does remain on the path.";
 		}
 
 		void setAnchorPosition(const Ogre::Vector3& anchorPosition);
 
 		Ogre::Vector3 getAnchorPosition(void) const;
+
+		void setDrawPath(bool drawPath);
+
+		bool getDrawPath(void) const;
 
 		void setWaypointsCount(unsigned int waypointsCount);
 
@@ -2198,8 +2204,23 @@ namespace NOWA
 
 		unsigned long getWaypointId(unsigned int index);
 
+		Ogre::Vector3 getStartMoveDirection(void);
+
+		Ogre::Vector3 getCurrentMoveDirection(void);
+
+		/**
+		* @brief Gets the path length in meters.
+		*/
+		Ogre::Real getPathLength(void);
+
+		/**
+		* @brief Gets the path progress in percent.
+		*/
+		Ogre::Real getPathProgress(void);
+
 	public:
 		static const Ogre::String AttrAnchorPosition(void) { return "Anchor Position"; }
+		static const Ogre::String AttrDrawPath(void) { return "Draw Path"; }
 		static const Ogre::String AttrWaypointsCount(void) { return "Waypoints Count"; }
 		static const Ogre::String AttrWaypoint(void) { return "Waypoint Id "; }
 	private:
@@ -2210,12 +2231,16 @@ namespace NOWA
 		void destroyLines(void);
 	protected:
 		Variant* anchorPosition;
+		Variant* drawPath;
 		Variant* waypointsCount;
 		std::vector<Variant*> waypoints;
 
 		std::vector<Ogre::Vector3> knots;
 		Ogre::SceneNode* lineNode;
 		Ogre::ManualObject* lineObjects;
+
+		Ogre::Real pathProgress;
+		Ogre::Vector3 currentMoveDirection;
 	};
 
 	/*******************************JointDryRollingFrictionComponent*******************************/

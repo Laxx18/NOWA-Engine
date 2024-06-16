@@ -23,6 +23,7 @@ namespace NOWA
 	public:
 		enum EaseFunctions
 		{
+			Linear,
 			EaseInSine,
 			EaseOutSine,
 			EaseInOutSine,

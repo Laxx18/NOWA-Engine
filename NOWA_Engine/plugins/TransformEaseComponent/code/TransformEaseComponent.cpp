@@ -40,7 +40,7 @@ namespace NOWA
 		rotationDuration(new Variant(TransformEaseComponent::AttrRotationDuration(), 1.0f, this->attributes)),
 		rotationRepeat(new Variant(TransformEaseComponent::AttrRotationRepeat(), true, this->attributes)),
 		rotationDirectionChange(new Variant(TransformEaseComponent::AttrRotationDirectionChange(), true, this->attributes)),
-		rotationEaseFunction(new Variant(TransformEaseComponent::AttrRotationEaseFunction(), { "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic", 
+		rotationEaseFunction(new Variant(TransformEaseComponent::AttrRotationEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic", 
 							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo", 
 							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
 							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes)),
@@ -52,7 +52,7 @@ namespace NOWA
 		translationDuration(new Variant(TransformEaseComponent::AttrTranslationDuration(), 1.0f, this->attributes)),
 		translationRepeat(new Variant(TransformEaseComponent::AttrTranslationRepeat(), true, this->attributes)),
 		translationDirectionChange(new Variant(TransformEaseComponent::AttrTranslationDirectionChange(), true, this->attributes)),
-		translationEaseFunction(new Variant(TransformEaseComponent::AttrTranslationEaseFunction(), { "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
+		translationEaseFunction(new Variant(TransformEaseComponent::AttrTranslationEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
 							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo",
 							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
 							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes)),
@@ -64,7 +64,7 @@ namespace NOWA
 		scaleDuration(new Variant(TransformEaseComponent::AttrScaleDuration(), 2.0f, this->attributes)),
 		scaleRepeat(new Variant(TransformEaseComponent::AttrScaleRepeat(), true, this->attributes)),
 		scaleDirectionChange(new Variant(TransformEaseComponent::AttrScaleDirectionChange(), true, this->attributes)),
-		scaleEaseFunction(new Variant(TransformEaseComponent::AttrScaleEaseFunction(), { "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
+		scaleEaseFunction(new Variant(TransformEaseComponent::AttrScaleEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
 							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo",
 							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
 							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes))
@@ -1094,6 +1094,10 @@ namespace NOWA
 
 	TransformEaseComponent::EaseFunctions TransformEaseComponent::mapStringToEaseFunctions(const Ogre::String strEaseFunction)
 	{
+		if ("linear" == strEaseFunction)
+		{
+			return Linear;
+		}
 		if ("easeInSine" == strEaseFunction)
 		{
 			return EaseInSine;
@@ -1214,13 +1218,15 @@ namespace NOWA
 		{
 			return EaseInOutBounce;
 		}
-		return EaseInSine;
+		return Linear;
 	}
 
 	Ogre::String TransformEaseComponent::mapEaseFunctionsToString(TransformEaseComponent::EaseFunctions easeFunctions)
 	{
 		switch (easeFunctions)
 		{
+		case Linear:
+			return "linear";
 		case EaseInSine:
 			return "easeInSine";
 		case EaseOutSine:
@@ -1282,13 +1288,15 @@ namespace NOWA
 		case EaseInOutBounce:
 			return "easeInOutBounce";
 		}
-		return "EaseInSine";
+		return "Linear";
 	}
 
 	Ogre::Vector3 TransformEaseComponent::applyEaseFunction(const Ogre::Vector3& startPosition, const Ogre::Vector3& targetPosition, EaseFunctions easeFunctions, Ogre::Real time)
 	{
 		switch (easeFunctions)
 		{
+		case Linear:
+			return MathHelper::getInstance()->interpolate(startPosition, targetPosition, time);
 		case EaseInSine:
 			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInSine(time));
 		case EaseOutSine:
@@ -1350,13 +1358,15 @@ namespace NOWA
 		case EaseInOutBounce:
 			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutBounce(time));
 		}
-		return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInSine(time));
+		return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, time);
 	}
 
 	Ogre::Real TransformEaseComponent::applyEaseFunction(Ogre::Real v1, Ogre::Real v2, EaseFunctions easeFunctions, Ogre::Real time)
 	{
 		switch (easeFunctions)
 		{
+		case Linear:
+			return MathHelper::getInstance()->interpolate(v1, v2, time);
 		case EaseInSine:
 			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInSine(time));
 		case EaseOutSine:
@@ -1418,7 +1428,7 @@ namespace NOWA
 		case EaseInOutBounce:
 			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutBounce(time));
 		}
-		return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInSine(time));
+		return  MathHelper::getInstance()->interpolate(v1, v2, time);
 	}
 
 	// Lua registration part

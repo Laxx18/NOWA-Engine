@@ -9677,9 +9677,9 @@ namespace NOWA
 		AddClassToCollection("JointPulleyComponent", "float getPulleyRatio()", "Gets the ratio between the first slider motion and the second slider motion.");
 
 		module(lua)
-			[
-				class_<JointUniversalComponent, JointComponent>("JointUniversalComponent")
-				// // .def("clone", &JointUniversalComponent::clone)
+		[
+			class_<JointUniversalComponent, JointComponent>("JointUniversalComponent")
+			// // .def("clone", &JointUniversalComponent::clone)
 			.def("setAnchorPosition", &JointUniversalComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointUniversalComponent::getAnchorPosition)
 			.def("setPin", &JointUniversalComponent::setPin)
@@ -9708,7 +9708,7 @@ namespace NOWA
 			.def("getFriction1", &JointUniversalComponent::getFriction1)
 			// .def("setHardMiddleAxis", &JointUniversalComponent::setHardMiddleAxis)
 			// .def("getHardMiddleAxis", &JointUniversalComponent::getHardMiddleAxis)
-			];
+		];
 
 		AddClassToCollection("JointUniversalComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a universal joint can rotate around two dimensions perpendicular to the axes it is attached to. It is to be seen like a double hinge joint.");
 		AddClassToCollection("JointUniversalComponent", "String getId()", "Gets the id of this joint.");
@@ -9744,9 +9744,9 @@ namespace NOWA
 		AddClassToCollection("JointUniversalComponent", "float getFriction1()", "Gets the second motor rotation friction.");
 
 		module(lua)
-			[
-				class_<JointUniversalActuatorComponent, JointComponent>("JointUniversalActuatorComponent")
-				// // .def("clone", &JointUniversalActuatorComponent::clone)
+		[
+			class_<JointUniversalActuatorComponent, JointComponent>("JointUniversalActuatorComponent")
+			// // .def("clone", &JointUniversalActuatorComponent::clone)
 			.def("setAnchorPosition", &JointUniversalActuatorComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointUniversalActuatorComponent::getAnchorPosition)
 			.def("setTargetAngle0", &JointUniversalActuatorComponent::setTargetAngle0)
@@ -9769,7 +9769,7 @@ namespace NOWA
 			.def("getMaxAngleLimit1", &JointUniversalActuatorComponent::getMaxAngleLimit1)
 			.def("setMaxTorque1", &JointUniversalActuatorComponent::setMaxTorque1)
 			.def("getMaxTorque1", &JointUniversalActuatorComponent::getMaxTorque1)
-			];
+		];
 
 		AddClassToCollection("JointUniversalActuatorComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a universal actuator joint can rotate around two dimensions perpendicular to the axes it is attached to. "
 			"It will rotate automatically to the given target angle, or when direction change is activated from min- to max angle limit and vice versa. It can be seen like a double hinge joint.");
@@ -9812,9 +9812,9 @@ namespace NOWA
 		AddClassToCollection("JointUniversalActuatorComponent", "bool getRepeat1()", "Gets whether the second direction changed rotation is repeated.");
 
 		module(lua)
-			[
-				class_<Joint6DofComponent, JointComponent>("Joint6DofComponent")
-				// // .def("clone", &Joint6DofComponent::clone)
+		[
+			class_<Joint6DofComponent, JointComponent>("Joint6DofComponent")
+			// // .def("clone", &Joint6DofComponent::clone)
 			.def("setAnchorPosition0", &Joint6DofComponent::setAnchorPosition0)
 			.def("getAnchorPosition0", &Joint6DofComponent::getAnchorPosition0)
 			.def("setAnchorPosition1", &Joint6DofComponent::setAnchorPosition1)
@@ -9831,7 +9831,7 @@ namespace NOWA
 			.def("setMinMaxRollAngleLimit", &Joint6DofComponent::setMinMaxRollAngleLimit)
 			.def("getMinRollAngleLimit", &Joint6DofComponent::getMinRollAngleLimit)
 			.def("getMaxRollAngleLimit", &Joint6DofComponent::getMaxRollAngleLimit)
-			];
+		];
 		AddClassToCollection("Joint6DofComponent", "class inherits JointComponent", "Derived class from JointComponent. Joint with 6 degree of freedom.");
 		AddClassToCollection("Joint6DofComponent", "String getId()", "Gets the id of this joint.");
 		AddClassToCollection("Joint6DofComponent", "void setAnchorPosition0(Vector3 anchorPosition)", "Sets the first anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
@@ -9851,9 +9851,9 @@ namespace NOWA
 		AddClassToCollection("Joint6DofComponent", "Degree getMaxRollAngleLimit()", "Gets the max roll angle limit.");
 
 		module(lua)
-			[
-				class_<JointMotorComponent, JointComponent>("JointMotorComponent")
-				.def("setPin0", &JointMotorComponent::setPin0)
+		[
+			class_<JointMotorComponent, JointComponent>("JointMotorComponent")
+			.def("setPin0", &JointMotorComponent::setPin0)
 			.def("getPin0", &JointMotorComponent::getPin0)
 			.def("setPin1", &JointMotorComponent::setPin1)
 			.def("getPin1", &JointMotorComponent::getPin1)
@@ -9865,7 +9865,7 @@ namespace NOWA
 			.def("getTorgue0", &JointMotorComponent::getTorgue0)
 			.def("setTorgue1", &JointMotorComponent::setTorgue1)
 			.def("getTorgue1", &JointMotorComponent::getTorgue1)
-			];
+		];
 
 		AddClassToCollection("JointMotorComponent", "class inherits JointComponent", "Derived class from JointComponent. A motor joint, which needs another joint component as reference (predecessor), which should be rotated. Its also possible to use a second joint component (target) and pin for a different rotation.");
 		AddClassToCollection("JointMotorComponent", "String getId()", "Gets the id of this joint.");
@@ -9883,9 +9883,9 @@ namespace NOWA
 		AddClassToCollection("JointMotorComponent", "float getTorgue1()", "Gets the torque rotation 1 for this joint.");
 
 		module(lua)
-			[
-				class_<JointWheelComponent, JointComponent>("JointWheelComponent")
-				.def("setAnchorPosition", &JointWheelComponent::setAnchorPosition)
+		[
+			class_<JointWheelComponent, JointComponent>("JointWheelComponent")
+			.def("setAnchorPosition", &JointWheelComponent::setAnchorPosition)
 			.def("getAnchorPosition", &JointWheelComponent::getAnchorPosition)
 			.def("setPin", &JointWheelComponent::setPin)
 			.def("getPin", &JointWheelComponent::getPin)
@@ -9894,7 +9894,7 @@ namespace NOWA
 			.def("getTargetSteeringAngle", &JointWheelComponent::getTargetSteeringAngle)
 			.def("setSteeringRate", &JointWheelComponent::setSteeringRate)
 			.def("getSteeringRate", &JointWheelComponent::getSteeringRate)
-			];
+		];
 
 		AddClassToCollection("JointWheelComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a wheel joint can only rotate around one dimension perpendicular to the axis it is attached to and also steer.");
 		AddClassToCollection("JointWheelComponent", "String getId()", "Gets the id of this joint.");
@@ -9910,6 +9910,27 @@ namespace NOWA
 
 		AddClassToCollection("JointWheelComponent", "void setSteeringRate(float steeringRate)", "Sets the steering rate.");
 		AddClassToCollection("JointWheelComponent", "float getSteeringRate()", "Gets the steering rate.");
+
+
+		module(lua)
+		[
+			class_<JointPathFollowComponent, JointComponent>("JointPathFollowComponent")
+			.def("setAnchorPosition", &JointPathFollowComponent::setAnchorPosition)
+			.def("getAnchorPosition", &JointPathFollowComponent::getAnchorPosition)
+			.def("getStartMoveDirection", &JointPathFollowComponent::getStartMoveDirection)
+			.def("getCurrentMoveDirection", &JointPathFollowComponent::getCurrentMoveDirection)
+			.def("getPathLength", &JointPathFollowComponent::getPathLength)
+			.def("getPathProgress", &JointPathFollowComponent::getPathProgress)
+		];
+
+		AddClassToCollection("JointWheelComponent", "class inherits JointComponent", "Derived class from JointComponent. An object attached to a wheel joint can only rotate around one dimension perpendicular to the axis it is attached to and also steer.");
+		AddClassToCollection("JointWheelComponent", "String getId()", "Gets the id of this joint.");
+		AddClassToCollection("JointWheelComponent", "void setAnchorPosition(Vector3 anchorPosition)", "Sets anchor position where to place the joint. The anchor position is set relative to the global mesh origin.");
+		AddClassToCollection("JointWheelComponent", "Vector3 getAnchorPosition()", "Gets joint anchor position.");
+		AddClassToCollection("JointWheelComponent", "Vector3 getStartMoveDirection()", "Gets the starting move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to start movement the game object along the path.");
+		AddClassToCollection("JointWheelComponent", "Vector3 getCurrentMoveDirection()", "Gets the current move direction of the game object on the path. It can be used e.g. in order to add a force in that direction, in order to continue movement the game object along the path.");
+		AddClassToCollection("JointWheelComponent", "float getPathLength()", "Gets the path length in meters.");
+		AddClassToCollection("JointWheelComponent", "float getPathProgress()", "Gets the path progress in percent.");
 	}
 
 	void bindLightComponents(lua_State* lua)

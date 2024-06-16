@@ -8990,12 +8990,17 @@ namespace NOWA
 	JointPathFollowComponent::JointPathFollowComponent()
 		: JointComponent(),
 		lineNode(nullptr),
-		lineObjects(nullptr)
+		lineObjects(nullptr),
+		pathProgress(0.0f),
+		currentMoveDirection(Ogre::Vector3::ZERO)
 	{
 		 this->anchorPosition = new Variant(JointPathFollowComponent::AttrAnchorPosition(), Ogre::Vector3::ZERO, this->attributes);
-		 this->waypointsCount = new Variant(JointPathFollowComponent::AttrWaypointsCount(), 1, this->attributes);
+		 this->drawPath = new Variant(JointPathFollowComponent::AttrDrawPath(), true, this->attributes);
+		 this->waypointsCount = new Variant(JointPathFollowComponent::AttrWaypointsCount(), 4, this->attributes);
 		 // Since when waypoints count is changed, the whole properties must be refreshed, so that new field may come for way points
 		 this->waypointsCount->addUserData(GameObject::AttrActionNeedRefresh());
+
+		 this->waypointsCount->setDescription("In order to work correctly at least 4 waypoints are necessary.");
 
 		 this->type->setReadOnly(false);
 		 this->type->setValue(this->getClassName());
@@ -9022,6 +9027,8 @@ namespace NOWA
 		clonedJointCompPtr->stiffness->setValue(this->stiffness->getReal());
 
 		clonedJointCompPtr->setAnchorPosition(this->anchorPosition->getVector3());
+		clonedJointCompPtr->setDrawPath(this->drawPath->getBool());
+		
 		clonedJointCompPtr->setWaypointsCount(this->waypointsCount->getUInt());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->waypoints.size()); i++)
@@ -9044,6 +9051,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
 			this->anchorPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DrawPath")
+		{
+			this->setDrawPath(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -9100,9 +9112,9 @@ namespace NOWA
 
 	void JointPathFollowComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && true == this->bShowDebugData)
+		if (false == notSimulating)
 		{
-			this->drawLines();
+			
 		}
 	}
 
@@ -9117,10 +9129,8 @@ namespace NOWA
 	{
 		bool success = JointComponent::disconnect();
 
-		if (true == this->bShowDebugData)
-		{
-			this->destroyLines();
-		}
+		this->currentMoveDirection = Ogre::Vector3::ZERO;
+		this->pathProgress = 0.0f;
 
 		return success;
 	}
@@ -9140,6 +9150,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AnchorPosition"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->anchorPosition->getVector3())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "DrawPath"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->drawPath->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -9228,7 +9244,7 @@ namespace NOWA
 		{
 			predecessorBody = this->predecessorJointCompPtr->getBody();
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Creating path follow joint for body1 (predecessor) name: "
-				+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
+														+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + this->gameObjectPtr->getName());
 		}
 		else
 		{
@@ -9236,9 +9252,14 @@ namespace NOWA
 			return false;
 		}
 
+		// Release joint each time, to create new one with new values
+		this->internalReleaseJoint();
+		// Has no predecessor body
+		this->joint = new OgreNewt::PathFollow(this->body, predecessorBody, this->jointPosition);
+
 		this->knots.resize(this->waypoints.size() + 1);
 
-		this->knots[0] = this->body->getPosition();
+		this->knots[0] = this->jointPosition;
 
 		for (size_t i = 0; i < this->waypoints.size(); i++)
 		{
@@ -9254,24 +9275,23 @@ namespace NOWA
 			}
 		}
 
-		// Release joint each time, to create new one with new values
-		this->internalReleaseJoint();
-		// Has no predecessor body
-		this->joint = new OgreNewt::PathFollow(this->body, predecessorBody, this->jointPosition);
-
 		OgreNewt::PathFollow* pathFollow = static_cast<OgreNewt::PathFollow*>(this->joint);
 		bool success = pathFollow->setKnots(this->knots);
 
-		if (false == success)
+		if (true == success)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName() + " because there are no waypoints.");
+			OgreNewt::PathFollow* pathFollow = static_cast<OgreNewt::PathFollow*>(this->joint);
+			pathFollow->createPathJoint();
+
+			if (true == this->drawPath->getBool())
+			{
+				this->createLines();
+				this->drawLines();
+			}
 		}
 		else
 		{
-			if (true == this->bShowDebugData)
-			{
-				this->createLines();
-			}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointPathFollowComponent] Could not create path follow joint: " + this->gameObjectPtr->getName() + " because there are no waypoints.");
 		}
 
 		return success;
@@ -9280,7 +9300,26 @@ namespace NOWA
 	void JointPathFollowComponent::setAnchorPosition(const Ogre::Vector3& anchorPosition)
 	{
 		this->anchorPosition->setValue(anchorPosition);
-		this->createJoint();
+
+		if (nullptr != this->body)
+		{
+			Ogre::Vector3 size = this->body->getAABB().getSize();
+			//Ogre::Vector3 aPos = Ogre::Vector3(-this->anchorPosition.x, -this->anchorPosition.y, -this->anchorPosition.z);
+			//// relative anchor pos: 0.5 0 0 means 50% in X of the size of the parent object
+			//Ogre::Vector3 offset = (aPos * size);
+			//// take orientation into account, so that orientated joints are processed correctly
+			//this->jointPosition = this->body->getPosition() - (this->body->getOrientation() * offset);
+
+			// without rotation
+			Ogre::Vector3 offset = (this->anchorPosition->getVector3() * size);
+			this->jointPosition = (this->body->getPosition() + offset);
+			this->jointAlreadyCreated = false;
+		}
+
+		if (nullptr != this->debugGeometryNode)
+		{
+			this->debugGeometryNode->setPosition(this->jointPosition);
+		}
 	}
 
 	Ogre::Vector3 JointPathFollowComponent::getAnchorPosition(void) const
@@ -9288,11 +9327,37 @@ namespace NOWA
 		return this->anchorPosition->getVector3();
 	}
 
+	void JointPathFollowComponent::setDrawPath(bool drawPath)
+	{
+		this->drawPath->setValue(drawPath);
+		if (true == drawPath)
+		{
+			
+		}
+		else
+		{
+			this->destroyLines();
+		}
+	}
+
+	bool JointPathFollowComponent::getDrawPath(void) const
+	{
+		return this->drawPath->getBool();
+	}
+
 	void JointPathFollowComponent::actualizeValue(Variant* attribute)
 	{
 		JointComponent::actualizeValue(attribute);
 
-		if (JointPathFollowComponent::AttrWaypointsCount() == attribute->getName())
+		if (JointPathFollowComponent::AttrAnchorPosition() == attribute->getName())
+		{
+			this->setAnchorPosition(attribute->getVector3());
+		}
+		else if (JointPathFollowComponent::AttrDrawPath() == attribute->getName())
+		{
+			this->setDrawPath(attribute->getBool());
+		}
+		else if (JointPathFollowComponent::AttrWaypointsCount() == attribute->getName())
 		{
 			this->setWaypointsCount(attribute->getUInt());
 		}
@@ -9352,6 +9417,56 @@ namespace NOWA
 		return this->waypoints[index]->getULong();
 	}
 
+	Ogre::Vector3 JointPathFollowComponent::getCurrentMoveDirection(void)
+	{
+		OgreNewt::PathFollow* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (nullptr != pathFollowJoint)
+		{
+			this->currentMoveDirection = pathFollowJoint->getCurrentMoveDirection(this->body->getPosition());
+		}
+
+		return this->currentMoveDirection;
+	}
+
+	Ogre::Vector3 JointPathFollowComponent::getStartMoveDirection(void)
+	{
+		if (nullptr == this->predecessorJointCompPtr->getBody())
+		{
+			return Ogre::Vector3::ZERO;
+		}
+
+		OgreNewt::PathFollow* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (nullptr != pathFollowJoint)
+		{
+			return pathFollowJoint->getMoveDirection(0);
+		}
+
+		return Ogre::Vector3::ZERO;
+	}
+
+	Ogre::Real JointPathFollowComponent::getPathLength(void)
+	{
+		OgreNewt::PathFollow* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (nullptr != pathFollowJoint)
+		{
+			return pathFollowJoint->getPathLength();
+		}
+		return 0.0f;
+	}
+
+	Ogre::Real JointPathFollowComponent::getPathProgress(void)
+	{
+		OgreNewt::PathFollow* pathFollowJoint = dynamic_cast<OgreNewt::PathFollow*>(this->joint);
+		if (nullptr != pathFollowJoint)
+		{
+			this->pathProgress = pathFollowJoint->getPathProgressAndPosition(this->body->getPosition()).first;
+		}
+
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointPathFollowComponent] progress: " + Ogre::StringConverter::toString(this->pathProgress));
+
+		return this->pathProgress;
+	}
+
 	void JointPathFollowComponent::createLines(void)
 	{
 		this->destroyLines();
@@ -9367,30 +9482,33 @@ namespace NOWA
 
 	void JointPathFollowComponent::drawLines(void)
 	{
+		if (nullptr == this->predecessorJointCompPtr->getBody())
+		{
+			return;
+		}
+
+		const auto& spline = this->predecessorJointCompPtr->getBody()->getSpline();
+
 		this->lineObjects->clear();
 		this->lineObjects->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
 
-		for (size_t i = 0; i < this->knots.size(); i++)
+		const Ogre::Real resolution = 50.0f;
+		Ogre::Real scale = 1.0f / resolution;
+
+		int index = 0;
+		dBigVector p0(spline.CurvePoint(0.0f));
+		for (int i = 1; i <= resolution; i++)
 		{
-			if (i < this->knots.size() - 1)
-			{
-				this->lineObjects->position(this->knots[i]);
-				this->lineObjects->colour(Ogre::ColourValue::White);
-				this->lineObjects->index(2 * i);
+			dBigVector p1(spline.CurvePoint(i * scale));
+			this->lineObjects->position(p0.m_x, p0.m_y, p0.m_z);
+			this->lineObjects->colour(Ogre::ColourValue::White);
+			this->lineObjects->index(index++);
 
-				this->lineObjects->position(this->knots[i + 1]);
-				this->lineObjects->colour(Ogre::ColourValue::White);
-				this->lineObjects->index(2 * i + 1);
-			}
+			this->lineObjects->position(p1.m_x, p1.m_y, p1.m_z);
+			this->lineObjects->colour(Ogre::ColourValue::White);
+			this->lineObjects->index(index++);
+			p0 = p1;
 		}
-
-		this->lineObjects->position(this->knots[this->knots.size() - 1]);
-		this->lineObjects->colour(Ogre::ColourValue::White);
-		this->lineObjects->index(2 * (this->knots.size() - 1));
-
-		this->lineObjects->position(this->knots[0]);
-		this->lineObjects->colour(Ogre::ColourValue::White);
-		this->lineObjects->index(0);
 
 		this->lineObjects->end();
 	}

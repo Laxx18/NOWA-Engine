@@ -1361,15 +1361,13 @@ namespace NOWA
 
 	void EditorManager::handleKeyRelease(const OIS::KeyEvent& keyEventRef)
 	{
-		if (NOWA_K_GRID == keyEventRef.key)
-		{
-			this->gridStep = 0.0f;
-			this->currentKey = OIS::KC_END;
-		}
+		this->currentKey = OIS::KC_END;
+
 		if (false == this->isInSimulation)
 		{
 			this->selectionManager->handleKeyRelease(keyEventRef);
 		}
+		this->gridStep = 0.0f;
 	}
 
 	void EditorManager::handleMouseMove(const OIS::MouseEvent& evt)
@@ -1442,13 +1440,6 @@ namespace NOWA
 
 	void EditorManager::handleMousePress(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		// Ugly workaround, because shit OIS is not possible to handle mouse release and key release at once!
-		// See selection manager same function for more details
-		if (true == InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_GRID))
-		{
-			this->currentKey = NOWA_K_GRID;
-		}
-
 		Ogre::Real x = 0.0f;
 		Ogre::Real y = 0.0f;
 		MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, x, y, Core::getSingletonPtr()->getOgreRenderWindow());
@@ -1621,6 +1612,8 @@ namespace NOWA
 
 	void EditorManager::handleMouseRelease(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
+		this->currentKey = OIS::KC_END;
+
 		if (id == this->mouseButtonId)
 		{
 			this->mouseIdPressed = false;
@@ -3202,16 +3195,14 @@ namespace NOWA
 				sign = -1.0f;
 			}
 #endif
-
-			Ogre::Vector3 scaleFactor = (entry.second.gameObject->getMovableObject()->getLocalAabb().getSize() + (offset/* * sign*/)) / entry.second.gameObject->getMovableObject()->getLocalAabb().getSize();
-			if (scaleFactor * entry.second.gameObject->getSceneNode()->getScale() > Ogre::Vector3::ZERO)
+			Ogre::Vector3 scaleFactor = offset;
 			{
 				// vertices[i + subMeshOffset] = (orientation * (vec * scale)) + pos;
 
 				auto& phyicsComponent = makeStrongPtr(entry.second.gameObject->getComponent<PhysicsComponent>());
 				if (nullptr != phyicsComponent)
 				{
-					phyicsComponent->setScale(scaleFactor);
+					phyicsComponent->setScale(phyicsComponent->getScale() + scaleFactor);
 				}
 				else
 				{
