@@ -1938,6 +1938,8 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 	// Prevent scene manipulation, when user does something in GUI
 	if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget()/* && false == this->simulating*/)
 	{
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 		return true;
 	}
 
@@ -1973,6 +1975,10 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 	{
 		return true;
 	}
+
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+
 	if (nullptr != this->editorManager)
 	{
 		this->editorManager->handleMouseRelease(evt, id);

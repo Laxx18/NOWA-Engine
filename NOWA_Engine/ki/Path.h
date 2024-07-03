@@ -24,6 +24,8 @@ namespace NOWA
 
 			unsigned int getRemainingWaypoints(void);
 
+			unsigned int getCurrentWaypointIndex(void);
+
 			// Creates a random path which is bound by rectangle described by the min/max values
 			std::vector<Ogre::Vector3> createRandomPath(unsigned int numWaypoints, Ogre::Real minX, Ogre::Real minZ, Ogre::Real maxX, Ogre::Real maxZ);
 

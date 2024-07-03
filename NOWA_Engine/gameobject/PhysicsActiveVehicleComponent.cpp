@@ -134,6 +134,12 @@ namespace NOWA
 		this->massOrigin->setValue(Ogre::Vector3(0.025f, -0.25f, 0.0f));
 		this->massOrigin->setDescription("For valid vehicle data, adjust this mass origin point to a valid vehicle mass center.");
 
+		// Better values for creating a vehicle:
+		this->collisionSize->setValue(Ogre::Vector3(0.4f, 0.3f, 0.0f));
+		this->collisionPosition->setValue(Ogre::Vector3(0.0f, 0.4f, 0.0f));
+		this->massOrigin->setValue(Ogre::Vector3(0.025f, 0.15f, 0.0f));
+		this->collisionType->setListSelectedValue("Capsule");
+
 		this->onSteerAngleChangedFunctionName->setDescription("Sets the function name to react in lua script to react when the steering angle for the specific tires shall change. E.g. onSteerAngleChanged(vehicleDrivingManipulation, dt)."
 															"The function should set in the resulting steering angle via vehicle driving manipulation object, e.g. depending on user device input.");
 		this->onSteerAngleChangedFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSteerAngleChangedFunctionName->getString() + "(vehicleDrivingManipulation, dt)");

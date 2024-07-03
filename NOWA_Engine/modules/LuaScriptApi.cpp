@@ -113,6 +113,36 @@ namespace
 
 	std::set<unsigned int> errorMessages;
 	std::set<Ogre::String> errorMessages2;
+
+	int extractNumber(const Ogre::String& name)
+	{
+		size_t i = 0;
+		// Skip non-digit characters
+		while (i < name.length() && !std::isdigit(name[i]))
+		{
+			++i;
+		}
+		// Extract the numeric part
+		return std::stoi(name.substr(i));
+	}
+
+	bool compareGameObjectsByName(NOWA::GameObjectPtr a, NOWA::GameObjectPtr b)
+	{
+		// Does not work: Because: Node_1, Node_10, Node_2 etc. but required is: Node_0, Node_1, Node_2...
+		// return a->getName() < b->getName();
+
+		int numA = extractNumber(a->getName());
+		int numB = extractNumber(b->getName());
+
+		if (numA != numB)
+		{
+			return numA < numB;
+		}
+		else
+		{
+			return a->getName() < b->getName();
+		}
+	}
 }
 
 
@@ -172,6 +202,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(val);
 	}
 
+	Ogre::String toString(unsigned long val)
+	{
+		return Ogre::StringConverter::toString(val);
+	}
+
 	bool matches(const Ogre::String& name, const Ogre::String& pattern)
 	{
 		return Ogre::StringUtil::match(name, pattern, false);
@@ -227,6 +262,11 @@ namespace NOWA
 		luabind::module(lua)
 			[
 				luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
+			];
+
+		luabind::module(lua)
+			[
+				luabind::def("toString", (Ogre::String(*)(unsigned long)) & toString)
 			];
 
 		luabind::module(lua)
@@ -4194,6 +4234,47 @@ namespace NOWA
 		return obj;
 	}
 
+	
+	luabind::object getGameObjectsFromComponent(GameObjectController* instance, const Ogre::String& componentClassName)
+	{
+		// Game objects need to be transformed to a lua object, which is a table
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		std::vector<GameObjectPtr> vec;
+		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		{
+			auto gameObjectPtr = NOWA::makeStrongPtr(it->second->getComponentFromName<GameObjectComponent>(componentClassName, true));
+			if (nullptr != gameObjectPtr)
+			{
+				vec.emplace_back(it->second);
+			}
+		}
+
+		// Sort them
+		std::sort(vec.begin(), vec.end(), compareGameObjectsByName);
+
+		unsigned int i = 0;
+		for (size_t j = 0; j < vec.size(); j++)
+		{
+			obj[i++] = vec[j].get();
+		}
+
+#if 0
+		// lua table starts always with key 1 instead of 0, of order is important, that is shit, hence swap the elements
+		luabind::object temp = obj[0];
+		for (int i = 0; i < vec.size(); ++i)
+		{
+			obj[i] = obj[i + 1];
+		}
+		obj[vec.size() - 1] = temp;
+#endif
+
+		currentErrorGameObject = componentClassName;
+		currentCalledFunction = "getGameObjectsFromComponent";
+
+		return obj;
+	}
+
 	luabind::object getVUPointsData(SimpleSoundComponent* instance)
 	{
 		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
@@ -4956,6 +5037,8 @@ namespace NOWA
 		gameObjectController.def("getGameObjectFromName", &getGameObjectFromName);
 		gameObjectController.def("getGameObjectsFromNamePrefix", &getGameObjectsFromNamePrefix);
 		gameObjectController.def("getGameObjectFromNamePrefix", &getGameObjectFromNamePrefix);
+		gameObjectController.def("getGameObjectsFromComponent", &getGameObjectsFromComponent);
+		
 		// gameObjectController.def("getCategoryId", &GameObjectController::getCategoryId);
 		gameObjectController.def("getCategoryId", &getCategoryId2);
 		//// gameObjectController.def("getAffectedCategories", &getAffectedCategories);
@@ -5134,6 +5217,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "GameObject getGameObjectFromName(string name)", "Gets a game object from the given name.");
 		AddClassToCollection("GameObjectController", "Table[index][GameObject] getGameObjectsFromNamePrefix(string pattern)", "Gets all game objects that are matching the given pattern as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
 		AddClassToCollection("GameObjectController", "GameObject getGameObjectFromNamePrefix(string pattern)", "Gets first game object that is matching the given pattern.");
+		AddClassToCollection("GameObjectController", "Table[index][GameObject] getGameObjectFromNamePrefix(string pattern)", "Gets all game objects which contain at least one of this component class name sorted by name.");
 		AddClassToCollection("GameObjectController", "number getCategoryId(string categoryName)", "Gets id of the given category name.");
 		AddClassToCollection("GameObjectController", "number getMaterialIDFromCategory(string categoryName)", "Gets physics material id of the given category name. In order to connect physics components together for collision detection etc.");
 		AddClassToCollection("GameObjectController", "void activatePlayerController(bool active, String id, bool onlyOneActive)", "Activates the given player component from the given game object id. "
@@ -12743,6 +12827,8 @@ namespace NOWA
 			.def("diffYaw", &MathHelper::diffYaw)
 			.def("diffRoll", &MathHelper::diffRoll)
 			.def("diffDegree", &MathHelper::diffDegree)
+			.def("extractEuler", &MathHelper::extractEuler)
+			.def("getOrientationFromHeadingPitch", &MathHelper::getOrientationFromHeadingPitch)
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*, const Ogre::Vector3&))& MathHelper::faceTarget)
 			.def("faceTarget", (Ogre::Quaternion(MathHelper::*)(Ogre::SceneNode*, Ogre::SceneNode*)) & MathHelper::faceTarget)
 			.def("lookAt", &lookAt)
@@ -12826,6 +12912,10 @@ namespace NOWA
 		AddClassToCollection("MathHelper", "Quaternion diffYaw(Quaternion dest, Quaternion src)", "Gets the difference yaw of two quaternions.");
 		AddClassToCollection("MathHelper", "Quaternion diffRoll(Quaternion dest, Quaternion src)", "Gets the difference roll of two quaternions.");
 		AddClassToCollection("MathHelper", "Quaternion diffDegree(Quaternion dest, Quaternion, src, int mode)", "Gets the difference of two quaternions. The mode, 1: pitch quaternion, 2: yaw quaternion, 3: roll quaternion will be calculated.");
+		AddClassToCollection("MathHelper", "Vector3 extractEuler(Quaternion quat)", "Extracts the yaw (heading), pitch and roll out of the quaternion. "
+							 "Returns the Vector3 in the form: Vector3(heading, pitch, roll)	The Vector3 holding pitch angle in radians for x, the heading angle in radians for y and the roll angle in radians for z.");
+		AddClassToCollection("MathHelper", "Quaternion getOrientationFromHeadingPitch(Quaternion orientation, number steeringAngle, number pitchAngle, Vector3 defaultModelDirection)", "Gets the new orientation out from the current orientation and its steering angle in radians and pitch angle in radians, taking the default model direction into account.");
+		
 		AddClassToCollection("MathHelper", "Quaternion faceTarget(SceneNode source, SceneNode dest)", "Gets the orientation in order to face a target, this orientation can be set directly.");
 		AddClassToCollection("MathHelper", "Quaternion faceTarget(SceneNode source, SceneNode dest, Vector3 defaultDirection)", "Gets the orientation in order to face a target, this orientation can be set directly, taking the default direction of the source game object into account.");
 		AddClassToCollection("MathHelper", "Radian getAngle(Vector3 dir1, Vector3 dir2, Vector3 normal, bool signedAngle)", "Gets angle between two vectors. "

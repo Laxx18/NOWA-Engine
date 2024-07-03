@@ -1411,6 +1411,16 @@ namespace NOWA
 					}
 				}
 
+				// Pass custom MYGUI
+				{
+					Ogre::CompositorPassDef* passMyGUI;
+					passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
+
+					passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
+
+					this->applySplitScreenModifier(passMyGUI);
+				}
+
 				// Render Scene
 				{
 					Ogre::CompositorPassSceneDef* passScene;
@@ -1427,15 +1437,7 @@ namespace NOWA
 					this->applySplitScreenModifier(passScene, true);
 				}
 
-				// Pass custom MYGUI
-				{
-					Ogre::CompositorPassDef* passMyGUI;
-					passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
-
-					passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
-
-					this->applySplitScreenModifier(passMyGUI);
-				}
+				
 			}
 
 #ifdef GPU_PARTICLES

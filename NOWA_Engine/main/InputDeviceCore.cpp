@@ -567,12 +567,12 @@ namespace NOWA
 
 		MyGUI::InputManager::getInstancePtr()->injectMousePress(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
 
-		// Do not react on input if there is any interaction with a mygui widget
-		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
-		if (nullptr != widget)
-		{
-			return false;
-		}
+		//// Do not react on input if there is any interaction with a mygui widget
+		//MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		//if (nullptr != widget)
+		//{
+		//	return false;
+		//}
 
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();
@@ -597,11 +597,11 @@ namespace NOWA
 		MyGUI::InputManager::getInstancePtr()->injectMouseRelease(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
 
 		// Do not react on input if there is any interaction with a mygui widget
-		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 		if (nullptr != widget)
 		{
 			return false;
-		}
+		}*/
 
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();

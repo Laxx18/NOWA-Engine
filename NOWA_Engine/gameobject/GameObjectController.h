@@ -313,30 +313,9 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromCategory(const Ogre::String& category);
 
 		/**
-		 * @brief		Gets all game objects which contain at least one of this component type.
-		 * @tparam		ComponentType				The concrete component type to get the game objects for.
-		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
-		 */
-
-		template <class ComponentType>
-		std::vector<GameObjectPtr> getGameObjectsFromComponent(void)
-		{
-			std::vector<GameObjectPtr> vec;
-			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-			{
-				auto gameObjectPtr = NOWA::makeStrongPtr(it->second->getComponent<ComponentType>());
-				if (nullptr != gameObjectPtr)
-				{
-					vec.emplace_back(it->second);
-				}
-			}
-			return std::move(vec);
-		}
-
-		/**
-		 * @brief		Gets all game objects which contain at least one of this component class name.
-		 * @tparam		componentClassName	The component class name to get the game objects for.
-		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 * @brief		Gets all game objects which contain at least one of this component class name sorted by name.
+		 * @param[in]	getStaticClassName()	The component class name to get the game objects for.
+		 * @return		gameObjectList	A by name sorted list with game object ptr's. If nothing can be found, an empty list will be delivered.
 		 */
 
 		std::vector<GameObjectPtr> getGameObjectsFromComponent(const Ogre::String& componentClassName);

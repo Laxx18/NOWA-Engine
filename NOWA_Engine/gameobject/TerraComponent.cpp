@@ -263,11 +263,11 @@ namespace NOWA
 			{
 				heightMapFile.close();
 				// true memory sharing when having more than one terra!
-				this->terra->load(existingHeightMapFilePathName, existingDetailMapFilePathName, this->center->getVector3(), this->dimensions->getVector3(), true);
+				this->terra->load(existingHeightMapFilePathName, existingDetailMapFilePathName, this->center->getVector3(), this->dimensions->getVector3(), true, false);
 			}
 			else
 			{
-				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), true);
+				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), true, false);
 			}
 
 			// this->terra->load(0.0f, 1024u, 1024u, Ogre::Vector3(this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y + this->dimensions->getVector3().y / 2.0f, this->gameObjectPtr->getPosition().z), this->dimensions->getVector3());

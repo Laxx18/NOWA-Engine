@@ -252,6 +252,24 @@ namespace NOWA
 		return quat;
 	}
 
+	Ogre::Vector3 MathHelper::extractEuler(const Ogre::Quaternion& quat)
+	{
+		Ogre::Radian yaw, pitch, roll;
+		Ogre::Matrix3 kRot;
+		quat.ToRotationMatrix(kRot);
+		// ATTENTION: ZYX?? Why not: XYZ??
+		kRot.ToEulerAnglesZYX(yaw, pitch, roll);
+
+		return Ogre::Vector3(pitch.valueRadians(), yaw.valueRadians(), roll.valueRadians());
+	}
+
+	Ogre::Quaternion MathHelper::getOrientationFromHeadingPitch(const Ogre::Quaternion& orientation, Ogre::Real steeringAngle, Ogre::Real pitchAngle, const Ogre::Vector3& defaultModelDirection)
+	{
+		Ogre::Quaternion deltaYaw(Ogre::Radian(steeringAngle), defaultModelDirection);
+		Ogre::Quaternion deltaPitch(Ogre::Radian(pitchAngle), Ogre::Vector3::UNIT_X);
+		return deltaYaw * orientation * deltaPitch;
+	}
+
 	Ogre::Quaternion MathHelper::faceTarget(Ogre::SceneNode* source, Ogre::SceneNode* dest)
 	{
 		Ogre::Vector3 lookAt = dest->getPosition() - source->getPosition();

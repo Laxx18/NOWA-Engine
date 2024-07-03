@@ -138,9 +138,9 @@ namespace Ogre
         void destroyHeightmapTexture(void);
 
         /// Calls createHeightmapTexture, loads image data to our CPU-side buffers
-        void createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption );
+        void createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption, bool bLowResShadow);
 
-        void createHeightmap(float height,Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption);
+        void createHeightmap(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow);
 
         void createNormalTexture(void);
         void destroyNormalTexture(void);
@@ -169,7 +169,7 @@ namespace Ogre
         void optimizeCellsAndAdd(void);
 
         void _loadInternal(Image2* heightMapImage, Image2* blendWeightImage, Vector3& center, Vector3& dimensions, 
-            const String& heightMapImageName, const String& blendWeightImageName, float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption);
+            const String& heightMapImageName, const String& blendWeightImageName, float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow);
 
         void _calculateBoxSpecification(int x, int y, int boxSize, uint32 pitch, uint32 depth, uint32* movAmount, uint32* shouldMoveAmount, int* boxStartX, int* boxWidth, int* boxStartY, int* boxHeight);
 
@@ -220,9 +220,9 @@ namespace Ogre
         */
         void update( const Vector3 &lightDir, float lightEpsilon=1e-6f );
 
-        void load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption);
-        void load(Image2 &heightMapImage, Image2& blendWeightImage, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption);
-        void load(float height,Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption);
+        void load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
+        void load(Image2 &heightMapImage, Image2& blendWeightImage, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
+        void load(float height,Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
 
          /** Gets the interpolated height at the given location.
             If outside the bounds, it leaves the height untouched.

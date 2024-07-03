@@ -1,5 +1,9 @@
 hlms Console/background unlit
 {
-	//  scene_blend modulate
+	scene_blend modulate
+	scissor_test false
+	depth_check false
+	depth_write true
+	depth_function always
     detail_map0 Gear.png console_texture.png
 }

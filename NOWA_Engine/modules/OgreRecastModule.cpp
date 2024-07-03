@@ -482,7 +482,7 @@ namespace NOWA
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->queueEvent(eventDataNavigationMeshFeedback);
 			this->ogreRecast->recreateDrawer();
 
-			auto gameObjectsWithCrowdComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent<CrowdComponent>();
+			auto gameObjectsWithCrowdComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CrowdComponent::getStaticClassName());
 			if (gameObjectsWithCrowdComponent.size() > 0)
 			{
 				this->detourCrowd->setMaxAgents(gameObjectsWithCrowdComponent.size());

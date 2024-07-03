@@ -216,6 +216,18 @@ namespace NOWA
 		Ogre::Quaternion diffDegree(Ogre::Quaternion dest, Ogre::Quaternion src, int mode);
 
 		/**
+		* @brief		Extracts the yaw (heading), pitch and roll out of the quaternion.
+		* @param[in]	quat			The source direction.
+		* @return		Vector3(heading, pitch, roll)	The Vector3 holding pitch angle in radians for x, the heading angle in radians for y and the roll angle in radians for z.
+		*/
+		Ogre::Vector3 extractEuler(const Ogre::Quaternion& quat);
+
+		/**
+		* @brief		Gets the new orientation out from the current orientation and its steering angle in radians and pitch angle in radians, taking the default model direction into account.
+		*/
+		Ogre::Quaternion getOrientationFromHeadingPitch(const Ogre::Quaternion& orientation, Ogre::Real steeringAngle, Ogre::Real pitchAngle, const Ogre::Vector3& defaultModelDirection);
+
+		/**
 		* @brief		Gets the orientation in order to face a target, this orientation can be set directly.
 		* @param[in]	source			The source scene node
 		* @param[in]	dest			The dest scene node as target

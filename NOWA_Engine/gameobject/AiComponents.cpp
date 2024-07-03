@@ -1056,7 +1056,7 @@ namespace NOWA
 
 	void AiPathFollowComponent::setWaypointId(unsigned int index, unsigned long id)
 	{
-		if (index > this->waypoints.size())
+		if (index >= this->waypoints.size())
 			return;
 		this->waypoints[index]->setValue(id);
 	}
@@ -1065,8 +1065,8 @@ namespace NOWA
 	{
 		unsigned int count = this->waypointsCount->getUInt();
 		this->waypointsCount->setValue(count + 1);
-		this->waypoints.resize(count);
-		this->waypoints[count - 1]->setValue(id);
+		this->waypoints.resize(count + 1);
+		this->waypoints[count] = new Variant(AiPathFollowComponent::AttrWaypoint() + Ogre::StringConverter::toString(count), id, this->attributes);
 	}
 
 	unsigned long AiPathFollowComponent::getWaypointId(unsigned int index)

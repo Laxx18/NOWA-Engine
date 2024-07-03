@@ -14236,6 +14236,12 @@ namespace NOWA
 				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[JointVehicleTireComponent] Creating tire vehicle tire joint for body1 name: "
 															+ this->predecessorJointCompPtr->getOwner()->getName() + " body2 name: " + gameObjectName);
 			}
+
+			if (nullptr == predecessorBody)
+			{
+				// Not yet ready if e.g. loading the group
+				return false;
+			}
 		}
 		else
 		{

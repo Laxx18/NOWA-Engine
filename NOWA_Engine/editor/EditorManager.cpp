@@ -2851,7 +2851,7 @@ namespace NOWA
 				{
 					// Correct?
 					// hier jeh nach Achse, rotation = Ogre::Quaternion(Ogre::Radian(absoluteAngle), Ogre::Vector3::UNIT_X); wegen grid, damit gizmo normal rotiert wird, aber objekte gezuckt
-					phyicsComponent->rotate(rotation);
+					phyicsComponent->rotate(gizmoRotationDelta);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
@@ -2870,8 +2870,7 @@ namespace NOWA
 				}
 				else
 				{
-					// entry.second->getSceneNode()->rotate(rotation * entry.second.gameObject->getSceneNode()->getOrientation().Inverse());
-					selectedGameObject.second.gameObject->getSceneNode()->setOrientation(this->gizmo->getOrientation() * rotation);
+					selectedGameObject.second.gameObject->getSceneNode()->rotate(gizmoRotationDelta);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
@@ -2898,7 +2897,7 @@ namespace NOWA
 				auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
 				if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
 				{
-					physicsComponent->setOrientation(physicsComponent->getOrientation() * rotation);
+					physicsComponent->rotate(gizmoRotationDelta);
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
 						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
@@ -2907,14 +2906,7 @@ namespace NOWA
 				}
 				else
 				{
-					// entry.second->getSceneNode()->rotate(rotation * entry.second->getSceneNode()->getOrientation().Inverse());
-					/*selectedGameObject.second.gameObject->getSceneNode()->setOrientation(
-						this->gizmo->getOrientation() * selectedGameObject.second.gameObject->getOrientation() * this->selectedObjectsStartOrientations[i].Inverse() * rotation);*/
-
-						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(this->gizmo->getOrientation() * this->selectedObjectsStartOrientations[i]);
-						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(selectedGameObject.second.gameObject->getSceneNode()->getOrientation() * gizmoRotationDelta);
-
-					selectedGameObject.second.gameObject->getSceneNode()->setOrientation(selectedGameObject.second.gameObject->getOrientation() * rotation);
+					selectedGameObject.second.gameObject->getSceneNode()->rotate(gizmoRotationDelta);
 
 					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{

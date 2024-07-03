@@ -13,8 +13,11 @@ namespace OgreNewt
 		RayCastTire* const me = (RayCastTire*)userData;
 		if (intersetParam < me->m_hitParam)
 		{
+
 			me->m_hitParam = intersetParam;
 			me->m_hitBody = (NewtonBody*)body;
+			// OgreNewt::Body* const b = (OgreNewt::Body*)userData;
+			// Ogre::String name = b->getOgreNode()->getName();
 			me->m_hitContact = dVector(contact[0], contact[1], contact[2], contact[3]);
 			me->m_hitNormal = dVector(normal[0], normal[1], normal[2], normal[3]);
 		}
@@ -108,51 +111,6 @@ namespace OgreNewt
 		chassisMatrix.m_posit += chassisMatrix.RotateVector(com);
 
 		CalculateLocalMatrix(chassisMatrix, m_localMatrix0, m_localMatrix1);
-
-		// chassisMatrix = dYawMatrix(90.0f * dDegreeToRad) * chassisMatrix;
-
-#if 0
-		//m_frameLocalMatrix[0] = dVector(0.0f, 1.0f, 0.0f, 0.0f); // the y axis is the character up vector
-//m_frameLocalMatrix[1] = vehicle->m_defaultDirection;
-//m_frameLocalMatrix[2] = m_frameLocalMatrix[0].CrossProduct(m_frameLocalMatrix[1]);
-
-//dMatrix localAxis(dGetIdentityMatrix());
-//localAxis[0] = dVector(0.0f, 1.0f, 0.0f, 0.0f); // the y axis is the character up vector
-//localAxis[1] = vehicle->m_defaultDirection;
-//localAxis[2] = localAxis[0].CrossProduct(localAxis[1]);
-
-		dMatrix pinsAndPivoFrame(dGrammSchmidt(parent->m_defaultDirection));
-		m_localMatrix0.m_front = pinsAndPivoFrame.m_front;
-		m_localMatrix0.m_up = pinsAndPivoFrame.m_up;
-		m_localMatrix0.m_right = pinsAndPivoFrame.m_right;
-
-		dMatrix chassisMatrix;
-		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
-		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
-		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
-		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
-
-		// tireMatrix = dYawMatrix(90.0f * dDegreeToRad) * tireMatrix;
-
-		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
-		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
-		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
-		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
-
-
-		// create the vehicle controller
-		dMatrix chassisMatrix;
-#if 1
-		chassisMatrix.m_front = dVector(1.0f, 0.0f, 0.0f, 0.0f);			// this is the vehicle direction of travel
-#else
-		chassisMatrix.m_front = dVector(0.0f, 0.0f, 1.0f, 0.0f);			// this is the vehicle direction of travel
-#endif
-		chassisMatrix.m_up = dVector(0.0f, 1.0f, 0.0f, 0.0f);			// this is the downward vehicle direction
-		chassisMatrix.m_right = chassisMatrix.m_front.CrossProduct(chassisMatrix.m_up);	// this is in the side vehicle direction (the plane of the wheels)
-		chassisMatrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
-#endif
-
-
 
 		dMatrix tireMatrix;
 		// Transform of this tire
@@ -373,6 +331,9 @@ namespace OgreNewt
 			{
 				m_hitBody = (NewtonBody*)info.m_hitBody;
 				Body* m_hitOgreNewtBody = (Body*)NewtonBodyGetUserData(m_hitBody);
+
+				Body* thisBody = (Body*)NewtonBodyGetUserData(m_hitBody);
+				Ogre::String name = thisBody->getOgreNode()->getName();
 
 				// Tires should not hit other tires
 				for (dList<RayCastTire*>::dListNode* node = vehicle->m_tires.GetFirst(); node; node = node->GetNext())

@@ -329,7 +329,7 @@ namespace NOWA
 			this->sceneManager->getRenderQueue()->setRenderQueueMode(NOWA::RENDER_QUEUE_MAX, Ogre::RenderQueue::V1_FAST);
 			this->sceneManager->getRenderQueue()->setSortRenderQueue(NOWA::RENDER_QUEUE_MAX, sortMode);
 
-			
+
 			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
 			this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
 			

@@ -51,6 +51,9 @@ Scene1_QuatBike_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulatio
         if (steerAmount >= -45) then
             steerAmount = steerAmount - dt * 30;
         end
+        
+        --var heading = physicsActiveVehicleComponent:getOrientation().getYaw(false).valueRadians();
+        --var pitch = physicsActiveVehicleComponent:getOrientation().getPitch(false).valueRadians();
             
     vehicleDrivingManipulation:setSteerAngle(steerAmount);
     else

@@ -735,7 +735,7 @@ namespace NOWA
 		else
 		{
 
-			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent<TerraComponent>();
+			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
 			if (false == terraList.empty())
 			{
 				// TODO: What if later x-terras?

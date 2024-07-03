@@ -519,6 +519,8 @@ namespace NOWA
 			const auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->parsedGameObjectIds[i]);
 			if (nullptr != gameObjectPtr)
 			{
+				// Deactivated, because its copied on another place^^
+#if 0
 				GameObjectComponents* components = gameObjectPtr->getComponents();
 				for (auto& it = components->begin(); it != components->end(); ++it)
 				{
@@ -529,6 +531,17 @@ namespace NOWA
 						Ogre::String scriptSourceFilePathName = projectPath + "/Groups/" + luaScriptCompPtr->getScriptFile();
 						Ogre::String scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + luaScriptCompPtr->getScriptFile();
 						AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false);
+					}
+				}
+#endif
+				// Tells lua script component, that its being cloned (prevents multiple script creations)
+				GameObjectComponents* components = gameObjectPtr->getComponents();
+				for (auto& it = components->begin(); it != components->end(); ++it)
+				{
+					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
+					if (nullptr != luaScriptCompPtr)
+					{
+						luaScriptCompPtr->setComponentCloned(true);
 					}
 				}
 

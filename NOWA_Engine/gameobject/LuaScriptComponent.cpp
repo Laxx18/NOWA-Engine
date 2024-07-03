@@ -166,6 +166,7 @@ namespace NOWA
 			// Set the original name
 			clonedCompPtr->scriptFile->setValue(this->scriptFile->getString());
 			clonedCompPtr->setScriptFile(Core::getSingletonPtr()->getWorldName() + "_" + clonedGameObjectPtr->getName() + ".lua", eScriptAction::CLONE);
+			this->componentCloned = true;
 		}
 		else
 		{
@@ -415,8 +416,15 @@ namespace NOWA
 			}
 
 			// Script name may exist and must be replaced, before a copy is made
-			tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName);
-			AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, false);
+			Ogre::String newScriptName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName);
+			if (newScriptName != tempScriptFileName)
+			{
+				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, true);
+			}
+			else
+			{
+				tempScriptFileName = this->scriptFile->getString();
+			}
 		}
 
 		size_t found = tempScriptFileName.find(".lua");
@@ -584,6 +592,11 @@ namespace NOWA
 		{
 			return true;
 		}
+	}
+
+	void LuaScriptComponent::setComponentCloned(bool componentCloned)
+	{
+		this->componentCloned = componentCloned;
 	}
 
 }; // namespace end

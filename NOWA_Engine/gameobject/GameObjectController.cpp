@@ -21,6 +21,39 @@
 
 #include <algorithm>    // std::set_difference, std::sort
 
+namespace
+{
+	int extractNumber(const Ogre::String& name)
+	{
+		size_t i = 0;
+		// Skip non-digit characters
+		while (i < name.length() && !std::isdigit(name[i]))
+		{
+			++i;
+		}
+		// Extract the numeric part
+		return std::stoi(name.substr(i));
+	}
+
+	bool compareGameObjectsByName(NOWA::GameObjectPtr a, NOWA::GameObjectPtr b)
+	{
+		// Does not work: Because: Node_1, Node_10, Node_2 etc. but required is: Node_0, Node_1, Node_2...
+		// return a->getName() < b->getName();
+
+		int numA = extractNumber(a->getName());
+		int numB = extractNumber(b->getName());
+
+		if (numA != numB)
+		{
+			return numA < numB;
+		}
+		else
+		{
+			return a->getName() < b->getName();
+		}
+	}
+}
+
 namespace NOWA
 {
 	DeleteGameObjectsUndoCommand::DeleteGameObjectsUndoCommand(const Ogre::String& appStateName, std::vector<unsigned long> gameObjectIds)
@@ -1685,7 +1718,11 @@ namespace NOWA
 				vec.emplace_back(it->second);
 			}
 		}
-		return std::move(vec);
+
+		// Sort them
+		std::sort(vec.begin(), vec.end(), compareGameObjectsByName);
+
+		return vec;
 	}
 
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategory(const Ogre::String& category)

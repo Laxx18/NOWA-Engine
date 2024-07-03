@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "LuaConsole.h"
 #include "main/InputDeviceCore.h"
+#include "main/AppStateManager.h"
 
 #include <OgreOverlay.h>
 
@@ -83,6 +84,7 @@ namespace NOWA
 		this->pOverlay = overlayManager.create("Console");
 		this->pOverlay->add2D(this->pPanel);
 		this->pOverlay->show();
+
 		Ogre::LogManager::getSingleton().getDefaultLog()->addListener(this);
 
 		this->initialised = true;
@@ -113,6 +115,7 @@ namespace NOWA
 
 	void LuaConsole::messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool maskDebug, const Ogre::String &logName, bool& skipThisMessage)
 	{
+		lml = Ogre::LML_CRITICAL;
 		this->print(message);
 	}
 
@@ -156,6 +159,8 @@ namespace NOWA
 			this->height += dt * 10.0f;
 			this->pPanel->show();
 			this->pTextbox->show();
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 
 			if (this->height >= 1.0f)
 			{
@@ -170,6 +175,8 @@ namespace NOWA
 				this->height = 0.0f;
 				this->pPanel->hide();
 				this->pTextbox->hide();
+				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 			}
 		}
 
@@ -366,6 +373,17 @@ namespace NOWA
 		}
 
 		return true;
+	}
+
+	void LuaConsole::clearHistory()
+	{
+		this->history.clear();
+	}
+
+	void LuaConsole::clearConsole()
+	{
+		this->lines.clear();
+		this->textChanged = true;
 	}
 
 }; // Namespace end

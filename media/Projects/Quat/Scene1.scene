@@ -328,7 +328,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -350,8 +350,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="1.33735" y="5.36925" z="-13.5446"/>
-			<rotation qw="0.502477" qx="-0.119899" qy="0.832853" qz="0.198741"/>
+			<position x="5.83526" y="7.16813" z="-13.2089"/>
+			<rotation qw="0.704683" qx="-0.291238" qy="0.597938" qz="0.24713"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -378,7 +378,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="6.67786 10.7841 3.96704"/>
+					<property type="9" name="CameraPosition" data="5.83526 7.16813 -13.2089"/>
 					<property type="9" name="CameraOrientation" data="-44.9102 80.6302 0.000964425"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
@@ -413,7 +413,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="4.63629e-08" qx="-1.54543e-08" qy="0.707107" qz="0.707107"/>
+			<rotation qw="9.27259e-08" qx="-3.09086e-08" qy="0.707107" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -611,7 +611,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="ScriptFile" data="Scene1_QuatBike_0.lua"/>
-					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="CloneScript" data="true"/>
 					<property type="12" name="HasCommonScript" data="false"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1257,6 +1257,33 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1240424072"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Case3_1" id="1801113118">
+			<position x="-4.44835" y="0" z="-13.8933"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case3_1" meshFile="Case3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4274866876"/>
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>

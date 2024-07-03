@@ -83,6 +83,11 @@ namespace NOWA
 			return std::distance(this->currentWaypointItr, this->wayPoints.end());
 		}
 
+		unsigned int Path::getCurrentWaypointIndex(void)
+		{
+			return std::distance(this->wayPoints.begin(), this->currentWaypointItr);
+		}
+
 		std::vector<Ogre::Vector3> Path::createRandomPath(unsigned int numWaypoints, Ogre::Real minX, Ogre::Real minZ, Ogre::Real maxX, Ogre::Real maxZ)
 		{
 			this->wayPoints.clear();

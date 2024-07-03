@@ -27,6 +27,10 @@ namespace NOWA
 		void update(Ogre::Real dt);
 
 		virtual void messageLogged(const Ogre::String& message, Ogre::LogMessageLevel lml, bool maskDebug, const Ogre::String &logName, bool& skipThisMessage) override;
+
+		void clearHistory(void);
+
+		void LuaConsole::clearConsole(void);
 	public:
 		static LuaConsole& getSingleton(void);
 

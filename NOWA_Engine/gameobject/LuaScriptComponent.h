@@ -189,6 +189,11 @@ namespace NOWA
 		 */
 		bool compileScript(void);
 
+		/**
+		 * @brief Tells the component, that its being cloned and shall not create the script. (Getting cloned script).
+		 */
+		void setComponentCloned(bool componentCloned);
+
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrScriptFile(void) { return "Lua Script Name"; }

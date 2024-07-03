@@ -209,6 +209,9 @@ void OpenSaveFileDialogExtended::notifyEditTextChange(MyGUI::Widget* _sender)
 
 void OpenSaveFileDialogExtended::accept()
 {
+	this->autoCompleteSearch.reset();
+	mEditSearchName->setCaption("");
+
 	if (!mFolderMode)
 	{
 		mFileName = mEditFileName->getOnlyText();

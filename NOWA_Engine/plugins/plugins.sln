@@ -43,6 +43,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SplitScreenComponent", "Spl
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransformEaseComponent", "TransformEaseComponent\TransformEaseComponent.vcxproj", "{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PurePursuitComponent", "PurePursuitComponent\PurePursuitComponent.vcxproj", "{F826AF49-6343-4046-9533-B2B44C8CDC1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -129,6 +131,10 @@ Global
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Debug|x64.Build.0 = Debug|x64
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Release|x64.ActiveCfg = Release|x64
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Release|x64.Build.0 = Release|x64
+		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Debug|x64.ActiveCfg = Debug|x64
+		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Debug|x64.Build.0 = Debug|x64
+		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Release|x64.ActiveCfg = Release|x64
+		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -252,13 +252,13 @@ namespace Ogre
         m_heightMapStagingTexture->upload(texBox, m_heightMapTex, 0, 0, 0);
     }
     //-----------------------------------------------------------------------------------
-    void Terra::createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption )
+    void Terra::createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         m_width = image.getWidth();
         m_depth = image.getHeight();
-        m_depthWidthRatio = m_depth / (float)(m_width);
-        m_invWidth = 1.0f / m_width;
-        m_invDepth = 1.0f / m_depth;
+        m_depthWidthRatio = float(m_depth) / (float)(m_width);
+        m_invWidth = 1.0f / float(m_width);
+        m_invDepth = 1.0f / float(m_depth);
 
         //image.generateMipmaps( false, Image::FILTER_NEAREST );
 
@@ -297,12 +297,12 @@ namespace Ogre
 		delete m_shadowMapper;
 		m_shadowMapper = new ShadowMapper(mManager, m_compositorManager);
         // TODO: false = make low shadows configureable?
-		m_shadowMapper->createShadowMap(getId(), m_heightMapTex, false);
+		m_shadowMapper->createShadowMap(getId(), m_heightMapTex, bLowResShadow);
 
 		calculateOptimumSkirtSize();
     }
 
-    void Terra::createHeightmap(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption)
+    void Terra::createHeightmap(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         // https://ogrecave.github.io/ogre-next/api/2.2/_ogre22_changes.html
 
@@ -405,7 +405,7 @@ namespace Ogre
         m_shadowMapper->_setSharedResources( m_sharedResources );
         m_shadowMapper->setMinimizeMemoryConsumption( bMinimizeMemoryConsumption );
         // TODO: false -> make low shadow res shadows configurable?
-        m_shadowMapper->createShadowMap(getId(), m_heightMapTex, false);
+        m_shadowMapper->createShadowMap(getId(), m_heightMapTex, bLowResShadow);
 
         calculateOptimumSkirtSize();
     }
@@ -577,16 +577,16 @@ namespace Ogre
             GpuPageOutStrategy::SaveToSystemRam, TextureFlags::RenderToTexture, TextureTypes::Type2D);
         m_blendWeightTex->setResolution(image.getWidth(), image.getHeight());
         m_blendWeightTex->setPixelFormat(image.getPixelFormat());
-
-        m_blendWeightTex->_transitionTo(GpuResidency::Resident, (uint8*)0);
-        m_blendWeightTex->_setNextResidencyStatus(GpuResidency::Resident);
+        m_blendWeightTex->scheduleTransitionTo(GpuResidency::Resident);
 
         m_currentBlendWeightImageName = m_prefix + "_detailMap.png";
 
         if (nullptr == m_blendWeightStagingTexture)
         {
             m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
+            m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
         }
+
         m_blendWeightStagingTexture->startMapRegion();
         TextureBox texBox = m_blendWeightStagingTexture->mapRegion(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
 
@@ -595,6 +595,8 @@ namespace Ogre
 
         m_oldBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
         m_newBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
+
+        size_t s = m_blendWeightStagingTexture->_getSizeBytes();
 
         // Note: If crash occurs, check if offsetscale0 etc. is 1 and not 128, also check the datablock.json in the workspace terra folder!
 
@@ -929,7 +931,7 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void Terra::load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3 &dimensions, bool bMinimizeMemoryConsumption)
+    void Terra::load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3 &dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         Ogre::Image2 heightMapImage;
         heightMapImage.load(heightMapTextureName, ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
@@ -941,10 +943,10 @@ namespace Ogre
             blendWeightImage.load(blendWeightTextureName, ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
         }
 
-        load(heightMapImage, blendWeightImage, center, dimensions, bMinimizeMemoryConsumption);
+        load(heightMapImage, blendWeightImage, center, dimensions, bMinimizeMemoryConsumption, bLowResShadow);
     }
     //-----------------------------------------------------------------------------------
-    void Terra::load(Image2& heightMapImage, Image2& blendWeightImage, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption)
+    void Terra::load(Image2& heightMapImage, Image2& blendWeightImage, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         // Use sign-preserving because origin in XZ plane is always from
         // bottom-left to top-right.
@@ -974,12 +976,12 @@ namespace Ogre
 
         if (heightMapImage.getWidth() > 1)
         {
-            createHeightmap(heightMapImage, bMinimizeMemoryConsumption);
+            createHeightmap(heightMapImage, bMinimizeMemoryConsumption, bLowResShadow);
         }
         else
         {
             //If an image was not provided it's assumed we're working with the singular height rather than the image.
-            createHeightmap(center.y, 1024, 1024, bMinimizeMemoryConsumption);
+            createHeightmap(center.y, 1024, 1024, bMinimizeMemoryConsumption, bLowResShadow);
         }
 
         {
@@ -1030,13 +1032,13 @@ namespace Ogre
         }
     }
 
-    void Terra::load(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption)
+    void Terra::load(float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
-        _loadInternal(nullptr, nullptr, center, dimensions, "", "", height, imageWidth, imageHeight, bMinimizeMemoryConsumption);
+        _loadInternal(nullptr, nullptr, center, dimensions, "", "", height, imageWidth, imageHeight, bMinimizeMemoryConsumption, bLowResShadow);
     }
 
     void Terra::_loadInternal(Image2* heightMapImage, Image2* blendWeightImage, Vector3& center, Vector3& dimensions, 
-        const String& heightMapImageName, const String& blendWeightImageName, float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption)
+        const String& heightMapImageName, const String& blendWeightImageName, float height, Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, bool bMinimizeMemoryConsumption, bool bLowResShadow)
     {
         // Use sign-preserving because origin in XZ plane is always from
         // bottom-left to top-right.
@@ -1062,12 +1064,12 @@ namespace Ogre
 
         if (heightMapImage)
         {
-            createHeightmap(*heightMapImage, bMinimizeMemoryConsumption);
+            createHeightmap(*heightMapImage, bMinimizeMemoryConsumption, bLowResShadow);
         }
         else
         {
             //If an image was not provided it's assumed we're working with the singular height rather than the image.
-            createHeightmap(height, imageWidth, imageHeight, bMinimizeMemoryConsumption);
+            createHeightmap(height, imageWidth, imageHeight, bMinimizeMemoryConsumption, bLowResShadow);
         }
 
         {
@@ -1222,10 +1224,11 @@ namespace Ogre
         terraDataBlock->setTexture(Ogre::TerraTextureTypes::TERRA_DETAIL_WEIGHT, m_blendWeightTex);
 
         // Triplanar enabled
-        terraDataBlock->setDetailTriplanarDiffuseEnabled(true);
-        terraDataBlock->setDetailTriplanarRoughnessEnabled(true);
-        terraDataBlock->setDetailTriplanarMetalnessEnabled(true);
-        terraDataBlock->setDetailTriplanarNormalEnabled(true);
+        // Causes ugly scale effects
+        // terraDataBlock->setDetailTriplanarDiffuseEnabled(true);
+        //terraDataBlock->setDetailTriplanarRoughnessEnabled(true);
+        // terraDataBlock->setDetailTriplanarMetalnessEnabled(true);
+        // terraDataBlock->setDetailTriplanarNormalEnabled(true);
 
         if( mHlmsTerraIndex == std::numeric_limits<uint32>::max() )
         {

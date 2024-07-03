@@ -174,9 +174,7 @@ namespace NOWA
 		// if ((moveValue - this->lastMoveValue).squaredLength() > 10.0f)
 		// 	this->lastMoveValue = moveValue;
 
-		moveValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue.x, this->lastMoveValue.x, this->smoothValue);
-		moveValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue.y, this->lastMoveValue.y, this->smoothValue);
-		moveValue.z = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue.z, this->lastMoveValue.z, this->smoothValue);
+		moveValue = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue, this->lastMoveValue, this->smoothValue);
 
 		// Same as camera->moveRelative
 		// Ogre::Vector3 trans = this->camera->getParentSceneNode()->getOrientation() * moveValue;
