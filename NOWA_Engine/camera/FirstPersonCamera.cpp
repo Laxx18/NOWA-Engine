@@ -6,9 +6,9 @@
 
 namespace NOWA
 {
-	FirstPersonCamera::FirstPersonCamera(Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, Ogre::Real smoothValue, 
+	FirstPersonCamera::FirstPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, Ogre::Real smoothValue,
 		Ogre::Real rotateSpeed, const Ogre::Vector3& offsetPosition)
-		: BaseCamera(0.0f, rotateSpeed, smoothValue, defaultDirection),
+		: BaseCamera(id, 0.0f, rotateSpeed, smoothValue, defaultDirection),
 		sceneNode(sceneNode),
 		offsetPosition(offsetPosition)
 	{

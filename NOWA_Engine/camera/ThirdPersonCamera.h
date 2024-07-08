@@ -9,7 +9,7 @@ namespace NOWA
 	{
 	public:
 
-		ThirdPersonCamera(Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z, Ogre::Real yOffset = 2.0f,
+		ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z, Ogre::Real yOffset = 2.0f,
 			const Ogre::Vector3& lookAtOffset = Ogre::Vector3::ZERO, Ogre::Real cameraSpring = 0.1f,
 			Ogre::Real cameraFriction = 0.5f, Ogre::Real cameraSpringLength = 6.0f);
 
@@ -25,7 +25,7 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void)
 		{
-			return "THIRD_PERSON_CAMERA";
+			return "THIRD_PERSON_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)

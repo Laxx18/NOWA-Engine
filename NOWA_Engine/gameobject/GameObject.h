@@ -659,6 +659,14 @@ namespace NOWA
 		* @return		datablockNames	The list of datablock names.
 		*/
 		std::vector<Ogre::String> getDatablockNames(void);
+
+		/**
+		* @brief		Sets whether all components of the game objects shall be connected before all other game objects and components.
+		*				Necessary e.g. if a vehicle chassis is the prior game object for all other tire joints.
+		* @param[in]	doNotDestroy	If set to true, the movable object will not be destroyed
+		* @note			This must be used when a movable object is created outside this game object and cannot be destroyed by the scene manager, like e.g. terra, or ocean etc.
+		*/
+		void setConnectPriority(bool bConnectPriority);
 	public:
 
 		/**
@@ -971,6 +979,7 @@ namespace NOWA
 		bool doNotDestroyMovableObject;
 		bool bShowDebugData;
 		LuaScript* luaScript;
+		bool bConnectPriority;
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
 	};

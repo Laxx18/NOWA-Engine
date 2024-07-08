@@ -443,7 +443,7 @@ namespace NOWA
 		return true;
 	}
 
-	void PhysicsTriggerComponent::reCreateCollision(void)
+	void PhysicsTriggerComponent::reCreateCollision(bool overwrite)
 	{
 		this->createDynamicBody();
 	}

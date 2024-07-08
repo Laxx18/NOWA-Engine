@@ -107,6 +107,8 @@ namespace NOWA
 				"If still desired, @PhysicsPlayerControllerComponent's can be used for collisions.";
 		}
 
+		virtual void kinematicContactCallback(OgreNewt::Body* otherBody);
+
 		/**
 		 * @brief		Sets the omega velocity in order to rotate the game object to the given result orientation.
 		 * @param[in]	resultOrientation	The result orientation to which the game object should be rotated via omega to.
@@ -114,8 +116,24 @@ namespace NOWA
 		 * @param[in]	strength			The strength at which the rotation should occur
 		 */
 		void setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 1.0f);
+
+		/**
+		* @brief		Enables kinematic contact solving, so that in a lua script onKinematicContactSolving(otherGameObject) will be called, when two bodies are colliding.
+		* @param[in]	enable	If set to true, contact solving callback will be enabled.
+		*/
+		void setKinematicContactSolvingEnabled(bool enable);
+
+		/**
+		 * @brief Sets the lua function name, to react when a game object collided with another game object.
+		 * @param[in]	onKinematicContactFunctionName		The function name to set
+		 */
+		void setOnKinematicContactFunctionName(const Ogre::String& onKinematicContactFunctionName);
+	public:
+		static const Ogre::String AttrOnKinematicContactFunctionName(void) { return "On Kinematic Contact Function Name"; }
 	protected:
 		virtual bool createDynamicBody(void);
+	private:
+		Variant* onKinematicContactFunctionName;
 	};
 
 }; //namespace end

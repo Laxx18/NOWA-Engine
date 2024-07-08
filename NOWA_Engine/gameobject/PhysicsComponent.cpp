@@ -571,7 +571,7 @@ namespace NOWA
 	}
 
 	// maybe move this to physicsArtifactComp
-	OgreNewt::CollisionPtr PhysicsComponent::serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId)
+	OgreNewt::CollisionPtr PhysicsComponent::serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId, bool overwrite)
 	{
 		OgreNewt::CollisionPtr col;
 		Ogre::String serializeCollisionPath = getDirectoryNameFromFilePathName(worldPath);
@@ -595,7 +595,7 @@ namespace NOWA
 		FILE* file;
 		file = fopen(serializeCollisionPath.c_str(), "rb");
 		
-		if (nullptr == file)
+		if (nullptr == file || true == overwrite)
 		{
 			OgreNewt::CollisionSerializer saveWorldCollision;
 			Ogre::v1::Entity* entity = nullptr;
@@ -622,36 +622,39 @@ namespace NOWA
 			saveWorldCollision.exportCollision(col, serializeCollisionPath);
 		}
 
-		file = fopen(serializeCollisionPath.c_str(), "rb");
-		if (nullptr == file)
+		if (false == overwrite)
 		{
-			Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open the object tree collision file!");
-			
-			Ogre::v1::Entity* entity = nullptr;
-			Ogre::Item* item = nullptr;
-
-			if (GameObject::ENTITY == this->gameObjectPtr->getType())
+			file = fopen(serializeCollisionPath.c_str(), "rb");
+			if (nullptr == file)
 			{
-				entity = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
-				return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt,
-					entity, true, categoryId));
-			}
-			else if (GameObject::ITEM == this->gameObjectPtr->getType())
-			{
-				item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
-				return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt,
-					item, true, categoryId));
-			}
-		}
-		else
-		{
-			Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
-			OgreNewt::CollisionSerializer loadWorldCollision;
-			// Import collision from file for faster loading
-			col = loadWorldCollision.importCollision(streamFile, ogreNewt);
+				Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open the object tree collision file!");
 
-			streamFile.close();
-			fclose(file);
+				Ogre::v1::Entity* entity = nullptr;
+				Ogre::Item* item = nullptr;
+
+				if (GameObject::ENTITY == this->gameObjectPtr->getType())
+				{
+					entity = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
+					return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt,
+												  entity, true, categoryId));
+				}
+				else if (GameObject::ITEM == this->gameObjectPtr->getType())
+				{
+					item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+					return OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt,
+												  item, true, categoryId));
+				}
+			}
+			else
+			{
+				Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
+				OgreNewt::CollisionSerializer loadWorldCollision;
+				// Import collision from file for faster loading
+				col = loadWorldCollision.importCollision(streamFile, ogreNewt);
+
+				streamFile.close();
+				fclose(file);
+			}
 		}
 
 		return col;
@@ -778,7 +781,7 @@ namespace NOWA
 			this->gameObjectPtr->getSceneNode()->setScale(scale);
 			if (nullptr != this->physicsBody)
 			{
-				this->reCreateCollision();
+				this->reCreateCollision(true);
 			}
 		}
 	}

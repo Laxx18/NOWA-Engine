@@ -9,12 +9,28 @@ require("init");
 scene1_QuatBike_0 = nil
 steerAmount = 0;
 physicsActiveVehicleComponent = nil;
+raceGoalComponent = nil;
+speedText = nil;
+lapText = nil;
+lapTimeList = nil;
+wrongDirectionText = nil;
+finishedText = nil;
 rollSound = nil;
 skidSound = nil;
 
 Scene1_QuatBike_0_0["connect"] = function(gameObject)
     AppStateManager:getGameObjectController():activatePlayerController(true, gameObject:getId(), true);
     physicsActiveVehicleComponent = gameObject:getPhysicsActiveVehicleComponent();
+    raceGoalComponent = gameObject:getRaceGoalComponent();
+    
+    local mainGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
+    speedText = mainGameObject:getMyGUITextComponentFromName("SpeedText");
+    lapText = mainGameObject:getMyGUITextComponentFromName("LapText");
+    lapTimeList = mainGameObject:getMyGUIListBoxComponentFromName("LapTimeList");
+    lapTimeList:setItemCount(raceGoalComponent:getLapsCount());
+    wrongDirectionText = mainGameObject:getMyGUITextComponentFromName("WrongDirectionText");
+    finishedText = mainGameObject:getMyGUITextComponentFromName("FinishedText");
+    
     rollSound = gameObject:getSimpleSoundComponent2(0);
     rollSound:setVolume(200);
     
@@ -37,19 +53,21 @@ Scene1_QuatBike_0_0["update"] = function(dt)
 		rollSound:setPitch(motion * 0.01);
 	--else
 	--	rollSound:setActivated(false);
-	end
+    end
+
+    speedText:setCaption("Speed: " .. raceGoalComponent:getSpeedInKmh() .. "km/h");
 end
 
 
 Scene1_QuatBike_0_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
     if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
         if (steerAmount <= 35) then
-            steerAmount = steerAmount + dt * 30;
+            steerAmount = steerAmount + dt * 20;
         end
         vehicleDrivingManipulation:setSteerAngle(steerAmount);
     elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
         if (steerAmount >= -35) then
-            steerAmount = steerAmount - dt * 30;
+            steerAmount = steerAmount - dt * 20;
         end
         
         --var heading = physicsActiveVehicleComponent:getOrientation().getYaw(false).valueRadians();
@@ -106,4 +124,11 @@ Scene1_QuatBike_0_0["onTireContact"] = function(tireName, hitPhysicsComponent, c
             soundComponent:setActivated(true);
         end
     end
+end
+
+Scene1_QuatBike_0_0["onFeedbackRace"] = function(wrongDirection, currentLap, lapTimeSec, finished)
+    speedText:setCaption("Lap: " .. currentLap);
+    lapTimeList:setItemText(currentLap, "Elapsed time: " .. lapTimeSec);
+    wrongDirectionText:setActivated(wrongDirection == true);
+    finishedText:setActivated(finished);
 end

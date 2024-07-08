@@ -6,9 +6,9 @@
 
 namespace NOWA
 {
-	ThirdPersonCamera::ThirdPersonCamera(Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, Ogre::Real yOffset, const Ogre::Vector3& lookAtOffset, 
+	ThirdPersonCamera::ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, Ogre::Real yOffset, const Ogre::Vector3& lookAtOffset,
 		Ogre::Real cameraSpring, Ogre::Real cameraFriction, Ogre::Real cameraSpringLength)
-		: BaseCamera(0.0f, 0.0f, 0.0f, defaultDirection),
+		: BaseCamera(id, 0.0f, 0.0f, 0.0f, defaultDirection),
 		sceneNode(sceneNode),
 		yOffset(yOffset),
 		lookAtOffset(lookAtOffset),

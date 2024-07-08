@@ -7,12 +7,12 @@
 
 namespace NOWA
 {
-	BasePhysicsCamera::BasePhysicsCamera(Ogre::SceneManager* sceneManager, OgreNewt::World* ogreNewt, const Ogre::Vector3& cameraSize, 
+	BasePhysicsCamera::BasePhysicsCamera(unsigned int id, Ogre::SceneManager* sceneManager, OgreNewt::World* ogreNewt, const Ogre::Vector3& cameraSize,
 		Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue)
 		: sceneManager(sceneManager),
 		ogreNewt(ogreNewt),
 		cameraSize(cameraSize),
-		BaseCamera(moveSpeed, rotateSpeed, smoothValue),
+		BaseCamera(id, moveSpeed, rotateSpeed, smoothValue),
 		cameraBody(nullptr),
 		upVector(nullptr)
 	{

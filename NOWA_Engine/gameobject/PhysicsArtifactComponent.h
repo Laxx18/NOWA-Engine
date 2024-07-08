@@ -65,7 +65,7 @@ namespace NOWA
 
 		virtual void showDebugData(void) override;
 
-		void reCreateCollision(void) override;
+		virtual void reCreateCollision(bool overwrite = false) override;
 
 		void setSerialize(bool serialize);
 

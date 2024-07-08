@@ -3667,12 +3667,14 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 		// Makes a backup of the file
 		CopyFile(sourceFile.data(), destFile.data(), TRUE);
 
+#if 0
 		STARTUPINFO startupInfo;
 		memset(&startupInfo, 0, sizeof(startupInfo));
 		startupInfo.cb = sizeof(startupInfo);
 		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
 		startupInfo.wShowWindow = SW_HIDE;
 		PROCESS_INFORMATION processInformation;
+#endif
 
 #if 0
 		Ogre::String param;
@@ -3692,17 +3694,18 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 		param += "\"";
 #endif
 
-		Ogre::String applicationFolder = rootFolder + "/development/MeshUtils/1.8";
+		Ogre::String applicationFolder = rootFolder + "/development/MeshUtils/1.4.1";
 
 		// Copies the file to the targed folder
 		Ogre::String destinationFilePathName = applicationFolder + "/" + meshName;
 		CopyFile(sourceFile.data(), destinationFilePathName.data(), TRUE);
 
-		Ogre::String meshMagickFilePathName = applicationFolder + "\\OgreMeshMagick.exe";
+		Ogre::String meshMagickFilePathName = applicationFolder + "\\MeshMagick.exe";
 		meshMagickFilePathName = this->replaceSlashes(meshMagickFilePathName, true);
 
 		Ogre::String tempParameters = meshMagickFilePathName + " " + parameters;
-		tempParameters += " " + sourceFile;
+		tempParameters += " in=" + sourceFile;
+		tempParameters += " out=" + sourceFile + "_rotated.mesh";
 
 		// 90/0/1/0
 
@@ -3758,7 +3761,7 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 			return false;
 		}
 #endif
-
+#if 1
 		// 90/0/1/0
 
 		SHELLEXECUTEINFO shRun = { 0 };
@@ -3787,6 +3790,41 @@ OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_32
 
 		WaitForSingleObject(shRun.hProcess, INFINITE);
 		CloseHandle(shRun.hProcess);
+#endif
+
+		STARTUPINFO si;
+		PROCESS_INFORMATION pi;
+		ZeroMemory(&si, sizeof(si));
+		si.cb = sizeof(si);
+		ZeroMemory(&pi, sizeof(pi));
+
+		applicationFolder = this->replaceSlashes(applicationFolder, true);
+
+		// Set up the environment block to use the old OgreMain.dll path
+		std::string env = "PATH=" + applicationFolder + ";" + getenv("PATH");
+		LPSTR envBlock = const_cast<char*>(env.c_str());
+
+		// Create the process
+		if (!CreateProcess(NULL, const_cast<char*>(tempParameters.c_str()), NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, envBlock, NULL, &si, &pi))
+		{
+			Ogre::String lastError = Ogre::StringConverter::toString(GetLastError());
+			Core::getSingletonPtr()->displayError("Could not create process for OgreMeshMagick.exe", GetLastError());
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core] Cannot continue, because the OgreMeshMagick detected an error during mesh operation: "
+															+ meshName + ".");
+
+			// Sent event with feedback
+			boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, "#{MeshOperationFail}"));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
+			return false;
+		}
+
+		// Wait for the process to complete
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+
+		return true;
 
 		return true;
 	}

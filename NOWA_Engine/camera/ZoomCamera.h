@@ -8,7 +8,7 @@ namespace NOWA
 	class EXPORTED ZoomCamera : public BaseCamera
 	{
 	public:
-		ZoomCamera(const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
+		ZoomCamera(unsigned int id, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
 
 		virtual ~ZoomCamera();
 
@@ -22,6 +22,11 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void) 
 		{
+			return "ZOOM_CAMERA_" + Ogre::StringConverter::toString(this->id);
+		}
+
+		static Ogre::String BehaviorType(void)
+		{
 			return "ZOOM_CAMERA";
 		}
 		
@@ -31,10 +36,6 @@ namespace NOWA
 		*/
 		virtual void setDefaultDirection(const Ogre::Vector3& direction) override;
 
-		static Ogre::String BehaviorType(void)
-		{
-			return "ZOOM_CAMERA";
-		}
 		
 		/**
 		* @brief		Sets the category, for which the bounds are calculated and the zoom adapted, so that all GameObjects of this category are visible.

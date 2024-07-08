@@ -259,8 +259,9 @@ void DesignState::createScene(void)
 	// this->sceneManager->setFog(Ogre::FOG_EXP, Ogre::ColourValue::White, 0.1f);
 
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", this->camera);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(new NOWA::BaseCamera());
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(NOWA::BaseCamera::BehaviorType());
+	auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(baseCamera);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(baseCamera->getBehaviorType());
 
 	this->projectManager = new ProjectManager(this->sceneManager);
 
@@ -1466,10 +1467,10 @@ void DesignState::lateUpdate(Ogre::Real dt)
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
 			this->cameraMoveSpeed += static_cast<Ogre::Real>(ms.Z.rel) / 1000.0f;
-			if (this->cameraMoveSpeed < 1.0f)
-				this->cameraMoveSpeed = 1.0f;
-			if (this->cameraMoveSpeed > 10.0f)
-				this->cameraMoveSpeed = 10.0f;
+			if (this->cameraMoveSpeed < 2.0f)
+				this->cameraMoveSpeed = 2.0f;
+			if (this->cameraMoveSpeed > 50.0f)
+				this->cameraMoveSpeed = 50.0f;
 
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
 			if (nullptr != cameraBehavior)
@@ -1485,8 +1486,8 @@ void DesignState::orbitCamera(Ogre::Real dt)
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 	Ogre::Vector2 rotationValue;
-	rotationValue.x = -ms.X.rel;
-	rotationValue.y = -ms.Y.rel;
+	rotationValue.x = -ms.X.rel * 0.25f;
+	rotationValue.y = ms.Y.rel * 0.25f;
 
 	if (this->firstTimeValueSet)
 	{
@@ -1494,8 +1495,8 @@ void DesignState::orbitCamera(Ogre::Real dt)
 		this->firstTimeValueSet = false;
 	}
 
-	rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastOrbitValue.x, 0.1f);
-	rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastOrbitValue.y, 0.1f);
+	rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastOrbitValue.x, 0.01f);
+	rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastOrbitValue.y, 0.01f);
 
 	// Start orbit mode
 	// Same as camera->moveRelative
@@ -1565,6 +1566,29 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				{
 					
 				}
+			}
+		}
+
+		if (keyEventRef.key == MyGUI::KeyCode::Add)
+		{
+			this->cameraMoveSpeed += 2.0f;
+			if (this->cameraMoveSpeed > 50.0f)
+				this->cameraMoveSpeed = 50.0f;
+			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+			if (nullptr != cameraBehavior)
+			{
+				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+			}
+		}
+		else if (keyEventRef.key == MyGUI::KeyCode::Subtract)
+		{
+			this->cameraMoveSpeed -= 2.0f;
+			if (this->cameraMoveSpeed < 2.0f)
+				this->cameraMoveSpeed = 2.0f;
+			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+			if (nullptr != cameraBehavior)
+			{
+				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
 			}
 		}
 	}

@@ -68,7 +68,7 @@ namespace NOWA
 		return success;
 	}
 
-	void PhysicsTerrainComponent::reCreateCollision(void)
+	void PhysicsTerrainComponent::reCreateCollision(bool overwrite)
 	{
 		if (nullptr != this->physicsBody)
 			this->destroyCollision();

@@ -136,8 +136,6 @@ namespace NOWA
 		void setConstraintAxis(const Ogre::Vector3& constraintAxis);
 
 		Ogre::Vector3 getCurrentDirection(void);
-
-		Ogre::Vector3 calculateGridTranslation(Ogre::MovableObject* movableObject, const Ogre::Quaternion& sourceOrientation);
 	private:
 		void setupFlag(void);
 		void createLine(void);
@@ -190,9 +188,6 @@ namespace NOWA
 		Ogre::SceneNode* thirdPlaneNode;
 		bool debugPlane;
 		Ogre::Vector3 constraintAxis;
-
-		Ogre::Vector3 oldGizmoPosition;
-		Ogre::Real cumulatedGizmoTranslationDistance;
 	};
 
 }; // namespace end

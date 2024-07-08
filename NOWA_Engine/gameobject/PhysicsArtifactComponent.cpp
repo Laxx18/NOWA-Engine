@@ -299,7 +299,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsArtifactComponent::reCreateCollision(void)
+	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
 	{
 		Ogre::String meshName;
 		// if (this->collisionType->getListSelectedValue() == "Tree")
@@ -362,7 +362,7 @@ namespace NOWA
 			else
 			{
 				// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
-				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(this->serializeFilename, this->gameObjectPtr->getCategoryId()));
+				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(this->serializeFilename, this->gameObjectPtr->getCategoryId(), overwrite));
 			}
 
 			if (nullptr == staticCollision)

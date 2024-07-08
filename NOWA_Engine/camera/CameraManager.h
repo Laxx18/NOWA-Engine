@@ -43,15 +43,15 @@ namespace NOWA
 		void addCameraBehavior(BaseCamera* baseCamera);
 
 		/**
-		* @brief		Removes the camera behavior from the given type string
-		* @param[in]	cameraBehaviorType	The camera behavior type to remove
+		* @brief		Removes the camera behavior from the given key string
+		* @param[in]	cameraBehaviorKey	The camera behavior key to remove
 		* @param[in]	destroy				If set to true the behavior will also be destroyed
 		* @note			Internally the behavior will be deleted!
 		*/
 
-		void removeCameraBehavior(const Ogre::String& cameraBehaviorType, bool destroy = true);
+		void removeCameraBehavior(const Ogre::String& cameraBehaviorKey, bool destroy = true);
 
-		void setActiveCameraBehavior(const Ogre::String& cameraBehaviorType);
+		void setActiveCameraBehavior(const Ogre::String& cameraBehaviorKey);
 
 		BaseCamera* getActiveCameraBehavior(void) const;
 
@@ -71,6 +71,8 @@ namespace NOWA
 
 		void setRotateCameraWeight(Ogre::Real rotateCameraWeight);
 
+		unsigned int getCameraBehaviorId(void);
+
 	private:
 		CameraManager(const Ogre::String& appStateName);
 		~CameraManager();
@@ -83,10 +85,11 @@ namespace NOWA
 		Ogre::Real rotateSpeed;
 
 		std::map<Ogre::String, BaseCamera*> cameraStrategies;
-		Ogre::String cameraBehaviorType;
-		Ogre::String oldBehaviorType;
+		Ogre::String cameraBehaviorKey;
+		Ogre::String oldBehaviorKey;
 		// camera, active
 		std::map<Ogre::Camera*, bool> cameras;
+		unsigned int cameraBehaviorId;
 	};
 
 }; //namespace end

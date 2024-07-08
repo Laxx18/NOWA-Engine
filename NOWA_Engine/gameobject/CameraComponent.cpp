@@ -227,8 +227,6 @@ namespace NOWA
 
 	bool CameraComponent::connect(void)
 	{
-		// Actualize internally old camera transform for reset
-		// AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(BaseCamera::BehaviorType());
 		return true;
 	}
 
@@ -270,8 +268,9 @@ namespace NOWA
 			camera->setPosition(this->camera->getPosition());
 
 			AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(new NOWA::BaseCamera());
-			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(NOWA::BaseCamera::BehaviorType());
+			auto baseCamera = new BaseCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(baseCamera);
+			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(cameraType->getBehaviorType());
 			// Create dummy workspace
 
 			if (false == WorkspaceModule::getInstance()->getUseSplitScreen())

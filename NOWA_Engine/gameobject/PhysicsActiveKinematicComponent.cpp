@@ -23,6 +23,12 @@ namespace NOWA
 		this->gravitySourceCategory->setVisible(false);
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
 		this->constraintDirection->setVisible(false);
+
+		this->onKinematicContactFunctionName = new Variant(PhysicsActiveKinematicComponent::AttrOnKinematicContactFunctionName(), Ogre::String(""), this->attributes);
+
+		this->onKinematicContactFunctionName->setDescription("Sets the function name to react in lua script at the moment when another game object collided with this kinematic game object. "
+															 "It can also be used with (setCollidable(false)), so that ghost collision can be detected. E.g. onKinematicContact(otherGameObject).");
+		this->onKinematicContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onKinematicContactFunctionName->getString() + "(otherGameObject)");
 	}
 
 	PhysicsActiveKinematicComponent::~PhysicsActiveKinematicComponent()
@@ -36,6 +42,12 @@ namespace NOWA
 		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
 
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
+
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnKinematicContactFunctionName")
+		{
+			this->onKinematicContactFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		return true;
 	}
@@ -69,6 +81,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setOnKinematicContactFunctionName(this->onKinematicContactFunctionName->getString());
+
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
@@ -100,6 +114,8 @@ namespace NOWA
 	{
 		bool success = PhysicsActiveComponent::connect();
 
+		this->setOnKinematicContactFunctionName(this->onKinematicContactFunctionName->getString());
+
 		return success;
 	}
 
@@ -120,6 +136,11 @@ namespace NOWA
 	void PhysicsActiveKinematicComponent::actualizeValue(Variant* attribute)
 	{
 		PhysicsActiveComponent::actualizeCommonValue(attribute);
+
+		if (PhysicsActiveKinematicComponent::AttrOnKinematicContactFunctionName() == attribute->getName())
+		{
+		 this->setOnKinematicContactFunctionName(attribute->getString());
+		}
 	}
 
 	void PhysicsActiveKinematicComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -134,6 +155,11 @@ namespace NOWA
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
 
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OnKinematicContactFunctionName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onKinematicContactFunctionName->getString())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String PhysicsActiveKinematicComponent::getClassName(void) const
@@ -149,6 +175,20 @@ namespace NOWA
 	Ogre::String PhysicsActiveKinematicComponent::getParentParentClassName(void) const
 	{
 		return "PhysicsComponent";
+	}
+
+	void PhysicsActiveKinematicComponent::setOnKinematicContactFunctionName(const Ogre::String& onKinematicContactFunctionName)
+	{
+		this->onKinematicContactFunctionName->setValue(onKinematicContactFunctionName);
+		if (false == onKinematicContactFunctionName.empty())
+		{
+			this->onKinematicContactFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onKinematicContactFunctionName + "(otherGameObject)");
+			this->setKinematicContactSolvingEnabled(true);
+		}
+		else
+		{
+			this->setKinematicContactSolvingEnabled(false);
+		}
 	}
 
 	bool PhysicsActiveKinematicComponent::createDynamicBody(void)
@@ -227,6 +267,16 @@ namespace NOWA
 		return true;
 	}
 
+	void PhysicsActiveKinematicComponent::kinematicContactCallback(OgreNewt::Body* otherBody)
+	{
+		PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
+
+		if (nullptr != this->gameObjectPtr->getLuaScript())
+		{
+			this->gameObjectPtr->getLuaScript()->callTableFunction(this->onKinematicContactFunctionName->getString(), otherPhysicsComponent->getOwner());
+		}
+	}
+
 	void PhysicsActiveKinematicComponent::setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
 	{
 		if (nullptr == this->physicsBody)
@@ -249,6 +299,22 @@ namespace NOWA
 		}
 
 		this->setOmegaVelocity(resultVector);
+	}
+
+	void PhysicsActiveKinematicComponent::setKinematicContactSolvingEnabled(bool enable)
+	{
+		if (nullptr == this->gameObjectPtr || nullptr == this->gameObjectPtr->getLuaScript() || true == this->onKinematicContactFunctionName->getString().empty() || nullptr == this->physicsBody)
+		{
+			return;
+		}
+		if (true == enable)
+		{
+			static_cast<OgreNewt::KinematicBody*>(this->physicsBody)->setKinematicContactCallback<PhysicsActiveKinematicComponent>(&PhysicsActiveKinematicComponent::kinematicContactCallback, this);
+		}
+		else
+		{
+			static_cast<OgreNewt::KinematicBody*>(this->physicsBody)->removeKinematicContactCallback();
+		}
 	}
 
 }; // namespace end

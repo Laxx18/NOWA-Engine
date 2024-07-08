@@ -48,6 +48,7 @@ namespace NOWA
 		: GameObjectComponent(),
 		name("PurePursuitComponent"),
 		lastSteerAngle(0.0f),
+		lastMotorForce(0.0f),
 		motorForce(0.0f),
 		steerAmount(0.0f),
 		pitchAmount(0.0f),
@@ -56,14 +57,20 @@ namespace NOWA
 		previousPosition(0.0f),
 		stuckTime(0.0f),
 		maxStuckTime(2.0f),
+		pPath(nullptr),
 		activated(new Variant(PurePursuitComponent::AttrActivated(), true, this->attributes)),
 		waypointsCount(new Variant(PurePursuitComponent::AttrWaypointsCount(), 0, this->attributes)),
 		repeat(new Variant(PurePursuitComponent::AttrRepeat(), true, this->attributes)),
 		lookaheadDistance(new Variant(PurePursuitComponent::AttrLookaheadDistance(), 20.0f, this->attributes)),
 		curvatureThreshold(new Variant(PurePursuitComponent::AttrCurvatureThreshold(), 0.1f, this->attributes)),
 		maxMotorForce(new Variant(PurePursuitComponent::AttrMaxMotorForce(), 5000.0f, this->attributes)),
+		motorForceVariance(new Variant(PurePursuitComponent::AttrMotorForceVariance(), Ogre::Real(500.0f), this->attributes)),
+		overtakingMotorForce(new Variant(PurePursuitComponent::AttrOvertakingMotorForce(), Ogre::Real(5000.0f), this->attributes)),
 		minMaxSteerAngle(new Variant(PurePursuitComponent::AttrMinMaxSteerAngle(), Ogre::Vector2(-45.0f, 45.0f), this->attributes)),
-		checkWaypointY(new Variant(PurePursuitComponent::AttrCheckWaypointY(), false, this->attributes))
+		checkWaypointY(new Variant(PurePursuitComponent::AttrCheckWaypointY(), false, this->attributes)),
+		waypointVariance(new Variant(PurePursuitComponent::AttrWaypointVariance(), Ogre::Real(0.25f), this->attributes)),
+		varianceIndividual(new Variant(PurePursuitComponent::AttrVarianceIndividual(), false, this->attributes)),
+		obstacleCategory(new Variant(PurePursuitComponent::AttrObstacleCategory(), Ogre::String(""), this->attributes))
 	{
 		this->activated->setDescription("If activated, the pure pursuit calcluation takes place.");
 		// Since when waypoints count is changed, the whole properties must be refreshed, so that new field may come for way points
@@ -72,10 +79,15 @@ namespace NOWA
 		this->lookaheadDistance->setDescription("The lookahead distance parameter determines how far ahead the car should look on the path to calculate the steering angle.");
 		this->curvatureThreshold->setDescription("Sets the threashold at which the motorforce shall be adapted.");
 		this->maxMotorForce->setDescription("Force applied by the motor.");
+		this->motorForceVariance->setDescription("Sets some random motor force variance (-motorForceVariance, +motorForceVariance) which is added to the max motor force.");
+		this->overtakingMotorForce->setDescription("Sets the force if a game object comes to close to another one and shall overtaking it. If set to 0, this behavior is not added. E.g. the player itsself shall not have this behavior.");
 		this->minMaxSteerAngle->setDescription("The minimum and maximum steer angle");
 		this->checkWaypointY->setDescription("Sets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, if e.g. using a looping, so that the car targets against the waypoint "
 											 ", but may be bad, if e.g. a car jumps via a ramp and the waypoint is below, hence he did not hit the waypoint and will travel back. "
 											 " This flag can be switched on the fly, e.g. reaching a special waypoint using the getCurrentWaypointIndex function.");
+		this->waypointVariance->setDescription("Sets some random waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
+		this->varianceIndividual->setDescription("Sets whether the variance from attribute shall take place for each waypoint, or for all waypoints the same random variance.");
+		this->obstacleCategory->setDescription("Sets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. If empty, not obstacle detection takes place.");
 	}
 
 	PurePursuitComponent::~PurePursuitComponent(void)
@@ -101,8 +113,6 @@ namespace NOWA
 	bool PurePursuitComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
 		GameObjectComponent::init(propertyElement, filename);
-
-		this->pPath = new Path();
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -156,6 +166,16 @@ namespace NOWA
 			this->maxMotorForce->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MotorForceVariance")
+		{
+			this->motorForceVariance->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OvertakingMotorForce")
+		{
+			this->overtakingMotorForce->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MinMaxSteerAngle")
 		{
 			this->minMaxSteerAngle->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
@@ -166,6 +186,22 @@ namespace NOWA
 			this->checkWaypointY->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaypointVariance")
+		{
+			this->waypointVariance->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "VarianceIndividual")
+		{
+			this->varianceIndividual->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ObstacleCategory")
+		{
+			this->obstacleCategory->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		
 
 		return true;
@@ -174,8 +210,6 @@ namespace NOWA
 	GameObjectCompPtr PurePursuitComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		PurePursuitComponentPtr clonedCompPtr(boost::make_shared<PurePursuitComponent>());
-
-		clonedCompPtr->setActivated(this->activated->getBool());
 		
 		clonedCompPtr->setWaypointsCount(this->waypointsCount->getUInt());
 
@@ -187,12 +221,20 @@ namespace NOWA
 		clonedCompPtr->setLookaheadDistance(this->lookaheadDistance->getReal());
 		clonedCompPtr->setCurvatureThreshold(this->curvatureThreshold->getReal());
 		clonedCompPtr->setMaxMotorForce(this->maxMotorForce->getReal());
+		clonedCompPtr->setMotorForceVariance(this->motorForceVariance->getReal());
+		clonedCompPtr->setOvertakingMotorForce(this->overtakingMotorForce->getReal());
 		clonedCompPtr->setMinMaxSteerAngle(this->minMaxSteerAngle->getVector2());
 		clonedCompPtr->setCheckWaypointY(this->checkWaypointY->getBool());
-		
+		clonedCompPtr->setWaypointVariance(this->waypointVariance->getReal());
+		clonedCompPtr->setVarianceIndividual(this->varianceIndividual->getBool());
+		clonedCompPtr->setObstacleCategory(this->obstacleCategory->getString());
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		// clonedCompPtr->setActivated(this->activated->getBool());
+		// Do not call connect inside yet
+		clonedCompPtr->activated->setValue(activated);
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -207,27 +249,27 @@ namespace NOWA
 
 	bool PurePursuitComponent::connect(void)
 	{
-		// Hello World test :)
-		/*auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
-		if (nullptr != physicsActiveCompPtr)
-		{
-			physicsActiveCompPtr->applyRequiredForceForVelocity(Ogre::Vector3(0.0f, 10.0f, 0.0f));
-		}
-		else
-		{
-			this->gameObjectPtr->getSceneNode()->translate(Ogre::Vector3(0.0f, 10.0f, 0.0f));
-		}*/
-
 		// Reorder again, since silly lua messes up with keys
 		
 		this->previousPosition = this->gameObjectPtr->getPosition();
 		this->previousDistance = std::numeric_limits<Ogre::Real>::max();
 		this->stuckTime = 0.0f;
 
+		if (nullptr == this->pPath)
+		{
+			this->pPath = new Path();
+		}
+
 		this->pPath->clear();
-		
+	
 		for (size_t i = 0; i < this->waypoints.size(); i++)
 		{
+			if (nullptr == this->waypoints[i])
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Error, cannot use waypoints, because there are no check point ids set for game object: " + this->gameObjectPtr->getName());
+				return false;
+			}
+
 			GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->waypoints[i]->getULong());
 			if (nullptr != waypointGameObjectPtr)
 			{
@@ -240,53 +282,55 @@ namespace NOWA
 			}
 		}
 
+		this->addRandomVarianceToWaypoints();
 
-#if 0
-		// Last waypoint is the first one
-		GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->waypoints[0]->getULong());
-		if (nullptr != waypointGameObjectPtr)
+		if (this->overtakingMotorForce->getReal() > 0.0f)
 		{
-			auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
-			if (nullptr != nodeCompPtr)
+			const auto& gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(PurePursuitComponent::getStaticClassName());
+			for (const auto& gameObjectPtr : gameObjects)
 			{
-				this->waypointPositions.emplace_back(nodeCompPtr->getPosition());
+				const auto& otherPurePursuitComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PurePursuitComponent>());
+				if (gameObjectPtr->getId() != this->gameObjectPtr->getId())
+				{
+					this->otherPurePursuits.emplace_back(otherPurePursuitComponent.get());
+				}
 			}
 		}
-#endif
+
+		// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
+		this->setObstacleCategory(this->obstacleCategory->getString());
+
+		const auto& obstacleGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategoryId(this->categoriesId);
+		for (const auto& gameObjectPtr : obstacleGameObjects)
+		{
+			this->obstacles.emplace_back(gameObjectPtr.get());
+		}
 
 		this->pPath->setRepeat(this->repeat->getBool());
 
-		this->highlightWayPoint();
+		this->highlightWaypoint("RedNoLightingBackground");
 		
 		return true;
 	}
 
 	bool PurePursuitComponent::disconnect(void)
 	{
-		this->pPath->clear();
+		if (nullptr != this->pPath)
+		{
+			this->pPath->clear();
+		}
 		this->firstTimeSet = true;
 		this->motorForce = 0.0f;
 		this->steerAmount = 0.0f;
 		this->pitchAmount = 0.0f;
+		this->otherPurePursuits.clear();
+		this->obstacles.clear();
 		return true;
 	}
 
 	bool PurePursuitComponent::onCloned(void)
 	{
-		// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
-		for (size_t i = 0; i < this->waypoints.size(); i++)
-		{
-			GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->waypoints[i]->getULong());
-			if (nullptr != waypointGameObjectPtr)
-			{
-				this->waypoints[i]->setValue(waypointGameObjectPtr->getId());
-			}
-			else
-			{
-				this->waypoints[i]->setValue(static_cast<unsigned long>(0));
-			}
-			// Since connect is called during cloning process, it does not make sense to process furher here, but only when simulation started!
-		}
+		// Not necessary as all components will share the waypoint ids!
 		return true;
 	}
 
@@ -319,10 +363,9 @@ namespace NOWA
 
 				if (currentWaypoint.first)
 				{
-					unsigned int index = this->pPath->getCurrentWaypointIndex();
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] currentWaypoint index: " + Ogre::StringConverter::toString(index));
+					// unsigned int index = this->pPath->getCurrentWaypointIndex();
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] currentWaypoint index: " + Ogre::StringConverter::toString(index));
 			
-
 					Ogre::Vector3 agentOriginPos = this->gameObjectPtr->getPosition() - this->gameObjectPtr->getBottomOffset();
 					Ogre::Vector3 agentOriginPosXZ = agentOriginPos * Ogre::Vector3(1.0f, 0.0f, 1.0f);
 					Ogre::Vector3 currentWaypointXZ = currentWaypoint.second * Ogre::Vector3(1.0f, 0.0f, 1.0f);
@@ -338,7 +381,7 @@ namespace NOWA
 							if (distSqXZ <= this->lookaheadDistance->getReal() * this->lookaheadDistance->getReal())
 							{
 								this->pPath->setNextWayPoint();
-								this->highlightWayPoint();
+								this->highlightWaypoint("RedNoLightingBackground");
 								// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] setNextWayPoint");
 							}
 						}
@@ -347,7 +390,7 @@ namespace NOWA
 							if (distSqXZ <= this->lookaheadDistance->getReal() * this->lookaheadDistance->getReal() && Ogre::Math::Abs(agentOriginPosY - currentWaypointY) < this->gameObjectPtr->getSize().y)
 							{
 								this->pPath->setNextWayPoint();
-								this->highlightWayPoint();
+								this->highlightWaypoint("RedNoLightingBackground");
 								// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] setNextWayPoint");
 							}
 						}
@@ -359,7 +402,7 @@ namespace NOWA
 							// Goalradius should be small when not in fly mode and the y pos comparison is more eased, so that the waypoint goal can be reached
 							// as nearest as possible
 							this->pPath->setNextWayPoint();
-							this->highlightWayPoint();
+							this->highlightWaypoint("RedNoLightingBackground");
 							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] setNextWayPoint");
 						}
 					}
@@ -405,8 +448,22 @@ namespace NOWA
 
 						this->previousPosition = currentPosition;
 
-						// const Ogre::Vector3& lookaheadPoint = this->findLookaheadPoint(currentPosition);
-						const Ogre::Vector3& lookaheadPoint = this->currentWaypoint.second;
+						Ogre::Vector3 lookaheadPoint = this->currentWaypoint.second;
+
+						// Detect and avoid obstacles
+						if (this->detectObstacle(5.0f))
+						{
+							this->adjustPathAroundObstacle(lookaheadPoint);
+						}
+
+						this->pitchAmount = this->calculatePitchAngle(lookaheadPoint);
+
+						this->motorForce = this->calculateMotorForce();
+
+						this->handleGameObjectsToClose();
+
+						this->motorForce = NOWA::MathHelper::getInstance()->lowPassFilter(this->motorForce, this->lastMotorForce, 0.025f);
+						this->lastMotorForce = this->motorForce;
 
 						this->steerAmount = this->calculateSteeringAngle(lookaheadPoint);
 						this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
@@ -421,10 +478,7 @@ namespace NOWA
 						}
 
 						this->previousDistance = currentDistance;
-
-						this->pitchAmount = this->calculatePitchAngle(lookaheadPoint);
-
-						this->motorForce = this->calculateMotorForce();
+						
 					}
 					else
 					{
@@ -434,20 +488,6 @@ namespace NOWA
 				}
 			}
 	
-			/*
-			if (this->waypointPositions[this->currentWaypoint].distance(this->gameObjectPtr->getPosition()) < this->lookaheadDistance->getReal())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Reached waypoint: " + Ogre::StringConverter::toString(this->currentWaypoint) + " for game object : " + this->gameObjectPtr->getName());
-				this->currentWaypoint++;
-			}
-
-			// Check if the car has reached the last waypoint
-			if (this->currentWaypoint == this->waypointPositions.size() - 1 && this->waypointPositions.back().distance(this->gameObjectPtr->getPosition()) < this->lookaheadDistance->getReal())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Reached the goal! For game object: " + this->gameObjectPtr->getName());
-			}
-			*/
-
 			// Handle unreachable waypoints
 #if 0
 			if (this->currentWaypoint > 0 && this->waypointPositions.back().distance(this->gameObjectPtr->getPosition()) < this->lookaheadDistance->getReal() / 2.0f)
@@ -488,6 +528,14 @@ namespace NOWA
 		{
 			this->setMaxMotorForce(attribute->getReal());
 		}
+		else if (PurePursuitComponent::AttrMotorForceVariance() == attribute->getName())
+		{
+			this->setMotorForceVariance(attribute->getReal());
+		}
+		else if (PurePursuitComponent::AttrOvertakingMotorForce() == attribute->getName())
+		{
+			this->setOvertakingMotorForce(attribute->getReal());
+		}
 		else if (PurePursuitComponent::AttrMinMaxSteerAngle() == attribute->getName())
 		{
 			this->setMinMaxSteerAngle(attribute->getVector2());
@@ -496,7 +544,18 @@ namespace NOWA
 		{
 			this->setCheckWaypointY(attribute->getBool());
 		}
-		
+		else if (PurePursuitComponent::AttrWaypointVariance() == attribute->getName())
+		{
+			this->setWaypointVariance(attribute->getReal());
+		}
+		else if (PurePursuitComponent::AttrVarianceIndividual() == attribute->getName())
+		{
+			this->setVarianceIndividual(attribute->getBool());
+		}
+		else if (PurePursuitComponent::AttrObstacleCategory() == attribute->getName())
+		{
+			this->setObstacleCategory(attribute->getString());
+		}
 		else
 		{
 			for (size_t i = 0; i < this->waypoints.size(); i++)
@@ -566,6 +625,18 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "MotorForceVariance"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->motorForceVariance->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OvertakingMotorForce"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->overtakingMotorForce->getReal())));
+		propertiesXML->append_node(propertyXML);
+		
+		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MinMaxSteerAngle"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->minMaxSteerAngle->getVector2())));
@@ -575,6 +646,24 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CheckWaypointY"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->checkWaypointY->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "WaypointVariance"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->waypointVariance->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "VarianceIndividual"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->varianceIndividual->getBool())));
+		propertiesXML->append_node(propertyXML);
+		
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ObstacleCategory"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->obstacleCategory->getString())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -747,6 +836,31 @@ namespace NOWA
 		return this->maxMotorForce->getReal();
 	}
 
+	void PurePursuitComponent::setMotorForceVariance(Ogre::Real motorForceVariance)
+	{
+		this->motorForceVariance->setValue(motorForceVariance);
+	}
+
+	Ogre::Real PurePursuitComponent::getMotorForceVariance(void) const
+	{
+		return this->motorForceVariance->getReal();
+	}
+
+	void PurePursuitComponent::setOvertakingMotorForce(Ogre::Real overtakingMotorForce)
+	{
+		if (overtakingMotorForce < 0.0f)
+		{
+			overtakingMotorForce = 5000.0f;
+		}
+
+		this->overtakingMotorForce->setValue(overtakingMotorForce);
+	}
+
+	Ogre::Real PurePursuitComponent::getOvertakingMotorForce(void) const
+	{
+		return this->overtakingMotorForce->getReal();
+	}
+
 	void PurePursuitComponent::setMinMaxSteerAngle(const Ogre::Vector2& minMaxSteerAngle)
 	{
 		Ogre::Vector2 tempMinMaxSteerAngle = minMaxSteerAngle;
@@ -778,26 +892,46 @@ namespace NOWA
 		return this->checkWaypointY->getBool();
 	}
 
+	void PurePursuitComponent::setWaypointVariance(Ogre::Real waypointVariance)
+	{
+		this->waypointVariance->setValue(waypointVariance);
+	}
+
+	Ogre::Real PurePursuitComponent::getWaypointVariance(void) const
+	{
+		return this->waypointVariance->getReal();
+	}
+
+	void PurePursuitComponent::setVarianceIndividual(bool varianceIndividual)
+	{
+		this->varianceIndividual->setValue(varianceIndividual);
+	}
+
+	bool PurePursuitComponent::getVarianceIndividual(void) const
+	{
+		return this->varianceIndividual->getBool();
+	}
+
+	void PurePursuitComponent::setObstacleCategory(const Ogre::String& obstacleCategory)
+	{
+		this->obstacleCategory->setValue(obstacleCategory);
+		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(obstacleCategory);
+	}
+
+	Ogre::String PurePursuitComponent::getObstacleCategory(void) const
+	{
+		return this->obstacleCategory->getString();
+	}
+
 	Ogre::Real PurePursuitComponent::calculateSteeringAngle(const Ogre::Vector3& lookaheadPoint)
 	{
 		Ogre::Vector3 currentPos = this->gameObjectPtr->getPosition();
 
 		Ogre::Vector3 direction = (lookaheadPoint - currentPos).normalisedCopy();
 
-
-#if 0
-		// Ogre::Real angleToTarget = Ogre::Math::ATan2(direction.z, direction.x).valueDegrees();
-
-		Ogre::Vector3 localDirection = this->gameObjectPtr->getOrientation().Inverse() * direction;
-		Ogre::Real angleToTarget = Ogre::Math::ATan2(localDirection.z, localDirection.x).valueDegrees();
-
-		// Ogre::Real heading = this->gameObjectPtr->getOrientation().getYaw().valueDegrees();
-		// Ogre::Real steeringAngle = angleToTarget - heading;
-#else
 		// Transform direction to local space
 		Ogre::Quaternion orientation = this->gameObjectPtr->getOrientation().Inverse() * MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), direction, this->gameObjectPtr->getDefaultDirection());
 		Ogre::Real angleToTarget = orientation.getYaw().valueDegrees();
-#endif
 
 		Ogre::Real steeringAngle = angleToTarget * 0.5f;
 
@@ -806,6 +940,7 @@ namespace NOWA
 		if (true == this->firstTimeSet)
 		{
 			this->lastSteerAngle = steeringAngle;
+			this->lastMotorForce = this->calculateMotorForce();
 			this->firstTimeSet = false;
 		}
 
@@ -820,37 +955,12 @@ namespace NOWA
 	{
 		Ogre::Vector3 position = this->gameObjectPtr->getPosition();
 		Ogre::Vector3 direction = (lookaheadPoint - position).normalisedCopy();
-		// Ogre::Real pitchAngle = Ogre::Math::ATan2(direction.y, Ogre::Vector3(direction.x, 0, direction.z).length()).valueDegrees();
 
 		// Transform direction to local space
 		Ogre::Quaternion orientation = this->gameObjectPtr->getOrientation().Inverse() * MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), direction, this->gameObjectPtr->getDefaultDirection());
 		Ogre::Real pitchAngle = orientation.getPitch().valueDegrees();
 		return pitchAngle;
 	}
-
-#if 0
-	Ogre::Real PurePursuitComponent::calculateCurvature(const Ogre::Vector3& position)
-	{
-		if (this->pPath->getWayPoints().size() < 3)
-		{
-			return 0.0f;
-		}
-
-		Ogre::Vector3 p1 = position;
-		Ogre::Vector3 p2 = this->waypointPositions[0];
-		Ogre::Vector3 p3 = this->waypointPositions[1];
-
-		Ogre::Real a = p1.distance(p2);
-		Ogre::Real b = p2.distance(p3);
-		Ogre::Real c = p3.distance(p1);
-
-		Ogre::Real s = (a + b + c) / 2.0;
-		Ogre::Real area = sqrt(s * (s - a) * (s - b) * (s - c));
-
-		Ogre::Real curvature = (4.0 * area) / (a * b * c);
-		return curvature;
-	}
-#endif
 
 	Ogre::Real PurePursuitComponent::calculateCurvature(void)
 	{
@@ -864,7 +974,8 @@ namespace NOWA
 		points.push_back(this->gameObjectPtr->getPosition());
 		for (size_t i = 0; i < std::min<size_t>(3, this->pPath->getWayPoints().size()); ++i)
 		{
-			points.push_back(this->pPath->getWayPoints()[i]);
+			auto wp = this->pPath->getWayPoints()[i];
+			points.push_back(wp.first);
 		}
 
 		// Fit a curve to the points (simplified method)
@@ -886,7 +997,127 @@ namespace NOWA
 		return totalCurvature / (points.size() - 2);
 	}
 
-	void PurePursuitComponent::highlightWayPoint(void)
+	bool PurePursuitComponent::detectObstacle(Ogre::Real detectionRange)
+	{
+		Ogre::Vector3 curPos = this->gameObjectPtr->getPosition();
+		Quaternion curOrientation = this->gameObjectPtr->getOrientation();
+		Ogre::Vector3 forwardDir = curOrientation * Vector3::UNIT_X;
+		Ogre::Vector3 detectionPoint = curPos + forwardDir * detectionRange;
+
+		for (const auto& obstacle : obstacles)
+		{
+			Ogre::v1::Entity* entity = obstacle->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				const auto& boundingBox = entity->getLocalAabb();
+				if (boundingBox.contains(detectionPoint))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				Ogre::Item* item = obstacle->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					const auto& boundingBox = item->getLocalAabb();
+					if (boundingBox.contains(detectionPoint))
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	void PurePursuitComponent::adjustPathAroundObstacle(Ogre::Vector3& lookaheadPoint)
+	{
+		Ogre::Quaternion curOrientation = this->gameObjectPtr->getOrientation();
+		Ogre::Vector3 forwardDir = curOrientation * Vector3::UNIT_X;
+		Ogre::Vector3 rightDir = curOrientation * Vector3::UNIT_Z;
+
+		// Calculate new lookahead point to the right of the obstacle
+		lookaheadPoint += rightDir * 5.0f;
+	}
+
+	void PurePursuitComponent::addRandomVarianceToWaypoints(void)
+	{
+		if (0.0f == this->waypointVariance->getReal())
+		{
+			return;
+		}
+
+		if (false == this->varianceIndividual->getBool())
+		{
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_real_distribution<Ogre::Real> dis(-this->waypointVariance->getReal(), this->waypointVariance->getReal());
+
+			for (auto& waypoint : this->pPath->getWayPoints())
+			{
+				waypoint.first.x += dis(gen);
+				waypoint.first.z += dis(gen);
+			}
+		}
+		else
+		{
+			for (auto& waypoint : this->pPath->getWayPoints())
+			{
+				std::random_device rd;
+				std::mt19937 gen(rd());
+				std::uniform_real_distribution<Ogre::Real> dis(-this->waypointVariance->getReal(), this->waypointVariance->getReal());
+
+				waypoint.first.x += dis(gen);
+				waypoint.first.z += dis(gen);
+			}
+		}
+	}
+
+	void PurePursuitComponent::handleGameObjectsToClose(void)
+	{
+		if (0.0f == this->overtakingMotorForce->getReal())
+		{
+			return;
+		}
+
+		for (size_t i = 0; i < this->otherPurePursuits.size(); i++)
+		{
+			// Avoidance or overtaking logic
+			
+			Ogre::Vector3 otherPos = this->otherPurePursuits[i]->getOwner()->getPosition();
+			Ogre::Vector3 curPos = this->gameObjectPtr->getPosition();
+			Ogre::Real distanceToOtherGameObject = curPos.distance(otherPos);
+
+			if (distanceToOtherGameObject < this->lookaheadDistance->getReal() * 2.0f)
+			{ 
+				// If the cars are too close
+				// Adjust speed to avoid collision
+				if (curPos.squaredDistance(otherPos) < 1.0f)
+				{
+					this->motorForce -= 5000.0f;
+				}
+				else
+				{
+					this->motorForce += 5000.0f;
+					if (this->motorForce > this->maxMotorForce->getReal() + 5000.0f)
+					{
+						this->motorForce = this->maxMotorForce->getReal() + 5000.0f;
+					}
+				}
+			}
+
+			// Ramming behavior
+			Ogre::Vector3 toOtherGameObjectDirection = otherPos - curPos;
+			if (toOtherGameObjectDirection.length() < this->lookaheadDistance->getReal())
+			{
+				Ogre::Real ramAngle = 0.3f * (rand() % 2 ? 1 : -1); // Randomly decide to ram left or right
+				this->steerAmount += ramAngle;
+			}
+		}
+	}
+
+	void PurePursuitComponent::highlightWaypoint(const Ogre::String& datablockName)
 	{
 		if (false == this->currentWaypoint.first)
 		{
@@ -906,14 +1137,19 @@ namespace NOWA
 				auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
 				if (nullptr != nodeCompPtr)
 				{
+					auto datablockAttribute = waypointGameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0");
+					if (nullptr != datablockAttribute)
+					{
+						this->oldDatablockName = datablockAttribute->getString();
+					}
 					Ogre::Vector3 pos = nodeCompPtr->getOwner()->getPosition();
 					if (true == MathHelper::getInstance()->vector3Equals(this->currentWaypoint.second, pos))
 					{
-						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock("RedNoLightingBackground");
+						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock("datablockName");
 					}
 					else
 					{
-						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock("WhiteNoLightingBackground");
+						nodeCompPtr->getOwner()->getMovableObjectUnsafe<Ogre::v1::Entity>()->setDatablock(this->oldDatablockName);
 					}
 				}
 			}
@@ -930,7 +1166,11 @@ namespace NOWA
 		}
 		else
 		{
-			return this->maxMotorForce->getReal(); // Full force on straight paths
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_real_distribution<Ogre::Real> dis(-this->motorForceVariance->getReal(), this->motorForceVariance->getReal());
+
+			return this->maxMotorForce->getReal() + dis(gen); // Full force on straight paths
 		}
 	}
 
@@ -995,38 +1235,6 @@ namespace NOWA
 		return Ogre::Vector3::ZERO;
 	}
 
-	Ogre::Vector3 PurePursuitComponent::findLookaheadPoint(const Ogre::Vector3& position)
-	{
-#if 1
-		// Ki Path einbauen?
-		// Hier noch rein mit currentWaypoint, sodass nicht auf alte gezeigt wird!
-		for (const auto& point : this->pPath->getWayPoints())
-		{
-			Ogre::Real distance = point.distance(position);
-			if (distance >= this->lookaheadDistance->getReal())
-			{
-				return point;
-			}
-		}
-		// If no point is far enough, return the last waypoint
-		return this->pPath->getWayPoints().back();
-#else
-		for (const auto& point : this->waypointPositions)
-		{
-			Ogre::Vector2 point2D(point.x, point.z);
-			Ogre::Vector2 position2D(position.x, position.z);
-			Ogre::Real distance = point2D.distance(position2D);
-			if (distance >= this->lookaheadDistance->getReal())
-			{
-				return point;
-			}
-		}
-		// If no point is far enough, return the last waypoint
-		Ogre::Vector3 lastWaypoint(this->waypointPositions.back().x, 0.0f, this->waypointPositions.back().z);
-		return lastWaypoint;
-#endif
-	}
-
 	Ogre::Real PurePursuitComponent::normalizeAngle(Ogre::Real angle)
 	{
 		while (angle > 90.0f)
@@ -1084,10 +1292,21 @@ namespace NOWA
 			.def("getCurvatureThreshold", &PurePursuitComponent::getCurvatureThreshold)
 			.def("setMaxMotorForce", &PurePursuitComponent::setMaxMotorForce)
 			.def("getMaxMotorForce", &PurePursuitComponent::getMaxMotorForce)
+			.def("setMotorForceVariance", &PurePursuitComponent::setMotorForceVariance)
+			.def("getMotorForceVariance", &PurePursuitComponent::getMotorForceVariance)
+			.def("setOvertakingMotorForce", &PurePursuitComponent::setOvertakingMotorForce)
+			.def("getOvertakingMotorForce", &PurePursuitComponent::getOvertakingMotorForce)
 			.def("setMinMaxSteerAngle", &PurePursuitComponent::setMinMaxSteerAngle)
 			.def("getMinMaxSteerAngle", &PurePursuitComponent::getMinMaxSteerAngle)
 			.def("setCheckWaypointY", &PurePursuitComponent::setCheckWaypointY)
 			.def("getCheckWaypointY", &PurePursuitComponent::getCheckWaypointY)
+			.def("setWaypointVariance", &PurePursuitComponent::setWaypointVariance)
+			.def("getWaypointVariance", &PurePursuitComponent::getWaypointVariance)
+			.def("setVarianceIndividual", &PurePursuitComponent::setVarianceIndividual)
+			.def("getVarianceIndividual", &PurePursuitComponent::getVarianceIndividual)
+			.def("setObstacleCategory", &PurePursuitComponent::setObstacleCategory)
+			.def("getObstacleCategory", &PurePursuitComponent::getObstacleCategory)
+
 
 			// .def("calculateSteeringAngle", &PurePursuitComponent::calculateSteeringAngle)
 			// .def("calculatePitchAngle", &PurePursuitComponent::calculatePitchAngle)
@@ -1100,8 +1319,7 @@ namespace NOWA
 			.def("prependWaypointId", &PurePursuitComponent::prependWaypointStrId)
 			.def("reorderWaypoints", &PurePursuitComponent::reorderWaypoints)
 			.def("getCurrentWaypointIndex", &PurePursuitComponent::getCurrentWaypointIndex)
-			.def("getCurrentWaypoint", &PurePursuitComponent::getCurrentWaypoint)
-				
+			.def("getCurrentWaypoint", &PurePursuitComponent::getCurrentWaypoint)	
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "class inherits GameObjectComponent", PurePursuitComponent::getStaticInfoText());
@@ -1119,9 +1337,16 @@ namespace NOWA
 		
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setCurvatureThreshold(number curvatureThreshold)", "Sets the threashold at which the motorforce shall be adapted. Default value is 0.1.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getCurvatureThreshold()", "Gets the threashold at which the motorforce shall be adapted. Default value is 0.1.");
-		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setMaxMotorForce(number maxMotorForce)", "Sets the Force applied by the motor. Default value is 5000N");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setMaxMotorForce(number maxMotorForce)", "Sets the Force applied by the motor. Default value is 5000N.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getMaxMotorForce()", "Gets the Force applied by the motor. Default value is 5000N.");
-		
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setMotorForceVariance(number motorForceVariance)", "Sets some random motor force variance (-motorForceVariance, +motorForceVariance) which is added to the max motor force.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getMotorForceVariance()", "Gets the motor force variance (-motorForceVariance, +motorForceVariance) which is added to the max motor force.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setOvertakingMotorForce(number overtakingMotorForce)", "Sets the force if a game object comes to close to another one and shall overtaking it. "
+														  "If set to 0, this behavior is not added. E.g. the player itsself shall not have this behavior.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number sgetOvertakingMotorForce()", "Gets the force if a game object comes to close to another one and shall overtaking it. "
+														  "If 0, this behavior is not added. E.g. the player itsself shall not have this behavior.");
+
+
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setMinMaxSteerAngle(Vector2 minMaxSteerAngle)", "Sets the minimum and maximum steering angle in degree. Valid values are from -80 to 80. Default is -45 to 45.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "Vector2 getMinMaxSteerAngle()", "Gets the minimum and maximum steering angle in degree. Valid values are from -80 to 80. Default is -45 to 45.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setCheckWaypointY(bool checkWaypointY)", "Sets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, "
@@ -1132,7 +1357,15 @@ namespace NOWA
 														  " if e.g. using a looping, so that the car targets against the waypoint "
 														  ", but may be bad, if e.g. a car jumps via a ramp and the waypoint is below, hence he did not hit the waypoint and will travel back. "
 														  " This flag can be switched on the fly, e.g. reaching a special waypoint using the getCurrentWaypointIndex function.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setWaypointVariance(number waypointVariance)", "Sets some random waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getWaypointVariance()", "Gets the waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setVarianceIndividual(bool varianceIndividual)", "Sets whether the variance from attribute shall take place for each waypoint, or for all waypoints the same random variance.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "bool getVarianceIndividual()", "Gets whether the variance from attribute is taking place for each waypoint, or for all waypoints the same random variance.");
 
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setObstacleCategory(string obstacleCategory)", "Sets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. "
+														  "If empty, not obstacle detection takes place.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "string getObstacleCategory()", "Gets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. "
+														  "If empty, not obstacle detection takes place.");
 
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getMotorForce()", "Gets the calculated motor force, which can be applied.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getSteerAmount()", "Gets the calculated steer angle amount in degrees, which can be applied.");
@@ -1169,7 +1402,13 @@ namespace NOWA
 
 	bool PurePursuitComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// No constraints so far, just add
+		// Can only be added once
+		auto purePursuitCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PurePursuitComponent>());
+		if (nullptr != purePursuitCompPtr)
+		{
+			return false;
+		}
+
 		return true;
 	}
 

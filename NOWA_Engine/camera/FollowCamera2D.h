@@ -10,7 +10,7 @@ namespace NOWA
 	class EXPORTED FollowCamera2D : public BaseCamera
 	{
 	public:
-		FollowCamera2D(Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
+		FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue = 0.0f);
 
 		virtual ~FollowCamera2D();
 
@@ -24,7 +24,7 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void) 
 		{
-			return "FOLLOW_CAMERA";
+			return "FOLLOW_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)

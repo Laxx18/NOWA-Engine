@@ -532,6 +532,15 @@ namespace NOWA
 		Ogre::Vector3 calculateGridValue(Ogre::Real step, const Ogre::Vector3& sourcePosition);
 
 		/**
+		* @brief		Calculates the grid value for the given movable object's size and also takes the movable object orientation into account.
+		* @param[in]	step			The gridFactor to multiply the movable object's size with.
+		* @param[in]	sourcePosition	The source position vector
+		* @return		gridValue		The calculated grid value
+		* @note			A object will be only moved if it passes the critical distance.
+		*/
+		Ogre::Vector3 calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& sourcePosition, Ogre::MovableObject* movableObject);
+		
+		/**
 		 * @brief		Gets the bottom center point of the given movable object mesh
 		 * @param[in]	sceneNode	The scene node (for taking scale into account)
 		 * @param[in]	movableObject	The movable object to get the bounding box for calcuation

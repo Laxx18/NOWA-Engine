@@ -32,11 +32,24 @@ namespace NOWA
 			if (false == this->isFinished())
 			{
 				// assert ( (this->wayPoints.size() > 0) && "[Path::getCurrentWaypoint] Path list is empty");
-				return std::pair<bool, Ogre::Vector3>(this->valid, *this->currentWaypointItr);
+				return std::pair<bool, Ogre::Vector3>(this->valid, this->currentWaypointItr->first);
 			}
 			else
 			{
 				return std::pair<bool, Ogre::Vector3>(false, Ogre::Vector3());
+			}
+		}
+
+		std::pair<bool, std::pair<Ogre::Vector3, Ogre::Quaternion>> Path::getCurrentWaypoint2(void)
+		{
+			if (false == this->isFinished())
+			{
+				// assert ( (this->wayPoints.size() > 0) && "[Path::getCurrentWaypoint] Path list is empty");
+				return std::pair<bool, std::pair<Ogre::Vector3, Ogre::Quaternion>>(this->valid, *this->currentWaypointItr);
+			}
+			else
+			{
+				return std::pair<bool, std::pair<Ogre::Vector3, Ogre::Quaternion>>(false, std::make_pair(Ogre::Vector3(), Ogre::Quaternion()));
 			}
 		}
 
@@ -100,6 +113,8 @@ namespace NOWA
 			// example: 2 * PI = 360 degree / 6 = 60 spacing
 			Ogre::Real spacing = Ogre::Math::TWO_PI / (Ogre::Real)numWaypoints;
 
+			std::vector<Ogre::Vector3> tempWaypoint(numWaypoints);
+
 			for (unsigned int i = 0; i < numWaypoints; ++i)
 			{
 				Ogre::Real radialDist = Ogre::Math::RangeRandom(smaller * 0.2f, smaller);
@@ -115,12 +130,13 @@ namespace NOWA
 				newPos.y = 0.0f;
 				newPos.z += midZ;
 
-				this->wayPoints.push_back(Ogre::Vector3(newPos));
+				this->wayPoints.push_back(std::make_pair(Ogre::Vector3(newPos), Ogre::Quaternion::IDENTITY));
+				tempWaypoint[i] = Ogre::Vector3(newPos);
 			}
 
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;
-			return this->wayPoints;
+			return tempWaypoint;
 		}
 
 		void Path::setRepeat(bool repeat)
@@ -161,7 +177,7 @@ namespace NOWA
 			}
 		}
 
-		void Path::addWayPoint(const Ogre::Vector3& waypoint)
+		void Path::addWayPoint(const Ogre::Vector3& waypoint, const Ogre::Quaternion& orientation)
 		{
 			if (this->wayPoints.size() > 0)
 			{
@@ -176,39 +192,15 @@ namespace NOWA
 					}
 				}
 			}
-			this->wayPoints.push_back(waypoint);
+			this->wayPoints.push_back(std::make_pair(waypoint, orientation));
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;
 		}
 
-		void Path::setWayPoint(const Ogre::Vector3& waypoint)
+		void Path::setWayPoint(const Ogre::Vector3& waypoint, const Ogre::Quaternion& orientation)
 		{
 			this->wayPoints.clear();
-			this->wayPoints.push_back(waypoint);
-			this->currentWaypointItr = this->wayPoints.begin();
-			this->valid = true;
-			this->round = 0;
-			this->currentDirection = 1;
-		}
-
-		void Path::setNewPath(std::vector<Ogre::Vector3> newPath)
-		{
-			if (newPath.size() > 0)
-			{
-				this->wayPoints = newPath;
-				this->currentWaypointItr = this->wayPoints.begin();
-				this->valid = true;
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] setNewPath not valid");
-				this->valid = false;
-			}
-		}
-
-		void Path::setNewPath(const Path& path)
-		{
-			this->wayPoints = path.getWayPoints();
+			this->wayPoints.push_back(std::make_pair(waypoint, orientation));
 			this->currentWaypointItr = this->wayPoints.begin();
 			this->valid = true;
 			this->round = 0;
@@ -315,7 +307,12 @@ namespace NOWA
 			}
 		}
 
-		std::vector<Ogre::Vector3> Path::getWayPoints(void) const
+		short Path::getRound(void) const
+		{
+			return this->round;
+		}
+
+		std::vector<std::pair<Ogre::Vector3, Ogre::Quaternion>> Path::getWayPoints(void) const
 		{
 			return this->wayPoints;
 		}

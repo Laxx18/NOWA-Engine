@@ -10574,7 +10574,7 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "void setGravity(Vector3 gravity)", "Sets the acting gravity for the physics body. Default value is Vector3(0, -19.8, 0).");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getGravity()", "Gets the acting gravity for the physics body.");
 		AddClassToCollection("PhysicsActiveComponent", "void setGyroscopicTorqueEnabled(bool enable)", "Sets whether to enable gyroscopic precision for torque. See: https://www.youtube.com/watch?v=BCVQFoPO5qQ, https://www.youtube.com/watch?v=UlErvZoU7Q0.");
-		AddClassToCollection("PhysicsActiveComponent", "void setContactSolvingEnabled(bool enable)", "Enables contact solving, so that in a lua script onContactSolving(otherPhysicsComponent) will be called, when two bodies are colliding.");
+		AddClassToCollection("PhysicsActiveComponent", "void setContactSolvingEnabled(bool enable)", "Enables contact solving, so that in a lua script onContactSolving(otherGameObject) will be called, when two bodies are colliding.");
 
 		AddClassToCollection("PhysicsActiveComponent", "void setCollisionDirection(Vector3 collisionOffsetDirection)", "Sets an offset collision direction for the collision hull. "
 			"The collision hull will be rotated according to the given direction. Default is Vector3(0, 0, 0). Note: For convex hull, this cannot be used.");
@@ -10714,6 +10714,7 @@ namespace NOWA
 			.def("setCollidable", &PhysicsActiveKinematicComponent::setCollidable)
 			.def("getCollidable", &PhysicsActiveKinematicComponent::getCollidable)
 			.def("setOmegaVelocityRotateTo", &PhysicsActiveKinematicComponent::setOmegaVelocityRotateTo)
+			.def("setKinematicContactSolvingEnabled", &PhysicsActiveKinematicComponent::setKinematicContactSolvingEnabled)
 		];
 
 		AddClassToCollection("PhysicsActiveKinematicComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveComponent. It is a special kind of physics component. It does not react on forces but just on velocity and collision system.");
@@ -10722,6 +10723,9 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveKinematicComponent", "void setOmegaVelocityRotateTo(Quaternion resultOrientation, Vector3 axes, Ogre::Real strength)", "Sets the omega velocity to rotate the game object to the given result orientation. "
 			"The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). "
 			"The strength at which the rotation should occur.");
+
+		AddClassToCollection("PhysicsActiveComponent", "void setKinematicContactSolvingEnabled(bool enable)", "Enables kinematic contact solving, to react at the moment when another game object collided with this kinematic game object. "
+															 "It can also be used with (setCollidable(false)), so that ghost collision can be detected. E.g. onKinematicContact(otherGameObject).");
 	}
 
 	void bindPhysicsArtifactComponent(lua_State* lua)

@@ -7,8 +7,8 @@
 
 namespace NOWA
 {
-	ZoomCamera::ZoomCamera(const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue)
-		: BaseCamera(0, 0, smoothValue),
+	ZoomCamera::ZoomCamera(unsigned int id, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue)
+		: BaseCamera(id, 0, 0, smoothValue),
 		sceneManager(nullptr),
 		smoothValue(smoothValue),
 		categoryId(static_cast<unsigned int>(0)),

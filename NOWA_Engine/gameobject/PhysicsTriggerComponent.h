@@ -127,7 +127,7 @@ namespace NOWA
 				   "Requirements: A kind of physics component.";
 		}
 
-		virtual void reCreateCollision(void) override;
+		virtual void reCreateCollision(bool overwrite = false) override;
 
 		void setCategories(const Ogre::String& categories);
 

@@ -384,7 +384,7 @@ namespace NOWA
 		return true;
 	}
 
-	void PhysicsBuoyancyComponent::reCreateCollision(void)
+	void PhysicsBuoyancyComponent::reCreateCollision(bool overwrite)
 	{
 		if (nullptr != this->physicsBody)
 		{

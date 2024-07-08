@@ -703,57 +703,27 @@ namespace NOWA
 		return std::move(value);
 	}
 
-#if 0
-	// Cool effect, like pulling something
-	Ogre::Vector3 MathHelper::calculateGridValue(Ogre::MovableObject* movableObject, const Ogre::Vector3& objectScale, const Ogre::Quaternion& objectOrientation, Ogre::Real step, Ogre::Vector3 value)
+	Ogre::Vector3 MathHelper::calculateGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& sourcePosition, Ogre::MovableObject* movableObject)
 	{
-		Ogre::Vector3 resultDirection = (movableObject->getParentSceneNode()->getPosition() - value).normalisedCopy();
+		/*
+		The moveEntity method handles transforming the point from world space to local space and back, considering the entity's rotation.
+		The grid sizes for the x and z axes are used to align the entity to the grid correctly, even when it has different dimensions along these axes.
+		The entity's bounding box size is used to determine the grid sizes for snapping.
+		*/
 
-		//calculate the gridvalue
-		Ogre::Vector3 size = (movableObject->getLocalAabb().getSize() * objectScale);
-		if (0.0f == size.x)
-			size.x = 0.1f;
-		if (0.0f == size.y)
-			size.y = 0.1f;
-		if (0.0f == size.z)
-			size.z = 0.1f;
-		Ogre::Vector3 halfSize = size * 0.5f;
-		// Ogre::Vector3 gridValue = (objectOrientation * halfSize);
-#if 0
-		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
-		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * objectScale;
-		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * objectScale;
-		// Do not use padding, as all objects will be a bit above the ground!
-		// Ogre::Vector3 padding = (maximumScaled - minimumScaled) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 tempSize = ((maximumScaled - minimumScaled) /*- padding * 2.0f*/);
-		Ogre::Vector3 centerOffset = minimumScaled + /*padding +*/ (tempSize / 2.0f);
-		Ogre::Real lowestObjectY = minimumScaled.y /*- (padding.y * 2.0f)*/;
-		centerOffset.y = 0.0f - lowestObjectY;
-#endif
-		// this->gizmo->getPosition() + (gizmoRotationDelta * offset);
-		/*Ogre::Vector3 gridValue = (movableObject->getParentNode()->getPosition() - centerOffset) + (objectOrientation * halfSize);
-		gridValue = gridValue - value;*/
+		// Transform the world point to the entity's local space
+		Ogre::Vector3 localPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated().Inverse() * (sourcePosition - movableObject->getParentNode()->_getDerivedPositionUpdated());
 
-		// Ogre::Vector3 gridValue = Ogre::Vector3(0.866f, 1.0f, 0.5f); // 30 degree
-		/*Ogre::Vector3 gridValue;
-		gridValue.x = halfSize.x * Ogre::Math::Cos(objectOrientation.getYaw().valueRadians());
-		gridValue.y = halfSize.y;
-		gridValue.z = halfSize.z * Ogre::Math::Sin(objectOrientation.getYaw().valueRadians());*/
+		// Round the local point to the nearest grid size, considering different sizes for x and z axes
+		localPoint.x = round(localPoint.x / gridFactor.x) * gridFactor.x;
+		localPoint.y = round(localPoint.y / gridFactor.y) * gridFactor.y;
+		localPoint.z = round(localPoint.z / gridFactor.z) * gridFactor.z;
 
-		// Ogre::Quaternion orientation = MathHelper::getInstance()->faceDirection(movableObject->getParentSceneNode(), resultDirection);
-		Ogre::Vector3 translateVector = value + (objectOrientation * (resultDirection * size));
+		// Transform back to world space
+		Ogre::Vector3 newPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated() * localPoint + movableObject->getParentNode()->_getDerivedPositionUpdated();
 
-		/*translateVector.x = ((round(translateVector.x / size.x * step)) * size.x * step);
-		translateVector.y = ((round(translateVector.y / size.y * step)) * size.y * step);
-		translateVector.z = ((round(translateVector.z / size.z * step)) * size.z * step);*/
-
-		// Remove orientation
-		// translateVector = objectOrientation.Inverse() * translateVector;
-
-		return std::move(translateVector);
+		return newPoint;
 	}
-
-#endif
 
 	int MathHelper::wrappedModulo(int n, int cap)
 	{

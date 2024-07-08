@@ -381,7 +381,7 @@ namespace NOWA
 
 		void updateCallback(OgreNewt::Body* body);
 
-		virtual void reCreateCollision(void) override;
+		virtual void reCreateCollision(bool overwrite = false) override;
 
 		// Query scene what is ahead of an object
 		ContactData getContactAhead(int index, const Ogre::Vector3& offset = Ogre::Vector3(0.0f, 0.4f, 0.0f), Ogre::Real length = 1.0f, 
@@ -435,7 +435,7 @@ namespace NOWA
 		void detachAndDestroyForceObserver(const Ogre::String& name);
 
 		/**
-		* @brief		Enables contact solving, so that in a lua script onContactSolving(PhysicsComponent otherPhysicsComponent) will be called, when two bodies are colliding.
+		* @brief		Enables contact solving, so that in a lua script onContactSolving(otherGameObject, contact) will be called, when two bodies are colliding.
 		* @param[in]	enable	If set to true, contact solving callback will be enabled.
 		*/
 		void setContactSolvingEnabled(bool enable);

@@ -66,7 +66,7 @@ Scene1_QuatBike_Computer_0["onSteeringAngleChanged"] = function(vehicleDrivingMa
 --            steerAmount = 45;
 --    end
     
-    log("steerAmount: " .. steerAmount);
+    --log("steerAmount: " .. steerAmount);
     --log("pitchAmount: " .. pitchAmount);
     
 
@@ -74,7 +74,7 @@ Scene1_QuatBike_Computer_0["onSteeringAngleChanged"] = function(vehicleDrivingMa
 end
 
 Scene1_QuatBike_Computer_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
-    log("motorForce: " .. motorForce);
+    --log("motorForce: " .. motorForce);
     
     vehicleDrivingManipulation:setMotorForce(motorForce);
 --    if InputDeviceModule:isActionDown(NOWA_A_UP) then

@@ -479,13 +479,14 @@ namespace NOWA
 			std::chrono::nanoseconds elapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(startTime - endTime));
 			endTime = startTime;
 
-			lag += elapsedTime;
+			// lag += elapsedTime;
 
 			// Updates inputs
 			InputDeviceCore::getSingletonPtr()->capture(tickCountDt);
 
 			// Game processing is independent of rendering
-			while (lag >= lengthOfFrame && false == this->bShutdown)
+			// while (lag >= lengthOfFrame && false == this->bShutdown)
+			if (false == this->bShutdown)
 			{
 				// update input devices
 				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
@@ -504,7 +505,7 @@ namespace NOWA
 				}
 
 				//finish tick
-				lag -= lengthOfFrame;
+				// lag -= lengthOfFrame;
 
 				// Keeps track of how many ticks have been done this second
 				tickCount++;

@@ -128,7 +128,7 @@ namespace NOWA
 			return false;
 		}
 
-		virtual void reCreateCollision(void) override;
+		virtual void reCreateCollision(bool overwrite = false) override;
 
 		/**
 		 * @see		GameObjectComponent::writeXML

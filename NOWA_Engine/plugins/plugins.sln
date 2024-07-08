@@ -45,6 +45,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransformEaseComponent", "T
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PurePursuitComponent", "PurePursuitComponent\PurePursuitComponent.vcxproj", "{F826AF49-6343-4046-9533-B2B44C8CDC1B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RaceGoalComponent", "RaceGoalComponent\RaceGoalComponent.vcxproj", "{3B04A12F-13EC-48AE-81E9-B17189B5B606}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -135,6 +137,10 @@ Global
 		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Debug|x64.Build.0 = Debug|x64
 		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Release|x64.ActiveCfg = Release|x64
 		{F826AF49-6343-4046-9533-B2B44C8CDC1B}.Release|x64.Build.0 = Release|x64
+		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Debug|x64.ActiveCfg = Debug|x64
+		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Debug|x64.Build.0 = Debug|x64
+		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Release|x64.ActiveCfg = Release|x64
+		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

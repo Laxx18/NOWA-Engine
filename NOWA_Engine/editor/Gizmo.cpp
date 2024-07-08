@@ -61,9 +61,7 @@ namespace NOWA
 		thirdPlaneEntity(nullptr),
 		thirdPlaneNode(nullptr),
 		gizmoState(GIZMO_NONE),
-		constraintAxis(Ogre::Vector3::ZERO),
-		oldGizmoPosition(Ogre::Vector3::ZERO),
-		cumulatedGizmoTranslationDistance(0.0f)
+		constraintAxis(Ogre::Vector3::ZERO)
 	{
 		
 	}
@@ -213,6 +211,8 @@ namespace NOWA
 	{
 		if (true == this->enabled)
 		{
+			this->translationLineNode->setPosition(this->getPosition());
+
 			//update the size of the gizmo depending on the distance from the gizmo to the camera
 			Ogre::Vector3 nodePos = this->sphereNode->_getDerivedPositionUpdated();
 
@@ -326,7 +326,6 @@ namespace NOWA
 
 	void Gizmo::changeToTranslateGizmo(void)
 	{
-		this->cumulatedGizmoTranslationDistance = 0.0f;
 		// Change the look of the gizmo
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
@@ -396,8 +395,6 @@ namespace NOWA
 
 	void Gizmo::changeToScaleGizmo(void)
 	{
-		this->cumulatedGizmoTranslationDistance = 0.0f;
-
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
 			this->sceneManager->destroyEntity(this->arrowEntityX);
@@ -452,8 +449,6 @@ namespace NOWA
 
 	void Gizmo::changeToRotateGizmo(void)
 	{
-		this->cumulatedGizmoTranslationDistance = 0.0f;
-
 		if (this->arrowEntityX != nullptr && this->sceneManager->hasMovableObject(this->arrowEntityX))
 		{
 			this->sceneManager->destroyEntity(this->arrowEntityX);
@@ -790,77 +785,6 @@ namespace NOWA
 		this->rotationCaption = new ObjectTitle("RotationCaption", this->rotationCircle, this->camera, "BlueHighway", Ogre::ColourValue::White);
 	}
 
-	//void Gizmo::drawCircle(const Ogre::Quaternion& orientation, Ogre::Real fromAngle, Ogre::Real toAngle, bool counterClockWise, Ogre::Real thickness, const Ogre::String& materialName)
-	//{
-	//	// Draw a circle for visual effect
-	//	this->rotationCircle->clear();
-	//	this->rotationCircle->begin(materialName, Ogre::OperationType::OT_TRIANGLE_LIST);
-	//	Ogre::Real const radius = this->sphereNode->getScale().x * 5.0f;
-	//	Ogre::Real const accuracy = 50.0f; // Number of plots for accuracy
-	//	Ogre::Real const relativeThickness = this->sphereNode->getScale().x * thickness;
-	//	unsigned int index = 0;
-	//	int colourFactor = 1;
-	//	Ogre::ColourValue value;
-	//	if (true == counterClockWise)
-	//	{
-	//		for (Ogre::Real theta = fromAngle; theta < toAngle; theta += Ogre::Math::PI / accuracy)
-	//		{
-	//			colourFactor = static_cast<int>(Ogre::Math::Abs(theta / Ogre::Math::TWO_PI)) % 10;
-
-	//			this->rotationCircle->position(radius * cos(theta), 0.0f, radius * sin(theta));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position(radius * cos(theta - Ogre::Math::PI / accuracy), 0.0f, radius * sin(theta - Ogre::Math::PI / accuracy));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position((radius - relativeThickness) * cos(theta - Ogre::Math::PI / accuracy), 0.0f, (radius - relativeThickness) * sin(theta - Ogre::Math::PI / accuracy));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position((radius - relativeThickness) * cos(theta), 0.0f, (radius - relativeThickness) * sin(theta));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			// Join the 4 vertices created above to form a quad.
-	//			this->rotationCircle->quad(index, index + 1, index + 2, index + 3);
-	//			index += 4;
-	//		}
-	//		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("C: " + Ogre::StringConverter::toString(colourFactor));
-	//	}
-	//	else
-	//	{
-	//		for (Ogre::Real theta = fromAngle; theta > toAngle; theta -= Ogre::Math::PI / accuracy)
-	//		{
-	//			colourFactor = static_cast<int>(Ogre::Math::Abs(theta / Ogre::Math::TWO_PI)) % 10;
-	//			this->rotationCircle->position(radius * cos(theta), 0.0f, radius * sin(theta));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position(radius * cos(theta - Ogre::Math::PI / accuracy), 0.0f, radius * sin(theta - Ogre::Math::PI / accuracy));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position((radius - relativeThickness) * cos(theta - Ogre::Math::PI / accuracy), 0.0f, (radius - relativeThickness) * sin(theta - Ogre::Math::PI / accuracy));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			this->rotationCircle->position((radius - relativeThickness) * cos(theta), 0.0f, (radius - relativeThickness) * sin(theta));
-	//			// this->rotationCircle->colour(colourMap[colourFactor].value);
-	//			// Join the 4 vertices created above to form a quad.
-	//			this->rotationCircle->quad(index, index + 1, index + 2, index + 3);
-	//			index += 4;
-	//		}
-	//		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("C: " + Ogre::StringConverter::toString(colourFactor));
-	//	}
-	//	this->rotationCircle->end();
-
-	//	/*this->rotationCircleMaterialPtr->getTechnique(0)->getPass(0)->setDiffuse(colourMap[colourFactor].value);
-	//	this->rotationCircleMaterialPtr->getTechnique(0)->getPass(0)->setAmbient(colourMap[colourFactor].value);
-	//	this->rotationCircleMaterialPtr->getTechnique(0)->getPass(0)->setSelfIllumination(colourMap[colourFactor].value);*/
-
-	//	/*if (std::fmod(toAngle, Ogre::Math::TWO_PI) <= 0.0f)
-	//	{
-	//		Ogre::TextureUnitState* textureUnitState = pass->getTextureUnitState(0);
-	//		textureUnitState->setAlphaOperation(Ogre::LBX_SOURCE1, Ogre::LBS_MANUAL, Ogre::LBS_TEXTURE, 0.25f);
-	//	}*/
-
-	//	this->rotationCircleNode->setPosition(this->selectNode->_getDerivedPosition());
-	//	this->rotationCircleNode->setOrientation(orientation);
-
-	//	if (this->rotationCaption)
-	//	{
-	//		this->rotationCaption->update();
-	//	}
-	//}
-
 	void Gizmo::drawCircle(const Ogre::Quaternion& orientation, Ogre::Real fromAngle, Ogre::Real toAngle, bool counterClockWise, Ogre::Real thickness, const Ogre::String& materialName)
 	{
 		// Draw a circle for visual effect
@@ -1020,7 +944,6 @@ namespace NOWA
 
 	void Gizmo::translate(const Ogre::Vector3& translateVector)
 	{
-		this->oldGizmoPosition = this->getPosition();
 		Ogre::Vector3 internalTranslateVector = translateVector;
 		if (this->constraintAxis.x != 0.0f)
 		{
@@ -1101,159 +1024,10 @@ namespace NOWA
 			/*gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
 			gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
 			gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();*/
-
-			direction = (this->getPosition() - this->oldGizmoPosition).normalisedCopy();
-			if (direction.x >= 0.9f)
-			{
-				direction = this->getOrientation().xAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_X);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X+");
-			}
-			else if (direction.x <= -0.9f)
-			{
-				direction = this->getOrientation().xAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_X_MINUS);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("X-");
-			}
-			else if (direction.y >= 0.9f)
-			{
-				direction = this->getOrientation().yAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_Y);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y+");
-			}
-			else if (direction.y <= -0.9f)
-			{
-				direction = this->getOrientation().yAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_Y_MINUS);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Y-");
-			}
-			else if (direction.z >= 0.9f)
-			{
-				direction = this->getOrientation().zAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_Z);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z+");
-			}
-			else if (direction.z <= -0.9f)
-			{
-				direction = this->getOrientation().zAxis();
-				this->setState(eGizmoState::GIZMO_ARROW_Z_MINUS);
-				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Z-");
-			}
-			break;
 		}
 		}
 
 		return direction;
-	}
-
-	Ogre::Vector3 Gizmo::calculateGridTranslation(Ogre::MovableObject* movableObject, const Ogre::Quaternion& sourceOrientation)
-	{
-		Ogre::Vector3 translationOffset = Ogre::Vector3::ZERO;
-
-		Ogre::Vector3 direction = this->getCurrentDirection();
-
-		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
-		Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 scale = movableObject->getParentNode()->getScale();
-
-		Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * scale;
-
-		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * movableObject->getParentNode()->getScale();
-		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * movableObject->getParentNode()->getScale();
-		Ogre::Vector3 tempSize = ((maximumScaled - minimumScaled) /*- padding * 2.0f*/);
-
-		Ogre::Vector3 centerOffset = minimumScaled + /*padding +*/ (tempSize / 2.0f);
-		Ogre::Real lowestObjectY = minimumScaled.y /*- (padding.y * 2.0f)*/;
-		centerOffset.y = 0.0f - lowestObjectY;
-
-		Ogre::Vector3 offsetPosition = (this->getPosition()/* - centerOffset*/);
-		// Ogre::Vector3 distanceVec = offsetPosition - this->oldGizmoPosition;
-		
-		Ogre::Vector3 distanceVec = offsetPosition - this->oldGizmoPosition;
-		
-		// Ogre::Vector3 distanceVec = this->getPosition() - this->oldGizmoPosition;
-		Ogre::Real distance = this->oldGizmoPosition.distance(offsetPosition);
-		// Determines, whether the gizmo has been moved forward according its axis or backward
-		Ogre::Real dot = direction.dotProduct(distanceVec);
-
-		Ogre::Vector3 realDirection = direction;
-
-		if (dot > 0.0f)
-		{
-			this->cumulatedGizmoTranslationDistance += distance;
-		}
-		else if (dot < 0.0f)
-		{
-			this->cumulatedGizmoTranslationDistance -= distance;
-			realDirection = direction * -1.0f;
-		}
-
-
-
-		Ogre::Vector3 gridFactor = size;
-		if (0.0f == gridFactor.x)
-		{
-			gridFactor.x = 0.1f;
-		}
-		if (0.0f == gridFactor.y)
-		{
-			gridFactor.y = 0.1f;
-		}
-		if (0.0f == gridFactor.z)
-		{
-			gridFactor.z = 0.1f;
-		}
-
-		Ogre::String axisName;
-
-		Ogre::Real gridFactorOfCurrentAxis = gridFactor.x;
-
-		if (this->getState() == eGizmoState::GIZMO_ARROW_X)
-		{
-			axisName = "X+";
-			gridFactorOfCurrentAxis = gridFactor.x;
-		}
-		else if (this->getState() == eGizmoState::GIZMO_ARROW_X_MINUS)
-		{
-			axisName = "X-";
-			gridFactorOfCurrentAxis = gridFactor.x;
-		}
-		else if (this->getState() == eGizmoState::GIZMO_ARROW_Y)
-		{
-			axisName = "Y+";
-			gridFactorOfCurrentAxis = gridFactor.y;
-		}
-		else if (this->getState() == eGizmoState::GIZMO_ARROW_Y_MINUS)
-		{
-			axisName = "Y-";
-			gridFactorOfCurrentAxis = gridFactor.y;
-		}
-		else if (this->getState() == eGizmoState::GIZMO_ARROW_Z)
-		{
-			axisName = "Z+";
-			gridFactorOfCurrentAxis = gridFactor.z;
-		}
-		else if (this->getState() == eGizmoState::GIZMO_ARROW_Z_MINUS)
-		{
-			axisName = "Z-";
-			gridFactorOfCurrentAxis = gridFactor.z;
-		}
-
-		if (this->cumulatedGizmoTranslationDistance >= gridFactorOfCurrentAxis || this->cumulatedGizmoTranslationDistance <= -gridFactorOfCurrentAxis)
-		{
-			// Calculates the translation offset only if the gizmo has been moved the given object size axis distance
-			// Takes the relative local source orientation into account
-			translationOffset = (sourceOrientation.Inverse() * this->getOrientation()) * (realDirection * gridFactorOfCurrentAxis);
-			// translationOffset = this->getPosition();
-			// selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition());
-			this->cumulatedGizmoTranslationDistance = 0.0f;
-		}
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "distance: " + Ogre::StringConverter::toString(distance) + " cumDistance: " + Ogre::StringConverter::toString(this->cumulatedGizmoTranslationDistance)
-														+ " realDirection: " + Ogre::StringConverter::toString(realDirection) + " offset: " + Ogre::StringConverter::toString(translationOffset) + " dot: " + Ogre::StringConverter::toString(dot)
-														+ " AxisName: " + axisName);
-
-		return translationOffset;
 	}
 
 }; // namespace end

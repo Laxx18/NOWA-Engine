@@ -110,10 +110,6 @@ namespace NOWA
 		animationBlenderObserver(nullptr),
 		debugWaypointNode(nullptr)
 	{
-		// Make cameraManager singleton? And call getActiveCamera()
-		/*this->cameraManager = new NOWA::CameraManager("CameraManager1", this->camera);
-		this->cameraManager->addCameraBehavior(new NOWA::BaseCamera());
-		this->cameraManager->setActiveCameraBehavior(NOWA::BaseCamera::BehaviorType());*/
 		this->activated->setVisible(false);
 		this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
 	}

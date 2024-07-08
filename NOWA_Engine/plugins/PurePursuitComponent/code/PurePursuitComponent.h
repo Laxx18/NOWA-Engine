@@ -179,6 +179,14 @@ namespace NOWA
 
 		Ogre::Real getMaxMotorForce(void) const;
 
+		void setMotorForceVariance(Ogre::Real motorForceVariance);
+
+		Ogre::Real getMotorForceVariance(void) const;
+
+		void setOvertakingMotorForce(Ogre::Real overtakingMotorForce);
+
+		Ogre::Real getOvertakingMotorForce(void) const;
+		
 		void setMinMaxSteerAngle(const Ogre::Vector2& minMaxSteerAngle);
 
 		Ogre::Vector2 getMinMaxSteerAngle(void) const;
@@ -186,6 +194,18 @@ namespace NOWA
 		void setCheckWaypointY(bool checkWaypointY);
 
 		bool getCheckWaypointY(void) const;
+
+		void setWaypointVariance(Ogre::Real waypointVariance);
+
+		Ogre::Real getWaypointVariance(void) const;
+
+		void setVarianceIndividual(bool varianceIndividual);
+
+		bool getVarianceIndividual(void) const;
+
+		void setObstacleCategory(const Ogre::String& obstacleCategory);
+
+		Ogre::String getObstacleCategory(void) const;
 
 		Ogre::Real calculateSteeringAngle(const Ogre::Vector3& lookaheadPoint);
 
@@ -263,12 +283,14 @@ namespace NOWA
 		static const Ogre::String AttrLookaheadDistance(void) { return "Lookahead Distance"; }
 		static const Ogre::String AttrCurvatureThreshold(void) { return "Curvature Threshold"; }
 		static const Ogre::String AttrMaxMotorForce(void) { return "Max. Motorforce"; }
+		static const Ogre::String AttrMotorForceVariance(void) { return "Motorforce Variance"; }
+		static const Ogre::String AttrOvertakingMotorForce(void) { return "Overtaking Motorforce"; }
 		static const Ogre::String AttrMinMaxSteerAngle(void) { return "Min. Max. Steerangle"; }
 		static const Ogre::String AttrCheckWaypointY(void) { return "Check Waypoint Y"; }
-		
+		static const Ogre::String AttrWaypointVariance(void) { return "Waypoint Variance"; }
+		static const Ogre::String AttrVarianceIndividual(void) { return "Variance Individual"; }
+		static const Ogre::String AttrObstacleCategory(void) { return "Obstacle Category"; }
 	private:
-		Ogre::Vector3 findLookaheadPoint(const Ogre::Vector3& position);
-
 		Ogre::Real normalizeAngle(Ogre::Real angle);
 
 		/**
@@ -276,7 +298,15 @@ namespace NOWA
 		*/
 		Ogre::Real calculateCurvature(void);
 
-		void highlightWayPoint(void);
+		void highlightWaypoint(const Ogre::String& datablockName);
+
+		void addRandomVarianceToWaypoints(void);
+
+		void handleGameObjectsToClose(void);
+
+		bool detectObstacle(Ogre::Real detectionRange);
+		
+		void adjustPathAroundObstacle(Ogre::Vector3& lookaheadPoint);
 		
 	private:
 		Ogre::String name;
@@ -291,9 +321,16 @@ namespace NOWA
 		Variant* lookaheadDistance;
 		Variant* curvatureThreshold;
 		Variant* maxMotorForce;
+		Variant* motorForceVariance;
 		Variant* minMaxSteerAngle;
 		Variant* checkWaypointY;
+		Variant* waypointVariance;
+		Variant* varianceIndividual;
+		Variant* overtakingMotorForce;
+		Variant* obstacleCategory;
+
 		Ogre::Real lastSteerAngle;
+		Ogre::Real lastMotorForce;
 		bool firstTimeSet;
 		Path* pPath;
 		std::pair<bool, Ogre::Vector3> currentWaypoint;
@@ -301,6 +338,11 @@ namespace NOWA
 		Ogre::Vector3 previousPosition;
 		Ogre::Real stuckTime;
 		Ogre::Real maxStuckTime;
+		Ogre::String oldDatablockName;
+		unsigned int categoriesId;
+
+		std::vector<PurePursuitComponent*> otherPurePursuits;
+		std::vector<GameObject*> obstacles;
 	};
 
 }; // namespace end

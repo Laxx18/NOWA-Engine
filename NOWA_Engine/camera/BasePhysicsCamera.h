@@ -12,7 +12,7 @@ namespace NOWA
 	class EXPORTED BasePhysicsCamera : public BaseCamera
 	{
 	public:
-		BasePhysicsCamera(Ogre::SceneManager* sceneManager, OgreNewt::World* ogreNewt, const Ogre::Vector3& cameraSize = Ogre::Vector3(1.0f, 1.0f, 1.0f),
+		BasePhysicsCamera(unsigned int id, Ogre::SceneManager* sceneManager, OgreNewt::World* ogreNewt, const Ogre::Vector3& cameraSize = Ogre::Vector3(1.0f, 1.0f, 1.0f),
 			Ogre::Real moveSpeed = 20.0f, Ogre::Real rotateSpeed = 20.0f, Ogre::Real smoothValue = 0.1f);
 
 		virtual ~BasePhysicsCamera();
@@ -27,7 +27,7 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void) 
 		{
-			return "BASE_PHYSICS_CAMERA";
+			return "BASE_PHYSICS_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)

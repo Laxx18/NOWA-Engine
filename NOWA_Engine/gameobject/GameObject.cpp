@@ -54,7 +54,8 @@ namespace NOWA
 		selected(false),
 		doNotDestroyMovableObject(false),
 		bShowDebugData(false),
-		luaScript(nullptr)
+		luaScript(nullptr),
+		bConnectPriority(false)
 	{
 		// int idd = this->sceneNode->getId();
 		
@@ -487,13 +488,27 @@ namespace NOWA
 
 	bool GameObject::connectPriority(void)
 	{
-		// Process all priority connect components
-		for (const auto& component : this->gameObjectComponents)
+		// Connects all components prior, because this whole game object has the flag set
+		if (true == this->bConnectPriority)
 		{
-			const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
-			if (true == gameObjectCompPtr->getConnectPriority())
+			// Process all priority connect components
+			for (const auto& component : this->gameObjectComponents)
 			{
+				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+				gameObjectCompPtr->bConnectPriority = true;
 				gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+			}
+		}
+		else
+		{
+			// Process all priority connect components
+			for (const auto& component : this->gameObjectComponents)
+			{
+				const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+				if (true == gameObjectCompPtr->getConnectPriority())
+				{
+					gameObjectCompPtr->bConnectedSuccess = gameObjectCompPtr->connect();
+				}
 			}
 		}
 		return true;
@@ -2196,6 +2211,11 @@ namespace NOWA
 		}
 
 		return datablockNames;
+	}
+
+	void GameObject::setConnectPriority(bool bConnectPriority)
+	{
+		this->bConnectPriority = bConnectPriority;
 	}
 
 }; //namespace end

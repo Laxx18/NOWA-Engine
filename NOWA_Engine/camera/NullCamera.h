@@ -10,7 +10,8 @@ namespace NOWA
 	class EXPORTED NullCamera : public BaseCamera
 	{
 	public:
-		NullCamera()
+		NullCamera(unsigned int id)
+			: BaseCamera(id)
 		{
 
 		}
@@ -42,7 +43,7 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void)
 		{
-			return "NO_ACTIVE_CAMERA";
+			return "NO_ACTIVE_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)

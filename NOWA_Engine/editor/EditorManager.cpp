@@ -1198,6 +1198,7 @@ namespace NOWA
 		hitPoint(Ogre::Vector3::ZERO),
 		oldHitPoint(Ogre::Vector3::ZERO),
 		gridStep(0.0f),
+		cumulatedPlaceNodeTranslationDistance(0.0f),
 		startHitPoint(Ogre::Vector3::ZERO),
 		translateStartPoint(Ogre::Vector3::ZERO),
 		rotateStartOrientation(Ogre::Quaternion::IDENTITY),
@@ -1207,7 +1208,6 @@ namespace NOWA
 		oldGizmoOrientation(Ogre::Quaternion::IDENTITY),
 		absoluteAngle(0.0f),
 		stepAngleDelta(0.0f),
-		currentKey(OIS::KC_END),
 		useUndoRedoForPicker(true),
 		movePicker(nullptr),
 		movePicker2(nullptr),
@@ -1217,7 +1217,8 @@ namespace NOWA
 		constraintAxis(Ogre::Vector3::ZERO),
 		isInSimulation(false),
 		rotateFactor(0.0f),
-		terraComponent(nullptr)
+		terraComponent(nullptr),
+		boundingBoxSize(Ogre::Vector3::ZERO)
 	{
 
 	}
@@ -1315,9 +1316,9 @@ namespace NOWA
 	bool EditorManager::handleKeyPress(const OIS::KeyEvent& keyEventRef)
 	{
 		bool handled = false;
-		if (NOWA_K_GRID == keyEventRef.key)
+		// Do not set to grid mode if user does some clipboard operation
+		if (GetAsyncKeyState(VK_LMENU))
 		{
-			this->currentKey = NOWA_K_GRID;
 			// hier merken welche gridstep zuletzt eingestellt war
 			if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
 			{
@@ -1361,8 +1362,6 @@ namespace NOWA
 
 	void EditorManager::handleKeyRelease(const OIS::KeyEvent& keyEventRef)
 	{
-		this->currentKey = OIS::KC_END;
-
 		if (false == this->isInSimulation)
 		{
 			this->selectionManager->handleKeyRelease(keyEventRef);
@@ -1415,7 +1414,8 @@ namespace NOWA
 						else if (this->pickForce > 50.0f)
 							this->pickForce = 50.0f;
 
-						if (OIS::KC_LCONTROL == this->currentKey)
+	
+						if (GetAsyncKeyState(VK_LCONTROL))
 						{
 							NOWA::PhysicsComponent* component = this->movePicker2->grab(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 								Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
@@ -1561,8 +1561,6 @@ namespace NOWA
 			this->rotateStartOrientationGizmoZ = this->gizmo->getArrowNodeZ()->_getDerivedOrientationUpdated();
 			this->startHitPoint = this->oldHitPoint;
 			this->mouseIdPressed = true;
-
-			this->applySelectedObjectsStartOrientation();
 		}
 		else if (id == this->mouseButtonId && (EDITOR_TERRAIN_MODIFY_MODE == this->manipulationMode || EDITOR_TERRAIN_SMOOTH_MODE == this->manipulationMode || EDITOR_TERRAIN_PAINT_MODE == this->manipulationMode))
 		{
@@ -1612,8 +1610,6 @@ namespace NOWA
 
 	void EditorManager::handleMouseRelease(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		this->currentKey = OIS::KC_END;
-
 		if (id == this->mouseButtonId)
 		{
 			this->mouseIdPressed = false;
@@ -2007,7 +2003,7 @@ namespace NOWA
 	void EditorManager::movePlaceNode(const Ogre::Ray& hitRay)
 	{
 		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-		this->placeNode->setPosition(Ogre::Vector3::ZERO);
+		// this->placeNode->setPosition(Ogre::Vector3::ZERO);
 		Ogre::MovableObject* hitMovableObject = nullptr;
 
 		switch (this->placeMode)
@@ -2108,38 +2104,36 @@ namespace NOWA
 			// Let the node follow the mouse step by step based on the gridsize
 			if (nullptr != this->tempPlaceMovableObject)
 			{
-				if (this->currentKey == NOWA_K_GRID)
+				if (GetAsyncKeyState(VK_LMENU))
 				{
 					Ogre::Vector3 direction = (this->tempPlaceMovableNode->_getDerivedPositionUpdated() - internalHitPoint).normalisedCopy();
-					// Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->tempPlaceMovableObject,
-					// 	this->tempPlaceMovableNode->_getDerivedScaleUpdated(), this->tempPlaceMovableNode->_getDerivedOrientationUpdated(), 1.0f, internalHitPoint, this->gizmo->getOrientation());
 
-					// Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, this->gizmo->getPosition());
+					Ogre::Aabb boundingBox;
+					Ogre::Aabb box = this->tempPlaceMovableNode->getAttachedObject(0)->getLocalAabb();
 
-					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(this->tempPlaceMovableNode->getAttachedObject(0), this->tempPlaceMovableNode->_getDerivedOrientationUpdated());
-					
+					Ogre::Vector3 newGridPoint = MathHelper::getInstance()->calculateGridTranslation(box.getSize() * this->gridStep, internalHitPoint, this->tempPlaceMovableNode->getAttachedObject(0));
+
 					if (this->constraintAxis.x != 0.0f)
-						translationOffset = Ogre::Vector3(this->constraintAxis.x, translationOffset.y, translationOffset.z);
+						newGridPoint = Ogre::Vector3(this->constraintAxis.x, newGridPoint.y, newGridPoint.z);
 					if (this->constraintAxis.y != 0.0f)
-						translationOffset = Ogre::Vector3(translationOffset.x, this->constraintAxis.y, translationOffset.z);
+						newGridPoint = Ogre::Vector3(newGridPoint.x, this->constraintAxis.y, newGridPoint.z);
 					if (this->constraintAxis.z != 0.0f)
-						translationOffset = Ogre::Vector3(translationOffset.x, translationOffset.y, this->constraintAxis.z);
+						newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
 
-					this->placeNode->translate(translationOffset);
-					// this->placeNode->_setDerivedPosition(resultVector);
+					this->placeNode->setPosition(newGridPoint);
 				}
-			}
-			else
-			{
-				Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, internalHitPoint);
+				else
+				{
+					Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, internalHitPoint);
 
-				if (this->constraintAxis.x != 0.0f)
-					resultVector = Ogre::Vector3(this->constraintAxis.x, resultVector.y, resultVector.z);
-				if (this->constraintAxis.y != 0.0f)
-					resultVector = Ogre::Vector3(resultVector.x, this->constraintAxis.y, resultVector.z);
-				if (this->constraintAxis.z != 0.0f)
-					resultVector = Ogre::Vector3(resultVector.x, resultVector.y, this->constraintAxis.z);
-				this->placeNode->_setDerivedPosition(resultVector);
+					if (this->constraintAxis.x != 0.0f)
+						resultVector = Ogre::Vector3(this->constraintAxis.x, resultVector.y, resultVector.z);
+					if (this->constraintAxis.y != 0.0f)
+						resultVector = Ogre::Vector3(resultVector.x, this->constraintAxis.y, resultVector.z);
+					if (this->constraintAxis.z != 0.0f)
+						resultVector = Ogre::Vector3(resultVector.x, resultVector.y, this->constraintAxis.z);
+					this->placeNode->_setDerivedPosition(resultVector);
+				}
 			}
 		}
 		else
@@ -2828,8 +2822,18 @@ namespace NOWA
 
 		this->gizmo->rotate(rotation);
 
+
+
 		// Note: rotation is just current for one axis, but in order to rotate and translate objects correctly, rotation all axes are required, so use gizmoRotationDelta 
 		Ogre::Quaternion gizmoRotationDelta = this->gizmo->getOrientation() * this->oldGizmoOrientation.Inverse();
+
+		// Create a quaternion for each rotation
+		Ogre::Quaternion qx(Ogre::Degree(gizmoRotationDelta.getPitch()), Ogre::Vector3::UNIT_X);
+		Ogre::Quaternion qy(Ogre::Degree(gizmoRotationDelta.getYaw()), Ogre::Vector3::UNIT_Y);
+		Ogre::Quaternion qz(Ogre::Degree(gizmoRotationDelta.getRoll()), Ogre::Vector3::UNIT_Z);
+
+		// Apply the rotations
+		Ogre::Quaternion combinedRotation = qx * qy * qz;
 
 		auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
 
@@ -2846,40 +2850,61 @@ namespace NOWA
 				Ogre::Real height = std::get<1>(hitData);
 				Ogre::Vector3 normal = std::get<2>(hitData);
 
-				auto& phyicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
-				if (nullptr != phyicsComponent)
+				auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+				if (nullptr != physicsComponent)
 				{
-					// Correct?
-					// hier jeh nach Achse, rotation = Ogre::Quaternion(Ogre::Radian(absoluteAngle), Ogre::Vector3::UNIT_X); wegen grid, damit gizmo normal rotiert wird, aber objekte gezuckt
-					phyicsComponent->rotate(gizmoRotationDelta);
-					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
+						Ogre::Quaternion orientation = physicsComponent->getOrientation();
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 
-						if (true == success)
-						{
-							position = Ogre::Vector3(position.x, height, position.z);
-						}
-						phyicsComponent->setPosition(position);
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
+
+						// Set the new position and calculate the new orientation
+						physicsComponent->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+
 						if (Ogre::Vector3::ZERO != normal)
 						{
-							phyicsComponent->setDirection(normal, Ogre::Vector3::NEGATIVE_UNIT_Y);
+							physicsComponent->setDirection(normal, Ogre::Vector3::NEGATIVE_UNIT_Y);
 						}
 					}
 				}
 				else
 				{
-					selectedGameObject.second.gameObject->getSceneNode()->rotate(gizmoRotationDelta);
-					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						Ogre::Vector3 position = this->gizmo->getPosition() + (gizmoRotationDelta * offset);
-						if (true == success)
-						{
-							position = Ogre::Vector3(position.x, height, position.z);
-						}
-						selectedGameObject.second.gameObject->getSceneNode()->setPosition(position);
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{				
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
+
+						// Set the new position and calculate the new orientation
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+
 						if (Ogre::Vector3::ZERO != normal)
 						{
 							selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
@@ -2897,21 +2922,52 @@ namespace NOWA
 				auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
 				if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
 				{
-					physicsComponent->rotate(gizmoRotationDelta);
-					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						physicsComponent->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
+						Ogre::Quaternion orientation = physicsComponent->getOrientation();
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
+
+						// Set the new position and calculate the new orientation
+						physicsComponent->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						physicsComponent->setOrientation(localRotation);
 					}
 				}
 				else
 				{
-					selectedGameObject.second.gameObject->getSceneNode()->rotate(gizmoRotationDelta);
-
-					if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
 					{
-						Ogre::Vector3 offset = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
-						selectedGameObject.second.gameObject->getSceneNode()->setPosition(this->gizmo->getPosition() + (gizmoRotationDelta * offset));
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
+
+						// Set the new position and calculate the new orientation
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 					}
 				}
 				i++;
@@ -2984,19 +3040,25 @@ namespace NOWA
 		return std::make_tuple(success, internalHitPoint.y, normal);
 	}
 
-	void EditorManager::applySelectedObjectsStartOrientation(void)
+	Ogre::Vector3 EditorManager::calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject)
 	{
-		unsigned int i = 0;
-		this->selectedObjectsStartOrientations.clear();
-		this->selectedObjectsStartOrientations.resize(this->selectionManager->getSelectedGameObjects().size());
-		auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
-		for (auto& selectedGameObject : selectedGameObjects)
-		{
-			this->selectedObjectsStartOrientations[i] = selectedGameObject.second.gameObject->getOrientation();
-			// Ogre::LogManager::getSingletonPtr()->logMessage("Quats: " + Ogre::StringConverter::toString(this->selectedObjectsStartOrientations[i]));
-			i++;
-		}
-		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("StartOrientation actualized");
+		Ogre::Vector3 newPos = internalHitPoint;
+		Ogre::Vector3 localPoint = movableObject->getParentNode()->_getDerivedOrientationUpdated().Inverse() * (newPos - movableObject->getParentNode()->_getDerivedPositionUpdated());
+
+		// Round the local point to the nearest grid size, considering different sizes for x and z axes
+		localPoint.x = round(localPoint.x / gridFactor.x) * gridFactor.x;
+		localPoint.y = round(localPoint.y / gridFactor.y) * gridFactor.y;
+		localPoint.z = round(localPoint.z / gridFactor.z) * gridFactor.z;
+		newPos = movableObject->getParentNode()->_getDerivedOrientationUpdated() * localPoint + movableObject->getParentNode()->_getDerivedPositionUpdated();
+
+		return newPos;
+	}
+
+	Ogre::Vector3 EditorManager::rotateAroundPoint(const Ogre::Vector3& point, const Ogre::Vector3& center, const Ogre::Quaternion& rotation)
+	{
+		Ogre::Vector3 offset = point - center;
+		offset = rotation * offset;
+		return center + offset;
 	}
 
 	void EditorManager::moveObjects(Ogre::Vector3& offset)
@@ -3006,7 +3068,7 @@ namespace NOWA
 			Ogre::Vector3 oldGridPos;
 			Ogre::Vector3 newGridPos;
 			// Special case, the grid has the size of the objects bounding box
-			if (1 == this->getSelectionManager()->getSelectedGameObjects().size() && NOWA_K_GRID == this->currentKey)
+			if (1 == this->getSelectionManager()->getSelectedGameObjects().size() && GetAsyncKeyState(VK_LMENU))
 			{
 				auto& gameObject = this->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject;
 
@@ -3036,6 +3098,8 @@ namespace NOWA
 		}
 
 		auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+
+		size_t i = 0;
 		// Set the new position for either physics component or the game object
 		for (auto& selectedGameObject : selectedGameObjects)
 		{
@@ -3070,10 +3134,20 @@ namespace NOWA
 					physicsComponent->setPosition(physicsComponent->getPosition().x, height, physicsComponent->getPosition().z);
 				}
 
-				if (NOWA_K_GRID == this->currentKey)
+				if (GetAsyncKeyState(VK_LMENU))
 				{
-					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getMovableObject(), selectedGameObject.second.gameObject->getOrientation());
-					physicsComponent->translate(translationOffset);
+					Ogre::Vector3 internalHitPoint = this->gizmo->getPosition() + this->selectedObjectsStartOffsets[i];
+					// Ogre::Vector3 internalHitPoint = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
+					Ogre::Vector3 newGridPoint = this->calculateGizmoGridTranslation(this->boundingBoxSize * this->gridStep, internalHitPoint, selectedGameObject.second.gameObject->getMovableObject());
+
+					if (this->constraintAxis.x != 0.0f)
+						newGridPoint = Ogre::Vector3(this->constraintAxis.x, newGridPoint.y, newGridPoint.z);
+					if (this->constraintAxis.y != 0.0f)
+						newGridPoint = Ogre::Vector3(newGridPoint.x, this->constraintAxis.y, newGridPoint.z);
+					if (this->constraintAxis.z != 0.0f)
+						newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
+
+					physicsComponent->setPosition(newGridPoint);
 				}
 				else
 				{
@@ -3100,10 +3174,20 @@ namespace NOWA
 						selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 				}
 
-				if (NOWA_K_GRID == this->currentKey)
+				if (GetAsyncKeyState(VK_LMENU))
 				{
-					Ogre::Vector3 translationOffset = this->gizmo->calculateGridTranslation(selectedGameObject.second.gameObject->getMovableObject(), selectedGameObject.second.gameObject->getOrientation());
-					selectedGameObject.second.gameObject->getSceneNode()->translate(translationOffset);
+					Ogre::Vector3 internalHitPoint = this->gizmo->getPosition()/* + this->selectedObjectsStartOffsets[i]*/;
+					// Ogre::Vector3 internalHitPoint = selectedGameObject.second.gameObject->getPosition() - this->gizmo->getPosition();
+					
+					Ogre::Vector3 newGridPoint = this->calculateGizmoGridTranslation(this->boundingBoxSize * this->gridStep, internalHitPoint, selectedGameObject.second.gameObject->getMovableObject());
+					if (this->constraintAxis.x != 0.0f)
+						newGridPoint = Ogre::Vector3(this->constraintAxis.x, newGridPoint.y, newGridPoint.z);
+					if (this->constraintAxis.y != 0.0f)
+						newGridPoint = Ogre::Vector3(newGridPoint.x, this->constraintAxis.y, newGridPoint.z);
+					if (this->constraintAxis.z != 0.0f)
+						newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
+
+					selectedGameObject.second.gameObject->getSceneNode()->setPosition(newGridPoint);
 				}
 				else
 				{
@@ -3115,6 +3199,8 @@ namespace NOWA
 					selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
 				}
 			}
+
+			i++;
 		}
 
 		// Draw line and set caption with current translation offset
@@ -3311,7 +3397,6 @@ namespace NOWA
 		return std::move(center);
 	}
 
-
 	void EditorManager::setGizmoToGameObjectsCenter(void)
 	{
 		// Calculate the center to put the gizmo there
@@ -3329,6 +3414,54 @@ namespace NOWA
 			this->gizmo->setOrientation(Ogre::Quaternion::IDENTITY);
 			this->viewportGrid->setOrientation(Ogre::Quaternion::IDENTITY);
 		}
+
+		this->boundingBoxSize == Ogre::Vector3::ZERO;
+		this->selectedObjectsStartOffsets.clear();
+
+		auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+
+		// Calculates the global bounding box for grid movement
+		Ogre::Vector3 minCorner(std::numeric_limits<Ogre::Real>::max(), std::numeric_limits<Ogre::Real>::max(), std::numeric_limits<Ogre::Real>::max());
+		Ogre::Vector3 maxCorner(std::numeric_limits<Ogre::Real>::lowest(), std::numeric_limits<Ogre::Real>::lowest(), std::numeric_limits<Ogre::Real>::lowest());
+
+		for (auto& entry : selectedGameObjects)
+		{
+			
+			Ogre::Matrix4 transformMatrix = entry.second.gameObject->getSceneNode()->_getFullTransform();
+
+			for (unsigned int i = 0; i < entry.second.gameObject->getSceneNode()->numAttachedObjects(); ++i)
+			{
+				Ogre::MovableObject* obj = entry.second.gameObject->getSceneNode()->getAttachedObject(i);
+				Ogre::Aabb localBox = obj->getLocalAabb();
+
+				Ogre::Vector3 localMin = localBox.getMinimum();
+				Ogre::Vector3 localMax = localBox.getMaximum();
+
+				// Transform local AABB corners to world space
+				Ogre::Vector3 worldCorners[8];
+				worldCorners[0] = transformMatrix * localMin;
+				worldCorners[1] = transformMatrix * Ogre::Vector3(localMin.x, localMin.y, localMax.z);
+				worldCorners[2] = transformMatrix * Ogre::Vector3(localMin.x, localMax.y, localMin.z);
+				worldCorners[3] = transformMatrix * Ogre::Vector3(localMin.x, localMax.y, localMax.z);
+				worldCorners[4] = transformMatrix * Ogre::Vector3(localMax.x, localMin.y, localMin.z);
+				worldCorners[5] = transformMatrix * Ogre::Vector3(localMax.x, localMin.y, localMax.z);
+				worldCorners[6] = transformMatrix * Ogre::Vector3(localMax.x, localMax.y, localMin.z);
+				worldCorners[7] = transformMatrix * localMax;
+
+				// Update the bounding box corners relative to the gizmo position
+				for (auto& corner : worldCorners)
+				{
+					corner -= this->gizmo->getPosition(); // Adjust relative to gizmo position
+					minCorner.makeFloor(corner);
+					maxCorner.makeCeil(corner);
+				}
+			}
+
+			Ogre::Vector3 offset = entry.second.gameObject->getSceneNode()->getPosition() - this->gizmo->getPosition();
+			this->selectedObjectsStartOffsets.emplace_back(offset);
+		}
+
+		this->boundingBoxSize = maxCorner - minCorner;
 	}
 
 	Ogre::SceneManager* EditorManager::getSceneManager(void) const

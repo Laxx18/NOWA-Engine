@@ -42,6 +42,20 @@ namespace OgreNewt
 
 		//! destructor
 		virtual ~KinematicBody();
+
+		typedef OgreNewt::function<void(OgreNewt::Body*)> KinematicContactCallback;
+
+		void setKinematicContactCallback(KinematicContactCallback callback);
+
+		template<class c>
+		void setKinematicContactCallback(OgreNewt::function<void(c*, OgreNewt::Body*)> callback, c* instancedClassPointer)
+		{
+			setKinematicContactCallback(OgreNewt::bind(callback, instancedClassPointer, std::placeholders::_1));
+		}
+
+		void removeKinematicContactCallback() { m_kinematicContactCallback = nullptr; }
+	protected:
+		KinematicContactCallback m_kinematicContactCallback;
 	};
 
 };

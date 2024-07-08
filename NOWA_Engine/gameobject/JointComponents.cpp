@@ -283,9 +283,13 @@ namespace NOWA
 			
 			this->body = physicsCompPtr->getBody();
 			this->predecessorJointCompPtr = NOWA::makeStrongPtr(AppStateManager::getSingletonPtr()->getGameObjectController()->getJointComponent(this->predecessorId->getULong()));
+
 			// Important to reset id, because when cloned, the joint component from prior one has been gathered, so actualize this id to the new one
 			if (nullptr != this->predecessorJointCompPtr)
 			{
+				Ogre::String currentName = physicsCompPtr->getOwner()->getName();
+				Ogre::String predName = predecessorJointCompPtr->getOwner()->getName();
+
 				if (this->id->getULong() != this->predecessorJointCompPtr->getId())
 				{
 					this->predecessorId->setValue(this->predecessorJointCompPtr->getId());
@@ -13996,14 +14000,56 @@ namespace NOWA
 		this->steerSide = new Variant(JointVehicleTireComponent::AttrSteerSide(), Ogre::StringVector({ "Steer Side Right", "Steer Side Left" }), this->attributes);
 		this->tireAccel = new Variant(JointVehicleTireComponent::AttrTireAccel(), Ogre::StringVector({ "No Accel", "Accel" }), this->attributes);
 		this->brakeMode = new Variant(JointVehicleTireComponent::AttrBrakeMode(), Ogre::StringVector({ "No Brake", "Brake" }), this->attributes);
-		this->lateralFriction = new Variant(JointVehicleTireComponent::AttrLateralFriction(), 0.125f, this->attributes);
-
-		this->longitudinalFriction = new Variant(JointVehicleTireComponent::AttrLongitudinalFriction(), 2.65f, this->attributes);
+		this->lateralFriction = new Variant(JointVehicleTireComponent::AttrLateralFriction(), 2.0f, this->attributes);
+		this->longitudinalFriction = new Variant(JointVehicleTireComponent::AttrLongitudinalFriction(), 4.0f, this->attributes);
 		this->springLength = new Variant(JointVehicleTireComponent::AttrSpringLength(), 0.2f, this->attributes);
 		this->springConst = new Variant(JointVehicleTireComponent::AttrSpringConst(), 200.0f, this->attributes);
 		this->springDamp = new Variant(JointVehicleTireComponent::AttrSpringDamp(), 12.0f, this->attributes);
 
 		this->springLength->setDescription("Important value, if to low, no raycast will hit the object (like floor) below and vehicle tires will not rotate. Adjust this value until everything works.");
+
+		// Querreibung
+		this->lateralFriction->setDescription("It acts to counter the centrifugal force acting on the tire on lateral direction. The smaller the value, the more likely the car is to go off the road");
+		// Rollreibung
+		this->longitudinalFriction->setDescription("It acts in the rolling direction of the tires of the vehicle.");
+
+		/*
+			In vehicle dynamics, longitudinal and lateral friction are key factors that influence a car's behavior during acceleration, braking, and cornering. Let's explore the concepts of longitudinal and lateral friction and how they can be applied in a simulation context.
+
+			Longitudinal Friction
+			Longitudinal friction pertains to the forces acting in the direction of travel of the car (along the x-axis in your case). This friction affects:
+
+			Acceleration: The friction between the tires and the road surface that allows the car to accelerate.
+			Braking: The friction that slows down the car when braking.
+			Parameters:
+
+			Longitudinal friction coefficient: This determines the maximum force that can be transmitted in the direction of travel. It depends on the tire properties and the road surface.
+			Longitudinal force: The actual force exerted in the direction of travel, which is a product of the friction coefficient and the normal force.
+			Lateral Friction
+			Lateral friction pertains to the forces acting perpendicular to the direction of travel (along the z-axis in your case). This friction affects:
+
+			Cornering: The friction that allows the car to change direction without sliding.
+			Stability: The ability of the car to maintain a straight line or controlled turning.
+			Parameters:
+
+			Lateral friction coefficient: This determines the maximum force that can be transmitted perpendicular to the direction of travel. It also depends on tire properties and road surface.
+			Lateral force: The actual force exerted perpendicular to the direction of travel, which is a product of the friction coefficient and the normal force.
+			Implementing Friction in a Simulation
+			Here’s an outline of how you might incorporate longitudinal and lateral friction in a car simulation:
+
+			Calculate Longitudinal Forces:
+
+			Use the engine power, throttle input, and braking input to determine the desired longitudinal force.
+			Apply the longitudinal friction coefficient to calculate the actual longitudinal force that can be applied to the car.
+			Calculate Lateral Forces:
+
+			Use the steering input to determine the desired lateral force during cornering.
+			Apply the lateral friction coefficient to calculate the actual lateral force that can be applied to the car.
+			Update Car Dynamics:
+
+			Apply the calculated longitudinal and lateral forces to update the car’s velocity and position.
+			Adjust the car’s orientation based on the lateral forces to simulate realistic cornering behavior.
+		*/
 
 		this->targetId->setVisible(false);
 	}
@@ -14240,7 +14286,7 @@ namespace NOWA
 			if (nullptr == predecessorBody)
 			{
 				// Not yet ready if e.g. loading the group
-				return false;
+				return true;
 			}
 		}
 		else
@@ -14451,7 +14497,6 @@ namespace NOWA
 	{
 		if (nullptr == this->body)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointVehicleTireComponent] Could not get 'getUpdatedJointPosition', because there is no body for game object: " + this->gameObjectPtr->getName());
 			return Ogre::Vector3::ZERO;
 		}
 

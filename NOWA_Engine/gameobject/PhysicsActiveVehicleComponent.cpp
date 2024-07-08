@@ -123,6 +123,8 @@ namespace NOWA
 
 	PhysicsActiveVehicleComponent::PhysicsActiveVehicleComponent()
 		: PhysicsActiveComponent(),
+		stuckTime(0.0f),
+		maxStuckTime(5.0f),
 		onSteerAngleChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnSteerAngleChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onMotorForceChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnMotorForceChangedFunctionName(), Ogre::String(""), this->attributes)),
 		onHandBrakeChangedFunctionName(new Variant(PhysicsActiveVehicleComponent::AttrOnHandBrakeChangedFunctionName(), Ogre::String(""), this->attributes)),
@@ -243,7 +245,7 @@ namespace NOWA
 	{
 		bool success = PhysicsComponent::postInit();
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Init physics active kinematic component for game object: "
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Init physics active vehicle component for game object: "
 														+ this->gameObjectPtr->getName());
 
 		this->initialPosition = this->gameObjectPtr->getSceneNode()->getPosition();
@@ -253,6 +255,12 @@ namespace NOWA
 		// Physics active component must be dynamic, else a mess occurs
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
+		// Only model space x can be applied for cars, restrictions by newton dynamics engine.
+		this->gameObjectPtr->getAttribute(GameObject::AttrDefaultDirection())->setValue(Ogre::Vector3::UNIT_X);
+
+
+		// Priority connect! because other joints are refering to it!
+		this->gameObjectPtr->setConnectPriority(true);
 
 		// this->gameObjectPtr->getAttribute(PhysicsActiveComponent::AttrMass())->setVisible(false);
 
@@ -307,7 +315,13 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			
+			if (true == this->isVehicleTippedOver())
+			{
+				if (this->isVehicleStuck(dt))
+				{
+					this->correctVehicleOrientation();
+				}
+			}
 		}
 	}
 
@@ -533,6 +547,67 @@ namespace NOWA
 			AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt));
 
 		return true;
+	}
+
+	bool PhysicsActiveVehicleComponent::isVehicleTippedOver(void)
+	{
+		// Get the car's current orientation
+		Ogre::Quaternion currentOrientation = this->physicsBody->getOrientation();
+
+		// Convert the orientation to Euler angles (roll, pitch, yaw)
+		Ogre::Radian roll;
+		Ogre::Radian pitch;
+		Ogre::Radian yaw;
+		Ogre::Matrix3 rotationMatrix;
+		currentOrientation.ToRotationMatrix(rotationMatrix);
+		rotationMatrix.ToEulerAnglesXYZ(yaw, pitch, roll);
+
+		// Define the threshold angles for tipping over (in radians)
+		Ogre::Radian maxAllowedPitch = Ogre::Degree(55.0f); // 55 degrees
+		Ogre::Radian maxAllowedRoll = Ogre::Degree(55.0f);  // 55 degrees
+
+		// Check if the car's pitch or roll exceeds the allowed thresholds
+		// return std::abs(pitch.valueRadians()) > maxAllowedPitch.valueRadians() || std::abs(roll.valueRadians()) > maxAllowedRoll.valueRadians();
+		return std::abs(pitch.valueRadians()) > maxAllowedPitch.valueRadians();
+	}
+
+	bool PhysicsActiveVehicleComponent::isVehicleStuck(Ogre::Real dt)
+	{
+		if (this->physicsBody->getVelocity().squaredLength() <= 0.1f * 0.1f)
+		{
+			this->stuckTime += dt;
+			if (this->stuckTime >= this->maxStuckTime)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			this->stuckTime = 0.0f;
+		}
+		return false;
+	}
+
+	void PhysicsActiveVehicleComponent::correctVehicleOrientation(void)
+	{
+		// Get the car's current orientation
+		Ogre::Quaternion currentOrientation = this->physicsBody->getOrientation();
+
+		// Convert the orientation to a rotation matrix
+		Ogre::Matrix3 rotationMatrix;
+		currentOrientation.ToRotationMatrix(rotationMatrix);
+
+		// Convert the rotation matrix to Euler angles (yaw, pitch, roll)
+		Ogre::Radian roll;
+		Ogre::Radian pitch;
+		Ogre::Radian yaw;
+		rotationMatrix.ToEulerAnglesYXZ(yaw, pitch, roll);  // YXZ to get pitch around X-axis
+
+		// Calculate the opposite pitch to correct the orientation
+		Ogre::Radian correctionPitch = -pitch;
+
+		// Apply the correction pitch to the car's orientation
+		this->physicsBody->setOmega(Ogre::Vector3(correctionPitch.valueRadians(), 0.0f, 0.0f));
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

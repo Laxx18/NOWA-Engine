@@ -291,7 +291,8 @@ namespace NOWA
 		void applyGroupTransform(void);
 		void destroyTempPlaceMovableObjectNode(void);
 		std::tuple<bool, Ogre::Real, Ogre::Vector3> getTranslateYData(GameObject* gameObject);
-		void applySelectedObjectsStartOrientation(void);
+		Ogre::Vector3 calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject);
+		Ogre::Vector3 rotateAroundPoint(const Ogre::Vector3& point, const Ogre::Vector3& center, const Ogre::Quaternion& rotation);
 	private:
 		Ogre::SceneManager* sceneManager;
 		Ogre::Camera* camera;
@@ -324,6 +325,7 @@ namespace NOWA
 		Ogre::Vector3 oldHitPoint;
 		Ogre::Vector3 hitPoint;
 		Ogre::Real gridStep;
+		Ogre::Real cumulatedPlaceNodeTranslationDistance;
 		Ogre::Plane resultPlane;
 		Ogre::Vector3 translateStartPoint;
 		Ogre::Quaternion rotateStartOrientation;
@@ -334,18 +336,19 @@ namespace NOWA
 		Ogre::Vector3 startHitPoint;
 		Ogre::Real absoluteAngle;
 		Ogre::Real stepAngleDelta;
-		OIS::KeyCode currentKey;
 		bool useUndoRedoForPicker;
 		KinematicPicker* movePicker;
 		Picker* movePicker2;
 		Ogre::Real timeSinceLastUpdate;
 		GameObject::eType currentPlaceType;
 		std::vector<std::tuple<unsigned long, Ogre::Vector3, Ogre::Quaternion>> groupGameObjectIds;
-		std::vector<Ogre::Quaternion> selectedObjectsStartOrientations;
+		std::vector<Ogre::Vector3> selectedObjectsStartOffsets;
 		Ogre::Real pickForce;
 		Ogre::Vector3 constraintAxis;
 		bool isInSimulation;
 		Ogre::Real rotateFactor;
+
+		Ogre::Vector3 boundingBoxSize;
 
 		TerraComponent* terraComponent;
 

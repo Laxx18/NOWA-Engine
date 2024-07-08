@@ -468,7 +468,7 @@ namespace NOWA
 			{
 				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
 			}
-			this->baseCamera = new FirstPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), smoothValue,
+			this->baseCamera = new FirstPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), smoothValue,
 				this->rotationSpeed->getReal(), this->offsetPosition->getVector3());
 		}
 		CameraBehaviorComponent::setActivated(activated);
@@ -670,7 +670,7 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			this->baseCamera = new ThirdPersonCamera(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
+			this->baseCamera = new ThirdPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
 				this->yOffset->getReal(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
 			this->baseCamera->setSmoothValue(AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue());
 		}
@@ -864,7 +864,7 @@ namespace NOWA
 			{
 				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
 			}
-			this->baseCamera = new FollowCamera2D(this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), smoothValue);
+			this->baseCamera = new FollowCamera2D(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), smoothValue);
 		}
 		CameraBehaviorComponent::setActivated(activated);
 		if (nullptr != this->baseCamera)
@@ -1055,7 +1055,7 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			this->baseCamera = new ZoomCamera(Ogre::Vector3::ZERO, this->smoothValue->getReal());
+			this->baseCamera = new ZoomCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), Ogre::Vector3::ZERO, this->smoothValue->getReal());
 		}
 		CameraBehaviorComponent::setActivated(activated);
 		if (nullptr != this->baseCamera)

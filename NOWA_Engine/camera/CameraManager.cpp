@@ -19,7 +19,8 @@ namespace NOWA
 		: appStateName(appStateName),
 		camera(nullptr),
 		moveSpeed(0.0f),
-		rotateSpeed(0.0f)
+		rotateSpeed(0.0f),
+		cameraBehaviorId(0)
 	{
 
 	}
@@ -33,7 +34,7 @@ namespace NOWA
 		rotateSpeed = rotateSpeed;
 		bool activate = true;
 		this->cameras.emplace(camera, activate);
-		this->addCameraBehavior(new NullCamera());
+		this->addCameraBehavior(new NullCamera(this->cameraBehaviorId++));
 	}
 
 	CameraManager::~CameraManager()
@@ -43,7 +44,8 @@ namespace NOWA
 
 	void CameraManager::destroyContent(void)
 	{
-		this->cameraBehaviorType.clear();
+		this->cameraBehaviorKey.clear();
+		this->oldBehaviorKey.clear();
 
 		for (auto& it : this->cameraStrategies)
 		{
@@ -84,18 +86,20 @@ namespace NOWA
 
 	void CameraManager::addCameraBehavior(BaseCamera* baseCamera)
 	{
-		if (this->cameraBehaviorType != baseCamera->getBehaviorType())
+		if (this->cameraBehaviorKey != baseCamera->getBehaviorType())
 		{
-			this->oldBehaviorType = this->cameraBehaviorType;
+			this->oldBehaviorKey = this->cameraBehaviorKey;
 		}
-		this->cameraBehaviorType = baseCamera->getBehaviorType();
+		this->cameraBehaviorKey = baseCamera->getBehaviorType();
 		baseCamera->postInitialize(this->camera);
-		this->cameraStrategies.insert(std::make_pair(this->cameraBehaviorType, baseCamera));
+		// Uses unique key, because just camera behavior is not enough, e.g. two behaviors can be called THIRD_PERSON_BEHAVIOR!, hence also an unique id
+		this->cameraStrategies.insert(std::make_pair(this->cameraBehaviorKey, baseCamera));
 	}
 
 	void CameraManager::removeCameraBehavior(const Ogre::String& cameraBehaviorType, bool destroy)
 	{
-		if (cameraBehaviorType == "NO_ACTIVE_CAMERA")
+		size_t found = cameraBehaviorType.find(NullCamera::BehaviorType());
+		if (found != Ogre::String::npos)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Default camera type can not be removed.");
 			return;
@@ -113,24 +117,50 @@ namespace NOWA
 			}
 			this->cameraStrategies.erase(it);
 
-			// Sets the old behavior
-			this->setActiveCameraBehavior(this->oldBehaviorType);
+			// If old camera type is the onw, which has been deleted, go one back to get one
+			if (cameraBehaviorType == this->oldBehaviorKey)
+			{
+				Ogre::String defaultBehaviorKey;
+				for (auto innerIt = this->cameraStrategies.begin(); innerIt != this->cameraStrategies.end(); ++innerIt)
+				{
+					Ogre::String tempName = innerIt->second->getBehaviorType();
+					if (Ogre::StringUtil::match(tempName, BaseCamera::BehaviorType() + "*", false))
+					{
+						defaultBehaviorKey = innerIt->second->getBehaviorType();
+						break;
+					}
+				}
 
-			this->cameraBehaviorType = this->oldBehaviorType;
+				if (false == defaultBehaviorKey.empty())
+				{
+					this->oldBehaviorKey = defaultBehaviorKey;
+				}
+				else
+				{
+					this->oldBehaviorKey = "invalid";
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CameraManager] Could not find any valid camera behavior type. Illegal state.");
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[CameraManager] Could not find any valid camera behavior type. Illegal state.\n", "NOWA");
+				}
+			}
+
+			// Sets the old behavior
+			this->setActiveCameraBehavior(this->oldBehaviorKey);
+
+			this->cameraBehaviorKey = this->oldBehaviorKey;
 		}
 	}
 
 	void CameraManager::setActiveCameraBehavior(const Ogre::String& cameraBehaviorType)
 	{
-		if (this->cameraBehaviorType != cameraBehaviorType)
+		if (this->cameraBehaviorKey != cameraBehaviorType)
 		{
-			this->oldBehaviorType = cameraBehaviorType;
+			this->oldBehaviorKey = cameraBehaviorType;
 		}
-		this->cameraBehaviorType = cameraBehaviorType;
+		this->cameraBehaviorKey = cameraBehaviorType;
 
 		std::map<Ogre::String, BaseCamera*>::iterator it;
 
-		it = this->cameraStrategies.find(this->oldBehaviorType);
+		it = this->cameraStrategies.find(this->oldBehaviorKey);
 		if (it != this->cameraStrategies.end())
 		{
 			it->second->onClearData();
@@ -150,7 +180,7 @@ namespace NOWA
 
 	BaseCamera* CameraManager::getActiveCameraBehavior(void) const
 	{
-		auto& it = this->cameraStrategies.find(this->cameraBehaviorType);
+		auto& it = this->cameraStrategies.find(this->cameraBehaviorKey);
 		if (it != this->cameraStrategies.end())
 		{
 			return it->second;
@@ -298,12 +328,17 @@ namespace NOWA
 
 	void CameraManager::setMoveCameraWeight(Ogre::Real moveCameraWeight)
 	{
-		this->cameraStrategies[this->cameraBehaviorType]->moveCameraWeight = moveCameraWeight;
+		this->cameraStrategies[this->cameraBehaviorKey]->moveCameraWeight = moveCameraWeight;
 	}
 
 	void CameraManager::setRotateCameraWeight(Ogre::Real rotateCameraWeight)
 	{
-		this->cameraStrategies[this->cameraBehaviorType]->rotateCameraWeight = rotateCameraWeight;
+		this->cameraStrategies[this->cameraBehaviorKey]->rotateCameraWeight = rotateCameraWeight;
+	}
+
+	unsigned int CameraManager::getCameraBehaviorId(void)
+	{
+		return this->cameraBehaviorId++;
 	}
 
 	void CameraManager::moveCamera(Ogre::Real dt)
@@ -311,7 +346,7 @@ namespace NOWA
 		if (nullptr != this->camera)
 		{
 			Ogre::Vector3 cameraPosition = this->camera->getPosition();
-			this->cameraStrategies[this->cameraBehaviorType]->moveCamera(dt);
+			this->cameraStrategies[this->cameraBehaviorKey]->moveCamera(dt);
 		}
 	}
 
@@ -321,18 +356,18 @@ namespace NOWA
 		{
 			Ogre::Vector3 cameraPosition = this->camera->getPosition();
 			Ogre::Quaternion cameraOrientation = this->camera->getOrientation();
-			this->cameraStrategies[this->cameraBehaviorType]->rotateCamera(dt, forJoyStick);
+			this->cameraStrategies[this->cameraBehaviorKey]->rotateCamera(dt, forJoyStick);
 		}
 	}
 
 	Ogre::Vector3 CameraManager::getPosition(void)
 	{
-		return this->cameraStrategies[this->cameraBehaviorType]->getPosition();
+		return this->cameraStrategies[this->cameraBehaviorKey]->getPosition();
 	}
 
 	Ogre::Quaternion CameraManager::getOrientation(void)
 	{
-		return this->cameraStrategies[this->cameraBehaviorType]->getOrientation();
+		return this->cameraStrategies[this->cameraBehaviorKey]->getOrientation();
 	}
 
 }; //namespace end

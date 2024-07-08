@@ -165,7 +165,7 @@ namespace NOWA
 
 		virtual OgreNewt::Body* getBody(void) const;
 
-		virtual void reCreateCollision(void) = 0;
+		virtual void reCreateCollision(bool overwrite = false) = 0;
 
 		void destroyCollision(void);
 
@@ -207,7 +207,7 @@ namespace NOWA
 		static const Ogre::String AttrMass(void) { return "Mass"; }
 		static const Ogre::String AttrCollidable(void) { return "Collidable"; }
 	protected:
-		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId);
+		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId, bool overwrite = false);
 
 		OgreNewt::CollisionPtr createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition,
 			const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId);

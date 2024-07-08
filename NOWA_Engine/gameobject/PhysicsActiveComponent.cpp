@@ -573,7 +573,7 @@ namespace NOWA
 		this->physicsBody->setMaterialGroupID(materialId);
 	}
 
-	void PhysicsActiveComponent::reCreateCollision(void)
+	void PhysicsActiveComponent::reCreateCollision(bool overwrite)
 	{
 		if (nullptr == this->physicsBody)
 			return;
@@ -2451,7 +2451,10 @@ namespace NOWA
 	{
 		PhysicsComponent* otherPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(otherBody->getUserData());
 		
-		this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
+		if (nullptr != this->gameObjectPtr->getLuaScript())
+		{
+			this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
+		}
 	}
 
 	void PhysicsActiveComponent::updateCallback(OgreNewt::Body* body)

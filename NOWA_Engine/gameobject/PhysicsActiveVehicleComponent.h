@@ -231,11 +231,18 @@ namespace NOWA
 	protected:
 		virtual bool createDynamicBody(void);
 	private:
+		bool isVehicleTippedOver(void);
+		bool isVehicleStuck(Ogre::Real dt);
+		void correctVehicleOrientation(void);
+	private:
 		Variant* onSteerAngleChangedFunctionName;
 		Variant* onMotorForceChangedFunctionName;
 		Variant* onHandBrakeChangedFunctionName;
 		Variant* onBrakeChangedFunctionName;
 		Variant* onTireContactFunctionName;
+
+		Ogre::Real stuckTime;
+		Ogre::Real maxStuckTime;
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1358,7 +1358,9 @@ void MainMenuBar::applyMeshToolOperations(void)
 		Ogre::String params;
 		params += "transform ";
 		params += "-rotate=";
+		params += "\"";
 		params += rotateText;
+		params += "\"";
 
 		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
 	}
@@ -1369,7 +1371,9 @@ void MainMenuBar::applyMeshToolOperations(void)
 		Ogre::String params;
 		params += "transform ";
 		params += "-scale=";
+		params += "\"";
 		params += scaleText;
+		params += "\"";
 
 		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
 	}
@@ -1380,7 +1384,9 @@ void MainMenuBar::applyMeshToolOperations(void)
 		Ogre::String params;
 		params += "transform ";
 		params += "-transform=";
+		params += "\"";
 		params += transformOriginText;
+		params += "\"";
 
 		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
 	}
@@ -1391,7 +1397,9 @@ void MainMenuBar::applyMeshToolOperations(void)
 		Ogre::String params;
 		params += "transform ";
 		params += "-axes=";
+		params += "\"";
 		params += changeAxesText;
+		params += "\"";
 
 		NOWA::Core::getSingletonPtr()->processMeshMagick(meshName, params);
 	}

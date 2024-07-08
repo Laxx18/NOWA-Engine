@@ -1311,7 +1311,7 @@ namespace NOWA
 		if (nullptr == this->widget)
 			return;
 
-		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::TextBox>(false), fontHeight));
+		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::EditBox>(false), fontHeight));
 	}
 
 // widget->castType<MyGUI::EditBox>()->setEditMultiLine
@@ -2593,9 +2593,8 @@ namespace NOWA
 		textColor(new Variant(MyGUIListBoxComponent::AttrTextColor(), Ogre::Vector4(0.0f, 0.0f, 0.0, 1.0f), this->attributes)),
 		itemCount(new Variant(MyGUIListBoxComponent::AttrItemCount(), 0, this->attributes))
 	{
-		std::vector<Ogre::String> skins({ "ListBox" });
+		std::vector<Ogre::String> skins({ "ListBox", "ListBox_Dark", "ListBox2_Dark", "ListBox3_Dark" });
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), skins, this->attributes);
-		this->skin->setVisible(false);
 		
 		this->textColor->addUserData(GameObject::AttrActionColorDialog());
 		this->itemCount->addUserData(GameObject::AttrActionNeedRefresh());
@@ -2986,7 +2985,7 @@ namespace NOWA
 			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				fontHeight = MyGUIUtilities::getInstance()->setFontSize(listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(), fontHeight);
+				fontHeight = MyGUIUtilities::getInstance()->setFontSize(listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false), fontHeight);
 			}
 			this->fontHeight->setValue(fontHeight);
 		}
@@ -3005,7 +3004,7 @@ namespace NOWA
 			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
+				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
 			}
 		}
 	}
@@ -3023,7 +3022,7 @@ namespace NOWA
 			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
 			}
 		}
 	}
@@ -3041,7 +3040,7 @@ namespace NOWA
 			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
 			}
 		}
 	}
@@ -3080,14 +3079,14 @@ namespace NOWA
 				{
 					widget->castType<MyGUI::ListBox>()->addItem("My Item");
 				}
-
-				this->setColor(this->color->getVector4());
-				this->setItemHeight(this->itemHeight->getUInt());
-				this->setFontHeight(this->fontHeight->getUInt());
-				this->setTextAlign(this->textAlign->getListSelectedValue());
-				this->setTextOffset(this->textOffset->getVector2());
-				this->setTextColor(this->textColor->getVector4());
 			}
+
+			this->setColor(this->color->getVector4());
+			this->setItemHeight(this->itemHeight->getUInt());
+			this->setFontHeight(this->fontHeight->getUInt());
+			this->setTextAlign(this->textAlign->getListSelectedValue());
+			this->setTextOffset(this->textOffset->getVector2());
+			this->setTextColor(this->textColor->getVector4());
 		}
 		else if (itemCount < oldSize)
 		{
@@ -3096,7 +3095,8 @@ namespace NOWA
 			{
 				for (size_t i = itemCount; i < oldSize; i++)
 				{
-					widget->castType<MyGUI::ListBox>()->removeItemAt(i);
+					// 0 is correct! MyGUI removes each time the 0-th index.
+					widget->castType<MyGUI::ListBox>()->removeItemAt(0);
 				}
 			}
 		}
@@ -3346,7 +3346,7 @@ namespace NOWA
 
 		for (size_t i = 0; i < this->itemCount->getUInt(); i++)
 		{
-			widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+			widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
 		}
 		
 		this->setColor(this->color->getVector4());
@@ -3619,7 +3619,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(), fontHeight);
+				fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>(), fontHeight);
 			}
 			this->fontHeight->setValue(fontHeight);
 		}
@@ -3638,7 +3638,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextAlign(this->mapStringToAlign(align));
 			}
 		}
 	}
@@ -3656,7 +3656,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
 			}
 		}
 	}
@@ -3674,7 +3674,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
 			}
 		}
 	}
@@ -3761,7 +3761,8 @@ namespace NOWA
 			{
 				for (size_t i = itemCount; i < oldSize; i++)
 				{
-					widget->castType<MyGUI::ComboBox>()->removeItemAt(i);
+					// 0 is correct! MyGUI removes each time the 0-th index.
+					widget->castType<MyGUI::ComboBox>()->removeItemAt(0);
 				}
 			}
 		}

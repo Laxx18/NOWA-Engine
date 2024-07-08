@@ -9,7 +9,7 @@ namespace NOWA
 	{
 	public:
 		
-		FirstPersonCamera(Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z, 
+		FirstPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z,
 			Ogre::Real smoothValue = 0.3f, Ogre::Real rotateSpeed = 0.5f, const Ogre::Vector3& offsetPosition = Ogre::Vector3(0.4f, 0.8f, -0.9f));
 
 		virtual ~FirstPersonCamera();
@@ -24,7 +24,7 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void)
 		{
-			return "FIRST_PERSON_CAMERA";
+			return "FIRST_PERSON_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)

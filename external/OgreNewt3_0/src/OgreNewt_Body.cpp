@@ -892,8 +892,6 @@ namespace OgreNewt
 
 			if (m_contactCallback)
 			{
-				dVector point(0.0f);
-				dVector normal(0.0f);
 				int count = 0;
 
 				for (NewtonJoint* joint = NewtonBodyGetFirstContactJoint(m_body); joint; joint = NewtonBodyGetNextContactJoint(m_body, joint))
@@ -906,6 +904,7 @@ namespace OgreNewt
 						const NewtonBody* const otherBody = (newtonBody0 == m_body) ? newtonBody1 : newtonBody0;
 						OgreNewt::Body* body = (OgreNewt::Body*)NewtonBodyGetUserData(otherBody);
 
+						// Does only work if collisionmode is set on! If required without collision, checkout KinematicBody!
 						for (void* contact = NewtonContactJointGetFirstContact(joint); contact; contact = NewtonContactJointGetNextContact(joint, contact))
 						{
 							OgreNewt::ContactJoint contactJoint(joint);

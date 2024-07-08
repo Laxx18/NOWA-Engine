@@ -8,8 +8,9 @@
 
 namespace NOWA
 {
-	BaseCamera::BaseCamera(Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection)
-		: moveSpeed(moveSpeed),
+	BaseCamera::BaseCamera(unsigned int id, Ogre::Real moveSpeed, Ogre::Real rotateSpeed, Ogre::Real smoothValue, const Ogre::Vector3& defaultDirection)
+		: id(id),
+		moveSpeed(moveSpeed),
 		rotateSpeed(rotateSpeed),
 		smoothValue(smoothValue),
 		defaultDirection(defaultDirection),
@@ -171,14 +172,8 @@ namespace NOWA
 			this->firstTimeMoveValueSet = false;
 		}
 
-		// if ((moveValue - this->lastMoveValue).squaredLength() > 10.0f)
-		// 	this->lastMoveValue = moveValue;
-
 		moveValue = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue, this->lastMoveValue, this->smoothValue);
 
-		// Same as camera->moveRelative
-		// Ogre::Vector3 trans = this->camera->getParentSceneNode()->getOrientation() * moveValue;
-		// this->camera->getParentSceneNode()->translate(trans);
 		if (Ogre::Vector3::ZERO != moveValue)
 		{
 			this->camera->moveRelative(moveValue * dt);
@@ -285,6 +280,11 @@ namespace NOWA
 	void BaseCamera::setRotationSpeed(Ogre::Real rotationSpeed)
 	{
 		this->rotateSpeed = rotationSpeed;
+	}
+
+	unsigned int BaseCamera::getId(void) const
+	{
+		return this->id;
 	}
 
 	Ogre::Camera* BaseCamera::getCamera(void) const

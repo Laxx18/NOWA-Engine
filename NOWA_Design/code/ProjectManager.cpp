@@ -581,8 +581,9 @@ void ProjectManager::createDummyCamera(void)
 	camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
 
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(new NOWA::BaseCamera());
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(NOWA::BaseCamera::BehaviorType());
+	auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(baseCamera);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(baseCamera->getBehaviorType());
 	// Create dummy workspace
 	NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
 }

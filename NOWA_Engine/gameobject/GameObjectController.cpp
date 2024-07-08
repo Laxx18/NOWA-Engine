@@ -380,8 +380,6 @@ namespace NOWA
 	GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object from the original name: " + originalGameObjectPtr->getName());
-
 		Ogre::SceneManager* sceneManager = originalGameObjectPtr->getSceneManager();
 		Ogre::SceneNode* originalSceneNode = originalGameObjectPtr->getSceneNode();
 		
@@ -421,6 +419,9 @@ namespace NOWA
 			clonedSceneNode->setName(validatedName);
 			clonedSceneNode->setScale(scale);
 		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
+
 
 		Ogre::MovableObject* clonedMovableObject = nullptr;
 			

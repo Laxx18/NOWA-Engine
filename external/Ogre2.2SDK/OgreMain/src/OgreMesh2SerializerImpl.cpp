@@ -71,9 +71,6 @@ namespace Ogre
     //---------------------------------------------------------------------
     void MeshSerializerImpl::exportMesh( const Mesh *pMesh, DataStreamPtr stream, Endian endianMode )
     {
-        LogManager::getSingleton().logMessage( "MeshSerializer writing mesh data to stream " +
-                                               stream->getName() + "..." );
-
         mCalculatedHash[0] = 0u;
         mCalculatedHash[1] = 0u;
 
@@ -196,45 +193,30 @@ namespace Ogre
             // Write Submeshes
             for( unsigned i = 0; i < pMesh->getNumSubMeshes(); ++i )
             {
-                LogManager::getSingleton().logMessage( "Writing submesh..." );
                 writeSubMesh( pMesh->getSubMesh( i ), lodVertexTable[i] );
-                LogManager::getSingleton().logMessage( "Submesh exported." );
             }
 
             // Write skeleton info if required
             if( pMesh->hasSkeleton() )
             {
-                LogManager::getSingleton().logMessage( "Exporting skeleton link..." );
                 // Write skeleton link
                 writeSkeletonLink( pMesh->getSkeletonName() );
-                LogManager::getSingleton().logMessage( "Skeleton link exported." );
             }
-
-            LogManager::getSingleton().logMessage( "Exporting LOD level thresholds...." );
             writeMeshLodLevel( pMesh );
-            LogManager::getSingleton().logMessage( "LOD level thresholds exported." );
 
             // Write bounds information
-            LogManager::getSingleton().logMessage( "Exporting bounds information...." );
             writeBoundsInfo( pMesh );
-            LogManager::getSingleton().logMessage( "Bounds information exported." );
 
             // Write submesh name table
-            LogManager::getSingleton().logMessage( "Exporting submesh name table..." );
             writeSubMeshNameTable( pMesh );
-            LogManager::getSingleton().logMessage( "Submesh name table exported." );
 
             // Write submesh name table
-            LogManager::getSingleton().logMessage( "Exporting hash for caches..." );
             writeMeshHashForCaches( pMesh );
-            LogManager::getSingleton().logMessage( "Exporting hash for caches exported." );
 
             // Write edge lists
             /*if (pMesh->isEdgeListBuilt())
             {
-                LogManager::getSingleton().logMessage("Exporting edge lists...");
                 writeEdgeList(pMesh);
-                LogManager::getSingleton().logMessage("Edge lists exported");
             }
 
             // Write morph animation
@@ -1835,9 +1817,7 @@ edgeData->triangleFaceNormals.begin(); for ( ; t != edgeData->triangles.end(); +
         for (uint16 a = 0; a < pMesh->getNumAnimations(); ++a)
         {
             Animation* anim = pMesh->getAnimation(a);
-            LogManager::getSingleton().logMessage("Exporting animation " + anim->getName());
             writeAnimation(anim);
-            LogManager::getSingleton().logMessage("Animation exported.");
         }
         popInnerChunk(mStream);
     }

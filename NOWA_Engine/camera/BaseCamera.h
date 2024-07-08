@@ -14,7 +14,7 @@ namespace NOWA
 	public:
 		friend class CameraManager;
 
-		BaseCamera(Ogre::Real moveSpeed = 10.0f, Ogre::Real rotateSpeed = 10.0f, Ogre::Real smoothValue = 0.025f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
+		BaseCamera(unsigned int id, Ogre::Real moveSpeed = 10.0f, Ogre::Real rotateSpeed = 10.0f, Ogre::Real smoothValue = 0.01f, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z);
 
 		virtual ~BaseCamera();
 
@@ -36,13 +36,15 @@ namespace NOWA
 
 		virtual Ogre::String getBehaviorType(void) 
 		{
-			return "BASE_MOVE_CAMERA";
+			return "BASE_MOVE_CAMERA_" + Ogre::StringConverter::toString(this->id);
 		}
 
 		static Ogre::String BehaviorType(void)
 		{
 			return "BASE_MOVE_CAMERA";
 		}
+
+		unsigned int getId(void) const;
 
 		Ogre::Camera* getCamera(void) const;
 		
@@ -62,6 +64,7 @@ namespace NOWA
 	private:
 		void postInitialize(Ogre::Camera* camera);
 	protected:
+		unsigned int id;
 		Ogre::Camera* camera;
 
 		Ogre::SceneNode* cameraNode;

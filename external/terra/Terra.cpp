@@ -581,10 +581,22 @@ namespace Ogre
 
         m_currentBlendWeightImageName = m_prefix + "_detailMap.png";
 
+        m_oldBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
+        m_newBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
+        size_t correctSizeInBytesFor1024x1024 = m_oldBlendWeightData.size();
+
         if (nullptr == m_blendWeightStagingTexture)
         {
-            m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
-            m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
+            // Note: Maybe candidate is wrong, getting resolution of 2048x2048 instead of 1024x1024
+            bool correctCandidate = false;
+            while (false == correctCandidate)
+            {
+                m_blendWeightStagingTexture = textureManager->getStagingTexture(image.getWidth(), image.getHeight(), 1u, 1u, image.getPixelFormat());
+                if (m_blendWeightStagingTexture->_getSizeBytes() == correctSizeInBytesFor1024x1024)
+                {
+                    correctCandidate = true;
+                }
+            }
         }
 
         m_blendWeightStagingTexture->startMapRegion();
@@ -593,13 +605,12 @@ namespace Ogre
         //for( uint8 mip=0; mip<numMipmaps; ++mip )
         texBox.copyFrom(image.getData(0));
 
-        m_oldBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
-        m_newBlendWeightData.resize(image.getWidth() * image.getHeight() * 4, 0);
 
-        size_t s = m_blendWeightStagingTexture->_getSizeBytes();
+
+
 
         // Note: If crash occurs, check if offsetscale0 etc. is 1 and not 128, also check the datablock.json in the workspace terra folder!
-
+        // Or candidate is wrong, getting resolution of 2048x2048 instead of 1024x1024
         memcpy(&m_oldBlendWeightData[0], texBox.data, m_blendWeightStagingTexture->_getSizeBytes());
         memcpy(&m_newBlendWeightData[0], texBox.data, m_blendWeightStagingTexture->_getSizeBytes());
 

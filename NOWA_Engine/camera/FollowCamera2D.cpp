@@ -8,8 +8,8 @@
 
 namespace NOWA
 {
-	FollowCamera2D::FollowCamera2D(Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue)
-		: BaseCamera(0, 0, smoothValue),
+	FollowCamera2D::FollowCamera2D(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& offsetPosition, Ogre::Real smoothValue)
+		: BaseCamera(id, 0, 0, smoothValue),
 		sceneNode(sceneNode),
 		sceneManager(nullptr),
 		lastMoveValue(Ogre::Vector3::ZERO),
