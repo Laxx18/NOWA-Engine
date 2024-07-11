@@ -9,7 +9,10 @@ namespace NOWA
 		rightStickMovement(Ogre::Vector2::ZERO),
 		leftStickMovement(Ogre::Vector2::ZERO),
 		povMovement(Ogre::Vector2::ZERO),
-		pressedButton(JoyStickButton::BUTTON_NONE)
+		pressedButton(JoyStickButton::BUTTON_NONE),
+		timeSinceLastActionDown(0.2f),
+		timeSinceLastActionPressed(0.2f),
+		canPress(false)
 	{
 		this->pressedPov[0] = Action::NONE; // pov = point of view = Steuerkreuz :)
 		this->pressedPov[1] = Action::NONE; // pov = point of view = Steuerkreuz :)
@@ -1126,9 +1129,54 @@ namespace NOWA
 		return somethingDown;
 	}
 
+
 	bool InputDeviceModule::isKeyDown(OIS::KeyCode keyCode) const
 	{
 		return InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(keyCode);
+	}
+
+	bool InputDeviceModule::isActionDownAmount(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real actionDuration)
+	{
+		if (this->timeSinceLastActionDown >= 0.0f)
+		{
+			this->timeSinceLastActionDown = this->timeSinceLastActionDown - dt;
+			if (true == this->isActionDown(action))
+			{
+				return true;
+			}
+		}
+
+		if (false == this->isActionDown(action))
+		{
+			this->timeSinceLastActionDown = actionDuration;
+		}
+
+		return false;
+	}
+
+	bool InputDeviceModule::isActionPressed(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real durationBetweenTheAction)
+	{
+		if (this->timeSinceLastActionPressed >= 0.0f)
+		{
+			this->timeSinceLastActionPressed = this->timeSinceLastActionPressed - dt;
+		}
+
+		if (this->timeSinceLastActionPressed <= 0.0f)
+		{
+			if (false == this->isActionDown(action))
+			{
+				this->canPress = true;
+			}
+
+			if (true == this->isActionDown(action) && true == this->canPress)
+			{
+				this->canPress = false;
+				this->timeSinceLastActionPressed = durationBetweenTheAction;
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	bool InputDeviceModule::isButtonDown(JoyStickButton button) const

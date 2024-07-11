@@ -1441,6 +1441,9 @@ namespace NOWA
 			.def("isKeyDown", &InputDeviceModule::isKeyDown)
 			.def("isButtonDown", &InputDeviceModule::isButtonDown)
 			.def("isActionDown", &InputDeviceModule::isActionDown)
+			.def("isActionDownAmount", &InputDeviceModule::isActionDownAmount)
+			.def("isActionDownPressed", &InputDeviceModule::isActionPressed)
+				
 			// https://sourceforge.net/p/luabind/mailman/message/21021347/
 			// .def("areButtonsDown", &InputDeviceModule::areButtonsDown, luabind::copy_table(boost::arg<3>())) // _1 is for this, _2 is the actual in parameter // boost::arg<2>()
 			// .def("areButtonsDown", &InputDeviceModule::areButtonsDown, raw(boost::bind(InputDeviceModule::areButtonsDown, _2)))
@@ -1477,6 +1480,8 @@ namespace NOWA
 		AddClassToCollection("InputDeviceModule", "bool isKeyDown(KeyCode key)", "Gets whether a specifig key is down.");
 		AddClassToCollection("InputDeviceModule", "bool isButtonDown(JoyStickButton button)", "Gets whether a specifig joystick button is down.");
 		AddClassToCollection("InputDeviceModule", "bool isActionDown(Action action)", "Gets whether a specifig mapped action is down.");
+		AddClassToCollection("InputDeviceModule", "bool isActionDownAmount(Action action, number dt, number actionDuration)", "Gets whether a specifig mapped action is down, but only max for the specifig action duration. Default value is 0.2 seconds.");
+		AddClassToCollection("InputDeviceModule", "bool isActionPressed(Action action, number dt, number durationBetweenTheAction)", "Gets whether a specifig mapped action is pressed.");
 		AddClassToCollection("InputDeviceModule", "bool areButtonsDown2(JoyStickButton button1, JoyStickButton button2)", "Gets whether two specific joystick buttons are down at the same time.");
 		AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3)", "Gets whether three specific joystick buttons are down at the same time.");
 		AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)", "Gets whether four specific joystick buttons are down at the same time.");
@@ -2077,6 +2082,11 @@ namespace NOWA
 	ParticleUniverseComponent* getParticleUniverseComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<ParticleUniverseComponent>(gameObject->getComponent<ParticleUniverseComponent>()).get();
+	}
+
+	PlayerControllerComponent* getPlayerControllerComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<PlayerControllerComponent>(gameObject->getComponent<PlayerControllerComponent>()).get();
 	}
 
 	PlayerControllerJumpNRunComponent* getPlayerControllerJumpNRunComponent(GameObject* gameObject)
@@ -2817,6 +2827,11 @@ namespace NOWA
 	ParticleUniverseComponent* getParticleUniverseComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<ParticleUniverseComponent>(gameObject->getComponentFromName<ParticleUniverseComponent>(name)).get();
+	}
+
+	PlayerControllerComponent* getPlayerControllerComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<PlayerControllerComponent>(gameObject->getComponentFromName<PlayerControllerComponent>(name)).get();
 	}
 
 	PlayerControllerJumpNRunComponent* getPlayerControllerJumpNRunComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3624,6 +3639,7 @@ namespace NOWA
 		gameObject.def("getParticleUniverseComponent", (ParticleUniverseComponent * (*)(GameObject*)) & getParticleUniverseComponent);
 		gameObject.def("getParticleUniverseComponent2", (ParticleUniverseComponent * (*)(GameObject*, unsigned int)) & getParticleUniverseComponent);
 
+		gameObject.def("getPlayerControllerComponent", &getPlayerControllerComponent);
 		gameObject.def("getPlayerControllerJumpNRunComponent", &getPlayerControllerJumpNRunComponent);
 		gameObject.def("getPlayerControllerJumpNRunLuaComponent", &getPlayerControllerJumpNRunLuaComponent);
 
@@ -3776,6 +3792,7 @@ namespace NOWA
 		gameObject.def("getFadeComponentFromName", &getFadeComponentFromName);
 		gameObject.def("getNavMeshComponentFromName", &getNavMeshComponentFromName);
 		gameObject.def("getParticleUniverseComponentFromName", &getParticleUniverseComponentFromName);
+		gameObject.def("getPlayerControllerComponentFromName", &getPlayerControllerComponentFromName);
 		gameObject.def("getPlayerControllerJumpNRunComponentFromName", &getPlayerControllerJumpNRunComponentFromName);
 		gameObject.def("getPlayerControllerJumpNRunLuaComponentFromName", &getPlayerControllerJumpNRunLuaComponentFromName);
 		gameObject.def("getPlayerControllerClickToPointComponentFromName", &getPlayerControllerClickToPointComponentFromName);
@@ -3942,6 +3959,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "NavMeshComponent getNavMeshComponent()", "Gets the nav mesh component. Requirements: OgreRecast navigation must be activated.");
 		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponent(unsigned int occurrenceIndex)", "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.");
 		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponent2()", "Gets the particle universe component. This can be used if the game object just has one particle universe component.");
+		AddClassToCollection("GameObject", "PlayerControllerComponent getPlayerControllerComponent()", "Gets the base player controller component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerJumpNRunComponent()", "Gets the player controller Jump N Run component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunLuaComponent getPlayerControllerJumpNRunLuaComponent()", "Gets the player controller Jump N Run Lua component. Requirements: A physics active component and a LuaScriptComponent.");
 		AddClassToCollection("GameObject", "PlayerControllerClickToPointComponent getPlayerControllerClickToPointComponent()", "Gets the player controller click to point component. Requirements: A physics active component.");
@@ -4084,6 +4102,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "FadeComponent getFadeComponentFromName(String name)", "Gets the fade component.");
 		AddClassToCollection("GameObject", "NavMeshComponent getNavMeshComponentFromName(String name)", "Gets the nav mesh component. Requirements: OgreRecast navigation must be activated.");
 		AddClassToCollection("GameObject", "ParticleUniverseComponent getParticleUniverseComponentFromName(String nameunsigned int occurrenceIndex)", "Gets the particle universe component by the given occurence index, since a game object may have besides other components several particle universe components.");
+		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerComponentFromName(String name)", "Gets the base player controller component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunComponent getPlayerControllerJumpNRunComponentFromName(String name)", "Gets the player controller Jump N Run component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PlayerControllerJumpNRunLuaComponent getPlayerControllerJumpNRunLuaComponentFromName(String name)", "Gets the player controller Jump N Run Lua component. Requirements: A physics active component and a LuaScriptComponent.");
 		AddClassToCollection("GameObject", "PlayerControllerClickToPointComponent getPlayerControllerClickToPointComponentFromName(String name)", "Gets the player controller click to point component. Requirements: A physics active component.");
@@ -5141,6 +5160,7 @@ namespace NOWA
 		gameObjectController.def("castFadeComponent", &GameObjectController::cast<FadeComponent>);
 		gameObjectController.def("castNavMeshComponent", &GameObjectController::cast<NavMeshComponent>);
 		gameObjectController.def("castParticleUniverseComponent", &GameObjectController::cast<ParticleUniverseComponent>);
+		gameObjectController.def("castPlayerControllerComponent", &GameObjectController::cast<PlayerControllerComponent>);
 		gameObjectController.def("castPlayerControllerJumpNRunComponent", &GameObjectController::cast<PlayerControllerJumpNRunComponent>);
 		gameObjectController.def("castPlayerControllerJumpNRunLuaComponent", &GameObjectController::cast<PlayerControllerJumpNRunLuaComponent>);
 		gameObjectController.def("castPlayerControllerClickToPointComponent", &GameObjectController::cast<PlayerControllerClickToPointComponent>);
@@ -5300,6 +5320,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "FadeComponent castFadeComponent(FadeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "NavMeshComponent castNavMeshComponent(NavMeshComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "ParticleUniverseComponent castParticleUniverseComponent(ParticleUniverseComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "PlayerControllerComponent castPlayerControllerComponent(PlayerControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerJumpNRunComponent castPlayerControllerJumpNRunComponent(PlayerControllerJumpNRunComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerJumpNRunLuaComponent castPlayerControllerJumpNRunLuaComponent(PlayerControllerJumpNRunLuaComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlayerControllerClickToPointComponent castPlayerControllerClickToPointComponent(PlayerControllerClickToPointComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5565,6 +5586,7 @@ namespace NOWA
 			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
 			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
 			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
+			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
 			.def("addTime", &IAnimationBlender::addTime)
 			.def("setTimePosition", &IAnimationBlender::setTimePosition)
 			.def("getTimePosition", &IAnimationBlender::getTimePosition)
@@ -5683,6 +5705,7 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "AnimID getAnimationIdFromString(String animationName)", "Gets the mapped animation id from the given animation name.");
 		AddClassToCollection("AnimationBlender", "bool hasAnimation(String animationName)", "Gets whether the given animation name does exist.");
 		AddClassToCollection("AnimationBlender", "bool isAnimationActive(String animationName)", "Gets whether the given animation name is being currently played.");
+		AddClassToCollection("AnimationBlender", "bool isAnyAnimationActive()", "Gets whether any animation is currently played.");
 		// AddClassToCollection("AnimationBlender", "void setSpeed(float speed)", "Sets the animation speed. E.g. setting speed = 2, the animation will be played two times faster.");
 		// AddClassToCollection("AnimationBlender", "float getSpeed()", "Gets the animation speed.");
 		// AddClassToCollection("AnimationBlender", "void setRepeat(bool repeat)", "Sets whether to repeat the animation.");

@@ -230,6 +230,8 @@ namespace NOWA
 
 		virtual bool isAnimationActive(AnimID animationId) = 0;
 
+		virtual bool isAnyAnimationActive(void) = 0;
+
 		virtual void setTimePosition(Ogre::Real timePosition) = 0;
 
 		virtual Ogre::Real getTimePosition(void) const = 0;

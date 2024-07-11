@@ -85,10 +85,13 @@ namespace MyGUI
 	{
 		//////// Lax 26.10.2020 /////////////////
 		
-		for (size_t i = 0; i < mWidgetLines.size(); i++)
+		if (nullptr != mClient)
 		{
-			MyGUI::Button* button = mWidgetLines[i];
-			mClient->_destroyChildWidget(button);
+			for (size_t i = 0; i < mWidgetLines.size(); i++)
+			{
+				MyGUI::Button* button = mWidgetLines[i];
+				mClient->_destroyChildWidget(button);
+			}
 		}
 		mWidgetLines.clear();
 		mItemsInfo.clear();

@@ -889,7 +889,9 @@ namespace NOWA
 			WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
 		}
 
-		this->nullWorkspace();
+		// ATTENTION!: Causes crash if loading another scene, because nullWorkspace does not delete everything
+		// this->nullWorkspace();
+		this->removeWorkspace();
 	}
 
 	void WorkspaceBaseComponent::actualizeValue(Variant* attribute)

@@ -1496,6 +1496,8 @@ namespace NOWA
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_BlackBlueSkins.xml");
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_Skin_BlackTheme.xml");
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_Template_BlackTheme.xml");
+		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_DarkTemplate.xml");
+		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_DarkSkin.xml");
 	}
 
 	void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)

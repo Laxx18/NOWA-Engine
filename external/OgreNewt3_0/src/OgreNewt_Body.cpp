@@ -32,9 +32,11 @@ namespace OgreNewt
 		m_nodePosit(Ogre::Vector3::ZERO),
 		m_curPosit(Ogre::Vector3::ZERO),
 		m_prevPosit(Ogre::Vector3::ZERO),
+		m_lastPosit(Ogre::Vector3::ZERO),
 		m_curRotation(Ogre::Quaternion::IDENTITY),
 		m_prevRotation(Ogre::Quaternion::IDENTITY),
 		m_nodeRotation(Ogre::Quaternion::IDENTITY),
+		m_lastOrientation(Ogre::Quaternion::IDENTITY),
 		m_updateRotation(false),
 		m_validToUpdateStatic(false),
 		m_memoryType(memoryType),
@@ -88,9 +90,11 @@ namespace OgreNewt
 		m_nodePosit(Ogre::Vector3::ZERO),
 		m_curPosit(Ogre::Vector3::ZERO),
 		m_prevPosit(Ogre::Vector3::ZERO),
+		m_lastPosit(Ogre::Vector3::ZERO),
 		m_curRotation(Ogre::Quaternion::IDENTITY),
 		m_prevRotation(Ogre::Quaternion::IDENTITY),
 		m_nodeRotation(Ogre::Quaternion::IDENTITY),
+		m_lastOrientation(Ogre::Quaternion::IDENTITY),
 		m_updateRotation(false),
 		m_validToUpdateStatic(false),
 		m_memoryType(memoryType),
@@ -127,9 +131,11 @@ namespace OgreNewt
 		m_nodePosit(Ogre::Vector3::ZERO),
 		m_curPosit(Ogre::Vector3::ZERO),
 		m_prevPosit(Ogre::Vector3::ZERO),
+		m_lastPosit(Ogre::Vector3::ZERO),
 		m_curRotation(Ogre::Quaternion::IDENTITY),
 		m_prevRotation(Ogre::Quaternion::IDENTITY),
 		m_nodeRotation(Ogre::Quaternion::IDENTITY),
+		m_lastOrientation(Ogre::Quaternion::IDENTITY),
 		m_updateRotation(false),
 		m_validToUpdateStatic(false),
 		m_memoryType(memoryType),
@@ -314,6 +320,9 @@ namespace OgreNewt
 		m_node = node;
 		m_updateRotation = updateRotation;
 		updateNode(1.0f);
+
+		m_lastPosit = m_node->getPosition();
+		m_lastOrientation = m_node->getOrientation();
 	}
 
 	void Body::detachNode(void)
@@ -850,6 +859,9 @@ namespace OgreNewt
 	{
 		if (m_node)
 		{
+			m_lastPosit = m_node->getPosition();
+			m_lastOrientation = m_node->getOrientation();
+
 			const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
 
 			m_nodePosit = m_prevPosit + velocity * interpolatParam;
@@ -939,6 +951,16 @@ namespace OgreNewt
 			omega = omega.Normalize().Scale(100.0f);
 			NewtonBodySetOmega(m_body, &omega[0]);
 		}
+	}
+
+	Ogre::Vector3 Body::getLastPosition(void) const
+	{
+		return m_lastPosit;
+	}
+
+	Ogre::Quaternion Body::getLastOrientation(void) const
+	{
+		return m_lastOrientation;
 	}
 
 	void Body::updateDeformableCollision(void)

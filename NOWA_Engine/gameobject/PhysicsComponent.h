@@ -202,6 +202,10 @@ namespace NOWA
 		void setCollidable(bool collidable);
 
 		bool getCollidable(void) const;
+
+		Ogre::Vector3 getLastPosition(void) const;
+
+		Ogre::Quaternion getLastOrientation(void) const;
 	public:
 		static const Ogre::String AttrCollisionType(void) { return "Collision Type"; }
 		static const Ogre::String AttrMass(void) { return "Mass"; }

@@ -222,6 +222,7 @@ namespace NOWA
 		OgreNewt::Vehicle* getVehicle(void) const;
 
 		Ogre::Vector3 getVehicleForce(void) const;
+
 	public:
 		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }
 		static const Ogre::String AttrOnMotorForceChangedFunctionName(void) { return "On Motor Force Function Name"; }

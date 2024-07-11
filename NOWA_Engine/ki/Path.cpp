@@ -218,6 +218,12 @@ namespace NOWA
 
 		void Path::setNextWayPoint()
 		{
+			if (true == this->wayPoints.empty())
+			{
+				this->valid = false;
+				return;
+			}
+
 			// This function is called, when a next waypoint is reached
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] directionChange: " + Ogre::StringConverter::toString(this->currentDirection));
 		

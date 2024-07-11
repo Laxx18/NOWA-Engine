@@ -945,4 +945,20 @@ namespace NOWA
 		return this->collidable->getBool();
 	}
 
+	Ogre::Vector3 PhysicsComponent::getLastPosition(void) const
+	{
+		if (nullptr == this->physicsBody)
+			return Ogre::Vector3::ZERO;
+		
+		return this->physicsBody->getLastPosition();
+	}
+
+	Ogre::Quaternion PhysicsComponent::getLastOrientation(void) const
+	{
+		if (nullptr == this->physicsBody)
+			return Ogre::Quaternion::IDENTITY;
+
+		return this->physicsBody->getLastOrientation();
+	}
+
 }; // namespace end

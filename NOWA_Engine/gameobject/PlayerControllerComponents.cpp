@@ -346,6 +346,11 @@ namespace NOWA
 				this->normal = this->priorValidNormal;
 			}
 
+			if (this->height >= 500.0f)
+			{
+				this->height = 0.0f;
+			}
+
 			/*if (widget)
 				widget->setCaption("Height: " + Ogre::StringConverter::toString(this->height));*/
 

@@ -522,6 +522,10 @@ namespace OgreNewt
 		Ogre::SceneMemoryMgrTypes getSceneMemoryType(void) const;
 
 		void clampAngularVelocity(Ogre::Real clampValue);
+
+		Ogre::Vector3 getLastPosition(void) const;
+
+		Ogre::Quaternion getLastOrientation(void) const;
 	protected:
 		void updateDeformableCollision(void);
 	protected:
@@ -546,9 +550,11 @@ namespace OgreNewt
 		Ogre::Vector3					m_nodePosit;
 		Ogre::Vector3					m_curPosit;
 		Ogre::Vector3					m_prevPosit;
+		Ogre::Vector3					m_lastPosit;
 		Ogre::Quaternion				m_nodeRotation;
 		Ogre::Quaternion				m_curRotation;
 		Ogre::Quaternion				m_prevRotation;
+		Ogre::Quaternion				m_lastOrientation;
 
 		// bool client;
 

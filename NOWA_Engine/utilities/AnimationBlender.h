@@ -83,6 +83,8 @@ namespace NOWA
 
 		virtual bool isAnimationActive(AnimID animationId) override;
 
+		virtual bool isAnyAnimationActive(void) override;
+
 		virtual void setTimePosition(Ogre::Real timePosition) override;
 
 		virtual Ogre::Real getTimePosition(void) const override;

@@ -143,6 +143,16 @@ public:
 
 		bool isActionDown(InputDeviceModule::Action action);
 
+		/**
+		 * @brief		Gets whether a specific action is down on any device, but max. for a the action duration time.
+		 */
+		bool isActionDownAmount(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real actionDuration = 0.2f);
+
+		/**
+		 * @brief		Gets whether a specific action is pressed on any device.
+		 */
+		bool isActionPressed(InputDeviceModule::Action action, Ogre::Real dt, Ogre::Real durationBetweenTheAction = 0.2f);
+
 		bool isButtonDown(JoyStickButton button) const;
 
 		bool areButtonsDown2(JoyStickButton button1, JoyStickButton button2) const;
@@ -176,6 +186,10 @@ public:
 		JoyStickButton pressedButton;
 		Action pressedPov[4]; // two buttons of left and right Steuerkreuz can be pressed simultanously
 		std::vector<JoyStickButton> pressedButtons;
+
+		Ogre::Real timeSinceLastActionDown;
+		Ogre::Real timeSinceLastActionPressed;
+		bool canPress;
 	};
 
 	// Shortcuts for currently mapped keys

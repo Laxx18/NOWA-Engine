@@ -18,23 +18,38 @@ namespace NOWA
 		name("RaceGoalComponent"),
 		finished(false),
 		pPath(nullptr),
-		physicsActiveComponent(nullptr),
+		vehicleComponent(nullptr),
+		purePursuitComponent(nullptr),
 		checkpointDefaultDirection(Ogre::Vector3::UNIT_Z),
 		currentLap(0),
 		lapTimeSec(0.0f),
 		wrongDirection(false),
 		oldDirection(true),
 		speedInKmh(0.0f),
-		checkpointsCount(new Variant(RaceGoalComponent::AttrCheckpointsCount(), 0, this->attributes)),
+		racingPosition(-1),
+		distanceTraveled(0.0f),
+		currentWaypointIndex(-1),
+		oldCurrentWaypointIndex(-1),
+		isReturningToTrack(false),
+		returnToTrackStartPosition(Ogre::Vector3::ZERO),
+		returnToTrackEndPosition(Ogre::Vector3::ZERO),
+		returnToTrackProgress(0.0f),
+		returnPhase(LIFT),
+		lastKnownDirectionFlag(false),
 		lapsCount(new Variant(RaceGoalComponent::AttrLapsCount(), static_cast<unsigned int>(1), this->attributes)),
-		onFeedbackRaceFunctionName(new Variant(RaceGoalComponent::AttrOnFeedbackRaceFunctionName(), Ogre::String(""), this->attributes))
+		onFeedbackRaceFunctionName(new Variant(RaceGoalComponent::AttrOnFeedbackRaceFunctionName(), Ogre::String(""), this->attributes)),
+		onWrongDirectionFunctionName(new Variant(RaceGoalComponent::AttrOnWrongDirectionFunctionName(), Ogre::String(""), this->attributes)),
+		checkpointsCount(new Variant(RaceGoalComponent::AttrCheckpointsCount(), 0, this->attributes))
 	{
 		// Since when waypoints count is changed, the whole properties must be refreshed, so that new field may come for way points
 		this->checkpointsCount->addUserData(GameObject::AttrActionNeedRefresh());
 		this->checkpointsCount->setDescription("Note: Id's must be of game objects with a PhysicsActiveKinematicComponent, which shall be placed as a wall, with which the vehicle does collide for checkpoint determination.");
 
-		this->onFeedbackRaceFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction, or which lap has been passed, the lap time, whether the race is finished. E.g. onRaceFeedback(wrongDirection, currentLap, lapTimeSec, finished).");
-		this->onFeedbackRaceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(wrongDirection, currentLap, lapTimeSec, finished)");
+		this->onFeedbackRaceFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction, or which lap has been passed, the lap time, whether the race is finished. E.g. onRaceFeedback(currentLap, lapTimeSec, finished).");
+		this->onFeedbackRaceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(currentLap, lapTimeSec, finished)");
+
+		this->onWrongDirectionFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction. E.g. onWrongDirectionDriving(wrongDirection).");
+		this->onWrongDirectionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(wrongDirection)");
 	}
 
 	RaceGoalComponent::~RaceGoalComponent(void)
@@ -97,7 +112,12 @@ namespace NOWA
 			this->onFeedbackRaceFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnWrongDirectionFunctionName")
+		{
+			this->onWrongDirectionFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		return true;
 	}
 
@@ -117,6 +137,7 @@ namespace NOWA
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
 		clonedCompPtr->setOnFeedbackRaceFunctionName(this->onFeedbackRaceFunctionName->getString());
+		clonedCompPtr->setOnWrongDirectionFunctionName(this->onWrongDirectionFunctionName->getString());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -134,15 +155,11 @@ namespace NOWA
 		if (nullptr == this->pPath)
 		{
 			this->pPath = new Path();
+			this->pPath->setRepeat(true);
 		}
 
-		this->pPath->clear();
-		this->pPath->setRepeat(true);
-		this->currentLap = 0;
-		this->lapTimeSec = 0.0f;
-		this->speedInKmh = 0.0f;
-
 		this->setOnFeedbackRaceFunctionName(this->onFeedbackRaceFunctionName->getString());
+		this->setOnWrongDirectionFunctionName(this->onWrongDirectionFunctionName->getString());
 
 		for (size_t i = 0; i < this->checkpoints.size(); i++)
 		{
@@ -168,7 +185,22 @@ namespace NOWA
 			}
 		}
 
-		this->physicsActiveComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>()).get();
+		// Adds all race goal components (including this one)
+		const auto& gameObjectsRG = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(RaceGoalComponent::getStaticClassName());
+		for (const auto& gameObjectPtr : gameObjectsRG)
+		{
+			const auto& raceGoalComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<RaceGoalComponent>());
+			this->allRaceGoals.emplace_back(raceGoalComponent.get());
+		}
+
+		this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
+
+		this->vehicleComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveVehicleComponent>()).get();
+		const auto& purePursuitCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PurePursuitComponent>());
+		if (nullptr != purePursuitCompPtr)
+		{
+			this->purePursuitComponent = purePursuitCompPtr.get();;
+		}
 
 		// const auto& kinematicComponent = this->kinematicComponents[this->pPath->getCurrentWaypointIndex()];
 
@@ -197,21 +229,48 @@ namespace NOWA
 					return;
 				}
 
+				if (false == this->currentCheckpoint.first)
+				{
+					return;
+				}
+
+				// Driving wrong direction, to not check further for driving towards checkpoints
+				if (true == this->wrongDirection)
+				{
+					return;
+				}
+
 				if (true == this->isMovingTowardsCheckpoint())
 				{
 					if (this->pPath->getCurrentWaypointIndex() + 1 >= this->checkpointsCount->getUInt())
 					{
 						this->currentLap++;
-						this->lapTimeSec = 0.0f;
+						if (nullptr != this->gameObjectPtr->getLuaScript())
+						{
+							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
+						}
+						if (this->currentLap < this->lapsCount->getUInt())
+						{
+							this->lapTimeSec = 0.0f;
+						}
 					}
 
-					if (this->pPath->getCurrentWaypointIndex() + 1 >= this->lapsCount->getUInt() * this->checkpointsCount->getUInt())
+					this->pPath->setNextWayPoint();
+					this->currentCheckpoint = this->pPath->getCurrentWaypoint2();
+
+					if (this->currentLap >= this->lapsCount->getUInt())
 					{
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Finished track!");
 						this->finished = true;
 						this->pPath->clear();
+						if (nullptr != this->gameObjectPtr->getLuaScript())
+						{
+							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
+							this->lapTimeSec = 0.0f;
+						}
 					}
-					this->pPath->setNextWayPoint();
 				}
 			}, this);
 		}
@@ -224,6 +283,7 @@ namespace NOWA
 		if (nullptr != this->pPath)
 		{
 			this->pPath->clear();
+			this->pPath->setRepeat(true);
 		}
 
 		this->finished = false;
@@ -233,8 +293,22 @@ namespace NOWA
 		}
 
 		this->kinematicComponents.clear();
-		this->physicsActiveComponent = nullptr;
-		
+		this->vehicleComponent = nullptr;
+		this->purePursuitComponent = nullptr;
+		this->allRaceGoals.clear();
+		this->lapTimeSec = 0.0f;
+		this->speedInKmh = 0.0f;
+		this->racingPosition = -1;
+		this->distanceTraveled = 0.0f;
+		this->currentLap = 0;
+		this->currentWaypointIndex = 0;
+		this->isReturningToTrack = false;
+		this->returnToTrackStartPosition = Ogre::Vector3::ZERO;
+		this->returnToTrackEndPosition = Ogre::Vector3::ZERO;
+		this->returnToTrackProgress = 0.0f;
+		this->returnPhase = LIFT;
+		this->lastKnownDirectionFlag = false;
+
 		return true;
 	}
 
@@ -246,7 +320,11 @@ namespace NOWA
 
 	void RaceGoalComponent::onRemoveComponent(void)
 	{
-		
+		if (nullptr != this->pPath)
+		{
+			delete this->pPath;
+			this->pPath = nullptr;
+		}
 	}
 	
 	void RaceGoalComponent::onOtherComponentRemoved(unsigned int index)
@@ -266,6 +344,21 @@ namespace NOWA
 			this->lapTimeSec += dt;
 
 			this->speedInKmh = this->calculateSpeedInKmh();
+
+			this->oldDirection = this->wrongDirection;
+			this->wrongDirection = this->isCarDrivingWrongDirection();
+
+			if (this->oldDirection != this->wrongDirection)
+			{
+				if (nullptr != this->gameObjectPtr->getLuaScript())
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
+				}
+			}
+
+			this->calculateDistanceTraveled(dt);
+
+			this->determineRacePositions();
 		}
 	}
 
@@ -276,19 +369,15 @@ namespace NOWA
 		Ogre::Vector3 waypointPos = this->currentCheckpoint.second.first;
 		Ogre::Quaternion waypointOrient = this->currentCheckpoint.second.second;
 
-		// Calculate the vector to the goal
-		Ogre::Vector3 toGoal(waypointPos.x - curPos.x, 0.0f, waypointPos.z - curPos.z);
-		toGoal.normalise(); // Normalize the vector
-
 		// Transform the velocity vector into the car's local coordinate system
-		Ogre::Vector3 localVelocity = curOrient.Inverse() * this->physicsActiveComponent->getVelocity();
+		Ogre::Vector3 localVelocity = curOrient.Inverse() * this->vehicleComponent->getVelocity();
 
 		// Calculate the car's forward direction vector
-		Ogre::Vector3 carForward = curOrient * this->checkpointDefaultDirection; // Assuming forward is along the X axis
+		Ogre::Vector3 carForward = curOrient * this->gameObjectPtr->getDefaultDirection(); // Assuming forward is along the X axis
 		carForward.normalise(); // Normalize the vector
 
 		// Calculate the goal's forward direction vector
-		Ogre::Vector3 goalForward = waypointOrient * this->checkpointDefaultDirection; // Assuming forward is along the Z axis
+		Ogre::Vector3 goalForward = waypointOrient * this->checkpointDefaultDirection; // Assuming forward is along the X axis
 		goalForward.normalise(); // Normalize the vector
 
 		// Calculate the angle between the car's forward vector and the goal's forward vector
@@ -317,29 +406,14 @@ namespace NOWA
 			isMovingCorrectly = true;
 		}
 
-		this->oldDirection = this->wrongDirection;
-		this->wrongDirection = !isMovingCorrectly;
-
 		// Ensure the car is not moving in the wrong direction
 		if (false == isMovingCorrectly)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "isMovingTowardsCheckpoint: Car is moving in the wrong direction or not properly aligned. Correcting course.");
-			// Prevents spamming, as vehicle will collide and collide again
-			if (this->oldDirection != this->wrongDirection)
-			{
-				if (nullptr != this->gameObjectPtr->getLuaScript())
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), !this->wrongDirection, this->currentLap, this->lapTimeSec, this->finished);
-				}
-			}
 		}
 		else
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "isMovingTowardsCheckpoint: Car is moving correctly!.");
-			if (nullptr != this->gameObjectPtr->getLuaScript())
-			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), !this->wrongDirection, this->currentLap, this->lapTimeSec, this->finished);
-			}
 		}
 
 		return isMovingCorrectly;
@@ -354,7 +428,7 @@ namespace NOWA
 		*/
 
 		// Calculate the magnitude of the velocity vector (speed in m/s)
-		Ogre::Real speedInMps = this->physicsActiveComponent->getVelocity().length();
+		Ogre::Real speedInMps = this->vehicleComponent->getVelocity().length();
 
 		// Convert speed from m/s to km/h
 		Ogre::Real speed = MathHelper::getInstance()->round(speedInMps * 3.6f, 0);
@@ -362,6 +436,266 @@ namespace NOWA
 
 		return speed;
 	}
+
+	void RaceGoalComponent::calculateDistanceTraveled(Ogre::Real dt)
+	{
+		if (nullptr == this->purePursuitComponent)
+		{
+			return;
+		}
+
+		if (false == this->isReturningToTrack)
+		{
+			// Sum the distances between waypoints up to the current waypoint
+			Ogre::Real distance = 0.0f;
+			const auto& waypoints = this->purePursuitComponent->getPath()->getWayPoints();
+			for (size_t i = 0; i < this->purePursuitComponent->getPath()->getCurrentWaypointIndex(); ++i)
+			{
+				distance += waypoints[i].first.distance(waypoints[i + 1].first);
+			}
+			// Add the distance from the current waypoint to the car's position
+			/*if (this->purePursuitComponent->getPath()->getCurrentWaypointIndex() < waypoints.size() - 1)
+			{
+				distance -= waypoints[this->purePursuitComponent->getPath()->getCurrentWaypoint().first.distance(this->vehicleComponent->getPosition());
+			}*/
+
+#if 0
+			Ogre::Vector2 vehiclePosXZ = Ogre::Vector2(this->vehicleComponent->getPosition().x, this->vehicleComponent->getPosition().z);
+			Ogre::Vector2 waypointXZ = Ogre::Vector2(this->purePursuitComponent->getPath()->getCurrentWaypoint().second.x, this->purePursuitComponent->getPath()->getCurrentWaypoint().second.z);
+	
+			if (vehiclePosXZ.squaredDistance(waypointXZ) > 50.0f * 50.0f)
+			{
+				this->initiateReturnToTrack();
+			}
+#endif
+
+			// After finish, waypoint index starts at 0 again, which would let the vehicle be on the last place again^^, hence take the laps count into account
+			// But lap is incremented later, hence use the old current waypoint index, if the new one gets smaller as the old one
+			this->oldCurrentWaypointIndex = this->currentWaypointIndex;
+			this->currentWaypointIndex = (this->currentLap * waypoints.size()) + (this->purePursuitComponent->getPath()->getCurrentWaypointIndex() + 1);
+			if (this->currentWaypointIndex < this->oldCurrentWaypointIndex)
+			{
+				this->currentWaypointIndex = this->oldCurrentWaypointIndex + 1;
+			}
+
+			this->distanceTraveled = distance;
+		}
+		else
+		{
+			this->updateReturnToTrack(dt);
+		}
+	}
+
+	unsigned int RaceGoalComponent::getCurrentWaypointIndex(void) const
+	{
+		return this->currentWaypointIndex;
+	}
+
+	void RaceGoalComponent::initiateReturnToTrack(void)
+	{
+		if (nullptr == this->purePursuitComponent)
+		{
+			return;
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-----> initiateReturnToTrack");
+
+		this->isReturningToTrack = true;
+		this->returnToTrackStartPosition = this->vehicleComponent->getPosition();
+		this->returnToTrackEndPosition = this->purePursuitComponent->getPath()->getCurrentWaypoint().first;
+		this->returnToTrackProgress = 0.0f;
+	}
+
+	void RaceGoalComponent::updateReturnToTrack(Ogre::Real dt)
+	{
+		if (true == this->isReturningToTrack)
+		{
+			const Ogre::Real liftHeight = 5.0f; // Height to lift the car
+			const  Ogre::Real returnSpeed = 1.0f; // Speed factor for return
+			this->returnToTrackProgress += dt;
+
+			if (this->returnPhase == RaceGoalComponent::LIFT)
+			{
+				this->vehicleComponent->setVelocity(Ogre::Vector3(0.0f, returnSpeed * liftHeight, 0.0f));
+
+				// Lift the car up
+				if (this->returnToTrackProgress >= 1.0f || this->vehicleComponent->getPosition().y > liftHeight)
+				{
+					this->returnToTrackProgress = 0.0f;
+					this->returnPhase = RaceGoalComponent::MOVE;
+				}
+			}
+			else if (this->returnPhase == RaceGoalComponent::MOVE)
+			{
+				// Move the car horizontally to the next waypoint
+				Ogre::Vector3 direction = (this->returnToTrackEndPosition - this->vehicleComponent->getPosition()).normalisedCopy();
+				this->vehicleComponent->setVelocity(direction * returnSpeed);
+
+				if (this->vehicleComponent->getPosition().squaredDistance(this->returnToTrackEndPosition) < 1.0f)
+				{
+					this->isReturningToTrack = false;
+				}
+			}
+		}
+	}
+
+	bool RaceGoalComponent::isCarDrivingWrongDirection(void)
+	{
+		if (nullptr == this->purePursuitComponent)
+		{
+			return false;
+		}
+
+		// Does only make sense for a by player controlled vehicle
+		if (false == this->purePursuitComponent->getIsManuallyControlled())
+		{
+			return false;
+		}
+
+		if (this->vehicleComponent->getVelocity().squaredLength() < 1.0f)
+		{
+			return false;
+		}
+
+		std::pair<Ogre::Vector3, Ogre::Quaternion> currentWaypoint;
+		bool foundWaypoint = false;
+		unsigned int index = 0;
+		unsigned int foundIndex = 0;
+
+		Ogre::Vector2 currentPos = Ogre::Vector2(this->vehicleComponent->getPosition().x, this->vehicleComponent->getPosition().z);
+
+		const auto& waypoints = this->purePursuitComponent->getPath()->getWayPoints();
+		for (const auto& waypoint : waypoints)
+		{
+			Ogre::Vector2 wpPos = Ogre::Vector2(waypoint.first.x, waypoint.first.z);
+
+			Ogre::Real distance = currentPos.distance(wpPos);
+			if (distance <= this->purePursuitComponent->getLookaheadDistance())
+			{
+				currentWaypoint = waypoint;
+				foundIndex = index;
+				foundWaypoint = true;
+				break;
+			}
+			index++;
+		}
+
+		if (false == foundWaypoint)
+		{
+			return this->lastKnownDirectionFlag;
+		}
+
+		Ogre::Vector3 curPos = this->gameObjectPtr->getPosition();
+		Ogre::Quaternion curOrient = this->gameObjectPtr->getOrientation();
+
+		// Transform the velocity vector into the car's local coordinate system
+		Ogre::Vector3 localVelocity = curOrient.Inverse() * this->vehicleComponent->getVelocity();
+
+		// Calculate the car's forward direction vector
+		Ogre::Vector3 carForward = curOrient * this->gameObjectPtr->getDefaultDirection(); // Assuming forward is along the X axis
+		carForward.normalise(); // Normalize the vector
+
+		// Calculate the goal's forward direction vector
+		Ogre::Vector3 goalForward = currentWaypoint.second * this->checkpointDefaultDirection; // Assuming forward is along the X axis
+		goalForward.normalise(); // Normalize the vector
+
+		// Calculate the angle between the car's forward vector and the goal's forward vector
+		Ogre::Real forwardAlignmentAngle = std::acos(carForward.dotProduct(goalForward)) * (180.0f / Ogre::Math::PI); // Convert radians to degrees
+
+		// Calculate the angle between the car's backward vector and the goal's forward vector
+		Ogre::Vector3 carBackward = -carForward;
+		Ogre::Real backwardAlignmentAngle = std::acos(carBackward.dotProduct(goalForward)) * (180.0f / Ogre::Math::PI); // Convert radians to degrees
+
+		
+
+		// Check if the car's movement is in the direction of the car's forward vector
+		bool movingForward = localVelocity.x > 0;
+		bool movingBackward = localVelocity.x < 0;
+
+		const Ogre::Real toleranceDegrees = 90.0f;
+
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] foundIndex: " + Ogre::StringConverter::toString(foundIndex));
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] forwardAlignmentAngle: " + Ogre::StringConverter::toString(forwardAlignmentAngle));
+		bool isMovingWrongDirection = true;
+		if (movingForward && forwardAlignmentAngle <= toleranceDegrees)
+		{
+			isMovingWrongDirection = false;
+		}
+		else if (movingBackward && backwardAlignmentAngle <= toleranceDegrees)
+		{
+			isMovingWrongDirection = false;
+		}
+
+		this->lastKnownDirectionFlag = isMovingWrongDirection;
+
+		return isMovingWrongDirection;
+	}
+
+	void RaceGoalComponent::determineRacePositions(void)
+	{
+		// Sort the cars by their distance traveled in descending order
+		std::sort(this->allRaceGoals.begin(), this->allRaceGoals.end(), [](const RaceGoalComponent* a, const RaceGoalComponent* b)
+				  {
+					  return a->getCurrentWaypointIndex() > b->getCurrentWaypointIndex();
+				  });
+		
+		for (size_t i = 0; i < this->allRaceGoals.size(); i++)
+		{
+			// Update the race positions
+			const auto& vehicleComponent = this->allRaceGoals[i];
+			this->allRaceGoals[i]->setRacingPosition(i + 1);
+		}
+
+		if (this->bShowDebugData)
+		{
+			for (size_t i = 0; i < this->allRaceGoals.size(); i++)
+			{
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Racing position for gameObject: " + this->allRaceGoals[i]->getOwner()->getName()
+																+ " race position: " + Ogre::StringConverter::toString(this->allRaceGoals[i]->getRacingPosition())
+																+ " distance traveled: " + Ogre::StringConverter::toString(this->allRaceGoals[i]->getDistanceTraveled())
+																+ " current Waypoint index: " + Ogre::StringConverter::toString(this->currentWaypointIndex));
+			}
+		}
+	}
+
+	Ogre::Vector3 RaceGoalComponent::calculateDirection(const Ogre::Vector3& currentPosition, const Ogre::Vector3& lastPosition)
+	{
+		Ogre::Vector3 direction = currentPosition - lastPosition;
+		direction.y = 0.0f; // Ignore vertical movement
+		direction.normalise(); // Normalize direction vector
+		return direction;
+	}
+
+	bool RaceGoalComponent::isOvertaking(const PhysicsActiveVehicleComponent* vehicleComponent1, const PhysicsActiveVehicleComponent* vehicleComponent2)
+	{
+		Ogre::Vector3 direction1 = this->calculateDirection(vehicleComponent1->getPosition(), vehicleComponent1->getLastPosition());
+		Ogre::Vector3 direction2 = this->calculateDirection(vehicleComponent2->getPosition(), vehicleComponent2->getLastPosition());
+
+		Ogre::Vector3 relativePosition = vehicleComponent1->getPosition() - vehicleComponent2->getPosition();
+
+		// Check if car1 is behind car2 and moving faster in the same direction
+		Ogre::Real dotProduct = relativePosition.dotProduct(direction1);
+		return dotProduct > 0 && direction1.dotProduct(direction2) < cos(Math::PI / 4); // Check if directions are sufficiently aligned
+	}
+
+#if 0
+	void RaceGoalComponent::checkForOvertaking(void)
+	{
+		for (size_t i = 0; i < this->allVehicles.size(); i++)
+		{
+			for (size_t j = 0; j < this->allVehicles.size(); j++)
+			{
+				if (this->allVehicles[j]->getDistanceTraveled() > this->allVehicles[i]->getDistanceTraveled())
+				{
+					// Swap positions
+					std::swap(this->allVehicles[i]->getRacingPosition(), this->allVehicles[j]->getRacingPosition());
+					std::swap(this->allVehicles[i], this->allVehicles[j]);
+				}
+			}
+		}
+	}
+#endif
 
 	bool RaceGoalComponent::canStaticAddComponent(GameObject* gameObject)
 	{
@@ -372,10 +706,14 @@ namespace NOWA
 			return false;
 		}
 
-		// Check if the entity has at least one animation and no player controller, else animation component is senseless
 		auto physicsActiveCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsActiveComponent>());
-		if (nullptr != physicsActiveCompPtr)
+		if (nullptr == physicsActiveCompPtr)
 		{
+			auto physicsActiveVehicleCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsActiveVehicleComponent>());
+			if (nullptr == physicsActiveCompPtr)
+			{
+				return false;
+			}
 			return false;
 		}
 
@@ -398,6 +736,11 @@ namespace NOWA
 		{
 			this->setOnFeedbackRaceFunctionName(attribute->getString());
 		}
+		else if (RaceGoalComponent::AttrOnWrongDirectionFunctionName() == attribute->getName())
+		{
+			this->setOnWrongDirectionFunctionName(attribute->getString());
+		}
+		
 		else
 		{
 			for (size_t i = 0; i < this->checkpoints.size(); i++)
@@ -447,6 +790,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OnFeedbackRaceFunctionName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onFeedbackRaceFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OnWrongDirectionFunctionName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onWrongDirectionFunctionName->getString())));
+		propertiesXML->append_node(propertyXML);
+		
 	}
 
 	void RaceGoalComponent::setCheckpointsCount(unsigned int checkpointsCount)
@@ -509,10 +859,38 @@ namespace NOWA
 		this->onFeedbackRaceFunctionName->setValue(onFeedbackRaceFunctionName);
 		if (false == onFeedbackRaceFunctionName.empty())
 		{
-			this->onFeedbackRaceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onFeedbackRaceFunctionName + "(wrongDirection, currentLap, lapTimeSec, finished)");
+			this->onFeedbackRaceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onFeedbackRaceFunctionName + "(currentLap, lapTimeSec, finished)");
 		}
 	}
 
+	void RaceGoalComponent::setOnWrongDirectionFunctionName(const Ogre::String& onWrongDirectionFunctionName)
+	{
+		this->onWrongDirectionFunctionName->setValue(onWrongDirectionFunctionName);
+		if (false == onWrongDirectionFunctionName.empty())
+		{
+			this->onWrongDirectionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onWrongDirectionFunctionName + "(wrongDirection)");
+		}
+	}
+
+	void RaceGoalComponent::setRacingPosition(int racingPosition)
+	{
+		this->racingPosition = racingPosition;
+	}
+
+	int RaceGoalComponent::getRacingPosition(void) const
+	{
+		return this->racingPosition;
+	}
+
+	void RaceGoalComponent::setDistanceTraveled(Ogre::Real distanceTraveled)
+	{
+		this->distanceTraveled = distanceTraveled;
+	}
+
+	Ogre::Real RaceGoalComponent::getDistanceTraveled(void) const
+	{
+		return this->distanceTraveled;
+	}
 
 	Ogre::String RaceGoalComponent::getClassName(void) const
 	{
@@ -549,12 +927,18 @@ namespace NOWA
 			.def("getCheckpointsCount", &RaceGoalComponent::getCheckpointsCount)
 			.def("getSpeedInKmh", &RaceGoalComponent::getSpeedInKmh)
 			.def("getLapsCount", &RaceGoalComponent::getLapsCount)
+			.def("getRacingPosition", &RaceGoalComponent::getRacingPosition)
+			.def("getDistanceTraveled", &RaceGoalComponent::getDistanceTraveled)
+			.def("getCurrentWaypointIndex", &RaceGoalComponent::getCurrentWaypointIndex)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "class inherits GameObjectComponent", RaceGoalComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getCheckpointsCount()", "Gets the count of set checkpoints on the race track.");
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getSpeedInKmh()", "Gets the current speed in kilometers per hour.");
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getLapsCount()", "Gets specified laps count.");
+		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getRacingPosition()", "Gets current racing position. If not valid, -1 will be delivered.");
+		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getDistanceTraveled()", "Gets the forward distance traveled on the race. Note: If driving the wrong direction, the distance will be decreased.");
+		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getCurrentWaypointIndex()", "Gets current waypoint index, which can be use to get the whole progress of the lap. Note: if -1, waypoint index is invalid.");
 
 		gameObjectClass.def("getRaceGoalComponentFromName", &getRaceGoalComponentFromName);
 		gameObjectClass.def("getRaceGoalComponent", (RaceGoalComponent * (*)(GameObject*)) & getRaceGoalComponent);

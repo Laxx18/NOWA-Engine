@@ -478,7 +478,9 @@ ResourcesPanelGameObjects::ResourcesPanelGameObjects()
 	: BasePanelViewItem("ResourcesPanel.layout"),
 	editorManager(nullptr),
 	gameObjectsTree(nullptr),
-	imageBox(nullptr)
+	imageBox(nullptr),
+	ctrlPressed(false),
+	selectAll(false)
 {
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), EventDataRefreshResourcesPanel::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataNewGameObject::getStaticEventType());
@@ -719,7 +721,7 @@ void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeC
 	}
 	this->oldSelectedText = node->getText();
 
-	if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT))
+	if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && false == this->selectAll)
 	{
 		this->editorManager->getSelectionManager()->clearSelection();
 		// treeControl->clearSelection();
@@ -827,12 +829,48 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 		}
 	}
+
+	if (key == MyGUI::KeyCode::LeftControl || key == MyGUI::KeyCode::RightControl)
+	{
+		this->ctrlPressed = !this->ctrlPressed;
+	}
+
+	if (this->ctrlPressed && key == MyGUI::KeyCode::A)
+	{
+		MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
+		this->selectAll = true;
+		selectAllNodes(treeControl);
+		this->selectAll = false;
+	}
 }
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
 	// this->refresh("");
 	this->clear();
+}
+
+void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
+{
+	auto rootNodes = treeControl->getRoot();
+	for (const auto node : rootNodes->getChildren())
+	{
+		this->notifyTreeNodeSelected(treeControl, node);
+		// Optionally, traverse child nodes if necessary
+		std::stack<MyGUI::TreeControl::Node*> nodeStack;
+		nodeStack.push(node);
+		while (!nodeStack.empty())
+		{
+			MyGUI::TreeControl::Node* currentNode = nodeStack.top();
+			nodeStack.pop();
+			this->notifyTreeNodeSelected(treeControl, currentNode);
+			auto childNodes = currentNode->getChildren();
+			for (auto childNode : childNodes)
+			{
+				nodeStack.push(childNode);
+			}
+		}
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////

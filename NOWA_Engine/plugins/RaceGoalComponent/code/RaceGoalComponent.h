@@ -10,7 +10,7 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
-
+#include "PurePursuitComponent/code/PurePursuitComponent.h"
 #include "ki/Path.h"
 
 class PhysicsActiveKinematicComponent;
@@ -22,6 +22,7 @@ namespace NOWA
 	/**
 	  * @brief		Can be used for a player controlled vehicle against cheating :). That is create several checkpoints with the given
 	  *				race direction, which the player must pass in the correct direction and also counts the laps.
+	  *				This component has an hard dependency to the PurepursuitComponent. This one must exist.
 	  */
 	class EXPORTED RaceGoalComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -152,9 +153,24 @@ namespace NOWA
 
 		/**
 		 * @brief Sets the lua function name, to react when a game object collided with another game object.
-		 * @param[in]	onFeedbackRaceFunctionName		The function name to set
+		 * @param[in]	onWrongDirectionFunctionName		The function name to set
 		 */
 		void setOnFeedbackRaceFunctionName(const Ogre::String& onFeedbackRaceFunctionName);
+
+		/**
+		 * @brief Sets the lua function name, to react when a game object collided with another game object.
+		 * @param[in]	onFeedbackRaceFunctionName		The function name to set
+		 */
+		void setOnWrongDirectionFunctionName(const Ogre::String& onWrongDirectionFunctionName);
+
+		void setRacingPosition(int racingPosition);
+
+		int getRacingPosition(void) const;
+
+		void setDistanceTraveled(Ogre::Real distanceTraveled);
+
+		Ogre::Real getDistanceTraveled(void) const;
+
 
 	public:
 		/**
@@ -184,7 +200,10 @@ namespace NOWA
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: Can be used for a player controlled vehicle against cheating :). That is create several checkpoints with the given race direction, which the player must pass in the correct direction and also counts the laps. "
-				"Requirements: Checkpoints must possess a PhysicsActiveKinematicComponent. The Checkpoint should be a wall, which is big enough, so that the vehicle will pass the wall in any case (even flying over a ramp :))";
+				"Requirements: Checkpoints must possess a PhysicsActiveKinematicComponent. The Checkpoint should be a wall, which is big enough, so that the vehicle will pass the wall in any case (even flying over a ramp :)) "
+				"Note: Check the global mesh direction carefully for the vehicle and the checkpoints and also the orientation of the checkpoints is important!, if e.g. If the track turns 180 degrees, the checkpoint should also be orientated 180degree."
+				"Note: Also check the orientation and global mesh direction of the checkpoints, in order to get correct results, if the manually controlled vehicle is driving in the correct direction."
+				"Note: The PurePuresuitComponent should also be used, if current racing positions shall be determined. For that also set the lookahead distance big enough, so that the player also reaches all waypoints, for correct racing position determination.";
 		}
 		
 		/**
@@ -193,32 +212,65 @@ namespace NOWA
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
 		static const Ogre::String AttrCheckpointsCount(void) { return "Checkpoints Count"; }
-		static const Ogre::String AttrCheckpoint(void) { return "Checkpoint Id "; }
 		static const Ogre::String AttrLapsCount(void) { return "Laps Count"; }
 		static const Ogre::String AttrOnFeedbackRaceFunctionName(void) { return "On Feedback Race Function Name"; }
+		static const Ogre::String AttrOnWrongDirectionFunctionName(void) { return "On Wrong Direction Function Name"; }
+		static const Ogre::String AttrCheckpoint(void) { return "Checkpoint Id "; }
 	private:
 		bool isMovingTowardsCheckpoint(void);
 
 		Ogre::Real calculateSpeedInKmh(void);
+
+		void determineRacePositions(void);
+
+		// void checkForOvertaking(void);
+
+		Ogre::Vector3 calculateDirection(const Ogre::Vector3& currentPosition, const Ogre::Vector3& lastPosition);
+		
+		bool isOvertaking(const PhysicsActiveVehicleComponent* vehicleComponent1, const PhysicsActiveVehicleComponent* vehicleComponent2);
+
+		void calculateDistanceTraveled(Ogre::Real dt);
+
+		unsigned int getCurrentWaypointIndex(void) const;
+
+		void initiateReturnToTrack(void);
+
+		void updateReturnToTrack(Ogre::Real dt);
+
+		bool isCarDrivingWrongDirection(void);
 	private:
 		Ogre::String name;
 
-		Variant* checkpointsCount;
+		Variant* lapsCount;
 		Variant* onFeedbackRaceFunctionName;
+		Variant* onWrongDirectionFunctionName;
+		Variant* checkpointsCount;
 		std::vector<Variant*> checkpoints;
 		std::vector<PhysicsActiveKinematicComponent*> kinematicComponents;
-		PhysicsActiveComponent* physicsActiveComponent;
+		PhysicsActiveVehicleComponent* vehicleComponent;
+		PurePursuitComponent* purePursuitComponent;
 
-		Variant* lapsCount;
 		bool finished;
 		unsigned int currentLap;
 		bool wrongDirection;
 		bool oldDirection;
+		bool lastKnownDirectionFlag;
 		Ogre::Real lapTimeSec;
 		KI::Path* pPath;
 		Ogre::Vector3 checkpointDefaultDirection;
 		std::pair<bool, std::pair<Ogre::Vector3, Ogre::Quaternion>> currentCheckpoint;
+		std::vector<RaceGoalComponent*> allRaceGoals;
 		Ogre::Real speedInKmh;
+		int racingPosition;
+		Ogre::Real distanceTraveled;
+		int currentWaypointIndex;
+		int oldCurrentWaypointIndex;
+		bool isReturningToTrack;
+		Ogre::Vector3 returnToTrackStartPosition;
+		Ogre::Vector3 returnToTrackEndPosition;
+		Ogre::Real returnToTrackProgress;
+
+		enum ReturnPhase { LIFT, MOVE } returnPhase;
 	};
 
 }; // namespace end

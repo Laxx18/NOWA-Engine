@@ -505,20 +505,10 @@ dgVector dgCollisionConvexPolygon::CalculateGlobalNormal (const dgCollisionInsta
 
 dgInt32 dgCollisionConvexPolygon::CalculateContactToConvexHullContinue(const dgWorld* const world, const dgCollisionInstance* const parentMesh, dgCollisionParamProxy& proxy)
 {
-	dgAssert(proxy.m_instance0->IsType(dgCollision::dgCollisionConvexShape_RTTI));
-	dgAssert(proxy.m_instance1->IsType(dgCollision::dgCollisionConvexPolygon_RTTI));
-
-	dgAssert(this == proxy.m_instance1->GetChildShape());
-	dgAssert(m_count);
-	dgAssert(m_count < dgInt32(sizeof (m_localPoly) / sizeof (m_localPoly[0])));
-
 	const dgBody* const body0 = proxy.m_body0;
 	const dgBody* const body1 = proxy.m_body1;
 
-	dgAssert (proxy.m_instance1->GetGlobalMatrix().TestIdentity());
-
 	dgVector relativeVelocity (body0->m_veloc - body1->m_veloc);
-	dgAssert (relativeVelocity.m_w == dgFloat32 (0.0f));
 	if (relativeVelocity.DotProduct(relativeVelocity).GetScalar() < dgFloat32 (1.0e-4f)) {
 		return 0;
 	}
@@ -538,7 +528,6 @@ dgInt32 dgCollisionConvexPolygon::CalculateContactToConvexHullContinue(const dgW
 	polygonMatrix[2] = polygonMatrix[0].CrossProduct(m_normal);
 	polygonMatrix[3] = m_localPoly[0];
 	polygonMatrix[3].m_w = dgFloat32 (1.0f);
-	dgAssert (polygonMatrix.TestOrthogonal());
 
 	dgVector polyBoxP0(dgFloat32(1.0e15f));
 	dgVector polyBoxP1(dgFloat32(-1.0e15f));

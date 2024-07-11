@@ -14,6 +14,9 @@ physicsActiveVehicleComponent = nil;
 purePursuitComponent = nil;
 rollSound = nil;
 skidSound = nil;
+playerController = nil;
+animationBlender = nil;
+height = 0;
 
 Scene1_QuatBike_Computer_0["connect"] = function(gameObject)
     --AppStateManager:getGameObjectController():activatePlayerController(true, gameObject:getId(), true);
@@ -23,6 +26,33 @@ Scene1_QuatBike_Computer_0["connect"] = function(gameObject)
     rollSound:setVolume(200);
     
     skidSound = gameObject:getSimpleSoundComponent2(1);
+    
+    playerController = gameObject:getPlayerControllerComponent();
+    animationBlender = playerController:getAnimationBlender();
+    animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_1, "idle_01");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle_02");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_3, "idle_03");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "drive");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_WALK_SOUTH, "Walk_backwards");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_WALK_WEST, "drive_turn_left");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_WALK_EAST, "drive_turn_right");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_JUMP_START, "jump_up");
+    --animationBlender:registerAnimation(AnimationBlender.ANIM_JUMP_WALK, "Jump");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_HIGH_JUMP_END, "salto");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_JUMP_END, "jump_down");
+    --animationBlender:registerAnimation(AnimationBlender.ANIM_FALL, "Falling");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_RUN, "drive_fast");
+    --animationBlender:registerAnimation(AnimationBlender.ANIM_SNEAK, "Take_damage");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_DUCK, "360");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_HALT, "drive_obstacle_01");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_NO_IDEA, "drive_kick_left");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_PICKUP_1, "drive_kick_right");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ACTION_1, "drive_trick_05");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_1, "drive_trick_02");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_2, "drive_trick_03");
+    animationBlender:registerAnimation(AnimationBlender.ANIM_ATTACK_3, "drive_trick_04");
+    
+    animationBlender:init1(AnimationBlender.ANIM_IDLE_1, true);
 end
 
 Scene1_QuatBike_Computer_0["disconnect"] = function()
@@ -30,6 +60,8 @@ Scene1_QuatBike_Computer_0["disconnect"] = function()
 end
 
 Scene1_QuatBike_Computer_0["update"] = function(dt)
+    height = playerController:getHeight();
+    
     --log("vel: " .. toString(physicsActiveVehicleComponent:getVelocity():squaredLength()));
     local motion = physicsActiveVehicleComponent:getVelocity():squaredLength() + 40;
     if motion > 40 + (0.2 * 0.2) then
@@ -54,6 +86,9 @@ Scene1_QuatBike_Computer_0["update"] = function(dt)
     pitchAmount = purePursuitComponent:getPitchAmount();
     motorForce = purePursuitComponent:getMotorForce();
     
+    physicsActiveVehicleComponent:applyOmegaForceRotateTo(Quaternion(Degree(pitchAmount), Vector3(0, 0, 1)), Vector3(0, 0, 1), 1);
+    
+    animationBlender:addTime(dt * 1 / animationBlender:getLength());
 end
 
 
@@ -71,6 +106,19 @@ Scene1_QuatBike_Computer_0["onSteeringAngleChanged"] = function(vehicleDrivingMa
     
 
     vehicleDrivingManipulation:setSteerAngle(steerAmount);
+    if (steerAmount > 0) then
+       if (animationBlender:isAnimationActive(AnimationBlender.ANIM_WALK_WEST) == false) then
+            animationBlender:blend5(AnimationBlender.ANIM_WALK_WEST, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
+       end
+    elseif (steerAmount < 0) then
+        if (animationBlender:isAnimationActive(AnimationBlender.ANIM_WALK_EAST) == false) then
+            animationBlender:blend5(AnimationBlender.ANIM_WALK_EAST, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
+       end
+    else
+        if (animationBlender:isAnimationActive(AnimationBlender.ANIM_WALK_NORTH) == false) then
+			animationBlender:blend5(AnimationBlender.ANIM_WALK_NORTH, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
+		end
+    end
 end
 
 Scene1_QuatBike_Computer_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)

@@ -301,6 +301,8 @@ namespace NOWA
 	{
 		bool success = PhysicsActiveComponent::disconnect();
 
+		this->stuckTime = 0.0f;
+
 		if (nullptr != this->physicsBody)
 		{
 			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->RemoveAllTires();
@@ -313,6 +315,8 @@ namespace NOWA
 
 	void PhysicsActiveVehicleComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		PhysicsActiveComponent::update(dt, notSimulating);
+
 		if (false == notSimulating)
 		{
 			if (true == this->isVehicleTippedOver())

@@ -143,6 +143,10 @@ namespace NOWA
 		*/
 		virtual bool isActivated(void) const override;
 
+		void setManuallyControlled(bool manuallyControlled);
+
+		bool getIsManuallyControlled(void) const;
+
 		void setWaypointsCount(unsigned int waypointsCount);
 
 		unsigned int getWaypointsCount(void) const;
@@ -229,6 +233,8 @@ namespace NOWA
 
 		Ogre::Vector3 getCurrentWaypoint(void) const;
 
+		NOWA::KI::Path* getPath(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -259,6 +265,7 @@ namespace NOWA
 			return "Usage: To calculate the steering angle of a car moving along waypoints, we can use the Pure Pursuit algorithm. This algorithm is a simple yet effective method for path tracking in autonomous vehicles. "
 				"The Pure Pursuit algorithm calculates the necessary steering angle to drive the vehicle towards a lookahead point on the path. "
 				"Requirements: A LuaScriptComponent, because calculateSteeringAngle and/or calculatePitchAngle shall be called in script to get the steering/pitch results."
+				"Note: Check the orientation and global mesh direction of the checkpoints, in order to get correct results, if the manually controlled vehicle is driving in the correct direction. If the RaceGoalComponent is used."
 				"Since there are a lot of waypoints necessary and setting than manually may be disturbing, hence this function will help. You can put this peace of code in the lua console, which can be opened via ^-key. Adapt the id and set proper string quotes."
 				"local thisGameObject = AppStateManager:getGameObjectController():getGameObjectFromId('528669575'); "
 				"local purePursuitComp = thisGameObject:getPurePursuitComponent(); "
@@ -277,6 +284,8 @@ namespace NOWA
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrManuallyControlled(void) { return "Manually Controlled"; }
+		
 		static const Ogre::String AttrWaypointsCount(void) { return "Waypoints Count"; }
 		static const Ogre::String AttrWaypoint(void) { return "Waypoint Id "; }
 		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
@@ -315,6 +324,7 @@ namespace NOWA
 		Ogre::Real pitchAmount;
 
 		Variant* activated;
+		Variant* manuallyControlled;
 		Variant* waypointsCount;
 		std::vector<Variant*> waypoints;
 		Variant* repeat;

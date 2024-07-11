@@ -107,15 +107,15 @@ namespace Ogre
         }
 
         writeFileHeader();
-        LogManager::getSingleton().logMessage( "File header written." );
+        // LogManager::getSingleton().logMessage( "File header written." );
 
-        LogManager::getSingleton().logMessage( "Writing mesh data..." );
+        // LogManager::getSingleton().logMessage( "Writing mesh data..." );
         pushInnerChunk( mStream );
         writeMesh( pMesh );
         popInnerChunk( mStream );
-        LogManager::getSingleton().logMessage( "Mesh data exported." );
+        // LogManager::getSingleton().logMessage( "Mesh data exported." );
 
-        LogManager::getSingleton().logMessage( "MeshSerializer export successful." );
+        // LogManager::getSingleton().logMessage( "MeshSerializer export successful." );
     }
     //---------------------------------------------------------------------
     void MeshSerializerImpl::importMesh( DataStreamPtr &stream, Mesh *pMesh,

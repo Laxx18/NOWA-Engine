@@ -17,7 +17,7 @@ int extractNumber(const Ogre::String& name)
 	{
 		++i;
 	}
-	// Extract the numeric part
+	// Extract the numeric partlo
 	return std::stoi(name.substr(i));
 }
 
@@ -59,6 +59,7 @@ namespace NOWA
 		maxStuckTime(2.0f),
 		pPath(nullptr),
 		activated(new Variant(PurePursuitComponent::AttrActivated(), true, this->attributes)),
+		manuallyControlled(new Variant(PurePursuitComponent::AttrManuallyControlled(), false, this->attributes)),
 		waypointsCount(new Variant(PurePursuitComponent::AttrWaypointsCount(), 0, this->attributes)),
 		repeat(new Variant(PurePursuitComponent::AttrRepeat(), true, this->attributes)),
 		lookaheadDistance(new Variant(PurePursuitComponent::AttrLookaheadDistance(), 20.0f, this->attributes)),
@@ -73,6 +74,7 @@ namespace NOWA
 		obstacleCategory(new Variant(PurePursuitComponent::AttrObstacleCategory(), Ogre::String(""), this->attributes))
 	{
 		this->activated->setDescription("If activated, the pure pursuit calcluation takes place.");
+		this->manuallyControlled->setDescription("Sets whether the game object is manually controlled by the player, or moves along the waypoints automatically. This can also be switched at runtime.");
 		// Since when waypoints count is changed, the whole properties must be refreshed, so that new field may come for way points
 		this->waypointsCount->addUserData(GameObject::AttrActionNeedRefresh());
 
@@ -117,6 +119,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
 			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ManuallyControlled")
+		{
+			this->manuallyControlled->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaypointsCount")
@@ -211,6 +218,8 @@ namespace NOWA
 	{
 		PurePursuitComponentPtr clonedCompPtr(boost::make_shared<PurePursuitComponent>());
 		
+		
+		clonedCompPtr->setManuallyControlled(this->manuallyControlled->getBool());
 		clonedCompPtr->setWaypointsCount(this->waypointsCount->getUInt());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->waypoints.size()); i++)
@@ -277,7 +286,7 @@ namespace NOWA
 				if (nullptr != nodeCompPtr)
 				{
 					// Add the way points
-					this->pPath->addWayPoint(nodeCompPtr->getPosition());
+					this->pPath->addWayPoint(nodeCompPtr->getPosition(), nodeCompPtr->getOrientation());
 				}
 			}
 		}
@@ -415,69 +424,71 @@ namespace NOWA
 							return;
 						}
 
-
-						Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
-
-						// Check if the car is stuck
-						if (currentPosition.squaredDistance(this->previousPosition) < 0.01f)
+						if (false == this->manuallyControlled->getBool())
 						{
-							this->stuckTime += dt;
-							if (this->stuckTime > this->maxStuckTime)
+							Ogre::Vector3 currentPosition = this->gameObjectPtr->getPosition();
+
+							// Check if the car is stuck
+							if (currentPosition.squaredDistance(this->previousPosition) < 0.01f)
 							{
-								// Increase motor force or reset steering angle to recover from being stuck
-								// For demonstration, let's reset the steering angle
-								// this->steerAmount = 0.0f;
-								this->motorForce += 10000.0f;
-								if (this->steerAmount > 0.0f)
+								this->stuckTime += dt;
+								if (this->stuckTime > this->maxStuckTime)
 								{
-									this->steerAmount = this->steerAmount - dt * 60.0f;
-								}
-								else if(steerAmount < 0)
-								{
-									this->steerAmount = this->steerAmount + dt * 60.0f;
-								}
-								// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] stuck: " + Ogre::StringConverter::toString(this->steerAmount));
+									// Increase motor force or reset steering angle to recover from being stuck
+									// For demonstration, let's reset the steering angle
+									// this->steerAmount = 0.0f;
+									this->motorForce += 10000.0f;
+									if (this->steerAmount > 0.0f)
+									{
+										this->steerAmount = this->steerAmount - dt * 60.0f;
+									}
+									else if (steerAmount < 0)
+									{
+										this->steerAmount = this->steerAmount + dt * 60.0f;
+									}
+									// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] stuck: " + Ogre::StringConverter::toString(this->steerAmount));
 
-								return; // Skip further updates until the car is moving again
+									return; // Skip further updates until the car is moving again
+								}
 							}
-						}
-						else
-						{
-							this->stuckTime = 0.0f; // Reset stuck time if the car is not stuck
-						}
+							else
+							{
+								this->stuckTime = 0.0f; // Reset stuck time if the car is not stuck
+							}
 
-						this->previousPosition = currentPosition;
+							this->previousPosition = currentPosition;
 
-						Ogre::Vector3 lookaheadPoint = this->currentWaypoint.second;
+							Ogre::Vector3 lookaheadPoint = this->currentWaypoint.second;
 
-						// Detect and avoid obstacles
-						if (this->detectObstacle(5.0f))
-						{
-							this->adjustPathAroundObstacle(lookaheadPoint);
-						}
+							// Detect and avoid obstacles
+							if (this->detectObstacle(5.0f))
+							{
+								this->adjustPathAroundObstacle(lookaheadPoint);
+							}
 
-						this->pitchAmount = this->calculatePitchAngle(lookaheadPoint);
+							this->pitchAmount = this->calculatePitchAngle(lookaheadPoint);
 
-						this->motorForce = this->calculateMotorForce();
+							this->motorForce = this->calculateMotorForce();
 
-						this->handleGameObjectsToClose();
+							this->handleGameObjectsToClose();
 
-						this->motorForce = NOWA::MathHelper::getInstance()->lowPassFilter(this->motorForce, this->lastMotorForce, 0.025f);
-						this->lastMotorForce = this->motorForce;
+							this->motorForce = NOWA::MathHelper::getInstance()->lowPassFilter(this->motorForce, this->lastMotorForce, 0.025f);
+							this->lastMotorForce = this->motorForce;
 
-						this->steerAmount = this->calculateSteeringAngle(lookaheadPoint);
-						this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
-
-						Ogre::Real currentDistance = currentPosition.distance(lookaheadPoint);
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] dist: " + Ogre::StringConverter::toString(currentDistance));
-						// If the car is driving away from the waypoint, adjust the steering
-						if (currentDistance > this->previousDistance)
-						{
-							this->steerAmount += (currentDistance - this->previousDistance) * 0.1f; // Adjust steering based on the distance increase
+							this->steerAmount = this->calculateSteeringAngle(lookaheadPoint);
 							this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
-						}
 
-						this->previousDistance = currentDistance;
+							Ogre::Real currentDistance = currentPosition.distance(lookaheadPoint);
+							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] dist: " + Ogre::StringConverter::toString(currentDistance));
+							// If the car is driving away from the waypoint, adjust the steering
+							if (currentDistance > this->previousDistance)
+							{
+								this->steerAmount += (currentDistance - this->previousDistance) * 0.1f; // Adjust steering based on the distance increase
+								this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
+							}
+
+							this->previousDistance = currentDistance;
+						}
 						
 					}
 					else
@@ -507,6 +518,10 @@ namespace NOWA
 		if (PurePursuitComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
+		}
+		else if (PurePursuitComponent::AttrManuallyControlled() == attribute->getName())
+		{
+			this->setManuallyControlled(attribute->getBool());
 		}
 		else if (PurePursuitComponent::AttrWaypointsCount() == attribute->getName())
 		{
@@ -583,7 +598,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);	
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ManuallyControlled"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->manuallyControlled->getBool())));
+		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -690,6 +711,16 @@ namespace NOWA
 	bool PurePursuitComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
+	}
+
+	void PurePursuitComponent::setManuallyControlled(bool manuallyControlled)
+	{
+		this->manuallyControlled->setValue(manuallyControlled);
+	}
+
+	bool PurePursuitComponent::getIsManuallyControlled(void) const
+	{
+		return this->manuallyControlled->getBool();
 	}
 
 	void PurePursuitComponent::setWaypointsCount(unsigned int waypointsCount)
@@ -1113,6 +1144,7 @@ namespace NOWA
 			{
 				Ogre::Real ramAngle = 0.3f * (rand() % 2 ? 1 : -1); // Randomly decide to ram left or right
 				this->steerAmount += ramAngle;
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Ramming: " + Ogre::StringConverter::toString(this->steerAmount));
 			}
 		}
 	}
@@ -1235,6 +1267,11 @@ namespace NOWA
 		return Ogre::Vector3::ZERO;
 	}
 
+	NOWA::KI::Path* PurePursuitComponent::getPath(void) const
+	{
+		return this->pPath;
+	}
+
 	Ogre::Real PurePursuitComponent::normalizeAngle(Ogre::Real angle)
 	{
 		while (angle > 90.0f)
@@ -1279,6 +1316,8 @@ namespace NOWA
 			class_<PurePursuitComponent, GameObjectComponent>("PurePursuitComponent")
 			.def("setActivated", &PurePursuitComponent::setActivated)
 			.def("isActivated", &PurePursuitComponent::isActivated)
+			.def("setManuallyControlled", &PurePursuitComponent::setManuallyControlled)
+			.def("getIsManuallyControlled", &PurePursuitComponent::getIsManuallyControlled)
 			.def("setWaypointsCount", &PurePursuitComponent::setWaypointsCount)
 			.def("getWaypointsCount", &PurePursuitComponent::getWaypointsCount)
 			.def("setWaypointId", &PurePursuitComponent::setWaypointStrId)
@@ -1307,7 +1346,6 @@ namespace NOWA
 			.def("setObstacleCategory", &PurePursuitComponent::setObstacleCategory)
 			.def("getObstacleCategory", &PurePursuitComponent::getObstacleCategory)
 
-
 			// .def("calculateSteeringAngle", &PurePursuitComponent::calculateSteeringAngle)
 			// .def("calculatePitchAngle", &PurePursuitComponent::calculatePitchAngle)
 			// .def("calculateMotorForce", &PurePursuitComponent::calculateMotorForce)
@@ -1325,6 +1363,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "class inherits GameObjectComponent", PurePursuitComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not for the pure pursuit calculation.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setManuallyControlled(bool manuallyControlled)", "Sets whether the game object is manually controlled by the player, or moves along the waypoints automatically. This can also be switched at runtime.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "bool getIsManuallyControlled()", "Gets Sets whether the game object is manually controlled by the player, or moves along the waypoints automatically. This can also be switched at runtime.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setWaypointsCount(int count)", "Sets the way points count.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "int getWaypointsCount()", "Gets the way points count.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setWaypointId(int index, String id)", "Sets the id of the GameObject with the NodeComponent for the given waypoint index.");

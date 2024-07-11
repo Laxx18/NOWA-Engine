@@ -27,15 +27,23 @@ namespace
 	{
 		size_t i = 0;
 		// Skip non-digit characters
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "---> start extractNumber from: " + name);
 		while (i < name.length() && !std::isdigit(name[i]))
 		{
 			++i;
 		}
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "---> end extractNumber from: " + Ogre::StringConverter::toString(i));
 		// Extract the numeric part
-		return std::stoi(name.substr(i));
+		Ogre::String strNum = name.substr(i);
+		if (false == strNum.empty())
+		{
+			// There are game objects, which have no number postfix, skip them
+			return std::stoi(strNum);
+		}
+		return -1;
 	}
 
-	bool compareGameObjectsByName(NOWA::GameObjectPtr a, NOWA::GameObjectPtr b)
+	bool compareGameObjectsByName(const NOWA::GameObjectPtr& a, const NOWA::GameObjectPtr& b)
 	{
 		// Does not work: Because: Node_1, Node_10, Node_2 etc. but required is: Node_0, Node_1, Node_2...
 		// return a->getName() < b->getName();
@@ -43,7 +51,7 @@ namespace
 		int numA = extractNumber(a->getName());
 		int numB = extractNumber(b->getName());
 
-		if (numA != numB)
+		if (numA != numB && (numA != -1 && numB != -1))
 		{
 			return numA < numB;
 		}

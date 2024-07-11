@@ -176,6 +176,8 @@ protected:
 private:
 	// Event delegates
 	void handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData);
+
+	void selectAllNodes(MyGUI::TreeControl* treeControl);
 private:
 	MyGUI::EditBox* resourcesSearchEdit;
 	NOWA::AutoCompleteSearch autoCompleteSearch;
@@ -183,6 +185,8 @@ private:
 	NOWA::EditorManager* editorManager;
 	MyGUI::ImageBox* imageBox;
 	Ogre::String oldSelectedText;
+	bool ctrlPressed;
+	bool selectAll;
 };
 
 ///////////////////////////////////////////////////////////////////////

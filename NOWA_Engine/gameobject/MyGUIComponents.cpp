@@ -2594,6 +2594,7 @@ namespace NOWA
 		itemCount(new Variant(MyGUIListBoxComponent::AttrItemCount(), 0, this->attributes))
 	{
 		std::vector<Ogre::String> skins({ "ListBox", "ListBox_Dark", "ListBox2_Dark", "ListBox3_Dark" });
+		// ATTENTION: ListBox3_Dark has no textbox, hence no items are shown
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), skins, this->attributes);
 		
 		this->textColor->addUserData(GameObject::AttrActionColorDialog());
@@ -3072,12 +3073,12 @@ namespace NOWA
 
 			for (size_t i = oldSize; i < this->items.size(); i++)
 			{
-				this->items[i] = new Variant(MyGUIListBoxComponent::AttrItem() + Ogre::StringConverter::toString(i), "My Item", this->attributes);
+				this->items[i] = new Variant(MyGUIListBoxComponent::AttrItem() + Ogre::StringConverter::toString(i), "", this->attributes);
 				this->items[i]->addUserData(GameObject::AttrActionSeparator());
 
 				if (nullptr != this->widget)
 				{
-					widget->castType<MyGUI::ListBox>()->addItem("My Item");
+					widget->castType<MyGUI::ListBox>()->addItem("");
 				}
 			}
 
@@ -3109,7 +3110,7 @@ namespace NOWA
 	
 	void MyGUIListBoxComponent::setItemText(unsigned int index, const Ogre::String& itemText)
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			index = static_cast<unsigned int>(this->items.size()) - 1;
 		this->items[index]->setValue(itemText);
 
@@ -3745,12 +3746,12 @@ namespace NOWA
 
 			for (size_t i = oldSize; i < this->items.size(); i++)
 			{
-				this->items[i] = new Variant(MyGUIComboBoxComponent::AttrItem() + Ogre::StringConverter::toString(i), "My Item", this->attributes);
+				this->items[i] = new Variant(MyGUIComboBoxComponent::AttrItem() + Ogre::StringConverter::toString(i), "", this->attributes);
 				this->items[i]->addUserData(GameObject::AttrActionSeparator());
 
 				if (nullptr != this->widget)
 				{
-					widget->castType<MyGUI::ComboBox>()->addItem("My Item");
+					widget->castType<MyGUI::ComboBox>()->addItem("");
 				}
 			}
 		}
@@ -3775,7 +3776,7 @@ namespace NOWA
 	
 	void MyGUIComboBoxComponent::setItemText(unsigned int index, const Ogre::String& itemText)
 	{
-		if (index > this->items.size())
+		if (index >= this->items.size())
 			index = static_cast<unsigned int>(this->items.size()) - 1;
 
 		this->items[index]->setValue(itemText);

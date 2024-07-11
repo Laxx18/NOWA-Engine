@@ -691,6 +691,11 @@ namespace NOWA
 		return active;
 	}
 
+	bool AnimationBlenderV2::isAnyAnimationActive(void)
+	{
+		return false == this->source->getEnabled() && false == this->target->getEnabled();
+	}
+
 	bool AnimationBlenderV2::isTargetAnimationActive(AnimID animationId)
 	{
 		bool active = false;
