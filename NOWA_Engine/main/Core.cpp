@@ -14,6 +14,7 @@
 #include "OgreHlmsDiskCache.h"
 #include "OgreAbiUtils.h"
 #include "Compositor/OgreCompositorManager2.h"
+#include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 
 #include "ocean/OgreHlmsOcean.h"
 
@@ -223,10 +224,12 @@ namespace NOWA
 			delete this->defaultEngineResourceListener;
 			this->defaultEngineResourceListener = nullptr;
 		}
+
+		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
+
 		if (nullptr != this->myGuiWorkspace && nullptr != this->root)
 		{
 			this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
-			Ogre::CompositorManager2* compositorManager = this->root->getCompositorManager2();
 			compositorManager->removeWorkspace(this->myGuiWorkspace);
 			this->myGuiWorkspace = nullptr;
 		}
@@ -811,6 +814,9 @@ namespace NOWA
 
 		// After that my gui must be initialized
 		this->initMyGui(dummySceneManager, dummyCamera, logName);
+
+		Ogre::CompositorManager2* compositorManager = this->root->getCompositorManager2();
+
 		// After that all 2.0 compositors/pbs etc. parsed, because a MYGUI pass is also used in PbsMaterials.compositor
 		try
 		{
@@ -827,7 +833,7 @@ namespace NOWA
 		// After that the NOWAPbsWorkspace can be added
 		const Ogre::String workspaceName = "NOWAPbsWorkspace";
 		const Ogre::IdString workspaceNameHash = workspaceName;
-		Ogre::CompositorManager2* compositorManager = this->root->getCompositorManager2();
+		
 		this->myGuiWorkspace = compositorManager->addWorkspace(dummySceneManager, this->renderWindow->getTexture(), dummyCamera, workspaceNameHash, true);
 
 		// Fps statistics container

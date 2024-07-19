@@ -584,6 +584,7 @@ namespace NOWA
 			.def("setActivated", &AnimationComponentV2::setActivated)
 			.def("isActivated", &AnimationComponentV2::isActivated)
 			.def("reactOnAnimationFinished", &AnimationComponentV2::reactOnAnimationFinished)
+			.def("getAnimationBlender", &AnimationComponentV2::getAnimationBlender)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "class inherits GameObjectComponent", AnimationComponentV2::getStaticInfoText());
@@ -591,6 +592,7 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "bool isActivated()", "Gets whether this component is activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
 							 "Sets whether to react when the given animation has finished.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "AnimationBlender getAnimationBlender()", "Gets the animation blender for direction manipulation.");
 
 		gameObjectClass.def("getAnimationComponentV2FromName", &getAnimationComponentV2FromName);
 		gameObjectClass.def("getAnimationComponentV2", (AnimationComponentV2 * (*)(GameObject*)) & getAnimationComponentV2);

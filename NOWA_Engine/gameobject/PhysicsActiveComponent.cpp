@@ -1229,6 +1229,11 @@ namespace NOWA
 		{
 			this->reCreateCollision();
 		}*/
+
+		if (nullptr != this->physicsBody)
+		{
+			this->physicsBody->setIsSoftBody(asSoftBody);
+		}
 	}
 
 	bool PhysicsActiveComponent::getIsSoftBody(void) const

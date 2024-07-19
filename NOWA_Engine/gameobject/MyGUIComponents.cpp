@@ -2048,7 +2048,10 @@ namespace NOWA
 	MyGUIImageBoxComponent::MyGUIImageBoxComponent()
 		: MyGUIComponent(),
 		rotatingSkin(nullptr),
-		imageFileName(new Variant(MyGUIImageBoxComponent::AttrImageFileName(), "NOWA_1D.png", this->attributes))
+		imageFileName(new Variant(MyGUIImageBoxComponent::AttrImageFileName(), "NOWA_1D.png", this->attributes)),
+		center(new Variant(MyGUIImageBoxComponent::AttrCenter(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
+		angle(new Variant(MyGUIImageBoxComponent::AttrAngle(), 0.0f, this->attributes)),
+		rotationSpeed(new Variant(MyGUIImageBoxComponent::AttrRotationSpeed(), 0.0f, this->attributes))
 	{
 		std::vector<Ogre::String> skins({ "ImageBox", "RotatingSkin" });
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), { skins }, this->attributes);
@@ -2129,7 +2132,11 @@ namespace NOWA
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!");
 				// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!\n", "NOWA");
 		}
-		this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+
+		if ("RotatingSkin" == this->skin->getListSelectedValue())
+		{
+			this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+		}
 
 		this->setImageFileName(this->imageFileName->getString());
 		this->setCenter(this->center->getVector2());
@@ -2147,17 +2154,25 @@ namespace NOWA
 	{
 		MyGUIComponent::update(dt, notSimulating);
 		
-		Ogre::Real tempRotationSpeed = this->rotationSpeed->getReal();
-		if (0.0f != tempRotationSpeed)
+		if (false == notSimulating)
 		{
-			this->angle->setValue(0.0f);
-			
-			Ogre::Real tempRadian = this->rotatingSkin->getAngle() + (MathHelper::getInstance()->degreeAngleToRadian(tempRotationSpeed) * dt);
-			if (tempRadian >= Ogre::Math::TWO_PI)
+			if (nullptr == this->rotatingSkin)
 			{
-				tempRadian = 0.0f;
+				return;
 			}
-			this->rotatingSkin->setAngle(tempRadian);
+
+			Ogre::Real tempRotationSpeed = this->rotationSpeed->getReal();
+			if (0.0f != tempRotationSpeed)
+			{
+				this->angle->setValue(0.0f);
+
+				Ogre::Real tempRadian = this->rotatingSkin->getAngle() + (MathHelper::getInstance()->degreeAngleToRadian(tempRotationSpeed) * dt);
+				if (tempRadian >= Ogre::Math::TWO_PI)
+				{
+					tempRadian = 0.0f;
+				}
+				this->rotatingSkin->setAngle(tempRadian);
+			}
 		}
 	}
 
@@ -2269,6 +2284,18 @@ namespace NOWA
 
 	void MyGUIImageBoxComponent::onChangeSkin(void)
 	{
+		MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
+		if (nullptr == main)
+		{
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!");
+			// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[EngineResourceListener] Error: Could not get MyGUI object. Check the resources.cfg, whether 'FileSystem=../../media/MyGUI_Media' is missing!\n", "NOWA");
+		}
+
+		if ("RotatingSkin" == this->skin->getListSelectedValue())
+		{
+			this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
+		}
+
 		this->setImageFileName(this->imageFileName->getString());
 		this->setCenter(this->center->getVector2());
 		this->setAngle(this->angle->getReal());

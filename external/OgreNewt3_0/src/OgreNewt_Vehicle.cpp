@@ -577,6 +577,7 @@ namespace OgreNewt
 		, m_debugtire(false)
 		, m_initMassDataDone(false)
 		, m_combackup(dVector(0.0f))
+		, m_canDrive(true)
 	{
 		//dVector aAngularDamping(0.0f);
 		//NewtonBodySetLinearDamping(Body::m_body, 0);
@@ -817,6 +818,11 @@ namespace OgreNewt
 		return m_vehicleForce;
 	}
 
+	void Vehicle::setCanDrive(bool canDrive)
+	{
+		m_canDrive = canDrive;
+	}
+
 	void Vehicle::InitMassData(void)
 	{
 		dVector comChassis;
@@ -847,6 +853,10 @@ namespace OgreNewt
 	{
 		Vehicle* vehicle = (Vehicle*)model;
 
+		if (false == vehicle->m_canDrive)
+		{
+			return;
+		}
 		for (dList<RayCastTire*>::dListNode* node = vehicle->m_tires.GetFirst(); node; node = node->GetNext())
 		{
 			RayCastTire* tire = node->GetInfo();
@@ -862,6 +872,12 @@ namespace OgreNewt
 	void RayCastVehicleManager::OnUpdateTransform(const dModelNode* const bone, const dMatrix& localMatrix) const
 	{
 		Vehicle* vehicle = (Vehicle*)bone;
+
+		if (false == vehicle->m_canDrive)
+		{
+			return;
+		}
+
 		NewtonBody* const body = bone->GetBody();
 
 		if (false == vehicle->m_initMassDataDone)

@@ -34,7 +34,7 @@
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-200 -1.29522 -200" mostRightFarPosition="205.796 100 200"/>
+		<bounds mostLeftNearPosition="-200 -1.31268 -200" mostRightFarPosition="205.796 100 200"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -256,8 +256,8 @@
 			</terra>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-33.1194" y="9.48578" z="0.0439084"/>
-			<rotation qw="0.591555" qx="-0.0528304" qy="-0.801342" qz="-0.0715787"/>
+			<position x="-31.0355" y="8.5328" z="2.64458"/>
+			<rotation qw="0.590695" qx="-0.129228" qy="-0.778074" qz="-0.170236"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -334,7 +334,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="9.27259e-08" qx="-3.09086e-08" qy="0.707107" qz="0.707107"/>
+			<rotation qw="3.09086e-08" qx="-3.09086e-08" qy="0.707107" qz="0.707107"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -560,6 +560,28 @@
 					<property type="12" name="ReadOnly" data="true"/>
 					<property type="12" name="MultiLine" data="false"/>
 					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="CountdownText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2142438967"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.4 0.2"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data=""/>
+					<property type="2" name="FontHeight" data="60"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -754,6 +776,8 @@
 					<property type="6" name="WaypointVariance" data="0"/>
 					<property type="12" name="VarianceIndividual" data="false"/>
 					<property type="7" name="ObstacleCategory" data=""/>
+					<property type="12" name="RammingBehavior" data="true"/>
+					<property type="12" name="OvertakingBehavior" data="true"/>
 					<property type="7" name="ComponentRaceGoalComponent" data="RaceGoalComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -763,6 +787,8 @@
 					<property type="2" name="Checkpoint1" data="3400631979"/>
 					<property type="2" name="LapsCount" data="1"/>
 					<property type="7" name="OnFeedbackRaceFunctionName" data="onFeedbackRace"/>
+					<property type="12" name="UseCountdown" data="true"/>
+					<property type="7" name="OnCountdownFunctionName" data="onCountdown"/>
 					<property type="7" name="OnWrongDirectionFunctionName" data="onWrongDirectionDriving"/>
 				</userData>
 			</entity>
@@ -844,7 +870,7 @@
 		</node>
 		<node name="QuatTire_7" id="4239151726">
 			<position x="-22.9457" y="1.21621" z="3.25614"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_7" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -919,7 +945,7 @@
 		</node>
 		<node name="QuatTire_0" id="4239153031">
 			<position x="-22.1763" y="1.22278" z="3.25614"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_0" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -2795,7 +2821,7 @@
 		</node>
 		<node name="QuatTire_11" id="1490416671">
 			<position x="-21.3335" y="1.08681" z="6.11039"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_11" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -3091,6 +3117,8 @@
 					<property type="6" name="WaypointVariance" data="0.1"/>
 					<property type="12" name="VarianceIndividual" data="false"/>
 					<property type="7" name="ObstacleCategory" data=""/>
+					<property type="12" name="RammingBehavior" data="true"/>
+					<property type="12" name="OvertakingBehavior" data="true"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3120,6 +3148,8 @@
 					<property type="2" name="Checkpoint1" data="3400631979"/>
 					<property type="2" name="LapsCount" data="1"/>
 					<property type="7" name="OnFeedbackRaceFunctionName" data=""/>
+					<property type="12" name="UseCountdown" data="false"/>
+					<property type="7" name="OnCountdownFunctionName" data=""/>
 					<property type="7" name="OnWrongDirectionFunctionName" data=""/>
 				</userData>
 			</entity>
@@ -3201,7 +3231,7 @@
 		</node>
 		<node name="QuatTire_8" id="4239149551">
 			<position x="-20.5641" y="1.08681" z="6.11039"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_8" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -3485,7 +3515,7 @@
 		</node>
 		<node name="QuatTire_1" id="4239152596">
 			<position x="-25.4086" y="1.08681" z="3.98602"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -3931,6 +3961,8 @@
 					<property type="6" name="WaypointVariance" data="0.1"/>
 					<property type="12" name="VarianceIndividual" data="false"/>
 					<property type="7" name="ObstacleCategory" data=""/>
+					<property type="12" name="RammingBehavior" data="true"/>
+					<property type="12" name="OvertakingBehavior" data="true"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3960,13 +3992,15 @@
 					<property type="2" name="Checkpoint1" data="3400631979"/>
 					<property type="2" name="LapsCount" data="1"/>
 					<property type="7" name="OnFeedbackRaceFunctionName" data=""/>
+					<property type="12" name="UseCountdown" data="false"/>
+					<property type="7" name="OnCountdownFunctionName" data=""/>
 					<property type="7" name="OnWrongDirectionFunctionName" data=""/>
 				</userData>
 			</entity>
 		</node>
 		<node name="QuatTire_4" id="4239151291">
 			<position x="-26.178" y="1.08681" z="3.98602"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -4322,7 +4356,7 @@
 		</node>
 		<node name="U_ramp_2" id="1734590696">
 			<position x="39.336" y="-0.956022" z="-44.1707"/>
-			<rotation qw="0.815748" qx="0.0523733" qy="-0.575447" qz="0.0259251"/>
+			<rotation qw="0.817899" qx="0.0550021" qy="-0.572048" qz="0.0278796"/>
 			<scale x="0.5" y="1" z="0.1"/>
 			<entity name="U_ramp_2" meshFile="U_ramp.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="[Default]__03526229100"/>

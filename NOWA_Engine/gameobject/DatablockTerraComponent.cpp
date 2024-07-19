@@ -1099,16 +1099,21 @@ namespace NOWA
 						texture = nullptr;
 					}
 
-					Ogre::HlmsSamplerblock samplerBlockRef;
+					Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(terraTextureType));
 					if (terraTextureType >= Ogre::TERRA_DETAIL0 && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
 					{
 						//Detail maps default to wrap mode.
-						samplerBlockRef.mU = Ogre::TAM_WRAP;
-						samplerBlockRef.mV = Ogre::TAM_WRAP;
-						samplerBlockRef.mW = Ogre::TAM_WRAP;
+						samplerblock.mU = Ogre::TAM_WRAP;
+						samplerblock.mV = Ogre::TAM_WRAP;
+						samplerblock.mW = Ogre::TAM_WRAP;
+
+						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMaxAnisotropy = 1; // test also with -1;
 					}
 
-					datablock->setTexture(terraTextureType, texture, &samplerBlockRef);
+					datablock->setTexture(terraTextureType, texture, &samplerblock);
 				}
 				else
 				{

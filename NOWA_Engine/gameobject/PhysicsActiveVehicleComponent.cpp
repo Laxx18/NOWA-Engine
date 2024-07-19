@@ -478,6 +478,11 @@ namespace NOWA
 		return static_cast<OgreNewt::Vehicle*>(this->physicsBody)->getVehicleForce();
 	}
 
+	void PhysicsActiveVehicleComponent::setCanDrive(bool canDrive)
+	{
+		static_cast<OgreNewt::Vehicle*>(this->physicsBody)->setCanDrive(canDrive);
+	}
+
 	bool PhysicsActiveVehicleComponent::createDynamicBody(void)
 	{
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);

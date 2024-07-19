@@ -113,6 +113,10 @@ namespace NOWA
 
 		unsigned int getLightId(void) const;
 
+		void setCameraId(unsigned long cameraId);
+
+		unsigned int geCameraId(void) const;
+
 		void setStrength(int strength);
 
 		int getStrength(void) const;
@@ -167,6 +171,7 @@ namespace NOWA
 		// static const Ogre::String AttrHeightMap(void) { return "Height Map"; }
 		static const Ogre::String AttrDimensions(void) { return "Dimensions"; }
 		static const Ogre::String AttrLightId(void) { return "Light Id"; }
+		static const Ogre::String AttrCameraId(void) { return "Camera Id"; }
 		static const Ogre::String AttrStrength(void) { return "Strength"; }
 		static const Ogre::String AttrBrush(void) { return "Brush"; }
 		static const Ogre::String AttrBrushSize(void) { return "Brush Size"; }
@@ -180,6 +185,7 @@ namespace NOWA
 		// Variant* heightMap;
 		Variant* dimensions;
 		Variant* lightId;
+		Variant* cameraId;
 		Variant* strength;
 		Variant* brush;
 		Variant* brushSize;
@@ -191,6 +197,7 @@ namespace NOWA
 		Ogre::HlmsPbsTerraShadows* hlmsPbsTerraShadows;
 		Ogre::TerraWorkspaceListener* terraWorkspaceListener;
 		Ogre::Light* sunLight;
+		Ogre::Camera* usedCamera;
 		bool postInitDone;
 	};
 

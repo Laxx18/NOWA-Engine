@@ -47,6 +47,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PurePursuitComponent", "Pur
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RaceGoalComponent", "RaceGoalComponent\RaceGoalComponent.vcxproj", "{3B04A12F-13EC-48AE-81E9-B17189B5B606}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MinimapComponent", "MinimapComponent\MinimapComponent.vcxproj", "{626103BB-3E8B-475B-9E97-A986213EDBD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -141,6 +143,10 @@ Global
 		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Debug|x64.Build.0 = Debug|x64
 		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Release|x64.ActiveCfg = Release|x64
 		{3B04A12F-13EC-48AE-81E9-B17189B5B606}.Release|x64.Build.0 = Release|x64
+		{626103BB-3E8B-475B-9E97-A986213EDBD8}.Debug|x64.ActiveCfg = Debug|x64
+		{626103BB-3E8B-475B-9E97-A986213EDBD8}.Debug|x64.Build.0 = Debug|x64
+		{626103BB-3E8B-475B-9E97-A986213EDBD8}.Release|x64.ActiveCfg = Release|x64
+		{626103BB-3E8B-475B-9E97-A986213EDBD8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

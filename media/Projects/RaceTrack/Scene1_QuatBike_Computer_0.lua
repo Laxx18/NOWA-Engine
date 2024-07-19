@@ -86,7 +86,7 @@ Scene1_QuatBike_Computer_0["update"] = function(dt)
     pitchAmount = purePursuitComponent:getPitchAmount();
     motorForce = purePursuitComponent:getMotorForce();
     
-    physicsActiveVehicleComponent:applyOmegaForceRotateTo(Quaternion(Degree(pitchAmount), Vector3(0, 0, 1)), Vector3(0, 0, 1), 1);
+    --physicsActiveVehicleComponent:applyOmegaForceRotateTo(Quaternion(Degree(pitchAmount), Vector3(0, 0, 1)), Vector3(0, 0, 1), 1);
     
     animationBlender:addTime(dt * 1 / animationBlender:getLength());
 end

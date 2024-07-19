@@ -34,20 +34,38 @@ compositor_node NOWAFinalCompositionNode
 	}
 }
 
+#abstract target cubemap_target_shadow
+#{
+#	pass render_scene
+#	{
+#		load
+#		{
+#			all									clear
+#			clear_colour_reverse_depth_aware	1 1 1 1
+#		}
+#		store
+#		{
+#			//We only care about the contents of the colour target with point shadows
+#			depth			dont_care
+#			stencil			dont_care
+#		}
+#		camera_cubemap_reorient true
+#	}
+#}
+
 abstract target cubemap_target_shadow
 {
 	pass render_scene
 	{
-		load
-		{
-			all									clear
-			clear_colour_reverse_depth_aware	1 1 1 1
-		}
+		execution_mask			0xff
+		//Be affected by the modifier, so we render just to a portion of the screen.
+		viewport_modifier_mask	0xff
+	
 		store
 		{
 			//We only care about the contents of the colour target with point shadows
-			depth			dont_care
-			stencil			dont_care
+			depth			store
+			stencil			store
 		}
 		camera_cubemap_reorient true
 	}
@@ -75,7 +93,11 @@ compositor_node_shadow NOWAShadowNode
 	target atlas
 	{
 		pass clear
-		{
+		{	
+			execution_mask			0xff
+			//Be affected by the modifier, so we render just to a portion of the screen.
+			viewport_modifier_mask	0xff
+		
 			colour_value 1 1 1 1
 		}
 	}
@@ -86,6 +108,9 @@ compositor_node_shadow NOWAShadowNode
 		{
 			pass render_scene
 			{
+				execution_mask			0xff
+				//Be affected by the modifier, so we render just to a portion of the screen.
+				viewport_modifier_mask	0xff
 			}
 		}
 	}
@@ -96,6 +121,9 @@ compositor_node_shadow NOWAShadowNode
 		{
 			pass render_scene
 			{
+				execution_mask			0xff
+				//Be affected by the modifier, so we render just to a portion of the screen.
+				viewport_modifier_mask	0xff
 			}
 		}
 	}
@@ -115,6 +143,10 @@ compositor_node_shadow NOWAShadowNode
 			{
 				pass render_quad
 				{
+					execution_mask			0xff
+					//Be affected by the modifier, so we render just to a portion of the screen.
+					viewport_modifier_mask	0xff
+				
 					material Ogre/DPSM/CubeToDpsm
 					input 0 tmpCubemap
 				}

@@ -210,6 +210,12 @@ namespace NOWA
 					samplerblock.mU = Ogre::TAM_WRAP;
 					samplerblock.mV = Ogre::TAM_WRAP;
 					samplerblock.mW = Ogre::TAM_WRAP;
+
+					samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
 					//Set the new samplerblock. The Hlms system will
 					//automatically create the API block if necessary
 					datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);

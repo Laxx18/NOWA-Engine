@@ -71,7 +71,8 @@ Ogre::Light* ProjectManager::createSunLight(void)
 	Ogre::Light* sunLight = nullptr;
 	// There must be a main light in order to prevent render errors, so SunLight, is the main mandantory light! Which may not be deleted
 	Ogre::SceneNode* lightNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-	lightNode->setPosition(0, 37.2738f, 50.0f);
+	lightNode->setPosition(0, 35.0f, 50.0f);
+	lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
 
 	Ogre::v1::Entity* newEntity = this->sceneManager->createEntity("LightDirectional.mesh");
 	lightNode->attachObject(newEntity);
@@ -90,7 +91,7 @@ Ogre::Light* ProjectManager::createSunLight(void)
 			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
 
 		lightComponentPtr->setPowerScale(Ogre::Math::PI);
-		lightComponentPtr->setDirection(Ogre::Vector3(-1, -1, -1).normalisedCopy());
+		// lightComponentPtr->setDirection(Ogre::Vector3(-1, -1, -1).normalisedCopy());
 		lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
 		sunLight = lightComponentPtr->getOgreLight();
 		sunLight->setName("SunLight");

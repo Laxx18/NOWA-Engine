@@ -211,6 +211,14 @@ namespace NOWA
 
 		Ogre::String getObstacleCategory(void) const;
 
+		void setRammingBehavior(bool rammingBehavior);
+
+		bool getRammingBehavior(void) const;
+
+		void setOvertakingBehavior(bool overtakingBehavior);
+
+		bool getOvertakingBehavior(void) const;
+
 		Ogre::Real calculateSteeringAngle(const Ogre::Vector3& lookaheadPoint);
 
 		Ogre::Real calculatePitchAngle(const Ogre::Vector3& lookaheadPoint);
@@ -299,6 +307,8 @@ namespace NOWA
 		static const Ogre::String AttrWaypointVariance(void) { return "Waypoint Variance"; }
 		static const Ogre::String AttrVarianceIndividual(void) { return "Variance Individual"; }
 		static const Ogre::String AttrObstacleCategory(void) { return "Obstacle Category"; }
+		static const Ogre::String AttrRammingBehavior(void) { return "Ramming Behavior"; }
+		static const Ogre::String AttrOvertakingBehavior(void) { return "Overtaking Behavior"; }
 	private:
 		Ogre::Real normalizeAngle(Ogre::Real angle);
 
@@ -311,12 +321,13 @@ namespace NOWA
 
 		void addRandomVarianceToWaypoints(void);
 
-		void handleGameObjectsToClose(void);
+		void handleGameObjectsToClose();
 
 		bool detectObstacle(Ogre::Real detectionRange);
 		
 		void adjustPathAroundObstacle(Ogre::Vector3& lookaheadPoint);
-		
+	private:
+		void handleCountdownActive(NOWA::EventDataPtr eventData);
 	private:
 		Ogre::String name;
 		Ogre::Real motorForce;
@@ -338,6 +349,8 @@ namespace NOWA
 		Variant* varianceIndividual;
 		Variant* overtakingMotorForce;
 		Variant* obstacleCategory;
+		Variant* rammingBehavior;
+		Variant* overtakingBehavior;
 
 		Ogre::Real lastSteerAngle;
 		Ogre::Real lastMotorForce;
@@ -350,6 +363,10 @@ namespace NOWA
 		Ogre::Real maxStuckTime;
 		Ogre::String oldDatablockName;
 		unsigned int categoriesId;
+		bool canSwitchBehavior;
+		bool canDrive;
+
+		enum BehaviorType { NONE, RAMMING, OVERTAKING } behaviorType;
 
 		std::vector<PurePursuitComponent*> otherPurePursuits;
 		std::vector<GameObject*> obstacles;

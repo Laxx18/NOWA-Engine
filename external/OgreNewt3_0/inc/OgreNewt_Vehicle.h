@@ -279,6 +279,8 @@ namespace OgreNewt
 		VehicleCallback* GetVehicleCallback(void) const;
 
 		Ogre::Vector3 getVehicleForce(void) const;
+
+		void setCanDrive(bool canDrive);
 	private:
 		void InitMassData(void);
 	public:
@@ -294,6 +296,7 @@ namespace OgreNewt
 		VehicleRaycastType m_raytype;
 		dList<RayCastTire*> m_tires;
 		int m_noHitCounter;
+		bool m_canDrive;
 	private:
 		dMatrix m_chassisMatrix;
 		RayCastVehicleManager* m_raycastVehicleManager;

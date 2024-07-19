@@ -26,6 +26,26 @@ namespace NOWA
 	  */
 	class EXPORTED RaceGoalComponent : public GameObjectComponent, public Ogre::Plugin
 	{
+	private:
+		class CountdownTimer
+		{
+		public:
+			CountdownTimer(LuaScript* luaScript, const Ogre::String& onCountdownFunctionName);
+
+			void activate(void);
+
+			void update(void);
+
+			void display(void);
+
+			bool getIsActive(void) const;
+		private:
+			LuaScript* luaScript;
+			Ogre::String onCountdownFunctionName;
+			int count;
+			bool active;
+			std::chrono::steady_clock::time_point lastUpdate;
+		};
 	public:
 		typedef boost::shared_ptr<RaceGoalComponent> RaceGoalComponentPtr;
 	public:
@@ -163,6 +183,16 @@ namespace NOWA
 		 */
 		void setOnWrongDirectionFunctionName(const Ogre::String& onWrongDirectionFunctionName);
 
+		void setUseCountdown(bool useCountdown);
+
+		bool getUseCountdown(void) const;
+
+		/**
+		 * @brief Sets the lua function name, to react when a game object collided with another game object.
+		 * @param[in]	onCountdownFunctionName		The function name to set
+		 */
+		void setOnCountdownFunctionName(const Ogre::String& onCountdownFunctionName);
+
 		void setRacingPosition(int racingPosition);
 
 		int getRacingPosition(void) const;
@@ -171,7 +201,7 @@ namespace NOWA
 
 		Ogre::Real getDistanceTraveled(void) const;
 
-
+		bool getCanDrive(void) const;
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -215,6 +245,8 @@ namespace NOWA
 		static const Ogre::String AttrLapsCount(void) { return "Laps Count"; }
 		static const Ogre::String AttrOnFeedbackRaceFunctionName(void) { return "On Feedback Race Function Name"; }
 		static const Ogre::String AttrOnWrongDirectionFunctionName(void) { return "On Wrong Direction Function Name"; }
+		static const Ogre::String AttrUseCountdown(void) { return "Use Countdown"; }
+		static const Ogre::String AttrOnCountdownFunctionName(void) { return "On Countdown Function Name"; }
 		static const Ogre::String AttrCheckpoint(void) { return "Checkpoint Id "; }
 	private:
 		bool isMovingTowardsCheckpoint(void);
@@ -244,6 +276,8 @@ namespace NOWA
 		Variant* lapsCount;
 		Variant* onFeedbackRaceFunctionName;
 		Variant* onWrongDirectionFunctionName;
+		Variant* useCountdown;
+		Variant* onCountdownFunctionName;
 		Variant* checkpointsCount;
 		std::vector<Variant*> checkpoints;
 		std::vector<PhysicsActiveKinematicComponent*> kinematicComponents;
@@ -271,6 +305,8 @@ namespace NOWA
 		Ogre::Real returnToTrackProgress;
 
 		enum ReturnPhase { LIFT, MOVE } returnPhase;
+
+		CountdownTimer* countdownTimer;
 	};
 
 }; // namespace end

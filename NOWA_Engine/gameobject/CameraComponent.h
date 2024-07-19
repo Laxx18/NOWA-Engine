@@ -97,7 +97,7 @@ namespace NOWA
 
 		virtual bool isActivated(void) const override;
 
-		void applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask);
+		void applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask, Ogre::uint8 eyeId);
 
 		/**
 		 * @brief	Just sets internally the actived flag
@@ -138,6 +138,8 @@ namespace NOWA
 		bool getFixedYawAxis(void) const;
 
 		Ogre::Camera* getCamera(void) const;
+
+		Ogre::uint8 getEyeId(void) const;
 	public:
 		static const Ogre::String AttrActive(void){ return "Active"; }
 		static const Ogre::String AttrPosition(void) { return "Position"; }
@@ -176,6 +178,7 @@ namespace NOWA
 		bool hideEntity;
 		Ogre::Real timeSinceLastUpdate;
 		WorkspaceBaseComponent* workspaceBaseComponent;
+		Ogre::uint8 eyeId;
 	};
 
 }; //namespace end

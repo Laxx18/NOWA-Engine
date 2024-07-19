@@ -47,7 +47,8 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
-		m_contactCallback(nullptr)
+		m_contactCallback(nullptr),
+		m_isSoftBody(false)
 	{
 		float matrix[16] = { 1,0,0,0,
 							0,1,0,0,
@@ -105,7 +106,8 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
-		m_contactCallback(nullptr)
+		m_contactCallback(nullptr),
+		m_isSoftBody(false)
 	{
 		if (nullptr != m_body)
 		{
@@ -146,7 +148,8 @@ namespace OgreNewt
 		m_forcecallback(nullptr),
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
-		m_contactCallback(nullptr)
+		m_contactCallback(nullptr),
+		m_isSoftBody(false)
 	{
 
 	}
@@ -665,18 +668,6 @@ namespace OgreNewt
 
 			NewtonMeshGetVertexChannel(debugCollisionMesh, 3 * sizeof(dFloat), (dFloat*)vertexArray);
 
-			/*dFloat tempMatrix[16];
-			Ogre::Quaternion quat = (Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::NEGATIVE_UNIT_Z) * Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::NEGATIVE_UNIT_Y));
-
-			Converters::QuatPosToMatrix(quat, Ogre::Vector3::ZERO, &tempMatrix[0]);
-
-			dMatrix matrix(tempMatrix);
-			matrix.TransformVector(dVector(m_node->getScale().x, m_node->getScale().y, m_node->getScale().z));
-			matrix.TransformTriplex(vertexArray, 3 * sizeof(dFloat), vertexArray, 3 * sizeof(dFloat), vertexCount);*/
-
-			// matrix = (matrix.Inverse4x4()).Transpose();
-			// matrix.TransformTriplex(m_normal, 3 * sizeof(dFloat), m_normal, 3 * sizeof(dFloat), m_vertexCount);*/
-
 			m_debugCollisionLines->clear();
 			if (m_debugCollisionLines && m_debugCollisionLines->getNumSections() > 0)
 			{
@@ -691,15 +682,8 @@ namespace OgreNewt
 			// Note: scale must be derived updated, because it can by especially when using rag doll, that a node has parents, so the scale must be absolute and not relative!
 			Ogre::Vector3 scale = this->m_node->_getDerivedScaleUpdated();
 
-			// if (nullptr != this->m_node->getParent())
-			// 	scale = this->m_node->getParent()->getScale();
-
 			unsigned int* indexArray = nullptr;
-
-			Ogre::Vector3 aabbMin = Ogre::Vector3::ZERO;
-			Ogre::Vector3 aabbMax = Ogre::Vector3::ZERO;
-
-			// extract the materials index array for mesh
+			// Iterate through the materials and their index streams
 			void* const geometryHandle = NewtonMeshBeginHandle(debugCollisionMesh);
 			for (int handle = NewtonMeshFirstMaterial(debugCollisionMesh, geometryHandle); handle != -1; handle = NewtonMeshNextMaterial(debugCollisionMesh, geometryHandle, handle))
 			{
@@ -710,91 +694,32 @@ namespace OgreNewt
 
 				NewtonMeshMaterialGetIndexStream(debugCollisionMesh, geometryHandle, handle, (int*)indexArray);
 
-
-				/*
-				for (int vert = 0; vert < vertexCount; vert++)
-				{
-					Ogre::Real x1 = (vertexArray[(vert * 3) + 0] / scale.x);
-					Ogre::Real y1 = (vertexArray[(vert * 3) + 1] / scale.y);
-					Ogre::Real z1 = (vertexArray[(vert * 3) + 2] / scale.z);
-
-					if (x1 < aabbMin.x) aabbMin.x = x;
-					if (y1 < aabbMin.y) aabbMin.y = y;
-					if (z1 < aabbMin.z) aabbMin.z = z;
-					if (x1 > aabbMax.x) aabbMax.x = x;
-					if (y1 > aabbMax.y) aabbMax.y = y;
-					if (z1 > aabbMax.z) aabbMax.z = z;
-					
-					m_debugCollisionLines->position(x1, y1, z1);
-				}
-				*/
-				
 				int a = 0;
-
-				for (int vert = 0; vert < vertexCount; vert++)
+				for (int i = 0; i < indexCount; i += 3)
 				{
-					int face = (vert * 3 + 2) % vertexCount;
+					int index0 = indexArray[i] * 3;
+					int index1 = indexArray[i + 1] * 3;
+					int index2 = indexArray[i + 2] * 3;
 
-					Ogre::Vector3 p0(vertexArray[(face * 3) + 0] / scale.x, vertexArray[(face * 3) + 1] / scale.y, vertexArray[(face * 3) + 2] / scale.z);
+					// Draw the triangle edges
+					m_debugCollisionLines->position(vertexArray[index0] / scale.x, vertexArray[index0 + 1] / scale.y, vertexArray[index0 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
+					m_debugCollisionLines->position(vertexArray[index1] / scale.x, vertexArray[index1 + 1] / scale.y, vertexArray[index1 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
 
-					for (face = vert; face < (vert + 2) % vertexCount; face++)
-					{
-						// if (p0 < aabbMin) aabbMin = p0;
-						// if (p0 > aabbMax) aabbMax = p0;
+					m_debugCollisionLines->position(vertexArray[index1] / scale.x, vertexArray[index1 + 1] / scale.y, vertexArray[index1 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
+					m_debugCollisionLines->position(vertexArray[index2] / scale.x, vertexArray[index2 + 1] / scale.y, vertexArray[index2 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
 
-						Ogre::Vector3 p1(vertexArray[(face * 3) + 0] / scale.x, vertexArray[(face * 3) + 1] / scale.y, vertexArray[(face * 3) + 2] / scale.z);
-
-						// if (p1 < aabbMin) aabbMin = p1;
-						// if (p1 > aabbMax) aabbMax = p1;
-
-						m_debugCollisionLines->position(p0);
-						m_debugCollisionLines->index(a++);
-						// m_debugCollisionLines->colour(Ogre::ColourValue::Blue);
-						m_debugCollisionLines->position(p1);
-						m_debugCollisionLines->index(a++);
-						// m_debugCollisionLines->colour(Ogre::ColourValue::Blue);
-
-						p0 = p1;
-					}
+					m_debugCollisionLines->position(vertexArray[index2] / scale.x, vertexArray[index2 + 1] / scale.y, vertexArray[index2 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
+					m_debugCollisionLines->position(vertexArray[index0] / scale.x, vertexArray[index0 + 1] / scale.y, vertexArray[index0 + 2] / scale.z);
+					m_debugCollisionLines->index(a++);
 				}
 
-				/*for (int i = 0; i < static_cast<int>(vertexCount); i++)
-				{
-					int iIndex = indexArray[i];
-					int vIndex0 = (iIndex * 3) + 0;
-					int vIndex1 = (iIndex * 3) + 1;
-					int vIndex2 = (iIndex * 3) + 2;
-
-					Ogre::Real x = vertexArray[vIndex0] / scale.x;
-					Ogre::Real y = vertexArray[vIndex1] / scale.y;
-					Ogre::Real z = vertexArray[vIndex2] / scale.z;
-
-					if (x < aabbMin.x) aabbMin.x = x;
-					if (y < aabbMin.y) aabbMin.y = y;
-					if (z < aabbMin.z) aabbMin.z = z;
-					if (x > aabbMax.x) aabbMax.x = x;
-					if (y > aabbMax.y) aabbMax.y = y;
-					if (z > aabbMax.z) aabbMax.z = z;
-
-					m_debugCollisionLines->position(x, y, z);
-				}*/
-
-				//for (int index = 0; index < indexCount - 3; /*index++*/)
-				//{
-				//	//could use object->line here but all that does is call index twice
-				//	m_debugCollisionLines->index(indexArray[index++ + 0]);
-				//	m_debugCollisionLines->index(indexArray[index++ + 2]);
-				//	m_debugCollisionLines->index(indexArray[index++ + 1]);
-				//}
-				//for (int index = 0; index < indexCount; index++)
-				//{
-				//	//could use object->line here but all that does is call index twice
-				//	m_debugCollisionLines->index(indexArray[index]);
-				//}
-				// Go only one time in this loop, is that correct?
 				break;
 			}
-
 			
 			m_debugCollisionLines->end();
 			// m_debugCollisionLines->setLocalAabb(Ogre::Aabb::newFromExtents(aabbMin, aabbMax));
@@ -929,7 +854,10 @@ namespace OgreNewt
 				}
 			}
 
-			this->updateDeformableCollision();
+			if (true == m_isSoftBody)
+			{
+				this->updateDeformableCollision();
+			}
 
 			m_world->m_ogreMutex.unlock();
 		}
@@ -963,6 +891,17 @@ namespace OgreNewt
 		return m_lastOrientation;
 	}
 
+	void Body::setIsSoftBody(bool isSoftBody)
+	{
+		m_isSoftBody = isSoftBody;
+	}
+
+	bool Body::getIsSoftBody(void) const
+	{
+		return m_isSoftBody;
+	}
+
+#if 0
 	void Body::updateDeformableCollision(void)
 	{
 		const NewtonCollision* deformableCollision = NewtonBodyGetCollision(m_body);
@@ -1019,7 +958,77 @@ namespace OgreNewt
 			}
 		}
 	}
+#endif
 
+	void Body::updateDeformableCollision(void)
+	{
+		const NewtonCollision* deformableCollision = NewtonBodyGetCollision(m_body);
+		if (NewtonCollisionGetType(deformableCollision) == SERIALIZE_ID_DEFORMABLE_SOLID)
+		{
+			// Retrieve particle data from Newton Dynamics
+			int particleCount = NewtonDeformableMeshGetParticleCount(deformableCollision);
+			const void* particleArray = NewtonDeformableMeshGetParticleArray(deformableCollision);
+
+			// ATTENTION: / sizeof(dFloat);
+			int particleStride = NewtonDeformableMeshGetParticleStrideInBytes(deformableCollision) / sizeof(dFloat);
+
+			Ogre::SceneNode* sceneNode = static_cast<Ogre::SceneNode*>(m_node);
+
+			Ogre::v1::MeshPtr mesh = static_cast<Ogre::v1::Entity*>(sceneNode->getAttachedObject(0))->getMesh();
+
+			if (mesh->sharedVertexData[0])
+			{
+				Ogre::v1::VertexData* vertexData = mesh->sharedVertexData[0];
+				if (vertexData->vertexCount != particleCount)
+				{
+					// Handle error: mismatch in particle count
+					return;
+				}
+
+				// Update vertex buffer
+				Ogre::v1::HardwareVertexBufferSharedPtr vbuf = vertexData->vertexBufferBinding->getBuffer(0);
+				float* pVertex = static_cast<float*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_DISCARD));
+				const unsigned char* particlePtr = static_cast<const unsigned char*>(particleArray);
+				for (int i = 0; i < particleCount; ++i)
+				{
+					const float* position = reinterpret_cast<const float*>(particlePtr + i * particleStride);
+					pVertex[i * 3 + 0] = position[0];
+					pVertex[i * 3 + 1] = position[1];
+					pVertex[i * 3 + 2] = position[2];
+				}
+				vbuf->unlock();
+			}
+
+			// Update all submeshes
+			for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
+			{
+				Ogre::v1::SubMesh* subMesh = mesh->getSubMesh(i);
+				Ogre::v1::VertexData* vertexData;
+				if (subMesh->useSharedVertices)
+				{
+					vertexData = mesh->sharedVertexData[0];
+				}
+				else
+				{
+					vertexData = subMesh->vertexData[0];
+				}
+				Ogre::v1::IndexData* indexData = subMesh->indexData[0];
+
+				// Update vertex buffer
+				Ogre::v1::HardwareVertexBufferSharedPtr vbuf = vertexData->vertexBufferBinding->getBuffer(0);
+				float* pVertex = static_cast<float*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_DISCARD));
+				const unsigned char* particlePtr = static_cast<const unsigned char*>(particleArray);
+				for (int i = 0; i < particleCount; ++i)
+				{
+					const float* position = reinterpret_cast<const float*>(particlePtr + i * particleStride);
+					pVertex[i * 3 + 0] = position[0];
+					pVertex[i * 3 + 1] = position[1];
+					pVertex[i * 3 + 2] = position[2];
+				}
+				vbuf->unlock();
+			}
+		}
+	}
 
 
 	//void Body::updateDeformableCollision(void)

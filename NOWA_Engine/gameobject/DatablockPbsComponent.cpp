@@ -1110,16 +1110,6 @@ namespace NOWA
 		this->setBringToFront(this->bringToFront->getBool());
 
 		this->setCutOff(this->cutOff->getBool());
-		
-		// Does not help
-		// this->datablock->mShadowConstantBias = 0.001f;
-		//Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_DIFFUSE));
-		//samplerblock.mU = Ogre::TAM_WRAP;
-		//samplerblock.mV = Ogre::TAM_WRAP;
-		//samplerblock.mW = Ogre::TAM_WRAP;
-		////Set the new samplerblock. The Hlms system will
-		////automatically create the API block if necessary
-		//datablock->setSamplerblock(Ogre::PBSM_DIFFUSE, samplerblock);
 	}
 
 	Ogre::String DatablockPbsComponent::getClassName(void) const
@@ -1785,7 +1775,18 @@ namespace NOWA
 						hlmsTextureManager->destroyTexture(texture);
 						texture = nullptr;
 					}
-					datablock->setTexture(pbsTextureType, texture);
+
+					Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(pbsTextureType));
+					samplerblock.mU = Ogre::TAM_WRAP;
+					samplerblock.mV = Ogre::TAM_WRAP;
+					samplerblock.mW = Ogre::TAM_WRAP;
+
+					samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+					samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
+					datablock->setTexture(pbsTextureType, texture, &samplerblock);
 				}
 				else
 				{

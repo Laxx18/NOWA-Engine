@@ -58,6 +58,9 @@ namespace NOWA
 		stuckTime(0.0f),
 		maxStuckTime(2.0f),
 		pPath(nullptr),
+		canSwitchBehavior(false),
+		behaviorType(PurePursuitComponent::NONE),
+		canDrive(true),
 		activated(new Variant(PurePursuitComponent::AttrActivated(), true, this->attributes)),
 		manuallyControlled(new Variant(PurePursuitComponent::AttrManuallyControlled(), false, this->attributes)),
 		waypointsCount(new Variant(PurePursuitComponent::AttrWaypointsCount(), 0, this->attributes)),
@@ -71,7 +74,9 @@ namespace NOWA
 		checkWaypointY(new Variant(PurePursuitComponent::AttrCheckWaypointY(), false, this->attributes)),
 		waypointVariance(new Variant(PurePursuitComponent::AttrWaypointVariance(), Ogre::Real(0.25f), this->attributes)),
 		varianceIndividual(new Variant(PurePursuitComponent::AttrVarianceIndividual(), false, this->attributes)),
-		obstacleCategory(new Variant(PurePursuitComponent::AttrObstacleCategory(), Ogre::String(""), this->attributes))
+		obstacleCategory(new Variant(PurePursuitComponent::AttrObstacleCategory(), Ogre::String(""), this->attributes)),
+		rammingBehavior(new Variant(PurePursuitComponent::AttrRammingBehavior(), true, this->attributes)),
+		overtakingBehavior(new Variant(PurePursuitComponent::AttrOvertakingBehavior(), true, this->attributes))
 	{
 		this->activated->setDescription("If activated, the pure pursuit calcluation takes place.");
 		this->manuallyControlled->setDescription("Sets whether the game object is manually controlled by the player, or moves along the waypoints automatically. This can also be switched at runtime.");
@@ -90,6 +95,8 @@ namespace NOWA
 		this->waypointVariance->setDescription("Sets some random waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
 		this->varianceIndividual->setDescription("Sets whether the variance from attribute shall take place for each waypoint, or for all waypoints the same random variance.");
 		this->obstacleCategory->setDescription("Sets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. If empty, not obstacle detection takes place.");
+		this->rammingBehavior->setDescription("Sets whether a ramming behavior is desired if another game objects comes to close to this one. Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
+		this->overtakingBehavior->setDescription("Sets whether a overtaking behavior is desired if another game objects comes to close to this one. Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
 	}
 
 	PurePursuitComponent::~PurePursuitComponent(void)
@@ -114,6 +121,8 @@ namespace NOWA
 
 	bool PurePursuitComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PurePursuitComponent::handleCountdownActive), EventDataCountdownActive::getStaticEventType());
+
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -203,14 +212,22 @@ namespace NOWA
 			this->varianceIndividual->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ObstacleCategory")
 		{
 			this->obstacleCategory->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RammingBehavior")
+		{
+			this->rammingBehavior->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OvertakingBehavior")
+		{
+			this->overtakingBehavior->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		
-
 		return true;
 	}
 
@@ -237,6 +254,8 @@ namespace NOWA
 		clonedCompPtr->setWaypointVariance(this->waypointVariance->getReal());
 		clonedCompPtr->setVarianceIndividual(this->varianceIndividual->getBool());
 		clonedCompPtr->setObstacleCategory(this->obstacleCategory->getString());
+		clonedCompPtr->setRammingBehavior(this->rammingBehavior->getBool());
+		clonedCompPtr->setOvertakingBehavior(this->overtakingBehavior->getBool());
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -334,6 +353,9 @@ namespace NOWA
 		this->pitchAmount = 0.0f;
 		this->otherPurePursuits.clear();
 		this->obstacles.clear();
+		this->behaviorType = PurePursuitComponent::NONE;
+		this->canSwitchBehavior = false;
+		this->canDrive = true;
 		return true;
 	}
 
@@ -345,6 +367,8 @@ namespace NOWA
 
 	void PurePursuitComponent::onRemoveComponent(void)
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PurePursuitComponent::handleCountdownActive), EventDataCountdownActive::getStaticEventType());
+
 		if (nullptr != this->pPath)
 		{
 			delete this->pPath;
@@ -366,6 +390,11 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
+			if (false == this->canDrive)
+			{
+				return;
+			}
+
 			if (this->pPath->getWayPoints().size() > 0)
 			{
 				this->currentWaypoint = this->pPath->getCurrentWaypoint();
@@ -571,6 +600,14 @@ namespace NOWA
 		{
 			this->setObstacleCategory(attribute->getString());
 		}
+		else if (PurePursuitComponent::AttrRammingBehavior() == attribute->getName())
+		{
+			this->setRammingBehavior(attribute->getBool());
+		}
+		else if (PurePursuitComponent::AttrOvertakingBehavior() == attribute->getName())
+		{
+			this->setOvertakingBehavior(attribute->getBool());
+		}
 		else
 		{
 			for (size_t i = 0; i < this->waypoints.size(); i++)
@@ -686,6 +723,20 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ObstacleCategory"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->obstacleCategory->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "RammingBehavior"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rammingBehavior->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OvertakingBehavior"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->overtakingBehavior->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		
 	}
 
 	Ogre::String PurePursuitComponent::getClassName(void) const
@@ -954,6 +1005,26 @@ namespace NOWA
 		return this->obstacleCategory->getString();
 	}
 
+	void PurePursuitComponent::setRammingBehavior(bool rammingBehavior)
+	{
+		this->rammingBehavior->setValue(rammingBehavior);
+	}
+
+	bool PurePursuitComponent::getRammingBehavior(void) const
+	{
+		return this->rammingBehavior->getBool();
+	}
+
+	void PurePursuitComponent::setOvertakingBehavior(bool overtakingBehavior)
+	{
+		this->overtakingBehavior->setValue(overtakingBehavior);
+	}
+
+	bool PurePursuitComponent::getOvertakingBehavior(void) const
+	{
+		return this->overtakingBehavior->getBool();
+	}
+
 	Ogre::Real PurePursuitComponent::calculateSteeringAngle(const Ogre::Vector3& lookaheadPoint)
 	{
 		Ogre::Vector3 currentPos = this->gameObjectPtr->getPosition();
@@ -1072,6 +1143,12 @@ namespace NOWA
 		lookaheadPoint += rightDir * 5.0f;
 	}
 
+	void PurePursuitComponent::handleCountdownActive(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataCountdownActive> castEventData = boost::static_pointer_cast<EventDataCountdownActive>(eventData);
+		this->canDrive = !castEventData->getIsActive();
+	}
+
 	void PurePursuitComponent::addRandomVarianceToWaypoints(void)
 	{
 		if (0.0f == this->waypointVariance->getReal())
@@ -1107,44 +1184,102 @@ namespace NOWA
 
 	void PurePursuitComponent::handleGameObjectsToClose(void)
 	{
-		if (0.0f == this->overtakingMotorForce->getReal())
+		if (false == this->rammingBehavior->getBool() && false == this->overtakingBehavior->getBool())
 		{
+			this->behaviorType = PurePursuitComponent::NONE;
 			return;
+		}
+
+		// Usual behavior, if only one behavior is set
+		if (this->rammingBehavior->getBool() != this->overtakingBehavior->getBool())
+		{
+			if (true == this->overtakingBehavior->getBool())
+			{
+				this->behaviorType = PurePursuitComponent::OVERTAKING;
+			}
+			if (true == this->rammingBehavior->getBool())
+			{
+				this->behaviorType = PurePursuitComponent::RAMMING;
+			}
 		}
 
 		for (size_t i = 0; i < this->otherPurePursuits.size(); i++)
 		{
 			// Avoidance or overtaking logic
-			
+
 			Ogre::Vector3 otherPos = this->otherPurePursuits[i]->getOwner()->getPosition();
 			Ogre::Vector3 curPos = this->gameObjectPtr->getPosition();
-			Ogre::Real distanceToOtherGameObject = curPos.distance(otherPos);
 
-			if (distanceToOtherGameObject < this->lookaheadDistance->getReal() * 2.0f)
-			{ 
-				// If the cars are too close
-				// Adjust speed to avoid collision
-				if (curPos.squaredDistance(otherPos) < 1.0f)
+			if (this->behaviorType == PurePursuitComponent::OVERTAKING)
+			{
+				Ogre::Real distanceToOtherGameObject = curPos.distance(otherPos);
+
+				if (distanceToOtherGameObject < this->lookaheadDistance->getReal() * 2.0f)
 				{
-					this->motorForce -= 5000.0f;
+					// If the cars are too close
+					// Adjust speed to avoid collision
+					if (curPos.squaredDistance(otherPos) < 1.0f)
+					{
+						this->motorForce -= 5000.0f;
+					}
+					else
+					{
+						this->motorForce += 5000.0f;
+						if (this->motorForce > this->maxMotorForce->getReal() + 5000.0f)
+						{
+							this->motorForce = this->maxMotorForce->getReal() + 5000.0f;
+						}
+					}
+
+					this->canSwitchBehavior = true;
 				}
 				else
 				{
-					this->motorForce += 5000.0f;
-					if (this->motorForce > this->maxMotorForce->getReal() + 5000.0f)
+					if (true == this->rammingBehavior->getBool() && true == this->overtakingBehavior->getBool() && true == this->canSwitchBehavior)
 					{
-						this->motorForce = this->maxMotorForce->getReal() + 5000.0f;
+						// Random behavior
+						std::random_device rd;
+						std::mt19937 gen(rd());
+						std::uniform_int_distribution<> distr(0, 1);
+
+						// Generate a random number (0 or 1)
+						int randomValue = distr(gen);
+
+						// Choose between RAMMING and OVERTAKING based on the random number
+						this->behaviorType = (randomValue == 0) ? PurePursuitComponent::RAMMING : PurePursuitComponent::OVERTAKING;
+						this->canSwitchBehavior = false;
 					}
 				}
 			}
 
-			// Ramming behavior
-			Ogre::Vector3 toOtherGameObjectDirection = otherPos - curPos;
-			if (toOtherGameObjectDirection.length() < this->lookaheadDistance->getReal())
+			if (this->behaviorType == PurePursuitComponent::RAMMING)
 			{
-				Ogre::Real ramAngle = 0.3f * (rand() % 2 ? 1 : -1); // Randomly decide to ram left or right
-				this->steerAmount += ramAngle;
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Ramming: " + Ogre::StringConverter::toString(this->steerAmount));
+				// Ramming behavior
+				Ogre::Vector3 toOtherGameObjectDirection = otherPos - curPos;
+				if (toOtherGameObjectDirection.length() < this->lookaheadDistance->getReal())
+				{
+					Ogre::Real ramAngle = 0.3f * (rand() % 2 ? 1 : -1); // Randomly decide to ram left or right
+					this->steerAmount += ramAngle;
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Ramming: " + Ogre::StringConverter::toString(this->steerAmount));
+					this->canSwitchBehavior = true;
+				}
+				else
+				{
+					if (true == this->rammingBehavior->getBool() && true == this->overtakingBehavior->getBool() && true == this->canSwitchBehavior)
+					{
+						// Random behavior
+						std::random_device rd;
+						std::mt19937 gen(rd());
+						std::uniform_int_distribution<> distr(0, 1);
+
+						// Generate a random number (0 or 1)
+						int randomValue = distr(gen);
+
+						// Choose between RAMMING and OVERTAKING based on the random number
+						this->behaviorType = (randomValue == 0) ? PurePursuitComponent::RAMMING : PurePursuitComponent::OVERTAKING;
+						this->canSwitchBehavior = false;
+					}
+				}
 			}
 		}
 	}
@@ -1345,6 +1480,10 @@ namespace NOWA
 			.def("getVarianceIndividual", &PurePursuitComponent::getVarianceIndividual)
 			.def("setObstacleCategory", &PurePursuitComponent::setObstacleCategory)
 			.def("getObstacleCategory", &PurePursuitComponent::getObstacleCategory)
+			.def("setRammingBehavior", &PurePursuitComponent::setRammingBehavior)
+			.def("getRammingBehavior", &PurePursuitComponent::getRammingBehavior)
+			.def("setOvertakingBehavior", &PurePursuitComponent::setOvertakingBehavior)
+			.def("getOvertakingBehavior", &PurePursuitComponent::getOvertakingBehavior)
 
 			// .def("calculateSteeringAngle", &PurePursuitComponent::calculateSteeringAngle)
 			// .def("calculatePitchAngle", &PurePursuitComponent::calculatePitchAngle)
@@ -1389,23 +1528,31 @@ namespace NOWA
 
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setMinMaxSteerAngle(Vector2 minMaxSteerAngle)", "Sets the minimum and maximum steering angle in degree. Valid values are from -80 to 80. Default is -45 to 45.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "Vector2 getMinMaxSteerAngle()", "Gets the minimum and maximum steering angle in degree. Valid values are from -80 to 80. Default is -45 to 45.");
-		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setCheckWaypointY(bool checkWaypointY)", "Sets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, "
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setCheckWaypointY(boolean checkWaypointY)", "Sets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, "
 														  " if e.g. using a looping, so that the car targets against the waypoint "
 														  ", but may be bad, if e.g. a car jumps via a ramp and the waypoint is below, hence he did not hit the waypoint and will travel back. "
 														  " This flag can be switched on the fly, e.g. reaching a special waypoint using the getCurrentWaypointIndex function.");
-		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "bool getCheckWaypointY()", "Gets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, "
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "boolean getCheckWaypointY()", "Gets whether to check also the y coordinate of the game object when approaching to a waypoint. This could be necessary, "
 														  " if e.g. using a looping, so that the car targets against the waypoint "
 														  ", but may be bad, if e.g. a car jumps via a ramp and the waypoint is below, hence he did not hit the waypoint and will travel back. "
 														  " This flag can be switched on the fly, e.g. reaching a special waypoint using the getCurrentWaypointIndex function.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setWaypointVariance(number waypointVariance)", "Sets some random waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getWaypointVariance()", "Gets the waypoint variance radius. This ensures, that if several game objects are moved, there is more intuitive moving chaos involved.");
-		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setVarianceIndividual(bool varianceIndividual)", "Sets whether the variance from attribute shall take place for each waypoint, or for all waypoints the same random variance.");
-		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "bool getVarianceIndividual()", "Gets whether the variance from attribute is taking place for each waypoint, or for all waypoints the same random variance.");
-
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setVarianceIndividual(boolean varianceIndividual)", "Sets whether the variance from attribute shall take place for each waypoint, or for all waypoints the same random variance.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "boolean getVarianceIndividual()", "Gets whether the variance from attribute is taking place for each waypoint, or for all waypoints the same random variance.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setObstacleCategory(string obstacleCategory)", "Sets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. "
 														  "If empty, not obstacle detection takes place.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "string getObstacleCategory()", "Gets one or several categories which may belong to obstacle game objects, which a game object will try to overcome. "
 														  "If empty, not obstacle detection takes place.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setRammingBehavior(boolean rammingBehavior)", "Sets whether a ramming behavior is desired if another game objects comes to close to this one. "
+														  "Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "boolean setRammingBehavior()", "Gets whether a ramming behavior is desired if another game objects comes to close to this one. "
+														  "Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
+
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "void setOvertakingBehavior(boolean overtakingBehavior)", "Sets whether a overtaking behavior is desired if another game objects comes to close to this one. "
+														  "Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
+		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "boolean setOvertakingBehavior()", "Gets whether a overtaking behavior is desired if another game objects comes to close to this one. "
+														  "Note: If ramming and overtaking behavior are both switched on, there will be a random decision, which one is chosed each time.");
 
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getMotorForce()", "Gets the calculated motor force, which can be applied.");
 		LuaScriptApi::getInstance()->addClassToCollection("PurePursuitComponent", "number getSteerAmount()", "Gets the calculated steer angle amount in degrees, which can be applied.");

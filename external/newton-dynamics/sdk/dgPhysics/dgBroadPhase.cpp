@@ -1748,7 +1748,6 @@ void dgBroadPhase::UpdateContacts(dgFloat32 timestep)
 	m_world->SynchronizationBarrier();
 
 	if (m_pendingSoftBodyPairsCount) {
-		dgAssert (0);
 		//for (dgInt32 i = 0; i < threadsCount; i++) {
 		//	m_world->QueueJob(UpdateSoftBodyContactKernel, &syncPoints, contactListNode, "dgBroadPhase::UpdateSoftBodyContact");
 		//}

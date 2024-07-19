@@ -305,6 +305,9 @@ namespace NOWA
 
 	void HdrEffectComponent::onRemoveComponent(void)
 	{
+		// Kill all processes if component is removed (e.g. world changed), because below a DelayProcess is involved, which would work with corrupt data.
+		NOWA::ProcessManager::getInstance()->clearAllProcesses();
+
 		this->resetShining();
 	}
 

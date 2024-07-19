@@ -8,6 +8,7 @@ namespace NOWA
 	
 	class WorkspaceBaseComponent;
 
+
 	class EXPORTED WorkspaceModule
 	{
 	public:

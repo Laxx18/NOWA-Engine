@@ -132,6 +132,8 @@ namespace NOWA
 
 	};
 
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/** 
 	* @class Core
 	* @brief This singleton class is responsible for the maintainance of Ogre relevant settings and has also many helper functions

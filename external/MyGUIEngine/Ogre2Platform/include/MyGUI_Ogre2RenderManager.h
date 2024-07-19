@@ -14,6 +14,7 @@
 #include "MyGUI_RenderManager.h"
 #include "MyGUI_Ogre2GuiRenderable.h"
 #include "MyGUI_Ogre2GuiMoveable.h"
+#include "MyGUI_Ogre2RenderManager.h"
 
 #include <Ogre.h>
 #include <OgreMovableObject.h>
@@ -192,7 +193,7 @@ namespace MyGUI
 		static const Ogre::uint8 RENDER_QUEUE_OVERLAY;
 
 		Ogre2GuiRenderable* createOrRetrieveRenderable(IVertexBuffer* _buffer , ITexture* _texture , size_t _count);
-
+		// Is done in NOWA::Core
 		std::unique_ptr<OgreCompositorPassProvider> mPassProvider;
 	};
 

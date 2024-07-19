@@ -1214,7 +1214,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
 		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 20, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
 			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 			button->setCaption("..");
 			button->setUserData(MyGUI::Any(attribute));
@@ -1261,7 +1261,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
 		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 20, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
 			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 			button->setCaption("..");
 			button->setUserData(MyGUI::Any(attribute));
@@ -1471,7 +1471,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 
 		if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
 		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 20, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
 			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 			button->setCaption("..");
 			button->setUserData(MyGUI::Any(attribute));
@@ -1480,7 +1480,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
 		{
-			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 20, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
 			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 			button->setDepth(0);
 			button->setCaption("G");

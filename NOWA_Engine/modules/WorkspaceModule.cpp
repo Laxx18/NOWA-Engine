@@ -728,18 +728,43 @@ namespace NOWA
 
 		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
 
+		unsigned char eyeId = 0;
+
+		// Main camera should be the first one
 		for (size_t i = 0; i < gameObjects.size(); i++)
 		{
 			const auto& gameObjectPtr = gameObjects[i];
 			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
 			if (nullptr != cameraCompPtr)
 			{
-				if (true == this->useSplitScreen)
+				if (gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 				{
-					this->executionMask++;
-					this->viewportModifierMask++;
+					if (true == this->useSplitScreen)
+					{
+						this->executionMask++;
+						this->viewportModifierMask++;
+					}
+					cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask, eyeId++);
 				}
-				cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask);
+			}
+		}
+
+		// All other cameras are handled in second iteration
+		for (size_t i = 0; i < gameObjects.size(); i++)
+		{
+			const auto& gameObjectPtr = gameObjects[i];
+			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+			if (nullptr != cameraCompPtr)
+			{
+				if (gameObjectPtr->getId() != GameObjectController::MAIN_CAMERA_ID)
+				{
+					if (true == this->useSplitScreen)
+					{
+						this->executionMask++;
+						this->viewportModifierMask++;
+					}
+					cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask, eyeId++);
+				}
 			}
 		}
 	}

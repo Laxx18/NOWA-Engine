@@ -569,6 +569,18 @@ namespace NOWA
 		unsigned int getShadowRenderingDistance(void) const;
 
 		/**
+		 * @brief Manages all game objects that will be visible on the minimap. If the hide id is set to 0, all game objects will be rendered. If set to e.g. 5, all game objects, which have its hide id set to 5 will not be rendered and are hidden on the minimap.
+		 * @param[in] hideId The hide id to set. Default is 0 and game object is nowhere to hide.
+		 */
+		void setHideId(unsigned long hideId);
+
+		/**
+		 * @brief  Manages all game objects that will be visible on the minimap. If the hide id is set to 0, all game objects will be rendered. If set to e.g. 5, all game objects, which have its hide id set to 5 will not be rendered and are hidden on the minimap.
+		 * @return hideId The hide id to get. Default is 0 and game object is nowhere to hide.
+		 */
+		unsigned long getHideId(void) const;
+
+		/**
 		 * Performs a ray cast and clamps the game object y coordinate
 		 * @note		This is useful when game object is loaded, so that it will be automatically placed upon the next lower game object.
 		 *				Especially when the game object is a global one and will be loaded for different worlds, that start at a different height.
@@ -906,6 +918,7 @@ namespace NOWA
 		static const Ogre::String AttrRenderDistance(void) { return "Render Distance"; }
 		static const Ogre::String AttrLodDistance(void) { return "Lod Distance"; }
 		static const Ogre::String AttrShadowDistance(void) { return "Shadow Distance"; }
+		static const Ogre::String AttrHideId(void) { return "Hide Id"; }
 
 		// Attribute actions
 		static const Ogre::String AttrActionNeedRefresh(void) { return "NeedRefresh"; }
@@ -967,6 +980,8 @@ namespace NOWA
 		Variant* renderDistance;
 		Variant* lodDistance;
 		Variant* shadowRenderingDistance;
+		Variant* hideId;
+
 		Ogre::WireAabb* boundingBoxDraw;
 		unsigned long priorId;
 		GameObjectPtr connectedGameObjectPtr;

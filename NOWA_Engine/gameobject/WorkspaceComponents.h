@@ -8,6 +8,9 @@
 #include "OgreHlmsUnlit.h"
 #include "OgrePlanarReflectionActor.h"
 #include "OgrePlanarReflections.h"
+
+#include "main/Events.h"
+
 #if 0
 #include "ocean/OgreHlmsOcean.h"
 #endif
@@ -318,7 +321,7 @@ namespace NOWA
 
 		void createSSAONoiseTexture(void);
 
-		void applySplitScreenModifier(Ogre::CompositorPassDef* pass, bool isOverlay = false, bool isSky = false);
+		void applySplitScreenModifier(Ogre::CompositorPassDef*& pass, bool isOverlay = false, bool isSky = false);
 	private:
 		void reconnectAllNodes(void);
 	protected:
@@ -356,7 +359,8 @@ namespace NOWA
 		Ogre::HlmsUnlit* unlit;
 		Ogre::HlmsManager* hlmsManager;
 		Ogre::CompositorManager2* compositorManager;
-		Ogre::TextureGpu* cubemap;
+		Ogre::TextureGpu* cubemapTexture;
+		Ogre::TextureGpu* minimapTexture;
 		Ogre::CompositorWorkspace* workspaceCubemap;
 		Ogre::CompositorChannelVec externalChannels;
 		// Ogre::ResourceLayoutMap initialCubemapLayouts;

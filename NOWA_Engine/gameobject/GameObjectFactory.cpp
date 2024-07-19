@@ -317,8 +317,12 @@ namespace NOWA
 		unsigned int renderDistance = 0;
 		Ogre::Real lodDistance = 0.0f;
 		unsigned int shadowRenderingDistance = 0;
+		unsigned long hideId = 0;
 		bool renderDistanceSet = false;
 		bool shadowRenderingDistanceSet = false;
+		bool hideIdSet = false;
+
+		// Attention: IMPORTANT: All those attributes must also be set in GameObjectController::internalClone function!
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Object")
 		{
@@ -403,6 +407,12 @@ namespace NOWA
 			shadowRenderingDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 300);
 			propertyElement = propertyElement->next_sibling("property");
 			shadowRenderingDistanceSet = true;
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HideId")
+		{
+			hideId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 300);
+			propertyElement = propertyElement->next_sibling("property");
+			hideIdSet = true;
 		}
 
 		// Read all datablocks, this is necessary e.g. for plane component, because its mesh is created at runtime and never saved as resource
@@ -519,6 +529,10 @@ namespace NOWA
 				if (true == shadowRenderingDistanceSet)
 				{
 					gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
+				}
+				if (true == hideIdSet)
+				{
+					gameObjectPtr->setHideId(hideId);
 				}
 				// Do not set via setter, because else the lod distance is re-calculated, but its just required to re-calculate if the user sets a different distance.
 				gameObjectPtr->lodDistance->setValue(lodDistance);

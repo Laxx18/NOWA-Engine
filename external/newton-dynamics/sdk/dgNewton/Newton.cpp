@@ -7658,7 +7658,6 @@ NewtonMesh* NewtonMeshCreateTetrahedraIsoSurface(const NewtonMesh* const closeMa
 
 void NewtonCreateTetrahedraLinearBlendSkinWeightsChannel(const NewtonMesh* const tetrahedraMesh, NewtonMesh* const skinMesh)
 {
-	dgAssert(0);
 	TRACE_FUNCTION(__FUNCTION__);
 	dgMeshEffect* const meshEffect = (dgMeshEffect*)skinMesh;
 	meshEffect->CreateTetrahedraLinearBlendSkinWeightsChannel((const dgMeshEffect*)tetrahedraMesh);

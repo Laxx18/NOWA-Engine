@@ -25,11 +25,13 @@ namespace NOWA
 		hlmsPbsTerraShadows(nullptr),
 		sunLight(nullptr),
 		terraWorkspaceListener(nullptr),
+		usedCamera(nullptr),
 		postInitDone(false),
 		center(new Variant(TerraComponent::AttrCenter(), Ogre::Vector3(0.0f, 50.0f, 0.0f), this->attributes)),
 		// heightMap(new Variant(TerraComponent::AttrHeightMap(), "Heightmap.png", this->attributes)),
 		dimensions(new Variant(TerraComponent::AttrDimensions(), Ogre::Vector3(100.0f, 100.0f, 100.0f), this->attributes)),
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
+		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		strength(new Variant(TerraComponent::AttrStrength(), 10, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
@@ -39,6 +41,7 @@ namespace NOWA
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &TerraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 
 		this->lightId->setDescription("The directional light game object id, in order to calculate light position for shading and shadows. Note: Initially no shadows are shown, if no light id is set!");
+		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that terra is painted correctly on minimap. Can be left of, default is the main active camera.");
 
 		Ogre::StringVectorPtr brushNames = Ogre::ResourceGroupManager::getSingleton().findResourceNames("Brushes", "*.png");
 		std::vector<Ogre::String> compatibleBrushNames(brushNames.getPointer()->size() + 1);
@@ -96,6 +99,12 @@ namespace NOWA
 			this->lightId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraId")
+		{
+			this->cameraId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		
 		return true;
 	}
 
@@ -191,7 +200,7 @@ namespace NOWA
 			//Force update the shadow map every frame to avoid the feeling we're "cheating" the
 			//user in this sample with higher framerates than what he may encounter in many of
 			//his possible uses.
-			const float lightEpsilon = 1.0f;
+			const float lightEpsilon = 0.0f;
 			if (nullptr != this->sunLight)
 				this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
 			else
@@ -242,8 +251,25 @@ namespace NOWA
 	{
 		if (nullptr == this->terra && nullptr != AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() && true == this->postInitDone)
 		{
+			if (this->cameraId->getULong() != 0)
+			{
+				GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
+				if (nullptr != cameraGameObjectPtr)
+				{
+					auto& cameraCompPtr = NOWA::makeStrongPtr(cameraGameObjectPtr->getComponent<CameraComponent>());
+					if (nullptr != cameraCompPtr)
+					{
+						this->usedCamera = cameraCompPtr->getCamera();
+					}
+				}
+			}
+			else
+			{
+				this->usedCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+			}
+
 			this->terra = new Ogre::Terra(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_STATIC),
-				this->gameObjectPtr->getSceneManager(), NOWA::RENDER_QUEUE_TERRA, WorkspaceModule::getInstance()->getCompositorManager(), AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), false);
+				this->gameObjectPtr->getSceneManager(), NOWA::RENDER_QUEUE_TERRA, WorkspaceModule::getInstance()->getCompositorManager(), this->usedCamera, false);
 			// Attention: Shadows must not be casted for terra, else ugly crash shader cache is created
 			this->terra->setCastShadows(false);
 			this->terra->setName(this->gameObjectPtr->getName());
@@ -263,11 +289,11 @@ namespace NOWA
 			{
 				heightMapFile.close();
 				// true memory sharing when having more than one terra!
-				this->terra->load(existingHeightMapFilePathName, existingDetailMapFilePathName, this->center->getVector3(), this->dimensions->getVector3(), true, false);
+				this->terra->load(existingHeightMapFilePathName, existingDetailMapFilePathName, this->center->getVector3(), this->dimensions->getVector3(), false, false);
 			}
 			else
 			{
-				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), true, false);
+				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), false, false);
 			}
 
 			// this->terra->load(0.0f, 1024u, 1024u, Ogre::Vector3(this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y + this->dimensions->getVector3().y / 2.0f, this->gameObjectPtr->getPosition().z), this->dimensions->getVector3());
@@ -278,29 +304,6 @@ namespace NOWA
 			// this->terra->load("Heightmap.png", Ogre::Vector3(64.0f, 496.0f * 0.5f, 64.0f), Ogre::Vector3(496.0f, 496.0f, 496.0f));
 			//mTerra->load( "Heightmap.png", Ogre::Vector3( 64.0f, 4096.0f * 0.5f, 64.0f ), Ogre::Vector3( 14096.0f, 14096.0f, 14096.0f ) );
 
-// Later get corresponding camera and workspacecomponent and set data from terra?
-#if 0
-			Ogre::String samplerTextureName;
-			// Get Main Camera to get its sky box name
-			GameObjectPtr mainCameraGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName("MainCamera");
-			if (nullptr != mainCameraGameObject)
-			{
-				auto& cameraCompPtr = NOWA::makeStrongPtr(mainCameraGameObject->getComponent<CameraComponent>());
-				if (nullptr != cameraCompPtr)
-				{
-					// Set the terra workspace name for the camera
-					cameraCompPtr->setWorkspaceName(WorkspaceModule::getInstance()->workspaceNameTerra);
-					samplerTextureName = cameraCompPtr->getSkyBoxName();
-				}
-			}
-
-
-			// Recreate new workspace for terra specifigs
-// Attention: There is no viewport yet!
-			WorkspaceModule::getInstance()->createPrimaryWorkspaceModule(AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), WorkspaceModule::getInstance()->workspaceNameTerra, this->gameObjectPtr->getSceneManager(),
-				samplerTextureName, Ogre::ColourValue(0.2f, 0.4f, 0.6f), Ogre::Vector4(0.0f, 0.0f, 1.0f, 1.0f), this->terra);
-
-#endif
 			Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, this->dimensions->getVector3().y, terra->getXZDimensions().y) / 2.0f);
 			// startX = -184
 			Ogre::Real startX = terra->getTerrainOrigin().x;
@@ -367,16 +370,16 @@ namespace NOWA
 				{
 					workspaceBaseComponent->terra = this->terra;
 					workspaceBaseComponent->setUseTerra(true);
-
-					if(nullptr == this->terraWorkspaceListener)
-					{
-						Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-						Ogre::Hlms* hlms = hlmsManager->getHlms(Ogre::HLMS_USER3);
-						OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(hlms));
-						this->terraWorkspaceListener = new Ogre::TerraWorkspaceListener((Ogre::HlmsTerra*)hlms);
-					}
-					workspaceBaseComponent->getWorkspace()->addListener(this->terraWorkspaceListener);
 				}
+
+				if (nullptr == this->terraWorkspaceListener)
+				{
+					Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+					Ogre::Hlms* hlms = hlmsManager->getHlms(Ogre::HLMS_USER3);
+					OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(hlms));
+					this->terraWorkspaceListener = new Ogre::TerraWorkspaceListener((Ogre::HlmsTerra*)hlms);
+				}
+				workspaceBaseComponent->getWorkspace()->addListener(this->terraWorkspaceListener);
 			}
 		}
 	}
@@ -442,6 +445,10 @@ namespace NOWA
 				component->reCreateCollision();
 			}
 		}
+
+		// Sends event, that terra has been modified
+		boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 		
 		return std::move(heightData);
 	}
@@ -459,6 +466,10 @@ namespace NOWA
 				component->reCreateCollision();
 			}
 		}
+
+		// Sends event, that terra has been modified
+		boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 		
 		return std::move(heightData);
 	}
@@ -469,6 +480,10 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+
 			detailBlendData = this->terra->paintTerrainFinished();
 			return std::move(detailBlendData);
 		}
@@ -480,6 +495,10 @@ namespace NOWA
 		if (nullptr != this->terra)
 		{
 			this->terra->setHeightData(heightData);
+
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
 			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
 			if (nullptr != component)
@@ -493,6 +512,10 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+
 			this->terra->setBlendWeightData(blendWeightData);
 		}
 	}
@@ -543,6 +566,10 @@ namespace NOWA
 		else if (TerraComponent::AttrLightId() == attribute->getName())
 		{
 			this->setLightId(attribute->getULong());
+		}
+		else if (TerraComponent::AttrCameraId() == attribute->getName())
+		{
+			this->setCameraId(attribute->getULong());
 		}
 		else if (TerraComponent::AttrStrength() == attribute->getName())
 		{
@@ -601,9 +628,14 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lightId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraId->getULong())));
+		propertiesXML->append_node(propertyXML);
+
 	
 		this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath(), Core::getSingletonPtr()->getWorldName());
-		
 	}
 
 	Ogre::String TerraComponent::getClassName(void) const
@@ -670,6 +702,19 @@ namespace NOWA
 	unsigned int TerraComponent::getLightId(void) const
 	{
 		return this->lightId->getULong();
+	}
+
+	void TerraComponent::setCameraId(unsigned long cameraId)
+	{
+		this->cameraId->setValue(cameraId);
+
+		this->destroyTerra();
+		this->createTerra();
+	}
+
+	unsigned int TerraComponent::geCameraId(void) const
+	{
+		return this->cameraId->getULong();
 	}
 
 	void TerraComponent::setStrength(int strength)

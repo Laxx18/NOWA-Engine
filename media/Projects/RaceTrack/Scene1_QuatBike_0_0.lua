@@ -16,6 +16,7 @@ lapTimeList = nil;
 wrongDirectionText = nil;
 finishedText = nil;
 racePositionText = nil;
+countdownText = nil;
 rollSound = nil;
 skidSound = nil;
 playerController = nil;
@@ -35,6 +36,8 @@ Scene1_QuatBike_0_0["connect"] = function(gameObject)
     wrongDirectionText = mainGameObject:getMyGUITextComponentFromName("WrongDirectionText");
     finishedText = mainGameObject:getMyGUITextComponentFromName("FinishedText");
     racePositionText = mainGameObject:getMyGUITextComponentFromName("RacePositionText");
+    countdownText = mainGameObject:getMyGUITextComponentFromName("CountdownText");
+    countdownText:setActivated(true);
     
     rollSound = gameObject:getSimpleSoundComponent2(0);
     rollSound:setVolume(200);
@@ -105,12 +108,25 @@ Scene1_QuatBike_0_0["update"] = function(dt)
         racePositionText:setCaption("Racing position: " .. raceGoalComponent:getRacingPosition());
     end
     
+    -- F for wheelie
+    if InputDeviceModule:isActionDown(NOWA_A_FLASH_LIGHT) then
+        physicsActiveVehicleComponent:applyOmegaForce(physicsActiveVehicleComponent:getOrientation():Inverse() * Vector3(0, 0, 2));
+    end
+    
+    -- Drift jump (Space)
     --if InputDeviceModule:isActionPressed(NOWA_A_JUMP, dt, 0.2) then
     if InputDeviceModule:isActionDownAmount(NOWA_A_JUMP, dt, 0.2) then
         physicsActiveVehicleComponent:applyForce(Vector3(0, 50000, 0));
-         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_JUMP_START) == false) then
+        
+        if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
+            physicsActiveVehicleComponent:applyOmegaForce(Vector3(0, 2, 0));
+        elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+            physicsActiveVehicleComponent:applyOmegaForce(Vector3(0, -2, 0));
+        end
+        
+        if (animationBlender:isAnimationActive(AnimationBlender.ANIM_JUMP_START) == false) then
             animationBlender:blend5(AnimationBlender.ANIM_JUMP_START, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
-         end
+        end
     end
     
     if (animationBlender:isAnimationActive() == false) then
@@ -124,6 +140,7 @@ end
 
 
 Scene1_QuatBike_0_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulation, dt)
+    
     if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
         if (steerAmount <= 35) then
             steerAmount = steerAmount + dt * 20;
@@ -160,11 +177,13 @@ Scene1_QuatBike_0_0["onSteeringAngleChanged"] = function(vehicleDrivingManipulat
 end
 
 Scene1_QuatBike_0_0["onMotorForceChanged"] = function(vehicleDrivingManipulation, dt)
+    
     if InputDeviceModule:isActionDown(NOWA_A_UP) then
         vehicleDrivingManipulation:setMotorForce(5000 * 120 * dt);
         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_WALK_NORTH) == false) then
 			animationBlender:blend5(AnimationBlender.ANIM_WALK_NORTH, AnimationBlender.BLEND_WHILE_ANIMATING, 0.5, false);
 		end
+        -- Key E
     elseif InputDeviceModule:isActionDown(NOWA_A_ACTION) then
         vehicleDrivingManipulation:setMotorForce(10000 * 120 * dt);
         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_RUN) == false) then
@@ -176,6 +195,7 @@ Scene1_QuatBike_0_0["onMotorForceChanged"] = function(vehicleDrivingManipulation
 end
 
 Scene1_QuatBike_0_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation, dt)
+    
     -- Jump: Space
     --if InputDeviceModule:isActionDown(NOWA_A_JUMP) then
     --    vehicleDrivingManipulation:setHandBrake(5.5);
@@ -186,6 +206,7 @@ Scene1_QuatBike_0_0["onHandBrakeChanged"] = function(vehicleDrivingManipulation,
 end
 
 Scene1_QuatBike_0_0["onBrakeChanged"] = function(vehicleDrivingManipulation, dt)
+    
     -- Cover: x
     if InputDeviceModule:isActionDown(NOWA_A_COWER) then
         vehicleDrivingManipulation:setBrake(7.5);
@@ -215,4 +236,13 @@ end
 
 Scene1_QuatBike_0_0["onWrongDirectionDriving"] = function(wrongDirection)
     wrongDirectionText:setActivated(wrongDirection == true);
+end
+
+Scene1_QuatBike_0_0["onCountdown"] = function(countdownNumber)
+    
+    if (countdownNumber > 0) then
+        countdownText:setCaption(" " .. countdownNumber);
+    else
+        countdownText:setActivated(false);
+    end
 end

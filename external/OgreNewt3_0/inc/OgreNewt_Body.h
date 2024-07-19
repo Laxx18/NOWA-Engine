@@ -526,6 +526,10 @@ namespace OgreNewt
 		Ogre::Vector3 getLastPosition(void) const;
 
 		Ogre::Quaternion getLastOrientation(void) const;
+
+		void setIsSoftBody(bool isSoftBody);
+
+		bool getIsSoftBody(void) const;
 	protected:
 		void updateDeformableCollision(void);
 	protected:
@@ -587,6 +591,7 @@ namespace OgreNewt
 		Ogre::Item*						m_debugCollisionItem;
 		Ogre::SceneMemoryMgrTypes		m_sceneMemoryType;
 		bool							m_isOwner;
+		bool							m_isSoftBody;
 	protected:
 
 		static void _CDECL newtonDestructor(const NewtonBody* body);

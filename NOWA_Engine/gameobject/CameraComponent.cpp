@@ -7,6 +7,7 @@
 #include "camera/CameraManager.h"
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -22,6 +23,7 @@ namespace NOWA
 		hideEntity(true),
 		timeSinceLastUpdate(5.0f),
 		workspaceBaseComponent(nullptr),
+		eyeId(0),
 		active(new Variant(CameraComponent::AttrActive(), false, this->attributes)),
 		position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		orientation(new Variant(CameraComponent::AttrOrientation(), Ogre::Vector3::ZERO, this->attributes)),
@@ -539,6 +541,11 @@ namespace NOWA
 
 	void CameraComponent::setActivated(bool activated)
 	{
+		if (true == Core::getSingletonPtr()->getIsWorldBeingDestroyed())
+		{
+			return;
+		}
+
 		this->active->setValue(activated);
 		bool success = true;
 
@@ -679,10 +686,15 @@ namespace NOWA
 		return this->active->getBool();
 	}
 
-	void CameraComponent::applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask)
+	void CameraComponent::applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask, Ogre::uint8 eyeId)
 	{
 		if (nullptr != this->camera)
 		{
+			this->eyeId = eyeId;
+
+			// this->camera->setWindow(...)
+
+
 			auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 			if (nullptr != workspaceBaseCompPtr)
 			{
@@ -844,6 +856,11 @@ namespace NOWA
 	Ogre::Camera* CameraComponent::getCamera(void) const
 	{
 		return this->camera;
+	}
+
+	Ogre::uint8 CameraComponent::getEyeId(void) const
+	{
+		return this->eyeId;
 	}
 
 	void CameraComponent::setJustCreated(bool justCreated)

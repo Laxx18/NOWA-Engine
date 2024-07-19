@@ -4,6 +4,7 @@
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
+#include "main/Events.h"
 #include "gameobject/GameObjectFactory.h"
 
 #include "OgreAbiUtils.h"
@@ -12,6 +13,71 @@ namespace NOWA
 {
 	using namespace rapidxml;
 	using namespace luabind;
+
+
+	RaceGoalComponent::CountdownTimer::CountdownTimer(LuaScript* luaScript, const Ogre::String& onCountdownFunctionName)
+		: luaScript(luaScript),
+		onCountdownFunctionName(onCountdownFunctionName),
+		count(3),
+		active(false),
+		lastUpdate(std::chrono::steady_clock::now())
+	{
+
+	}
+
+	void RaceGoalComponent::CountdownTimer::activate(void)
+	{
+		if (false == this->active)
+		{
+			this->active = true;
+			// Sends event e.g. to purepursuit component, that a countdown is active or not
+			boost::shared_ptr<EventDataCountdownActive> eventDataCountdownActive(new EventDataCountdownActive(this->active));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataCountdownActive);
+		}
+	}
+
+	void RaceGoalComponent::CountdownTimer::update(void)
+	{
+		if (true == this->active)
+		{
+			auto now = std::chrono::steady_clock::now();
+			if (std::chrono::duration_cast<std::chrono::seconds>(now - lastUpdate).count() >= 2)
+			{
+				lastUpdate = now;
+				count--;
+				if (count <= 0)
+				{
+					this->active = false;
+					// Sends event e.g. to purepursuit component, that a countdown is active or not
+					boost::shared_ptr<EventDataCountdownActive> eventDataCountdownActive(new EventDataCountdownActive(this->active));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataCountdownActive);
+				}
+			}
+		}
+	}
+
+	void RaceGoalComponent::CountdownTimer::display(void)
+	{
+		if (true == this->active)
+		{
+			// std::cout << "Countdown: " << count << std::endl;
+			if (nullptr != this->luaScript && false == this->onCountdownFunctionName.empty())
+			{
+				this->luaScript->callTableFunction(this->onCountdownFunctionName, this->count);
+			}
+		}
+		else
+		{
+			this->luaScript->callTableFunction(this->onCountdownFunctionName, -1);
+		}
+	}
+
+	bool RaceGoalComponent::CountdownTimer::getIsActive(void) const
+	{
+		return this->active;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////
 
 	RaceGoalComponent::RaceGoalComponent()
 		: GameObjectComponent(),
@@ -36,8 +102,11 @@ namespace NOWA
 		returnToTrackProgress(0.0f),
 		returnPhase(LIFT),
 		lastKnownDirectionFlag(false),
+		countdownTimer(nullptr),
 		lapsCount(new Variant(RaceGoalComponent::AttrLapsCount(), static_cast<unsigned int>(1), this->attributes)),
 		onFeedbackRaceFunctionName(new Variant(RaceGoalComponent::AttrOnFeedbackRaceFunctionName(), Ogre::String(""), this->attributes)),
+		useCountdown(new Variant(RaceGoalComponent::AttrUseCountdown(), false, this->attributes)),
+		onCountdownFunctionName(new Variant(RaceGoalComponent::AttrOnCountdownFunctionName(), Ogre::String(""), this->attributes)),
 		onWrongDirectionFunctionName(new Variant(RaceGoalComponent::AttrOnWrongDirectionFunctionName(), Ogre::String(""), this->attributes)),
 		checkpointsCount(new Variant(RaceGoalComponent::AttrCheckpointsCount(), 0, this->attributes))
 	{
@@ -47,6 +116,12 @@ namespace NOWA
 
 		this->onFeedbackRaceFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction, or which lap has been passed, the lap time, whether the race is finished. E.g. onRaceFeedback(currentLap, lapTimeSec, finished).");
 		this->onFeedbackRaceFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(currentLap, lapTimeSec, finished)");
+
+		this->useCountdown->setDescription("Sets whether countdown feature is used. That is, the vehicle can only start after the countdown of 3 seconds. Note: Its also possible to react in lua script for each countdown second, e.g. for printing the number or a beep sound.");
+		this->useCountdown->addUserData(GameObject::AttrActionNeedRefresh());
+
+		this->onCountdownFunctionName->setDescription("Sets the function name to react in lua script for the 3 seconds countdown, e.g. for printing the number or a beep sound. If ready to go the countdown number is -1. E.g. onCountDown(countdownNumber).");
+		this->onCountdownFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onCountdownFunctionName->getString() + "(countdownNumber)");
 
 		this->onWrongDirectionFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction. E.g. onWrongDirectionDriving(wrongDirection).");
 		this->onWrongDirectionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(wrongDirection)");
@@ -112,6 +187,17 @@ namespace NOWA
 			this->onFeedbackRaceFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseCountdown")
+		{
+			this->useCountdown->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnCountdownFunctionName")
+		{
+			this->onCountdownFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnWrongDirectionFunctionName")
 		{
 			this->onWrongDirectionFunctionName->setValue(XMLConverter::getAttrib(propertyElement, "data"));
@@ -137,6 +223,8 @@ namespace NOWA
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
 		clonedCompPtr->setOnFeedbackRaceFunctionName(this->onFeedbackRaceFunctionName->getString());
+		clonedCompPtr->setUseCountdown(this->useCountdown->getBool());
+		clonedCompPtr->setOnCountdownFunctionName(this->onCountdownFunctionName->getString());
 		clonedCompPtr->setOnWrongDirectionFunctionName(this->onWrongDirectionFunctionName->getString());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
@@ -158,8 +246,19 @@ namespace NOWA
 			this->pPath->setRepeat(true);
 		}
 
+		if (nullptr == this->countdownTimer)
+		{
+			this->countdownTimer = new RaceGoalComponent::CountdownTimer(this->gameObjectPtr->getLuaScript(), this->onCountdownFunctionName->getString());
+		}
+
+		if (true == this->useCountdown->getBool())
+		{
+			this->countdownTimer->activate();
+		}
+
 		this->setOnFeedbackRaceFunctionName(this->onFeedbackRaceFunctionName->getString());
 		this->setOnWrongDirectionFunctionName(this->onWrongDirectionFunctionName->getString());
+		this->setOnCountdownFunctionName(this->onCountdownFunctionName->getString());
 
 		for (size_t i = 0; i < this->checkpoints.size(); i++)
 		{
@@ -285,6 +384,11 @@ namespace NOWA
 			this->pPath->clear();
 			this->pPath->setRepeat(true);
 		}
+		if (nullptr != this->countdownTimer)
+		{
+			delete this->countdownTimer;
+			this->countdownTimer = nullptr;
+		}
 
 		this->finished = false;
 		for (const auto& kinematicComponent : this->kinematicComponents)
@@ -325,6 +429,11 @@ namespace NOWA
 			delete this->pPath;
 			this->pPath = nullptr;
 		}
+		if (nullptr != this->countdownTimer)
+		{
+			delete this->countdownTimer;
+			this->countdownTimer = nullptr;
+		}
 	}
 	
 	void RaceGoalComponent::onOtherComponentRemoved(unsigned int index)
@@ -341,24 +450,40 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			this->lapTimeSec += dt;
-
-			this->speedInKmh = this->calculateSpeedInKmh();
-
-			this->oldDirection = this->wrongDirection;
-			this->wrongDirection = this->isCarDrivingWrongDirection();
-
-			if (this->oldDirection != this->wrongDirection)
+			if (true == this->useCountdown->getBool())
 			{
-				if (nullptr != this->gameObjectPtr->getLuaScript())
-				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
-				}
+				this->countdownTimer->update();
 			}
 
-			this->calculateDistanceTraveled(dt);
+			// Only drive if the countdown is over
+			this->vehicleComponent->setCanDrive(!this->countdownTimer->getIsActive());
 
-			this->determineRacePositions();
+			if (false == this->countdownTimer->getIsActive())
+			{
+				this->lapTimeSec += dt;
+
+				this->speedInKmh = this->calculateSpeedInKmh();
+
+				this->oldDirection = this->wrongDirection;
+				this->wrongDirection = this->isCarDrivingWrongDirection();
+
+				if (this->oldDirection != this->wrongDirection)
+				{
+					if (nullptr != this->gameObjectPtr->getLuaScript())
+					{
+						this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
+					}
+				}
+
+				this->calculateDistanceTraveled(dt);
+
+				this->determineRacePositions();
+			}
+
+			if (true == this->useCountdown->getBool())
+			{
+				this->countdownTimer->display();
+			}
 		}
 	}
 
@@ -736,6 +861,14 @@ namespace NOWA
 		{
 			this->setOnFeedbackRaceFunctionName(attribute->getString());
 		}
+		else if (RaceGoalComponent::AttrUseCountdown() == attribute->getName())
+		{
+			this->setUseCountdown(attribute->getBool());
+		}
+		else if (RaceGoalComponent::AttrOnCountdownFunctionName() == attribute->getName())
+		{
+			this->setOnCountdownFunctionName(attribute->getString());
+		}
 		else if (RaceGoalComponent::AttrOnWrongDirectionFunctionName() == attribute->getName())
 		{
 			this->setOnWrongDirectionFunctionName(attribute->getString());
@@ -789,6 +922,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "OnFeedbackRaceFunctionName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onFeedbackRaceFunctionName->getString())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseCountdown"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useCountdown->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OnCountdownFunctionName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->onCountdownFunctionName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -872,6 +1017,26 @@ namespace NOWA
 		}
 	}
 
+	void RaceGoalComponent::setUseCountdown(bool useCountdown)
+	{
+		this->useCountdown->setValue(useCountdown);
+		this->onCountdownFunctionName->setVisible(useCountdown);
+	}
+
+	bool RaceGoalComponent::getUseCountdown(void) const
+	{
+		return this->useCountdown->getBool();
+	}
+
+	void RaceGoalComponent::setOnCountdownFunctionName(const Ogre::String& onCountdownFunctionName)
+	{
+		this->onCountdownFunctionName->setValue(onCountdownFunctionName);
+		if (false == onCountdownFunctionName.empty())
+		{
+			this->onCountdownFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onCountdownFunctionName + "(countdownNumber)");
+		}
+	}
+
 	void RaceGoalComponent::setRacingPosition(int racingPosition)
 	{
 		this->racingPosition = racingPosition;
@@ -890,6 +1055,11 @@ namespace NOWA
 	Ogre::Real RaceGoalComponent::getDistanceTraveled(void) const
 	{
 		return this->distanceTraveled;
+	}
+
+	bool RaceGoalComponent::getCanDrive(void) const
+	{
+		return this->countdownTimer->getIsActive();
 	}
 
 	Ogre::String RaceGoalComponent::getClassName(void) const
@@ -930,6 +1100,7 @@ namespace NOWA
 			.def("getRacingPosition", &RaceGoalComponent::getRacingPosition)
 			.def("getDistanceTraveled", &RaceGoalComponent::getDistanceTraveled)
 			.def("getCurrentWaypointIndex", &RaceGoalComponent::getCurrentWaypointIndex)
+			.def("getCanDrive", &RaceGoalComponent::getCanDrive)	
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "class inherits GameObjectComponent", RaceGoalComponent::getStaticInfoText());
@@ -939,6 +1110,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getRacingPosition()", "Gets current racing position. If not valid, -1 will be delivered.");
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getDistanceTraveled()", "Gets the forward distance traveled on the race. Note: If driving the wrong direction, the distance will be decreased.");
 		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "number getCurrentWaypointIndex()", "Gets current waypoint index, which can be use to get the whole progress of the lap. Note: if -1, waypoint index is invalid.");
+		LuaScriptApi::getInstance()->addClassToCollection("RaceGoalComponent", "boolean getCanDrive()", "Gets whether the vehicle can drive. E.g. is countdown is used, only if the countdown is over, the vehicle shall drive.");
+
 
 		gameObjectClass.def("getRaceGoalComponentFromName", &getRaceGoalComponentFromName);
 		gameObjectClass.def("getRaceGoalComponent", (RaceGoalComponent * (*)(GameObject*)) & getRaceGoalComponent);

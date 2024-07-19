@@ -125,7 +125,8 @@ namespace NOWA
 		jumpSpeed(new Variant(PhysicsPlayerControllerComponent::AttrJumpSpeed(), 10.0f, this->attributes)),
 		onContactFrictionFunctionName(new Variant(PhysicsPlayerControllerComponent::AttrOnContactFrictionFunctionName(), Ogre::String(""), this->attributes)),
 		onContactFunctionName(new Variant(PhysicsPlayerControllerComponent::AttrOnContactFunctionName(), Ogre::String(""), this->attributes)),
-		newlyCreated(true)
+		newlyCreated(true),
+		isInCloningProcess(false)
 	{
 		this->force->setVisible(false);
 		this->collisionDirection->setVisible(false);
@@ -205,6 +206,8 @@ namespace NOWA
 	{
 		PhysicsPlayerControllerCompPtr clonedCompPtr(boost::make_shared<PhysicsPlayerControllerComponent>());
 		
+		clonedCompPtr->isInCloningProcess = true;
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
@@ -237,8 +240,9 @@ namespace NOWA
 		clonedCompPtr->setJumpSpeed(this->jumpSpeed->getReal());
 
 		clonedCompPtr->setOnContactFrictionFunctionName(this->onContactFrictionFunctionName->getString());
-		clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());
+		clonedCompPtr->setOnContactFunctionName(this->onContactFunctionName->getString());;
 		
+		clonedCompPtr->isInCloningProcess = false;
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -489,6 +493,12 @@ namespace NOWA
 
 	bool PhysicsPlayerControllerComponent::createDynamicBody(void)
 	{
+		// If component is being cloned, do not create the dynamic body to early, because not all data is ready, hence e.g. the position would be 0 0 0
+		if (true == this->isInCloningProcess)
+		{
+			return true;
+		}
+
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 

@@ -27,12 +27,10 @@ namespace
 	{
 		size_t i = 0;
 		// Skip non-digit characters
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "---> start extractNumber from: " + name);
 		while (i < name.length() && !std::isdigit(name[i]))
 		{
 			++i;
 		}
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "---> end extractNumber from: " + Ogre::StringConverter::toString(i));
 		// Extract the numeric part
 		Ogre::String strNum = name.substr(i);
 		if (false == strNum.empty())
@@ -483,6 +481,12 @@ namespace NOWA
 		clonedGameObjectPtr->setDefaultDirection(originalGameObjectPtr->getDefaultDirection());
 		clonedGameObjectPtr->setGlobal(originalGameObjectPtr->getGlobal());
 		clonedGameObjectPtr->setClampY(originalGameObjectPtr->getClampY());
+		clonedGameObjectPtr->setReferenceId(originalGameObjectPtr->getReferenceId());
+		clonedGameObjectPtr->setRenderQueueIndex(originalGameObjectPtr->getRenderQueueIndex());
+		clonedGameObjectPtr->setRenderDistance(originalGameObjectPtr->getRenderDistance());
+		clonedGameObjectPtr->setLodDistance(originalGameObjectPtr->getLodDistance());
+		clonedGameObjectPtr->setShadowRenderingDistance(originalGameObjectPtr->getShadowRenderingDistance());
+		clonedGameObjectPtr->setHideId(originalGameObjectPtr->getHideId());
 
 		if (!clonedGameObjectPtr->init())
 		{
@@ -491,15 +495,27 @@ namespace NOWA
 
 		if (Ogre::Vector3::ZERO != targetPosition)
 		{
-			clonedGameObjectPtr->getSceneNode()->setPosition(targetPosition);
+			clonedGameObjectPtr->setAttributePosition(targetPosition);
+		}
+		else
+		{
+			clonedGameObjectPtr->setAttributePosition(originalGameObjectPtr->getPosition());
 		}
 		if (Ogre::Quaternion::IDENTITY != targetOrientation)
 		{
-			clonedGameObjectPtr->getSceneNode()->setOrientation(targetOrientation);
+			clonedGameObjectPtr->setAttributeOrientation(targetOrientation);
 		}
-		if (Ogre::Vector3(1.0f, 1.0f, 1.0f) != targetScale)
+		else
 		{
-			clonedGameObjectPtr->getSceneNode()->setScale(targetScale);
+			clonedGameObjectPtr->setAttributeOrientation(originalGameObjectPtr->getOrientation());
+		}
+		if (Ogre::Vector3::UNIT_SCALE != targetScale)
+		{
+			clonedGameObjectPtr->setAttributeScale(targetScale);
+		}
+		else
+		{
+			clonedGameObjectPtr->setAttributeScale(originalGameObjectPtr->getScale());
 		}
 
 		// Order is important since category id is generated and maybe required in postInit!

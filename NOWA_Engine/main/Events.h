@@ -1818,6 +1818,126 @@ namespace NOWA
 		unsigned long id;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataCountdownActive - This event is sent out if a race countdown is active or not.
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataCountdownActive : public BaseEventData
+	{
+	public:
+
+		EventDataCountdownActive(void)
+			: isActive(false)
+		{
+		}
+
+		explicit EventDataCountdownActive(bool isActive)
+			: isActive(isActive)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe86c7d49;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe86c7d49;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->isActive);
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataCountdownActive(this->isActive));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->isActive) << " ";
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataCountdownActive";
+		}
+
+		bool getIsActive(void) const
+		{
+			return this->isActive;
+		}
+	private:
+		bool isActive;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataTerraChanged - This event is sent out if in terra data has changed like heightmap or blendmap
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataTerraChanged : public BaseEventData
+	{
+	public:
+
+		EventDataTerraChanged(void)
+			: heightMapChanged(false),
+			blendMapChanged(false)
+		{
+		}
+
+		explicit EventDataTerraChanged(bool heightMapChanged, bool blendMapChanged)
+			: heightMapChanged(heightMapChanged),
+			blendMapChanged(blendMapChanged)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A01;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A01;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataTerraChanged(this->heightMapChanged, this->blendMapChanged));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataTerraChanged";
+		}
+
+		bool getIsHeightMapChanged(void) const
+		{
+			return this->heightMapChanged;
+		}
+
+		bool getIsBlendMapChanged(void) const
+		{
+			return this->blendMapChanged;
+		}
+	private:
+		bool heightMapChanged;
+		bool blendMapChanged;
+	};
+
 }; // namespace end
 
 #endif

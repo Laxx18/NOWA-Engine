@@ -1630,7 +1630,7 @@ namespace NOWA
 					catch (Ogre::Exception& e)
 					{
 						Ogre::String description = e.getFullDescription();
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Even 'Missing.mesh' from NOWA folder cannot be loaded, so nobody can help you anymore. Skipping this entity. Details: " + description);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
 						return;
 					}
 				}
@@ -1843,36 +1843,64 @@ namespace NOWA
 			}
 			catch (Ogre::Exception& e)
 			{
-				// Plane has no mesh yet, so skip error
-				if (Ogre::String::npos == meshFile.find("Plane"))
-				{
-					Ogre::String description = e.getFullDescription();
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an entity with the name: " + name + " and mesh file name: " + meshFile
-						+ "! So setting 'Missing.mesh'. Details: " + description);
-				}
-				// Try to load the missing.mesh to attend the user, that a resource is missing
+				// Backward compatibility: v2 mesh has been saved as entity, instead of item
 				try
 				{
-					tempMeshFile = "Missing.mesh";
-					v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-					// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-					Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
-					if (nullptr != resourceV2)
+					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
 					{
-						Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
-						Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+						v2Mesh = Ogre::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 					}
-
-					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-					v1Mesh->unload();
-					v1Mesh.setNull();
 				}
-				catch (Ogre::Exception& e)
+				catch (...)
 				{
-					Ogre::String description = e.getFullDescription();
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Even 'Missing.mesh' from NOWA folder cannot be loaded, so nobody can help you anymore. Skipping this entity. Details: " + description);
-					return;
+					// Plane has no mesh yet, so skip error
+					if (Ogre::String::npos == meshFile.find("Plane"))
+					{
+						Ogre::String description = e.getFullDescription();
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Error loading an item with the name: " + name + " and mesh file name: " + meshFile
+																		+ "! So setting 'Missing.mesh'. Details: " + description);
+					}
+					// Try to load the missing.mesh to attend the user, that a resource is missing
+					try
+					{
+						tempMeshFile = "Missing.mesh";
+						v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+
+						// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+						Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
+						if (nullptr != resourceV2)
+						{
+							Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
+							Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+						}
+
+						if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
+						{
+							v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+						}
+						v1Mesh->unload();
+					}
+					catch (Ogre::Exception& e)
+					{
+						tempMeshFile = "Missing.mesh";
+						v1Mesh = Ogre::v1::MeshManager::getSingleton().load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+
+						// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+						Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(name);
+						if (nullptr != resourceV2)
+						{
+							Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(name);
+							Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+						}
+
+						v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+						v1Mesh->unload();
+						v1Mesh.setNull();
+
+						Ogre::String description = e.getFullDescription();
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DotSceneImportModule] Mesh seems to be using a mesh serializer version, which is not supported. Skipping this entity. Details: " + description);
+						return;
+					}
 				}
 
 				type = GameObject::ITEM;

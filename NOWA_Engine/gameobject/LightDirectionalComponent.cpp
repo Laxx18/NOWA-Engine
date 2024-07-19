@@ -201,8 +201,7 @@ namespace NOWA
 					item->setCastShadows(false);
 				}
 			}
-			this->light->setDirection(this->direction->getVector3());
-			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-90.0f, -90.0f, -90.0f)));
+			this->setDirection(this->direction->getVector3());
 		}
 	}
 
@@ -224,7 +223,7 @@ namespace NOWA
 		}
 		else if (LightDirectionalComponent::AttrDirection() == attribute->getName())
 		{
-			// this->setDirection(attribute->getVector3());
+			this->setDirection(attribute->getVector3());
 		}
 		else if (LightDirectionalComponent::AttrAffectParentNode() == attribute->getName())
 		{

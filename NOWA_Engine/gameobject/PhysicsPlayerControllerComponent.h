@@ -209,6 +209,7 @@ namespace NOWA
 		Variant* onContactFunctionName;
 
 		bool newlyCreated;
+		bool isInCloningProcess;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////
