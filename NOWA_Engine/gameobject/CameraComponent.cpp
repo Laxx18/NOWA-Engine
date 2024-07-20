@@ -694,6 +694,10 @@ namespace NOWA
 
 			// this->camera->setWindow(...)
 
+			if (false == useSplitScreen)
+			{
+				WorkspaceModule::getInstance()->setCameraPrimaryWorkspaceActive();
+			}
 
 			auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 			if (nullptr != workspaceBaseCompPtr)

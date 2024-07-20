@@ -360,7 +360,6 @@ namespace NOWA
 		Ogre::HlmsManager* hlmsManager;
 		Ogre::CompositorManager2* compositorManager;
 		Ogre::TextureGpu* cubemapTexture;
-		Ogre::TextureGpu* minimapTexture;
 		Ogre::CompositorWorkspace* workspaceCubemap;
 		Ogre::CompositorChannelVec externalChannels;
 		// Ogre::ResourceLayoutMap initialCubemapLayouts;

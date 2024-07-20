@@ -191,6 +191,7 @@ namespace NOWA
 	void CameraManager::addCamera(Ogre::Camera* camera, bool activate)
 	{
 		bool foundActiveOne = false;
+		Ogre::String cameraName = camera->getName();
 		if (true == activate)
 		{
 			// First deactivate all, besides the new one
@@ -222,6 +223,18 @@ namespace NOWA
 		}
 		this->cameras.emplace(camera, activate);
 
+		if (false == activate)
+		{
+			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+			{
+				if (camera == it->first)
+				{
+					it->second = activate;
+					it->first->setVisible(activate);
+				}
+			}
+		}
+
 		if (true == foundActiveOne && false == activate)
 		{
 			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
@@ -242,7 +255,7 @@ namespace NOWA
 	void CameraManager::addSplitCamera(Ogre::Camera* camera)
 	{
 		this->cameras.emplace(camera, true);
-
+		Ogre::String cameraName = camera->getName();
 		for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
 		{
 			it->second = true;
@@ -261,6 +274,7 @@ namespace NOWA
 	void CameraManager::removeCamera(Ogre::Camera* camera)
 	{
 		bool foundActiveOne = false;
+		Ogre::String cameraName = camera->getName();
 		auto it = this->cameras.find(camera);
 		if (this->cameras.end() != it)
 		{
@@ -318,6 +332,7 @@ namespace NOWA
 	{
 		for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
 		{
+			Ogre::String cameraName = it->first->getName();
 			if (true == it->second)
 			{
 				return it->first;

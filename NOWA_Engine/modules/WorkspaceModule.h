@@ -71,6 +71,8 @@ namespace NOWA
 
 		void removeCamera(Ogre::Camera* camera);
 
+		void setCameraPrimaryWorkspaceActive(void);
+
 		bool hasAnyWorkspace(void) const;
 
 		bool hasMoreThanOneWorkspace(void) const;

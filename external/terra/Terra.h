@@ -159,6 +159,8 @@ namespace Ogre
         /// get bigger for higher LODs.
         void calculateOptimumSkirtSize(void);
 
+        void createTerrainCells();
+
         inline GridPoint worldToGrid(const Vector3& vPos) const;
         inline Vector2 gridToWorld(const GridPoint& gPos) const;
         
@@ -223,6 +225,12 @@ namespace Ogre
         void load(const String& heightMapTextureName, const String& blendWeightTextureName, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
         void load(Image2 &heightMapImage, Image2& blendWeightImage, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
         void load(float height,Ogre::uint16 imageWidth, Ogre::uint16 imageHeight, Vector3& center, Vector3& dimensions, bool bMinimizeMemoryConsumption, bool bLowResShadow);
+
+        /** Lower values makes LOD very aggressive. Higher values less aggressive.
+        @param basePixelDimension
+            Must be power of 2.
+        */
+        void setBasePixelDimension(uint32 basePixelDimension);
 
          /** Gets the interpolated height at the given location.
             If outside the bounds, it leaves the height untouched.

@@ -26,6 +26,189 @@
 
 #include <array>
 
+
+struct TransformState
+{
+	Ogre::Vector3 previousPosition;
+	Ogre::Vector3 currentPosition;
+
+	Ogre::Quaternion previousOrientation;
+	Ogre::Quaternion currentOrientation;
+
+	Ogre::Vector3 previousScale;
+	Ogre::Vector3 currentScale;
+
+	TransformState()
+		: previousPosition(Ogre::Vector3::ZERO), currentPosition(Ogre::Vector3::ZERO),
+		previousOrientation(Ogre::Quaternion::IDENTITY), currentOrientation(Ogre::Quaternion::IDENTITY),
+		previousScale(Ogre::Vector3::UNIT_SCALE), currentScale(Ogre::Vector3::UNIT_SCALE)
+	{
+	}
+};
+
+// #define OGRE_FLEXIBILITY_LEVEL 2
+
+// #include "OgrePlatform.h"
+
+class TransformableSceneNode : public Ogre::SceneNode
+{
+public:
+	TransformState transformState;
+
+	TransformableSceneNode(Ogre::IdType id, Ogre::SceneManager* creator, Ogre::NodeMemoryManager* nodeMemoryManager,
+						   Ogre::SceneNode* parent)
+		: Ogre::SceneNode(id, creator, nodeMemoryManager, parent)
+	{
+		transformState.currentPosition = getPosition();
+		transformState.currentOrientation = getOrientation();
+		transformState.currentScale = getScale();
+	}
+
+#if 0
+	void setPosition(const Ogre::Vector3& pos) override
+	{
+		transformState.previousPosition = transformState.currentPosition;
+		transformState.currentPosition = pos;
+		Ogre::SceneNode::setPosition(pos);
+	}
+
+	void setPosition(Ogre::Real x, Ogre::Real y, Ogre::Real z) override
+	{
+		setPosition(Ogre::Vector3(x, y, z));
+	}
+
+	void setOrientation(const Ogre::Quaternion& q) override
+	{
+		transformState.previousOrientation = transformState.currentOrientation;
+		transformState.currentOrientation = q;
+		Ogre::SceneNode::setOrientation(q);
+	}
+
+	void setOrientation(Ogre::Real w, Ogre::Real x, Ogre::Real y, Ogre::Real z) override
+	{
+		setOrientation(Ogre::Quaternion(w, x, y, z));
+	}
+
+	void lookAt(const Ogre::Vector3& targetPoint, Ogre::Node::TransformSpace relativeTo,
+				const Ogre::Vector3& localDirectionVector = Ogre::Vector3::NEGATIVE_UNIT_Z) override
+	{
+		Ogre::SceneNode::lookAt(targetPoint, relativeTo, localDirectionVector);
+		transformState.previousOrientation = transformState.currentOrientation;
+		transformState.currentOrientation = getOrientation();
+	}
+
+	void setScale(const Ogre::Vector3& scale) override
+	{
+		transformState.previousScale = transformState.currentScale;
+		transformState.currentScale = scale;
+		Ogre::SceneNode::setScale(scale);
+	}
+
+	void setScale(Ogre::Real x, Ogre::Real y, Ogre::Real z) override
+	{
+		setScale(Ogre::Vector3(x, y, z));
+	}
+#endif
+
+	void interpolate(float alpha)
+	{
+		// Interpolate position
+		Ogre::Vector3 interpolatedPosition = interpolateVector(transformState.previousPosition, transformState.currentPosition, alpha);
+		Ogre::SceneNode::setPosition(interpolatedPosition);
+
+		// Interpolate orientation
+		Ogre::Quaternion interpolatedOrientation = interpolateQuaternion(transformState.previousOrientation, transformState.currentOrientation, alpha);
+		Ogre::SceneNode::setOrientation(interpolatedOrientation);
+
+		// Interpolate scale
+		Ogre::Vector3 interpolatedScale = interpolateVector(transformState.previousScale, transformState.currentScale, alpha);
+		Ogre::SceneNode::setScale(interpolatedScale);
+	}
+
+	void interpolate(float alpha)
+	{
+		Ogre::Vector3 interpolatedPosition = interpolateVector(transformState.previousPosition, transformState.currentPosition, alpha);
+		setPosition(interpolatedPosition);
+
+		Ogre::Quaternion interpolatedOrientation = interpolateQuaternion(transformState.previousOrientation, transformState.currentOrientation, alpha);
+		setOrientation(interpolatedOrientation);
+
+		Ogre::Vector3 interpolatedScale = interpolateVector(transformState.previousScale, transformState.currentScale, alpha);
+		setScale(interpolatedScale);
+	}
+
+private:
+	Ogre::Vector3 interpolateVector(const Ogre::Vector3& start, const Ogre::Vector3& end, float alpha)
+	{
+		return start * (1.0f - alpha) + end * alpha;
+	}
+
+	Ogre::Quaternion interpolateQuaternion(const Ogre::Quaternion& start, const Ogre::Quaternion& end, float alpha)
+	{
+		return Ogre::Quaternion::nlerp(alpha, start, end, true);
+	}
+};
+
+
+class TransformableSceneManager : public Ogre::SceneManager
+{
+public:
+	TransformableSceneManager(const Ogre::String& instanceName, size_t numWorkerThreads) : Ogre::SceneManager(instanceName, numWorkerThreads) {}
+
+	virtual Ogre::SceneNode* createSceneNodeImpl(Ogre::SceneNode* parent, Ogre::NodeMemoryManager* nodeMemoryManager) override
+	{
+		return new TransformableSceneNode(Ogre::Id::generateNewId<Ogre::SceneNode>(), static_cast<Ogre::SceneManager*>(this), nodeMemoryManager, parent);
+	}
+
+	const Ogre::String& getTypeName() const override
+	{
+		// return TransformableSceneManagerFactory::FACTORY_TYPE_NAME;
+		return "TransformableSceneManager";
+	}
+};
+
+
+
+class TransformableSceneManagerFactory : public Ogre::SceneManagerFactory
+{
+public:
+	static const Ogre::String FACTORY_TYPE_NAME;
+
+	/*const Ogre::String& getType() const override
+	{
+		return FACTORY_TYPE_NAME;
+	}
+
+	Ogre::SceneManager* createInstance(const Ogre::String& instanceName) override
+	{
+		return new TransformableSceneManager(instanceName);
+	}*/
+
+	void destroyInstance(Ogre::SceneManager* instance) override
+	{
+		delete instance;
+	}
+
+	
+	void initMetaData() const override
+	{
+		mMetaData.typeName = TransformableSceneManagerFactory::FACTORY_TYPE_NAME;
+		mMetaData.description = "Custom SceneManager for using interpolations for transforms.";
+		mMetaData.worldGeometrySupported = false;
+		mMetaData.sceneTypeMask = Ogre::ST_GENERIC;
+	}
+
+	Ogre::SceneManager* createInstance(const Ogre::String& instanceName, size_t numWorkerThreads) override
+	{
+		return new TransformableSceneManager(instanceName, numWorkerThreads);
+	}
+};
+
+const Ogre::String TransformableSceneManagerFactory::FACTORY_TYPE_NAME = "TransformableSceneManager";
+
+
+
+
 namespace
 {
 	const std::array<Ogre::HlmsTypes, 7> searchHlms =
@@ -58,6 +241,108 @@ namespace NOWA
 		bConnectPriority(false)
 	{
 		// int idd = this->sceneNode->getId();
+
+		static int i = 0;
+
+		if (i == 0)
+		{
+			// Register the custom SceneManagerFactory
+			TransformableSceneManagerFactory* factory = new TransformableSceneManagerFactory();
+			Ogre::SceneManagerEnumerator::getSingleton().addFactory(factory);
+
+			// Create the custom SceneManager
+			Ogre::SceneManager* tempSceneManager = Ogre::Root::getSingletonPtr()->createSceneManager(TransformableSceneManagerFactory::FACTORY_TYPE_NAME, 1, "MySceneManager");
+
+			Ogre::SceneNode* node = tempSceneManager->getRootSceneNode()->createChildSceneNode();
+			Ogre::v1::Entity* entity = tempSceneManager->createEntity("Case1.mesh");
+			node->attachObject(entity);
+
+			node->setPosition(0, 0, 0); // Start position
+			node->setPosition(10, 0, 0); // Target position (for demonstration purposes)
+		}
+
+		i++; 
+
+#if 0
+		
+
+		void gameLoop()
+		{
+			using clock = std::chrono::high_resolution_clock;
+			using duration = std::chrono::duration<float>;
+
+			auto previousTime = clock::now();
+			float logicDeltaTime = 1.0f / 60.0f; // 60 Hz logic update
+			float accumulator = 0.0f;
+
+			while (!quit)
+			{
+				auto currentTime = clock::now();
+				duration elapsedTime = currentTime - previousTime;
+				previousTime = currentTime;
+				accumulator += elapsedTime.count();
+
+				processInput();
+
+				while (accumulator >= logicDeltaTime)
+				{
+					updateLogic(logicDeltaTime);
+					accumulator -= logicDeltaTime;
+				}
+
+				render(accumulator / logicDeltaTime);
+
+				// Sleep to avoid excessive CPU usage
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+}
+
+		void processInput()
+		{
+			Ogre::WindowEventUtilities::messagePump();
+			if (window->isClosed())
+			{
+				quit = true;
+			}
+
+			if (GetAsyncKeyState(VK_ESCAPE))
+			{
+				quit = true;
+			}
+		}
+
+		void updateLogic(float deltaTime)
+		{
+			// wird meine update(dt) function! dort mache ich was ich immer mache, also z.B. node->setPosition(gizmo->getPosition()) etc.
+		}
+
+
+		void render(float alpha)
+		{
+			// Hier nicht so, sondern gameobject hat ja update(dt) und lateUpdate(dt), dann noch einführen: render(Ogre::Real alpha), dort dann interpolate -> this->sceneNode->interpolate(alpha);
+			// GameObjectController hat auch update function, dieser benutzt alle Gameobjects zum update und lateupdate, dann dort auch render noch einführen!
+			// im appstatemanager dann die gameloop rein. Vorher kompletten quellcode von gameengine kopieren!
+			// Components bekommen nicht das render, das ist nur für die scenenode interpolation, mehr nicht!
+
+			// Siehe auch Appstate, der brauch auch render:
+			/*
+			void AppState::render(Ogre::Real alpha)
+			{
+				if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
+				{
+					this->gameObjectController->render(alpha);
+				}
+			}
+			*/
+	
+
+			Ogre::SceneNode::NodeVecIterator it = sceneManager->getRootSceneNode()->getChildIterator();
+			
+
+			root->renderOneFrame();
+		}
+#endif
+
 		
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)

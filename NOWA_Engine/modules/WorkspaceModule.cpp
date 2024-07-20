@@ -590,6 +590,23 @@ namespace NOWA
 		return nullptr;
 	}
 
+	void WorkspaceModule::setCameraPrimaryWorkspaceActive(void)
+	{
+		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+		auto found = this->workspaceMap.find(camera);
+		if (found != this->workspaceMap.cend())
+		{
+			if (true == found->second.isPrimary)
+			{
+				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, true);
+			}
+			else
+			{
+				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(camera, false);
+			}
+		}
+	}
+
 	Ogre::CompositorWorkspace* WorkspaceModule::getWorkspace(Ogre::Camera* camera)
 	{
 		auto found = this->workspaceMap.find(camera);
