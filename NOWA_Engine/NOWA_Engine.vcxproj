@@ -467,6 +467,7 @@
     <ClInclude Include="main\IntroState.h" />
     <ClInclude Include="main\MainConfigurationStateMyGui.h" />
     <ClInclude Include="main\MenuStateMyGui.h" />
+    <ClInclude Include="main\OgreCustom.h" />
     <ClInclude Include="main\PauseStateMyGui.h" />
     <ClInclude Include="main\PluginFactory.h" />
     <ClInclude Include="main\Process.h" />
@@ -677,6 +678,7 @@
     <ClCompile Include="main\IntroState.cpp" />
     <ClCompile Include="main\MainConfigurationStateMyGui.cpp" />
     <ClCompile Include="main\MenuStateMyGui.cpp" />
+    <ClCompile Include="main\OgreCustom.cpp" />
     <ClCompile Include="main\PauseStateMyGui.cpp" />
     <ClCompile Include="main\PluginFactory.cpp" />
     <ClCompile Include="main\Process.cpp" />

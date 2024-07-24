@@ -415,22 +415,17 @@ namespace Ogre
     {
         destroyNormalTexture();
 
-        TextureGpuManager *textureManager =
-                mManager->getDestinationRenderSystem()->getTextureGpuManager();
+        TextureGpuManager* textureManager =
+            mManager->getDestinationRenderSystem()->getTextureGpuManager();
         m_normalMapTex = textureManager->createTexture(
-                             "NormalMapTex_" + StringConverter::toString( getId() ),
-                             GpuPageOutStrategy::SaveToSystemRam,
-                             TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps,
-                             TextureTypes::Type2D );
-        m_normalMapTex->setResolution( m_heightMapTex->getWidth(), m_heightMapTex->getHeight() );
-        m_normalMapTex->setNumMipmaps(
-                    PixelFormatGpuUtils::getMaxMipmapCount( m_normalMapTex->getWidth(),
-                                                            m_normalMapTex->getHeight() ) );
-        // m_normalMapTex->setPixelFormat( PFG_R10G10B10A2_UNORM );
-
-       if( textureManager->checkSupport(
-                PFG_R10G10B10A2_UNORM, TextureTypes::Type2D,
-                TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps ) )
+            "NormalMapTex_" + StringConverter::toString(getId()), GpuPageOutStrategy::SaveToSystemRam,
+            TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps, TextureTypes::Type2D);
+        m_normalMapTex->setResolution(m_heightMapTex->getWidth(), m_heightMapTex->getHeight());
+        m_normalMapTex->setNumMipmaps(PixelFormatGpuUtils::getMaxMipmapCount(
+            m_normalMapTex->getWidth(), m_normalMapTex->getHeight()));
+        if (textureManager->checkSupport(
+            PFG_R10G10B10A2_UNORM, TextureTypes::Type2D,
+            TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps))
         {
             m_normalMapTex->setPixelFormat(PFG_R10G10B10A2_UNORM);
         }
@@ -438,34 +433,29 @@ namespace Ogre
         {
             m_normalMapTex->setPixelFormat(PFG_RGBA8_UNORM);
         }
+        m_normalMapTex->scheduleTransitionTo(GpuResidency::Resident);
+        // Dangerous: No heighmap will be rendered for minimap
+        // m_normalMapTex->notifyDataIsReady();
 
-        m_normalMapTex->scheduleTransitionTo( GpuResidency::Resident );
-        m_normalMapTex->notifyDataIsReady();
+        MaterialPtr normalMapperMat =
+            std::static_pointer_cast<Material>(MaterialManager::getSingleton().load(
+            "Terra/GpuNormalMapper", ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME));
+        Pass* pass = normalMapperMat->getTechnique(0)->getPass(0);
+        TextureUnitState* texUnit = pass->getTextureUnitState(0);
+        texUnit->setTexture(m_heightMapTex);
 
-        /*Ogre::TextureGpu *tmpRtt = TerraSharedResources::getTempTexture(
-            "TMP NormalMapTex_", getId(), m_sharedResources, TerraSharedResources::TmpNormalMap,
-            m_normalMapTex, TextureFlags::RenderToTexture | TextureFlags::AllowAutomipmaps );*/
-
-        MaterialPtr normalMapperMat = MaterialManager::getSingleton().load(
-                    "Terra/GpuNormalMapper",
-                    ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME ).
-                staticCast<Material>();
-        Pass *pass = normalMapperMat->getTechnique(0)->getPass(0);
-        TextureUnitState *texUnit = pass->getTextureUnitState(0);
-        texUnit->setTexture( m_heightMapTex );
-
-        //Normalize vScale for better precision in the shader math
-        const Vector3 vScale = Vector3( m_xzRelativeSize.x, m_heightUnormScaled, m_xzRelativeSize.y ).normalisedCopy();
-
+        // Normalize vScale for better precision in the shader math
+        const Vector3 vScale =
+            Vector3(m_xzRelativeSize.x, m_heightUnormScaled, m_xzRelativeSize.y).normalisedCopy();
 
         GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
-        psParams->setNamedConstant( "heightMapResolution", Vector4( static_cast<Real>( m_width ),
-                                                                    static_cast<Real>( m_depth ),
-                                                                    1, 1 ) );
-        psParams->setNamedConstant( "vScale", vScale );
+        psParams->setNamedConstant(
+            "heightMapResolution",
+            Vector4(static_cast<Real>(m_width), static_cast<Real>(m_depth), 1, 1));
+        psParams->setNamedConstant("vScale", vScale);
 
-        CompositorChannelVec finalTargetChannels( 1, CompositorChannel() );
-        finalTargetChannels[0] = m_normalMapTex;  /*tmpRtt*/;
+        CompositorChannelVec finalTargetChannels(1, CompositorChannel());
+        finalTargetChannels[0] = m_normalMapTex;
 
         if (nullptr == mNormalMapCamera)
         {
@@ -476,27 +466,16 @@ namespace Ogre
         if (nullptr == mNormalMapperWorkspace)
         {
             const IdString workspaceName = m_heightMapTex->getPixelFormat() == PFG_R16_UINT
-                                           ? "Terra/GpuNormalMapperWorkspaceU16"
-                                           : "Terra/GpuNormalMapperWorkspace";
+                ? "Terra/GpuNormalMapperWorkspaceU16"
+                : "Terra/GpuNormalMapperWorkspace";
             mNormalMapperWorkspace = m_compositorManager->addWorkspace(
-                mManager, finalTargetChannels, mNormalMapCamera, workspaceName, false );
-			
+                mManager, finalTargetChannels, mNormalMapCamera, workspaceName, false);
+
         }
 
         mNormalMapperWorkspace->_beginUpdate(true);
         mNormalMapperWorkspace->_update();
         mNormalMapperWorkspace->_endUpdate(true);
-
-        // mManager->getDestinationRenderSystem()->flushTextureCopyOperations();
-
-        // Note: Using tmpRtt, updateHeightMap will crash when using mNormalMapperWorkspace->_beginUpdate(true);, because it uses tmpRtt!
-       /* for( uint8 i = 0u; i < m_normalMapTex->getNumMipmaps(); ++i )
-        {
-            tmpRtt->copyTo( m_normalMapTex, m_normalMapTex->getEmptyBox( i ), i,
-                            tmpRtt->getEmptyBox( i ), i );
-        }
-        
-        TerraSharedResources::destroyTempTexture( m_sharedResources, tmpRtt );*/
     }
     //-----------------------------------------------------------------------------------
     void Terra::destroyNormalTexture(void)
@@ -557,8 +536,8 @@ namespace Ogre
         m_blendWeightStagingTexture->stopMapRegion();
         m_blendWeightStagingTexture->upload(texBox, m_blendWeightTex, 0);
 
-        if (!m_blendWeightTex->isDataReady())
-            m_blendWeightTex->notifyDataIsReady();
+       //  if (!m_blendWeightTex->isDataReady())
+         //    m_blendWeightTex->notifyDataIsReady();
 
         const uint32 rowAlignment = 4u;
         const size_t totalBytes = PixelFormatGpuUtils::calculateSizeBytes(m_blendWeightTex->getWidth(), m_blendWeightTex->getHeight(),
@@ -619,8 +598,8 @@ namespace Ogre
         m_blendWeightStagingTexture->stopMapRegion();
 
         m_blendWeightStagingTexture->upload(texBox, m_blendWeightTex, 0);
-        if (!m_blendWeightTex->isDataReady())
-            m_blendWeightTex->notifyDataIsReady();
+        // if (!m_blendWeightTex->isDataReady())
+         //    m_blendWeightTex->notifyDataIsReady();
 
         m_blendWeightImage = image;
 
@@ -1419,7 +1398,7 @@ namespace Ogre
         textureManager->removeStagingTexture(stagingTexture);
         stagingTexture = 0;
 
-        m_heightMapTex->notifyDataIsReady();
+        // m_heightMapTex->notifyDataIsReady();
 
         updateHeightTextures();
     }

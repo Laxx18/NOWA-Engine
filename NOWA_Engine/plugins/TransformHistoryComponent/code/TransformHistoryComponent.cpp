@@ -63,8 +63,6 @@ namespace NOWA
 
 	bool TransformHistoryComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &TransformHistoryComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -129,6 +127,8 @@ namespace NOWA
 	bool TransformHistoryComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TransformHistoryComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &TransformHistoryComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 
 		return true;
 	}

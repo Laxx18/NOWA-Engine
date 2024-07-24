@@ -1682,14 +1682,10 @@ namespace NOWA
 	{
 		if (true == this->useSplitScreen)
 		{
-#if 1
+#if 0
 			pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
 
 			Ogre::CompositorPassDef::ViewportRect rect;
-
-			// pass->setAllLoadActions(Ogre::LoadAction::Load);
-			pass->setAllStoreActions(Ogre::StoreAction::Store);
-
 			Ogre::Vector4 viewportRect = this->viewportRect->getVector4();
 
 			rect.mVpLeft = viewportRect.x;
@@ -1705,6 +1701,14 @@ namespace NOWA
 
 
 #endif
+
+			// pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
+			// pass->setAllLoadActions(Ogre::LoadAction::Load);
+
+			pass->mProfilingId += "_" + Ogre::StringConverter::toString(this->cameraComponent->getEyeId());
+
+			pass->setAllStoreActions(Ogre::StoreAction::Store);
+
 			if (pass->getType() == Ogre::CompositorPassType::PASS_CLEAR)
 			{
 				// Gets executed on the first eye
@@ -1744,9 +1748,9 @@ namespace NOWA
 				// pass->mExecutionMask = this->executionMask;
 				// pass->mViewportModifierMask = this->viewportModifierMask;
 
-				pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
+				// pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
 				// Don't be affected by the modifier, apply to the whole screen
-				pass->mViewportModifierMask = 0x00;
+				// pass->mViewportModifierMask = 0x00;
 
 				// Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 				// passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::FrustumCorners::CAMERA_DIRECTION;
@@ -3356,12 +3360,17 @@ namespace NOWA
 					{
 						// Clear Pass
 						{
+							Ogre::CompositorPassClearDef* passClear;
 							auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
-							Ogre::CompositorPassClearDef* passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
-							passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
-							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+							passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
+
+							if (false == this->useSplitScreen)
+							{
+								passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+								passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
+								passClear->mStoreActionDepth = Ogre::StoreAction::Store;
+								passClear->mStoreActionStencil = Ogre::StoreAction::Store;
+							}
 							
 							passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
 
@@ -3385,16 +3394,19 @@ namespace NOWA
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
 
-						Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
-						
-						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-						passScene->mClearColour[0] = color;
+						if (false == this->useSplitScreen)
+						{
+							Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
 
-						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
+							passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+							passScene->mClearColour[0] = color;
 
-						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
-						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+							// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
+
+							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
+							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
+						}
 						
 
 						// passScene->mFirstRQ = 10;
@@ -3407,6 +3419,7 @@ namespace NOWA
 						}
 
 						passScene->mIncludeOverlays = false;
+						passScene->mUpdateLodLists = true;
 
 						//https://forums.ogre3d.org/viewtopic.php?t=93636
 						//https://forums.ogre3d.org/viewtopic.php?t=94748

@@ -207,7 +207,16 @@ void DesignState::createScene(void)
 		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 	#endif
 	// Create the SceneManager, in this case a generic one
-	this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "ExampleSMInstance");
+
+	if (NOWA::AppStateManager::INTERPOLATED == NOWA::AppStateManager::getSingletonPtr()->getGameLoopMode())
+	{
+		this->sceneManager = Ogre::Root::getSingletonPtr()->createSceneManager("TransformableSceneManager", numThreads, "NOWA_SceneManager");
+	}
+	else
+	{
+		this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
+	}
+
 	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
 
 	// http://www.ogre3d.org/2016/01/01/ogre-progress-report-december-2015

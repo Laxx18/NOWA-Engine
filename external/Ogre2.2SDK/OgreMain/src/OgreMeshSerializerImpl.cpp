@@ -65,8 +65,8 @@ namespace Ogre
         //---------------------------------------------------------------------
         void MeshSerializerImpl::exportMesh( const Mesh *pMesh, DataStreamPtr stream, Endian endianMode )
         {
-            LogManager::getSingleton().logMessage( "MeshSerializer writing mesh data to stream " +
-                                                   stream->getName() + "..." );
+           //  LogManager::getSingleton().logMessage( "MeshSerializer writing mesh data to stream " +
+                                                  //  stream->getName() + "..." );
 
             // Decide on endian mode
             determineEndianness( endianMode );
@@ -88,15 +88,15 @@ namespace Ogre
             }
 
             writeFileHeader();
-            LogManager::getSingleton().logMessage( "File header written." );
+           //  LogManager::getSingleton().logMessage( "File header written." );
 
-            LogManager::getSingleton().logMessage( "Writing mesh data..." );
+           //  LogManager::getSingleton().logMessage( "Writing mesh data..." );
             pushInnerChunk( mStream );
             writeMesh( pMesh );
             popInnerChunk( mStream );
-            LogManager::getSingleton().logMessage( "Mesh data exported." );
+           //  LogManager::getSingleton().logMessage( "Mesh data exported." );
 
-            LogManager::getSingleton().logMessage( "MeshSerializer export successful." );
+           //  LogManager::getSingleton().logMessage( "MeshSerializer export successful." );
         }
         //---------------------------------------------------------------------
         void MeshSerializerImpl::importMesh( DataStreamPtr &stream, Mesh *pMesh,
@@ -152,24 +152,24 @@ namespace Ogre
                 // Write Submeshes
                 for( unsigned i = 0; i < pMesh->getNumSubMeshes(); ++i )
                 {
-                    LogManager::getSingleton().logMessage( "Writing submesh..." );
+                    ////  LogManager::getSingleton().logMessage( "Writing submesh..." );
                     writeSubMesh( pMesh->getSubMesh( i ) );
-                    LogManager::getSingleton().logMessage( "Submesh exported." );
+                    ////  LogManager::getSingleton().logMessage( "Submesh exported." );
                 }
 
                 // Write skeleton info if required
                 if( pMesh->hasSkeleton() )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting skeleton link..." );
+                    ////  LogManager::getSingleton().logMessage( "Exporting skeleton link..." );
                     // Write skeleton link
                     writeSkeletonLink( pMesh->getSkeletonName() );
-                    LogManager::getSingleton().logMessage( "Skeleton link exported." );
+                    ////  LogManager::getSingleton().logMessage( "Skeleton link exported." );
 
                     // Write bone assignments
                     if( !pMesh->mBoneAssignments.empty() )
                     {
-                        LogManager::getSingleton().logMessage(
-                            "Exporting shared geometry bone assignments..." );
+                        // LogManager::getSingleton().logMessage(
+                           //  "Exporting shared geometry bone assignments..." );
 
                         Mesh::VertexBoneAssignmentList::const_iterator vi;
                         for( vi = pMesh->mBoneAssignments.begin(); vi != pMesh->mBoneAssignments.end();
@@ -178,8 +178,8 @@ namespace Ogre
                             writeMeshBoneAssignment( vi->second );
                         }
 
-                        LogManager::getSingleton().logMessage(
-                            "Shared geometry bone assignments exported." );
+                        // LogManager::getSingleton().logMessage(
+                        //  "Shared geometry bone assignments exported." );
                     }
                 }
 
@@ -187,28 +187,28 @@ namespace Ogre
                 // Write LOD data if any
                 if( pMesh->getNumLodLevels() > 1 )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting LOD information...." );
+                    ////  LogManager::getSingleton().logMessage( "Exporting LOD information...." );
                     writeLodLevel( pMesh );
-                    LogManager::getSingleton().logMessage( "LOD information exported." );
+                    ////  LogManager::getSingleton().logMessage( "LOD information exported." );
                 }
 #endif
 
                 // Write bounds information
-                LogManager::getSingleton().logMessage( "Exporting bounds information...." );
+                ////  LogManager::getSingleton().logMessage( "Exporting bounds information...." );
                 writeBoundsInfo( pMesh );
-                LogManager::getSingleton().logMessage( "Bounds information exported." );
+                ////  LogManager::getSingleton().logMessage( "Bounds information exported." );
 
                 // Write submesh name table
-                LogManager::getSingleton().logMessage( "Exporting submesh name table..." );
+               //  LogManager::getSingleton().logMessage( "Exporting submesh name table..." );
                 writeSubMeshNameTable( pMesh );
-                LogManager::getSingleton().logMessage( "Submesh name table exported." );
+               //  LogManager::getSingleton().logMessage( "Submesh name table exported." );
 
                 // Write edge lists
                 if( pMesh->isEdgeListBuilt() )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting edge lists..." );
+                   //  LogManager::getSingleton().logMessage( "Exporting edge lists..." );
                     writeEdgeList( pMesh );
-                    LogManager::getSingleton().logMessage( "Edge lists exported" );
+                   //  LogManager::getSingleton().logMessage( "Edge lists exported" );
                 }
 
                 // Write morph animation
@@ -315,7 +315,7 @@ namespace Ogre
                 {
                     writeSubMeshBoneAssignment( vi->second );
                 }
-                LogManager::getSingleton().logMessage( "Dedicated geometry bone assignments exported." );
+               //  LogManager::getSingleton().logMessage( "Dedicated geometry bone assignments exported." );
             }
             popInnerChunk( mStream );
         }
@@ -331,12 +331,12 @@ namespace Ogre
                 if( !has_extremes )
                 {
                     has_extremes = true;
-                    LogManager::getSingleton().logMessage( "Writing submesh extremes..." );
+                   //  LogManager::getSingleton().logMessage( "Writing submesh extremes..." );
                 }
                 writeSubMeshExtremes( (uint16)i, sm );
             }
-            if( has_extremes )
-                LogManager::getSingleton().logMessage( "Extremes exported." );
+           //  if( has_extremes )
+               //  LogManager::getSingleton().logMessage( "Extremes exported." );
         }
         size_t MeshSerializerImpl::calcExtremesSize( const Mesh *pMesh )
         {
@@ -385,7 +385,7 @@ namespace Ogre
             size_t chunkSize;
             AliasTextureNamePairList::const_iterator i;
 
-            LogManager::getSingleton().logMessage( "Exporting submesh texture aliases..." );
+           //  LogManager::getSingleton().logMessage( "Exporting submesh texture aliases..." );
 
             // iterate through texture aliases and write them out as a chunk
             for( i = s->mTextureAliases.begin(); i != s->mTextureAliases.end(); ++i )
@@ -400,7 +400,7 @@ namespace Ogre
                 writeString( i->second );
             }
 
-            LogManager::getSingleton().logMessage( "Submesh texture aliases exported." );
+           //  LogManager::getSingleton().logMessage( "Submesh texture aliases exported." );
         }
 
         //---------------------------------------------------------------------
@@ -2322,9 +2322,9 @@ namespace Ogre
             for( unsigned short a = 0; a < pMesh->getNumAnimations(); ++a )
             {
                 Animation *anim = pMesh->getAnimation( a );
-                LogManager::getSingleton().logMessage( "Exporting animation " + anim->getName() );
+               //  LogManager::getSingleton().logMessage( "Exporting animation " + anim->getName() );
                 writeAnimation( anim );
-                LogManager::getSingleton().logMessage( "Animation exported." );
+               //  LogManager::getSingleton().logMessage( "Animation exported." );
             }
             popInnerChunk( mStream );
         }
@@ -2891,18 +2891,18 @@ namespace Ogre
                 // Write Submeshes
                 for( unsigned i = 0; i < pMesh->getNumSubMeshes(); ++i )
                 {
-                    LogManager::getSingleton().logMessage( "Writing submesh..." );
+                   //  LogManager::getSingleton().logMessage( "Writing submesh..." );
                     writeSubMesh( pMesh->getSubMesh( i ) );
-                    LogManager::getSingleton().logMessage( "Submesh exported." );
+                   //  LogManager::getSingleton().logMessage( "Submesh exported." );
                 }
 
                 // Write skeleton info if required
                 if( pMesh->hasSkeleton() )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting skeleton link..." );
+                   //  LogManager::getSingleton().logMessage( "Exporting skeleton link..." );
                     // Write skeleton link
                     writeSkeletonLink( pMesh->getSkeletonName() );
-                    LogManager::getSingleton().logMessage( "Skeleton link exported." );
+                   //  LogManager::getSingleton().logMessage( "Skeleton link exported." );
 
                     // Write bone assignments
                     if( !pMesh->mBoneAssignments.empty() )
@@ -2926,28 +2926,28 @@ namespace Ogre
                 // Write LOD data if any
                 if( pMesh->getNumLodLevels() > 1 )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting LOD information...." );
+                   //  LogManager::getSingleton().logMessage( "Exporting LOD information...." );
                     writeLodLevel( pMesh );
-                    LogManager::getSingleton().logMessage( "LOD information exported." );
+                   //  LogManager::getSingleton().logMessage( "LOD information exported." );
                 }
 #endif
 
                 // Write bounds information
-                LogManager::getSingleton().logMessage( "Exporting bounds information...." );
+               //  LogManager::getSingleton().logMessage( "Exporting bounds information...." );
                 writeBoundsInfo( pMesh );
-                LogManager::getSingleton().logMessage( "Bounds information exported." );
+               //  LogManager::getSingleton().logMessage( "Bounds information exported." );
 
                 // Write submesh name table
-                LogManager::getSingleton().logMessage( "Exporting submesh name table..." );
+               //  LogManager::getSingleton().logMessage( "Exporting submesh name table..." );
                 writeSubMeshNameTable( pMesh );
-                LogManager::getSingleton().logMessage( "Submesh name table exported." );
+               //  LogManager::getSingleton().logMessage( "Submesh name table exported." );
 
                 // Write edge lists
                 if( pMesh->isEdgeListBuilt() )
                 {
-                    LogManager::getSingleton().logMessage( "Exporting edge lists..." );
+                   //  LogManager::getSingleton().logMessage( "Exporting edge lists..." );
                     writeEdgeList( pMesh );
-                    LogManager::getSingleton().logMessage( "Edge lists exported" );
+                   //  LogManager::getSingleton().logMessage( "Edge lists exported" );
                 }
 
                 // Write morph animation

@@ -69,9 +69,6 @@ namespace NOWA
 
 	bool PickerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -126,6 +123,9 @@ namespace NOWA
 	bool PickerComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PickerComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 
 		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));

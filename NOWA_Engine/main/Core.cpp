@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "Core.h"
+#include "OgreCustom.h"
 
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsPbs.h"
@@ -704,7 +705,7 @@ namespace NOWA
 		#endif*/
 		//this->root->clearEventTimes();
 
-		// create a dummy scene manager and camera, to show the state when loading resources
+		// Creates a dummy scene manager and camera, to show the state when loading resources
 		Ogre::SceneManager* dummySceneManager = this->root->createSceneManager(Ogre::ST_GENERIC, 1, "DummyScene");
 		Ogre::Camera* dummyCamera = dummySceneManager->createCamera("DummyCamera");
 
@@ -729,10 +730,10 @@ namespace NOWA
 		}
 		this->loadCustomConfiguration(strXMLConfigName.c_str());
 
-		// Set initial mouse clipping size
+		// Sets initial mouse clipping size
 		this->windowResized(this->renderWindow);
 
-		// Register as a Window listener
+		// Registers as a Window listener
 		Ogre::WindowEventUtilities::addWindowEventListener(this->renderWindow, this);
 		// this->root->getRenderSystem()->addListener(this);
 
@@ -743,9 +744,13 @@ namespace NOWA
 		dummySceneManager->addRenderQueueListener(this->overlaySystem);
 		dummySceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
 
-		// Add factories
+		// Adds factories
 		this->root->addMovableObjectFactory(OGRE_NEW MovableTextFactory());
 		this->root->addMovableObjectFactory(OGRE_NEW Ogre::v1::Rectangle2DFactory());
+
+		// Registers the custom SceneManagerFactory
+		TransformableSceneManagerFactory* transformableSceneManagerFactory = new TransformableSceneManagerFactory();
+		Ogre::SceneManagerEnumerator::getSingletonPtr()->addFactory(transformableSceneManagerFactory);
 
 		Ogre::String resourceGroupName;
 		Ogre::String type;

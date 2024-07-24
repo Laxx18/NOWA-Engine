@@ -42,8 +42,6 @@ namespace NOWA
 		maximumBounds(Ogre::Vector3::ZERO),
 		cameraComponent(nullptr),
 		terraComponent(nullptr),
-		running(false),
-		readyToUpdate(false),
 		timeSinceLastUpdate(0.0f),
 		activated(new Variant(MinimapComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(MinimapComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -98,9 +96,6 @@ namespace NOWA
 
 	bool MinimapComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MinimapComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MinimapComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -186,6 +181,9 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MinimapComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MinimapComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MinimapComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+
 		this->textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
 
 		// Removes complexity, by setting default direction to -z, which is Ogre default.
@@ -193,6 +191,30 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrDefaultDirection())->setVisible(false);
 
 		return true;
+	}
+
+	void MinimapComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		if (false == notSimulating && nullptr != this->targetGameObject)
+		{
+			this->timeSinceLastUpdate += dt;
+
+			if (this->timeSinceLastUpdate >= 0.25f)
+			{
+				if (true == this->useFogOfWar->getBool())
+				{
+					this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
+				}
+
+				this->timeSinceLastUpdate = 0.0f;
+			}
+
+			if (false == this->wholeSceneVisible->getBool())
+			{
+				this->updateMinimapCamera(this->targetGameObject->getPosition());
+				this->scrollMinimap(this->targetGameObject->getPosition());
+			}
+		}
 	}
 
 	bool MinimapComponent::connect(void)
@@ -204,10 +226,6 @@ namespace NOWA
 		}
 
 		this->setActivated(this->activated->getBool());
-
-		// Start the thread to fill the texture
-		this->running = true;
-		// this->fillThread = std::thread(&MinimapComponent::updateFogOfWarThreadFunc, this);
 		
 		return true;
 	}
@@ -217,18 +235,6 @@ namespace NOWA
 		this->targetGameObject = nullptr;
 		this->cameraComponent = nullptr;
 		this->terraComponent = nullptr;
-
-		// Stop the running task
-		this->running = false;
-
-		// Notify the thread
-		this->condVar.notify_all();
-
-		// Wait for the thread to complete
-		if (true == this->fillThread.joinable())
-		{
-			this->fillThread.join();
-		}
 
 		this->timeSinceLastUpdate = 0.0f;
 
@@ -262,37 +268,6 @@ namespace NOWA
 	void MinimapComponent::onOtherComponentAdded(unsigned int index)
 	{
 		
-	}
-	
-	void MinimapComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (false == notSimulating)
-		{
-#if 1
-			this->timeSinceLastUpdate += dt;
-
-			if (this->timeSinceLastUpdate >= 0.25f)
-			{
-				if (nullptr != this->targetGameObject && true == this->useFogOfWar->getBool())
-				{
-					this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
-				}
-				this->timeSinceLastUpdate = 0.0f;
-			}
-#else
-			{
-				// std::lock_guard<std::mutex> lock(this->mutex);
-				this->readyToUpdate = true;
-			}
-			this->condVar.notify_all();
-#endif
-			/*
-			this->workspace->_validateFinalTarget();
-			this->workspace->_beginUpdate(true);
-			this->workspace->_update();
-			this->workspace->_endUpdate(true);
-			*/
-		}
 	}
 
 	void MinimapComponent::setupMinimapWithFogOfWar(void)
@@ -338,7 +313,13 @@ namespace NOWA
 
 		if (true == this->wholeSceneVisible->getBool())
 		{
+			this->cameraComponent->getOwner()->setDynamic(true);
 			this->adjustMinimapCamera();
+			this->cameraComponent->getOwner()->setDynamic(false);
+		}
+		else
+		{
+			this->cameraComponent->getOwner()->setDynamic(true);
 		}
 
 		if (nullptr == this->minimapTexture)
@@ -380,6 +361,15 @@ namespace NOWA
 		this->externalChannels[0] = this->minimapTexture;
 
 		this->workspace = compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->minimapWorkspaceName, true);
+	
+#if 1
+		// Test 
+		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+		Ogre::Hlms* hlms = hlmsManager->getHlms(Ogre::HLMS_USER3);
+		OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(hlms));
+		this->workspace->addListener(new Ogre::TerraWorkspaceListener((Ogre::HlmsTerra*)hlms));
+#endif
+
 
 		// Create MyGUI widget for the minimap
 		if (nullptr == this->minimapWidget)
@@ -558,21 +548,14 @@ namespace NOWA
 			spotlightDirection *= Ogre::Vector3(1.0f, 0.0f, 1.0f);
 		}
 
-		/*if (this->fogOfWarTexture->getResidencyStatus() != Ogre::GpuResidency::Resident)
-		{
-			this->fogOfWarTexture->_transitionTo(Ogre::GpuResidency::Resident, (Ogre::uint8*)0);
-			this->fogOfWarTexture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-		}*/
-
 		this->fogOfWarStagingTexture->startMapRegion();
-
 		Ogre::TextureBox texBox = this->fogOfWarStagingTexture->mapRegion(this->fogOfWarTexture->getWidth(), this->fogOfWarTexture->getHeight(), 1u, 1u, this->fogOfWarTexture->getPixelFormat());
 
 		// Assuming a 2D texture, the z-coordinate will be 0
 		size_t z = 0;
 
-		Ogre::Vector2 normalizedPosition = normalizePosition(position);
-		Ogre::Vector2 textureCoordinates = mapToTextureCoordinates(normalizedPosition, texSize, texSize);
+		Ogre::Vector2 normalizedPosition = this->normalizePosition(position);
+		Ogre::Vector2 textureCoordinates = this->mapToTextureCoordinates(normalizedPosition, texSize, texSize);
 
 		const size_t bytesPerPixel = texBox.bytesPerPixel;
 
@@ -673,29 +656,45 @@ namespace NOWA
 
 		this->fogOfWarStagingTexture->stopMapRegion();
 		this->fogOfWarStagingTexture->upload(texBox, this->fogOfWarTexture, 0, 0, 0);
-
-		// this->fogOfWarTexture->notifyDataIsReady();
 	}
-	void MinimapComponent::updateFogOfWarThreadFunc(void)
+
+	void MinimapComponent::scrollMinimap(const Ogre::Vector3& position)
 	{
-		if (nullptr != this->targetGameObject && true == this->useFogOfWar->getBool())
+		unsigned int texSize = this->textureSize->getUInt();
+
+		Ogre::Vector2 normalizedPosition = this->normalizePosition(position);
+		Ogre::Vector2 textureCoordinates = this->mapToTextureCoordinates(normalizedPosition, texSize, texSize);
+
+
+		// Calculate the rectangle for the ImageBox
+		int rectWidth = this->minimapWidget->getWidth();
+		int rectHeight = this->minimapWidget->getHeight();
+
+		// Assuming we want to center the sceneNodePosition in the ImageBox
+		int left = static_cast<int>(textureCoordinates.x) - rectWidth / 2;
+		int top = static_cast<int>(textureCoordinates.y) - rectHeight / 2;
+
+		// Ensure the rectangle is within texture bounds
+		if (left < 0)
 		{
-			while (true == this->running)
-			{
-				std::unique_lock<std::mutex> lock(this->mutex);
-				this->condVar.wait(lock, [this]() { return this->readyToUpdate || !this->running; });
-
-				if (false == this->running)
-				{
-					break;
-				}
-
-				this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
-
-				std::this_thread::sleep_for(std::chrono::milliseconds(16)); // Sleep for 16ms to simulate 60fps update rate
-				this->readyToUpdate = false;
-			}
+			left = 0;
 		}
+		if (top < 0)
+		{
+			top = 0;
+		}
+		if (left + rectWidth > texSize)
+		{
+			left = texSize - rectWidth;
+		}
+		if (top + rectHeight > texSize)
+		{
+			top = texSize - rectHeight;
+		}
+
+		// Set the new image coordinates in the ImageBox
+		MyGUI::IntCoord imageCoord(left, top, rectWidth, rectHeight);
+		this->minimapWidget->setImageCoord(imageCoord);
 	}
 
 #if 0
@@ -1180,6 +1179,15 @@ namespace NOWA
 		{
 			this->cameraComponent->setCameraDegreeOrientation(Ogre::Vector3(-90.0f, 90.0f, -180.0f));
 		}*/
+	}
+
+	void MinimapComponent::updateMinimapCamera(const Ogre::Vector3& position)
+	{
+		// Set the camera position above the scene node
+		this->cameraComponent->setCameraPosition(Ogre::Vector3(position.x, position.y + 5.0f, position.z));
+
+		// Orient the camera to look down at the scene node
+		this->cameraComponent->setCameraDegreeOrientation(Ogre::Vector3(-90.0f, 90.0f, -90.0f));
 	}
 
 	bool MinimapComponent::saveDiscoveryState(void)

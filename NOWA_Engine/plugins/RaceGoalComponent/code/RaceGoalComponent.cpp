@@ -246,14 +246,19 @@ namespace NOWA
 			this->pPath->setRepeat(true);
 		}
 
-		if (nullptr == this->countdownTimer)
+		if (true == this->useCountdown->getBool())
 		{
-			this->countdownTimer = new RaceGoalComponent::CountdownTimer(this->gameObjectPtr->getLuaScript(), this->onCountdownFunctionName->getString());
+			if (nullptr == this->countdownTimer)
+			{
+				this->countdownTimer = new RaceGoalComponent::CountdownTimer(this->gameObjectPtr->getLuaScript(), this->onCountdownFunctionName->getString());
+			}
+			this->countdownTimer->activate();
 		}
 
 		if (true == this->useCountdown->getBool())
 		{
-			this->countdownTimer->activate();
+			boost::shared_ptr<EventDataCountdownActive> eventDataCountdownActive(new EventDataCountdownActive(true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataCountdownActive);
 		}
 
 		this->setOnFeedbackRaceFunctionName(this->onFeedbackRaceFunctionName->getString());
@@ -384,6 +389,13 @@ namespace NOWA
 			this->pPath->clear();
 			this->pPath->setRepeat(true);
 		}
+
+		if (true == this->useCountdown->getBool())
+		{
+			boost::shared_ptr<EventDataCountdownActive> eventDataCountdownActive(new EventDataCountdownActive(false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataCountdownActive);
+		}
+
 		if (nullptr != this->countdownTimer)
 		{
 			delete this->countdownTimer;
@@ -453,12 +465,14 @@ namespace NOWA
 			if (true == this->useCountdown->getBool())
 			{
 				this->countdownTimer->update();
+
+				// Only drive if the countdown is over
+				this->vehicleComponent->setCanDrive(!this->countdownTimer->getIsActive());
 			}
 
-			// Only drive if the countdown is over
-			this->vehicleComponent->setCanDrive(!this->countdownTimer->getIsActive());
+			
 
-			if (false == this->countdownTimer->getIsActive())
+			if (nullptr == this->countdownTimer || false == this->countdownTimer->getIsActive())
 			{
 				this->lapTimeSec += dt;
 

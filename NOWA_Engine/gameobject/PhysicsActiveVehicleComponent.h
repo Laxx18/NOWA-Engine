@@ -224,6 +224,10 @@ namespace NOWA
 		Ogre::Vector3 getVehicleForce(void) const;
 
 		void setCanDrive(bool canDrive);
+
+		void applyWheelie(Ogre::Real strength);
+
+		void applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength);
 	public:
 		static const Ogre::String AttrOnSteerAngleChangedFunctionName(void) { return "On Steering Angle Function Name"; }
 		static const Ogre::String AttrOnMotorForceChangedFunctionName(void) { return "On Motor Force Function Name"; }

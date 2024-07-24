@@ -621,7 +621,6 @@ namespace Ogre
             allow the SceneManager to omit it if required. A return value of false
             skips this pass.
         */
-        virtual_l2 bool validatePassForRendering( const Pass *pass );
 
         enum BoxPlane
         {

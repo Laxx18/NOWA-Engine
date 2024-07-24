@@ -80,8 +80,6 @@ namespace NOWA
 
 	bool AreaOfInterestComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -133,6 +131,8 @@ namespace NOWA
 	bool AreaOfInterestComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AreaOfInterestComponent] Init area of interest component for game object: " + this->gameObjectPtr->getName());
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 
 		this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(this->gameObjectPtr->getPosition(), this->radius->getReal()));
 

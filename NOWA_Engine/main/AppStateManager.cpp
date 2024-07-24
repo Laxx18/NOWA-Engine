@@ -166,6 +166,10 @@ namespace NOWA
 			{
 				this->adaptiveFPSRendering();
 			}
+			else if (GameLoopMode::INTERPOLATED == this->gameLoopMode)
+			{
+				this->interpolatedRendering();
+			}
 			else
 			{
 				this->restrictedInterpolatedFPSRendering();
@@ -201,6 +205,11 @@ namespace NOWA
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppStateManager] Error: Cannot start application state: '" + stateName
 				+ "' because it does not exist.\n", "NOWA");
 		}
+	}
+
+	AppStateManager::GameLoopMode AppStateManager::getGameLoopMode(void) const
+	{
+		return this->gameLoopMode;
 	}
 
 	AppState* AppStateManager::findByName(const Ogre::String& stateName)
@@ -391,7 +400,7 @@ namespace NOWA
 
 		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
 		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.01f);
+		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
 
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
@@ -538,6 +547,112 @@ namespace NOWA
 
 			// Keeps track of how many frames are done this second
 			frameCount++;
+		}
+	}
+
+	void AppStateManager::interpolatedRendering(void)
+	{
+		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+
+		// Default 30 ticks per second
+		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
+
+		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+
+		Ogre::Real monitorRefreshRate = static_cast<Ogre::Real>(Core::getSingletonPtr()->getScreenRefreshRate());
+
+		if (0 == monitorRefreshRate)
+		{
+			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
+		}
+
+		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
+		{
+			monitorRefreshRate = static_cast<Ogre::Real>(this->desiredUpdates);
+		}
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppStateManager]: Started interpolated rendering with logic refresh rate: " + 
+														Ogre::StringConverter::toString(simulationTickCount) + " and graphics refresh rate: " + Ogre::StringConverter::toString(monitorRefreshRate));
+
+		using clock = std::chrono::high_resolution_clock;
+		using duration = std::chrono::duration<float>;
+
+		auto previousTime = clock::now();
+		Ogre::Real logicDeltaTime = 1.0f / simulationTickCount;
+		const Ogre::Real framesDt = 1.0f / monitorRefreshRate;
+		Ogre::Real accumulator = 0.0f;
+
+		while (false == this->bShutdown)
+		{
+			auto currentTime = clock::now();
+			duration elapsedTime = currentTime - previousTime;
+			previousTime = currentTime;
+			accumulator += elapsedTime.count();
+
+			Core::getSingletonPtr()->updateFrameStats(logicDeltaTime);
+
+			Ogre::WindowEventUtilities::messagePump();
+			if (true == renderWindow->isClosed())
+			{
+				this->bShutdown = true;
+			}
+
+			InputDeviceCore::getSingletonPtr()->capture(logicDeltaTime);
+
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, " in");
+			while (accumulator >= logicDeltaTime)
+			{
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "accumulator: " + Ogre::StringConverter::toString(accumulator));
+				if (false == this->bShutdown)
+				{
+					// update input devices
+					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+					{
+						// Updates the active state
+						this->activeStateStack.back()->update(logicDeltaTime);
+					}
+
+					// Update core
+					Core::getSingletonPtr()->update(logicDeltaTime);
+
+					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+					{
+						this->activeStateStack.back()->lateUpdate(logicDeltaTime);
+					}
+
+					// Update the renderwindow if the window is not active too, for server/client analysis
+					if (false == renderWindow->isVisible() && this->renderWhenInactive)
+					{
+						break;
+					}
+				}
+
+				accumulator -= logicDeltaTime;
+			}
+
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, " out");
+
+			Ogre::Real alpha = accumulator / logicDeltaTime;
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "alpha: " + Ogre::StringConverter::toString(alpha));
+			this->activeStateStack.back()->render(alpha);
+
+			// Controls the shown fps in game! If in DefaultConfig.xml set to 0, go with as many as frames as possible (adaptive)
+			if (0 == this->desiredUpdates)
+			{
+				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame();
+			}
+			else
+			{
+				// Else go with max this->desiredUpdates. E.g. if monitor has 144hz 1 / 144
+				// this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<Ogre::Real>(elapsedTime.count() / 1000000.0f));
+				// Ogre::Real framesDt = static_cast<Ogre::Real>(elapsedTime.count());
+
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "framesDt: " + Ogre::StringConverter::toString(framesDt));
+				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(framesDt);
+			}
 		}
 	}
 

@@ -477,6 +477,9 @@ namespace NOWA
 			delete this->worldLoaderCallback;
 			this->worldLoaderCallback = nullptr;
 		}
+
+		// Set the bounds, to have it in core for public access
+		Core::getSingletonPtr()->setCurrentWorldBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 	}
 
 	std::vector<unsigned long> DotSceneImportModule::parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName)
@@ -920,9 +923,6 @@ namespace NOWA
 		{
 			this->processNodes(pElement, nullptr, justSetValues);
 		}
-
-		// Set the bounds, to have it in core for public access
-		Core::getSingletonPtr()->setCurrentWorldBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 	}
 
 	void DotSceneImportModule::processResourceLocations(rapidxml::xml_node<>* xmlNode)

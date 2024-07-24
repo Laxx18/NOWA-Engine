@@ -110,18 +110,18 @@ Scene1_QuatBike_0_0["update"] = function(dt)
     
     -- F for wheelie
     if InputDeviceModule:isActionDown(NOWA_A_FLASH_LIGHT) then
-        physicsActiveVehicleComponent:applyOmegaForce(physicsActiveVehicleComponent:getOrientation():Inverse() * Vector3(0, 0, 2));
+        physicsActiveVehicleComponent:applyWheelie(2);
     end
     
     -- Drift jump (Space)
     --if InputDeviceModule:isActionPressed(NOWA_A_JUMP, dt, 0.2) then
     if InputDeviceModule:isActionDownAmount(NOWA_A_JUMP, dt, 0.2) then
-        physicsActiveVehicleComponent:applyForce(Vector3(0, 50000, 0));
-        
+
         if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
-            physicsActiveVehicleComponent:applyOmegaForce(Vector3(0, 2, 0));
+            physicsActiveVehicleComponent:applyDrift(true, 40000, 2);
+            
         elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
-            physicsActiveVehicleComponent:applyOmegaForce(Vector3(0, -2, 0));
+            physicsActiveVehicleComponent:applyDrift(false, 40000, 2);
         end
         
         if (animationBlender:isAnimationActive(AnimationBlender.ANIM_JUMP_START) == false) then

@@ -10,8 +10,7 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
-
-#include <thread>
+#include "OgreMain/include/Threading/OgreBarrier.h"
 
 namespace NOWA
 {
@@ -281,7 +280,7 @@ namespace NOWA
 
 		void updateFogOfWarTexture(const Ogre::Vector3& position, Ogre::Real radius);
 
-		void updateFogOfWarThreadFunc(void);
+		void scrollMinimap(const Ogre::Vector3& position);
 
 		// Ogre::TextureGpu* updateHeightMapTexture(Ogre::TextureGpu* texture, unsigned int width, unsigned int height);
 
@@ -292,6 +291,8 @@ namespace NOWA
 		Ogre::Vector2 mapToTextureCoordinates(const Ogre::Vector2& normalizedPosition, unsigned int textureWidth, unsigned int textureHeight);
 
 		void adjustMinimapCamera(void);
+
+		void updateMinimapCamera(const Ogre::Vector3& position);
 	private:
 		void deleteGameObjectDelegate(EventDataPtr eventData);
 		void handleUpdateBounds(EventDataPtr eventData);
@@ -322,12 +323,6 @@ namespace NOWA
 		std::vector<std::vector<bool>> discoveryState;
 
 		Ogre::Real timeSinceLastUpdate;
-
-		std::thread fillThread;
-		std::atomic<bool> running;
-		std::mutex mutex;
-		std::condition_variable condVar;
-		std::atomic<bool> readyToUpdate;
 
 		Variant* activated;
 		Variant* targetId;

@@ -1,3 +1,24 @@
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsPbs_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsPbs_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsUnlit_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsUnlit_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreMain_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreMain_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreMeshLodGenerator_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreMeshLodGenerator_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreOverlay_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreOverlay_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgrePlanarReflections_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgrePlanarReflections_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\Plugin_ParticleFX_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\Plugin_ParticleFX_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_Direct3D11_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_Direct3D11_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_GL3Plus_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_GL3Plus_d.lib" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_NULL_d.exp" ".\bin\Debug\libs"
+copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_NULL_d.lib" ".\bin\Debug\libs"
+
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsPbs_d.exp" ".\bin\Debug\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreHlmsPbs_d.lib" ".\bin\Debug\libs"
@@ -19,46 +40,30 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_GL3Plus_d.exp" ".\bin\
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_GL3Plus_d.lib" ".\bin\Debug\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_NULL_d.exp" ".\bin\Debug\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\RenderSystem_NULL_d.lib" ".\bin\Debug\libs"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreAtmosphere_d.exp" ".\bin\Debug\libs"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Debug\OgreAtmosphere_d.lib" ".\bin\Debug\libs"
 
 
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsPbs_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsPbs_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsPbs_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsUnlit_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsUnlit_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreHlmsUnlit_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMain_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMain_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMain_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMeshLodGenerator_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMeshLodGenerator_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreMeshLodGenerator_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreOverlay_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreOverlay_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreOverlay_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgrePlanarReflections_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgrePlanarReflections_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgrePlanarReflections_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Plugin_ParticleFX_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Plugin_ParticleFX_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Plugin_ParticleFX_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Remotery_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Remotery_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\Remotery_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_Direct3D11_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_Direct3D11_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_Direct3D11_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_GL3Plus_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_GL3Plus_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_GL3Plus_d.pdb" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_NULL_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_NULL_d.ilk" ".\bin\Debug"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\RenderSystem_NULL_d.pdb" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreAtmosphere_d.dll" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreAtmosphere_d.ilk" ".\bin\Debug"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Debug\OgreAtmosphere_d.pdb" ".\bin\Debug"
+
 
 
 
@@ -82,8 +87,6 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\RenderSystem_GL3Plus.exp" ".\bin\
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\RenderSystem_GL3Plus.lib" ".\bin\Release\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\RenderSystem_NULL.exp" ".\bin\Release\libs"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\RenderSystem_NULL.lib" ".\bin\Release\libs"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\OgreAtmosphere.exp" ".\bin\Release\libs"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\lib\Release\OgreAtmosphere.lib" ".\bin\Release\libs"
 
 
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\OgreHlmsPbs.dll" ".\bin\Release"
@@ -98,4 +101,13 @@ copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\Remotery.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\RenderSystem_Direct3D11.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\RenderSystem_GL3Plus.dll" ".\bin\Release"
 copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\RenderSystem_NULL.dll" ".\bin\Release"
-copy /b/v/y "E:\Ogre2.2SDK\VCBuild\bin\Release\OgreAtmosphere.dll" ".\bin\Release"
+
+
+robocopy "E:\Ogre2.2SDK\OgreMain" ".\external\Ogre2.2SDK\OgreMain" /E
+robocopy "E:\Ogre2.2SDK\Components" ".\external\Ogre2.2SDK\Components" /E
+robocopy "E:\Ogre2.2SDK\PlugIns" ".\external\Ogre2.2SDK\PlugIns" /E
+robocopy "E:\Ogre2.2SDK\RenderSystems" ".\external\Ogre2.2SDK\RenderSystems" /E
+robocopy "E:\Ogre2.2SDK\Samples" ".\external\Ogre2.2SDK\Samples" /E
+robocopy "E:\Ogre2.2SDK\VCBuild\include" ".\external\Ogre2.2SDK\VCBuild\include" /E
+
+

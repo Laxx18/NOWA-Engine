@@ -44,8 +44,6 @@ namespace NOWA
 
 	bool ReferenceComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ReferenceComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetId")
@@ -73,6 +71,8 @@ namespace NOWA
 	bool ReferenceComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ReferenceComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ReferenceComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 
 		return true;
 	}
