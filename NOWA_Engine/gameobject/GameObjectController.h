@@ -133,6 +133,12 @@ namespace NOWA
 		void lateUpdate(Ogre::Real dt, bool notSimulating = false);
 
 		/**
+		 * @brief		Rendres all game objects and its components. Whichs means, their interpolated transforms are applied.
+		 * @param[in]	alphat		The interpolation alpha.
+		 */
+		void render(Ogre::Real alpha);
+
+		/**
 		* @brief		Deletes the given game object ptr immediately.
 		* @param[in]	gameObjectPtr	The game object ptr to delete
 		*/

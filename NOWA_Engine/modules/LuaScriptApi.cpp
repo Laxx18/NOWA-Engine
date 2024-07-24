@@ -10899,14 +10899,15 @@ namespace NOWA
 		module(lua)
 		[
 			class_<PhysicsActiveVehicleComponent, PhysicsActiveComponent>("PhysicsActiveVehicleComponent")
-			// .def("getClassName", &PhysicsActiveVehicleComponent::getClassName)
 			.def("getParentClassName", &PhysicsActiveVehicleComponent::getParentClassName)
-			// .def("clone", &PhysicsActiveVehicleComponent::clone)
-			// .def("getClassId", &PhysicsActiveVehicleComponent::getClassId)
 			.def("getVehicleForce", &PhysicsActiveVehicleComponent::getVehicleForce)
+			.def("applyWheelie", &PhysicsActiveVehicleComponent::applyWheelie)
+			.def("applyDrift", &PhysicsActiveVehicleComponent::applyDrift)
 		];
 		AddClassToCollection("PhysicsActiveVehicleComponent", "class inherits PhysicsActiveComponent", "Derived class of PhysicsActiveVehicleComponent. It can be used to control a vehicle.");
 		AddClassToCollection("PhysicsActiveVehicleComponent", "Vector3 getVehicleForce()", "Gets current vehicle force.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyWheelie(number strength)", "Applies a wheelie stunt by putting up the front tires at the given strength.");
+		AddClassToCollection("PhysicsActiveVehicleComponent", "void applyDrift(boolean left, number strength, number steeringStrength)", "Applies a drift at the given strength (jump) and if left side, at the given steering strength and vice versa. Note: A high force strength is required to put the vehicle in the air, e.g. 50000NM.");
 
 		module(lua)
 		[

@@ -61,6 +61,7 @@ namespace NOWA
 		canSwitchBehavior(false),
 		behaviorType(PurePursuitComponent::NONE),
 		canDrive(true),
+		vehicleComponent(nullptr),
 		activated(new Variant(PurePursuitComponent::AttrActivated(), true, this->attributes)),
 		manuallyControlled(new Variant(PurePursuitComponent::AttrManuallyControlled(), false, this->attributes)),
 		waypointsCount(new Variant(PurePursuitComponent::AttrWaypointsCount(), 0, this->attributes)),
@@ -121,8 +122,6 @@ namespace NOWA
 
 	bool PurePursuitComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PurePursuitComponent::handleCountdownActive), EventDataCountdownActive::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -272,6 +271,8 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PurePursuitComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PurePursuitComponent::handleCountdownActive), EventDataCountdownActive::getStaticEventType());
+
 		return true;
 	}
 
@@ -279,9 +280,12 @@ namespace NOWA
 	{
 		// Reorder again, since silly lua messes up with keys
 		
+		this->canDrive = true;
 		this->previousPosition = this->gameObjectPtr->getPosition();
 		this->previousDistance = std::numeric_limits<Ogre::Real>::max();
 		this->stuckTime = 0.0f;
+
+		this->vehicleComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveVehicleComponent>()).get();
 
 		if (nullptr == this->pPath)
 		{
@@ -355,7 +359,8 @@ namespace NOWA
 		this->obstacles.clear();
 		this->behaviorType = PurePursuitComponent::NONE;
 		this->canSwitchBehavior = false;
-		this->canDrive = true;
+		this->canDrive = false;
+		this->vehicleComponent = nullptr;
 		return true;
 	}
 
@@ -390,6 +395,8 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
+			this->vehicleComponent->setCanDrive(this->canDrive);
+
 			if (false == this->canDrive)
 			{
 				return;
@@ -506,7 +513,7 @@ namespace NOWA
 
 							this->steerAmount = this->calculateSteeringAngle(lookaheadPoint);
 							this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
-
+#if 1
 							Ogre::Real currentDistance = currentPosition.distance(lookaheadPoint);
 							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] dist: " + Ogre::StringConverter::toString(currentDistance));
 							// If the car is driving away from the waypoint, adjust the steering
@@ -515,8 +522,8 @@ namespace NOWA
 								this->steerAmount += (currentDistance - this->previousDistance) * 0.1f; // Adjust steering based on the distance increase
 								this->steerAmount = MathHelper::getInstance()->clamp(this->steerAmount, this->minMaxSteerAngle->getVector2().x, this->minMaxSteerAngle->getVector2().y);
 							}
-
 							this->previousDistance = currentDistance;
+#endif
 						}
 						
 					}
@@ -1046,7 +1053,7 @@ namespace NOWA
 			this->firstTimeSet = false;
 		}
 
-		steeringAngle = NOWA::MathHelper::getInstance()->lowPassFilter(steeringAngle, this->lastSteerAngle, 0.025f);
+		steeringAngle = NOWA::MathHelper::getInstance()->lowPassFilter(steeringAngle, this->lastSteerAngle, 0.1f);
 
 		this->lastSteerAngle = steeringAngle;
 
@@ -1202,6 +1209,18 @@ namespace NOWA
 				this->behaviorType = PurePursuitComponent::RAMMING;
 			}
 		}
+		else
+		{
+			// Random behavior
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(0, 1);
+
+			// Generate a random number (0 or 1)
+			int randomValue = distr(gen);
+			this->behaviorType = (randomValue == 0) ? PurePursuitComponent::RAMMING : PurePursuitComponent::OVERTAKING;
+			this->canSwitchBehavior = false;
+		}
 
 		for (size_t i = 0; i < this->otherPurePursuits.size(); i++)
 		{
@@ -1231,6 +1250,8 @@ namespace NOWA
 						}
 					}
 
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PurePursuitComponent] Overtaking: " + Ogre::StringConverter::toString(this->motorForce));
+
 					this->canSwitchBehavior = true;
 				}
 				else
@@ -1256,7 +1277,7 @@ namespace NOWA
 			{
 				// Ramming behavior
 				Ogre::Vector3 toOtherGameObjectDirection = otherPos - curPos;
-				if (toOtherGameObjectDirection.length() < this->lookaheadDistance->getReal())
+				if (toOtherGameObjectDirection.length() < this->lookaheadDistance->getReal() * 1.5f)
 				{
 					Ogre::Real ramAngle = 0.3f * (rand() % 2 ? 1 : -1); // Randomly decide to ram left or right
 					this->steerAmount += ramAngle;

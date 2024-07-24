@@ -655,6 +655,9 @@
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="main\OgreCustom.h">
+      <Filter>main</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1211,6 +1214,9 @@
     </ClCompile>
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp">
       <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="main\OgreCustom.cpp">
+      <Filter>main</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

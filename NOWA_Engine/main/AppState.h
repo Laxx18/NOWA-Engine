@@ -212,6 +212,11 @@ namespace NOWA
 		* @note	The scene manager must be valid!
 		*/
 		void lateUpdateModules(Ogre::Real dt);
+
+		/**
+		* @brief	Calls render for the game objects, to render the interpolated transforms
+		*/
+		void render(Ogre::Real alpha);
 	private:
 		void handleWorldLoaded(NOWA::EventDataPtr eventData);
 	protected:

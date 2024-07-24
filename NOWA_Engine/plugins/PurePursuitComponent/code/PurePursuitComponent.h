@@ -16,6 +16,8 @@ GPL v3
 namespace NOWA
 {
 
+	class PhysicsActiveVehicleComponent;
+
 	/**
 	  * @brief		To calculate the steering angle of a car moving along waypoints, we can use the Pure Pursuit algorithm. This algorithm is a simple yet effective method for path tracking in autonomous vehicles. 
 					The Pure Pursuit algorithm calculates the necessary steering angle to drive the vehicle towards a lookahead point on the path.
@@ -365,6 +367,7 @@ namespace NOWA
 		unsigned int categoriesId;
 		bool canSwitchBehavior;
 		bool canDrive;
+		PhysicsActiveVehicleComponent* vehicleComponent;
 
 		enum BehaviorType { NONE, RAMMING, OVERTAKING } behaviorType;
 

@@ -610,6 +610,14 @@ namespace NOWA
 		}
 	}
 
+	void GameObjectController::render(Ogre::Real alpha)
+	{
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			it->second->render(alpha);
+		}
+	}
+
 	GameObjectPtr GameObjectController::getGameObjectFromId(const unsigned long id) const
 	{
 		//find the GameObject

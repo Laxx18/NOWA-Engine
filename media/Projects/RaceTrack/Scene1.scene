@@ -2,11 +2,11 @@
 <scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Scene1">
 	<resourceLocations/>
 	<environment>
-		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
+		<sceneManager name="NOWA_SceneManager" id="1980837708" type="øÙnk—"/>
 		<ambient>
 			<ambientLightUpperHemisphere r="0.03375" g="0.05625" b="0.07875"/>
-			<ambientLightLowerHemisphere r="0.043875" g="0.0329062" b="0.0219375" a="0.073125"/>
-			<hemisphereDir x="8.74228e-08" y="1" z="5.96046e-08"/>
+			<ambientLightLowerHemisphere r="0.04388" g="0.03291" b="0.02194" a="0.07312"/>
+			<hemisphereDir x="0.577351" y="0.577351" z="0.577349"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -34,7 +34,7 @@
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-200 -1.31268 -200" mostRightFarPosition="205.796 100 200"/>
+		<bounds mostLeftNearPosition="-200 -0.81239 -200" mostRightFarPosition="205.796 100 200"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -48,7 +48,7 @@
 			<position x="-25.4564" y="1.07707" z="3.79919"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_52" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_52" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -58,7 +58,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -67,6 +67,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -80,7 +81,7 @@
 			<position x="-28.9479" y="1.0932" z="1.27221"/>
 			<rotation qw="0.986286" qx="0" qy="-0.165048" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_51" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_51" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -90,7 +91,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -99,6 +100,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -131,6 +133,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -205,6 +208,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -212,6 +216,7 @@
 					<property type="9" name="Center" data="0 50 0"/>
 					<property type="9" name="Dimensions" data="400 100 400"/>
 					<property type="6" name="LightId" data="1111111113"/>
+					<property type="6" name="CameraId" data="0"/>
 					<property type="7" name="ComponentDatablockTerraComponent" data="DatablockTerraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -256,8 +261,8 @@
 			</terra>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="-31.0355" y="8.5328" z="2.64458"/>
-			<rotation qw="0.590695" qx="-0.129228" qy="-0.778074" qz="-0.170236"/>
+			<position x="-35.1574" y="5.17214" z="6.83163"/>
+			<rotation qw="0.744182" qx="-0.120947" qy="-0.648427" qz="-0.105394"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -278,14 +283,15 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-31.0355 8.5328 2.64458"/>
-					<property type="9" name="CameraOrientation" data="-24.682 -105.59 -0.00110593"/>
+					<property type="9" name="CameraPosition" data="-34.4144 8.19701 -2.12136"/>
+					<property type="9" name="CameraOrientation" data="-31.2028 -135.874 -0.00085643"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -322,7 +328,7 @@
 					<property type="7" name="EffectName" data="Custom"/>
 					<property type="10" name="SkyColor" data="1.2 2.4 3.6 6"/>
 					<property type="10" name="UpperHemisphere" data="0.03375 0.05625 0.07875 0.1125"/>
-					<property type="10" name="LowerHemisphere" data="0.043875 0.0329062 0.0219375 0.073125"/>
+					<property type="10" name="LowerHemisphere" data="0.04388 0.03291 0.02194 0.07312"/>
 					<property type="6" name="SunPower" data="4"/>
 					<property type="6" name="Exposure" data="0.5"/>
 					<property type="6" name="MinAutoExposure" data="1"/>
@@ -334,7 +340,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="3.09086e-08" qx="-3.09086e-08" qy="0.707107" qz="0.707107"/>
+			<rotation qw="0.22985" qx="0.229851" qy="0.398113" qz="0.857813"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -355,6 +361,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -376,7 +383,7 @@
 			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
+			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -386,7 +393,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="false"/>
+					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -395,6 +402,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -609,6 +617,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="racer_mat"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -776,8 +785,8 @@
 					<property type="6" name="WaypointVariance" data="0"/>
 					<property type="12" name="VarianceIndividual" data="false"/>
 					<property type="7" name="ObstacleCategory" data=""/>
-					<property type="12" name="RammingBehavior" data="true"/>
-					<property type="12" name="OvertakingBehavior" data="true"/>
+					<property type="12" name="RammingBehavior" data="false"/>
+					<property type="12" name="OvertakingBehavior" data="false"/>
 					<property type="7" name="ComponentRaceGoalComponent" data="RaceGoalComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -816,6 +825,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -870,7 +880,7 @@
 		</node>
 		<node name="QuatTire_7" id="4239151726">
 			<position x="-22.9457" y="1.21621" z="3.25614"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_7" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -891,6 +901,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -945,7 +956,7 @@
 		</node>
 		<node name="QuatTire_0" id="4239153031">
 			<position x="-22.1763" y="1.22278" z="3.25614"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_0" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -966,6 +977,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1041,6 +1053,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="RaceTrack"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1126,6 +1139,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1159,7 +1173,7 @@
 			<position x="-22.9442" y="1.09891" z="4.75346"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_53" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_53" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1169,7 +1183,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1178,6 +1192,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1191,7 +1206,7 @@
 			<position x="-17.2054" y="1.21626" z="4.27888"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_0" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1201,7 +1216,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1210,6 +1225,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1223,7 +1239,7 @@
 			<position x="-9.00577" y="1.11295" z="3.52482"/>
 			<rotation qw="0.984808" qx="0" qy="0.173648" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_1" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1233,7 +1249,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1242,6 +1258,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1255,7 +1272,7 @@
 			<position x="5.92715" y="1.10806" z="-2.18615"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_2" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_2" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1265,7 +1282,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1274,6 +1291,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1287,7 +1305,7 @@
 			<position x="11.2246" y="1.12756" z="-3.33365"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_3" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1297,7 +1315,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1306,6 +1324,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1319,7 +1338,7 @@
 			<position x="17.6822" y="1.11093" z="-1.62585"/>
 			<rotation qw="0.983255" qx="0" qy="-0.182236" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_4" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_4" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1329,7 +1348,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1338,6 +1357,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1351,7 +1371,7 @@
 			<position x="40.314" y="0.966969" z="11.5356"/>
 			<rotation qw="0.996195" qx="0" qy="-0.0871557" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_5" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_5" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1361,7 +1381,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1370,6 +1390,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1383,7 +1404,7 @@
 			<position x="58.0105" y="2.09093" z="14.7916"/>
 			<rotation qw="0.999391" qx="0" qy="-0.0348995" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_6" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_6" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1393,7 +1414,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1402,6 +1423,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1415,7 +1437,7 @@
 			<position x="79.1702" y="1.92321" z="15.1717"/>
 			<rotation qw="0.993572" qx="0" qy="0.113203" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_7" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_7" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1425,7 +1447,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1434,6 +1456,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1447,7 +1470,7 @@
 			<position x="93.7214" y="1.56014" z="10.9786"/>
 			<rotation qw="0.991445" qx="0" qy="0.130526" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_8" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_8" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1457,7 +1480,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1466,6 +1489,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1479,7 +1503,7 @@
 			<position x="120.723" y="1.90833" z="6.98376"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_9" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_9" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1489,7 +1513,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1498,6 +1522,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1511,7 +1536,7 @@
 			<position x="140.302" y="0.820134" z="7.4218"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_10" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_10" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1521,7 +1546,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1530,6 +1555,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1543,7 +1569,7 @@
 			<position x="157.924" y="1.08928" z="7.04599"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_11" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_11" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1553,7 +1579,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1562,6 +1588,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1575,7 +1602,7 @@
 			<position x="175.583" y="1.3428" z="4.74644"/>
 			<rotation qw="0.984808" qx="0" qy="0.173648" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_12" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_12" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1585,7 +1612,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1594,6 +1621,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1607,7 +1635,7 @@
 			<position x="180.736" y="1.28269" z="3.72178"/>
 			<rotation qw="0.970296" qx="0" qy="0.241922" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_13" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_13" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1617,7 +1645,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1626,6 +1654,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1639,7 +1668,7 @@
 			<position x="184.659" y="1.05216" z="-0.0874574"/>
 			<rotation qw="0.798636" qx="0" qy="0.601815" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_14" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_14" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1649,7 +1678,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1658,6 +1687,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1671,7 +1701,7 @@
 			<position x="187.43" y="0.724048" z="-6.82785"/>
 			<rotation qw="0.777146" qx="0" qy="0.62932" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_15" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_15" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1681,7 +1711,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1690,6 +1720,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1703,7 +1734,7 @@
 			<position x="191.089" y="0.838618" z="-26.3271"/>
 			<rotation qw="0.67559" qx="0" qy="0.737277" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_16" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_16" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1713,7 +1744,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1722,6 +1753,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1735,7 +1767,7 @@
 			<position x="190.89" y="1.25454" z="-45.7671"/>
 			<rotation qw="0.636078" qx="0" qy="0.771625" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_17" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_17" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1745,7 +1777,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1754,6 +1786,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1767,7 +1800,7 @@
 			<position x="190.052" y="1.2135" z="-50.4249"/>
 			<rotation qw="0.587785" qx="0" qy="0.809017" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_18" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_18" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1777,7 +1810,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1786,6 +1819,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1799,7 +1833,7 @@
 			<position x="188.289" y="1.08693" z="-54.6677"/>
 			<rotation qw="0.350207" qx="0" qy="0.936672" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_19" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_19" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1809,7 +1843,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1818,6 +1852,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1831,7 +1866,7 @@
 			<position x="184.623" y="0.926583" z="-59.0857"/>
 			<rotation qw="0.333807" qx="0" qy="0.942641" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_20" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_20" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1841,7 +1876,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1850,6 +1885,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1863,7 +1899,7 @@
 			<position x="163.134" y="1.12008" z="-71.8435"/>
 			<rotation qw="0.173648" qx="0" qy="0.984808" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_21" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_21" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1873,7 +1909,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1882,6 +1918,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1895,7 +1932,7 @@
 			<position x="142.484" y="1.49237" z="-77.5921"/>
 			<rotation qw="0.0348995" qx="0" qy="0.999391" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_22" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_22" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1905,7 +1942,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1914,6 +1951,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1927,7 +1965,7 @@
 			<position x="128.65" y="1.48626" z="-79.6246"/>
 			<rotation qw="-0.104528" qx="0" qy="0.994522" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_23" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_23" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1937,7 +1975,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1946,6 +1984,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1959,7 +1998,7 @@
 			<position x="119.811" y="1.247" z="-79.4415"/>
 			<rotation qw="-0.104528" qx="0" qy="0.994522" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_24" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_24" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -1969,7 +2008,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -1978,6 +2017,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1991,7 +2031,7 @@
 			<position x="112.05" y="1.09802" z="-76.815"/>
 			<rotation qw="-0.275637" qx="0" qy="0.961262" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_25" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_25" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2001,7 +2041,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2010,6 +2050,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2023,7 +2064,7 @@
 			<position x="115.88" y="1.07793" z="-78.9243"/>
 			<rotation qw="-0.0958458" qx="0" qy="0.995396" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_26" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_26" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2033,7 +2074,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2042,6 +2083,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2055,7 +2097,7 @@
 			<position x="90.6877" y="1.98645" z="-66.9984"/>
 			<rotation qw="-0.25038" qx="0" qy="0.968148" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_27" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_27" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="RedNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2065,7 +2107,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2074,6 +2116,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2087,7 +2130,7 @@
 			<position x="66.3584" y="2.46352" z="-53.9275"/>
 			<rotation qw="-0.207912" qx="0" qy="0.978148" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_28" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_28" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2097,7 +2140,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2106,6 +2149,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2119,7 +2163,7 @@
 			<position x="61.2146" y="2.04006" z="-50.8747"/>
 			<rotation qw="-0.258819" qx="0" qy="0.965926" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_29" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_29" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2129,7 +2173,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2138,6 +2182,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2151,7 +2196,7 @@
 			<position x="58.5309" y="1.35905" z="-47.8923"/>
 			<rotation qw="-0.224951" qx="0" qy="0.97437" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_30" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_30" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2161,7 +2206,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2170,6 +2215,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2183,7 +2229,7 @@
 			<position x="44.8357" y="0.424785" z="-42.7445"/>
 			<rotation qw="-0.0958458" qx="0" qy="0.995396" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_31" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_31" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2193,7 +2239,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2202,6 +2248,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2215,7 +2262,7 @@
 			<position x="24.6408" y="0.964091" z="-40.4767"/>
 			<rotation qw="-0.0348995" qx="0" qy="0.999391" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_32" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_32" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2225,7 +2272,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2234,6 +2281,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2247,7 +2295,7 @@
 			<position x="20.185" y="1.10267" z="-41.2319"/>
 			<rotation qw="0.052336" qx="0" qy="0.99863" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_33" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_33" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2257,7 +2305,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2266,6 +2314,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2279,7 +2328,7 @@
 			<position x="13.944" y="1.14873" z="-42.3223"/>
 			<rotation qw="0.0610485" qx="0" qy="0.998135" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_34" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_34" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2289,7 +2338,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2298,6 +2347,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2311,7 +2361,7 @@
 			<position x="-1.84028" y="1.14477" z="-45.1707"/>
 			<rotation qw="0.0871558" qx="0" qy="0.996195" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_35" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_35" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2321,7 +2371,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2330,6 +2380,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2343,7 +2394,7 @@
 			<position x="-8.30142" y="1.12396" z="-46.2375"/>
 			<rotation qw="-0.026177" qx="0" qy="0.999657" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_36" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_36" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2353,7 +2404,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2362,6 +2413,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2375,7 +2427,7 @@
 			<position x="-12.3894" y="1.12758" z="-45.8135"/>
 			<rotation qw="-0.156434" qx="0" qy="0.987688" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_37" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_37" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2385,7 +2437,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2394,6 +2446,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2407,7 +2460,7 @@
 			<position x="-15.5657" y="1.13456" z="-44.7477"/>
 			<rotation qw="-0.182236" qx="0" qy="0.983255" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_38" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_38" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2417,7 +2470,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2426,6 +2479,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2439,7 +2493,7 @@
 			<position x="-30.0451" y="1.1194" z="-40.1581"/>
 			<rotation qw="-0.258819" qx="0" qy="0.965926" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_39" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_39" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2449,7 +2503,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2458,6 +2512,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2471,7 +2526,7 @@
 			<position x="-32.9704" y="1.12149" z="-38.6055"/>
 			<rotation qw="-0.374607" qx="0" qy="0.927184" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_40" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_40" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2481,7 +2536,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2490,6 +2545,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2503,7 +2559,7 @@
 			<position x="-35.4734" y="1.12685" z="-36.3691"/>
 			<rotation qw="-0.438371" qx="0" qy="0.898794" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_41" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_41" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2513,7 +2569,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2522,6 +2578,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2535,7 +2592,7 @@
 			<position x="-38.09" y="1.11572" z="-34.1033"/>
 			<rotation qw="-0.438371" qx="0" qy="0.898794" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_42" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_42" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2545,7 +2602,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2554,6 +2611,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2567,7 +2625,7 @@
 			<position x="-43.9298" y="1.10919" z="-26.4908"/>
 			<rotation qw="0.566406" qx="0" qy="-0.824126" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_43" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_43" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2577,7 +2635,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2586,6 +2644,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2599,7 +2658,7 @@
 			<position x="-46.0347" y="1.08897" z="-22.4379"/>
 			<rotation qw="0.731354" qx="0" qy="-0.681998" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_44" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_44" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2609,7 +2668,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2618,6 +2677,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2631,7 +2691,7 @@
 			<position x="-45.9208" y="1.08487" z="-18.7155"/>
 			<rotation qw="0.803857" qx="0" qy="-0.594823" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_45" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_45" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2641,7 +2701,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2650,6 +2710,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2663,7 +2724,7 @@
 			<position x="-44.2198" y="1.09989" z="-15.5063"/>
 			<rotation qw="0.891007" qx="0" qy="-0.45399" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_46" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_46" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2673,7 +2734,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2682,6 +2743,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2695,7 +2757,7 @@
 			<position x="-42.2488" y="1.08851" z="-11.6826"/>
 			<rotation qw="0.939693" qx="0" qy="-0.34202" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_47" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_47" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2705,7 +2767,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2714,6 +2776,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2727,7 +2790,7 @@
 			<position x="-39.9975" y="1.09598" z="-9.77829"/>
 			<rotation qw="0.939693" qx="0" qy="-0.34202" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_48" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_48" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2737,7 +2800,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2746,6 +2809,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2759,7 +2823,7 @@
 			<position x="-36.2172" y="1.0923" z="-6.61455"/>
 			<rotation qw="0.927184" qx="0" qy="-0.374607" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_49" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_49" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2769,7 +2833,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2778,6 +2842,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2791,7 +2856,7 @@
 			<position x="-31.8951" y="1.09783" z="-1.96642"/>
 			<rotation qw="0.951057" qx="0" qy="-0.309017" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Node_50" meshFile="Node.mesh" castShadows="true" visible="true">
+			<entity name="Node_50" meshFile="Node.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -2801,7 +2866,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="1 0 0"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -2810,6 +2875,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2821,7 +2887,7 @@
 		</node>
 		<node name="QuatTire_11" id="1490416671">
 			<position x="-21.3335" y="1.08681" z="6.11039"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_11" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -2842,6 +2908,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2918,6 +2985,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="racer_mat"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -3112,7 +3180,7 @@
 					<property type="6" name="MaxMotorForce" data="1500"/>
 					<property type="6" name="MotorForceVariance" data="500"/>
 					<property type="6" name="OvertakingMotorForce" data="5000"/>
-					<property type="8" name="MinMaxSteerAngle" data="-35 35"/>
+					<property type="8" name="MinMaxSteerAngle" data="-45 45"/>
 					<property type="12" name="CheckWaypointY" data="false"/>
 					<property type="6" name="WaypointVariance" data="0.1"/>
 					<property type="12" name="VarianceIndividual" data="false"/>
@@ -3177,6 +3245,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3231,7 +3300,7 @@
 		</node>
 		<node name="QuatTire_8" id="4239149551">
 			<position x="-20.5641" y="1.08681" z="6.11039"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_8" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -3252,6 +3321,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3327,6 +3397,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3380,7 +3451,7 @@
 			</entity>
 		</node>
 		<node name="U_ramp_0" id="1734591566">
-			<position x="25.4056" y="0.94698" z="2.61469"/>
+			<position x="24.8684" y="0.94698" z="3.5451"/>
 			<rotation qw="-0.5" qx="0" qy="0.866025" qz="0"/>
 			<scale x="0.5" y="0.7" z="0.1"/>
 			<entity name="U_ramp_0" meshFile="U_ramp.mesh" castShadows="true" visible="true">
@@ -3402,6 +3473,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="[Default]__03814105050"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3501,6 +3573,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="transition_grassrock"/>
 					<property type="7" name="DataBlock1" data="rocks_boulder"/>
 					<property type="7" name="DataBlock2" data="grass_clean"/>
@@ -3515,7 +3588,7 @@
 		</node>
 		<node name="QuatTire_1" id="4239152596">
 			<position x="-25.4086" y="1.08681" z="3.98602"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -3536,6 +3609,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3611,6 +3685,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3686,6 +3761,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3762,6 +3838,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="racer_mat__0528669575"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -3956,10 +4033,10 @@
 					<property type="6" name="MaxMotorForce" data="1500"/>
 					<property type="6" name="MotorForceVariance" data="500"/>
 					<property type="6" name="OvertakingMotorForce" data="5000"/>
-					<property type="8" name="MinMaxSteerAngle" data="-35 35"/>
+					<property type="8" name="MinMaxSteerAngle" data="-45 45"/>
 					<property type="12" name="CheckWaypointY" data="false"/>
 					<property type="6" name="WaypointVariance" data="0.1"/>
-					<property type="12" name="VarianceIndividual" data="false"/>
+					<property type="12" name="VarianceIndividual" data="true"/>
 					<property type="7" name="ObstacleCategory" data=""/>
 					<property type="12" name="RammingBehavior" data="true"/>
 					<property type="12" name="OvertakingBehavior" data="true"/>
@@ -4000,7 +4077,7 @@
 		</node>
 		<node name="QuatTire_4" id="4239151291">
 			<position x="-26.178" y="1.08681" z="3.98602"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -4021,6 +4098,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4096,6 +4174,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4148,6 +4227,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4181,6 +4261,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4214,6 +4295,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4247,6 +4329,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4258,8 +4341,8 @@
 			</entity>
 		</node>
 		<node name="U_ramp_1" id="1734592001">
-			<position x="54.8106" y="0.897742" z="-49.692"/>
-			<rotation qw="0.600603" qx="-0.0245356" qy="0.797786" qz="0.0470403"/>
+			<position x="54.8701" y="0.58785" z="-49.7148"/>
+			<rotation qw="0.598699" qx="-0.0537157" qy="0.794556" qz="0.0857579"/>
 			<scale x="0.5" y="1" z="0.1"/>
 			<entity name="U_ramp_1" meshFile="U_ramp.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="[Default]__02980990231"/>
@@ -4280,6 +4363,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="[Default]__0617336987"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4355,8 +4439,8 @@
 			</entity>
 		</node>
 		<node name="U_ramp_2" id="1734590696">
-			<position x="39.336" y="-0.956022" z="-44.1707"/>
-			<rotation qw="0.817899" qx="0.0550021" qy="-0.572048" qz="0.0278796"/>
+			<position x="31.7487" y="-0.4911" z="-43.287"/>
+			<rotation qw="0.803315" qx="0.00462397" qy="-0.59542" qz="-0.0117888"/>
 			<scale x="0.5" y="1" z="0.1"/>
 			<entity name="U_ramp_2" meshFile="U_ramp.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="[Default]__03526229100"/>
@@ -4366,7 +4450,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -4377,6 +4461,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="[Default]__02980990231"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4455,7 +4540,7 @@
 			<position x="-17.2263" y="0.770667" z="4.48939"/>
 			<rotation qw="0.999848" qx="0.0174524" qy="0" qz="0"/>
 			<scale x="0.6" y="1" z="0.76"/>
-			<entity name="Plattform1_0" meshFile="Plattform1.mesh" castShadows="true" visible="true">
+			<entity name="Plattform1_0" meshFile="Plattform1.mesh" castShadows="true" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
@@ -4465,7 +4550,7 @@
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
-					<property type="12" name="Visible" data="true"/>
+					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
@@ -4474,6 +4559,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="HideId" data="0"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
 			</entity>

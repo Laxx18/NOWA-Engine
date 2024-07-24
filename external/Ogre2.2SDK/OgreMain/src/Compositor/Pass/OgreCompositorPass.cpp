@@ -191,7 +191,17 @@ namespace Ogre
 
             vpSize[i] = Vector4( left, top, width, height );
             scissors[i] = Vector4( scLeft, scTop, scWidth, scHeight );
+
+            #if 0
+                    LogManager::getSingleton().logMessage(
+                LML_CRITICAL, "Pass: " + mDefinition->mProfilingId + " has viewport count: " +
+                                  Ogre::StringConverter::toString( numViewports ) +
+                                  " size: " +
+                                  Ogre::StringConverter::toString( vpSize[i] ) );
+            #endif
         }
+
+
 
         renderSystem->beginRenderPassDescriptor(
             mRenderPassDesc, mAnyTargetTexture, mAnyMipLevel, vpSize, scissors, numViewports,

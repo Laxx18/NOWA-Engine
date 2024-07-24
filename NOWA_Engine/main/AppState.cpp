@@ -165,6 +165,14 @@ namespace NOWA
 		}
 	}
 
+	void AppState::render(Ogre::Real alpha)
+	{
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
+		{
+			this->gameObjectController->render(alpha);
+		}
+	}
+
 	AppState* AppState::findByName(Ogre::String stateName)
 	{
 		return this->appStateManager->findByName(stateName);

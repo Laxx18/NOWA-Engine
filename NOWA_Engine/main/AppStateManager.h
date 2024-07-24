@@ -26,7 +26,8 @@ namespace NOWA
 		{
 			ADAPTIVE = 0,
 			RESTRICTED_INTERPOLATED = 1,
-			FPS_INDEPENDENT = 2
+			FPS_INDEPENDENT = 2,
+			INTERPOLATED = 3
 		};
 
 		AppStateManager();
@@ -53,6 +54,8 @@ namespace NOWA
 		* @Note: When VSync is on, RESTRICTED_INTERPOLATED is automatically chosen. So only if vsync is of, ADAPTIVE may be used, which will result in maximum frame rate.
 		*/
 		void start(const Ogre::String& stateName, bool renderWhenInactive = false, GameLoopMode gameLoopMode = GameLoopMode::RESTRICTED_INTERPOLATED);
+
+		GameLoopMode getGameLoopMode(void) const;
 
 		void changeAppState(AppState* state);
 		bool pushAppState(AppState* state);
@@ -170,6 +173,8 @@ namespace NOWA
 		void restrictedInterpolatedFPSRendering(void);
 		void adaptiveFPSRendering(void);
 		void fpsIndependentRendering(void);
+
+		void interpolatedRendering(void);
 
 		void internalChangeAppState(AppState* state);
 		bool internalPushAppState(AppState* state);

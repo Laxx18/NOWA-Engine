@@ -105,9 +105,6 @@ namespace NOWA
 
 	bool VegetationComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
 	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
-
 		GameObjectComponent::init(propertyElement, filename);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -207,6 +204,10 @@ namespace NOWA
 	bool VegetationComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Init component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleUpdateBounds), EventDataBoundsUpdated::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &VegetationComponent::handleSceneParsed), NOWA::EventDataSceneParsed::getStaticEventType());
+
 
 		if (nullptr == this->raySceneQuery)
 		{

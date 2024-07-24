@@ -483,6 +483,25 @@ namespace NOWA
 		static_cast<OgreNewt::Vehicle*>(this->physicsBody)->setCanDrive(canDrive);
 	}
 
+	void PhysicsActiveVehicleComponent::applyWheelie(Ogre::Real strength)
+	{
+		this->applyOmegaForce(this->getOrientation() * Ogre::Vector3(0.0f, 0.0f, strength));
+	}
+
+	void PhysicsActiveVehicleComponent::applyDrift(bool left, Ogre::Real strength, Ogre::Real steeringStrength)
+	{
+		this->applyForce(Ogre::Vector3(0.0f, strength, 0.0f));
+
+		if (true == left)
+		{
+			this->applyOmegaForce(this->getOrientation() * Ogre::Vector3(0.0f, steeringStrength, 0.0f));
+		}
+		else
+		{
+			this->applyOmegaForce(this->getOrientation() * Ogre::Vector3(0.0f, -steeringStrength, 0.0f));
+		}
+	}
+
 	bool PhysicsActiveVehicleComponent::createDynamicBody(void)
 	{
 		Ogre::Vector3 inertia = Ogre::Vector3(1.0f, 1.0f, 1.0f);
