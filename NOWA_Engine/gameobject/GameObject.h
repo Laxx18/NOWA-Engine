@@ -575,16 +575,20 @@ namespace NOWA
 		unsigned int getShadowRenderingDistance(void) const;
 
 		/**
-		 * @brief Manages all game objects that will be visible on the minimap. If the hide id is set to 0, all game objects will be rendered. If set to e.g. 5, all game objects, which have its hide id set to 5 will not be rendered and are hidden on the minimap.
-		 * @param[in] hideId The hide id to set. Default is 0 and game object is nowhere to hide.
+		 * @brief Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. 
+		 *	If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
+		 *  If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap.
+		 * @param[in] maskId The mask id to set. Default value is 1 and is visible to any camera.
 		 */
-		void setHideId(unsigned long hideId);
+		void setMaskId(unsigned long maskId);
 
 		/**
-		 * @brief  Manages all game objects that will be visible on the minimap. If the hide id is set to 0, all game objects will be rendered. If set to e.g. 5, all game objects, which have its hide id set to 5 will not be rendered and are hidden on the minimap.
-		 * @return hideId The hide id to get. Default is 0 and game object is nowhere to hide.
+		 * @brief Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. 
+		 *	If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
+		 *  If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap.
+		 * @return maskId The mask id to get. Default value is 1 and is visible to any camera.
 		 */
-		unsigned long getHideId(void) const;
+		unsigned long getMaskId(void) const;
 
 		/**
 		 * Performs a ray cast and clamps the game object y coordinate
@@ -924,7 +928,7 @@ namespace NOWA
 		static const Ogre::String AttrRenderDistance(void) { return "Render Distance"; }
 		static const Ogre::String AttrLodDistance(void) { return "Lod Distance"; }
 		static const Ogre::String AttrShadowDistance(void) { return "Shadow Distance"; }
-		static const Ogre::String AttrHideId(void) { return "Hide Id"; }
+		static const Ogre::String AttrMaskId(void) { return "Mask Id"; }
 
 		// Attribute actions
 		static const Ogre::String AttrActionNeedRefresh(void) { return "NeedRefresh"; }
@@ -986,7 +990,7 @@ namespace NOWA
 		Variant* renderDistance;
 		Variant* lodDistance;
 		Variant* shadowRenderingDistance;
-		Variant* hideId;
+		Variant* maskId;
 
 		Ogre::WireAabb* boundingBoxDraw;
 		unsigned long priorId;

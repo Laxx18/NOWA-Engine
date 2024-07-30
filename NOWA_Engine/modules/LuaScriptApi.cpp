@@ -2364,6 +2364,11 @@ namespace NOWA
 		return makeStrongPtr<DatablockTerraComponent>(gameObject->getComponent<DatablockTerraComponent>()).get();
 	}
 
+	TerraComponent* getTerraComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<TerraComponent>(gameObject->getComponent<TerraComponent>()).get();
+	}
+
 	JointComponent* getJointComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<JointComponent>(gameObject->getComponent<JointComponent>()).get();
@@ -3084,6 +3089,11 @@ namespace NOWA
 		return makeStrongPtr<DatablockTerraComponent>(gameObject->getComponentFromName<DatablockTerraComponent>(name)).get();
 	}
 
+	TerraComponent* getTerraComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<TerraComponent>(gameObject->getComponentFromName<TerraComponent>(name)).get();
+	}
+
 	JointComponent* getJointComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<JointComponent>(gameObject->getComponentFromName<JointComponent>(name)).get();
@@ -3550,6 +3560,8 @@ namespace NOWA
 		gameObject.def("showBoundingBox", &GameObject::showBoundingBox);
 		gameObject.def("showDebugData", &GameObject::showDebugData);
 		gameObject.def("getConnectedGameObject", &getConnectedGameObject);
+		gameObject.def("setMaskId", &GameObject::setMaskId);
+		gameObject.def("getMaskId", &GameObject::getMaskId);
 
 		// get access to all components and cast them to strong shared ptr internally here
 		gameObject.def("getComponentByIndex", &getGameObjectComponentByIndex);
@@ -3600,6 +3612,7 @@ namespace NOWA
 		gameObject.def("getDatablockPbsComponent", &getDatablockPbsComponent);
 		gameObject.def("getDatablockUnlitComponent", &getDatablockUnlitComponent);
 		gameObject.def("getDatablockTerraComponent", &getDatablockTerraComponent);
+		gameObject.def("getTerraComponent", &getTerraComponent);
 		gameObject.def("getJointComponent", &getJointComponent);
 		gameObject.def("getJointHingeComponent", &getJointHingeComponent);
 		gameObject.def("getJointTargetTransformComponent", &getJointTargetTransformComponent);
@@ -3757,6 +3770,7 @@ namespace NOWA
 		gameObject.def("getDatablockPbsComponentFromName", &getDatablockPbsComponentFromName);
 		gameObject.def("getDatablockUnlitComponentFromName", &getDatablockUnlitComponentFromName);
 		gameObject.def("getDatablockTerraComponentFromName", &getDatablockTerraComponentFromName);
+		gameObject.def("getTerraComponentFromName", &getTerraComponentFromName);
 		gameObject.def("getJointComponentFromName", &getJointComponentFromName);
 		gameObject.def("getJointHingeComponentFromName", &getJointHingeComponentFromName);
 		gameObject.def("getJointTargetTransformComponentFromName", &getJointTargetTransformComponentFromName);
@@ -3881,6 +3895,13 @@ namespace NOWA
 		AddClassToCollection("GameObject", "void setUseReflection(bool useReflection)", "Sets whether this game object uses shader reflection for visual effects.");
 		AddClassToCollection("GameObject", "bool getUseReflection(bool getUseReflection)", "Gets whether this game object uses shader reflection for visual effects.");
 		AddClassToCollection("GameObject", "bool showBoundingBox(bool show)", "Shows a bounding box for this game object if set to true.");
+		AddClassToCollection("GameObject", "void setMaskId(number maskId)", "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera. "
+								" If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap."
+								" If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
+		AddClassToCollection("GameObject", "number getMaskId()", "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera. "
+							 " If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap."
+							 " If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
+
 		AddClassToCollection("GameObject", "bool showDebugData()", "Shows a debug data (if exists) for this game object and all its components. If called a second time debug data will not be shown.");
 		AddClassToCollection("GameObject", "GameObjectComponent getGameObjectComponentByIndex(unsigned int index)", "Gets the game object component by the given index. If the index is out of bounds, nil will be delivered.");
 		AddClassToCollection("GameObject", "GameObjectComponent getComponentByIndex(GameObject gameObject, int index)", "Gets the component from the game objects by the index.");
@@ -3923,6 +3944,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockPbsComponent getDatablockPbsComponent()", "Gets the datablock pbs (physically based shading) component.");
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponent()", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponent()", "Gets the datablock terra component.");
+		AddClassToCollection("GameObject", "TerraComponent getTerraComponent()", "Gets the terra component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponent()", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponent()", "Gets the joint hinge component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponent()", "Gets the joint target transform component. Requirements: A physics active component.");
@@ -4067,6 +4089,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "DatablockPbsComponent getDatablockPbsComponentFromName(String name)", "Gets the datablock pbs (physically based shading) component.");
 		AddClassToCollection("GameObject", "DatablockUnlitComponent getDatablockUnlitComponentFromName(String name)", "Gets the datablock unlit (without lighting) component.");
 		AddClassToCollection("GameObject", "DatablockTerraComponent getDatablockTerraComponentFromName(String name)", "Gets the datablock terra component.");
+		AddClassToCollection("GameObject", "TerraComponent getTerraComponentFromName(String name)", "Gets the terra component.");
 		AddClassToCollection("GameObject", "JointComponent getJointComponentFromName(String name)", "Gets the joint root component. Requirements: A physics component.");
 		AddClassToCollection("GameObject", "JointHingeComponent getJointHingeComponentFromName(String name)", "Gets the joint hinge component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "JointTargetTransformComponent getJointTargetTransformComponentFromName(String name)", "Gets the joint target transform component. Requirements: A physics active component.");
@@ -5125,6 +5148,7 @@ namespace NOWA
 		gameObjectController.def("castDatablockPbsComponent", &GameObjectController::cast<DatablockPbsComponent>);
 		gameObjectController.def("castDatablockUnlitComponent", &GameObjectController::cast<DatablockUnlitComponent>);
 		gameObjectController.def("castDatablockTerraComponent", &GameObjectController::cast<DatablockTerraComponent>);
+		gameObjectController.def("castTerraComponent", &GameObjectController::cast<TerraComponent>);
 		gameObjectController.def("castJointComponent", &GameObjectController::cast<JointComponent>);
 		gameObjectController.def("castJointHingeComponent", &GameObjectController::cast<JointHingeComponent>);
 		gameObjectController.def("castJointTargetTransformComponent", &GameObjectController::cast<JointTargetTransformComponent>);
@@ -5285,6 +5309,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "DatablockPbsComponent castDatablockPbsComponent(DatablockPbsComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockUnlitComponent castDatablockUnlitComponent(DatablockUnlitComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DatablockTerraComponent castDatablockTerraComponent(DatablockTerraComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "TerraComponent castTerraComponent(TerraComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointComponent castJointComponent(JointComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointHingeComponent castJointHingeComponent(JointHingeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "JointTargetTransformComponent castJointTargetTransformComponent(JointTargetTransformComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -9070,6 +9095,53 @@ namespace NOWA
 		AddClassToCollection("DatablockUnlitComponent", "int getSubEntityIndex()", "Gets the sub entity index this data block is used for.");
 		AddClassToCollection("DatablockUnlitComponent", "void setBackgroundColor(Vector3 backgroundColor)", "Sets the diffuse background color. When no diffuse texture is present, this solid color replaces it, and can act as a background for the detail maps.");
 		AddClassToCollection("DatablockUnlitComponent", "Vector3 getBackgroundColor()", "Gets the background color.");
+	}
+
+	void bindTerraComponent(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<TerraComponent, GameObjectComponent>("TerraComponent")
+			// .def("getClassName", &TerraComponent::getClassName)
+			.def("getParentClassName", &TerraComponent::getParentClassName)
+			.def("setBasePixelDimension", &TerraComponent::setBasePixelDimension)
+			.def("getBasePixelDimension", &TerraComponent::getBasePixelDimension)
+
+			/*.def("setStrength", &TerraComponent::setStrength)
+			.def("getStrength", &TerraComponent::getStrength)
+			.def("setBrushName", &TerraComponent::setBrushName)
+			.def("getBrushName", &TerraComponent::getBrushName)
+			.def("setBrushSize", &TerraComponent::setBrushSize)
+			.def("getBrushSize", &TerraComponent::getBrushSize)
+			.def("setBrushIntensity", &TerraComponent::setBrushIntensity)
+			.def("getBrushIntensity", &TerraComponent::getBrushIntensity)
+			.def("setImageLayer", &TerraComponent::setImageLayer)
+			.def("getImageLayer", &TerraComponent::getImageLayer)
+			.def("modifyTerrainStart", &TerraComponent::modifyTerrainStart)
+			.def("smoothTerrainStart", &TerraComponent::smoothTerrainStart)
+			.def("paintTerrainStart", &TerraComponent::paintTerrainStart)
+			.def("modifyTerrain", &TerraComponent::modifyTerrain)
+			.def("smoothTerrain", &TerraComponent::smoothTerrain)
+			.def("paintTerrain", &TerraComponent::paintTerrain)*/
+		];
+
+		// ATTENTION: This will not work that way, because, mouse down -> start, mouse up -> finish and undo redo missing
+
+		AddClassToCollection("TerraComponent", "class inherits GameObjectComponent", DatablockTerraComponent::getStaticInfoText());
+		// AddClassToCollection("TerraComponent", "String getClassName()", "Gets the class name of this component as string.");
+		AddClassToCollection("TerraComponent", "void setBasePixelDimension(number index)", "Sets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
+		AddClassToCollection("TerraComponent", "number getBasePixelDimension()", "Gets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive..");
+		/*AddClassToCollection("TerraComponent", "void setStrength(number strength)", "Sets the terrain modify strength. Also negative values are possible in order to lower the terrain.");
+		AddClassToCollection("TerraComponent", "number getStrength()", "Gets the terrain modify strength. Also negative values are possible in order to lower the terrain.");
+		AddClassToCollection("TerraComponent", "void setBrushName(string brushName)", "Sets the brush name for modify or paint the terrain, depending which function is called e.g. ");
+		AddClassToCollection("TerraComponent", "string getBrushName()", "Gets used brush name.");
+		AddClassToCollection("TerraComponent", "void setBrushSize(number brushSize)", "Sets brush size. Range: [16; 256].");
+		AddClassToCollection("TerraComponent", "number getBrushSize()", "Gets the brush size.");
+		AddClassToCollection("TerraComponent", "void setBrushIntensity(number brushIntensity)", "Sets the brush intensity. Range: [16; 256].");
+		AddClassToCollection("TerraComponent", "number getBrushIntensity()", "Gets the brush intensity.");
+		AddClassToCollection("TerraComponent", "void setImageLayer(string imageLayer)", "Sets the image layer string for painting.");
+		AddClassToCollection("TerraComponent", "number getImageLayer()", "Gets the used image layer string.");*/
+
 	}
 
 	Ogre::String getId2(JointComponent* instance)
@@ -13417,6 +13489,7 @@ namespace NOWA
 				bindCameraComponent(this->lua);
 				bindCompositorEffects(this->lua);
 				bindDatablockComponent(this->lua);
+				bindTerraComponent(this->lua);
 				bindGameObjectTitleComponent(this->lua);
 				bindParticleUniverseComponent(this->lua);
 				bindPlayerControllerComponents(this->lua);

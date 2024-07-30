@@ -117,6 +117,10 @@ namespace NOWA
 
 		unsigned int geCameraId(void) const;
 
+		void setBasePixelDimension(unsigned int basePixelDimension);
+
+		unsigned int getBasePixelDimension(void) const;
+
 		void setStrength(int strength);
 
 		int getStrength(void) const;
@@ -172,6 +176,7 @@ namespace NOWA
 		static const Ogre::String AttrDimensions(void) { return "Dimensions"; }
 		static const Ogre::String AttrLightId(void) { return "Light Id"; }
 		static const Ogre::String AttrCameraId(void) { return "Camera Id"; }
+		static const Ogre::String AttrBasePixelDimension(void) { return "Base Pixel Dimension"; }
 		static const Ogre::String AttrStrength(void) { return "Strength"; }
 		static const Ogre::String AttrBrush(void) { return "Brush"; }
 		static const Ogre::String AttrBrushSize(void) { return "Brush Size"; }
@@ -186,6 +191,7 @@ namespace NOWA
 		Variant* dimensions;
 		Variant* lightId;
 		Variant* cameraId;
+		Variant* basePixelDimension;
 		Variant* strength;
 		Variant* brush;
 		Variant* brushSize;

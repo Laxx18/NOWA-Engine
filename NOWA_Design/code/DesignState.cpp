@@ -101,13 +101,6 @@ void DesignState::enter(void)
 	MyGUI::ResourceManager::getInstance().load("SliderTemplate.xml");
 	factory.registerFactory<MyGUI::Slider>(widgetCategory);
 
-	// Load images for buttons
-	MyGUI::ResourceManager::getInstance().load("ButtonsImages.xml");
-	// Load skin for +- expand button for each panel cell
-	MyGUI::ResourceManager::getInstance().load("ButtonExpandSkin.xml");
-	MyGUI::ResourceManager::getInstance().load("Brushes.xml");
-	MyGUI::ResourceManager::getInstance().load("MyGUI_NOWA_Images.xml");
-
 	MyGUIHelper::getInstance()->initToolTipData();
 
 	this->createScene();

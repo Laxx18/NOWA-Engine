@@ -11,6 +11,7 @@ GPL v3
 #include "main/Events.h"
 #include "OgrePlugin.h"
 #include "OgreMain/include/Threading/OgreBarrier.h"
+#include "utilities/LowPassAngleFilter.h"
 
 namespace NOWA
 {
@@ -196,9 +197,13 @@ namespace NOWA
 
 		bool getWholeSceneVisible(void) const;
 
-		void setHideId(unsigned long hideId);
+		void setCameraHeight(Ogre::Real cameraHeight);
 
-		unsigned long getHideId(void) const;
+		Ogre::Real getCameraHeight(void) const;
+
+		void setMinimapMask(const Ogre::String& minimapMask);
+
+		Ogre::String getMinimapMask(void) const;
 
 		void setUseRoundMinimap(bool useRoundMinimap);
 
@@ -264,7 +269,8 @@ namespace NOWA
 		static const Ogre::String AttrVisibilityRadius(void) { return "Visibility Radius"; }
 		static const Ogre::String AttrUseVisibilitySpotlight(void) { return "Use Visibility Spotlight"; }
 		static const Ogre::String AttrWholeSceneVisible(void) { return "Whole Scene Visible"; }
-		static const Ogre::String AttrHideId(void) { return "Hide Id"; }
+		static const Ogre::String AttrCameraHeight(void) { return "Camera Height"; }
+		static const Ogre::String AttrMinimapMask(void) { return "Minimap Mask"; }
 		static const Ogre::String AttrUseRoundMinimap(void) { return "Use Round Minimap"; }
 		static const Ogre::String AttrRotateMinimap(void) { return "Rotate Minimap"; }
 	private:
@@ -276,7 +282,9 @@ namespace NOWA
 
 		Ogre::TextureGpu* createFogOfWarTexture(const Ogre::String& name, unsigned int width, unsigned int height);
 
-		void createMinimapNode(void);
+		void createRoundMinimapWorkspace(void);
+
+		void createMinimapWorkspace(void);
 
 		void updateFogOfWarTexture(const Ogre::Vector3& position, Ogre::Real radius);
 
@@ -292,7 +300,9 @@ namespace NOWA
 
 		void adjustMinimapCamera(void);
 
-		void updateMinimapCamera(const Ogre::Vector3& position);
+		void updateMinimapCamera(const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetOrientation);
+
+		void clearFogOfWar(void);
 	private:
 		void deleteGameObjectDelegate(EventDataPtr eventData);
 		void handleUpdateBounds(EventDataPtr eventData);
@@ -304,7 +314,6 @@ namespace NOWA
 		Ogre::TextureGpu* minimapTexture;
 		Ogre::TextureGpu* heightMapTexture;
 		Ogre::TextureGpu* fogOfWarTexture;
-		Ogre::StagingTexture* heightMapStagingTexture;
 		Ogre::StagingTexture* fogOfWarStagingTexture;
 		Ogre::TextureGpuManager* textureManager;
 		Ogre::CompositorWorkspace* workspace;
@@ -312,7 +321,7 @@ namespace NOWA
 		Ogre::String minimapWorkspaceName;
 		Ogre::String minimapNodeName;
 		MyGUI::ImageBox* minimapWidget;
-		MyGUI::ImageBox* heightMapWidget;
+		MyGUI::ImageBox* maskWidget;
 		MyGUI::ImageBox* fogOfWarWidget;
 
 		Ogre::Vector3 minimumBounds;
@@ -323,6 +332,8 @@ namespace NOWA
 		std::vector<std::vector<bool>> discoveryState;
 
 		Ogre::Real timeSinceLastUpdate;
+		Ogre::Real lastMapRotation;
+		LowPassAngleFilter filter;
 
 		Variant* activated;
 		Variant* targetId;
@@ -335,7 +346,8 @@ namespace NOWA
 		Variant* visibilityRadius;
 		Variant* useVisibilitySpotlight;
 		Variant* wholeSceneVisible;
-		Variant* hideId;
+		Variant* cameraHeight;
+		Variant* minimapMask;
 		Variant* useRoundMinimap;
 		Variant* rotateMinimap;
 	};

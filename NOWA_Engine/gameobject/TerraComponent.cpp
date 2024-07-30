@@ -14,6 +14,36 @@
 #include "CameraComponent.h"
 #include "WorkspaceComponents.h"
 
+namespace
+{
+	// Function to check if a number is divisible by a power of 2
+	template <typename T>
+	bool isPowerOf2(T number)
+	{
+		return number > 0 && (number & (number - 1)) == 0;
+	}
+
+	// Function to adjust the number to the next power of 2
+	template <typename T>
+	T adjustToNextPowerOf2(T number)
+	{
+		if (isPowerOf2(number))
+		{
+			return number;  // The number is already a power of 2
+		}
+		else
+		{
+			// Calculate the next power of 2 greater than the number
+			T nextPowerOf2 = 1;
+			while (nextPowerOf2 < number)
+			{
+				nextPowerOf2 <<= 1;  // Left shift by 1 (multiply by 2)
+			}
+			return nextPowerOf2;
+		}
+	}
+}
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -32,6 +62,7 @@ namespace NOWA
 		dimensions(new Variant(TerraComponent::AttrDimensions(), Ogre::Vector3(100.0f, 100.0f, 100.0f), this->attributes)),
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
+		basePixelDimension(new Variant(TerraComponent::AttrBasePixelDimension(), static_cast<unsigned int>(64), this->attributes, true)),
 		strength(new Variant(TerraComponent::AttrStrength(), 10, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
@@ -65,6 +96,8 @@ namespace NOWA
 		this->brushIntensity->addUserData(GameObject::AttrActionNoUndo());
 
 		this->imageLayer->addUserData(GameObject::AttrActionNoUndo());
+
+		this->basePixelDimension->setDescription("Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
 	}
 
 	TerraComponent::~TerraComponent()
@@ -102,6 +135,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraId")
 		{
 			this->cameraId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BasePixelDimension")
+		{
+			this->basePixelDimension->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		
@@ -571,6 +609,10 @@ namespace NOWA
 		{
 			this->setCameraId(attribute->getULong());
 		}
+		else if (TerraComponent::AttrBasePixelDimension() == attribute->getName())
+		{
+			this->setBasePixelDimension(attribute->getUInt());
+		}
 		else if (TerraComponent::AttrStrength() == attribute->getName())
 		{
 			this->setStrength(attribute->getInt());
@@ -634,6 +676,11 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "BasePixelDimension"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->basePixelDimension->getUInt())));
+		propertiesXML->append_node(propertyXML);
 	
 		this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath(), Core::getSingletonPtr()->getWorldName());
 	}
@@ -715,6 +762,23 @@ namespace NOWA
 	unsigned int TerraComponent::geCameraId(void) const
 	{
 		return this->cameraId->getULong();
+	}
+
+	void TerraComponent::setBasePixelDimension(unsigned int basePixelDimension)
+	{
+		basePixelDimension = adjustToNextPowerOf2<unsigned int>(basePixelDimension);
+
+		this->basePixelDimension->setValue(basePixelDimension);
+
+		if (nullptr != this->terra)
+		{
+			this->terra->setBasePixelDimension(basePixelDimension);
+		}
+	}
+
+	unsigned int TerraComponent::getBasePixelDimension(void) const
+	{
+		return this->basePixelDimension->getUInt();
 	}
 
 	void TerraComponent::setStrength(int strength)

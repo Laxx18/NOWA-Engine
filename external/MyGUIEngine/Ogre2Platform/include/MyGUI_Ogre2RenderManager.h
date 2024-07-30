@@ -107,6 +107,12 @@ namespace MyGUI
 		virtual ITexture* createTexture(const std::string& _name);
 		/** @see RenderManager::destroyTexture */
 		virtual void destroyTexture(ITexture* _texture);
+
+		/* 29.07.2024: Start: Added by Lax, because Ogre holds the texturepointer and MyGui and if one destroys the texture, ugly crash occurs. Hence MyGUI shall just remove the texture from its list! */
+		void removeTexture(ITexture* _texture);
+
+		/* 29.07.2024: End: Added by Lax
+
 		/** @see RenderManager::getTexture */
 		virtual ITexture* getTexture(const std::string& _name);
 

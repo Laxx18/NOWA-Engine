@@ -107,10 +107,11 @@ namespace NOWA
 		clonedCompPtr->setAttenuationRadius(this->attenuationRadius->getReal());
 		clonedCompPtr->setAttenuationLumThreshold(this->attenuationLumThreshold->getReal());
 		clonedCompPtr->setCastShadows(this->castShadows->getBool());
-		clonedCompPtr->setShowDummyEntity(this->showDummyEntity->getBool());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setShowDummyEntity(this->showDummyEntity->getBool());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;

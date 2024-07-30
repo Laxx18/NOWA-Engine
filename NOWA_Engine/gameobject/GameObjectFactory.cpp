@@ -317,10 +317,10 @@ namespace NOWA
 		unsigned int renderDistance = 0;
 		Ogre::Real lodDistance = 0.0f;
 		unsigned int shadowRenderingDistance = 0;
-		unsigned long hideId = 0;
+		unsigned long maskId = 1; // 0 would not be visible!
 		bool renderDistanceSet = false;
 		bool shadowRenderingDistanceSet = false;
-		bool hideIdSet = false;
+		bool maskIdSet = false;
 
 		// Attention: IMPORTANT: All those attributes must also be set in GameObjectController::internalClone function!
 
@@ -408,11 +408,11 @@ namespace NOWA
 			propertyElement = propertyElement->next_sibling("property");
 			shadowRenderingDistanceSet = true;
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HideId")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaskId")
 		{
-			hideId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 300);
+			maskId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 1);
 			propertyElement = propertyElement->next_sibling("property");
-			hideIdSet = true;
+			maskIdSet = true;
 		}
 
 		// Read all datablocks, this is necessary e.g. for plane component, because its mesh is created at runtime and never saved as resource
@@ -530,9 +530,9 @@ namespace NOWA
 				{
 					gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
 				}
-				if (true == hideIdSet)
+				if (true == maskIdSet)
 				{
-					gameObjectPtr->setHideId(hideId);
+					gameObjectPtr->setMaskId(maskId);
 				}
 				// Do not set via setter, because else the lod distance is re-calculated, but its just required to re-calculate if the user sets a different distance.
 				gameObjectPtr->lodDistance->setValue(lodDistance);

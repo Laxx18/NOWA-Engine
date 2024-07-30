@@ -57,8 +57,17 @@ namespace MyGUI
 			Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms( Ogre::HLMS_UNLIT );
 
 			MYGUI_PLATFORM_ASSERT(hlms != 0, "Ogre::HLMS_UNLIT model was not properly setup.");
-
-			return static_cast<Ogre::HlmsUnlitDatablock*>(hlms->createDatablock(Ogre::IdString( id ), id, mMacroBlock, mBlendBlock, mParamsVec));
+			auto datablock = hlms->getDatablock(id);
+			/* 29.07.2024: Start added by Lax, because crash if datablock does already exist and still will be created. */
+			if (nullptr != datablock)
+			{
+				return static_cast<Ogre::HlmsUnlitDatablock*>(datablock);
+			}
+			else
+			{
+				return static_cast<Ogre::HlmsUnlitDatablock*>(hlms->createDatablock(Ogre::IdString(id), id, mMacroBlock, mBlendBlock, mParamsVec));
+			}
+			/* 29.07.2024: End added by Lax. */
 		}
 
 	private:

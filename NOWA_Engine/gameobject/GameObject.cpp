@@ -209,7 +209,7 @@ namespace NOWA
 		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
 		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 300.0f, this->attributes, false);
 		this->shadowRenderingDistance = new Variant(GameObject::AttrShadowDistance(), static_cast<unsigned int>(300), this->attributes, false);
-		this->hideId = new Variant(GameObject::AttrHideId(), static_cast<unsigned long>(0), this->attributes, false);
+		this->maskId = new Variant(GameObject::AttrMaskId(), static_cast<unsigned long>(1), this->attributes, false);
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Creating Gameobject " + this->id->getString() + " for scene node name: " + this->sceneNode->getName());
 
@@ -230,7 +230,8 @@ namespace NOWA
 			"There are always 4 levels of reduction, beginning at the given lod distance and increasing based on the bounding radius of the mesh of the game object. The mesh with the lod levels is also stored on the file disc.");
 		this->defaultDirection->setDescription("The default local direction of the loaded mesh. Note: Its important: If the created mesh e.g. points to x-axis, its default direction should be set to (1 0 0)."
 			" If it points to z-direction, its default direction should be set to (0 0 1) etc..");
-		this->hideId->setDescription("Manages all game objects that will be visible on the minimap. If the hide id is set to 0, all game objects will be rendered. If set to e.g. 5, all game objects, which have its hide id set to 5 will not be rendered and are hidden on the minimap.");
+		this->maskId->setDescription("Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
+										" If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
 	}
 
 	GameObject::~GameObject()
@@ -781,9 +782,9 @@ namespace NOWA
 		{
 			this->setShadowRenderingDistance(attribute->getUInt());
 		}
-		else if (GameObject::AttrHideId() == attribute->getName())
+		else if (GameObject::AttrMaskId() == attribute->getName())
 		{
-			this->setHideId(attribute->getULong());
+			this->setMaskId(attribute->getULong());
 		}
 		else
 		{
@@ -992,8 +993,8 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "HideId"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->hideId->getULong())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "MaskId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maskId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->dataBlocks.size(); i++)
@@ -2068,19 +2069,18 @@ namespace NOWA
 		return this->shadowRenderingDistance->getUInt();
 	}
 
-	void GameObject::setHideId(unsigned long hideId)
+	void GameObject::setMaskId(unsigned long maskId)
 	{
-		this->hideId->setValue(hideId);
+		this->maskId->setValue(maskId);
 		if (nullptr != this->movableObject)
 		{
-			// this->movableObject->setVisibilityFlags(hideId);
-			this->movableObject->removeVisibilityFlags(hideId);
+			this->movableObject->setVisibilityFlags(maskId);
 		}
 	}
 
-	unsigned long GameObject::getHideId(void) const
+	unsigned long GameObject::getMaskId(void) const
 	{
-		return this->hideId->getULong();
+		return this->maskId->getULong();
 	}
 
 	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)

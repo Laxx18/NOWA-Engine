@@ -111,6 +111,8 @@ namespace NOWA
 
 		void setCameraDegreeOrientation(const Ogre::Vector3& orientation);
 
+		void setCameraOrientation(const Ogre::Quaternion& orientation);
+
 		Ogre::Vector3 getCameraDegreeOrientation(void) const;
 
 		void setNearClipDistance(Ogre::Real nearClipDistance);
@@ -137,6 +139,10 @@ namespace NOWA
 
 		bool getFixedYawAxis(void) const;
 
+		void setShowDummyEntity(bool showDummyEntity);
+
+		bool getShowDummyEntity(void) const;
+
 		Ogre::Camera* getCamera(void) const;
 
 		Ogre::uint8 getEyeId(void) const;
@@ -150,6 +156,7 @@ namespace NOWA
 		static const Ogre::String AttrOrthoWindowSize(void) { return "Ortho Window Size"; }
 		static const Ogre::String AttrFovy(void) { return "Fovy"; }
 		static const Ogre::String AttrFixedYawAxis(void) { return "Fixed Yaw Axis"; }
+		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
 
 		/**
 		* @brief This is required when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button.
@@ -174,6 +181,7 @@ namespace NOWA
 		Variant* orthoWindowSize;
 		Variant* fovy;
 		Variant* fixedYawAxis;
+		Variant* showDummyEntity;
 		
 		bool hideEntity;
 		Ogre::Real timeSinceLastUpdate;

@@ -396,6 +396,7 @@ namespace NOWA
 #include "utilities/Variant.h"
 #include "utilities/FaderProcess.h"
 #include "utilities/AutoCompleteSearch.h"
+#include "utilities/LowPassAngleFilter.h"
 
 using namespace fastdelegate;
 

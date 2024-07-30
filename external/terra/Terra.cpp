@@ -774,7 +774,7 @@ namespace Ogre
         const Vector3 vCenter =
             fromYUp( Vector3( cellPos.x, m_terrainOrigin.y, cellPos.y ) + vHalfSizeYUp );
         const Vector3 vHalfSize = fromYUpSignPreserving( vHalfSizeYUp );
-
+#if 0
         for( unsigned i = 0; i < 6u; ++i )
         {
             //Skip far plane if view frustum is infinite
@@ -787,7 +787,7 @@ namespace Ogre
             if( side == Plane::NEGATIVE_SIDE )
                 return false;
         }
-
+#endif
         return true;
     }
     //-----------------------------------------------------------------------------------

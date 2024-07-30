@@ -318,6 +318,16 @@ namespace MyGUI
 		delete _texture;
 	}
 
+	void Ogre2RenderManager::removeTexture(ITexture* _texture)
+	{
+		if (_texture == nullptr) return;
+
+		MapTexture::iterator item = mTextures.find(_texture->getName());
+		MYGUI_PLATFORM_ASSERT(item != mTextures.end(), "Texture '" << _texture->getName() << "' not found");
+
+		mTextures.erase(item);
+	}
+
 	ITexture* Ogre2RenderManager::getTexture(const std::string& _name)
 	{
 		MapTexture::const_iterator item = mTextures.find(_name);

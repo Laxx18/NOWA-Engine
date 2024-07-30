@@ -228,7 +228,7 @@ namespace NOWA
 
 		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
 
-		if (nullptr != this->myGuiWorkspace && nullptr != this->root)
+		if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)
 		{
 			this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
 			compositorManager->removeWorkspace(this->myGuiWorkspace);
@@ -1509,6 +1509,14 @@ namespace NOWA
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_Template_BlackTheme.xml");
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_DarkTemplate.xml");
 		MyGUI::ResourceManager::getInstancePtr()->load("MyGUI_DarkSkin.xml");
+
+		// Load images for buttons
+		MyGUI::ResourceManager::getInstance().load("ButtonsImages.xml");
+		// Load skin for +- expand button for each panel cell
+		MyGUI::ResourceManager::getInstance().load("ButtonExpandSkin.xml");
+		MyGUI::ResourceManager::getInstance().load("Brushes.xml");
+		MyGUI::ResourceManager::getInstance().load("Minimap.xml");
+		MyGUI::ResourceManager::getInstance().load("MyGUI_NOWA_Images.xml");
 	}
 
 	void Core::setSceneManagerForMyGuiPlatform(Ogre::SceneManager* sceneManager)

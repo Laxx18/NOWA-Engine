@@ -486,7 +486,7 @@ namespace NOWA
 		clonedGameObjectPtr->setRenderDistance(originalGameObjectPtr->getRenderDistance());
 		clonedGameObjectPtr->setLodDistance(originalGameObjectPtr->getLodDistance());
 		clonedGameObjectPtr->setShadowRenderingDistance(originalGameObjectPtr->getShadowRenderingDistance());
-		clonedGameObjectPtr->setHideId(originalGameObjectPtr->getHideId());
+		clonedGameObjectPtr->setMaskId(originalGameObjectPtr->getMaskId());
 
 		if (!clonedGameObjectPtr->init())
 		{

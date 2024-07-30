@@ -532,6 +532,7 @@
     <ClInclude Include="utilities\FastDelegateBind.h" />
     <ClInclude Include="utilities\IAnimationBlender.h" />
     <ClInclude Include="utilities\LensFlare.h" />
+    <ClInclude Include="utilities\LowPassAngleFilter.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
     <ClInclude Include="utilities\MathHelper.h" />
     <ClInclude Include="utilities\MeshDecal.h" />
@@ -746,6 +747,7 @@
     <ClCompile Include="utilities\GeometryDrawer.cpp" />
     <ClCompile Include="utilities\DrawDynamicLines.cpp" />
     <ClCompile Include="utilities\LensFlare.cpp" />
+    <ClCompile Include="utilities\LowPassAngleFilter.cpp" />
     <ClCompile Include="utilities\LuaObserver.cpp" />
     <ClCompile Include="utilities\MathHelper.cpp" />
     <ClCompile Include="utilities\MeshDecal.cpp" />

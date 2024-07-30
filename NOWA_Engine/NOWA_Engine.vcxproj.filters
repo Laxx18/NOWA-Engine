@@ -658,6 +658,9 @@
     <ClInclude Include="main\OgreCustom.h">
       <Filter>main</Filter>
     </ClInclude>
+    <ClInclude Include="utilities\LowPassAngleFilter.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1217,6 +1220,9 @@
     </ClCompile>
     <ClCompile Include="main\OgreCustom.cpp">
       <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\LowPassAngleFilter.cpp">
+      <Filter>utilities</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

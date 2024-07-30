@@ -32,7 +32,8 @@ namespace NOWA
 		fovy(new Variant(CameraComponent::AttrFovy(), 90.0f, this->attributes)),
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
-		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes))
+		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
 		this->orthoWindowSize->setVisible(false);
@@ -184,6 +185,11 @@ namespace NOWA
 			this->fixedYawAxis->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShowDummyEntity")
+		{
+			this->showDummyEntity->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		return true;
 	}
@@ -205,6 +211,8 @@ namespace NOWA
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setShowDummyEntity(this->showDummyEntity->getBool());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -310,24 +318,31 @@ namespace NOWA
 	{
 		if (nullptr != dummyEntity && true == this->hideEntity)
 		{
-			if (true == this->dummyEntity->isVisible() && true == this->active->getBool())
+			if (true == this->dummyEntity->isVisible() && false == this->showDummyEntity->getBool())
 			{
 				this->dummyEntity->setVisible(false);
 			}
-			else
+			else if (true == this->showDummyEntity->getBool())
 			{
-				// If its not the active camera
-				if (false == this->dummyEntity->isVisible() && false == this->active->getBool())
+				if (true == this->dummyEntity->isVisible() && true == this->active->getBool())
 				{
-					this->dummyEntity->setVisible(true);
+					this->dummyEntity->setVisible(false);
+				}
+				else
+				{
+					// If its not the active camera
+					if (false == this->dummyEntity->isVisible() && false == this->active->getBool())
+					{
+						this->dummyEntity->setVisible(true);
+					}
 				}
 			}
 		}
 
-		if (false == this->active->getBool())
+		/*if (false == this->active->getBool())
 		{
 			return;
-		}
+		}*/
 
 		// Update camera values
 		if (this->timeSinceLastUpdate >= 0.0f)
@@ -471,6 +486,10 @@ namespace NOWA
 		{
 			this->setFixedYawAxis(attribute->getBool());
 		}
+		else if (CameraComponent::AttrShowDummyEntity() == attribute->getName())
+		{
+			this->setShowDummyEntity(attribute->getBool());
+		}
 	}
 
 	void CameraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -536,6 +555,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "FixedYawAxis"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->fixedYawAxis->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ShowDummyEntity"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showDummyEntity->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -776,6 +801,16 @@ namespace NOWA
 		}
 	}
 
+	void CameraComponent::setCameraOrientation(const Ogre::Quaternion& orientation)
+	{
+		this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(orientation));
+		if (nullptr != this->gameObjectPtr)
+		{
+			this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+			this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+		}
+	}
+
 	Ogre::Vector3 CameraComponent::getCameraDegreeOrientation(void) const
 	{
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->gameObjectPtr->getSceneNode()->getOrientation()));
@@ -855,6 +890,16 @@ namespace NOWA
 	Ogre::Vector2 CameraComponent::getOrthoWindowSize(void) const
 	{
 		return this->orthoWindowSize->getVector2();
+	}
+
+	void CameraComponent::setShowDummyEntity(bool showDummyEntity)
+	{
+		this->showDummyEntity->setValue(showDummyEntity);
+	}
+
+	bool CameraComponent::getShowDummyEntity(void) const
+	{
+		return 	this->showDummyEntity->getBool();
 	}
 
 	Ogre::Camera* CameraComponent::getCamera(void) const

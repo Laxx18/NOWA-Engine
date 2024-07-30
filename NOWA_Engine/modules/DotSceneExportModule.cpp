@@ -480,7 +480,8 @@ namespace NOWA
 			xml_node<>* sceneManagerXML = doc.allocate_node(node_element, "sceneManager");
 			sceneManagerXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, this->sceneManager->getName())));
 			sceneManagerXML->append_attribute(doc.allocate_attribute("id", XMLConverter::ConvertString(doc, static_cast<unsigned int>(hash(this->sceneManager->getName())))));
-			sceneManagerXML->append_attribute(doc.allocate_attribute("type", XMLConverter::ConvertString(doc, this->sceneManager->getTypeName())));
+			// Writes out crap
+			// sceneManagerXML->append_attribute(doc.allocate_attribute("type", XMLConverter::ConvertString(doc, this->sceneManager->getTypeName())));
 			environmentXML->append_node(sceneManagerXML);
 		}
 
