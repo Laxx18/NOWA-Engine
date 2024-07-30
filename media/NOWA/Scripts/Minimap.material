@@ -1,0 +1,50 @@
+
+// GLSL shaders
+fragment_program MinimapMask_fp_GLSL glsl
+{
+	source MinimapMask_fp.glsl
+}
+
+// HLSL shaders
+fragment_program MinimapMask_fp_HLSL hlsl
+{
+	source MinimapMask_fp.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+fragment_program MinimapMask_fp unified
+{
+	delegate MinimapMask_fp_HLSL
+	delegate MinimapMask_fp_GLSL
+	
+	default_params
+    {
+		param_named_auto MinimapRT texture_unit 0
+	}
+}
+
+material MinimapMask
+{
+    technique
+    {
+        pass
+        {
+			vertex_program_ref Ogre/Compositor/Quad_vs
+			{
+			}
+		
+            fragment_program_ref MinimapMask_fp
+            {
+				
+            }
+			
+			texture_unit MinimapRT
+            {
+                filtering			trilinear
+				tex_address_mode	clamp
+				texture MinimapRT
+            }
+        }
+    }
+}
