@@ -980,27 +980,6 @@ namespace NOWA
 		if (true == this->rotateMinimap->getBool())
 		{
 			Ogre::Real smoothedAngle = this->filter.update(targetOrientation.getYaw().valueDegrees());
-
-			// Create a quaternion for the y-axis rotation
-			// Ogre::Real degrees = NOWA::MathHelper::getInstance()->lowPassFilter(targetOrientation.getYaw().valueDegrees(), this->lastMapRotation, 0.1f);
-		
-			//if (degrees > 0)
-			//{
-			//	// a is positive
-			//	if ((this->lastMapRotation > 0 && degrees > 0) || (this->lastMapRotation < 0 && degrees < 0))
-			//	{
-			//		this->lastMapRotation = degrees;
-			//	}
-			//	else
-			//	{
-			//		this->lastMapRotation = targetOrientation.getYaw().valueDegrees();
-			//	}
-			//}
-			
-			
-			
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MinimapComponent] updateMinimapCamera val: " + Ogre::StringConverter::toString(targetOrientation.getYaw().valueDegrees()) + " lastVal: " + Ogre::StringConverter::toString(this->lastMapRotation));
-
 			Ogre::Quaternion yAxisQuat(Ogre::Degree(smoothedAngle), Ogre::Vector3::UNIT_Y);
 
 			// Create the local orientation quaternion

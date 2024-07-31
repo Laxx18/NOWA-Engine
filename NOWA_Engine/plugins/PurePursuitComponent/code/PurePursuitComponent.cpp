@@ -150,7 +150,7 @@ namespace NOWA
 			{
 				if (nullptr == this->waypoints[i])
 				{
-					this->waypoints[i] = new Variant(PurePursuitComponent::AttrWaypoint() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0), this->attributes);
+					this->waypoints[i] = new Variant(PurePursuitComponent::AttrWaypoint() + Ogre::StringConverter::toString(i), XMLConverter::getAttribUnsignedLong(propertyElement, "data", 0), this->attributes, true);
 				}
 				else
 				{

@@ -349,7 +349,7 @@ namespace NOWA
 					if (this->pPath->getCurrentWaypointIndex() + 1 >= this->checkpointsCount->getUInt())
 					{
 						this->currentLap++;
-						if (nullptr != this->gameObjectPtr->getLuaScript())
+						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
 						{
 							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
 							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
@@ -368,7 +368,7 @@ namespace NOWA
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[RaceGoalComponent] Finished track!");
 						this->finished = true;
 						this->pPath->clear();
-						if (nullptr != this->gameObjectPtr->getLuaScript())
+						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
 						{
 							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
 							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
