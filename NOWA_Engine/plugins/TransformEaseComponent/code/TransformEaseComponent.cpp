@@ -19,19 +19,19 @@ namespace NOWA
 		rotationOppositeDir(1.0f),
 		rotationProgress(0.0f),
 		rotationRound(0),
-		rotationEaseFunctions(EaseInSine),
+		rotationEaseFunctions(Interpolator::EaseInSine),
 		oldRotationResult(Ogre::Quaternion::IDENTITY),
 		translationOppositeDir(1.0f),
 		translationProgress(0.0f),
 		translationRound(0),
-		translationEaseFunctions(EaseInSine),
+		translationEaseFunctions(Interpolator::EaseInSine),
 		oldTranslationResult(Ogre::Vector3::ZERO),
 		scaleOppositeDir(1.0f),
 		scaleProgress(0.0f),
 		scaleRound(0),
 		oldScaleResult(Ogre::Vector3::ZERO),
 		physicsComponent(nullptr),
-		scaleEaseFunctions(EaseInSine),
+		scaleEaseFunctions(Interpolator::EaseInSine),
 		activated(new Variant(TransformEaseComponent::AttrActivated(), true, this->attributes)),
 		rotationActivated(new Variant(TransformEaseComponent::AttrRotationActivated(), true, this->attributes)),
 		rotationAxis(new Variant(TransformEaseComponent::AttrRotationAxis(), Ogre::Vector3(0.0f, 1.0f, 0.0f), this->attributes)),
@@ -40,10 +40,7 @@ namespace NOWA
 		rotationDuration(new Variant(TransformEaseComponent::AttrRotationDuration(), 1.0f, this->attributes)),
 		rotationRepeat(new Variant(TransformEaseComponent::AttrRotationRepeat(), true, this->attributes)),
 		rotationDirectionChange(new Variant(TransformEaseComponent::AttrRotationDirectionChange(), true, this->attributes)),
-		rotationEaseFunction(new Variant(TransformEaseComponent::AttrRotationEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic", 
-							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo", 
-							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
-							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes)),
+		rotationEaseFunction(new Variant(TransformEaseComponent::AttrRotationEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes)),
 
 		translationActivated(new Variant(TransformEaseComponent::AttrTranslationActivated(), false, this->attributes)),
 		translationAxis(new Variant(TransformEaseComponent::AttrTranslationAxis(), Ogre::Vector3(0.0f, 0.0f, 0.0f), this->attributes)),
@@ -52,10 +49,7 @@ namespace NOWA
 		translationDuration(new Variant(TransformEaseComponent::AttrTranslationDuration(), 1.0f, this->attributes)),
 		translationRepeat(new Variant(TransformEaseComponent::AttrTranslationRepeat(), true, this->attributes)),
 		translationDirectionChange(new Variant(TransformEaseComponent::AttrTranslationDirectionChange(), true, this->attributes)),
-		translationEaseFunction(new Variant(TransformEaseComponent::AttrTranslationEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
-							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo",
-							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
-							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes)),
+		translationEaseFunction(new Variant(TransformEaseComponent::AttrTranslationEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes)),
 
 		scaleActivated(new Variant(TransformEaseComponent::AttrScaleActivated(), false, this->attributes)),
 		scaleAxis(new Variant(TransformEaseComponent::AttrScaleAxis(), Ogre::Vector3(1.0f, 1.0f, 1.0f), this->attributes)),
@@ -64,10 +58,7 @@ namespace NOWA
 		scaleDuration(new Variant(TransformEaseComponent::AttrScaleDuration(), 2.0f, this->attributes)),
 		scaleRepeat(new Variant(TransformEaseComponent::AttrScaleRepeat(), true, this->attributes)),
 		scaleDirectionChange(new Variant(TransformEaseComponent::AttrScaleDirectionChange(), true, this->attributes)),
-		scaleEaseFunction(new Variant(TransformEaseComponent::AttrScaleEaseFunction(), { "linear", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic",
-							 "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo",
-							 "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack",
-							 "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeOutBounce", "easeInBounce", "easeInOutBounce" }, this->attributes))
+		scaleEaseFunction(new Variant(TransformEaseComponent::AttrScaleEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes))
 	{
 		this->internalRotationDirectionChange = this->rotationDirectionChange->getBool();
 		this->internalTranslationDirectionChange = this->translationDirectionChange->getBool();
@@ -410,7 +401,7 @@ namespace NOWA
 				if (true == this->rotationRepeat->getBool() || true == this->internalRotationDirectionChange || 0 == this->rotationRound)
 				{
 					Ogre::Real t = this->rotationProgress / this->rotationDuration->getReal();
-					Ogre::Real resultValue = this->applyEaseFunction(this->rotationMin->getReal(), this->rotationMax->getReal(), this->rotationEaseFunctions, t);
+					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(this->rotationMin->getReal(), this->rotationMax->getReal(), this->rotationEaseFunctions, t);
 
 					if (nullptr == this->physicsComponent)
 						this->gameObjectPtr->getSceneNode()->setOrientation(this->oldRotationResult * Ogre::Quaternion(Ogre::Degree(resultValue), this->rotationAxis->getVector3()));
@@ -463,7 +454,7 @@ namespace NOWA
 				if (true == this->translationRepeat->getBool() || true == this->internalTranslationDirectionChange || 0 == this->translationRound)
 				{
 					Ogre::Real t = this->translationProgress / this->translationDuration->getReal();
-					Ogre::Vector3 resultVec = this->applyEaseFunction(this->translationAxis->getVector3() * this->translationMin->getReal(), this->translationAxis->getVector3() * this->translationMax->getReal(), this->translationEaseFunctions, t);
+					Ogre::Vector3 resultVec = Interpolator::getInstance()->applyEaseFunction(this->translationAxis->getVector3() * this->translationMin->getReal(), this->translationAxis->getVector3() * this->translationMax->getReal(), this->translationEaseFunctions, t);
 
 					if (nullptr == this->physicsComponent)
 					{
@@ -520,7 +511,7 @@ namespace NOWA
 				if (true == this->scaleRepeat->getBool() || true == this->internalScaleDirectionChange || 0 == this->scaleRound)
 				{
 					Ogre::Real t = this->scaleProgress / this->scaleDuration->getReal();
-					Ogre::Vector3 resultVec = this->applyEaseFunction(this->scaleAxis->getVector3() * this->scaleMin->getReal(), this->scaleAxis->getVector3() * this->scaleMax->getReal(), this->scaleEaseFunctions, t);
+					Ogre::Vector3 resultVec = Interpolator::getInstance()->applyEaseFunction(this->scaleAxis->getVector3() * this->scaleMin->getReal(), this->scaleAxis->getVector3() * this->scaleMax->getReal(), this->scaleEaseFunctions, t);
 
 					if (nullptr == this->physicsComponent)
 					{
@@ -575,7 +566,6 @@ namespace NOWA
 		{
 			this->setRotationEaseFunction(attribute->getListSelectedValue());
 		}
-
 		else if (TransformEaseComponent::AttrTranslationActivated() == attribute->getName())
 		{
 			this->setTranslationActivated(attribute->getBool());
@@ -708,8 +698,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotationEaseFunction->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 		
-
-
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TranslationActivated"));
@@ -907,7 +895,7 @@ namespace NOWA
 	void TransformEaseComponent::setRotationEaseFunction(const Ogre::String& rotationEaseFunction)
 	{
 		this->rotationEaseFunction->setListSelectedValue(rotationEaseFunction);
-		this->rotationEaseFunctions = this->mapStringToEaseFunctions(rotationEaseFunction);
+		this->rotationEaseFunctions = Interpolator::getInstance()->mapStringToEaseFunctions(rotationEaseFunction);
 	}
 
 	Ogre::String TransformEaseComponent::getRotationEaseFunction(void) const
@@ -993,7 +981,7 @@ namespace NOWA
 	void TransformEaseComponent::setTranslationEaseFunction(const Ogre::String& translationEaseFunction)
 	{
 		this->translationEaseFunction->setListSelectedValue(translationEaseFunction);
-		this->translationEaseFunctions = this->mapStringToEaseFunctions(translationEaseFunction);
+		this->translationEaseFunctions = Interpolator::getInstance()->mapStringToEaseFunctions(translationEaseFunction);
 	}
 
 	Ogre::String TransformEaseComponent::getTranslationEaseFunction(void) const
@@ -1084,351 +1072,12 @@ namespace NOWA
 	void TransformEaseComponent::setScaleEaseFunction(const Ogre::String& scaleEaseFunction)
 	{
 		this->scaleEaseFunction->setListSelectedValue(scaleEaseFunction);
-		this->scaleEaseFunctions = this->mapStringToEaseFunctions(scaleEaseFunction);
+		this->scaleEaseFunctions = Interpolator::getInstance()->mapStringToEaseFunctions(scaleEaseFunction);
 	}
 
 	Ogre::String TransformEaseComponent::getScaleEaseFunction(void) const
 	{
 		return this->scaleEaseFunction->getListSelectedValue();
-	}
-
-	TransformEaseComponent::EaseFunctions TransformEaseComponent::mapStringToEaseFunctions(const Ogre::String strEaseFunction)
-	{
-		if ("linear" == strEaseFunction)
-		{
-			return Linear;
-		}
-		if ("easeInSine" == strEaseFunction)
-		{
-			return EaseInSine;
-		}
-		else if ("easeOutSine" == strEaseFunction)
-		{
-			return EaseOutSine;
-		}
-		else if ("easeInOutSine" == strEaseFunction)
-		{
-			return EaseInOutSine;
-		}
-		else if ("easeInQuad" == strEaseFunction)
-		{
-			return EaseInQuad;
-		}
-		else if ("easeOutQuad" == strEaseFunction)
-		{
-			return EaseOutQuad;
-		}
-		else if ("easeInOutQuad" == strEaseFunction)
-		{
-			return EaseInOutQuad;
-		}
-		else if ("easeInCubic" == strEaseFunction)
-		{
-			return EaseInCubic;
-		}
-		else if ("easeOutCubic" == strEaseFunction)
-		{
-			return EaseOutCubic;
-		}
-		else if ("easeInOutCubic" == strEaseFunction)
-		{
-			return EaseInOutCubic;
-		}
-		else if ("easeInQuart" == strEaseFunction)
-		{
-			return EaseInQuart;
-		}
-		else if ("easeOutQuart" == strEaseFunction)
-		{
-			return EaseOutQuart;
-		}
-		else if ("easeInOutQuart" == strEaseFunction)
-		{
-			return EaseInOutQuart;
-		}
-		else if ("easeInQuint" == strEaseFunction)
-		{
-			return EaseInQuint;
-		}
-		else if ("easeOutQuint" == strEaseFunction)
-		{
-			return EaseOutQuint;
-		}
-		else if ("easeInOutQuint" == strEaseFunction)
-		{
-			return EaseInOutQuint;
-		}
-		else if ("easeInExpo" == strEaseFunction)
-		{
-			return EaseInExpo;
-		}
-		else if ("easeOutExpo" == strEaseFunction)
-		{
-			return EaseOutExpo;
-		}
-		else if ("easeInOutExpo" == strEaseFunction)
-		{
-			return EaseInOutExpo;
-		}
-		else if ("easeInCirc" == strEaseFunction)
-		{
-			return EaseInCirc;
-		}
-		else if ("easeOutCirc" == strEaseFunction)
-		{
-			return EaseOutCirc;
-		}
-		else if ("easeInOutCirc" == strEaseFunction)
-		{
-			return EaseInOutCirc;
-		}
-		else if ("easeInBack" == strEaseFunction)
-		{
-			return EaseInBack;
-		}
-		else if ("easeOutBack" == strEaseFunction)
-		{
-			return EaseOutBack;
-		}
-		else if ("easeInOutBack" == strEaseFunction)
-		{
-			return EaseInOutBack;
-		}
-		else if ("easeInElastic" == strEaseFunction)
-		{
-			return EaseInElastic;
-		}
-		else if ("easeOutElastic" == strEaseFunction)
-		{
-			return EaseOutElastic;
-		}
-		else if ("easeInOutElastic" == strEaseFunction)
-		{
-			return EaseInOutElastic;
-		}
-		else if ("easeInBounce" == strEaseFunction)
-		{
-			return EaseInBounce;
-		}
-		else if ("easeOutBounce" == strEaseFunction)
-		{
-			return EaseOutBounce;
-		}
-		else if ("easeInOutBounce" == strEaseFunction)
-		{
-			return EaseInOutBounce;
-		}
-		return Linear;
-	}
-
-	Ogre::String TransformEaseComponent::mapEaseFunctionsToString(TransformEaseComponent::EaseFunctions easeFunctions)
-	{
-		switch (easeFunctions)
-		{
-		case Linear:
-			return "linear";
-		case EaseInSine:
-			return "easeInSine";
-		case EaseOutSine:
-			return "easeOutSine";
-		case EaseInOutSine:
-			return "easeInOutSine";
-		case EaseInQuad:
-			return "easeInQuad";
-		case EaseOutQuad:
-			return "easeOutQuad";
-		case EaseInOutQuad:
-			return "easeInOutQuad";
-		case EaseInCubic:
-			return "easeInCubic";
-		case EaseOutCubic:
-			return "easeOutCubic";
-		case EaseInOutCubic:
-			return "easeInOutCubic";
-		case EaseInQuart:
-			return "easeInQuart";
-		case EaseOutQuart:
-			return "easeOutQuart";
-		case EaseInOutQuart:
-			return "easeInOutQuart";
-		case EaseInQuint:
-			return "easeInQuint";
-		case EaseOutQuint:
-			return "easeOutQuint";
-		case EaseInOutQuint:
-			return "easeInOutQuint";
-		case EaseInExpo:
-			return "easeInExpo";
-		case EaseOutExpo:
-			return "easeOutExpo";
-		case EaseInOutExpo:
-			return "easeInOutExpo";
-		case EaseInCirc:
-			return "easeInCirc";
-		case EaseOutCirc:
-			return "easeOutCirc";
-		case EaseInOutCirc:
-			return "easeInOutCirc";
-		case EaseInBack:
-			return "easeInBack";
-		case EaseOutBack:
-			return "easeOutBack";
-		case EaseInOutBack:
-			return "easeInOutBack";
-		case EaseInElastic:
-			return "easeInElastic";
-		case EaseOutElastic:
-			return "easeOutElastic";
-		case EaseInOutElastic:
-			return "easeInOutElastic";
-		case EaseInBounce:
-			return "easeInBounce";
-		case EaseOutBounce:
-			return "easeOutBounce";
-		case EaseInOutBounce:
-			return "easeInOutBounce";
-		}
-		return "Linear";
-	}
-
-	Ogre::Vector3 TransformEaseComponent::applyEaseFunction(const Ogre::Vector3& startPosition, const Ogre::Vector3& targetPosition, EaseFunctions easeFunctions, Ogre::Real time)
-	{
-		switch (easeFunctions)
-		{
-		case Linear:
-			return MathHelper::getInstance()->interpolate(startPosition, targetPosition, time);
-		case EaseInSine:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInSine(time));
-		case EaseOutSine:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutSine(time));
-		case EaseInOutSine:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutSine(time));
-		case EaseInQuad:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInQuad(time));
-		case EaseOutQuad:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutQuad(time));
-		case EaseInOutQuad:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutQuad(time));
-		case EaseInCubic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInCubic(time));
-		case EaseOutCubic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutCubic(time));
-		case EaseInOutCubic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutCubic(time));
-		case EaseInQuart:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInQuart(time));
-		case EaseOutQuart:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutQuart(time));
-		case EaseInOutQuart:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutQuart(time));
-		case EaseInQuint:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInQuint(time));
-		case EaseOutQuint:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutQuint(time));
-		case EaseInOutQuint:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutQuint(time));
-		case EaseInExpo:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInExpo(time));
-		case EaseOutExpo:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutExpo(time));
-		case EaseInOutExpo:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutExpo(time));
-		case EaseInCirc:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInCirc(time));
-		case EaseOutCirc:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutCirc(time));
-		case EaseInOutCirc:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutCirc(time));
-		case EaseInBack:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInBack(time));
-		case EaseOutBack:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutBack(time));
-		case EaseInOutBack:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutBack(time));
-		case EaseInElastic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInElastic(time));
-		case EaseOutElastic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutElastic(time));
-		case EaseInOutElastic:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutElastic(time));
-		case EaseInBounce:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInBounce(time));
-		case EaseOutBounce:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeOutBounce(time));
-		case EaseInOutBounce:
-			return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, MathHelper::getInstance()->easeInOutBounce(time));
-		}
-		return  MathHelper::getInstance()->interpolate(startPosition, targetPosition, time);
-	}
-
-	Ogre::Real TransformEaseComponent::applyEaseFunction(Ogre::Real v1, Ogre::Real v2, EaseFunctions easeFunctions, Ogre::Real time)
-	{
-		switch (easeFunctions)
-		{
-		case Linear:
-			return MathHelper::getInstance()->interpolate(v1, v2, time);
-		case EaseInSine:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInSine(time));
-		case EaseOutSine:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutSine(time));
-		case EaseInOutSine:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutSine(time));
-		case EaseInQuad:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInQuad(time));
-		case EaseOutQuad:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutQuad(time));
-		case EaseInOutQuad:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutQuad(time));
-		case EaseInCubic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInCubic(time));
-		case EaseOutCubic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutCubic(time));
-		case EaseInOutCubic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutCubic(time));
-		case EaseInQuart:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInQuart(time));
-		case EaseOutQuart:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutQuart(time));
-		case EaseInOutQuart:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutQuart(time));
-		case EaseInQuint:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInQuint(time));
-		case EaseOutQuint:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutQuint(time));
-		case EaseInOutQuint:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutQuint(time));
-		case EaseInExpo:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInExpo(time));
-		case EaseOutExpo:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutExpo(time));
-		case EaseInOutExpo:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutExpo(time));
-		case EaseInCirc:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInCirc(time));
-		case EaseOutCirc:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutCirc(time));
-		case EaseInOutCirc:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutCirc(time));
-		case EaseInBack:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInBack(time));
-		case EaseOutBack:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutBack(time));
-		case EaseInOutBack:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutBack(time));
-		case EaseInElastic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInElastic(time));
-		case EaseOutElastic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutElastic(time));
-		case EaseInOutElastic:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutElastic(time));
-		case EaseInBounce:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInBounce(time));
-		case EaseOutBounce:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeOutBounce(time));
-		case EaseInOutBounce:
-			return  MathHelper::getInstance()->interpolate(v1, v2, MathHelper::getInstance()->easeInOutBounce(time));
-		}
-		return  MathHelper::getInstance()->interpolate(v1, v2, time);
 	}
 
 	// Lua registration part

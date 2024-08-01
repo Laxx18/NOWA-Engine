@@ -11,6 +11,8 @@ GPL v3
 #include "main/Events.h"
 #include "OgrePlugin.h"
 
+#include "utilities/Interpolator.h"
+
 namespace NOWA
 {
 	class PhysicsComponent;
@@ -20,41 +22,6 @@ namespace NOWA
 	  */
 	class EXPORTED TransformEaseComponent : public GameObjectComponent, public Ogre::Plugin
 	{
-	public:
-		enum EaseFunctions
-		{
-			Linear,
-			EaseInSine,
-			EaseOutSine,
-			EaseInOutSine,
-			EaseInQuad,
-			EaseOutQuad,
-			EaseInOutQuad,
-			EaseInCubic,
-			EaseOutCubic,
-			EaseInOutCubic,
-			EaseInQuart,
-			EaseOutQuart,
-			EaseInOutQuart,
-			EaseInQuint,
-			EaseOutQuint,
-			EaseInOutQuint,
-			EaseInExpo,
-			EaseOutExpo,
-			EaseInOutExpo,
-			EaseInCirc,
-			EaseOutCirc,
-			EaseInOutCirc,
-			EaseInBack,
-			EaseOutBack,
-			EaseInOutBack,
-			EaseInElastic,
-			EaseOutElastic,
-			EaseInOutElastic,
-			EaseInBounce,
-			EaseOutBounce,
-			EaseInOutBounce
-		};
 	public:
 		typedef boost::shared_ptr<TransformEaseComponent> TransformEaseComponentPtr;
 	public:
@@ -337,14 +304,6 @@ namespace NOWA
 		static const Ogre::String AttrScaleDirectionChange(void) { return "Scale Dir. Change"; }
 		static const Ogre::String AttrScaleEaseFunction(void) { return "Scale Ease Function"; }
 	private:
-		EaseFunctions mapStringToEaseFunctions(const Ogre::String strEaseFunction);
-
-		Ogre::String mapEaseFunctionsToString(EaseFunctions easeFunctions);
-
-		Ogre::Vector3 applyEaseFunction(const Ogre::Vector3& startPosition, const Ogre::Vector3& targetPosition, EaseFunctions easeFunctions, Ogre::Real time);
-
-		Ogre::Real applyEaseFunction(Ogre::Real v1, Ogre::Real v2, EaseFunctions easeFunctions, Ogre::Real time);
-	private:
 		Variant* activated;
 		Variant* rotationActivated;
 		Variant* rotationAxis;
@@ -377,21 +336,21 @@ namespace NOWA
 		Ogre::Real rotationProgress;
 		short rotationRound;
 		bool internalRotationDirectionChange;
-		EaseFunctions rotationEaseFunctions;
+		Interpolator::EaseFunctions rotationEaseFunctions;
 		Ogre::Quaternion oldRotationResult;
 
 		Ogre::Real translationOppositeDir;
 		Ogre::Real translationProgress;
 		short translationRound;
 		bool internalTranslationDirectionChange;
-		EaseFunctions translationEaseFunctions;
+		Interpolator::EaseFunctions translationEaseFunctions;
 		Ogre::Vector3 oldTranslationResult;
 
 		Ogre::Real scaleOppositeDir;
 		Ogre::Real scaleProgress;
 		short scaleRound;
 		bool internalScaleDirectionChange;
-		EaseFunctions scaleEaseFunctions;
+		Interpolator::EaseFunctions scaleEaseFunctions;
 		Ogre::Vector3 oldScaleResult;
 
 		PhysicsComponent* physicsComponent;

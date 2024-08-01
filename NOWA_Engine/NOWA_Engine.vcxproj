@@ -531,6 +531,7 @@
     <ClInclude Include="utilities\FastDelegate.h" />
     <ClInclude Include="utilities\FastDelegateBind.h" />
     <ClInclude Include="utilities\IAnimationBlender.h" />
+    <ClInclude Include="utilities\Interpolator.h" />
     <ClInclude Include="utilities\LensFlare.h" />
     <ClInclude Include="utilities\LowPassAngleFilter.h" />
     <ClInclude Include="utilities\LuaObserver.h" />
@@ -746,6 +747,7 @@
     <ClCompile Include="utilities\FaderProcess.cpp" />
     <ClCompile Include="utilities\GeometryDrawer.cpp" />
     <ClCompile Include="utilities\DrawDynamicLines.cpp" />
+    <ClCompile Include="utilities\Interpolator.cpp" />
     <ClCompile Include="utilities\LensFlare.cpp" />
     <ClCompile Include="utilities\LowPassAngleFilter.cpp" />
     <ClCompile Include="utilities\LuaObserver.cpp" />

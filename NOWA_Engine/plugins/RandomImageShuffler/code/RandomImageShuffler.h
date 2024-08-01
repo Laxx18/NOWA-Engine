@@ -11,6 +11,8 @@ GPL v3
 #include "main/Events.h"
 #include "OgrePlugin.h"
 
+#include "utilities/Interpolator.h"
+
 namespace NOWA
 {
 
@@ -153,6 +155,10 @@ namespace NOWA
 
 		Ogre::Real getDisplayTime(void) const;
 
+		void setUseSlideImage(bool useSlideImage);
+
+		bool getUseSlideImage(void) const;
+
 		void setUseStopDelay(bool useStopDelay);
 
 		bool getUseStopDelay(void) const;
@@ -160,6 +166,10 @@ namespace NOWA
 		void setUseStopEffect(bool useStopEffect);
 
 		bool getUseStopEffect(void) const;
+
+		void setEaseFunction(const Ogre::String& easeFunction);
+
+		Ogre::String getEaseFunction(void) const;
 
 		void setImageCount(unsigned int imageCount);
 
@@ -218,13 +228,17 @@ namespace NOWA
 		static const Ogre::String AttrGeometry(void) { return "Geometry"; }
 		static const Ogre::String AttrMaskImage(void) { return "Mask Image"; }
 		static const Ogre::String AttrDisplayTime(void) { return "Display Time MS"; }
+		static const Ogre::String AttrUseSlideImage(void) { return "Use Slide Image"; }
 		static const Ogre::String AttrUseStopDelay(void) { return "Use Stop Delay"; }
 		static const Ogre::String AttrUseStopEffect(void) { return "Use Stop Effect"; }
+		static const Ogre::String AttrEaseFunction(void) { return "Ease Function"; }
 		static const Ogre::String AttrOnImageChosenFunctionName(void) { return "On Image Chosen Function Name"; }
 		static const Ogre::String AttrImageCount(void) { return "Image Count"; }
 		static const Ogre::String AttrImageName(void) { return "Image Name "; }
 	private:
-		void switchImage();
+		void switchImage(void);
+
+		void slideImage(Ogre::Real dt);
 
 		void startAnimation(void);
 
@@ -239,16 +253,24 @@ namespace NOWA
 		Ogre::Real timeSinceLastImageShown;
 		Ogre::Real gradientDelay;
 		Ogre::Real animationTime;
+		Ogre::Real animationOppositeDir;
+		short animationRound;
 		bool animating;
 		bool growing;
-		MyGUI::IntSize initialSize;
+		MyGUI::IntRect initialGeometry;
+		Interpolator::EaseFunctions easeFunctions;
+		size_t currentImageIndex;
+		Ogre::Real slideSpeed;
+		Ogre::Real scrollPositionX;
 
 		Variant* activated;
 		Variant* geometry;
 		Variant* maskImage;
 		Variant* displayTime;
+		Variant* useSlideImage;
 		Variant* useStopDelay;
 		Variant* useStopEffect;
+		Variant* easeFunction;
 		Variant* onImageChosenFunctionName;
 		Variant* imageCount;
 		std::vector<Variant*> images;

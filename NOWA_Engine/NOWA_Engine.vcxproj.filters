@@ -661,6 +661,9 @@
     <ClInclude Include="utilities\LowPassAngleFilter.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="utilities\Interpolator.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1222,6 +1225,9 @@
       <Filter>main</Filter>
     </ClCompile>
     <ClCompile Include="utilities\LowPassAngleFilter.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\Interpolator.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
   </ItemGroup>

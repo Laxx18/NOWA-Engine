@@ -176,18 +176,20 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="10" name="Geometry" data="0.8 0 0.2 0.2"/>
-					<property type="7" name="MaskImage" data="Circular_Transparent.png"/>
+					<property type="10" name="Geometry" data="0.75 0 0.2 0.4"/>
+					<property type="7" name="MaskImage" data="Rect_Mask.png"/>
 					<property type="6" name="DisplayTime" data="100"/>
+					<property type="12" name="UseSlideImage" data="true"/>
 					<property type="12" name="UseStopDelay" data="true"/>
 					<property type="12" name="UseStopEffect" data="true"/>
+					<property type="7" name="EaseFunction" data="easeInOutExpo"/>
 					<property type="7" name="OnImageChosenFunctionName" data="onImageChosen"/>
 					<property type="6" name="ImageCount" data="5"/>
-					<property type="7" name="ImageName0" data="camera.png"/>
-					<property type="7" name="ImageName1" data="cameraSelect.png"/>
-					<property type="7" name="ImageName2" data="cameraUndoButton.png"/>
-					<property type="7" name="ImageName3" data="circleRed.png"/>
-					<property type="7" name="ImageName4" data="circleOrange.png"/>
+					<property type="7" name="ImageName0" data="axe_1.png"/>
+					<property type="7" name="ImageName1" data="carrot_powerup.png"/>
+					<property type="7" name="ImageName2" data="shield-game-item.jpg"/>
+					<property type="7" name="ImageName3" data="color_bomb_1.png"/>
+					<property type="7" name="ImageName4" data="femur.png"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

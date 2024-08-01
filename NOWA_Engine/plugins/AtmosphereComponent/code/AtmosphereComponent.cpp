@@ -2,6 +2,7 @@
 #include "AtmosphereComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
+#include "utilities/Interpolator.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
@@ -991,19 +992,19 @@ namespace NOWA
 			Ogre::Real factor = (hours + (minutes / 60.0f));
 			if (factor >= 6.0f && factor <= 12.0f)
 			{
-				normalizedTime = MathHelper::getInstance()->linearInterpolation(factor, 6.0f, 12.0f, 0.0f, 0.5f);
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 6.0f, 12.0f, 0.0f, 0.5f);
 			}
 			else if (factor > 12.0f && factor <= 21.0f)
 			{
-				normalizedTime = MathHelper::getInstance()->linearInterpolation(factor, 12.0f, 21.0f, 0.5f, 1.0f);
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 12.0f, 21.0f, 0.5f, 1.0f);
 			}
 			else if (factor > 21.0f && factor < 24.0f)
 			{
-				normalizedTime = MathHelper::getInstance()->linearInterpolation(factor, 21.0f, 24.0f, -1.0f, -0.5f);
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 21.0f, 24.0f, -1.0f, -0.5f);
 			}
 			else if (factor >= 0.0f && factor < 6.0f)
 			{
-				normalizedTime = MathHelper::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, -0.0f);
+				normalizedTime = Interpolator::getInstance()->linearInterpolation(factor, 0.0f, 6.0f, -0.5f, -0.0f);
 			}
 		}
 		return normalizedTime;
@@ -1017,19 +1018,19 @@ namespace NOWA
 
 		if (this->timeOfDay >= 0.0f && this->timeOfDay <= 0.5f)
 		{
-			value = MathHelper::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.0f, 0.5f, 6.0f, 12.0f);
 		}
 		else if (this->timeOfDay > 0.5f && this->timeOfDay <= 1.0f)
 		{
-			value = MathHelper::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 21.0f);
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, 0.5f, 1.0f, 12.0f, 21.0f);
 		}
 		else if (this->timeOfDay >= -1.0f && this->timeOfDay < -0.5f)
 		{
-			value = MathHelper::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 21.0f, 24.0f);
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -1.0f, -0.5f, 21.0f, 24.0f);
 		}
 		else if (this->timeOfDay >= -0.5f && this->timeOfDay < 0.0f)
 		{
-			value = MathHelper::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, -0.0f, 0.0f, 6.0f);
+			value = Interpolator::getInstance()->linearInterpolation(this->timeOfDay, -0.5f, -0.0f, 0.0f, 6.0f);
 		}
 
 		int hours = value;

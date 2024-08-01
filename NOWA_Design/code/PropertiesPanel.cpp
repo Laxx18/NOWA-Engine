@@ -6,6 +6,8 @@
 #include "gameobject/JointComponents.h"
 #include "MyGUIHelper.h"
 
+#include "utilities/Interpolator.h"
+
 bool PropertiesPanel::bShowProperties = true;
 
 class SetScrollPositionProcess : public NOWA::Process
@@ -1533,7 +1535,7 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 		value = range - 1;
 	}
 
-	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(value * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f);
+	Ogre::Real interpolatedValue = NOWA::Interpolator::getInstance()->linearInterpolation(value * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f, lowBorder * 1000.0f, highBorder * 1000.0f);
 	slider->setScrollRange(static_cast<size_t>(range));
 	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
 	slider->setTrackSize(10);
@@ -1596,7 +1598,7 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 		value = range - 1;
 	}
 
-	Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(value, lowBorder, highBorder, lowBorder, highBorder);
+	Ogre::Real interpolatedValue = NOWA::Interpolator::getInstance()->linearInterpolation(value, lowBorder, highBorder, lowBorder, highBorder);
 	slider->setScrollRange(static_cast<size_t>(range));
 	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
 
@@ -2610,7 +2612,7 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 				currentValue = range - 1;
 			}
 
-			Ogre::Real interpolatedValue = NOWA::MathHelper::getInstance()->linearInterpolation(currentValue, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
+			Ogre::Real interpolatedValue = NOWA::Interpolator::getInstance()->linearInterpolation(currentValue, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
 			if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
 			{
 				slider->setScrollPosition(static_cast<size_t>(interpolatedValue));

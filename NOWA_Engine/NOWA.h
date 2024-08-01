@@ -379,6 +379,7 @@ namespace NOWA
 #include "utilities/FastDelegate.h"
 #include "utilities/rapidxml.hpp"
 #include "utilities/MathHelper.h"
+#include "utilities/Interpolator.h"
 #include "utilities/MyGUIUtilities.h"
 #include "utilities/SkeletonVisualizer.h"
 #include "utilities/ObjectTitle.h"

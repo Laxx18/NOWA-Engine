@@ -12907,6 +12907,94 @@ namespace NOWA
 		return instance->lookAt(unnormalizedDirection);
 	}
 
+	void bindInterpolator(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<Interpolator>("Interpolator")
+			// .def("getInstance", &Interpolator::getInstance)
+			.def("linearInterpolation", &Interpolator::linearInterpolation)
+			.def("interpolate", (Ogre::Vector3(Interpolator::*)(const Ogre::Vector3&, const Ogre::Vector3&, Ogre::Real)) & Interpolator::interpolate)
+			.def("interpolate", (Ogre::Real(Interpolator::*)(Ogre::Real, Ogre::Real, Ogre::Real)) & Interpolator::interpolate)
+			.def("calculateBezierYT", &Interpolator::calculateBezierYT)
+			.def("calcBezierYTPoints", &Interpolator::calcBezierYTPoints)
+			.def("easeInSine", &Interpolator::easeInSine)
+			.def("easeOutSine", &Interpolator::easeOutSine)
+			.def("easeInOutSine", &Interpolator::easeInOutSine)
+			.def("easeInQuad", &Interpolator::easeInQuad)
+			.def("easeOutQuad", &Interpolator::easeOutQuad)
+			.def("easeInCubic", &Interpolator::easeInCubic)
+			.def("easeOutCubic", &Interpolator::easeOutCubic)
+			.def("easeInOutCubic", &Interpolator::easeInOutCubic)
+			.def("easeInQuart", &Interpolator::easeInQuart)
+			.def("easeOutQuart", &Interpolator::easeOutQuart)
+			.def("easeInOutQuart", &Interpolator::easeInOutQuart)
+			.def("easeInQuint", &Interpolator::easeInQuint)
+			.def("easeOutQuint", &Interpolator::easeOutQuint)
+			.def("easeInOutQuint", &Interpolator::easeInOutQuint)
+			.def("easeInExpo", &Interpolator::easeInExpo)
+			.def("easeOutExpo", &Interpolator::easeOutExpo)
+			.def("easeInOutExpo", &Interpolator::easeInOutExpo)
+			.def("easeInCirc", &Interpolator::easeInCirc)
+			.def("easeOutCirc", &Interpolator::easeOutCirc)
+			.def("easeInOutCirc", &Interpolator::easeInOutCirc)
+			.def("easeInBack", &Interpolator::easeInBack)
+			.def("easeOutBack", &Interpolator::easeOutBack)
+			.def("easeInOutBack", &Interpolator::easeInOutBack)
+			.def("easeInElastic", &Interpolator::easeInElastic)
+			.def("easeOutElastic", &Interpolator::easeOutElastic)
+			.def("easeInOutElastic", &Interpolator::easeInOutElastic)
+			.def("easeOutBounce", &Interpolator::easeOutBounce)
+			.def("easeInBounce", &Interpolator::easeInBounce)
+			.def("easeInOutBounce", &Interpolator::easeInOutBounce)
+		];
+		object globalVars = globals(lua);
+		globalVars["Interpolator"] = Interpolator::getInstance();
+
+		AddClassToCollection("Interpolator", "class", "Interpolator for utilities functions for mathematical operations and ray casting.");
+		AddClassToCollection("Interpolator", "Interpolator", "Gets the singleton instance of the Interpolator.");
+	
+		AddClassToCollection("Interpolator", "float value, float xLowBorder, float xHighBorder,float yLowBorder, float yHighBorder)", "Linear interpolation is a method useful for curve fitting using linear polynomials. "
+							 "* It helps in building new data points within the range of a discrete set of already known data points. "
+							 "* Therefore, the Linear interpolation is the simplest method for estimating a channel from the vector of the given channels estimates. "
+							 "* It is very useful for data prediction and many other mathematical and scientific applications.");
+		AddClassToCollection("Interpolator", "float interpolate(float v0, float v1, float t)", "Linear interpolation between two values. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float interpolate(Vector3 v0, Vector3 v1, float t)", "Linear interpolation between two values. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float calculateBezierYT(float t, bool invert)", "Calculates the bezier y at the given time t. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float calcBezierYTPoints(float t, bool invert)", "Calculates the bezier y points at the given time t. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInSine(float t)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutSine(float t)", "Slight deceleration at the end. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInSine(float t)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutSine(float t)", "Slight acceleration at beginning and slight deceleration at end. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInQuad(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutQuad(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutQuad(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInCubic(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutCubic(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutCubic(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInQuart(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutQuart(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutQuart(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInQuint(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutQuint(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutQuint(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInExpo(float t)", "Accelerate exponentially until finish. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutExpo(float t)", "Initial exponential acceleration slowing to stop. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutExpo(float t)", "Exponential acceleration and deceleration. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInCirc(float t)", "Increasing velocity until stop. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeOutCirc(float t)", "Start fast, decreasing velocity until stop. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutCirc(float t)", "Fast increase in velocity, fast decrease in velocity. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInBack(float t, float magnitude)", "Slow movement backwards then fast snap to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
+		AddClassToCollection("Interpolator", "float easeOutBack(float t, float magnitude)", "Fast snap to backwards point then slow resolve to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
+		AddClassToCollection("Interpolator", "float easeInOutBack(float t, float magnitude)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
+		AddClassToCollection("Interpolator", "float easeInElastic(float t, float magnitude)", "Bounces slowly then quickly to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.7");
+		AddClassToCollection("Interpolator", "float easeOutElastic(float t, float magnitude)", "Fast acceleration, bounces to zero. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.7");
+		AddClassToCollection("Interpolator", "float easeInOutElastic(float t, float magnitude)", "Slow start and end, two bounces sandwich a fast motion. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.65");
+		AddClassToCollection("Interpolator", "float easeOutBounce(float t)", "Bounce to completion. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInBounce(float t)", "Bounce increasing in velocity until completion. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("Interpolator", "float easeInOutBounce(float t)", "Bounce in and bounce out. The time t e.g. t = (time - animationStart) / duration");
+	}
+
 	void bindMathHelper(lua_State* lua)
 	{
 		module(lua)
@@ -12918,6 +13006,7 @@ namespace NOWA
 			// .def("getCalibratedOverlayCoordinates", &MathHelper::getCalibratedOverlayCoordinates)
 			.def("lowPassFilter", (Ogre::Real(MathHelper::*)(Ogre::Real, Ogre::Real, Ogre::Real)) &MathHelper::lowPassFilter)
 			.def("lowPassFilter", (Ogre::Vector3(MathHelper::*)(const Ogre::Vector3& , const Ogre::Vector3& , Ogre::Real)) &MathHelper::lowPassFilter)
+			.def("clamp", &MathHelper::clamp)
 			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real, unsigned int)) & MathHelper::round)
 			.def("round", (Ogre::Real(MathHelper::*)(Ogre::Real)) & MathHelper::round)
 			.def("round", (Ogre::Vector2(MathHelper::*)(Ogre::Vector2, unsigned int)) & MathHelper::round)
@@ -12959,40 +13048,6 @@ namespace NOWA
 			.def("limit", &MathHelper::limit)
 			.def("amplitudeToDecibels", &MathHelper::amplitudeToDecibels)
 			.def("decibelsToAmplitude", &MathHelper::decibelsToAmplitude)
-			.def("interpolate", (Ogre::Vector3(MathHelper::*)(const Ogre::Vector3&, const Ogre::Vector3&, Ogre::Real)) &MathHelper::interpolate)
-			.def("interpolate", (Ogre::Real(MathHelper::*)(Ogre::Real, Ogre::Real, Ogre::Real)) &MathHelper::interpolate)
-			.def("calculateBezierYT", &MathHelper::calculateBezierYT)
-			.def("calcBezierYTPoints", &MathHelper::calcBezierYTPoints)
-			.def("clamp", &MathHelper::clamp)
-			.def("easeInSine", &MathHelper::easeInSine)
-			.def("easeOutSine", &MathHelper::easeOutSine)
-			.def("easeInOutSine", &MathHelper::easeInOutSine)
-			.def("easeInQuad", &MathHelper::easeInQuad)
-			.def("easeOutQuad", &MathHelper::easeOutQuad)
-			.def("easeInCubic", &MathHelper::easeInCubic)
-			.def("easeOutCubic", &MathHelper::easeOutCubic)
-			.def("easeInOutCubic", &MathHelper::easeInOutCubic)
-			.def("easeInQuart", &MathHelper::easeInQuart)
-			.def("easeOutQuart", &MathHelper::easeOutQuart)
-			.def("easeInOutQuart", &MathHelper::easeInOutQuart)
-			.def("easeInQuint", &MathHelper::easeInQuint)
-			.def("easeOutQuint", &MathHelper::easeOutQuint)
-			.def("easeInOutQuint", &MathHelper::easeInOutQuint)
-			.def("easeInExpo", &MathHelper::easeInExpo)
-			.def("easeOutExpo", &MathHelper::easeOutExpo)
-			.def("easeInOutExpo", &MathHelper::easeInOutExpo)
-			.def("easeInCirc", &MathHelper::easeInCirc)
-			.def("easeOutCirc", &MathHelper::easeOutCirc)
-			.def("easeInOutCirc", &MathHelper::easeInOutCirc)
-			.def("easeInBack", &MathHelper::easeInBack)
-			.def("easeOutBack", &MathHelper::easeOutBack)
-			.def("easeInOutBack", &MathHelper::easeInOutBack)
-			.def("easeInElastic", &MathHelper::easeInElastic)
-			.def("easeOutElastic", &MathHelper::easeOutElastic)
-			.def("easeInOutElastic", &MathHelper::easeInOutElastic)
-			.def("easeOutBounce", &MathHelper::easeOutBounce)
-			.def("easeInBounce", &MathHelper::easeInBounce)
-			.def("easeInOutBounce", &MathHelper::easeInOutBounce)
 		];
 		object globalVars = globals(lua);
 		globalVars["MathHelper"] = MathHelper::getInstance();
@@ -13003,6 +13058,7 @@ namespace NOWA
 		AddClassToCollection("MathHelper", "Vector4 getCalibratedWindowCoordinates(float x, float y, float width, float height, Viewport viewport)", "Gets the relative position to the window size. For example mapping an crosshair overlay object and conrolling it via mouse or Wii controller..");
 		AddClassToCollection("MathHelper", "float lowPassFilter(float value, float oldValue, float scale)", "A low pass filter in order to smooth chaotic values. This is for example useful for the position determination of infrared camera of the Wii controller or smooth movement at all.");
 		AddClassToCollection("MathHelper", "Vector3 lowPassFilter(Vector3 value, Vector3 oldValue, float scale)", "A low pass filter for vector3 in order to smooth chaotic values. This is for example useful for the position determination of infrared camera of the Wii controller or smooth movement at all.");
+		AddClassToCollection("MathHelper", "float clamp(float value, float min, float max)", "Clamps the value between min and max. The time t e.g. t = (time - animationStart) / duration");
 		AddClassToCollection("MathHelper", "float round(float number, unsigned int places)", "Rounds a number according to the number of places. E.g. 0.5 will be 1.0 and 4.443 will be 4.44 when number of places is set to 2.");
 		AddClassToCollection("MathHelper", "float round(float number)", "Rounds a number.");
 		AddClassToCollection("MathHelper", "Vector2 round(Vector2 vec, unsigned int places)", "Rounds a vector according to the number of places.");
@@ -13043,42 +13099,8 @@ namespace NOWA
 		AddClassToCollection("MathHelper", "float calculateRotationGridValue(Quaternion orientation, float step, float angle)", "Calculates the rotation grid value.");
 		AddClassToCollection("MathHelper", "int getRandomNumberInt(int min, int max)", "Gets a random number between the given min and max.");
 		AddClassToCollection("MathHelper", "long getRandomNumberLong(long min, long max)", "Gets a random number between the given min and max.");
-
-		AddClassToCollection("MathHelper", "float lerp(float v0, float v1, float t)", "Linear interpolation between two values. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float calculateBezierYT(float t, bool invert)", "Calculates the bezier y at the given time t. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float calcBezierYTPoints(float t, bool invert)", "Calculates the bezier y points at the given time t. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float clamp(float value, float min, float max)", "Clamps the value between min and max. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInSine(float t)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutSine(float t)", "Slight deceleration at the end. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInSine(float t)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutSine(float t)", "Slight acceleration at beginning and slight deceleration at end. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInQuad(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutQuad(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutQuad(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInCubic(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutCubic(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutCubic(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInQuart(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutQuart(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutQuart(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInQuint(float t)", "Accelerating from zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutQuint(float t)", "Decelerating to zero velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutQuint(float t)", "Acceleration until halfway, then deceleration. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInExpo(float t)", "Accelerate exponentially until finish. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutExpo(float t)", "Initial exponential acceleration slowing to stop. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutExpo(float t)", "Exponential acceleration and deceleration. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInCirc(float t)", "Increasing velocity until stop. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeOutCirc(float t)", "Start fast, decreasing velocity until stop. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutCirc(float t)", "Fast increase in velocity, fast decrease in velocity. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInBack(float t, float magnitude)", "Slow movement backwards then fast snap to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
-		AddClassToCollection("MathHelper", "float easeOutBack(float t, float magnitude)", "Fast snap to backwards point then slow resolve to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
-		AddClassToCollection("MathHelper", "float easeInOutBack(float t, float magnitude)", "Slight acceleration from zero to full speed. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 1.70158");
-		AddClassToCollection("MathHelper", "float easeInElastic(float t, float magnitude)", "Bounces slowly then quickly to finish. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.7");
-		AddClassToCollection("MathHelper", "float easeOutElastic(float t, float magnitude)", "Fast acceleration, bounces to zero. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.7");
-		AddClassToCollection("MathHelper", "float easeInOutElastic(float t, float magnitude)", "Slow start and end, two bounces sandwich a fast motion. The time t e.g. t = (time - animationStart) / duration. Info: Good value for magnitude is 0.65");
-		AddClassToCollection("MathHelper", "float easeOutBounce(float t)", "Bounce to completion. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInBounce(float t)", "Bounce increasing in velocity until completion. The time t e.g. t = (time - animationStart) / duration");
-		AddClassToCollection("MathHelper", "float easeInOutBounce(float t)", "Bounce in and bounce out. The time t e.g. t = (time - animationStart) / duration");
+		AddClassToCollection("MathHelper", "float lowPassFilter(float value, float oldValue, float scale)", "A low pass filter in order to smooth chaotic values. This is for example useful for the position determination of infrared camera of the Wii controller or smooth movement at all.");
+		AddClassToCollection("MathHelper", "Vector3 lowPassFilter(Vector3 value, Vector3 oldValue, float scale)", "A low pass filter for vector3 in order to smooth chaotic values. This is for example useful for the position determination of infrared camera of the Wii controller or smooth movement at all.");
 	}
 
 	void bindLuaScriptComponent(lua_State* lua)
@@ -13549,6 +13571,7 @@ namespace NOWA
 				bindSSAOCompositorModule(this->lua);
 				bindSSAOModule(this->lua);
 				bindProcedural(this->lua);
+				bindInterpolator(this->lua);
 				bindMathHelper(this->lua);
 				bindLuaScriptComponent(this->lua);
 				bindLuaScriptEventManager(this->lua);

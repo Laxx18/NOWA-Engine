@@ -23,15 +23,23 @@ namespace NOWA
 		timeSinceLastImageShown(0.0f),
 		gradientDelay(0.0f),
 		animationTime(0.0f),
+		animationOppositeDir(1.0f),
+		animationRound(0),
 		animating(false),
 		growing(false),
-		initialSize(0, 0),
+		initialGeometry(0, 0, 0, 0),
+		easeFunctions(Interpolator::EaseInSine),
+		currentImageIndex(0),
+		slideSpeed(2000.0f),
+		scrollPositionX(0.0f),
 		activated(new Variant(RandomImageShuffler::AttrActivated(), true, this->attributes)),
 		geometry(new Variant(RandomImageShuffler::AttrGeometry(), Ogre::Vector4(0.8f, 0.0f, 0.2f, 0.2f), this->attributes)),
 		maskImage(new Variant(RandomImageShuffler::AttrMaskImage(), "", this->attributes)),
 		displayTime(new Variant(RandomImageShuffler::AttrDisplayTime(), 100.0f, this->attributes)),
+		useSlideImage(new Variant(RandomImageShuffler::AttrUseSlideImage(), false, this->attributes)),
 		useStopDelay(new Variant(RandomImageShuffler::AttrUseStopDelay(), false, this->attributes)),
 		useStopEffect(new Variant(RandomImageShuffler::AttrUseStopEffect(), false, this->attributes)),
+		easeFunction(new Variant(RandomImageShuffler::AttrEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes)),
 		onImageChosenFunctionName(new Variant(RandomImageShuffler::AttrOnImageChosenFunctionName(), "", this->attributes)),
 		imageCount(new Variant(RandomImageShuffler::AttrImageCount(), 0, this->attributes))
 	{
@@ -40,8 +48,11 @@ namespace NOWA
 		this->maskImage->addUserData(GameObject::AttrActionFileOpenDialog(), "MyGuiImages");
 		this->maskImage->setDescription("Sets a image mask, which can be created in gimp and added to the Minimap.xml in the MyGui/Minimap folder.");
 		this->displayTime->setDescription("Sets the image display time in milleseconds.");
+		this->useSlideImage->setDescription("Sets whether images shall slide during shuffle instead of randomly shown for a specific amount of time.");
 		this->useStopDelay->setDescription("Sets whether to use stop delay. That is, a gradual slowdown before stopping at an image.");
 		this->useStopEffect->setDescription("Sets whether to use stop effect (grow and reduce) final image which has been chosen.");
+		this->useStopEffect->addUserData(GameObject::AttrActionNeedRefresh());
+		this->easeFunction->setDescription("If use stop effect is switched on, sets the to be used ease function for showing the chosen image.");
 		this->onImageChosenFunctionName->setDescription("Sets the lua function name, to react when an image has been chosen after shuffeling. E.g. onImageChosen(imageName, imageIndex).");
 		this->onImageChosenFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onImageChosenFunctionName->getString() + "(imageName, imageIndex)");
 		this->imageCount->addUserData(GameObject::AttrActionNeedRefresh());
@@ -93,6 +104,11 @@ namespace NOWA
 			this->displayTime->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseSlideImage")
+		{
+			this->useSlideImage->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseStopDelay")
 		{
 			this->useStopDelay->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
@@ -101,6 +117,12 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseStopEffect")
 		{
 			this->useStopEffect->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			this->easeFunction->setVisible(useStopEffect);
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EaseFunction")
+		{
+			this->setEaseFunction(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnImageChosenFunctionName")
@@ -146,8 +168,10 @@ namespace NOWA
 		clonedCompPtr->setGeometry(this->geometry->getVector4());
 		clonedCompPtr->setMaskImage(this->maskImage->getString());
 		clonedCompPtr->setDisplayTime(this->displayTime->getReal());
+		clonedCompPtr->setUseSlideImage(this->useSlideImage->getBool());
 		clonedCompPtr->setUseStopDelay(this->useStopDelay->getBool());
 		clonedCompPtr->setUseStopEffect(this->useStopEffect->getBool());
+		clonedCompPtr->setEaseFunction(this->easeFunction->getListSelectedValue());
 		clonedCompPtr->setOnImageChosenFunctionName(this->onImageChosenFunctionName->getString());
 		clonedCompPtr->setImageCount(this->imageCount->getUInt());
 
@@ -175,6 +199,25 @@ namespace NOWA
 	bool RandomImageShuffler::connect(void)
 	{
 		this->setActivated(this->activated->getBool());
+
+		if (true == this->activated->getBool())
+		{
+			this->imageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::HCenter, "Overlapped");
+
+			this->initialGeometry = this->imageWidget->getAbsoluteRect();
+
+			if (false == this->maskImage->getString().empty())
+			{
+				this->maskImageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::Stretch, "Overlapped");
+				this->maskImageWidget->setImageTexture(this->maskImage->getString());
+			}
+
+			if (true == this->useSlideImage->getBool() && false == this->images.empty())
+			{
+				// Start off-screen
+				// this->imageWidget->setRealPosition(MyGUI::FloatPoint(this->geometry->getVector4().x - this->geometry->getVector4().z, this->geometry->getVector4().y));
+			}
+		}
 
 		return true;
 	}
@@ -228,40 +271,64 @@ namespace NOWA
 
 	void RandomImageShuffler::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
+		if (false == notSimulating && true == this->activated->getBool())
 		{
+			// If shuffle has been started
 			if (true == this->startShuffle && false == this->stopShuffle)
 			{
+				// Checks if switch image, or use slide image
+
 				this->timeSinceLastImageShown += dt;
 				if (this->timeSinceLastImageShown >= this->displayTime->getReal() * 0.001f)
 				{
-					this->switchImage();
+					if (false == this->useSlideImage->getBool())
+					{
+						this->switchImage();
+					}
 					this->timeSinceLastImageShown = 0.0f;
+				}
+
+				if (true == this->useSlideImage->getBool())
+				{
+					this->slideImage(dt);
 				}
 			}
 			else if (true == this->stopShuffle && true == this->startShuffle && true == this->useStopDelay->getBool())
 			{
 				this->timeSinceLastImageShown += dt;
-				if (this->timeSinceLastImageShown >= this->gradientDelay * 0.001f)
+
+				// If stop has been triggered but use stop delay is on, do not stop immediately, but gradually decrease speed, until it comes to an end
+
+				if (true == this->useSlideImage->getBool())
 				{
-					this->switchImage();
-					this->timeSinceLastImageShown = 0.0f;
-					if (this->gradientDelay < 1000.0f)
+					this->slideImage(dt);
+				}
+				else
+				{
+					if (this->timeSinceLastImageShown >= this->gradientDelay * 0.001f)
 					{
-						// Increment delay to slow down gradually
-						this->gradientDelay += 100.0f;
-					}
-					else
-					{
-						this->startShuffle = false;
-						this->stopShuffle = true;
-						if (true == this->useStopEffect->getBool())
+						if (false == this->useSlideImage->getBool())
 						{
-							this->startAnimation();
+							this->switchImage();
 						}
-						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
+						this->timeSinceLastImageShown = 0.0f;
+						if (this->gradientDelay < 1000.0f)
 						{
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+							// Increment delay to slow down gradually
+							this->gradientDelay += 100.0f;
+						}
+						else
+						{
+							this->startShuffle = false;
+							this->stopShuffle = true;
+							if (true == this->useStopEffect->getBool())
+							{
+								this->startAnimation();
+							}
+							if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
+							{
+								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+							}
 						}
 					}
 				}
@@ -294,6 +361,10 @@ namespace NOWA
 		{
 			this->setDisplayTime(attribute->getReal());
 		}
+		else if (RandomImageShuffler::AttrUseSlideImage() == attribute->getName())
+		{
+			this->setUseSlideImage(attribute->getBool());
+		}
 		else if (RandomImageShuffler::AttrUseStopDelay() == attribute->getName())
 		{
 			this->setUseStopDelay(attribute->getBool());
@@ -301,6 +372,10 @@ namespace NOWA
 		else if (RandomImageShuffler::AttrUseStopEffect() == attribute->getName())
 		{
 			this->setUseStopEffect(attribute->getBool());
+		}
+		else if (RandomImageShuffler::AttrEaseFunction() == attribute->getName())
+		{
+			this->setEaseFunction(attribute->getListSelectedValue());
 		}
 		else if (RandomImageShuffler::AttrImageCount() == attribute->getName())
 		{
@@ -359,6 +434,12 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSlideImage"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useSlideImage->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseStopDelay"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useStopDelay->getBool())));
 		propertiesXML->append_node(propertyXML);
@@ -367,6 +448,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseStopEffect"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useStopEffect->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "EaseFunction"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->easeFunction->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -411,14 +498,11 @@ namespace NOWA
 			this->gradientDelay = this->displayTime->getReal();
 			this->animationTime = 0.0f;
 			this->animating = false;
-
-			this->imageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::HCenter, "Overlapped");
-
-			if (false == this->maskImage->getString().empty())
-			{
-				this->maskImageWidget = this->imageWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, this->imageWidget->getWidth(), this->imageWidget->getHeight()), MyGUI::Align::Stretch);
-				this->maskImageWidget->setImageTexture(this->maskImage->getString());
-			}
+			this->animationOppositeDir = 1.0f;
+			this->animationRound = 0;
+			this->currentImageIndex = 0;
+			this->slideSpeed = 2000.0f;
+			this->scrollPositionX = 0.0f;
 		}
 	}
 
@@ -457,6 +541,16 @@ namespace NOWA
 		return this->displayTime->getUInt();
 	}
 
+	void RandomImageShuffler::setUseSlideImage(bool useSlideImage)
+	{
+		this->useSlideImage->setValue(useSlideImage);
+	}
+
+	bool RandomImageShuffler::getUseSlideImage(void) const
+	{
+		return this->useSlideImage->getBool();
+	}
+
 	void RandomImageShuffler::setUseStopDelay(bool useStopDelay)
 	{
 		this->useStopDelay->setValue(useStopDelay);
@@ -470,11 +564,23 @@ namespace NOWA
 	void RandomImageShuffler::setUseStopEffect(bool useStopEffect)
 	{
 		this->useStopEffect->setValue(useStopEffect);
+		this->easeFunction->setVisible(useStopEffect);
 	}
 
 	bool RandomImageShuffler::getUseStopEffect(void) const
 	{
 		return this->useStopEffect->getBool();
+	}
+
+	void RandomImageShuffler::setEaseFunction(const Ogre::String& easeFunction)
+	{
+		this->easeFunction->setListSelectedValue(easeFunction);
+		this->easeFunctions = Interpolator::getInstance()->mapStringToEaseFunctions(easeFunction);
+	}
+
+	Ogre::String RandomImageShuffler::getEaseFunction(void) const
+	{
+		return this->easeFunction->getListSelectedValue();
 	}
 
 	void RandomImageShuffler::setImageCount(unsigned int imageCount)
@@ -531,6 +637,11 @@ namespace NOWA
 			this->growing = true;
 			this->stopShuffle = false;
 			this->startShuffle = true;
+			this->animationOppositeDir = 1.0f;
+			this->animationRound = 0;
+			this->currentImageIndex = 0;
+			this->slideSpeed = 2000.0f;
+			this->scrollPositionX = 0.0f;
 		}
 	}
 
@@ -547,7 +658,7 @@ namespace NOWA
 				this->stopShuffle = true;
 				this->startShuffle = false;
 				// Immediately displays the current image
-				this->switchImage();
+				// this->switchImage();
 
 				if (true == this->useStopEffect->getBool())
 				{
@@ -571,7 +682,7 @@ namespace NOWA
 		}
 	}
 
-	void RandomImageShuffler::switchImage()
+	void RandomImageShuffler::switchImage(void)
 	{
 		static std::mt19937 rng(static_cast<unsigned int>(std::chrono::system_clock::now().time_since_epoch().count()));
 		std::uniform_int_distribution<int> dist(0, static_cast<int>(this->images.size() - 1));
@@ -581,84 +692,108 @@ namespace NOWA
 		this->imageWidget->setUserString("ImageIndex", Ogre::StringConverter::toString(index));
 	}
 
+	void RandomImageShuffler::slideImage(Ogre::Real dt)
+	{
+		// Move image box from left to right
+		this->scrollPositionX += this->slideSpeed * dt;
+
+		if (this->scrollPositionX >= this->imageWidget->getImageSize().width * 2.0f)
+		{
+			// Once the image box is fully visible, switch to the next image
+			this->currentImageIndex = (this->currentImageIndex + 1) % this->images.size();
+			this->imageWidget->setImageTexture(this->images[this->currentImageIndex]->getString());
+			this->imageWidget->setUserString("ImageIndex", Ogre::StringConverter::toString(this->currentImageIndex));
+
+			this->scrollPositionX = 0.0f;
+		}
+
+		// Update image coordinate to scroll horizontally
+		this->imageWidget->setImageRect(MyGUI::IntRect(this->imageWidget->getImageSize().width - static_cast<int>(this->scrollPositionX), 0, this->imageWidget->getImageSize().width * 2, this->imageWidget->getImageSize().height));
+
+		// Calculate remaining distance to the next image boundary
+		int distanceToNextImage = this->imageWidget->getImageSize().width - this->scrollPositionX;
+
+
+		// Check if we need to stop
+		if (true == this->stopShuffle)
+		{
+			// Gradually decrease the slide speed to simulate stopping
+			this->slideSpeed -= 250.0f * dt; // Decrease speed by 250 units per second
+			
+			
+			if (this->slideSpeed < 1000.0f)
+			{
+				this->slideSpeed = 1000.0f;
+			}
+
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "--->dist " + Ogre::StringConverter::toString(distanceToNextImage) + " this->scrollPositionX: " + Ogre::StringConverter::toString(this->scrollPositionX) + " width: " + Ogre::StringConverter::toString(this->imageWidget->getImageSize().width));
+
+			// Ensure that the image stops at the next boundary
+			if (this->slideSpeed <= 1000.0f && distanceToNextImage <= 0)
+			{
+				this->imageWidget->setImageRect(MyGUI::IntRect(0, 0, this->imageWidget->getImageSize().width, this->imageWidget->getImageSize().height));
+				this->slideSpeed = 0;
+				this->startShuffle = false;
+
+				if (true == this->useStopEffect->getBool())
+				{
+					this->startAnimation();
+				}
+				if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+				}
+			}
+		}
+	}
+
 	void RandomImageShuffler::startAnimation(void)
 	{
 		this->animating = true;
 		this->animationTime = 0.0f;
-		this->initialSize = this->imageWidget->getSize();
+		this->animationOppositeDir = 1.0f;
+		this->animationRound = 0;
 	}
 
-#if 0
 	void RandomImageShuffler::animateImage(Ogre::Real dt)
 	{
-		this->animationTime += dt;
-		Ogre::Real duration = 1.0f; // Duration of the animation in seconds
-		Ogre::Real t = this->animationTime / duration;
+		const Ogre::Real duration = 1.0f;
 
-		if (t >= 1.0f)
+		if (Ogre::Math::RealEqual(this->animationOppositeDir, 1.0f))
 		{
-			t = 1.0f;
-			this->animationTime = 0;
-
-			if (true == this->growing)
+			this->animationTime += dt;
+			if (this->animationTime >= duration)
 			{
-				this->growing = false;
-				// this->initialSize = this->targetSize;
-				this->targetSize = MyGUI::IntSize(this->initialSize.width / 1.25, this->initialSize.height / 1.25); // Reduce to original size
-			}
-			else
-			{
-				this->animating = false;
-				// Resets for the next animation
-				this->growing = true;
+				this->animationOppositeDir *= -1.0f;
+				this->animationRound++;
 			}
 		}
-
-		// Interpolate size
-		int width = static_cast<int>(this->initialSize.width + t * (this->targetSize.width - this->initialSize.width));
-		int height = static_cast<int>(this->initialSize.height + t * (this->targetSize.height - this->initialSize.height));
-
-		this->imageWidget->setSize(width, height);
-
-		if (nullptr != this->maskImageWidget)
+		else
 		{
-			this->maskImageWidget->setSize(width, height);
+			this->animationTime -= dt;
+			if (this->animationTime <= 0.0f)
+			{
+				this->animationOppositeDir *= -1.0f;
+				this->animationRound++;
+			}
 		}
-	}
-#else
-	void RandomImageShuffler::animateImage(Ogre::Real dt)
-	{
-		this->animationTime += dt;
-		Ogre::Real duration = 1.0f; // Duration of the animation in seconds
-		// Calculate new size based on sine wave for a single grow/shrink cycle
-		Ogre::Real t = this->animationTime / duration;
-
-		// Once the animation is complete
-		if (t > 1.0f) 
+		// if the translation took 2 rounds (1x forward and 1x back, then its enough, if repeat is off)
+		// also take the progress into account, the translation started at zero and should stop at zero
+		if (this->animationRound == 2 && this->animationTime >= 0.0f)
 		{
 			this->animating = false; // Stop the animation
-			this->imageWidget->setSize(this->initialSize); // Set back to original size
+			this->imageWidget->setSize(MyGUI::IntSize(this->initialGeometry.width(), this->initialGeometry.height())); // Set back to original size
 
-			if (nullptr != this->maskImageWidget)
-			{
-				this->maskImageWidget->setSize(this->initialSize); // Set back to original size
-			}
 			return; // Exit here
 		}
 
-		// Calculate the sine value for smooth animation
-		Ogre::Real sineValue = Ogre::Math::Sin(t * Ogre::Math::PI); // Go from 0 to 1
-		int width = static_cast<int>(this->initialSize.width + sineValue * 80); // 300 is the base width
-		int height = static_cast<int>(this->initialSize.height + sineValue * 80); // 300 is the base height
+		Ogre::Real t = this->animationTime / duration;
+		Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, static_cast<Ogre::Real>(this->initialGeometry.width()) * 0.25f, this->easeFunctions, t);
 
+		int width = static_cast<int>(this->initialGeometry.width() + resultValue);
+		int height = static_cast<int>(this->initialGeometry.height() + resultValue);
 		this->imageWidget->setSize(width, height);
-
-		if (nullptr != this->maskImageWidget)
-		{
-			this->maskImageWidget->setSize(width, height);
-		}
 	}
-#endif
 
 	// Lua registration part
 
