@@ -1,0 +1,35 @@
+https://opengameart.org/content/space-game-art-pack-extended
+
+SpaceArtPublish.psd
+
+License: CC BY-SA 3.0
+
+https://opengameart.org/content/shield-game-item
+
+Shield-Game-Item
+
+License: CC0
+
+https://opengameart.org/content/axe-survival-tool
+
+axe_1.png
+
+License: CC BY 3.0
+
+https://opengameart.org/content/animated-spinning-bombs
+
+color_bomb_1.png
+
+License: CC BY 3.0
+
+https://opengameart.org/content/pixel-art-femur
+
+femur.png
+
+License: CC0
+
+https://opengameart.org/content/easter-carrot-pick-up-item
+
+carrot_powerup.png
+
+License: CC0
