@@ -39,6 +39,8 @@ namespace NOWA
 		bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName);
 
 		void destroyContent(void);
+
+		Ogre::String getCurrentComponentPluginFolder(void) const;
 	public:
 		static DeployResourceModule* getInstance();
 	private:
@@ -46,6 +48,7 @@ namespace NOWA
 		~DeployResourceModule();
 	private:
 		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
+		Ogre::String currentComponentPluginFolder;
 	};
 
 }; //namespace end

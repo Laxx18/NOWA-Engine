@@ -1938,6 +1938,144 @@ namespace NOWA
 		bool blendMapChanged;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataTerraModifyEnd - This event is sent out if modifying terra has ended
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataTerraModifyEnd : public BaseEventData
+	{
+	public:
+
+		EventDataTerraModifyEnd(void)
+		{
+		}
+
+		explicit EventDataTerraModifyEnd(const std::vector<uint16_t>& oldHeightData, const std::vector<uint16_t>& newHeightData, unsigned long terraCompId)
+			: oldHeightData(oldHeightData),
+			newHeightData(newHeightData),
+			terraCompId(terraCompId)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A02;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A02;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataTerraModifyEnd(this->oldHeightData, this->newHeightData, this->terraCompId));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataTerraModifyEnd";
+		}
+
+		std::vector<uint16_t> getOldHeightData(void) const
+		{
+			return this->oldHeightData;
+		}
+
+		std::vector<uint16_t> getNewHeightData(void) const
+		{
+			return this->newHeightData;
+		}
+
+		unsigned long getTerraCompId(void) const
+		{
+			return this->terraCompId;
+		}
+	private:
+		std::vector<uint16_t> oldHeightData;
+		std::vector<uint16_t> newHeightData;
+		unsigned long terraCompId;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataTerraPaintEnd - This event is sent out if painting terra has ended
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataTerraPaintEnd : public BaseEventData
+	{
+	public:
+
+		EventDataTerraPaintEnd()
+		{
+		}
+
+		explicit EventDataTerraPaintEnd(const std::vector<uint8_t>& oldDetailBlendData, const std::vector<uint8_t>& newDetailBlendData, unsigned long terraCompId)
+			: oldDetailBlendData(oldDetailBlendData),
+			newDetailBlendData(newDetailBlendData),
+			terraCompId(terraCompId)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A03;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A03;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataTerraPaintEnd(this->oldDetailBlendData, this->newDetailBlendData, this->terraCompId));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataTerraPaintEnd";
+		}
+
+		std::vector<uint8_t> getOldDetailBlendData(void) const
+		{
+			return this->oldDetailBlendData;
+		}
+
+		std::vector<uint8_t> getNewDetailBlendData(void) const
+		{
+			return this->newDetailBlendData;
+		}
+
+		unsigned long getTerraCompId(void) const
+		{
+			return this->terraCompId;
+		}
+	private:
+		std::vector<uint8_t> oldDetailBlendData;
+		std::vector<uint8_t> newDetailBlendData;
+		unsigned long terraCompId;
+	};
+
 }; // namespace end
 
 #endif

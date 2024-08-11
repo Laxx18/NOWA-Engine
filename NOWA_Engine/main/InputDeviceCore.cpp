@@ -190,7 +190,8 @@ namespace NOWA
 			this->inputDeviceModules[i]->update(static_cast<Ogre::Real>(dt));
 		}
 
-		if (this->joysticks.size() > 0)
+		// ATTENTION: Capture called twice, see above
+		/*if (this->joysticks.size() > 0)
 		{
 			auto& itJoystick = this->joysticks.begin();
 			auto& itJoystickEnd = this->joysticks.end();
@@ -198,7 +199,7 @@ namespace NOWA
 			{
 				(*itJoystick)->capture();
 			}
-		}
+		}*/
 	}
 
 	void InputDeviceCore::addKeyListener(OIS::KeyListener* keyListener, const Ogre::String& instanceName)

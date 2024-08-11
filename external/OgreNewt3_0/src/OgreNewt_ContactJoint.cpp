@@ -231,5 +231,35 @@ namespace OgreNewt
 	{
 		return m_material;
 	}
+
+	Ogre::String Contact::print(void)
+	{
+		Ogre::Vector3 position = Ogre::Vector3::ZERO;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+		this->getPositionAndNormal(position, normal, this->getBody0());
+
+		Ogre::Vector3 direction1 = Ogre::Vector3::ZERO;
+		Ogre::Vector3 direction2 = Ogre::Vector3::ZERO;
+
+		this->getContactTangentDirections(this->getBody0(), direction1, direction2);
+
+		Ogre::String message;
+		message += "getNormalSpeed: " + Ogre::StringConverter::toString(this->getNormalSpeed()) + " \n";
+		message += "getContactPosition: " + Ogre::StringConverter::toString(position) + " \n";
+		message += "getContactNormal: " + Ogre::StringConverter::toString(normal) + " \n";
+		message += "getTangentDirection1: " + Ogre::StringConverter::toString(direction1) + " \n";
+		message += "getTangentDirection2: " + Ogre::StringConverter::toString(direction2) + " \n";
+		message += "getTangentSpeed: " + Ogre::StringConverter::toString(this->getTangentSpeed(0)) + " \n";
+		// message += "getContactForce: " + Ogre::StringConverter::toString(this->getContactForce(this->getBody0())) + " \n";
+		message += "getContactMaxNormalImpact: " + Ogre::StringConverter::toString(this->getContactMaxNormalImpact()) + " \n";
+		message += "getContactMaxTangentImpact: " + Ogre::StringConverter::toString(this->getContactMaxTangentImpact(0)) + " \n";
+		message += "getContactPruningTolerance: " + Ogre::StringConverter::toString(this->getContactPruningTolerance(this->getBody0(), this->getBody1())) + " \n";
+		message += "getContactPenetration: " + Ogre::StringConverter::toString(this->getContactPenetration()) + " \n";
+		message += "getClosestDistance: " + Ogre::StringConverter::toString(this->getClosestDistance()) + " \n";
+		message += "getFaceAttribute: " + Ogre::StringConverter::toString(this->getFaceAttribute()) + " \n";
+
+		return message;
+	}
 }
 

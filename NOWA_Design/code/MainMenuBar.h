@@ -8,6 +8,8 @@
 #include "TreeControl/TreeControl.h"
 #include "TreeControl/TreeControlItem.h"
 
+#include "utilities/CPlusPlusComponentGenerator.h"
+
 class ProjectManager;
 
 class MainMenuBar : public wraps::BaseLayout
@@ -121,6 +123,8 @@ private:
 	MyGUI::Window* aboutWindow;
 	MyGUI::VectorWidgetPtr createComponentPluginWindowWidgets;
 	MyGUI::Window* createComponentPluginWindow;
+	MyGUI::VectorWidgetPtr componentPluginWindowWidgets;
+	NOWA::CPlusPlusComponentGenerator* cPlusPlusComponentGenerator;
 	MyGUI::VectorWidgetPtr luaApiWidgets;
 	MyGUI::Window* luaApiWindow;
 	MyGUI::VectorWidgetPtr meshToolWidgets;

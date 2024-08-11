@@ -184,6 +184,16 @@ namespace NOWA
 			
 			this->gameObjectPtr->getSceneNode()->attachObject(light);
 
+#if 0
+			// Optionally, create a visual representation of the light (e.g., a sphere)
+			Ogre::v1::Entity* lightSphere = this->gameObjectPtr->getSceneManager()->createEntity(Ogre::SceneManager::PT_SPHERE);
+			Ogre::SceneNode* sphereNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+			sphereNode->attachObject(lightSphere);
+
+			// Scale down the sphere to make it smaller
+			sphereNode->setScale(0.01f, 0.01f, 0.01f);
+#endif
+
 			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 			if (nullptr != entity)
 			{

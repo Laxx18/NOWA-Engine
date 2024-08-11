@@ -521,6 +521,7 @@
     <ClInclude Include="utilities\AutoCompleteSearch.h" />
     <ClInclude Include="utilities\BoundingBoxDraw.h" />
     <ClInclude Include="utilities\C2DMatrix.h" />
+    <ClInclude Include="utilities\CPlusPlusComponentGenerator.h" />
     <ClInclude Include="utilities\DrawRenderer.hpp" />
     <ClInclude Include="utilities\DynamicLines.hpp" />
     <ClInclude Include="utilities\DynamicRenderable.hpp" />
@@ -741,6 +742,7 @@
     <ClCompile Include="utilities\AnimationSerializer.cpp" />
     <ClCompile Include="utilities\AutoCompleteSearch.cpp" />
     <ClCompile Include="utilities\BoundingBoxDraw.cpp" />
+    <ClCompile Include="utilities\CPlusPlusComponentGenerator.cpp" />
     <ClCompile Include="utilities\DrawRenderer.cpp" />
     <ClCompile Include="utilities\DynamicLines.cpp" />
     <ClCompile Include="utilities\DynamicRenderable.cpp" />

@@ -1225,6 +1225,9 @@ namespace NOWA
 
 	EditorManager::~EditorManager()
 	{
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
+
 		if (this->gizmo != nullptr)
 		{
 			delete this->gizmo;
@@ -1311,6 +1314,9 @@ namespace NOWA
 		// Grid2: http://www.ogre3d.org/tikiwiki/EditorGridSystem
 		// Imgizmo video: https://github.com/CedricGuillemet/ImGuizmo
 		// arc formula: https://www.allegro.cc/forums/thread/594175/713916
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
 	}
 
 	bool EditorManager::handleKeyPress(const OIS::KeyEvent& keyEventRef)
@@ -3709,7 +3715,7 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		if (true == withUndo)
 		{
-			this->undo();
+			this->undoAll();
 		}
 		// Physics simulation will be corrupt!
 		if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
@@ -3831,6 +3837,38 @@ namespace NOWA
 		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainPaintUndoCommand>(oldBlendWeightData, newBlendWeightData, terraComponent));
 	}
 
+	void EditorManager::handleTerraModifyEnd(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataTerraModifyEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataTerraModifyEnd>(eventData);
+
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getTerraCompId());
+
+		if (nullptr != gameObjectPtr)
+		{
+			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+			if (nullptr != terraComponent)
+			{
+				this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), terraComponent.get());
+			}
+		}
+	}
+
+	void EditorManager::handleTerraPaintEnd(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataTerraPaintEnd> castEventData = boost::static_pointer_cast<NOWA::EventDataTerraPaintEnd>(eventData);
+
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(castEventData->getTerraCompId());
+
+		if (nullptr != gameObjectPtr)
+		{
+			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
+			if (nullptr != terraComponent)
+			{
+				this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), terraComponent.get());
+			}
+		}
+	}
+
 	void EditorManager::deleteGameObjects(const std::vector<unsigned long> gameObjectIds)
 	{
 		if (gameObjectIds.size() > 0)
@@ -3879,6 +3917,12 @@ namespace NOWA
 	void EditorManager::undo(void)
 	{
 		this->sceneManipulationCommandModule.undo();
+		this->setGizmoToGameObjectsCenter();
+	}
+
+	void EditorManager::undoAll(void)
+	{
+		this->sceneManipulationCommandModule.undoAll();
 		this->setGizmoToGameObjectsCenter();
 	}
 

@@ -238,6 +238,8 @@ namespace NOWA
 
 		void undo(void);
 
+		void undoAll(void);
+
 		void redo(void);
 
 		bool canUndo(void);
@@ -293,6 +295,11 @@ namespace NOWA
 		std::tuple<bool, Ogre::Real, Ogre::Vector3> getTranslateYData(GameObject* gameObject);
 		Ogre::Vector3 calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject);
 		Ogre::Vector3 rotateAroundPoint(const Ogre::Vector3& point, const Ogre::Vector3& center, const Ogre::Quaternion& rotation);
+
+	private:
+		void handleTerraModifyEnd(EventDataPtr eventData);
+
+		void handleTerraPaintEnd(EventDataPtr eventData);
 	private:
 		Ogre::SceneManager* sceneManager;
 		Ogre::Camera* camera;

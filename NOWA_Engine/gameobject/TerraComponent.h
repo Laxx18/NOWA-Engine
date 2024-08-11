@@ -129,6 +129,8 @@ namespace NOWA
 
 		Ogre::String getBrushName(void) const;
 
+		std::vector<Ogre::String> getAllBrushNames(void) const;
+
 		void setBrushSize(short brushSize);
 
 		short getBrushSize(void) const;
@@ -143,6 +145,8 @@ namespace NOWA
 
 		unsigned int getImageLayerId(void) const;
 
+		std::vector<Ogre::String> getAllImageLayer(void) const;
+
 		Ogre::Terra* getTerra(void) const;
 
 		void createTerra(void);
@@ -151,13 +155,26 @@ namespace NOWA
 
 		void smoothTerrainStart(const Ogre::Vector3& position, float strength);
 
-		void paintTerrainStart(const Ogre::Vector3& position, float intensity, int blendLayer);
+		void paintTerrainStart(const Ogre::Vector3& position, float intensity, int imageLayer);
 
 		void modifyTerrain(const Ogre::Vector3& position, float strength);
 
 		void smoothTerrain(const Ogre::Vector3& position, float strength);
 
-		void paintTerrain(const Ogre::Vector3& position, float intensity, int blendLayer);
+		void paintTerrain(const Ogre::Vector3& position, float intensity, int imageLayer);
+
+		// For lua
+		void modifyTerrainEnd(void);
+
+		void smoothTerrainEnd(void);
+
+		void paintTerrainEnd(void);
+
+		void modifyTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount);
+
+		void smoothTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount);
+
+		void paintTerrainLoop(const Ogre::Vector3& position, float intensity, int imageLayer, unsigned int loopCount);
 
 		std::pair<std::vector<Ogre::uint16>, std::vector<Ogre::uint16>> modifyTerrainFinished(void);
 
@@ -205,6 +222,7 @@ namespace NOWA
 		Ogre::Light* sunLight;
 		Ogre::Camera* usedCamera;
 		bool postInitDone;
+		bool terraLoadedFromFile;
 	};
 
 }; //namespace end

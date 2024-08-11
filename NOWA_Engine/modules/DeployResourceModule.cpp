@@ -35,6 +35,11 @@ namespace NOWA
 		this->taggedResourceMap.clear();
 	}
 
+	Ogre::String DeployResourceModule::getCurrentComponentPluginFolder(void) const
+	{
+		return this->currentComponentPluginFolder;
+	}
+
 	DeployResourceModule* DeployResourceModule::getInstance()
 	{
 		static DeployResourceModule instance;
@@ -415,6 +420,7 @@ namespace NOWA
 
 		////////////////////////////code/////////////////////////////////////
 		destinationFolder = "../../" + projectName + "/code";
+
 		sourceFolder = "../../media/NOWA/ProjectTemplate/code";
 		Core::getSingletonPtr()->createFolder(destinationFolder);
 
@@ -527,13 +533,15 @@ namespace NOWA
 			std::ifstream ifs("../../NOWA_Engine/plugins" + componentName + "/" + componentName + ".vcxproj");
 			if (true == ifs.good())
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Warning: Plugin component: '" + componentName + "' does already exist. Please specify a different name, or delete the project.");
+				this->currentComponentPluginFolder = "../../NOWA_Engine/plugins/" + componentName + "/code";;
+
 				ifs.close();
 				return true;
 			}
 		}
 
 		////////////////////////////Copy to destination/////////////////////////////////////
+
 		Core::getSingletonPtr()->createFolder("../../NOWA_Engine/plugins/" + componentName);
 		Ogre::String destinationFolder = "../../NOWA_Engine/plugins/" + componentName  + "/";
 		Ogre::String sourceFolder = "../../media/NOWA/PluginTemplate/";
@@ -617,6 +625,9 @@ namespace NOWA
 
 		////////////////////////////code/////////////////////////////////////
 		destinationFolder = "../../NOWA_Engine/plugins/" + componentName + "/code";
+
+		this->currentComponentPluginFolder = destinationFolder;
+
 		sourceFolder = "../../media/NOWA/PluginTemplate/code";
 		Core::getSingletonPtr()->createFolder(destinationFolder);
 
@@ -735,6 +746,8 @@ namespace NOWA
 
 		// Add to plugins list (Release)
 		destinationFilePathName = "../Release/plugins.cfg";
+
+
 
 		{
 			// Get the content

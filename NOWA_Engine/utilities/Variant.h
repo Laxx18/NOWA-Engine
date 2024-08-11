@@ -33,12 +33,6 @@ namespace
 		return Ogre::Math::RealEqual(first.x, second.x, tolerance) && Ogre::Math::RealEqual(first.y, second.y, tolerance)
 			&& Ogre::Math::RealEqual(first.z, second.z, tolerance) && Ogre::Math::RealEqual(first.w, second.w, tolerance);
 	}
-
-	bool quaternionEquals(const Ogre::Quaternion& first, const Ogre::Quaternion& second, Ogre::Real tolerance = std::numeric_limits<Ogre::Real>::epsilon())
-	{
-		return Ogre::Math::RealEqual(first.x, second.x, tolerance) && Ogre::Math::RealEqual(first.y, second.y, tolerance)
-			&& Ogre::Math::RealEqual(first.z, second.z, tolerance) && Ogre::Math::RealEqual(first.w, second.w, tolerance);
-	}
 }
 
 namespace NOWA
@@ -57,9 +51,6 @@ namespace NOWA
 			VAR_VEC2,
 			VAR_VEC3,
 			VAR_VEC4,
-			VAR_QUAT,
-			VAR_MAT3,
-			VAR_MAT4,
 			VAR_STRING,
 			VAR_LIST,
 		} Types;
@@ -87,6 +78,62 @@ namespace NOWA
 			minValue(std::numeric_limits<Ogre::Real>::min()),
 			maxValue(std::numeric_limits<Ogre::Real>::max())
 		{
+		}
+
+		Variant(const Ogre::String& name, const Ogre::String& strType)
+			: value((int)0),
+			name(name),
+			lock(false),
+			visible(true),
+			isId(false),
+			changed(false),
+			minValue(std::numeric_limits<Ogre::Real>::min()),
+			maxValue(std::numeric_limits<Ogre::Real>::max())
+		{
+			if ("bool" == strType)
+			{
+				this->type = VAR_BOOL;
+			}
+			else if ("Ogre::Real" == strType)
+			{
+				this->type = VAR_REAL;
+			}
+			else if ("int" == strType)
+			{
+				this->type = VAR_INT;
+			}
+			else if ("unsigned int" == strType)
+			{
+				this->type = VAR_UINT;
+			}
+			else if ("unsigned long" == strType)
+			{
+				this->type = VAR_ULONG;
+			}
+			else if ("Ogre::Vector2" == strType)
+			{
+				this->type = VAR_VEC2;
+			}
+			else if ("Ogre::Vector3" == strType)
+			{
+				this->type = VAR_VEC3;
+			}
+			else if ("Ogre::Vector4" == strType)
+			{
+				this->type = VAR_VEC4;
+			}
+			else if ("Ogre::String" == strType)
+			{
+				this->type = VAR_STRING;
+			}
+			else if ("std::vector<Ogre::String>" == strType)
+			{
+				this->type = VAR_LIST;
+			}
+			else
+			{
+				this->type = VAR_NULL;
+			}
 		}
 
 		Variant(const Ogre::String& name, std::vector<std::pair<Ogre::String, Variant*>>& attributes)
@@ -215,48 +262,6 @@ namespace NOWA
 			attributes.emplace_back(this->name, this);
 		}
 
-		Variant(const Ogre::String& name, const Ogre::Quaternion& value, std::vector<std::pair<Ogre::String, Variant*>>& attributes)
-			: value(value),
-			type(VAR_QUAT),
-			name(name),
-			isId(false),
-			lock(false),
-			visible(true),
-			changed(false),
-			minValue(std::numeric_limits<Ogre::Real>::min()),
-			maxValue(std::numeric_limits<Ogre::Real>::max())
-		{
-			attributes.emplace_back(this->name, this);
-		}
-
-		Variant(const Ogre::String& name, const Ogre::Matrix3& value, std::vector<std::pair<Ogre::String, Variant*>>& attributes)
-			: value(value),
-			type(VAR_MAT3),
-			name(name),
-			isId(false),
-			lock(false),
-			visible(true),
-			changed(false),
-			minValue(std::numeric_limits<Ogre::Real>::min()),
-			maxValue(std::numeric_limits<Ogre::Real>::max())
-		{
-			attributes.emplace_back(this->name, this);
-		}
-
-		Variant(const Ogre::String& name, const Ogre::Matrix4& value, std::vector<std::pair<Ogre::String, Variant*>>& attributes)
-			: value(value),
-			type(VAR_MAT4),
-			name(name),
-			isId(false),
-			lock(false),
-			visible(true),
-			changed(false),
-			minValue(std::numeric_limits<Ogre::Real>::min()),
-			maxValue(std::numeric_limits<Ogre::Real>::max())
-		{
-			attributes.emplace_back(this->name, this);
-		}
-
 		Variant(const Ogre::String& name, const Ogre::String& value, std::vector<std::pair<Ogre::String, Variant*>>& attributes)
 			: value(value),
 			type(VAR_STRING),
@@ -310,6 +315,88 @@ namespace NOWA
 		inline int getType(void) const
 		{
 			return this->type;
+		}
+
+		inline Ogre::String getStrType(void) const
+		{
+			switch (this->type)
+			{
+			case VAR_BOOL:
+				return "bool";
+			case VAR_REAL:
+				return "Ogre::Real";
+			case VAR_INT:
+				return "int";
+			case VAR_UINT:
+				return "unsigned int";
+			case VAR_ULONG:
+				return "unsigned long";
+			case VAR_VEC2:
+				return "Ogre::Vector2";
+			case VAR_VEC3:
+				return "Ogre::Vector3";
+			case VAR_VEC4:
+				return "Ogre::Vector4";
+			/*case VAR_QUAT:
+				return "Ogre::Quaternion";
+			case VAR_MAT3:
+				return "Ogre::Matrix3";
+			case VAR_MAT4:
+				return "Ogre::Matrix4";*/
+			case VAR_STRING:
+				return "Ogre::String";
+			case VAR_LIST:
+				// std::vector<Ogre::String> is not necessary, as its just internally, but setter getter is always with list selected value, which is Ogre::String!
+				return "Ogre::String";
+			default:
+				return "";
+			}
+		}
+
+		inline Ogre::String getStrGetter(void) const
+		{
+			switch (this->type)
+			{
+			case VAR_BOOL:
+				return "getBool()";
+			case VAR_REAL:
+				return "getReal()";
+			case VAR_INT:
+				return "getInt()";
+			case VAR_UINT:
+				return "getUInt()";
+			case VAR_ULONG:
+				return "getULong()";
+			case VAR_VEC2:
+				return "getVector2()";
+			case VAR_VEC3:
+				return "getVector3()";
+			case VAR_VEC4:
+				return "getVector4()";
+			case VAR_STRING:
+				return "getString()";
+			case VAR_LIST:
+				return "getListSelectedValue()";
+			default:
+				return "";
+			}
+		}
+
+		static std::vector<Ogre::String> getAllStrTypes(void)
+		{
+			return
+			{
+				"bool",
+				"Ogre::Real",
+				"int",
+				"unsigned int",
+				"unsigned long",
+				"Ogre::Vector2",
+				"Ogre::Vector3",
+				"Ogre::Vector4",
+				"Ogre::String",
+				"std::vector<Ogre::String>",
+			};
 		}
 
 		inline void setReadOnly(bool readOnly)
@@ -566,45 +653,6 @@ namespace NOWA
 				{
 					this->changed = true;
 					this->type = VAR_VEC4;
-					this->value = value;
-				}
-			}
-		}
-
-		void setValue(const Ogre::Quaternion& value)
-		{
-			if (!this->lock)
-			{
-				if (false == quaternionEquals(this->value.get<Ogre::Quaternion>(), value))
-				{
-					this->changed = true;
-					this->type = VAR_QUAT;
-					this->value = value;
-				}
-			}
-		}
-
-		void setValue(const Ogre::Matrix3& value)
-		{
-			if (!this->lock)
-			{
-				if (this->value.get<Ogre::Matrix3>() != value)
-				{
-					this->changed = true;
-					this->type = VAR_MAT3;
-					this->value = value;
-				}
-			}
-		}
-
-		void setValue(const Ogre::Matrix4& value)
-		{
-			if (!this->lock)
-			{
-				if (this->value.get<Ogre::Matrix4>() != value)
-				{
-					this->changed = true;
-					this->type = VAR_MAT4;
 					this->value = value;
 				}
 			}
@@ -967,9 +1015,6 @@ namespace NOWA
 			case VAR_VEC2: return getVector2() == other.getVector2();
 			case VAR_VEC3: return getVector3() == other.getVector3();
 			case VAR_VEC4: return getVector4() == other.getVector4();
-			case VAR_QUAT: return getQuaternion() == other.getQuaternion();
-			case VAR_MAT3: return getMatrix3() == other.getMatrix3();
-			case VAR_MAT4: return getMatrix4() == other.getMatrix4();
 			// case VAR_GUID: return getGUID() == other.getGUID();
 			case VAR_LIST: return getListSelectedValue() == other.getListSelectedValue();
 			default:
@@ -990,9 +1035,6 @@ namespace NOWA
 			case VAR_VEC2: return getVector2() == other->getVector2();
 			case VAR_VEC3: return getVector3() == other->getVector3();
 			case VAR_VEC4: return getVector4() == other->getVector4();
-			case VAR_QUAT: return getQuaternion() == other->getQuaternion();
-			case VAR_MAT3: return getMatrix3() == other->getMatrix3();
-			case VAR_MAT4: return getMatrix4() == other->getMatrix4();
 			// case VAR_GUID: return getGUID() == other.getGUID();
 			case VAR_LIST: return getListSelectedValue() == other->getListSelectedValue();
 			default:
@@ -1063,9 +1105,6 @@ namespace NOWA
 				case VAR_VEC2:  setValue(getVector2() + variant.getVector2());    break;
 				case VAR_VEC3:  setValue(getVector3() + variant.getVector3());    break;
 				case VAR_VEC4:  setValue(getVector4() + variant.getVector4());    break;
-				case VAR_QUAT:  setValue(getQuaternion() * variant.getQuaternion()); break;
-				case VAR_MAT3:  setValue(getMatrix3()    * variant.getMatrix3());    break;
-				case VAR_MAT4:  setValue(getMatrix4()    * variant.getMatrix4());    break;
 				default:
 					setValue(getString() + variant.getString());
 					break;
@@ -1087,9 +1126,6 @@ namespace NOWA
 				case VAR_VEC2:  setValue(getVector2() - variant.getVector2());    break;
 				case VAR_VEC3:  setValue(getVector3() - variant.getVector3());    break;
 				case VAR_VEC4:  setValue(getVector4() - variant.getVector4());    break;
-				case VAR_QUAT:  setValue(variant.getQuaternion().Inverse() * getQuaternion()); break;
-				case VAR_MAT3:  setValue(variant.getMatrix3().Inverse() * getMatrix3());    break;
-				case VAR_MAT4:  setValue(variant.getMatrix4().inverse() * getMatrix4());    break;
 				default:
 					break;
 				}
@@ -1109,9 +1145,6 @@ namespace NOWA
 			case VAR_VEC3:
 			case VAR_VEC4:
 				return true;
-			case VAR_QUAT:
-			case VAR_MAT3:
-			case VAR_MAT4:
 			default:
 				break;
 			}
@@ -1132,9 +1165,6 @@ namespace NOWA
 				case VAR_VEC2:  setValue(-(variant.getVector2()));       break;
 				case VAR_VEC3:  setValue(-(variant.getVector3()));       break;
 				case VAR_VEC4:  setValue(-(variant.getVector4()));       break;
-				case VAR_QUAT:
-				case VAR_MAT3:
-				case VAR_MAT4:
 				default:
 					break;
 				}

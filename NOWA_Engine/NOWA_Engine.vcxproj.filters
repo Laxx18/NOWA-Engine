@@ -664,6 +664,9 @@
     <ClInclude Include="utilities\Interpolator.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="utilities\CPlusPlusComponentGenerator.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1228,6 +1231,9 @@
       <Filter>utilities</Filter>
     </ClCompile>
     <ClCompile Include="utilities\Interpolator.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\CPlusPlusComponentGenerator.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
   </ItemGroup>

@@ -147,6 +147,9 @@
 	<Tag name="SaveAs">Speichern Als...</Tag>
 	<Tag name="Settings">Einstellungen</Tag>
 	<Tag name="CreateComponentPlugin">C++ Komponente Plugin erstellen</Tag>
+	<Tag name="VariableCount">Anzahl Variablen</Tag>
+	<Tag name="Generate">Generieren</Tag>
+	<Tag name="AddVariable">Variable hinzufuegen</Tag>
 	<Tag name="CreateCPlusPlusProject">C++ Projekt für Szenen erzeugen</Tag>
 	<Tag name="OpenLog">Log Datei oeffnen</Tag>
 	<Tag name="CopyScene">Szene kopieren</Tag>

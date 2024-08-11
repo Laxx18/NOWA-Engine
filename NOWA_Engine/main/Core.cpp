@@ -504,6 +504,7 @@ namespace NOWA
 				description += "\n\nPlease check in the Debug/Release folder in the plugins.cfg, that the corresponding plugin does exist! And if not, remove it from the list!";
 			}
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: " + description);
+
 			throw Ogre::InternalErrorException(1, description, "Init root", __FILE__, __LINE__);
 		}
 
@@ -3377,7 +3378,8 @@ namespace NOWA
 	
 	void Core::update(Ogre::Real dt)
 	{
-		MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
+		// ATTENTION: Not necessary?
+		// MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
 
 		if (this->optionUseLuaConsole)
 		{

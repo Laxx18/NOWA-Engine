@@ -124,7 +124,7 @@ namespace NOWA
 		this->onCountdownFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onCountdownFunctionName->getString() + "(countdownNumber)");
 
 		this->onWrongDirectionFunctionName->setDescription("Sets the function name to react in lua script to get feedback whether the vehicle is driving in the wrong direction. E.g. onWrongDirectionDriving(wrongDirection).");
-		this->onWrongDirectionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onFeedbackRaceFunctionName->getString() + "(wrongDirection)");
+		this->onWrongDirectionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), this->onWrongDirectionFunctionName->getString() + "(wrongDirection)");
 	}
 
 	RaceGoalComponent::~RaceGoalComponent(void)

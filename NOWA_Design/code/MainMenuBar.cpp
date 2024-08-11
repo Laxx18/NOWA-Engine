@@ -46,6 +46,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	simulationWindow(nullptr),
 	aboutWindow(nullptr),
 	createComponentPluginWindow(nullptr),
+	cPlusPlusComponentGenerator(nullptr),
 	bDrawNavigationMesh(false),
 	bTestSelectedGameObjects(false),
 	pluginNameEdit(nullptr)
@@ -403,6 +404,15 @@ MainMenuBar::~MainMenuBar()
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->luaAnalysisWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->aboutWindowWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
+
+	if (nullptr != this->cPlusPlusComponentGenerator)
+	{
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->componentPluginWindowWidgets);
+
+		delete this->cPlusPlusComponentGenerator;
+		this->cPlusPlusComponentGenerator = nullptr;
+	}
+
 	if (nullptr != this->configPanel)
 	{
 		this->configPanel->destroyContent();
@@ -1541,6 +1551,7 @@ void MainMenuBar::onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url
 	}
 }
 
+#if 0
 void MainMenuBar::showComponentPlugin(void)
 {
 	if (0 == this->createComponentPluginWindowWidgets.size())
@@ -1583,6 +1594,25 @@ void MainMenuBar::showComponentPlugin(void)
 	this->createComponentPluginWindow->setRealPosition(windowPosition);
 	this->createComponentPluginWindow->setVisible(true);
 }
+#else
+	void MainMenuBar::showComponentPlugin(void)
+	{
+		if (nullptr == this->cPlusPlusComponentGenerator)
+		{
+			// Load the layout and get the root widget
+			this->componentPluginWindowWidgets = MyGUI::LayoutManager::getInstancePtr()->loadLayout("ComponentGenerator.layout");
+
+			// Assuming the root widget is the first widget in the layout
+			MyGUI::Widget* rootWidget = this->componentPluginWindowWidgets.at(0);
+
+			this->cPlusPlusComponentGenerator = new NOWA::CPlusPlusComponentGenerator(rootWidget);
+		}
+		else
+		{
+			this->cPlusPlusComponentGenerator->getMainWidget()->setVisible(true);
+		}
+	}
+#endif
 
 void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 {

@@ -6,8 +6,10 @@ Monster0_1_0 = {}
 
 require("init");
 
+monsterGameObject = nil
 monsterController = nil;
 monsterAnimation = nil;
+terraGameObject = nil;
 
 moveHorizontal = 0;
 rotation = 0;
@@ -15,14 +17,13 @@ oldRotation = 0;
 isActive = false;
 
 Monster0_1_0["connect"] = function(gameObject)
-    monsterController = gameObject:getPhysicsPlayerControllerComponent();
+    monsterGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    monsterController = monsterGameObject:getPhysicsPlayerControllerComponent();
     -- Helps the ide to identify the component type for better intelli sense results
     monsterController = AppStateManager:getGameObjectController():castPhysicsPlayerControllerComponent(monsterController);
     
     
     monsterAnimation = gameObject:getAnimationComponentV2():getAnimationBlender();
-    
-    
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_1, "T-pose");
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle-03");
 	monsterAnimation:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "walk-01");
@@ -34,6 +35,17 @@ Monster0_1_0["connect"] = function(gameObject)
     
     --AppStateManager:getCameraManager():setMoveCameraWeight(0);
     --AppStateManager:getCameraManager():setRotateCameraWeight(0);
+    
+    terraGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("3440706923");
+
+    local brushNames = terraGameObject:getTerraComponent():getAllBrushNames();
+    
+    for i = 0, #brushNames do
+        local brushName = brushNames[i];
+        log("Brushname: " .. brushName);
+    end
+    terraGameObject:getTerraComponent():setBrushName("Circular.png");
+    terraGameObject:getTerraComponent():setBrushSize(16);
 end
 
 Monster0_1_0["disconnect"] = function()
@@ -42,6 +54,8 @@ Monster0_1_0["disconnect"] = function()
     monsterAnimation:blend5(AnimationBlender.ANIM_IDLE_1, AnimationBlender.BLEND_WHILE_ANIMATING, 0.1, true);
     --AppStateManager:getCameraManager():setMoveCameraWeight(1);
     --AppStateManager:getCameraManager():setRotateCameraWeight(1);
+    
+    AppStateManager:getGameObjectController():undoAll();
 end
 
 Monster0_1_0["update"] = function(dt)
@@ -98,4 +112,18 @@ Monster0_1_0["update"] = function(dt)
     -- monsterKinematic:setVelocity(Vector3(monsterDirection.x, 0, monsterDirection.z) * moveHorizontal);
     -- Same as:
     --monsterKinematic:setDirectionVelocity(moveHorizontal);
+end
+
+Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerContact)
+    local otherGameObject = nil;
+    
+    if (gameObject0 ~= monsterGameObject) then
+        otherGameObject = gameObject0;
+    else
+        otherGameObject = gameObject1;
+    end
+    
+    if (monsterController:getVelocity():squaredLength() > 10) then
+        terraGameObject:getTerraComponent():paintTerrainLoop(playerContact:getPosition(), 10, 2, 1);
+    end
 end

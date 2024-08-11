@@ -86,6 +86,7 @@ namespace Ogre
         m_xzDimensions(Vector2::UNIT_SCALE),
         m_xzInvDimensions(Vector2::UNIT_SCALE),
         m_xzRelativeSize(Vector2::UNIT_SCALE),
+        m_dimension(Vector3::UNIT_SCALE),
         m_height(1.0f),
         m_heightUnormScaled(1.0f),
         m_terrainOrigin(Vector3::ZERO),
@@ -314,8 +315,9 @@ namespace Ogre
         m_invWidth = 1.0f / m_width;
         m_invDepth = 1.0f / m_depth;
 
-        m_height = height;
-        m_heightUnormScaled = height;
+        // m_height = height;
+        m_height = m_dimension.y;
+        m_heightUnormScaled = m_height;
         
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
 
@@ -361,20 +363,8 @@ namespace Ogre
                 uint16* RESTRICT_ALIAS data = reinterpret_cast<uint16 * RESTRICT_ALIAS>(texBox.at(0, y, 0));
                 for (uint32 x = 0; x < m_width; x++)
                 {
-                    //// float rnd = Ogre::Math::RangeRandom(0.0f, 65536.0f);
-                    //float rnd = Ogre::Math::RangeRandom(1000.0f, 1981);
-                    //// Ogre::Bitwise::floatToSnorm16
-                    //// rnd = Ogre::Math::gaussianDistribution(rnd);
-                    //const float targetVal = this->valToHeight<float>(rnd);
-                    //m_heightMap[y * m_width + x] = targetVal;
-                    //data[x] = rnd;
-
-                    // float rnd = Ogre::Math::RangeRandom(0.0f, 65536.0f);
-                    // Ogre::Bitwise::floatToSnorm16
-                    // rnd = Ogre::Math::gaussianDistribution(rnd);
-
-                    // m_heightMap[y * m_width + x] = height;
-                    // data[x] = this->heightToVal<float>(height);
+                    float dataValue = height / (m_invMaxValue * m_dimension.y);
+                    data[x] = dataValue;
                     auto height = (data[x] * m_invMaxValue) * m_height;
                     m_heightMap[y * m_width + x] = height;
                 }
@@ -996,13 +986,13 @@ namespace Ogre
         m_terrainOrigin = toYUpSignPreserving( center - dimensions * 0.5f );
         center = toYUp( center );
         dimensions = toYUpSignPreserving( dimensions );
-        
-        // m_terrainOrigin = (center - dimensions * 0.5f) * Ogre::Vector3(1.0f, 0.0f, 1.0f);
-       //  m_terrainOrigin.y -= 28.0f;
+        m_dimension = dimensions;
+       
         m_xzDimensions = Vector2( dimensions.x, dimensions.z );
         m_xzInvDimensions = 1.0f / m_xzDimensions;
-        m_height = center.y;
-        m_heightUnormScaled = center.y;
+        // m_height = center.y;
+        m_height = dimensions.y;
+        m_heightUnormScaled = m_height;
         m_basePixelDimension = 64u;
 
         // Attention: Verknaupt, since there can be a heighmap but no detail map, so detail map must be created with width height
@@ -1110,11 +1100,12 @@ namespace Ogre
         m_terrainOrigin = toYUpSignPreserving( center - dimensions * 0.5f );
         center = toYUp( center );
         dimensions = toYUpSignPreserving( dimensions );
-        // m_terrainOrigin = (center - dimensions * 0.5f) * Ogre::Vector3(1.0f, 0.0f, 1.0f);
-        // m_terrainOrigin.y -= 28.0f; // its strange: when using terra without modification with a size of 100 100 100, it shows 98 98 98 and this has something todo with 28 and height float for heighmap
+        m_dimension = dimensions;
+
         m_xzDimensions = Vector2(dimensions.x, dimensions.z);
         m_xzInvDimensions = 1.0f / m_xzDimensions;
-        m_height = height;
+        // m_height = height;
+        m_height = m_dimension.y;
         m_basePixelDimension = 64u;
 
         if (blendWeightImage)
@@ -1182,12 +1173,6 @@ namespace Ogre
                 ++itor;
             }
         }
-
-#if 0
-        TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
-        m_blendWeightTex = textureManager->createOrRetrieveTexture("Terra_detailMap.png", GpuPageOutStrategy::Discard, TextureFlags::ManualTexture, TextureTypes::Type2D);
-        // m_blendWeightTex = textureManager->findTextureNoThrow("Terra_detailMap.png");
-#endif
 
         createTerrainCells();
     }
@@ -1440,31 +1425,6 @@ namespace Ogre
     {
         m_oldHeightData.resize(m_width * m_depth, 0);
         m_newHeightData.resize(m_width * m_depth, 0);
-#if 0
-        TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
-        
-        Ogre::Image2 previousImage;
-       
-        //At init (MAKE SURE THE RESOLUTION IS WHAT YOU EXPECT! Check for resolution changes!!!
-        const uint32 rowAlignment = 4u;
-        const size_t totalBytes = PixelFormatGpuUtils::calculateSizeBytes(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(),
-            m_heightMapTex->getDepth(), m_heightMapTex->getNumSlices(), m_heightMapTex->getPixelFormat(), m_heightMapTex->getNumMipmaps(), rowAlignment);
-        void* data = OGRE_MALLOC_SIMD(totalBytes, MEMCATEGORY_RESOURCE);
-
-        previousImage.loadDynamicImage(data, true, m_heightMapTex); //We pass mWindowTexture just to grab its metadata instead of typing mWindowTexture->getWidth, getHeight, etc
-
-        AsyncTextureTicket* asyncTicket = textureManager->createAsyncTextureTicket(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), m_heightMapTex->getDepthOrSlices(),
-                    m_heightMapTex->getTextureType(), m_heightMapTex->getPixelFormat());
-
-        asyncTicket->download(m_heightMapTex, 0, true);
-
-        //getData() just fabricates a TextureBox with the right offsets given the mip level and bytes per row, bytes per image, etc
-        //While it's nothing fancy, there are many details to be aware, so Image2 is a great helper encapsulation utility.
-        Ogre::TextureBox previousTexBox = previousImage.getData(0); //Get mip 0
-        Ogre::TextureBox srcBox = asyncTicket->map(0);
-        previousTexBox.copyFrom(srcBox);
-        asyncTicket->unmap();
-#endif
 
         TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
         // Important: Only create once, and after that work on that staging texture, else the heights get resetted every time
@@ -1521,8 +1481,6 @@ namespace Ogre
     {
         if (data.size() != boxSize * boxSize)
             return;
-
-        // assert(data.size() == boxSize * boxSize);
 
         Ogre::GridPoint point = this->worldToGrid(position);
         //Offset the box so that the corner isn't the centre.
@@ -1612,12 +1570,9 @@ namespace Ogre
         if (data.size() != boxSize * boxSize)
             return;
 
-        // assert(data.size() == boxSize * boxSize);
+        strength = Ogre::Math::Abs(strength);
 
         Ogre::GridPoint point = this->worldToGrid(position);
-        //Offset the box so that the corner isn't the centre.
-        /*point.x -= boxSize / 2;
-        point.z -= boxSize / 2;*/
 
         int x = point.x;
         int y = point.z;
@@ -1740,12 +1695,7 @@ namespace Ogre
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
-
-
-        // AsyncTextureTicket* asyncTicket = textureManager->createAsyncTextureTicket(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), m_heightMapTex->getDepthOrSlices(),
-        //            m_heightMapTex->getTextureType(), m_heightMapTex->getPixelFormat());
         
-        // TODO: from GPU->CPU is wrong here, use createAsyncTextureTicket, search in Ogre::Image2 code, how to use it
         memcpy(&m_newHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
@@ -1765,12 +1715,7 @@ namespace Ogre
         m_heightMapStagingTexture->startMapRegion();
 
         TextureBox texBox = m_heightMapStagingTexture->mapRegion(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), 1u, 1u, m_heightMapTex->getPixelFormat());
-
-
-        // AsyncTextureTicket* asyncTicket = textureManager->createAsyncTextureTicket(m_heightMapTex->getWidth(), m_heightMapTex->getHeight(), m_heightMapTex->getDepthOrSlices(),
-        //            m_heightMapTex->getTextureType(), m_heightMapTex->getPixelFormat());
         
-        // TODO: from GPU->CPU is wrong here, use createAsyncTextureTicket, search in Ogre::Image2 code, how to use it
         memcpy(&m_newHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
@@ -2007,7 +1952,6 @@ namespace Ogre
         Vector3 rayDirection = ray.getDirection();
         const float scale = m_xzDimensions.x / (Real)(m_width);
 
-        // rayOrigin.y += m_height * 0.5f;
         rayOrigin.x /= scale;
         rayOrigin.z /= scale;
         rayDirection.x /= scale;

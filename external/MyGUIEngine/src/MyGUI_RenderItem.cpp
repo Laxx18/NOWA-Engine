@@ -80,7 +80,6 @@ namespace MyGUI
 			if (!RenderManager::getInstance().checkTexture(mTexture))
 			{
 				mTexture = nullptr;
-				MYGUI_EXCEPT("texture pointer is not valid, texture name '" << mTextureName << "'");
 				return;
 			}
 #endif

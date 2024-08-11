@@ -355,6 +355,19 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast() && nullptr != this->gameObjects[i]->getMovableObject<Ogre::Terra>())
 					validToEnable = true;
 			}
+			// Can only be added once
+			else if (NOWA::LuaScriptComponent::getStaticClassName() == tempComponentName)
+			{
+				NOWA::LuaScriptCompPtr luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::LuaScriptComponent>());
+				if (nullptr != luaScriptCompPtr)
+				{
+					validToEnable = false;
+				}
+				else
+				{
+					validToEnable = true;
+				}
+			}
 			else if (NOWA::HdrEffectComponent::getStaticClassName() == tempComponentName)
 			{
 				NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());

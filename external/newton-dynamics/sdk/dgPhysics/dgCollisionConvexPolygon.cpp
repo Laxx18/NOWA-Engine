@@ -225,6 +225,11 @@ bool dgCollisionConvexPolygon::BeamClipping (const dgVector& origin, dgFloat32 d
 					indexCount ++;
 					edgeCount += 2;
 
+					if (conectCount > 2)
+					{
+						conectCount = 2;
+					}
+
 					ptr = newEdge;
 					dgAssert (indexCount < sizeof (points)/sizeof (points[0]));
 				}
@@ -236,7 +241,11 @@ bool dgCollisionConvexPolygon::BeamClipping (const dgVector& origin, dgFloat32 d
 
 		if(conectCount > 1) {
 			first = newFirst;
-			dgAssert (conectCount == 2);
+			// dgAssert (conectCount == 2);
+			if (conectCount > 2)
+			{
+				conectCount = 2;
+			}
 
 			dgClippedFaceEdge* const newEdge = &clippedFace[edgeCount];
 			newEdge->m_twin = newEdge + 1;

@@ -1732,8 +1732,8 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 							this->projectManager->saveProject();
 						}
 					}
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_R:
 			{
@@ -1747,24 +1747,24 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					{
 						this->buttonHit(this->rotate1ModeCheck);
 					}
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_Y:
 			{
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
 					this->buttonHit(this->undoButton);
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_Z:
 			{
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
 					this->buttonHit(this->redoButton);
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_SPACE:
 			{
@@ -1772,8 +1772,8 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				{
 					this->simulating = !this->simulating;
 					this->buttonHit(this->playButton);
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_DELETE:
 			{
@@ -1788,8 +1788,8 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				if (GetAsyncKeyState(KF_ALTDOWN))
 				{
 					NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
+					return true;
 				}
-				return true;
 			}
 			case OIS::KC_7:
 			{

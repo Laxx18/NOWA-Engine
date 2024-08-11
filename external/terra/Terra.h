@@ -89,6 +89,7 @@ namespace Ogre
         Vector2     m_xzDimensions;
         Vector2     m_xzInvDimensions;
         Vector2     m_xzRelativeSize; // m_xzDimensions / [m_width, m_height]
+        Vector3     m_dimension;
         float       m_height;
         float       m_heightUnormScaled; // m_height / 1 or m_height / 65535
         Vector3     m_terrainOrigin;

@@ -5995,9 +5995,6 @@ namespace NOWA
 		LUA_CONST(Variant, VAR_VEC2);
 		LUA_CONST(Variant, VAR_VEC3);
 		LUA_CONST(Variant, VAR_VEC4);
-		LUA_CONST(Variant, VAR_QUAT);
-		LUA_CONST(Variant, VAR_MAT3);
-		LUA_CONST(Variant, VAR_MAT4);
 		LUA_CONST(Variant, VAR_STRING);
 		LUA_CONST_END;
 
@@ -9097,6 +9094,30 @@ namespace NOWA
 		AddClassToCollection("DatablockUnlitComponent", "Vector3 getBackgroundColor()", "Gets the background color.");
 	}
 
+	luabind::object getAllBrushNames(TerraComponent* instance)
+	{
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		for (size_t i = 0; i < instance->getAllBrushNames().size(); i++)
+		{
+			obj[i] = instance->getAllBrushNames()[i];
+		}
+
+		return obj;
+	}
+
+	luabind::object getAllImageLayer(TerraComponent* instance)
+	{
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		for (size_t i = 0; i < instance->getAllImageLayer().size(); i++)
+		{
+			obj[i] = instance->getAllImageLayer()[i];
+		}
+
+		return obj;
+	}
+
 	void bindTerraComponent(lua_State* lua)
 	{
 		module(lua)
@@ -9107,22 +9128,30 @@ namespace NOWA
 			.def("setBasePixelDimension", &TerraComponent::setBasePixelDimension)
 			.def("getBasePixelDimension", &TerraComponent::getBasePixelDimension)
 
-			/*.def("setStrength", &TerraComponent::setStrength)
+			.def("setStrength", &TerraComponent::setStrength)
 			.def("getStrength", &TerraComponent::getStrength)
 			.def("setBrushName", &TerraComponent::setBrushName)
 			.def("getBrushName", &TerraComponent::getBrushName)
+			.def("getAllBrushNames", &getAllBrushNames)
 			.def("setBrushSize", &TerraComponent::setBrushSize)
 			.def("getBrushSize", &TerraComponent::getBrushSize)
 			.def("setBrushIntensity", &TerraComponent::setBrushIntensity)
 			.def("getBrushIntensity", &TerraComponent::getBrushIntensity)
 			.def("setImageLayer", &TerraComponent::setImageLayer)
 			.def("getImageLayer", &TerraComponent::getImageLayer)
+			.def("getAllImageLayer", &getAllImageLayer)
 			.def("modifyTerrainStart", &TerraComponent::modifyTerrainStart)
 			.def("smoothTerrainStart", &TerraComponent::smoothTerrainStart)
 			.def("paintTerrainStart", &TerraComponent::paintTerrainStart)
 			.def("modifyTerrain", &TerraComponent::modifyTerrain)
 			.def("smoothTerrain", &TerraComponent::smoothTerrain)
-			.def("paintTerrain", &TerraComponent::paintTerrain)*/
+			.def("paintTerrain", &TerraComponent::paintTerrain)
+			.def("modifyTerrainEnd", &TerraComponent::modifyTerrainEnd)
+			.def("smoothTerrainEnd", &TerraComponent::smoothTerrainEnd)
+			.def("paintTerrainEnd", &TerraComponent::paintTerrainEnd)
+			.def("modifyTerrainLoop", &TerraComponent::modifyTerrainLoop)
+			.def("smoothTerrainLoop", &TerraComponent::smoothTerrainLoop)
+			.def("paintTerrainLoop", &TerraComponent::paintTerrainLoop)
 		];
 
 		// ATTENTION: This will not work that way, because, mouse down -> start, mouse up -> finish and undo redo missing
@@ -9131,17 +9160,34 @@ namespace NOWA
 		// AddClassToCollection("TerraComponent", "String getClassName()", "Gets the class name of this component as string.");
 		AddClassToCollection("TerraComponent", "void setBasePixelDimension(number index)", "Sets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
 		AddClassToCollection("TerraComponent", "number getBasePixelDimension()", "Gets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive..");
-		/*AddClassToCollection("TerraComponent", "void setStrength(number strength)", "Sets the terrain modify strength. Also negative values are possible in order to lower the terrain.");
+		AddClassToCollection("TerraComponent", "void setStrength(number strength)", "Sets the terrain modify strength. Also negative values are possible in order to lower the terrain. Range: [-500; 500].");
 		AddClassToCollection("TerraComponent", "number getStrength()", "Gets the terrain modify strength. Also negative values are possible in order to lower the terrain.");
 		AddClassToCollection("TerraComponent", "void setBrushName(string brushName)", "Sets the brush name for modify or paint the terrain, depending which function is called e.g. ");
 		AddClassToCollection("TerraComponent", "string getBrushName()", "Gets used brush name.");
-		AddClassToCollection("TerraComponent", "void setBrushSize(number brushSize)", "Sets brush size. Range: [16; 256].");
+		AddClassToCollection("TerraComponent", "table[string] getAllBrushNames()", "Gets List of all available brush names for modifying the terrain.");
+		AddClassToCollection("TerraComponent", "void setBrushSize(number brushSize)", "Sets brush size. Range: [1; 5000].");
 		AddClassToCollection("TerraComponent", "number getBrushSize()", "Gets the brush size.");
-		AddClassToCollection("TerraComponent", "void setBrushIntensity(number brushIntensity)", "Sets the brush intensity. Range: [16; 256].");
+		AddClassToCollection("TerraComponent", "void setBrushIntensity(number brushIntensity)", "Sets the brush intensity. Range: [1; 256].");
 		AddClassToCollection("TerraComponent", "number getBrushIntensity()", "Gets the brush intensity.");
 		AddClassToCollection("TerraComponent", "void setImageLayer(string imageLayer)", "Sets the image layer string for painting.");
-		AddClassToCollection("TerraComponent", "number getImageLayer()", "Gets the used image layer string.");*/
+		AddClassToCollection("TerraComponent", "number getImageLayer()", "Gets the used image layer string.");
+		AddClassToCollection("TerraComponent", "table[string] getAllImageLayer()", "Gets List of all available image layer names for painting.");
 
+		AddClassToCollection("TerraComponent", "void modifyTerrainStart(Vector3 position, number strength)", "Starts modifying the terrain at the given position and strength. Must be always called once before modifyTerrain is called frequently in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void smoothTerrainStart(Vector3 position, number strength)", "Starts smoothing the terrain at the given position and strength. Must be always called once before msmootTerrain is called frequently in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void paintTerrainStart(Vector3 position, number intensity, number imageLayer)", "Starts painting the terrain at the given position with the given intensity and the image layer. Must be always called once before paintTerrain is called frequently in order to satisfy undo/redo feature.");
+
+		AddClassToCollection("TerraComponent", "void modifyTerrain(Vector3 position, number strength)", "Modifies the terrain at the given position and strength. Note: modifyTerrainStart must be called first one time in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void smoothTerrain(Vector3 position, number strength)", "Smoothes the terrain at the given position and strength. Note: modifyTerrainStart must be called first one time in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void paintTerrain(Vector3 position, number intensity, number imageLayer)", "Paints the terrain at the given position with the given intensity and the image layer. Note: modifyTerrainStart must be called first one time in order to satisfy undo/redo feature.");
+
+		AddClassToCollection("TerraComponent", "void modifyTerrainEnd()", "Ends modifying the terrain at the given position and strength. Must be called at last in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void smoothTerrainEnd()", "Ends smoothing the terrain at the given position and strength.Must be called at last in order to satisfy undo/redo feature.");
+		AddClassToCollection("TerraComponent", "void paintTerrainEnd()", "Ends painting the terrain at the given position with the given intensity and the image layer. Must be called at last in order to satisfy undo/redo feature.");
+
+		AddClassToCollection("TerraComponent", "void modifyTerrainLoop(Vector3 position, number strength, number loopCount)", "Abreviation for modifying the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
+		AddClassToCollection("TerraComponent", "void smoothTerrainLoop(Vector3 position, number strength, number loopCount)", "Abreviation for smoothing the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
+		AddClassToCollection("TerraComponent", "void paintTerrainLoop(Vector3 position, number intensity, number imageLayer, number loopCount)", "Abreviation for painting the terrain at the given position and strength and loop of times. It calles all necessary other methods internally in order to satisfy undo/redo feature");
 	}
 
 	Ogre::String getId2(JointComponent* instance)
@@ -11062,6 +11108,7 @@ namespace NOWA
 			.def("getContactPenetration", &OgreNewt::Contact::getContactPenetration)
 			.def("getClosestDistance", &OgreNewt::Contact::getClosestDistance)
 			.def("getFaceAttribute", &OgreNewt::Contact::getFaceAttribute)
+			.def("print", &OgreNewt::Contact::print)
 		];
 
 		AddClassToCollection("Contact", "class", "Contact can be used, to get details information when a collision of two bodies occured and to control, what should happen with them.");
@@ -11090,8 +11137,8 @@ namespace NOWA
 		AddClassToCollection("Contact", "float getContactPruningTolerance()", "Gets the pruning tolerance for this contact.");
 		AddClassToCollection("Contact", "float getContactPenetration()", "Gets the contact penetration.");
 		AddClassToCollection("Contact", "float getClosestDistance()", "Gets the closest distance between the two GameObjects at this contact.");
-
-
+		AddClassToCollection("Contact", "string print()", "Gets all the contact properties as string in order to print to log for debugging and analysis reasons.");
+		
 		module(lua)
 			[
 				class_<PhysicsMaterialComponent, GameObjectComponent>("PhysicsMaterialComponent")

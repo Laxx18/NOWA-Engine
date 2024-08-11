@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-50 -0.1615 -50" mostRightFarPosition="50 100 50"/>
+		<bounds mostLeftNearPosition="-50 -50 -50" mostRightFarPosition="50 50 50"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -43,7 +43,7 @@
 	<nodes>
 		<node name="MainCamera" id="4010617415">
 			<position x="-15.1461" y="18.8521" z="13.018"/>
-			<rotation qw="0.923359" qx="-0.240436" qy="-0.28967" qz="-0.0754315"/>
+			<rotation qw="0.923359" qx="-0.240436" qy="-0.28967" qz="-0.0754316"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -256,7 +256,7 @@
 			</item>
 		</node>
 		<node name="MinimapCamera" id="197302691">
-			<position x="-6.55603" y="19.9979" z="-15.4973"/>
+			<position x="-6.55578" y="19.9994" z="-6.09397"/>
 			<rotation qw="0.707107" qx="-0.707107" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MinimapCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
@@ -267,7 +267,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
@@ -285,13 +285,13 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="false"/>
-					<property type="9" name="CameraPosition" data="-6.55596 19.9987 -13.7067"/>
-					<property type="9" name="CameraOrientation" data="-90 -48 0"/>
+					<property type="9" name="CameraPosition" data="-6.55578 19.9994 -6.09397"/>
+					<property type="9" name="CameraOrientation" data="-90 0 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="true"/>
-					<property type="8" name="OrthoWindowSize" data="39.9974 39.9974"/>
+					<property type="8" name="OrthoWindowSize" data="39.9988 39.9988"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ComponentMinimapComponent" data="MinimapComponent"/>
@@ -324,7 +324,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3440706923"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Terrain"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -498,7 +498,7 @@
 					<property type="6" name="Height" data="1.46684"/>
 					<property type="6" name="StepHeight" data="0.3"/>
 					<property type="6" name="JumpSpeed" data="10"/>
-					<property type="7" name="OnContactFrictionFunctionName" data=""/>
+					<property type="7" name="OnContactFrictionFunctionName" data="onContactFriction"/>
 					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>

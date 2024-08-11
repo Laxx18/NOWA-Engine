@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout">
-    <Widget type="Widget" skin="PanelEmpty" position="440 144 208 400" align="HStretch Top" layer="Overlapped" name="_Main">
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 208 400" align="HStretch Top" layer="Main" name="_Main">
 		<Widget type="EditBox" skin="EditBox" position="2 2 200 26" name="ResourcesSearchEdit" align="HStretch Top">
             <Property key="Caption"/>
         </Widget>

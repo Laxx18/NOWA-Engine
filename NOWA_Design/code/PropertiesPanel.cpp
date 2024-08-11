@@ -1399,10 +1399,6 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		}
 		break;
 	}
-	case NOWA::Variant::VAR_QUAT:
-	{
-		break;
-	}
 	default:
 	{
 		// String
@@ -1523,6 +1519,8 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	Ogre::Real lowBorder = attribute->getConstraints().first;
 	Ogre::Real highBorder = attribute->getConstraints().second;
 
+#if 0
+
 	// Scroll range must be always one more (see internal implementation of scroll bar)
 	Ogre::Real range = (Ogre::Math::Abs(highBorder - lowBorder) * 1000.0f) + 1.0f;
 	
@@ -1546,6 +1544,30 @@ void PropertiesPanelDynamic::createRealSlider(const int& valueWidth, const int& 
 	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
 	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+#else
+	// Ensure min is less than max
+	if (lowBorder > highBorder)
+	{
+		std::swap(lowBorder, highBorder);
+	}
+
+	// Interpolate current value to an integer within the slider range
+	// Calculate the range based on the min and max values
+	const float valueRange = highBorder - lowBorder;
+	const size_t range = 1000; // Precision of the slider
+
+	// Interpolate current value to an integer within the slider range
+	const size_t interpolatedValue = static_cast<size_t>((currentValue - lowBorder) / valueRange * range);
+
+	// Set the slider's properties
+	slider->setScrollRange(range + 1); // Set the range of the slider
+	slider->setScrollPosition(interpolatedValue); // Set initial position
+	slider->setTrackSize(10);
+
+	// Set the slider event listener to handle changes
+	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
+	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
+#endif
 
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setInvertSelected(false);
@@ -1586,26 +1608,24 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	Ogre::Real lowBorder = attribute->getConstraints().first;
 	Ogre::Real highBorder = attribute->getConstraints().second;
 
-	// Scroll range must be always one more (see internal implementation of scroll bar)
-	Ogre::Real range = Ogre::Math::Abs(highBorder - lowBorder) + 1.0f;
-
-	// https://math.stackexchange.com/questions/51509/how-to-calculate-percentage-of-value-inside-arbitrary-range
-	// Note: transform from - to absolute, only - is relevant, e.g. min: -200, max: 100: value a) -97, value b) 97 -> transform: +200 -> min: 0 max: 300 value a) 103, value b: 297
-
-	Ogre::Real value = (currentValue - lowBorder);
-	if (value >= range)
+	// Ensure min is less than max
+	if (lowBorder > highBorder)
 	{
-		value = range - 1;
+		std::swap(lowBorder, highBorder);
 	}
 
-	Ogre::Real interpolatedValue = NOWA::Interpolator::getInstance()->linearInterpolation(value, lowBorder, highBorder, lowBorder, highBorder);
-	slider->setScrollRange(static_cast<size_t>(range));
-	slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
+	// Calculate the range for the slider
+	const size_t range = static_cast<size_t>(highBorder - lowBorder);
 
-	// slider->setTickStep((10.0f / range) * 1000.0f); Missing in MyGUI
+	// Calculate the current position within the range
+	const size_t currentPosition = static_cast<size_t>(currentValue - lowBorder);
+	// Set the slider's properties
+	slider->setScrollRange(range + 1); // Range is inclusive, so add 1
+	slider->setScrollPosition(currentPosition);
+	slider->setTrackSize(10);
 	slider->eventScrollChangePosition += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyScrollChangePosition);
 	slider->eventMouseButtonReleased += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifySliderMouseRelease);
-	// slider->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+
 	MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft + sliderWidth + 5, heightCurrent, valueWidth * 0.3f, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 	edit->setInvertSelected(false);
 	edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
@@ -1617,6 +1637,8 @@ void PropertiesPanelDynamic::createIntSlider(const int& valueWidth, const int& v
 	// edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
 	edit->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseRootChangeFocus);
 	edit->eventEditTextChange += MyGUI::newDelegate(this, &PropertiesPanelDynamic::editTextChange);
+
+
 	edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
 
 	// Pair the edit to the scrollbar and vice versa
@@ -1801,6 +1823,7 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 void PropertiesPanelDynamic::editTextChange(MyGUI::Widget* sender)
 {
 	sender->setUserString("Adapted", "true");
+
 	// If user is entering something, do not move camera, if the user entered something like asdf
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
@@ -2383,6 +2406,7 @@ void PropertiesPanelGameObject::notifyScrollChangePosition(MyGUI::ScrollBar* sen
 	MyGUI::ScrollBar* scrollBar = sender->castType<MyGUI::ScrollBar>(false);
 	if (nullptr != scrollBar)
 	{
+
 		// TODO: implement when necessary
 	}
 }
@@ -2597,29 +2621,49 @@ void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		MyGUI::ScrollBar* slider = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ScrollBar>(sliderName, false);
 		if (nullptr != slider)
 		{
-			Ogre::Real currentValue = (editValue - (*attribute)->getConstraints().first) * 1000.0f;
 			Ogre::Real lowBorder = (*attribute)->getConstraints().first;
 			Ogre::Real highBorder = (*attribute)->getConstraints().second;
 
-			// Scroll range must be always one more (see internal implementation of scroll bar)
-			Ogre::Real range = (Ogre::Math::Abs(highBorder - lowBorder) * 1000.0f) + 1.0f;
-
-			// https://math.stackexchange.com/questions/51509/how-to-calculate-percentage-of-value-inside-arbitrary-range
-			// Note: transform from - to absolute, only - is relevant, e.g. min: -200, max: 100: value a) -97, value b) 97 -> transform: +200 -> min: 0 max: 300 value a) 103, value b: 297
-
-			if (currentValue >= range)
+			// Checks if int slider or real slider
+			if ((*attribute)->getType() == NOWA::Variant::VAR_INT
+				|| (*attribute)->getType() == NOWA::Variant::VAR_UINT
+				|| (*attribute)->getType() == NOWA::Variant::VAR_ULONG)
 			{
-				currentValue = range - 1;
-			}
+				int value;
+				std::istringstream iss(editCaption);
+				if (iss >> value)
+				{
+					NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
 
-			Ogre::Real interpolatedValue = NOWA::Interpolator::getInstance()->linearInterpolation(currentValue, lowBorder * 1000.0f, range, lowBorder * 1000.0f, highBorder * 1000.0f);
-			if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
-			{
-				slider->setScrollPosition(static_cast<size_t>(interpolatedValue));
+					if (value < lowBorder)
+					{
+						value = lowBorder;
+					}
+					if (value > highBorder)
+					{
+						value = highBorder;
+					}
+					size_t newPosition = static_cast<size_t>(value - lowBorder);
+					slider->setScrollPosition(newPosition);
+				}
 			}
 			else
 			{
-				slider->setScrollPosition(static_cast<size_t>(interpolatedValue / 100.0f));
+				Ogre::Real value;
+				std::istringstream iss(editCaption);
+				if (iss >> value)
+				{
+					if (value < lowBorder)
+					{
+						value = lowBorder;
+					}
+					if (value > highBorder)
+					{
+						value = highBorder;
+					}
+					size_t newPosition = static_cast<size_t>((value - lowBorder) / (highBorder - lowBorder) * 1000.0f);
+					slider->setScrollPosition(newPosition);
+				}
 			}
 		}
 	}
@@ -2684,11 +2728,11 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 			Ogre::Real value = 0.0f;
 			if (NOWA::Variant::VAR_REAL == (*attribute)->getType())
 			{
-				value = (sender->getScrollPosition() / 1000.0f) + (*attribute)->getConstraints().first;
+				value = (*attribute)->getConstraints().first + static_cast<float>(position) * ((*attribute)->getConstraints().second - (*attribute)->getConstraints().first) / 1000.0f;
 			}
 			else
 			{
-				value = sender->getScrollPosition() + (*attribute)->getConstraints().first;
+				value = position + (*attribute)->getConstraints().first;
 			}
 
 			(*editPair)->setOnlyText(Ogre::StringConverter::toString(value));

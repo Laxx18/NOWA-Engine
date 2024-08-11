@@ -185,6 +185,8 @@ namespace OgreNewt
 		//! get the NewtonMaterial from this callback.
 		NewtonMaterial* _getNewtonMaterial();
 
+		Ogre::String print(void);
+
 	protected:
 		NewtonMaterial* m_material;
 		void* m_contact;

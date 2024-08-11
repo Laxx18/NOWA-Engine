@@ -14,7 +14,7 @@ Scene1_MainGameObject["connect"] = function(gameObject)
 end
 
 Scene1_MainGameObject["disconnect"] = function()
-
+    AppStateManager:getGameObjectController():undoAll();
 end
 
 Scene1_MainGameObject["update"] = function(dt)

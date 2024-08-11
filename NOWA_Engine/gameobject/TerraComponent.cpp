@@ -57,13 +57,14 @@ namespace NOWA
 		terraWorkspaceListener(nullptr),
 		usedCamera(nullptr),
 		postInitDone(false),
-		center(new Variant(TerraComponent::AttrCenter(), Ogre::Vector3(0.0f, 50.0f, 0.0f), this->attributes)),
+		terraLoadedFromFile(false),
+		center(new Variant(TerraComponent::AttrCenter(), Ogre::Vector3(0.0f, 25.0f, 0.0f), this->attributes)),
 		// heightMap(new Variant(TerraComponent::AttrHeightMap(), "Heightmap.png", this->attributes)),
 		dimensions(new Variant(TerraComponent::AttrDimensions(), Ogre::Vector3(100.0f, 100.0f, 100.0f), this->attributes)),
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		basePixelDimension(new Variant(TerraComponent::AttrBasePixelDimension(), static_cast<unsigned int>(64), this->attributes, true)),
-		strength(new Variant(TerraComponent::AttrStrength(), 10, this->attributes)),
+		strength(new Variant(TerraComponent::AttrStrength(), 50, this->attributes)),
 		brushSize(new Variant(TerraComponent::AttrBrushSize(), static_cast<int>(64), this->attributes)),
 		brushIntensity(new Variant(TerraComponent::AttrBrushIntensity(), static_cast<int>(255), this->attributes)),
 		imageLayer(new Variant(TerraComponent::AttrImageLayer(), { "0", "1", "2", "3" }, this->attributes)),
@@ -82,14 +83,14 @@ namespace NOWA
 			compatibleBrushNames[i++] = *it;
 		}
 
-		this->strength->setConstraints(-100, 100);
+		this->strength->setConstraints(-500, 500);
 		this->strength->addUserData(GameObject::AttrActionNoUndo());
 
 		this->brush->setValue(compatibleBrushNames);
 		this->brush->addUserData(GameObject::AttrActionImage());
 		this->brush->addUserData(GameObject::AttrActionNoUndo());
 
-		this->brushSize->setConstraints(1.0f, 128.0f);
+		this->brushSize->setConstraints(1.0f, 5000.0f);
 		this->brushSize->addUserData(GameObject::AttrActionNoUndo());
 
 		this->brushIntensity->setConstraints(1.0f, 255.0f);
@@ -142,6 +143,8 @@ namespace NOWA
 			this->basePixelDimension->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+
+		this->terraLoadedFromFile = true;
 		
 		return true;
 	}
@@ -334,13 +337,17 @@ namespace NOWA
 				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), false, false);
 			}
 
-			// this->terra->load(0.0f, 1024u, 1024u, Ogre::Vector3(this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y + this->dimensions->getVector3().y / 2.0f, this->gameObjectPtr->getPosition().z), this->dimensions->getVector3());
-
-			// this->terra->levelTerrain(5.0f);
-			//mTerra->load( "Heightmap.png", Ogre::Vector3( 64.0f, 0, 64.0f ), Ogre::Vector3( 1024.0f, 5.0f, 1024.0f ) );
-			//mTerra->load( "Heightmap.png", Ogre::Vector3( 64.0f, 0, 64.0f ), Ogre::Vector3( 4096.0f * 4, 15.0f * 64.0f*4, 4096.0f * 4 ) );
-			// this->terra->load("Heightmap.png", Ogre::Vector3(64.0f, 496.0f * 0.5f, 64.0f), Ogre::Vector3(496.0f, 496.0f, 496.0f));
-			//mTerra->load( "Heightmap.png", Ogre::Vector3( 64.0f, 4096.0f * 0.5f, 64.0f ), Ogre::Vector3( 14096.0f, 14096.0f, 14096.0f ) );
+#if 0
+			// If terra has been created from the scratch and center.y e.g. is 50 meters, place the camera approprirate to have a visible ground
+			if (false == this->terraLoadedFromFile)
+			{
+				if (this->usedCamera->getPositionForViewUpdate().y < this->center->getVector3().y)
+				{
+					this->usedCamera->setPosition(this->usedCamera->getPositionForViewUpdate().x, this->center->getVector3().y, this->usedCamera->getPositionForViewUpdate().z);
+				}
+				this->terraLoadedFromFile = true;
+			}
+#endif
 
 			Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, this->dimensions->getVector3().y, terra->getXZDimensions().y) / 2.0f);
 			// startX = -184
@@ -355,8 +362,10 @@ namespace NOWA
 			Ogre::Real startZ = terra->getTerrainOrigin().z;
 			Ogre::Real endZ = terra->getTerrainOrigin().z * -1 + center.z * 2.0f;
 
-			auto aabb = Ogre::Aabb::newFromExtents(Ogre::Vector3(startX - this->center->getVector3().x, -(this->dimensions->getVector3().y * 0.5f) + (this->center->getVector3().y), startZ - this->center->getVector3().z),
-												   Ogre::Vector3(endX - this->center->getVector3().x,    (this->dimensions->getVector3().y * 0.5f) + (this->center->getVector3().y), endZ - this->center->getVector3().z));
+			Ogre::Vector3 min = Ogre::Vector3(startX - this->center->getVector3().x, this->center->getVector3().y - this->dimensions->getVector3().y, startZ - this->center->getVector3().z);
+			Ogre::Vector3 max = Ogre::Vector3(endX - this->center->getVector3().x, this->dimensions->getVector3().y - this->center->getVector3().y, endZ - this->center->getVector3().z);
+
+			auto aabb = Ogre::Aabb::newFromExtents(min, max);
 			terra->setLocalAabb(aabb);
 
 			if (nullptr != this->terra)
@@ -426,7 +435,13 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
-			return this->terra->modifyTerrainStart(position, strength);
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Could not modify terrain, because no brush name has been selected for game object: " + this->gameObjectPtr->getName());
+				return;
+			}
+
+			this->terra->modifyTerrainStart(position, strength);
 		}
 	}
 
@@ -434,15 +449,27 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
-			return this->terra->smoothTerrainStart(position, strength);
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Could not smooth terrain, because no brush name has been selected for game object: " + this->gameObjectPtr->getName());
+				return;
+			}
+
+			this->terra->smoothTerrainStart(position, strength);
 		}
 	}
 
-	void TerraComponent::paintTerrainStart(const Ogre::Vector3& position, float intensity, int blendLayer)
+	void TerraComponent::paintTerrainStart(const Ogre::Vector3& position, float intensity, int imageLayer)
 	{
 		if (nullptr != this->terra)
 		{
-			return this->terra->paintTerrainStart(position, intensity, blendLayer);
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TerraComponent] Could not paint terrain, because no brush name has been selected for game object: " + this->gameObjectPtr->getName());
+				return;
+			}
+
+			this->terra->paintTerrainStart(position, intensity, imageLayer);
 		}
 	}
 
@@ -450,6 +477,11 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
 			this->terra->modifyTerrain(position, strength);
 		}
 	}
@@ -458,16 +490,122 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
 			this->terra->smoothTerrain(position, strength);
 		}
 	}
 
-	void TerraComponent::paintTerrain(const Ogre::Vector3& position, float intensity, int blendLayer)
+	void TerraComponent::paintTerrain(const Ogre::Vector3& position, float intensity, int imageLayer)
 	{
 		if (nullptr != this->terra)
 		{
-			this->terra->paintTerrain(position, intensity, blendLayer);
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
+			this->terra->paintTerrain(position, intensity, imageLayer);
 		}
+	}
+
+	void TerraComponent::modifyTerrainEnd(void)
+	{
+		if (nullptr != this->terra)
+		{
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
+			boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTerraModifyEnd);
+
+			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
+			if (nullptr != component)
+			{
+				component->reCreateCollision();
+			}
+		}
+	}
+
+	void TerraComponent::smoothTerrainEnd(void)
+	{
+		if (nullptr != this->terra)
+		{
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
+			boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraModifyEnd);
+
+			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
+			if (nullptr != component)
+			{
+				component->reCreateCollision();
+			}
+		}
+	}
+
+	void TerraComponent::paintTerrainEnd(void)
+	{
+		std::pair<std::vector<Ogre::uint8>, std::vector<Ogre::uint8>> detailBlendData;
+
+		if (nullptr != this->terra)
+		{
+			if (true == this->brush->getListSelectedValue().empty())
+			{
+				return;
+			}
+
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+
+			boost::shared_ptr<EventDataTerraPaintEnd> eventDataTerraPaintEnd(new EventDataTerraPaintEnd(this->terra->paintTerrainFinished().first, this->terra->paintTerrainFinished().second, this->gameObjectPtr->getId()));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraPaintEnd);
+		}
+	}
+
+	void TerraComponent::modifyTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount)
+	{
+		this->modifyTerrainStart(position, strength);
+
+		for (unsigned int i = 0; i < loopCount; i++)
+		{
+			this->modifyTerrain(position, strength);
+		}
+
+		this->modifyTerrainEnd();
+	}
+
+	void TerraComponent::smoothTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount)
+	{
+		this->smoothTerrainStart(position, strength);
+
+		for (unsigned int i = 0; i < loopCount; i++)
+		{
+			this->smoothTerrain(position, strength);
+		}
+
+		this->smoothTerrainEnd();
+	}
+
+	void TerraComponent::paintTerrainLoop(const Ogre::Vector3& position, float intensity, int imageLayer, unsigned int loopCount)
+	{
+		this->paintTerrainStart(position, intensity, imageLayer);
+
+		for (unsigned int i = 0; i < loopCount; i++)
+		{
+			this->paintTerrain(position, intensity, imageLayer);
+		}
+
+		this->paintTerrainEnd();
 	}
 
 	std::pair<std::vector<Ogre::uint16>, std::vector<Ogre::uint16>> TerraComponent::modifyTerrainFinished(void)
@@ -806,6 +944,11 @@ namespace NOWA
 		return this->brush->getListSelectedValue();
 	}
 
+	std::vector<Ogre::String> TerraComponent::getAllBrushNames(void) const
+	{
+		return this->brush->getList();
+	}
+
 	void TerraComponent::setBrushSize(short brushSize)
 	{
 		this->brushSize->setValue(brushSize);
@@ -844,6 +987,11 @@ namespace NOWA
 	unsigned int TerraComponent::getImageLayerId(void) const
 	{
 		return Ogre::StringConverter::parseUnsignedInt(this->imageLayer->getListSelectedValue());
+	}
+
+	std::vector<Ogre::String> TerraComponent::getAllImageLayer(void) const
+	{
+		return this->imageLayer->getList();
 	}
 	
 	Ogre::Terra* TerraComponent::getTerra(void) const
