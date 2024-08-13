@@ -319,12 +319,25 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromCategory(const Ogre::String& category);
 
 		/**
-		 * @brief		Gets all game objects which contain at least one of this component class name sorted by name.
-		 * @param[in]	getStaticClassName()	The component class name to get the game objects for.
+		 * @brief		Gets all game objects which contain at least one of this component class name sorted by game object name.
+		 * @param[in]	componentClassName		The component class name to get the game objects for.
 		 * @return		gameObjectList	A by name sorted list with game object ptr's. If nothing can be found, an empty list will be delivered.
 		 */
-
 		std::vector<GameObjectPtr> getGameObjectsFromComponent(const Ogre::String& componentClassName);
+
+		/**
+		 * @brief		Gets all game objects which have the same mesh name sorted by game object name.
+		 * @param[in]	meshName	The mesh name to get the game objects for.
+		 * @return		gameObjectList	A by name sorted list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<GameObjectPtr> getGameObjectsFromMeshName(const Ogre::String& meshName);
+
+		/**
+		 * @brief		Gets all game objects which have the same datablock name sorted by game object name.
+		 * @param[in]	datablockName	The datablock name to get the game objects for.
+		 * @return		gameObjectList	A by name sorted list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<GameObjectPtr> getGameObjectsFromDatablockName(const Ogre::String& datablockName);
 		
 		/**
 		 * @brief		Gets all game objects belonging to the given category id.

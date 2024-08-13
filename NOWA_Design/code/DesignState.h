@@ -72,6 +72,9 @@ private:
 	void cloneGameObjects(void);
 	void enableWidgets(bool enable);
 	void showDebugCollisionLines(bool show);
+
+	void showContextMenu(int mouseX, int mouseY);
+	void onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item);
 private:
 	// Event delegates
 	void handleGenerateCategoriesDelegate(NOWA::EventDataPtr eventData);

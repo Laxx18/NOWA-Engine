@@ -1758,6 +1758,100 @@ namespace NOWA
 		return vec;
 	}
 
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromMeshName(const Ogre::String& meshName)
+	{
+		std::vector<GameObjectPtr> vec;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+			if (nullptr != item)
+			{
+				if (item->getMesh()->getName() == meshName)
+				{
+					vec.emplace_back(it->second);
+				}
+			}
+			else
+			{
+				Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					if (entity->getMesh()->getName() == meshName)
+					{
+						vec.emplace_back(it->second);
+					}
+				}
+			}
+		}
+
+		// Sort them
+		std::sort(vec.begin(), vec.end(), compareGameObjectsByName);
+
+		return vec;
+	}
+
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromDatablockName(const Ogre::String& datablockName)
+	{
+		std::vector<GameObjectPtr> vec;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
+			if (nullptr != item)
+			{
+				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				{
+					if (nullptr != item->getSubItem(i))
+					{
+						auto datablock = item->getSubItem(i)->getDatablock();
+						Ogre::String tempDatablockName;
+						if (nullptr != datablock)
+						{
+							tempDatablockName = *datablock->getNameStr();
+						}
+
+						if (tempDatablockName == datablockName)
+						{
+							vec.emplace_back(it->second);
+							break;
+						}
+					}
+				}
+			}
+			else
+			{
+				Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+					{
+						if (nullptr != entity->getSubEntity(i))
+						{
+							auto datablock = entity->getSubEntity(i)->getDatablock();
+							Ogre::String tempDatablockName;
+							if (nullptr != datablock)
+							{
+								tempDatablockName = *datablock->getNameStr();
+							}
+
+							if (tempDatablockName == datablockName)
+							{
+								vec.emplace_back(it->second);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Sort them
+		std::sort(vec.begin(), vec.end(), compareGameObjectsByName);
+
+		return vec;
+	}
+
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategory(const Ogre::String& category)
 	{
 		std::vector<GameObjectPtr> vec;

@@ -59,7 +59,7 @@ namespace NOWA
 		postInitDone(false),
 		terraLoadedFromFile(false),
 		center(new Variant(TerraComponent::AttrCenter(), Ogre::Vector3(0.0f, 25.0f, 0.0f), this->attributes)),
-		// heightMap(new Variant(TerraComponent::AttrHeightMap(), "Heightmap.png", this->attributes)),
+		pixelSize(new Variant(TerraComponent::AttrPixelSize(), Ogre::Vector2(1024.0f, 1024.0f), this->attributes)),
 		dimensions(new Variant(TerraComponent::AttrDimensions(), Ogre::Vector3(100.0f, 100.0f, 100.0f), this->attributes)),
 		lightId(new Variant(TerraComponent::AttrLightId(), static_cast<unsigned long>(0), this->attributes, true)),
 		cameraId(new Variant(TerraComponent::AttrCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -82,6 +82,8 @@ namespace NOWA
 		{
 			compatibleBrushNames[i++] = *it;
 		}
+
+		this->pixelSize->setDescription("Sets the pixel size of the height map and blend map. This size should be increased if huge terra (e.g. 4096 200 4096) is used.");
 
 		this->strength->setConstraints(-500, 500);
 		this->strength->addUserData(GameObject::AttrActionNoUndo());
@@ -118,11 +120,11 @@ namespace NOWA
 			this->center->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		/*if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HeightMap")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "PixelSize")
 		{
-			this->heightMap->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			this->pixelSize->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
-		}*/
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Dimensions")
 		{
 			this->dimensions->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
@@ -243,15 +245,18 @@ namespace NOWA
 			//his possible uses.
 			const float lightEpsilon = 0.0f;
 			if (nullptr != this->sunLight)
+			{
 				this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
+			}
 			else
+			{
 				this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
+			}
 		}
 	}
 	
 	void TerraComponent::destroyTerra(void)
 	{
-
 		//Unset the PBS listener and destroy it
 		if (nullptr != this->terra)
 		{
@@ -334,7 +339,7 @@ namespace NOWA
 			}
 			else
 			{
-				this->terra->load(this->center->getVector3().y, 1024u, 1024u, this->center->getVector3(), this->dimensions->getVector3(), false, false);
+				this->terra->load(this->center->getVector3().y, static_cast<uint16_t>(this->pixelSize->getVector2().x), static_cast<uint16_t>(this->pixelSize->getVector2().y), this->center->getVector3(), this->dimensions->getVector3(), false, false);
 			}
 
 #if 0
@@ -731,10 +736,10 @@ namespace NOWA
 			this->destroyTerra();
 			this->createTerra();
 		}
-		/*else if (TerraComponent::AttrHeightMap() == attribute->getName())
+		else if (TerraComponent::AttrPixelSize() == attribute->getName())
 		{
-			this->setHeightMap(attribute->getString());
-		}*/
+			this->setPixelSize(attribute->getVector2());
+		}
 		else if (TerraComponent::AttrDimensions() == attribute->getName())
 		{
 			this->setDimensions(attribute->getVector3());
@@ -790,11 +795,11 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->center->getVector3())));
 		propertiesXML->append_node(propertyXML);
 		
-		/*propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "HeightMap"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->heightMap->getString())));
-		propertiesXML->append_node(propertyXML);*/
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "PixelSize"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->pixelSize->getVector2())));
+		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
@@ -821,6 +826,18 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	
 		this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath(), Core::getSingletonPtr()->getWorldName());
+	}
+
+	void TerraComponent::setPixelSize(const Ogre::Vector2& pixelSize)
+	{
+		this->pixelSize->setValue(pixelSize);
+		this->destroyTerra();
+		this->createTerra();
+	}
+
+	Ogre::Vector2 TerraComponent::getPixelSize(void) const
+	{
+		return this->pixelSize->getVector2();
 	}
 
 	Ogre::String TerraComponent::getClassName(void) const

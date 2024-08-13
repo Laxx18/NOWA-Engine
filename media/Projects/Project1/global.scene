@@ -24,57 +24,8 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
-					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="2" name="SubEntityIndex" data="0"/>
-					<property type="7" name="Workflow" data="SpecularWorkflow"/>
-					<property type="6" name="Metalness" data="0.01"/>
-					<property type="6" name="Roughness" data="0.3"/>
-					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
-					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
-					<property type="6" name="RefractionStrength" data="0.075"/>
-					<property type="7" name="Brdf" data="Default"/>
-					<property type="12" name="TwoSidedLighting" data="false"/>
-					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
-					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
-					<property type="6" name="AlphaTestThreshold" data="0.5"/>
-					<property type="12" name="ReceiveShadows" data="true"/>
-					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
-					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
-					<property type="9" name="SpecularColor" data="1 1 1"/>
-					<property type="9" name="EmissiveColor" data="0 0 0"/>
-					<property type="7" name="DiffuseTextureName" data="ground_dirt_gardenD.png"/>
-					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.png"/>
-					<property type="6" name="NormalMapWeight" data="1"/>
-					<property type="6" name="ClearCoat" data="0"/>
-					<property type="6" name="ClearCoatRoughness" data="0.2"/>
-					<property type="7" name="SpecularTextureName" data=""/>
-					<property type="7" name="MetallicTextureName" data=""/>
-					<property type="7" name="RoughnessTextureName" data="ground_dirt_gardenR.png"/>
-					<property type="7" name="DetailWeightTextureName" data=""/>
-					<property type="7" name="Detail0TextureName" data=""/>
-					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail1TextureName" data=""/>
-					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail2TextureName" data=""/>
-					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail3TextureName" data=""/>
-					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
-					<property type="7" name="Detail0NMTextureName" data=""/>
-					<property type="7" name="Detail1NMTextureName" data=""/>
-					<property type="7" name="Detail2NMTextureName" data=""/>
-					<property type="7" name="Detail3NMTextureName" data=""/>
-					<property type="7" name="ReflectionTextureName" data=""/>
-					<property type="7" name="EmissiveTextureName" data=""/>
-					<property type="7" name="TransparencyMode" data="None"/>
-					<property type="7" name="Transparency" data="1"/>
-					<property type="12" name="UseAlphaFromTextures" data="true"/>
-					<property type="2" name="UVScale" data="1"/>
-					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
-					<property type="7" name="ShadowConstBias" data="0.01"/>
 					<property type="7" name="ComponentPlaneComponent" data="PlaneComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -99,8 +50,8 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="38.8689" y="13.7772" z="23.1893"/>
-			<rotation qw="0.972605" qx="-0.110623" qy="0.203147" qz="0.023106"/>
+			<position x="1.81234" y="3.91271" z="1.55254"/>
+			<rotation qw="0.989011" qx="-0.144085" qy="0.0327701" qz="0.00477399"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -121,6 +72,7 @@
 					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -135,6 +87,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -183,6 +136,7 @@
 					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
 			</entity>
@@ -210,6 +164,7 @@
 					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="7" name="Name" data=""/>

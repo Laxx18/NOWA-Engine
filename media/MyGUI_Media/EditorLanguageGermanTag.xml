@@ -264,4 +264,7 @@
 	<Tag name="Key_Existing">Taste ist bereits belegt.</Tag>
 	<Tag name="Keyboard_Configuration">Tastatur Konfiguration.</Tag>
 	<Tag name="Joystick_Configuration">Joystick Konfiguration.</Tag>
+	
+	<Tag name="Select_Same_Mesh">Alle nach gleichem Mesh Namen selektieren</Tag>
+	<Tag name="Select_Same_Datablock">Alle nach gleichem Datenblock Namen selektieren</Tag>
 </MyGUI>

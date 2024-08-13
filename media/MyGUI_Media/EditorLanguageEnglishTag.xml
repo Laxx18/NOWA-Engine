@@ -260,4 +260,7 @@
 	<Tag name="Key_Existing">Key does already exist.</Tag>
 	<Tag name="Keyboard_Configuration">Keyboard Configuration.</Tag>
 	<Tag name="Joystick_Configuration">Joystick Configuration.</Tag>
+	
+	<Tag name="Select_Same_Mesh">Select all by same mesh name</Tag>
+	<Tag name="Select_Same_Datablock">Select all by same datablock name</Tag>
 </MyGUI>

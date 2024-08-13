@@ -101,9 +101,9 @@ namespace NOWA
 
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 		
-		// void setHeightMap(const Ogre::String& heightMap);
+		void setPixelSize(const Ogre::Vector2& pixelSize);
 		
-		// Ogre::String getHeightMap(void) const;
+		Ogre::Vector2 getPixelSize(void) const;
 		
 		void setDimensions(const Ogre::Vector3& dimensions);
 		
@@ -189,7 +189,7 @@ namespace NOWA
 		std::tuple<bool, Ogre::Vector3, Ogre::Vector3, Ogre::Real> checkRayIntersect(const Ogre::Ray& ray);
 	public:
 		static const Ogre::String AttrCenter(void) { return "Center"; }
-		// static const Ogre::String AttrHeightMap(void) { return "Height Map"; }
+		static const Ogre::String AttrPixelSize(void) { return "Pixel Size"; }
 		static const Ogre::String AttrDimensions(void) { return "Dimensions"; }
 		static const Ogre::String AttrLightId(void) { return "Light Id"; }
 		static const Ogre::String AttrCameraId(void) { return "Camera Id"; }
@@ -204,7 +204,7 @@ namespace NOWA
 		void handleSwitchCamera(NOWA::EventDataPtr eventData);
 	private:
 		Variant* center;
-		// Variant* heightMap;
+		Variant* pixelSize;
 		Variant* dimensions;
 		Variant* lightId;
 		Variant* cameraId;

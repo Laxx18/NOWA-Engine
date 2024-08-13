@@ -1537,6 +1537,110 @@ void DesignState::showDebugCollisionLines(bool show)
 	}
 }
 
+void DesignState::showContextMenu(int mouseX, int mouseY)
+{
+	// Create the context menu
+	MyGUI::MenuCtrl* menu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
+
+	auto item1 = menu->addItem("Select_Same_Mesh");
+	item1->setCaptionWithReplacing("#{Select_Same_Mesh}");
+	auto item2 = menu->addItem("Select_Same_Datablock");
+	item2->setCaptionWithReplacing("#{Select_Same_Datablock}");
+	// menu->addItem("Option 3");
+
+	menu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
+}
+
+void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
+{
+	MyGUI::UString itemName = item->getCaption();
+	// Handle the selected item
+	if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Mesh}"))
+	{
+		Ogre::String meshName;
+		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+		{
+			Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
+			if (nullptr != item)
+			{
+				meshName = item->getMesh()->getName();
+			}
+			else
+			{
+				Ogre::v1::Entity* entity = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					meshName = entity->getMesh()->getName();
+				}
+			}
+		}
+
+		auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromMeshName(meshName);
+		this->editorManager->getSelectionManager()->clearSelection();
+
+		for (size_t i = 0; i < affectedGameObjects.size(); i++)
+		{
+			this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
+		}
+	}
+	else if (itemName == MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Select_Same_Datablock}"))
+	{
+		Ogre::String datablockName;
+		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+		{
+			Ogre::Item* item = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObjectUnsafe<Ogre::Item>();
+			if (nullptr != item)
+			{
+				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				{
+					auto datablock = item->getSubItem(i)->getDatablock();
+					Ogre::String tempDatablockName;
+					if (nullptr != datablock)
+					{
+						tempDatablockName = *datablock->getNameStr();
+					}
+					datablockName = tempDatablockName;
+					break;
+				}
+			}
+			else
+			{
+				Ogre::v1::Entity* entity = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+					{
+						auto datablock = entity->getSubEntity(i)->getDatablock();
+						Ogre::String tempDatablockName;
+						if (nullptr != datablock)
+						{
+							tempDatablockName = *datablock->getNameStr();
+						}
+						datablockName = tempDatablockName;
+						break;
+					}
+				}
+			}
+		}
+
+		auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromDatablockName(datablockName);
+		this->editorManager->getSelectionManager()->clearSelection();
+		for (size_t i = 0; i < affectedGameObjects.size(); i++)
+		{
+			this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
+		}
+	}
+	/*else if (itemName == "Option 3")
+	{
+		Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
+	}*/
+
+	// Close (destroy) the menu after selection
+	MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
+}
+
 bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 {
 	// Prevent scene manipulation, when user does something in GUI
@@ -1647,8 +1751,9 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					{
 						this->projectManager->showFileOpenDialog("LoadProject", "*.scene");
 					}
+					return true;
 				}
-				return true;
+				break;
 			}
 			case OIS::KC_F5:
 			{
@@ -1681,7 +1786,6 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 		{
 			case OIS::KC_A: // Select all that matching the filter
 			{
-				
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
 					auto& affectedGameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->activeCategory);
@@ -1690,8 +1794,9 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
 					}
 					this->propertiesPanel->showProperties();
+					return true;
 				}
-				return true;
+				break;
 			}
 			case OIS::KC_C:
 			{
@@ -1706,16 +1811,18 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				{
 					// Only clone if the mouse is in the scene and not in a property, that may be also copied
 					this->cloneGameObjects();
+					return true;
 				}
-				return true;
+				break;
 			}
 			case OIS::KC_T:
 			{
 				if (GetAsyncKeyState(VK_LCONTROL))
 				{
 					this->buttonHit(this->translateModeCheck);
+					return true;
 				}
-				return true;
+				break;
 			}
 			case OIS::KC_S:
 			{
@@ -1734,6 +1841,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					}
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_R:
 			{
@@ -1749,6 +1857,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					}
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_Y:
 			{
@@ -1757,6 +1866,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					this->buttonHit(this->undoButton);
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_Z:
 			{
@@ -1765,6 +1875,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					this->buttonHit(this->redoButton);
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_SPACE:
 			{
@@ -1774,14 +1885,16 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					this->buttonHit(this->playButton);
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_DELETE:
 			{
 				if (true == validScene)
 				{
 					this->removeGameObjects();
+					return true;
 				}
-				return true;
+				break;
 			}
 			case OIS::KC_TAB:
 			{
@@ -1790,6 +1903,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 					NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
 					return true;
 				}
+				break;
 			}
 			case OIS::KC_7:
 			{
@@ -1988,6 +2102,18 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		//	this->propertiesPanel->showProperties();
 		//}
 	}
+
+	if (false == this->simulating)
+	{
+		if (id == OIS::MB_Middle)
+		{
+			if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+			{
+				this->showContextMenu(evt.state.X.abs, evt.state.Y.abs);
+			}
+		}
+	}
+
 	return true;
 }
 

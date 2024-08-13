@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-50 -75 -50" mostRightFarPosition="50 75 50"/>
+		<bounds mostLeftNearPosition="-2048 -175 -2048" mostRightFarPosition="2048 175 2048"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -61,7 +61,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="1000"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
@@ -71,10 +71,10 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-19.9198 4.98171 16.3438"/>
-					<property type="9" name="CameraOrientation" data="-34.2078 -21.8839 -1.54855e-05"/>
+					<property type="9" name="CameraPosition" data="-7.27337 8.32452 68.7284"/>
+					<property type="9" name="CameraOrientation" data="-35.7649 0.502965 -4.11014e-06"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="FarClipDistance" data="2000"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
@@ -220,8 +220,8 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
-					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="6" name="LodDistance" data="1000"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
@@ -229,7 +229,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Center" data="0 25 0"/>
-					<property type="9" name="Dimensions" data="100 100 100"/>
+					<property type="9" name="Dimensions" data="4096 200 4096"/>
 					<property type="6" name="LightId" data="1111111113"/>
 					<property type="6" name="CameraId" data="0"/>
 					<property type="6" name="BasePixelDimension" data="64"/>
@@ -303,7 +303,7 @@
 			</terra>
 		</node>
 		<node name="uv_sphere_0" id="1066693509">
-			<position x="-18.6523" y="0.953855" z="7.85558"/>
+			<position x="-18.6523" y="-24.0473" z="7.85558"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="0.01" y="0.01" z="0.01"/>
 			<item name="uv_sphere_0" meshFile="uv_sphere.mesh" castShadows="true" visible="true">
@@ -319,7 +319,7 @@
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="false"/>
+					<property type="12" name="ClampY" data="true"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>

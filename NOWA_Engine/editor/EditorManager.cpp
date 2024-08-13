@@ -3930,7 +3930,7 @@ namespace NOWA
 	{
 		this->sceneManipulationCommandModule.redo();
 		this->setGizmoToGameObjectsCenter();
-	}
+	} 
 
 	bool EditorManager::canUndo(void)
 	{
