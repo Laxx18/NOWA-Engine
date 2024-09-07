@@ -1722,6 +1722,7 @@ namespace NOWA
 					if (true == std::get<0>(resultData) && (closestDistance < 0.0f || std::get<3>(resultData) < closestDistance))
 					{
 						closestResult = std::get<1>(resultData);
+						// Terra may have its origin in negative, hence subtract to become positive
 						closestDistance = std::get<3>(resultData);
 						targetMovableObject = (size_t)terra;
 					}

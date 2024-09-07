@@ -4,61 +4,26 @@ Copyright (c) 2024 Lukas Kalinowski
 GPL v3
 */
 
-#ifndef PLUGIN_TEMPLATE_H
-#define PLUGIN_TEMPLATE_H
+#ifndef DESCRIPTIONCOMPONENT_H
+#define DESCRIPTIONCOMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
-#include "main/Events.h"
-#include "OgrePlugin.h"
 
 namespace NOWA
 {
 
 	/**
-	  * @brief		Your documentation
+	  * @brief		Description of the scenario.
 	  */
-	class EXPORTED PluginTemplate : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED DescriptionComponent : public GameObjectComponent
 	{
 	public:
-		typedef boost::shared_ptr<PluginTemplate> PluginTemplatePtr;
+		typedef boost::shared_ptr<DescriptionComponent> DescriptionComponentPtr;
 	public:
 
-		PluginTemplate();
+		DescriptionComponent();
 
-		virtual ~PluginTemplate();
-
-		/**
-		* @see		Ogre::Plugin::install
-		*/
-		virtual void install(const Ogre::NameValuePairList* options) override;
-
-		/**
-		* @see		Ogre::Plugin::initialise
-		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
-		*/
-		virtual void initialise() override {};
-
-		/**
-		* @see		Ogre::Plugin::shutdown
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-		*/
-		virtual void shutdown() override {};
-
-		/**
-		* @see		Ogre::Plugin::uninstall
-		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-		*/
-		virtual void uninstall() override {};
-
-		/**
-		* @see		Ogre::Plugin::getName
-		*/
-		virtual const Ogre::String& getName() const override;
-		
-		/**
-		* @see		Ogre::Plugin::getAbiCookie
-		*/
-		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
+		virtual ~DescriptionComponent();
 
 		/**
 		* @see		GameObjectComponent::init
@@ -130,15 +95,9 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
+		void setDescription(const Ogre::String& description); 
 
-		/**
-		* @see		GameObjectComponent::isActivated
-		*/
-		virtual bool isActivated(void) const override;
+		Ogre::String getDescription(void) const;
 
 	public:
 		/**
@@ -146,7 +105,7 @@ namespace NOWA
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("PluginTemplate");
+			return NOWA::getIdFromName("DescriptionComponent");
 		}
 
 		/**
@@ -154,7 +113,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "PluginTemplate";
+			return "DescriptionComponent";
 		}
 	
 		/**
@@ -167,19 +126,13 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: My usage text.";
+			return "Usage: Description of the scenario.";
 		}
 		
-		/**
-		 * @see	GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrDescription(void) { return "Description"; }
 	private:
-		Ogre::String name;
-
-		Variant* activated;
+		Variant* description;
 	};
 
 }; // namespace end

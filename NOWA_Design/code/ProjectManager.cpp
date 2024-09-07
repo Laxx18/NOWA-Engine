@@ -166,6 +166,10 @@ void ProjectManager::createMainGameObject(void)
 		// Do not permit to change the name of the sun light
 		gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
 
+		// Add also the light direcitional component
+		NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(
+			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));
+
 		// Register after the component has been created
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 	}

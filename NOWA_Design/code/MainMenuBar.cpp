@@ -45,6 +45,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	meshToolWindow(nullptr),
 	simulationWindow(nullptr),
 	aboutWindow(nullptr),
+	sceneDescriptionWindow(nullptr),
 	createComponentPluginWindow(nullptr),
 	cPlusPlusComponentGenerator(nullptr),
 	bDrawNavigationMesh(false),
@@ -373,6 +374,11 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->setCaptionWithReplacing("#{About}");
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		menuItem = helpMenuControl->addItem("sceneDescriptionMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		menuItem->hideItemChild();
+		menuItem->setCaptionWithReplacing("#{SceneDescription}");
+		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 	}
 	
 	this->updateRecentFilesMenu();
@@ -403,6 +409,7 @@ MainMenuBar::~MainMenuBar()
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->luaAnalysisWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->aboutWindowWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->sceneDescriptionWindowWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
 
 	if (nullptr != this->cPlusPlusComponentGenerator)
@@ -803,6 +810,11 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->showAboutWindow();
 			break;
 		}
+		case 53: // Scene description
+		{
+			this->showSceneDescriptionWindow();
+			break;
+		}
 	}
 }
 
@@ -835,6 +847,10 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 	else if ("aboutOkButton" == sender->getName())
 	{
 		this->aboutWindow->setVisible(false);
+	}
+	else if ("sceneDescriptionOkButton" == sender->getName())
+	{
+		this->sceneDescriptionWindow->setVisible(false);
 	}
 	else if ("pluginOkButton" == sender->getName())
 	{
@@ -1503,6 +1519,49 @@ void MainMenuBar::showAboutWindow(void)
 	this->aboutWindow->setVisible(true);
 }
 
+void MainMenuBar::showSceneDescriptionWindow(void)
+{
+	if (0 == this->sceneDescriptionWindowWidgets.size())
+	{
+		this->sceneDescriptionWindow = MyGUI::Gui::getInstance().createWidget<MyGUI::Window>("WindowC", MyGUI::IntCoord(10, 10, 650, 500), MyGUI::Align::Default, "Popup");
+		MyGUI::IntCoord coord = this->sceneDescriptionWindow->getClientCoord();
+
+		MyGUI::HyperTextBox* hyperTextBox = this->sceneDescriptionWindow->createWidget<MyGUI::HyperTextBox>("HyperTextBox", MyGUI::IntCoord(0, 0, coord.width, coord.height - 50), MyGUI::Align::Stretch);
+		hyperTextBox->setUrlColour(MyGUI::Colour::White);
+
+		const auto mainGameObjectPtr = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+		if (nullptr != mainGameObjectPtr)
+		{
+			// Can only be added once
+			auto descriptionCompPtr = NOWA::makeStrongPtr(mainGameObjectPtr->getComponent<NOWA::DescriptionComponent>());
+			if (nullptr != descriptionCompPtr)
+			{
+				hyperTextBox->setCaption(descriptionCompPtr->getDescription());
+			}
+		}
+
+		hyperTextBox->eventUrlClick += MyGUI::newDelegate(this, &MainMenuBar::onClickUrl);
+
+		MyGUI::Button* sceneDescriptionOkButton = this->sceneDescriptionWindow->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(0, coord.height - 40, 100, 40), MyGUI::Align::Bottom | MyGUI::Align::HCenter, "sceneDescriptionOkButton");
+		sceneDescriptionOkButton->setCaption("Ok");
+		sceneDescriptionOkButton->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+		// Force update layout
+		this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width - 1, this->sceneDescriptionWindow->getSize().height - 1);
+		this->sceneDescriptionWindow->setSize(this->sceneDescriptionWindow->getSize().width + 1, this->sceneDescriptionWindow->getSize().height + 1);
+
+		this->sceneDescriptionWindowWidgets.push_back(hyperTextBox);
+		this->sceneDescriptionWindowWidgets.push_back(sceneDescriptionOkButton);
+		this->sceneDescriptionWindowWidgets.push_back(this->sceneDescriptionWindow);
+	}
+
+	MyGUI::FloatPoint windowPosition;
+	windowPosition.left = 0.3f;
+	windowPosition.top = 0.2f;
+
+	this->sceneDescriptionWindow->setRealPosition(windowPosition);
+	this->sceneDescriptionWindow->setVisible(true);
+}
+
 void MainMenuBar::onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url)
 {
 	if (Ogre::String(NOWA_COMPANYDOMAIN_STR) == url)
@@ -1548,6 +1607,10 @@ void MainMenuBar::onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url
 	else if ("https://en.wikipedia.org/wiki/OpenAL" == url)
 	{
 		ShellExecute(0, 0, "https://en.wikipedia.org/wiki/OpenAL", 0, 0 , SW_SHOW);
+	}
+	else
+	{
+		ShellExecute(0, 0, url.data(), 0, 0, SW_SHOW);
 	}
 }
 

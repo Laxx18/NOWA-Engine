@@ -376,6 +376,7 @@
     <ClInclude Include="gameobject\DatablockTerraComponent.h" />
     <ClInclude Include="gameobject\DatablockUnlitComponent.h" />
     <ClInclude Include="gameobject\DecalComponent.h" />
+    <ClInclude Include="gameobject\DescriptionComponent.h" />
     <ClInclude Include="gameobject\DistributedComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
@@ -595,6 +596,7 @@
     <ClCompile Include="gameobject\DatablockTerraComponent.cpp" />
     <ClCompile Include="gameobject\DatablockUnlitComponent.cpp" />
     <ClCompile Include="gameobject\DecalComponent.cpp" />
+    <ClCompile Include="gameobject\DescriptionComponent.cpp" />
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />

@@ -1798,12 +1798,30 @@ namespace NOWA
 			Ogre::Item* item = it->second->getMovableObjectUnsafe<Ogre::Item>();
 			if (nullptr != item)
 			{
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				if (nullptr != item->getSubItem(0))
 				{
-					if (nullptr != item->getSubItem(i))
+					auto datablock = item->getSubItem(0)->getDatablock();
+					Ogre::String tempDatablockName;
+					if (nullptr != datablock)
 					{
-						auto datablock = item->getSubItem(i)->getDatablock();
+						tempDatablockName = *datablock->getNameStr();
+					}
+
+					if (tempDatablockName == datablockName)
+					{
+						vec.emplace_back(it->second);
+						break;
+					}
+				}
+			}
+			else
+			{
+				Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					if (nullptr != entity->getSubEntity(0))
+					{
+						auto datablock = entity->getSubEntity(0)->getDatablock();
 						Ogre::String tempDatablockName;
 						if (nullptr != datablock)
 						{
@@ -1814,32 +1832,6 @@ namespace NOWA
 						{
 							vec.emplace_back(it->second);
 							break;
-						}
-					}
-				}
-			}
-			else
-			{
-				Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-					{
-						if (nullptr != entity->getSubEntity(i))
-						{
-							auto datablock = entity->getSubEntity(i)->getDatablock();
-							Ogre::String tempDatablockName;
-							if (nullptr != datablock)
-							{
-								tempDatablockName = *datablock->getNameStr();
-							}
-
-							if (tempDatablockName == datablockName)
-							{
-								vec.emplace_back(it->second);
-								break;
-							}
 						}
 					}
 				}

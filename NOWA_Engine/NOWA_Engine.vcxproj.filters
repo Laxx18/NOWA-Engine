@@ -667,6 +667,9 @@
     <ClInclude Include="utilities\CPlusPlusComponentGenerator.h">
       <Filter>utilities</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\DescriptionComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1235,6 +1238,9 @@
     </ClCompile>
     <ClCompile Include="utilities\CPlusPlusComponentGenerator.cpp">
       <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\DescriptionComponent.cpp">
+      <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

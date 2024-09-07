@@ -1,4 +1,4 @@
-local thisGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("528669575");
+local thisGameObject = AppStateManager:getGameObjectController():getGameObjectFromId("3252972965");
 local purePursuitComp = thisGameObject:getPurePursuitComponent();
 local nodeGameObjects = AppStateManager:getGameObjectController():getGameObjectsFromComponent("NodeComponent");
 

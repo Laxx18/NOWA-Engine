@@ -9139,6 +9139,8 @@ namespace NOWA
 			.def("getBrushIntensity", &TerraComponent::getBrushIntensity)
 			.def("setImageLayer", &TerraComponent::setImageLayer)
 			.def("getImageLayer", &TerraComponent::getImageLayer)
+			.def("setImageLayerId", &TerraComponent::setImageLayerId)
+			.def("getImageLayerId", &TerraComponent::getImageLayerId)
 			.def("getAllImageLayer", &getAllImageLayer)
 			.def("modifyTerrainStart", &TerraComponent::modifyTerrainStart)
 			.def("smoothTerrainStart", &TerraComponent::smoothTerrainStart)
@@ -9170,7 +9172,9 @@ namespace NOWA
 		AddClassToCollection("TerraComponent", "void setBrushIntensity(number brushIntensity)", "Sets the brush intensity. Range: [1; 256].");
 		AddClassToCollection("TerraComponent", "number getBrushIntensity()", "Gets the brush intensity.");
 		AddClassToCollection("TerraComponent", "void setImageLayer(string imageLayer)", "Sets the image layer string for painting.");
-		AddClassToCollection("TerraComponent", "number getImageLayer()", "Gets the used image layer string.");
+		AddClassToCollection("TerraComponent", "string getImageLayer()", "Gets the used image layer string.");
+		AddClassToCollection("TerraComponent", "void setImageLayerId(number imageLayerId)", "Sets the image layer id for painting.");
+		AddClassToCollection("TerraComponent", "number getImageLayerId()", "Gets the used image layer id.");
 		AddClassToCollection("TerraComponent", "table[string] getAllImageLayer()", "Gets List of all available image layer names for painting.");
 
 		AddClassToCollection("TerraComponent", "void modifyTerrainStart(Vector3 position, number strength)", "Starts modifying the terrain at the given position and strength. Must be always called once before modifyTerrain is called frequently in order to satisfy undo/redo feature.");

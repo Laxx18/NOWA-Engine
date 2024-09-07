@@ -224,9 +224,9 @@ namespace NOWA
 
 		void snapshotCameraOrientation(void);
 
-		void snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent);
+		void snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditionalUndo = false);
 
-		void snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent);
+		void snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditionalUndo = false);
 
 		void deleteGameObjects(const std::vector<unsigned long> gameObjectIds);
 

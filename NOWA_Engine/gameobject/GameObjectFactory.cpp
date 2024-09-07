@@ -5,6 +5,7 @@
 #include "main/Core.h"
 
 #include "PhysicsComponent.h"
+#include "DescriptionComponent.h"
 #include "PhysicsTerrainComponent.h"
 #include "PhysicsArtifactComponent.h"
 #include "PhysicsActiveComponent.h"
@@ -96,6 +97,7 @@ namespace NOWA
 	{
 		// Component factory is of type: GameObjectComponent and the specific id, register searches for the hashed id and puts it in a map for a later creation
 
+		this->componentFactory.registerClass<DescriptionComponent>(DescriptionComponent::getStaticClassId(), DescriptionComponent::getStaticClassName());
 		this->componentFactory.registerClass<AttributesComponent>(AttributesComponent::getStaticClassId(), AttributesComponent::getStaticClassName());
 		this->componentFactory.registerClass<NavMeshComponent>(NavMeshComponent::getStaticClassId(), NavMeshComponent::getStaticClassName());
 		this->componentFactory.registerClass<NavMeshTerraComponent>(NavMeshTerraComponent::getStaticClassId(), NavMeshTerraComponent::getStaticClassName());

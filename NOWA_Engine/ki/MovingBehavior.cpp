@@ -1203,8 +1203,11 @@ namespace NOWA
 				this->wanderAngle += (theta * this->wanderJitter) - (this->wanderJitter * 0.5f);
 
 				// Finally calculate and return the wander force
-				Ogre::Vector3 wanderForce = circleCenter + displacement;
-				return wanderForce *= this->agent->getSpeed();
+				Ogre::Vector3 wanderForce = (circleCenter + displacement) * this->agent->getSpeed();
+
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] wanderForce: " + Ogre::StringConverter::toString(wanderForce.y));
+
+				return wanderForce;
 			}
 			else
 			{
@@ -2133,6 +2136,11 @@ namespace NOWA
 				return;
 			}
 
+			if (nullptr == this->agent)
+			{
+				return;
+			}
+
 			// Apply the physics velocity according to the resulting behavior
 			Ogre::Vector3 resultVelocity = this->calculate(dt);
 
@@ -2175,7 +2183,7 @@ namespace NOWA
 
 			this->lastMotionDistanceChange = this->motionDistanceChange;
 			
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] velocityLength: " + Ogre::StringConverter::toString(velocityLength) + " lastMotionDistanceChange: " + Ogre::StringConverter::toString(lastMotionDistanceChange));
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] velocityLength: " + Ogre::StringConverter::toString(velocityLength) + " lastMotionDistanceChange: " + Ogre::StringConverter::toString(lastMotionDistanceChange));
 
 			this->detectAgentMotionChange(dt);
 
@@ -2200,7 +2208,9 @@ namespace NOWA
 
 					if (true == this->autoOrientation)
 					{
-						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+						Ogre::Quaternion resultOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+						// faceDirectionSlerp is corrupt, debug it!
+						// Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 						heading = resultOrientation.getYaw();
 
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] ratio: " + Ogre::StringConverter::toString(ratio));
@@ -2229,7 +2239,17 @@ namespace NOWA
 					if (false == this->flyMode)
 					{
 						resultVelocity.y = 0.0f;
-						
+					}
+					else
+					{
+						// Optionally, add a small damping effect to smooth out movement if needed
+						Ogre::Real damping = 0.01f;
+						resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
+
+						// FlyMode is active, control Y-velocity explicitly
+						// Apply a damping factor or limit to prevent runaway speeds
+						Ogre::Real maxYVelocity = 1.0f; // Example limit
+						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
 					}
 					
 					physicsActiveKinematicComponent->setVelocity(physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
@@ -2250,8 +2270,8 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							// newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
@@ -2263,12 +2283,25 @@ namespace NOWA
 				// Usual force
 				else
 				{
-					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
-					Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
 					if (false == this->flyMode)
 					{
-						forceForVelocity.y = 0.0f;
+						resultVelocity.y = 0.0f;
 					}
+					else
+					{
+						
+						// Optionally, add a small damping effect to smooth out movement if needed
+						Ogre::Real damping = -0.01f;
+						resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
+
+						// FlyMode is active, control Y-velocity explicitly
+						// Apply a damping factor or limit to prevent runaway speeds
+						Ogre::Real maxYVelocity = 0.5f;// this->agent->getSpeed(); // Example limit
+						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
+					}
+					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
+					Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+					
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] GO: " + this->agent->getOwner()->getName() + " force: " + Ogre::StringConverter::toString(forceForVelocity));
 					this->agent->applyRequiredForceForVelocity(forceForVelocity);
 					// This works, but is wrong, because force calculation must be used
@@ -2283,8 +2316,8 @@ namespace NOWA
 
 						if (true == this->autoOrientation)
 						{
-							// newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 							// this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 							this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
@@ -2783,9 +2816,8 @@ namespace NOWA
 		Ogre::Vector3 MovingBehavior::limitVelocity(const Ogre::Vector3& totalVelocity)
 		{
 			//// https://physics.stackexchange.com/questions/17049/how-does-force-relate-to-velocity
-			Ogre::Vector3 resultVelocity = totalVelocity /*/ this->agent->getMass()*/;
-			// Apply the physics velocity according to the resulting behavior
-			Ogre::Vector3 velocity = /*this->agent->getVelocity() +*/ resultVelocity;
+			Ogre::Vector3 velocity = totalVelocity;
+			Ogre::Vector3 resultVelocity = totalVelocity;
 
 			if (nullptr == this->agent)
 			{
@@ -2806,7 +2838,11 @@ namespace NOWA
 				velocity.y = 0.0f;
 			}
 
-			return velocity;
+			resultVelocity.x = velocity.x;
+			resultVelocity.y = totalVelocity.y;
+			resultVelocity.z = velocity.z;
+
+			return resultVelocity;
 		}
 
 		Ogre::Vector3 MovingBehavior::limitFlockingVelocity(const Ogre::Vector3& totalVelocity)

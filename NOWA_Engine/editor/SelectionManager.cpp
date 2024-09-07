@@ -420,26 +420,47 @@ namespace NOWA
 		Ogre::SceneQueryResultMovableList::iterator itr;
 		for (itr = qryresult.movables.begin(); itr != qryresult.movables.end(); ++itr)
 		{
+			// get the mesh information
+			size_t vertexCount;
+			size_t indexCount;
+			Ogre::Vector3* vertices = nullptr;
+			unsigned long* indices = nullptr;
+
 			// only check this result if its a hit against an entity
-			if ((*itr)->getMovableType().compare("Entity") == 0)
+			if ((*itr)->getMovableType().compare("Entity") == 0 || (*itr)->getMovableType().compare("Item") == 0)
 			{
-				// get the entity to check
-				Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(*itr);
-
-				if (!entity->getVisible())
+				if ((*itr)->getMovableType().compare("Entity") == 0)
 				{
-					continue;
+					// get the entity to check
+					Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(*itr);
+
+					// TODO: Select invisible objects? To know where they are?
+					if (!entity->getVisible())
+					{
+						continue;
+					}
+
+					// Get the mesh information
+					MathHelper::getInstance()->getMeshInformation(entity->getMesh(), vertexCount, vertices,
+																  indexCount, indices, entity->getParentNode()->_getDerivedPosition(), entity->getParentNode()->_getDerivedOrientation(), entity->getParentNode()->getScale());
 				}
+				else
+				{
+					if ((*itr)->getMovableType().compare("Item") == 0)
+					{
+						Ogre::Item* item = static_cast<Ogre::Item*>(*itr);
 
-				// get the mesh information
-				size_t vertexCount;
-				size_t indexCount;
-				Ogre::Vector3* vertices = nullptr;
-				unsigned long* indices = nullptr;
+						// TODO: Select invisible objects? To know where they are?
+						if (!item->getVisible())
+						{
+							continue;
+						}
 
-				// Get the mesh information
-				MathHelper::getInstance()->getMeshInformation(entity->getMesh(), vertexCount, vertices,
-					indexCount, indices, entity->getParentNode()->_getDerivedPosition(), entity->getParentNode()->_getDerivedOrientation(), entity->getParentNode()->getScale());
+						// Get the mesh information
+						MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices,
+																	  indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->getScale());
+					}
+				}
 
 				bool hitfound = false;
 				for (int i = 0; i < static_cast<int>(indexCount); i++)

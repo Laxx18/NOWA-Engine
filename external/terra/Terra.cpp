@@ -1991,6 +1991,13 @@ namespace Ogre
             }
 
             result = checkQuadIntersection(quadX, quadZ, localRay);
+
+            // Terra may have its origin in negative, hence subtract to become positive
+            if (m_terrainOrigin.y < 0.0f)
+            {
+                std::get<3>(result) -= m_terrainOrigin.y;
+            }
+
             if (std::get<0>(result))
                 break;
 

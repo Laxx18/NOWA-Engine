@@ -145,6 +145,8 @@ namespace NOWA
 
 		unsigned int getImageLayerId(void) const;
 
+		void setImageLayerId(unsigned int imageLayerId);
+
 		std::vector<Ogre::String> getAllImageLayer(void) const;
 
 		Ogre::Terra* getTerra(void) const;

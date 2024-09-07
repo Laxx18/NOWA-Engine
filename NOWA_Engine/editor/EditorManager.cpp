@@ -1123,12 +1123,12 @@ namespace NOWA
 	class TerrainModifyUndoCommand : public ICommand
 	{
 	public:
-		TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent)
+		TerrainModifyUndoCommand(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditional = false)
 			: oldHeightData(oldHeightData),
 			newHeightData(newHeightData),
 			terraComponent(terraComponent)
 		{
-
+			this->isAdditional = isAdditional;
 		}
 
 		virtual void undo(void) override
@@ -1151,12 +1151,12 @@ namespace NOWA
 	class TerrainPaintUndoCommand : public ICommand
 	{
 	public:
-		TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent)
+		TerrainPaintUndoCommand(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditional = false)
 			: oldBlendWeightData(oldBlendWeightData),
 			newBlendWeightData(newBlendWeightData),
 			terraComponent(terraComponent)
 		{
-
+			this->isAdditional = isAdditional;
 		}
 
 		virtual void undo(void) override
@@ -3715,7 +3715,8 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		if (true == withUndo)
 		{
-			this->undoAll();
+			// this->undoAll();
+			this->undo();
 		}
 		// Physics simulation will be corrupt!
 		if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
@@ -3827,14 +3828,14 @@ namespace NOWA
 		this->cameraCommandModule.pushCommand(std::make_shared<CameraTransformUndoCommand>(this->camera));
 	}
 
-	void EditorManager::snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent)
+	void EditorManager::snapshotTerraHeightMap(const std::vector<Ogre::uint16>& oldHeightData, const std::vector<Ogre::uint16>& newHeightData, TerraComponent* terraComponent, bool isAdditionalUndo)
 	{
-		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainModifyUndoCommand>(oldHeightData, newHeightData, terraComponent));
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainModifyUndoCommand>(oldHeightData, newHeightData, terraComponent, isAdditionalUndo));
 	}
 
-	void EditorManager::snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent)
+	void EditorManager::snapshotTerraBlendMap(const std::vector<Ogre::uint8>& oldBlendWeightData, const std::vector<Ogre::uint8>& newBlendWeightData, TerraComponent* terraComponent, bool isAdditionalUndo)
 	{
-		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainPaintUndoCommand>(oldBlendWeightData, newBlendWeightData, terraComponent));
+		this->sceneManipulationCommandModule.pushCommand(std::make_shared<TerrainPaintUndoCommand>(oldBlendWeightData, newBlendWeightData, terraComponent, isAdditionalUndo));
 	}
 
 	void EditorManager::handleTerraModifyEnd(EventDataPtr eventData)
@@ -3848,7 +3849,7 @@ namespace NOWA
 			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
 			if (nullptr != terraComponent)
 			{
-				this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), terraComponent.get());
+				this->snapshotTerraHeightMap(castEventData->getOldHeightData(), castEventData->getNewHeightData(), terraComponent.get(), true);
 			}
 		}
 	}
@@ -3864,7 +3865,7 @@ namespace NOWA
 			auto& terraComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::TerraComponent>());
 			if (nullptr != terraComponent)
 			{
-				this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), terraComponent.get());
+				this->snapshotTerraBlendMap(castEventData->getOldDetailBlendData(), castEventData->getNewDetailBlendData(), terraComponent.get(), true);
 			}
 		}
 	}

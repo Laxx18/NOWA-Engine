@@ -75,6 +75,7 @@ extern "C"
 
 // Gameobject
 #include "gameobject/GameObjectController.h"
+#include "gameobject/DescriptionComponent.h"
 #include "gameobject/PhysicsArtifactComponent.h"
 #include "gameobject/PhysicsActiveComponent.h"
 #include "gameobject/PhysicsTerrainComponent.h"
@@ -160,6 +161,7 @@ namespace NOWA
 {
 	// Components
 	typedef boost::shared_ptr<GameObject> GameObjectPtr;
+	typedef boost::shared_ptr<DescriptionComponent> DescriptionCompPtr;
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsArtifactComponent> PhysicsArtifactCompPtr;
 	typedef boost::shared_ptr<PhysicsTerrainComponent> PhysicsTerrainCompPtr;

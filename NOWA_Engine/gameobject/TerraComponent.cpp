@@ -1006,6 +1006,11 @@ namespace NOWA
 		return Ogre::StringConverter::parseUnsignedInt(this->imageLayer->getListSelectedValue());
 	}
 
+	void TerraComponent::setImageLayerId(unsigned int imageLayerId)
+	{
+		this->imageLayer->setListSelectedValue(Ogre::StringConverter::toString(imageLayerId));
+	}
+
 	std::vector<Ogre::String> TerraComponent::getAllImageLayer(void) const
 	{
 		return this->imageLayer->getList();

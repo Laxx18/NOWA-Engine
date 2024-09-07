@@ -76,7 +76,7 @@ namespace NOWA
 
 		clonedCompPtr->setCollisionDirection(this->collisionDirection->getVector3());
 		// Bug in newton, setting afterwards collidable to true, will not work, hence do not clone this property
-		// clonedCompPtr->setCollidable(this->collidable->getBool());
+		clonedCompPtr->setCollidable(this->collidable->getBool());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);

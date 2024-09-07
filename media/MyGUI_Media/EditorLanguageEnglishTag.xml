@@ -256,6 +256,7 @@
 	<Tag name="RenderWireframe">Render Wireframe</Tag>
 	<Tag name="RenderPoints">Render Points</Tag>
 	<Tag name="About">About</Tag>
+	<Tag name="SceneDescription">Scene Description</Tag>
 	
 	<Tag name="Key_Existing">Key does already exist.</Tag>
 	<Tag name="Keyboard_Configuration">Keyboard Configuration.</Tag>

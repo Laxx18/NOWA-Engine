@@ -46,6 +46,8 @@ public:
 
 	void showAboutWindow(void);
 
+	void showSceneDescriptionWindow(void);
+
 	void showComponentPlugin(void);
 
 	void activateTestSelectedGameObjects(bool bActivated);
@@ -121,6 +123,8 @@ private:
 	MyGUI::Window* luaAnalysisWindow;
 	MyGUI::VectorWidgetPtr aboutWindowWidgets;
 	MyGUI::Window* aboutWindow;
+	MyGUI::VectorWidgetPtr sceneDescriptionWindowWidgets;
+	MyGUI::Window* sceneDescriptionWindow;
 	MyGUI::VectorWidgetPtr createComponentPluginWindowWidgets;
 	MyGUI::Window* createComponentPluginWindow;
 	MyGUI::VectorWidgetPtr componentPluginWindowWidgets;

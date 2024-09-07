@@ -34,7 +34,7 @@
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-50 -75 -50" mostRightFarPosition="50 75 50"/>
+		<bounds mostLeftNearPosition="-2048 -175 -2048" mostRightFarPosition="2048 175 2048"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -42,8 +42,8 @@
 	</OgreNewt>
 	<nodes>
 		<node name="MainCamera" id="4010617415">
-			<position x="-18.5527" y="9.14014" z="17.1849"/>
-			<rotation qw="0.954273" qx="-0.28068" qy="-0.0986876" qz="-0.0290264"/>
+			<position x="-4.82432" y="-40.2467" z="-52.003"/>
+			<rotation qw="0.698233" qx="-0.254357" qy="0.628738" qz="0.229046"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -61,7 +61,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="1000"/>
+					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
@@ -71,10 +71,10 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="-21.2609 12.0541 24.3305"/>
-					<property type="9" name="CameraOrientation" data="-15.7366 -10.9913 2.55018e-05"/>
+					<property type="9" name="CameraPosition" data="-7.83627 -36.5898 -41.6796"/>
+					<property type="9" name="CameraOrientation" data="-25.2396 35.8328 0.000605973"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
-					<property type="6" name="FarClipDistance" data="2000"/>
+					<property type="6" name="FarClipDistance" data="1000"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
@@ -171,33 +171,6 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
-					<property type="7" name="ComponentRandomImageShuffler" data="RandomImageShuffler"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="10" name="Geometry" data="0.75 0 0.2 0.4"/>
-					<property type="7" name="MaskImage" data="Rect_Mask.png"/>
-					<property type="6" name="DisplayTime" data="100"/>
-					<property type="12" name="UseSlideImage" data="true"/>
-					<property type="12" name="UseStopDelay" data="true"/>
-					<property type="12" name="UseStopEffect" data="true"/>
-					<property type="7" name="EaseFunction" data="easeInOutExpo"/>
-					<property type="7" name="OnImageChosenFunctionName" data="onImageChosen"/>
-					<property type="6" name="ImageCount" data="5"/>
-					<property type="7" name="ImageName0" data="axe_1.png"/>
-					<property type="7" name="ImageName1" data="carrot_powerup.png"/>
-					<property type="7" name="ImageName2" data="shield-game-item.jpg"/>
-					<property type="7" name="ImageName3" data="color_bomb_1.png"/>
-					<property type="7" name="ImageName4" data="femur.png"/>
-					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="Scene1_MainGameObject.lua"/>
-					<property type="12" name="CloneScript" data="false"/>
-					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -208,11 +181,11 @@
 			<terra name="Terra_0" visible="true">
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="2194594592"/>
-					<property type="7" name="Category" data="Terrain"/>
+					<property type="7" name="Id" data="2763432336"/>
+					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -221,7 +194,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="1000"/>
+					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
@@ -229,8 +202,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Center" data="0 25 0"/>
-					<property type="8" name="PixelSize" data="1024 1024"/>
-					<property type="9" name="Dimensions" data="100 100 100"/>
+					<property type="9" name="Dimensions" data="4096 200 4096"/>
 					<property type="6" name="LightId" data="1111111113"/>
 					<property type="6" name="CameraId" data="0"/>
 					<property type="6" name="BasePixelDimension" data="64"/>
@@ -242,13 +214,13 @@
 					<property type="9" name="DiffuseColor" data="1 1 1"/>
 					<property type="7" name="DiffuseTextureName" data="DiffuseTerrain.png"/>
 					<property type="7" name="Detail0TextureName" data="ground_dirt_gardenD.png"/>
-					<property type="10" name="OffsetScale0" data="0 0 128 128"/>
+					<property type="10" name="OffsetScale0" data="0 0 1024 1024"/>
 					<property type="7" name="Detail1TextureName" data="grass_green_d.jpg"/>
-					<property type="10" name="OffsetScale1" data="0 0 128 128"/>
+					<property type="10" name="OffsetScale1" data="0 0 1024 1024"/>
 					<property type="7" name="Detail2TextureName" data="island_sand_d.jpg"/>
-					<property type="10" name="OffsetScale2" data="0 0 128 128"/>
+					<property type="10" name="OffsetScale2" data="0 0 1024 1024"/>
 					<property type="7" name="Detail3TextureName" data="mntn_black_d.jpg"/>
-					<property type="10" name="OffsetScale3" data="0 0 128 128"/>
+					<property type="10" name="OffsetScale3" data="0 0 1024 1024"/>
 					<property type="7" name="Detail0NMTextureName" data="ground_dirt_gardenN.png"/>
 					<property type="7" name="Detail1NMTextureName" data="grass_green_n.jpg"/>
 					<property type="7" name="Detail2NMTextureName" data="island_sand_n.png"/>
@@ -270,49 +242,19 @@
 					<property type="7" name="Detail3MTextureName" data="mntn_black_s.png"/>
 					<property type="6" name="Metalness3" data="0.1"/>
 					<property type="7" name="ReflectionTextureName" data=""/>
-					<property type="7" name="ComponentPhysicsTerrainComponent" data="PhysicsTerrainComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="ScriptFile" data="Scene1_Terra_0.lua"/>
-					<property type="12" name="CloneScript" data="false"/>
-					<property type="12" name="HasCommonScript" data="false"/>
-					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="7" name="Category1" data="Terrain"/>
-					<property type="7" name="Category2" data="Object"/>
-					<property type="8" name="Friction" data="0.8 0.4"/>
-					<property type="6" name="Softness" data="0.01"/>
-					<property type="6" name="Elasticity" data="0.01"/>
-					<property type="6" name="SurfaceThickness" data="0.125"/>
-					<property type="12" name="Collideable" data="true"/>
-					<property type="7" name="ContactBehavior" data="None"/>
-					<property type="6" name="ContactSpeed" data="10"/>
-					<property type="9" name="ContactDirection" data="0 0 -1"/>
-					<property type="7" name="OverlapFunctionName" data=""/>
-					<property type="7" name="ContactFunctionName" data=""/>
-					<property type="7" name="ContactOnceFunctionName" data="onContactOnce"/>
-					<property type="7" name="ContactScratchFunctionName" data=""/>
 				</userData>
 			</terra>
 		</node>
-		<node name="uv_sphere_0" id="1066693509">
-			<position x="-18.6523" y="0.68679" z="7.85558"/>
+		<node name="Monster01_0" id="2507280561">
+			<position x="-18.805" y="-49.9841" z="-55.3057"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
-			<scale x="0.01" y="0.01" z="0.01"/>
-			<item name="uv_sphere_0" meshFile="uv_sphere.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="[Default]"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster01"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="1800931231"/>
-					<property type="7" name="Category" data="Object"/>
+					<property type="7" name="Id" data="902519068"/>
+					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -320,38 +262,14 @@
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
-					<property type="12" name="ClampY" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
-					<property type="7" name="DataBlock0" data="[Default]"/>
-					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
-					<property type="7" name="Name" data=""/>
-					<property type="2" name="ReferenceId" data="0"/>
-					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 0"/>
-					<property type="6" name="Mass" data="10"/>
-					<property type="9" name="MassOrigin" data="0 0 0"/>
-					<property type="6" name="LinearDamping" data="0.1"/>
-					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
-					<property type="9" name="Gravity" data="0 -19.8 0"/>
-					<property type="7" name="GravitySourceCategory" data=""/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
-					<property type="12" name="ContinuousCollision" data="false"/>
-					<property type="6" name="Speed" data="1"/>
-					<property type="6" name="MinSpeed" data="1"/>
-					<property type="6" name="MaxSpeed" data="5"/>
-					<property type="7" name="CollisionType" data="ConvexHull"/>
-					<property type="9" name="ConstraintAxis" data="0 0 0"/>
-					<property type="12" name="EnableGyroscopicTorque" data="false"/>
-					<property type="12" name="Collidable" data="true"/>
-					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="DataBlock0" data="Monster01"/>
 				</userData>
 			</item>
 		</node>

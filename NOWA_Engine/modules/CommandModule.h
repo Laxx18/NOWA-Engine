@@ -11,11 +11,14 @@ namespace NOWA
 {
 	class EXPORTED ICommand
 	{
+		friend class CommandModule;
 	public:
 		virtual void undo(void) = 0;
 		virtual void redo(void) = 0;
 		/*virtual Ogre::String getUndoMessage(void) const = 0;
 		virtual Ogre::String getRedoMessage(void) const = 0;*/
+	protected:
+		bool isAdditional = false;
 	};
 
 	// typedef std::stack<std::shared_ptr<ICommand>> CommandStack;
@@ -46,6 +49,15 @@ namespace NOWA
 
 		void undo(void)
 		{
+			// Undo's also all additional items (e.g. via terra there are commands on the stack for terra editing during simulation, which would normally not be undo'd because they have nothing todo with the game object manipulations directly).
+			while (this->undoStack.size() > 0 && true == this->undoStack.front()->isAdditional)
+			{
+				this->undoStack.front()->undo();          // undo most recently executed command
+				this->undoStack.front()->isAdditional = false;
+				this->redoStack.push_front(this->undoStack.front()); // add undone command to undo stack
+				this->undoStack.pop_front();
+			}
+
 			if (this->undoStack.size() <= 0)
 			{
 				return;

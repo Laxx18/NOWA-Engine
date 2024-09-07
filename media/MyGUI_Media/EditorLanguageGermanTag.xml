@@ -260,6 +260,7 @@
 	<Tag name="RenderWireframe">Gitter-Darstellung</Tag>
 	<Tag name="RenderPoints">Punkt-Darstellung</Tag>
 	<Tag name="About">Über</Tag>
+	<Tag name="SceneDescription">Beschreibung Szene</Tag>
 	
 	<Tag name="Key_Existing">Taste ist bereits belegt.</Tag>
 	<Tag name="Keyboard_Configuration">Tastatur Konfiguration.</Tag>

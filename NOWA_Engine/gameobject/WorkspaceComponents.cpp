@@ -25,7 +25,7 @@
 
 #include "TerraShadowMapper.h"
 
-#define USE_OWN_SPLITTING_COMPOSITOR
+// #define USE_OWN_SPLITTING_COMPOSITOR
 
 // #define GPU_PARTICLES
 
@@ -1307,7 +1307,7 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
 						passQuad->addQuadTextureSource(0, "depthTexture");
 
@@ -1328,7 +1328,8 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Texture_Target_Pass_Quad";
 
-						passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+						// passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 						passQuad->mClearColour[0] = Ogre::ColourValue::White;
 
 						passQuad->mMaterialName = "SSAO/HS";
@@ -1351,7 +1352,8 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Horizontal_Target_Pass_Quad";
 
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 
 						passQuad->mMaterialName = "SSAO/BlurH";
 						passQuad->addQuadTextureSource(0, "ssaoTexture");
@@ -1372,7 +1374,8 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Vertical_Target_Pass_Quad";
 
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 
 						passQuad->mMaterialName = "SSAO/BlurV";
 						passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
@@ -1397,10 +1400,6 @@ namespace NOWA
 					{
 						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 					}
-					else
-					{
-						passQuad->setAllStoreActions(Ogre::StoreAction::Store);
-					}
 					passQuad->mMaterialName = "Ogre/Copy/4xFP32";
 					passQuad->addQuadTextureSource(0, "rtN");
 
@@ -1416,15 +1415,7 @@ namespace NOWA
 						auto pass = targetDef->addPass(Ogre::PASS_QUAD);
 						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
-						if (false == this->useSplitScreen)
-						{
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						}
-						else
-						{
-							passQuad->setAllStoreActions(Ogre::StoreAction::Store);
-						}
-
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Apply_Pass_Quad";
 
 						passQuad->mMaterialName = "SSAO/Apply";
@@ -1524,14 +1515,7 @@ namespace NOWA
 					// Render Quad
 					{
 						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						if (false == this->useSplitScreen)
-						{
-							passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-						}
-						else
-						{
-							passQuad->setAllStoreActions(Ogre::StoreAction::Store);
-						}
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->mMaterialName = "Distortion/Quad";
 						passQuad->addQuadTextureSource(0, "rt0");
 						passQuad->addQuadTextureSource(1, "rt_distortion");
@@ -1702,22 +1686,24 @@ namespace NOWA
 
 #endif
 
+			// pass->setAllLoadActions(Ogre::LoadAction::Load);
+			// pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
+
 			// pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
 			// pass->setAllLoadActions(Ogre::LoadAction::Load);
 
 			pass->mProfilingId += "_" + Ogre::StringConverter::toString(this->cameraComponent->getEyeId());
 
-			pass->setAllStoreActions(Ogre::StoreAction::Store);
-
 			if (pass->getType() == Ogre::CompositorPassType::PASS_CLEAR)
 			{
+				// pass->setAllLoadActions(Ogre::LoadAction::Load);
+				pass->setAllStoreActions(Ogre::StoreAction::Store);
+
 				// Gets executed on the first eye
 				pass->mExecutionMask = 0x01;
 				// Don't be affected by the modifier, apply to the whole screen
 				// Will be cleared once for all eyes
 				pass->mViewportModifierMask = 0x00;
-
-				
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_SCENE && false == isOverlay)
 			{
@@ -1729,80 +1715,53 @@ namespace NOWA
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_QUAD && false == isSky)
 			{
-				//// Gets executed in the second eye (rendered last)
-				// pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				//// Don't be affected by the modifier, apply to the whole screen
-				// pass->mViewportModifierMask = 0x00;
-
-				// Gets executed on the first eye
-				// pass->mExecutionMask = 0x01;
-				// Don't be affected by the modifier, apply to the whole screen
-				// Will be cleared once for all eyes
-				// pass->mViewportModifierMask = 0x00;
-
-				// pass->mExecutionMask = 0xFF;
-				// pass->mViewportModifierMask = 0xFF;
-				//pass->mExecutionMask = 0x01;
-				//pass->mViewportModifierMask = 0x00;
-#if 1
-				// pass->mExecutionMask = this->executionMask;
-				// pass->mViewportModifierMask = this->viewportModifierMask;
-
-				// pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				// Don't be affected by the modifier, apply to the whole screen
-				// pass->mViewportModifierMask = 0x00;
-
-				// Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-				// passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::FrustumCorners::CAMERA_DIRECTION;
-
 				// Ogre::RenderSystem* rs = Ogre::Root::getSingletonPtr()->getRenderSystem();
 				// rs->_setViewMatrix(this->cameraComponent->getCamera()->getViewMatrix(true));
 				// rs->_setProjectionMatrix(this->cameraComponent->getCamera()->getVrProjectionMatrix(this->cameraComponent->getEyeId()));
-#endif
+
+				//pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
+				//// Don't be affected by the modifier, apply to the whole screen
+				//pass->mViewportModifierMask = 0x00;
+
+				// Gets executed in all eyes
+				pass->mExecutionMask = 0xFF;
+				// Be affected by the modifier, so we render just to a portion of the screen.
+				// That means one part is rendered on first eye and the other on the second eye
+				pass->mViewportModifierMask = 0xFF;
+
+				pass->setAllLoadActions(Ogre::LoadAction::Load);
+				pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_QUAD && true == isSky)
 			{
-				//// Gets executed in the second eye (rendered last)
-				// pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				//// Don't be affected by the modifier, apply to the whole screen
-				// pass->mViewportModifierMask = 0x00;
 				pass->mProfilingId = "Sky";
 
-				//// Gets executed in all eyes
+				//pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
+				//// Don't be affected by the modifier, apply to the whole screen
+				//pass->mViewportModifierMask = 0x00;
+
+				// Gets executed in all eyes
 				pass->mExecutionMask = 0xFF;
-				//// Be affected by the modifier, so we render just to a portion of the screen.
-				//// That means one part is rendered on first eye and the other on the second eye
+				// Be affected by the modifier, so we render just to a portion of the screen.
+				// That means one part is rendered on first eye and the other on the second eye
 				pass->mViewportModifierMask = 0xFF;
 
-				Ogre::RenderSystem* rs = Ogre::Root::getSingletonPtr()->getRenderSystem();
-				rs->_setViewMatrix(this->cameraComponent->getCamera()->getViewMatrix(true));
-				rs->_setProjectionMatrix(this->cameraComponent->getCamera()->getVrProjectionMatrix(this->cameraComponent->getEyeId()));
+				pass->setAllLoadActions(Ogre::LoadAction::Load);
+				pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_SCENE && true == isOverlay)
 			{
-				// Would render gui on right side
-				///* Gets executed in all eyes
-				//pass->mExecutionMask = 0xFF;
-				// Be affected by the modifier, so we render just to a portion of the screen.
-				//pass->mViewportModifierMask = 0xFF;*/
-
-				// Gets executed in the second eye (rendered last)
-				pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				// Don't be affected by the modifier, apply to the whole screen
-				pass->mViewportModifierMask = 0x00;
+				// Gets executed in all eyes
+				pass->mExecutionMask = 0xFF;
+				// GUI gets executed on the first eye (left side)
+				pass->mViewportModifierMask = 0x01;
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_CUSTOM)
 			{
-				// Would render gui on right side
-				///* Gets executed in all eyes
-				//pass->mExecutionMask = 0xFF;
-				// Be affected by the modifier, so we render just to a portion of the screen.
-				//pass->mViewportModifierMask = 0xFF;*/
-
-				// Gets executed in the second eye (rendered last)
-				pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				// Don't be affected by the modifier, apply to the whole screen
-				pass->mViewportModifierMask = 0x00;
+				// Gets executed in all eyes
+				pass->mExecutionMask = 0xFF;
+				// GUI gets executed on the first eye (left side)
+				pass->mViewportModifierMask = 0x01;
 			}
 		}
 	}
@@ -3364,13 +3323,10 @@ namespace NOWA
 							auto pass = targetDef->addPass(Ogre::PASS_CLEAR);
 							passClear = static_cast<Ogre::CompositorPassClearDef*>(pass);
 
-							if (false == this->useSplitScreen)
-							{
-								passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
-								passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
-								passClear->mStoreActionDepth = Ogre::StoreAction::Store;
-								passClear->mStoreActionStencil = Ogre::StoreAction::Store;
-							}
+							passClear->mClearColour[0] = Ogre::ColourValue(0.2f, 0.4f, 0.6f);
+							passClear->mStoreActionColour[0] = Ogre::StoreAction::Store;
+							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
+							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
 							
 							passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
 
@@ -3394,21 +3350,17 @@ namespace NOWA
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
 
+						Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
+						passScene->mClearColour[0] = color;
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why? Because MSAA must be switched on!
+
 						if (false == this->useSplitScreen)
 						{
-							Ogre::ColourValue color(this->backgroundColor->getVector3().x, this->backgroundColor->getVector3().y, this->backgroundColor->getVector3().z);
-
 							passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-							passScene->mClearColour[0] = color;
-
-							// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-
-							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 						}
 						
-
 						// passScene->mFirstRQ = 10;
 						// passScene->mLastRQ = 253;
 

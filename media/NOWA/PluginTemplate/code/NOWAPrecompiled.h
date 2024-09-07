@@ -5,7 +5,7 @@ Copyright (c) 2000-2015 Torus Knot Software Ltd
 
 NOWA (http://www.lukas-kalinowski.com/Homepage/?page_id=1631) is made available under the MIT License.
 
-Copyright (c) 2017 Lukas Kalinowski
+Copyright (c) 2024 Lukas Kalinowski
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
