@@ -2328,8 +2328,6 @@ namespace NOWA
 			wholeForce *= mass;
 		}
 
-		body->addForce(wholeForce);
-
 		// Add force does stress, when using simultanously on lots of objects, especially in a lua script!
 
 		// Add custom force, if set from the outside
@@ -2349,7 +2347,7 @@ namespace NOWA
 			// Ogre::Vector3 currentVelocity = body->getVelocityAtPoint(body->getPosition());
 
 			Ogre::Vector3 moveForce = (this->forceForVelocity - body->getVelocity()) * mass / timeStep;
-			body->addForce(std::move(moveForce));
+			wholeForce += moveForce;
 
 			this->forceForVelocity = Ogre::Vector3::ZERO;
 			this->canAddForceForVelocity = false;
@@ -2412,7 +2410,8 @@ namespace NOWA
 					/ (distance * distance);*/
 					// (G * mass * m.mass) / (distance * distance)
 					attractorDirection *= attractorForce;
-					body->addForce(attractorDirection);
+					// body->addForce(attractorDirection);
+					wholeForce += attractorDirection;
 				}
 				else
 				{
@@ -2447,9 +2446,12 @@ namespace NOWA
 				// body->addGlobalForce(dragForce, springPosition); 
 
 				// Add the spring force at the handle
-				body->addForce(dragForce);
+				// body->addForce(dragForce);
+				wholeForce += dragForce;
 			}
 		}
+
+		body->addForce(wholeForce);
 	}
 
 	void PhysicsActiveComponent::contactCallback(OgreNewt::Body* otherBody, OgreNewt::Contact* contact)

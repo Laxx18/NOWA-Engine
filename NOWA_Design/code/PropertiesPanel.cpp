@@ -8,6 +8,49 @@
 
 #include "utilities/Interpolator.h"
 
+#include <regex>
+
+namespace
+{
+	std::string removeHashesExceptForColor(const std::string& text)
+	{
+		std::string result;
+		size_t len = text.length();
+		size_t i = 0;
+
+		while (i < len)
+		{
+			if (text[i] == '#' && i + 7 <= len)
+			{
+				// Check if the next 6 characters after '#' form a valid color code
+				std::string potentialColor = text.substr(i, 7);
+				std::regex colorPattern("#[0-9A-Fa-f]{6}");
+
+				if (std::regex_match(potentialColor, colorPattern))
+				{
+					// If it's a valid color, copy the next 7 characters (the color)
+					result += potentialColor;
+					i += 7;  // Skip past the color code
+				}
+				else
+				{
+					// It's not a color, so ignore the '#'
+					i++;
+				}
+			}
+			else
+			{
+				// If it's not a '#' or not followed by a valid color code, copy the character
+				if (text[i] != '#')
+					result += text[i];
+				i++;
+			}
+		}
+
+		return result;
+	}
+}
+
 bool PropertiesPanel::bShowProperties = true;
 
 class SetScrollPositionProcess : public NOWA::Process
@@ -1415,6 +1458,8 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 		if (true == allValuesSame)
 		{
 			edit->setOnlyText(attribute->getString());
+			// Move the cursor to the beginning (index 0)
+			edit->setTextCursor(0);
 		}
 		else
 		{
@@ -1812,6 +1857,22 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 		{
 			this->notifyEditSelectAccept(editBox);
 			MyGUIHelper::getInstance()->adaptFocus(sender, MyGUI::KeyCode::Return, this->itemsEdit);
+		}
+	}
+	// Adds new line if shift + enter is pressed
+	else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
+	{
+		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
+		if (nullptr != editBox && true == editBox->getEditMultiLine())
+		{
+			//// Insert a new line at the current cursor position
+			size_t cursorPos = editBox->getTextCursor();
+			Ogre::String text = editBox->getCaption();
+			text.insert(cursorPos + 1, "\\n");
+
+			// Update the EditBox content and set the cursor position
+			editBox->setCaptionWithReplacing(text);
+			editBox->setTextCursor(cursorPos + 1);  // Move the cursor after the new line
 		}
 	}
 	else
@@ -2577,9 +2638,10 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 		}
 		default:
 		{
-			// Remove all hashes, because its an internal code character for MyGUI
+			// Remove all hashes (but not if its a color), because its an internal code character for MyGUI
 			Ogre::String text = sender->getOnlyText();
-			text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
+			// text.erase(std::remove(text.begin(), text.end(), '#'), text.end());
+			text = removeHashesExceptForColor(text);
 			attribute->setValue(text);
 			sender->setOnlyText(attribute->getString());
 			break;

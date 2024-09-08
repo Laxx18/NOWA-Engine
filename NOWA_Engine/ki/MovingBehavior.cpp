@@ -278,6 +278,7 @@ namespace NOWA
 		void MovingBehavior::setFlyMode(bool flyMode)
 		{
 			this->flyMode = flyMode;
+#if 0
 			// Only if there is gravity use getVelocity, else if in the force equation no gravity is used, y of velocty value may go up to 2233 m per seconds!
 			// Hence if fly mode is set, deactivate gravity!
 			if (nullptr != this->agent)
@@ -292,6 +293,7 @@ namespace NOWA
 					this->agent->setGravity(this->oldGravity);
 				}
 			}
+#endif
 		}
 
 		bool MovingBehavior::isInFlyMode(void) const
@@ -637,10 +639,6 @@ namespace NOWA
 			}
 
 			Ogre::Vector3 desiredVelocity = targetPosition - this->agent->getPosition();
-			if (false == this->flyMode)
-			{
-				desiredVelocity.y = 0.0f;
-			}
 
 			desiredVelocity.normalise();
 			desiredVelocity *= this->agent->getSpeed();
@@ -652,11 +650,6 @@ namespace NOWA
 		Ogre::Vector3 MovingBehavior::seek2D(Ogre::Vector3 targetPosition, Ogre::Real dt)
 		{
 			Ogre::Vector3 desiredVelocity = Ogre::Vector3(targetPosition.x, targetPosition.y, this->agent->getPosition().z) - Ogre::Vector3(this->agent->getPosition().x, this->agent->getPosition().y, this->agent->getPosition().z);
-			
-			if (false == this->flyMode)
-			{
-				desiredVelocity.y = 0.0f;
-			}
 
 			desiredVelocity.normalise();
 			desiredVelocity *= this->agent->getSpeed();
@@ -717,11 +710,6 @@ namespace NOWA
 		Ogre::Vector3 MovingBehavior::arrive2D(Ogre::Vector3 targetPosition, eDeceleration deceleration, Ogre::Real dt)
 		{
 			Ogre::Vector3 resultDirection = Ogre::Vector3(targetPosition.x, targetPosition.y, 0.0f) - Ogre::Vector3(this->agent->getPosition().x, this->agent->getPosition().y, 0.0f);
-
-			if (false == this->flyMode)
-			{
-				resultDirection.y = 0.0f;
-			}
 
 			//calculate the distance to the target
 			Ogre::Real distance = resultDirection.length();
@@ -1195,7 +1183,7 @@ namespace NOWA
 
 				// Randomly changes the vector direction by making it change its current angle
 				Ogre::Real len = displacement.length();
-				displacement = (Ogre::Math::Cos(this->wanderAngle) * len, 0.0f, Ogre::Math::Sin(this->wanderAngle) * len);
+				displacement = (Ogre::Math::Cos(this->wanderAngle) * len, 0.0f /*Ogre::Math::Sin(this->wanderAngle) * len*/, Ogre::Math::Sin(this->wanderAngle) * len);
 
 				// Changes wanderAngle just a bit, so it will not have the same value in the next game frame.
 
@@ -2236,23 +2224,29 @@ namespace NOWA
 				PhysicsActiveKinematicComponent* physicsActiveKinematicComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(this->agent);
 				if (nullptr != physicsActiveKinematicComponent)
 				{
+					Ogre::Vector3 targetVelocity = Ogre::Vector3::ZERO;
 					if (false == this->flyMode)
 					{
-						resultVelocity.y = 0.0f;
+						// resultVelocity.y = 0.0f;
+						// forceForVelocity = Ogre::Vector3(0.0f, -1.0f, 0.0f) + resultVelocity;
+						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
 					}
 					else
 					{
-						// Optionally, add a small damping effect to smooth out movement if needed
-						Ogre::Real damping = 0.01f;
-						resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
-
+						
 						// FlyMode is active, control Y-velocity explicitly
 						// Apply a damping factor or limit to prevent runaway speeds
-						Ogre::Real maxYVelocity = 1.0f; // Example limit
-						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
+						Ogre::Real maxYVelocity = this->agent->getSpeed();
+						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -1.0f, maxYVelocity);
+
+						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
+
+						// Optionally, add a small damping effect to smooth out movement if needed
+						// Ogre::Real damping = 0.95f;
+						// targetVelocity.y = physicsActiveKinematicComponent->getVelocity().y * damping; // Apply damping to prevent runaway
 					}
 					
-					physicsActiveKinematicComponent->setVelocity(physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity);
+					physicsActiveKinematicComponent->setVelocity(targetVelocity);
 
 					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
 					
@@ -2283,24 +2277,46 @@ namespace NOWA
 				// Usual force
 				else
 				{
+					Ogre::Vector3 forceForVelocity = Ogre::Vector3::ZERO;
 					if (false == this->flyMode)
 					{
 						resultVelocity.y = 0.0f;
+						// forceForVelocity = Ogre::Vector3(0.0f, -1.0f, 0.0f) + resultVelocity;
+						forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
 					}
 					else
 					{
-						
-						// Optionally, add a small damping effect to smooth out movement if needed
-						Ogre::Real damping = -0.01f;
-						resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
-
-						// FlyMode is active, control Y-velocity explicitly
-						// Apply a damping factor or limit to prevent runaway speeds
-						Ogre::Real maxYVelocity = 0.5f;// this->agent->getSpeed(); // Example limit
+						Ogre::Real maxYVelocity = this->agent->getSpeed();
 						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
+						
+
+						if (this->isSwitchOn(PATH_FINDING_WANDER) || this->isSwitchOn(WANDER) || this->isSwitchOn(FLOCKING))
+						{
+							forceForVelocity = resultVelocity;
+						}
+						else
+						{
+							forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+						}
 					}
+#if 0
+					//else
+					//{
+					//	
+					//	// Optionally, add a small damping effect to smooth out movement if needed
+					//	Ogre::Real damping = -0.01f;
+					//	resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
+
+					//	// FlyMode is active, control Y-velocity explicitly
+					//	// Apply a damping factor or limit to prevent runaway speeds
+					//	Ogre::Real maxYVelocity = 0.5f;// this->agent->getSpeed(); // Example limit
+					//	resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
+					//}
+#endif
 					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
-					Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+					// Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+
+					
 					
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] GO: " + this->agent->getOwner()->getName() + " force: " + Ogre::StringConverter::toString(forceForVelocity));
 					this->agent->applyRequiredForceForVelocity(forceForVelocity);

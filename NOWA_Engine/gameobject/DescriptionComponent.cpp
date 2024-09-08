@@ -7,6 +7,34 @@
 #include <windows.h>
 #include <shellapi.h>
 
+namespace
+{
+	Ogre::String encodeNewlines(const Ogre::String& text)
+	{
+		Ogre::String encodedText = text;
+		size_t pos = 0;
+		while ((pos = encodedText.find('\n', pos)) != Ogre::String::npos)
+		{
+			encodedText.replace(pos, 1, "&#10;");
+			pos += 5;  // Move past the replacement
+		}
+		return encodedText;
+	}
+
+	Ogre::String decodeNewlines(const Ogre::String& text)
+	{
+		Ogre::String decodedText = text;
+		size_t pos = 0;
+		while ((pos = decodedText.find("&#10;", pos)) != Ogre::String::npos)
+		{
+			decodedText.replace(pos, 5, "\n");
+			pos += 1;  // Move past the replacement
+		}
+		return decodedText;
+	}
+
+}
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -19,7 +47,8 @@ namespace NOWA
 	{
 		this->description->setValue("<p float='left'><img width='260' height='159'>pic_NOWA</img> </p><br/>"
 									"<p align='center'><color value='#FFFFFF'><url value='" + Ogre::String(NOWA_COMPANYDOMAIN_STR) + "'>" + Ogre::String(NOWA_COMPANYDOMAIN_STR) + "</url></color></p><br/><br/>"
-									"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_1) + "<url value='" + Ogre::String(NOWA_LICENSE_STR_2) + "'>" + Ogre::String(NOWA_LICENSE_STR_2) + "</url>" + Ogre::String(NOWA_LICENSE_STR_3) + "</color></p>");
+									"<p><color value='#1D6EA7'>" + "No description." + "</color></p>");
+		this->description->addUserData(GameObject::AttrActionMultiLine());
 	}
 
 	DescriptionComponent::~DescriptionComponent(void)
@@ -33,7 +62,8 @@ namespace NOWA
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == DescriptionComponent::AttrDescription())
 		{
-			this->description->setValue(XMLConverter::getAttrib(propertyElement, "data"));
+			Ogre::String descriptionText = XMLConverter::getAttrib(propertyElement, "data");
+			this->description->setValue(decodeNewlines(descriptionText));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		return true;
@@ -112,10 +142,12 @@ namespace NOWA
 		// 12 = bool
 		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
 
+		Ogre::String descriptionText = encodeNewlines(this->description->getString());
+
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "description"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->description->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Description"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, descriptionText)));
 		propertiesXML->append_node(propertyXML);
 	}
 
