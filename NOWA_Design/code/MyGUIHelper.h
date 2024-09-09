@@ -59,6 +59,43 @@ public:
 		return targetWidget;
 	}
 
+	std::tuple<bool, unsigned long, unsigned int, MyGUI::Widget*> findWidgetGameObject(int mouseX, int mouseY)
+	{
+		std::pair<unsigned long, unsigned int>* userData = nullptr;
+
+		MyGUI::Widget* foundWidget = MyGUI::LayerManager::getInstance().getWidgetFromPoint(mouseX, mouseY);
+		MyGUI::Widget* parentWidget = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::Widget>(foundWidget);
+
+		do
+		{
+			if (nullptr == parentWidget)
+			{
+				break;
+			}
+			userData = parentWidget->getUserData<std::pair<unsigned long, unsigned int>>(false);
+			if (nullptr == userData)
+			{
+				parentWidget = MyGUIHelper::getInstance()->findParentWidgetByType<MyGUI::Widget>(parentWidget);
+				if (nullptr == parentWidget)
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+
+		} while (nullptr == userData);
+
+		if (nullptr == userData)
+		{
+			return std::make_tuple(false, 0, 0, nullptr);
+		}
+
+		return std::make_tuple(true, userData->first, userData->second, parentWidget);
+	}
+
 	void pairIdWithEditBox(const Ogre::String& id)
 	{
 		if (nullptr != MyGUIHelper::editBox)
@@ -310,6 +347,16 @@ public:
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
+	void setCanMousePress(bool canMousePress)
+	{
+		this->canMousePress = canMousePress;
+	}
+
+	bool getCanMousePress(void) const
+	{
+		return this->canMousePress;
+	}
+
 private:
 	MyGUIHelper()
 		: editBox(nullptr),
@@ -319,7 +366,8 @@ private:
 		textSelectColour(MyGUI::Colour(0.9411764705882353f, 0.9411764705882353f, 0.9411764705882353f)),
 		toolTip(nullptr),
 		textDescription(nullptr),
-		acceptedImageBox(nullptr)
+		acceptedImageBox(nullptr),
+		canMousePress(true)
 	{
 		acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
 		acceptedImageBox->setImageTexture("circleGlow.png");
@@ -336,6 +384,7 @@ private:
 	MyGUI::Widget* toolTip;
 	MyGUI::EditBox* textDescription;
 	MyGUI::ImageBox* acceptedImageBox;
+	bool canMousePress;
 };
 
 #endif

@@ -1352,7 +1352,7 @@ namespace NOWA
 				}
 			}
 
-			std::get<COMPONENT>(this->gameObjectComponents[i])->index = i;
+			std::get<COMPONENT>(this->gameObjectComponents[i])->onReordered(i);
 		}
 	}
 

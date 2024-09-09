@@ -117,8 +117,10 @@ namespace NOWA
 	{
 		if (nullptr != this->widget)
 		{
-			this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonPressed);
+			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonDoubleClick);
 			this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
+			this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
 		}
 
 		this->setActivated(this->activated->getBool());
@@ -134,7 +136,33 @@ namespace NOWA
 		// Do not dare to use this one, because it kills all prior set attributes!
 		// this->setSkin(this->skin->getListSelectedValue());
 
+		// For identification
+		this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
 		return true;
+	}
+
+	void MyGUIComponent::mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
+	{
+		if (MyGUI::MouseButton::Left == _id)
+		{
+			this->onWidgetSelected(_sender);
+		}
+	}
+
+	void MyGUIComponent::mouseButtonDoubleClick(MyGUI::Widget* sender)
+	{
+		// Recursively search for a widget to select (for demonstration)
+		MyGUI::Widget* selectedWidget = this->findWidgetAtPosition(sender, MyGUI::InputManager::getInstance().getMousePosition());
+
+		if (nullptr != selectedWidget)
+		{
+			// Highlight the selected widget
+			this->onWidgetSelected(selectedWidget);
+		}
+		else
+		{
+			
+		}
 	}
 
 	void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
@@ -192,6 +220,28 @@ namespace NOWA
 				}
 			}
 		}
+	}
+
+	void MyGUIComponent::changeCoord(MyGUI::Widget* sender)
+	{
+		// Causes really a mess if a widget has a parent and is inside, hence manually resizing widgets in editor mode, will not be possible
+#if 0
+		if (false == this->isSimulating)
+		{
+			// If size has changed somehow, actualize the attributes
+			auto viewSize = MyGUI::RenderManager::getInstance().getViewSize();
+			if (nullptr != this->widget->getParent())
+			{
+				viewSize = this->widget->getParent()->getSize();
+			}
+
+			MyGUI::FloatCoord relativeCoord = MyGUI::CoordConverter::convertToRelative(sender->getAbsoluteCoord(), viewSize);
+
+			// Set widget to old coordinate
+			this->position->setValue(Ogre::Vector2(relativeCoord.left, relativeCoord.top));
+			this->size->setValue(Ogre::Vector2(relativeCoord.width, relativeCoord.height));
+		}
+#endif
 	}
 
 	void MyGUIComponent::update(Ogre::Real dt, bool notSimulating)
@@ -463,6 +513,52 @@ namespace NOWA
 			}
 		}
 	}
+
+	MyGUI::Widget* MyGUIComponent::findWidgetAtPosition(MyGUI::Widget* root, const MyGUI::IntPoint& position)
+	{
+		// Check if the position is within the root widget
+		if (true == root->getClientCoord().inside(position))
+		{
+			// Iterate over all children
+			for (size_t i = 0; i < root->getChildCount(); ++i)
+			{
+				MyGUI::Widget* child = root->getChildAt(i);
+				if (child->getClientCoord().inside(position))
+				{
+					// Recursive search in child widget
+					MyGUI::Widget* found = this->findWidgetAtPosition(child, position);
+					if (nullptr != found)
+					{
+						return found;
+					}
+
+					// If no widget found deeper, return the child itself
+					return child;
+				}
+			}
+		}
+		return nullptr;
+	}
+
+	void MyGUIComponent::onWidgetSelected(MyGUI::Widget* sender)
+	{
+		if (true == this->isSimulating || nullptr == sender)
+		{
+			return;
+		}
+
+		// Retrieve the component associated with the clicked button
+		std::pair<unsigned long, unsigned int>* userData = sender->getUserData<std::pair<unsigned long, unsigned int>>(false);
+		if (nullptr == userData)
+		{
+			boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> eventDataMyGUIWidgetSelected(new NOWA::EventDataMyGUIWidgetSelected());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataMyGUIWidgetSelected);
+			return;
+		}
+
+		boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> eventDataMyGUIWidgetSelected(new NOWA::EventDataMyGUIWidgetSelected(this->gameObjectPtr->getId(), this->getIndex()));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataMyGUIWidgetSelected);
+	}
 	
 	MyGUI::Align MyGUIComponent::mapStringToAlign(const Ogre::String& strAlign)
 	{
@@ -608,7 +704,32 @@ namespace NOWA
 	void MyGUIComponent::onOtherComponentRemoved(unsigned int index)
 	{
 		GameObjectComponent::onOtherComponentRemoved(index);
-		
+
+		// For identification
+		if (nullptr != this->widget)
+		{
+			this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+		}
+	}
+
+	void MyGUIComponent::onOtherComponentAdded(unsigned int index)
+	{
+		GameObjectComponent::onOtherComponentAdded(index);
+		// For identification
+		if (nullptr != this->widget)
+		{
+			this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+		}
+	}
+
+	void MyGUIComponent::onReordered(unsigned int index)
+	{
+		GameObjectComponent::onReordered(index);
+		// For identification
+		if (nullptr != this->widget)
+		{
+			this->widget->setUserData(std::make_pair<unsigned long, unsigned int>(this->gameObjectPtr->getId(), this->getIndex()));
+		}
 	}
 
 	void MyGUIComponent::setParentId(unsigned long parentId)
@@ -780,7 +901,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 		else
 		{
@@ -1030,7 +1151,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
 		// this->widget->eventKeyButtonPressed += MyGUI::newDelegate(this, &MyGUITextComponent::onKeyButtonPressed);
@@ -1502,7 +1623,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
 		this->setCaption(this->caption->getString());
@@ -1810,7 +1931,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
 		this->setCaption(this->caption->getString());
@@ -2123,7 +2244,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
 		MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
@@ -2434,7 +2555,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 		// Order is important range must be placed before value can be set
 		this->setRange(this->range->getUInt());
@@ -2736,7 +2857,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
 		if (nullptr != this->widget)
@@ -3363,7 +3484,7 @@ namespace NOWA
 		{
 			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(),
 				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue()/*, this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index)*/);
+				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 		// this->setActivated(this->activated->getBool());
 

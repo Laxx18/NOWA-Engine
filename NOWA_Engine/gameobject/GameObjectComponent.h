@@ -73,6 +73,12 @@ namespace NOWA
 		virtual void onOtherComponentAdded(unsigned int index);
 
 		/**
+		* @brief		Chance to react when a component has been reordered.
+		* @param[in]	index	The new index of the reordered component.
+		*/
+		virtual void onReordered(unsigned int index);
+
+		/**
 		 * @brief		Pauses the game object component. When the AppState is just paused.
 		 */
 		virtual void pause(void) { };

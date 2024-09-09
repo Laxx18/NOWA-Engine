@@ -236,7 +236,7 @@ void PropertiesPanel::onMouseRelease(MyGUI::Widget* sender, int left, int top, M
 	}
 }
 
-void PropertiesPanel::showProperties(void)
+void PropertiesPanel::showProperties(unsigned int componentIndex)
 {
 	if (false == PropertiesPanel::bShowProperties)
 	{
@@ -265,10 +265,10 @@ void PropertiesPanel::showProperties(void)
 			gameObjects[i] = it->second.gameObject;
 			i++;
 		}
-		this->showProperties(gameObjects);
+		this->showProperties(gameObjects, componentIndex);
 
 		// Set remembered scroll position after everything has been reloaded (with delay), else the scrollviewer range is 0
-		unsigned long scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
+		int scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
 
 		if (-1 != scrollPosition)
 		{
@@ -279,7 +279,7 @@ void PropertiesPanel::showProperties(void)
 	}
 }
 
-void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects)
+void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects, unsigned int componentIndex)
 {
 	// Create properties panel for info
 	this->propertiesPanelInfo = new PropertiesPanelInfo();
@@ -413,6 +413,8 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects)
 	PropertiesPanelDynamic* componentPropertiesPanel = nullptr;
 	NOWA::PhysicsCompPtr physicsComponentPtr = nullptr;
 
+	int overallScrollPosition = 0;
+
 	unsigned int count = static_cast<unsigned int>(gameObjects[0]->getComponents()->size());
 	for (unsigned int j = 0; j < count; j++)
 	{
@@ -477,6 +479,17 @@ void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects)
 						componentPropertiesPanel->addProperty(it->first, it->second, false);
 					}
 				}
+			}
+
+			// In order to scroll: Position is negative
+			overallScrollPosition -= componentPropertiesPanel->heightCurrent;
+
+			// Scrolls to the selected component
+			if (componentIndex > 0 && j == componentIndex)
+			{
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+				delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, overallScrollPosition)));
+				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 			}
 		}
 	}

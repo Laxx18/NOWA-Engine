@@ -121,6 +121,11 @@ namespace NOWA
 	{
 	}
 
+	void GameObjectComponent::onReordered(unsigned int index)
+	{
+		this->index = index;
+	}
+
 	bool GameObjectComponent::connect(void)
 	{
 		// If this game object has a lua script component, and it could not be compiled, its dangerous to connect this game object

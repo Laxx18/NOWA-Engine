@@ -125,9 +125,9 @@ public:
 
 	void setVisible(bool show);
 
-	void showProperties(std::vector<NOWA::GameObject*> gameObjects);
+	void showProperties(unsigned int componentIndex = 0);
 
-	void showProperties(void);
+	void showProperties(std::vector<NOWA::GameObject*> gameObjects, unsigned int componentIndex = 0);
 
 	PropertiesPanelDynamic* getPropertiesPanelItem(size_t index);
 public:
@@ -155,6 +155,8 @@ private:
 class PropertiesPanelInfo : public wraps::BasePanelViewItem
 {
 public:
+	friend class PropertiesPanel;
+
 	PropertiesPanelInfo();
 
 	void setInfo(const Ogre::String& info);
@@ -175,6 +177,8 @@ private:
 class PropertiesPanelDynamic : public wraps::BasePanelViewItem
 {
 public:
+	friend class PropertiesPanel;
+
 	PropertiesPanelDynamic(const std::vector<NOWA::GameObject*>& gameObjects, const Ogre::String& name);
 
 	virtual ~PropertiesPanelDynamic();

@@ -142,6 +142,7 @@ void DesignState::exit(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
 
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
@@ -250,6 +251,7 @@ void DesignState::createScene(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
 
 	//this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
 	////Set sane defaults for proper shadow mapping
@@ -931,6 +933,34 @@ void DesignState::handleTestSelectedGameObjects(NOWA::EventDataPtr eventData)
 {
 	boost::shared_ptr<EventDataTestSelectedGameObjects> castEventData = boost::static_pointer_cast<EventDataTestSelectedGameObjects>(eventData);
 	this->simulate(!castEventData->isActive(), true);
+}
+
+void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
+{
+	boost::shared_ptr<NOWA::EventDataMyGUIWidgetSelected> castEventData = boost::static_pointer_cast<NOWA::EventDataMyGUIWidgetSelected>(eventData);
+
+	// Event not for this state
+	if (0 != castEventData->getGameObjectId())
+	{
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		if (nullptr != widget && false == this->simulating)
+		{
+			// Prevents reseleciton of the same game object
+			const auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+			const auto& found = selectedGameObjects.find(castEventData->getGameObjectId());
+			// Prevents reseleciton of the same game object
+			// Deactivated, because its not possible to select widgets within widgets, because they belong to the same game object
+			// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
+			{
+				this->editorManager->getSelectionManager()->clearSelection();
+				this->editorManager->getSelectionManager()->select(castEventData->getGameObjectId());
+
+				this->propertiesPanel->showProperties(castEventData->getGameObjectComponentIndex());
+
+				MyGUIHelper::getInstance()->setCanMousePress(false);
+			}
+		}
+	}
 }
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
@@ -2078,6 +2108,31 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 	// Prevent scene manipulation, when user does something in GUI
 	if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget()/* && false == this->simulating*/)
 	{
+		if (true == MyGUIHelper::getInstance()->getCanMousePress())
+		{
+			// Gets the selected mygui widget and checks if it has some user data (with game object id and component index)
+			const auto gameObjectData = MyGUIHelper::getInstance()->findWidgetGameObject(evt.state.X.abs, evt.state.Y.abs);
+
+			if (false == this->simulating && OIS::MB_Left == id && true == std::get<0>(gameObjectData))
+			{
+				const auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+				const auto& found = selectedGameObjects.find(std::get<1>(gameObjectData));
+				// Prevents reseleciton of the same game object
+				// if (true == selectedGameObjects.empty() || found == selectedGameObjects.cend())
+				{
+					this->editorManager->getSelectionManager()->clearSelection();
+					this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
+
+					// Also scrolls down to component
+					this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
+				}
+			}
+		}
+		else
+		{
+			MyGUIHelper::getInstance()->setCanMousePress(true);
+		}
+
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 		return true;

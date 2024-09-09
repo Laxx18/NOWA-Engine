@@ -2076,6 +2076,70 @@ namespace NOWA
 		unsigned long terraCompId;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataMyGUIWidgetSelected - This event is sent out if mygui widget has been selected
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataMyGUIWidgetSelected : public BaseEventData
+	{
+	public:
+
+		EventDataMyGUIWidgetSelected(void) :
+			gameObjectId(0),
+			gameObjectComponentIndex(0)
+		{
+		}
+
+		explicit EventDataMyGUIWidgetSelected(const unsigned long gameObjectId, unsigned int gameObjectComponentIndex)
+			: gameObjectId(gameObjectId),
+			gameObjectComponentIndex(gameObjectComponentIndex)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A05;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A05;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->gameObjectId) >> Ogre::StringConverter::toString(this->gameObjectComponentIndex);
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataMyGUIWidgetSelected(this->gameObjectId, this->gameObjectComponentIndex));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->gameObjectId) << " " << Ogre::StringConverter::toString(this->gameObjectComponentIndex);
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataMyGUIWidgetSelected";
+		}
+
+		const unsigned long getGameObjectId(void) const
+		{
+			return this->gameObjectId;
+		}
+
+		const unsigned int getGameObjectComponentIndex(void) const
+		{
+			return this->gameObjectComponentIndex;
+		}
+	private:
+		unsigned long gameObjectId;
+		unsigned int gameObjectComponentIndex;
+	};
+
 }; // namespace end
 
 #endif

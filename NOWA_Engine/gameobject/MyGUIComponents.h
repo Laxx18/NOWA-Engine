@@ -56,7 +56,17 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::onOtherComponentRemoved
 		*/
-		void onOtherComponentRemoved(unsigned int index) override;
+		virtual void onOtherComponentRemoved(unsigned int index) override;
+
+		/**
+		* @see		GameObjectComponent::onOtherComponentAdded
+		*/
+		virtual void onOtherComponentAdded(unsigned int index) override;
+
+		/**
+		* @see		GameObjectComponent::onReordered
+		*/
+		virtual void onReordered(unsigned int index) override;
 
 		/**
 		* @see		GameObjectComponent::getClassName
@@ -198,15 +208,26 @@ namespace NOWA
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) = 0;
 
+		virtual void mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id);
+
+		virtual void mouseButtonDoubleClick(MyGUI::Widget* sender);
+
 		virtual void rootMouseChangeFocus(MyGUI::Widget* sender, bool focus);
+
+		virtual void changeCoord(MyGUI::Widget* sender);
 		
 		Ogre::String mapAlignToString(MyGUI::Align align);
 
 		void internalSetPriorId(unsigned long priorId);
 
 		void refreshTransform(void);
+
+		MyGUI::Widget* findWidgetAtPosition(MyGUI::Widget* root, const MyGUI::IntPoint& position);
+
+		void onWidgetSelected(MyGUI::Widget* sender);
 	private:
 		void handleWindowChangedDelegate(NOWA::EventDataPtr eventData);
+	
 	protected:
 		bool hasParent;
 		bool createWidgetInParent;

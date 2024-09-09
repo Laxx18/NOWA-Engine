@@ -87,6 +87,7 @@ private:
 	void handlePlayerInControl(NOWA::EventDataPtr eventData);
 	void handleWorldLoaded(NOWA::EventDataPtr eventData);
 	void handleTestSelectedGameObjects(NOWA::EventDataPtr eventData);
+	void handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData);
 private:
 	ProjectManager* projectManager;
 	OgreNewt::World* ogreNewt;
