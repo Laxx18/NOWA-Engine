@@ -186,7 +186,6 @@ namespace Ogre
 
             if (nullptr != m_heightMapStagingTexture)
             {
-                TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
                 textureManager->removeStagingTexture(m_heightMapStagingTexture);
                 m_heightMapStagingTexture = nullptr;
             }

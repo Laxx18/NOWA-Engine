@@ -51,7 +51,6 @@ material Postprocess/Glass
 
 			fragment_program_ref Glass_ps
 			{
-				param_named GlassWeight float 2.5
 			}
 
 			texture_unit RT

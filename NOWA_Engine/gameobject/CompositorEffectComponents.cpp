@@ -19,7 +19,7 @@ namespace NOWA
 		workspaceGameObjectId(new Variant(CompositorEffectBaseComponent::AttrWorkspaceGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->activated->setDescription("Activates the effect.");
-		// "Bloom, Glass, Old TV, Keyhole, B&W, Embossed, Sharpen Edges, Invert, Posterize, Laplace, Tiling, Old Movie, Radial Blur, ASCII, Halftone, Night Vision, Dither"
+		// "Bloom, Glass, Old TV, B&W, Embossed, Sharpen Edges, Invert, Posterize, Laplace, Tiling, Old Movie, Radial Blur, ASCII, Halftone, Night Vision, Dither"
 	}
 
 	CompositorEffectBaseComponent::~CompositorEffectBaseComponent()
@@ -436,6 +436,7 @@ namespace NOWA
 
 	GameObjectCompPtr CompositorEffectGlassComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
+#if 0
 		CompositorEffectGlassCompPtr clonedCompPtr(boost::make_shared<CompositorEffectGlassComponent>());
 
 		
@@ -447,6 +448,9 @@ namespace NOWA
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
+#else
+		return nullptr;
+#endif
 	}
 
 	bool CompositorEffectGlassComponent::postInit(void)
@@ -903,127 +907,6 @@ namespace NOWA
 	unsigned int CompositorEffectOldTvComponent::getSinusTime(void) const
 	{
 		return this->sinusTime->getUInt();
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	CompositorEffectKeyholeComponent::CompositorEffectKeyholeComponent()
-		: CompositorEffectBaseComponent(),
-		pass(nullptr),
-		frameShape(new Variant(CompositorEffectKeyholeComponent::AttrFrameShape(), 0.26f, this->attributes))
-	{
-		this->effectName = "Keyhole";
-	}
-
-	CompositorEffectKeyholeComponent::~CompositorEffectKeyholeComponent()
-	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectKeyholeComponent] Destructor compositor keyhole effect component for game object: " + this->gameObjectPtr->getName());
-		this->pass = nullptr;
-	}
-
-	bool CompositorEffectKeyholeComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
-	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
-
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FrameShape")
-		{
-			this->setFrameShape(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
-		return true;
-	}
-
-	GameObjectCompPtr CompositorEffectKeyholeComponent::clone(GameObjectPtr clonedGameObjectPtr)
-	{
-		CompositorEffectKeyholeCompPtr clonedCompPtr(boost::make_shared<CompositorEffectKeyholeComponent>());
-
-		clonedCompPtr->setActivated(this->activated->getBool());
-		clonedCompPtr->setFrameShape(this->frameShape->getReal());
-
-		clonedGameObjectPtr->addComponent(clonedCompPtr);
-		clonedCompPtr->setOwner(clonedGameObjectPtr);
-
-		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
-		return clonedCompPtr;
-	}
-
-	bool CompositorEffectKeyholeComponent::postInit(void)
-	{
-		bool success = CompositorEffectBaseComponent::postInit();
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CompositorEffectKeyholeComponent] Init compositor effect keyhole component for game object: " + this->gameObjectPtr->getName());
-
-		Ogre::String materialName0 = "Postprocess/Keyhole";
-
-		this->material = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName0);
-		if (true == this->material.isNull())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CompositorEffectKeyholeComponent] Could not set: " + this->effectName
-				+ " because the material: '" + materialName0 + "' does not exist!");
-			return false;
-		}
-
-		this->material->load();
-
-		Ogre::Material* material0 = this->material.getPointer();
-		this->pass = material0->getTechnique(0)->getPass(0);
-
-		// Set intial value, so that the compositor starts with the loaded values
-		this->setFrameShape(this->frameShape->getReal());
-
-		return success;
-	}
-
-	void CompositorEffectKeyholeComponent::actualizeValue(Variant* attribute)
-	{
-		CompositorEffectBaseComponent::actualizeValue(attribute);
-
-		if (CompositorEffectKeyholeComponent::AttrFrameShape() == attribute->getName())
-		{
-			this->setFrameShape(attribute->getReal());
-		}
-	}
-
-	void CompositorEffectKeyholeComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
-	{
-		// 2 = int
-		// 6 = real
-		// 7 = string
-		// 8 = vector2
-		// 9 = vector3
-		// 10 = vector4 -> also quaternion
-		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
-
-		xml_node<>* propertyXML  = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "FrameShape"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->frameShape->getReal())));
-		propertiesXML->append_node(propertyXML);
-	}
-
-	Ogre::String CompositorEffectKeyholeComponent::getClassName(void) const
-	{
-		return "CompositorEffectKeyholeComponent";
-	}
-
-	Ogre::String CompositorEffectKeyholeComponent::getParentClassName(void) const
-	{
-		return "CompositorEffectBaseComponent";
-	}
-
-	void CompositorEffectKeyholeComponent::setFrameShape(Ogre::Real frameShape)
-	{
-		this->frameShape->setValue(frameShape);
-		if (nullptr != this->pass)
-		{
-			this->pass->getFragmentProgramParameters()->setNamedConstant("frameShape", frameShape);
-		}
-	}
-
-	Ogre::Real CompositorEffectKeyholeComponent::getFrameShape(void) const
-	{
-		return this->frameShape->getReal();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

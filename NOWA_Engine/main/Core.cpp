@@ -226,6 +226,10 @@ namespace NOWA
 			this->defaultEngineResourceListener = nullptr;
 		}
 
+		if (nullptr == Ogre::Root::getSingletonPtr())
+		{
+			return;
+		}
 		Ogre::CompositorManager2* compositorManager = Ogre::Root::getSingletonPtr()->getCompositorManager2();
 
 		if (nullptr != this->myGuiWorkspace && nullptr != this->root && nullptr != compositorManager)

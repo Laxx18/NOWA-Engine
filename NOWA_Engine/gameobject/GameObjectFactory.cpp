@@ -141,7 +141,6 @@ namespace NOWA
 		this->componentFactory.registerClass<CompositorEffectBloomComponent>(CompositorEffectBloomComponent::getStaticClassId(), CompositorEffectBloomComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectGlassComponent>(CompositorEffectGlassComponent::getStaticClassId(), CompositorEffectGlassComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectOldTvComponent>(CompositorEffectOldTvComponent::getStaticClassId(), CompositorEffectOldTvComponent::getStaticClassName());
-		this->componentFactory.registerClass<CompositorEffectKeyholeComponent>(CompositorEffectKeyholeComponent::getStaticClassId(), CompositorEffectKeyholeComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectBlackAndWhiteComponent>(CompositorEffectBlackAndWhiteComponent::getStaticClassId(), CompositorEffectBlackAndWhiteComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectColorComponent>(CompositorEffectColorComponent::getStaticClassId(), CompositorEffectColorComponent::getStaticClassName());
 		this->componentFactory.registerClass<CompositorEffectEmbossedComponent>(CompositorEffectEmbossedComponent::getStaticClassId(), CompositorEffectEmbossedComponent::getStaticClassName());

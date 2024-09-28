@@ -47,7 +47,6 @@ material Postprocess/Embossed
 
 			fragment_program_ref Embossed_ps
 			{
-				param_named weight float 3.0
 			}
 
 			texture_unit RT

@@ -1,65 +1,59 @@
-// fragment_program Keyhole_ps_GLSL glsl
-// {
-	// source Keyhole_ps.glsl
-    // default_params
-	// {
-   		// param_named Image int 0
-	// }
-// }
 
-// fragment_program Keyhole_ps_VK glslvk
-// {
-	// source Keyhole_ps.glsl
-// }
+// GLSL shaders
+fragment_program Postprocess/Keyhole_ps_GLSL glsl
+{
+	source Keyhole_ps.glsl
+	
+	default_params
+   	{
+   		param_named Keyhole_Mask int 0
+   	}
+}
 
-fragment_program Keyhole_ps_HLSL hlsl
+// HLSL shaders
+fragment_program Postprocess/Keyhole_ps_HLSL hlsl
 {
 	source Keyhole_ps.hlsl
-	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
 	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
 }
 
-// fragment_program Keyhole_ps_Metal metal
-// {
-	// source Keyhole_ps.metal
-	// shader_reflection_pair_hint Ogre/Compositor/Quad_vs
-// }
-
-fragment_program Keyhole_ps unified
+fragment_program Postprocess/Keyhole_ps unified
 {
-	// delegate Keyhole_ps_GLSL
-	// delegate Keyhole_ps_VK
-	delegate Keyhole_ps_HLSL
-	// delegate Keyhole_ps_Metal
+	delegate Postprocess/Keyhole_ps_HLSL
+	delegate Postprocess/Keyhole_ps_GLSL
 }
 
-material Postprocess/Keyhole
+material Postprocess/KeyholeEffect
 {
-	technique
-	{
-		pass
-		{
-			depth_check off
-			depth_write off
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            cull_hardware none
 
-			cull_hardware none
+            // Use the default compositor vertex shader
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
 
-			vertex_program_ref Ogre/Compositor/Quad_vs
-			{
-			}
+            // Reference the unified keyhole fragment shader
+            fragment_program_ref Postprocess/Keyhole_ps
+            {
+                // param_named_auto screenSize float2 1920 1080
+                // param_named radius float 0.5
+                // param_named center float2 960.0 540.0  // Default center
+                // param_named direction int 1  // 1 = grow, 0 = shrink
+            }
 
-			fragment_program_ref Keyhole_ps
-			{
-                param_named frameShape float 0.26
-                param_named_auto sin_time_0_X sintime_0_x 120				
-			}
-
-			texture_unit
-			{
-                tex_coord_set 0
-				tex_address_mode clamp
-				filtering linear linear linear
-			}
-		}
-	}
+            texture_unit Keyhole_Mask
+            {
+                tex_address_mode clamp
+                filtering trilinear
+				texture Keyhole_Mask.png 2d
+            }
+        }
+    }
 }

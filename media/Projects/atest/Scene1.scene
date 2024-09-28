@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.577351" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.579228" y="0.573577" z="0.579228"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -131,12 +131,33 @@
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentMyGuiSpriteComponent" data="MyGuiSpriteComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="391496065"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.5 0.5"/>
+					<property type="8" name="Size" data="0.05 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Image" data="flames_anim.png"/>
+					<property type="8" name="TileSize" data="64 64"/>
+					<property type="8" name="RowsCols" data="0 0"/>
+					<property type="12" name="Horizontal" data="true"/>
+					<property type="12" name="InverseDirection" data="true"/>
+					<property type="6" name="Speed" data="50"/>
+					<property type="8" name="StartEndIndex" data="0 0"/>
+					<property type="12" name="Repeat" data="true"/>
 				</userData>
 			</entity>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="10" z="0"/>
-			<rotation qw="0.0748357" qx="0.29651" qy="0.351293" qz="0.884915"/>
+			<rotation qw="0.0783618" qx="0.29619" qy="0.350225" qz="0.88514"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -267,7 +288,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
@@ -276,7 +297,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
@@ -336,7 +357,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
@@ -344,6 +365,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Center" data="0 50 0"/>
+					<property type="8" name="PixelSize" data="1024 1024"/>
 					<property type="9" name="Dimensions" data="100 100 100"/>
 					<property type="6" name="LightId" data="1111111113"/>
 					<property type="6" name="CameraId" data="1794784200"/>
@@ -425,7 +447,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="2"/>
 					<property type="7" name="DataBlock0" data="Stone Trim"/>
@@ -560,7 +582,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="6" name="MaskId" data="1"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>

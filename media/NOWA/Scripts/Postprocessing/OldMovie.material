@@ -8,13 +8,13 @@ fragment_program Postprocess/OldMovie_ps_HLSL hlsl
 fragment_program Postprocess/OldMovie_ps_GLSL glsl
 {
 	source OldMovie_ps.glsl
-   	default_params
-   	{
-   		param_named RT int 0
-   		param_named SplotchesTx int 1
-	   	param_named Texture2 int 2
-	   	param_named SepiaTx int 3
-   	}
+	default_params
+	{
+		param_named RT int 0
+		param_named SplotchesTx int 1
+		param_named Texture2 int 2
+		param_named SepiaTx int 3
+	}
 }
 
 fragment_program Postprocess/OldMovie_ps_VK glslvk

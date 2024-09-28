@@ -10,7 +10,6 @@ GPL v3
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
-#include "OgreMain/include/Threading/OgreBarrier.h"
 #include "utilities/LowPassAngleFilter.h"
 
 namespace NOWA

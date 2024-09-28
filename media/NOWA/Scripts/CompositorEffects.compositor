@@ -106,27 +106,6 @@ compositor_node "Old TV"
 	out 1 rt_input
 }
 
-compositor_node "Keyhole"
-{
-	in 0 rt_input
-	in 1 rt_output
-
-	custom_id Ogre/Postprocess
-
-	target rt_output
-	{
-		pass render_quad
-		{
-			load { all dont_care }
-			material Postprocess/Keyhole
-			input 0 rt_input
-		}
-	}
-	
-	out 0 rt_output
-	out 1 rt_input
-}
-
 // Black and white effect
 compositor_node B&W
 {
@@ -375,6 +354,28 @@ compositor_node Tiling
 	out 1 rt_input
 }
 
+compositor_node Keyhole
+{
+	in 0 rt_input
+	in 1 rt_output
+
+	custom_id Ogre/Postprocess
+
+	target rt_output
+	{
+		pass render_quad
+		{
+			load { all dont_care }
+			// Renders a fullscreen quad with a material
+			material Postprocess/KeyholeEffect
+			input 0 rt_input
+		}
+	}
+
+	out 0 rt_output
+	out 1 rt_input
+}
+
 // Old Movie
 compositor_node "Old Movie"
 {
@@ -613,151 +614,6 @@ compositor_node Dof
 			material Postprocess/Dof
 			input 0 depthTexture
 			input 1 rt_input
-		}
-	}
-
-	out 0 rt_output
-	out 1 rt_input
-}
-
-//HeightFog
-compositor_node HeightFog
-{
-	in 0 rt_input
-	in 1 rt_output
-	
-	custom_id Ogre/Postprocess
-
-	texture rt_depth target_width target_height PFG_RGBA8_UNORM depth_texture depth_format PFG_D32_FLOAT depth_pool 3
-	texture depthTexture target_width target_height PFG_D32_FLOAT depth_pool 3
-
-	target rt_depth
-	{		
-		pass clear
-		{
-		}
-		
-		pass render_scene
-		{
-			lod_update_list	off
-			overlays	off
-			rq_first   3
-			rq_last   6
-		}
-	}
-
-	target rt_output
-	{
-		pass render_quad
-		{
-			material Postprocess/HeightFog
-			input 0 depthTexture
-			input 1 rt_input
-		}
-	}
-
-	out 0 rt_output
-	out 1 rt_input
-}
-
-//Fog
-compositor_node Fog
-{
-	in 0 rt_input
-	in 1 rt_output
-	
-	custom_id Ogre/Postprocess
-
-	texture rt_depth target_width target_height PFG_RGBA8_UNORM depth_texture depth_format PFG_D32_FLOAT depth_pool 3
-	texture depthTexture target_width target_height PFG_D32_FLOAT depth_pool 3
-
-	target rt_depth
-	{		
-		pass clear
-		{
-		}
-		
-		pass render_scene
-		{
-			lod_update_list	off
-			overlays	off
-			rq_first   3
-			rq_last   6
-		}
-	}
-
-	target rt_output
-	{
-		pass render_quad
-		{
-			material Postprocess/Fog
-			input 0 depthTexture
-			input 1 rt_input
-		}
-	}
-
-	out 0 rt_output
-	out 1 rt_input
-}
-
-//LightShafts
-compositor_node LightShafts
-{
-	in 0 rt_input
-	in 1 rt_output
-	
-	custom_id Ogre/Postprocess
-
-	texture LightShaftRender target_width target_height PFG_RGBA16_FLOAT depth_pool 4
-
-	// Render the scene with black but lights showing.
-	target LightShaftRender
-	{
-		pass clear
-		{
-			colour_value	1 1 1 1
-		}
-	
-		pass render_scene
-		{
-			cull_reuse_data		on
-			lod_update_list		on
-			shadows				off
-			overlays			off
-			identifier 			100
-				
-			rq_first	0
-			rq_last		250			
-		}
-	}
-	/*
-	target rtBlur1 : discardTarget
-	{
-		pass render_quad
-		{
-			material	HDR/BoxBlurH
-			input		0	LightShaftRender
-		}
-	}
-
-	target rtBlur0
-	{
-		pass render_quad
-		{
-			material	HDR/BoxBlurV
-			input		0	rtBlur1
-		}
-	}
-	*/
-	target rt_output
-	{
-		pass render_quad
-		{
-			// convert the previous render target to a black and white image, add some noise, distort it,
-			// then render to scene aligned quad
-			material Postprocess/LightShafts
-			input 0 rt_input
-			input 1 LightShaftRender
 		}
 	}
 

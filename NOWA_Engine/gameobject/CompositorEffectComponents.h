@@ -136,7 +136,6 @@ namespace NOWA
 		 * - "Laplace"
 		 * - "Tiling"
 		 * - "Old Movie"
-		 * - "Keyhole"
 		 * - "Radial Blur"
 		 * - "ASCII"
 		 * - "Halftone"
@@ -326,7 +325,7 @@ namespace NOWA
 		Variant* glassWeight;
 		// Variant* blurWeight;
 		Ogre::MaterialPtr material;
-		Ogre::Pass*pass;
+		Ogre::Pass* pass;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -458,88 +457,6 @@ namespace NOWA
 
 		Ogre::MaterialPtr material;
 		Ogre::Pass*pass;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class EXPORTED CompositorEffectKeyholeComponent : public CompositorEffectBaseComponent
-	{
-	public:
-		typedef boost::shared_ptr<NOWA::CompositorEffectKeyholeComponent> CompositorEffectKeyholeCompPtr;
-	public:
-
-		CompositorEffectKeyholeComponent();
-
-		virtual ~CompositorEffectKeyholeComponent();
-
-		/**
-		 * @see		GameObjectComponent::init
-		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
-
-		/**
-		 * @see		GameObjectComponent::postInit
-		 */
-		virtual bool postInit(void) override;
-
-		/**
-		 * @see		GameObjectComponent::getClassName
-		 */
-		virtual Ogre::String getClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::getParentClassName
-		 */
-		virtual Ogre::String getParentClassName(void) const override;
-
-		/**
-		 * @see		GameObjectComponent::clone
-		 */
-		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
-
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("CompositorEffectKeyholeComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "CompositorEffectKeyholeComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
-
-		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		 * @see		GameObjectComponent::writeXML
-		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
-
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Requirements: A camera component must exist.";
-		}
-
-		void setFrameShape(Ogre::Real frameShape);
-
-		Ogre::Real getFrameShape(void) const;
-
-	public:
-		static const Ogre::String AttrFrameShape(void) { return "Frame Shape"; }
-	private:
-		Variant* frameShape;
-		Ogre::MaterialPtr material;
-		Ogre::Pass* pass;
 	};
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

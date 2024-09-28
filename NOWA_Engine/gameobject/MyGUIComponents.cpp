@@ -40,18 +40,11 @@ namespace NOWA
 		this->layer->setListSelectedValue("Middle");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
 	}
 
 	MyGUIComponent::~MyGUIComponent()
 	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
-
-		if (nullptr != this->widget && false == this->hasParent)
-		{
-			MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
-			this->widget = nullptr;
-		}
+		
 	}
 
 	bool MyGUIComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -115,6 +108,8 @@ namespace NOWA
 
 	bool MyGUIComponent::postInit(void)
 	{
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+
 		if (nullptr != this->widget)
 		{
 			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonPressed);
@@ -412,11 +407,15 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->parentId->getULong())));
 		propertiesXML->append_node(propertyXML);
 		
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "Skin"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skin->getListSelectedValue())));
-		propertiesXML->append_node(propertyXML);
+		// MyGuiSpriteComponent has no skin
+		if (nullptr != this->skin)
+		{
+			propertyXML = doc.allocate_node(node_element, "property");
+			propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+			propertyXML->append_attribute(doc.allocate_attribute("name", "Skin"));
+			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->skin->getListSelectedValue())));
+			propertiesXML->append_node(propertyXML);
+		}
 	}
 
 	Ogre::String MyGUIComponent::getClassName(void) const
@@ -679,6 +678,8 @@ namespace NOWA
 
 	void MyGUIComponent::onRemoveComponent(void)
 	{
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MyGUIComponent::handleWindowChangedDelegate), NOWA::EventDataWindowChanged::getStaticEventType());
+
 		GameObjectComponent::onRemoveComponent();
 
 		this->widget->detachFromWidget();
@@ -699,6 +700,13 @@ namespace NOWA
 				}
 			}
 		}*/
+
+		if (nullptr != this->widget && false == this->hasParent)
+		{
+			MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+			this->widget = nullptr;
+		}
+
 	}
 
 	void MyGUIComponent::onOtherComponentRemoved(unsigned int index)
@@ -2176,6 +2184,9 @@ namespace NOWA
 	{
 		std::vector<Ogre::String> skins({ "ImageBox", "RotatingSkin" });
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), { skins }, this->attributes);
+
+		this->imageFileName->addUserData(GameObject::AttrActionFileOpenDialog(), "images");
+		this->imageFileName->setDescription("Sets the image.");
 	}
 
 	MyGUIImageBoxComponent::~MyGUIImageBoxComponent()
@@ -2214,7 +2225,6 @@ namespace NOWA
 	{
 		MyGUIImageBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIImageBoxComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());

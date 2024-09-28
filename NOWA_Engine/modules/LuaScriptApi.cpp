@@ -2264,11 +2264,6 @@ namespace NOWA
 		return makeStrongPtr<CompositorEffectOldTvComponent>(gameObject->getComponent<CompositorEffectOldTvComponent>()).get();
 	}
 
-	CompositorEffectKeyholeComponent* getCompositorEffectKeyholeComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CompositorEffectKeyholeComponent>(gameObject->getComponent<CompositorEffectKeyholeComponent>()).get();
-	}
-
 	CompositorEffectBlackAndWhiteComponent* getCompositorEffectBlackAndWhiteComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<CompositorEffectBlackAndWhiteComponent>(gameObject->getComponent<CompositorEffectBlackAndWhiteComponent>()).get();
@@ -2989,11 +2984,6 @@ namespace NOWA
 		return makeStrongPtr<CompositorEffectOldTvComponent>(gameObject->getComponentFromName<CompositorEffectOldTvComponent>(name)).get();
 	}
 
-	CompositorEffectKeyholeComponent* getCompositorEffectKeyholeComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CompositorEffectKeyholeComponent>(gameObject->getComponentFromName<CompositorEffectKeyholeComponent>(name)).get();
-	}
-
 	CompositorEffectBlackAndWhiteComponent* getCompositorEffectBlackAndWhiteComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<CompositorEffectBlackAndWhiteComponent>(gameObject->getComponentFromName<CompositorEffectBlackAndWhiteComponent>(name)).get();
@@ -3601,7 +3591,6 @@ namespace NOWA
 		gameObject.def("getCompositorEffectBloomComponent", &getCompositorEffectBloomComponent);
 		gameObject.def("getCompositorEffectGlassComponent", &getCompositorEffectGlassComponent);
 		gameObject.def("getCompositorEffectOldTvComponent", &getCompositorEffectOldTvComponent);
-		gameObject.def("getCompositorEffectKeyholeComponent", &getCompositorEffectKeyholeComponent);
 		gameObject.def("getCompositorEffectBlackAndWhiteComponent", &getCompositorEffectBlackAndWhiteComponent);
 		gameObject.def("getCompositorEffectColorComponent", &getCompositorEffectColorComponent);
 		gameObject.def("getCompositorEffectEmbossedComponent", &getCompositorEffectEmbossedComponent);
@@ -3761,7 +3750,6 @@ namespace NOWA
 		gameObject.def("getCompositorEffectBloomComponentFromName", &getCompositorEffectBloomComponentFromName);
 		gameObject.def("getCompositorEffectGlassComponentFromName", &getCompositorEffectGlassComponentFromName);
 		gameObject.def("getCompositorEffectOldTvComponentFromName", &getCompositorEffectOldTvComponentFromName);
-		gameObject.def("getCompositorEffectKeyholeComponentFromName", &getCompositorEffectKeyholeComponentFromName);
 		gameObject.def("getCompositorEffectBlackAndWhiteComponentFromName", &getCompositorEffectBlackAndWhiteComponentFromName);
 		gameObject.def("getCompositorEffectColorComponentFromName", &getCompositorEffectColorComponentFromName);
 		gameObject.def("getCompositorEffectEmbossedComponentFromName", &getCompositorEffectEmbossedComponentFromName);
@@ -5139,7 +5127,6 @@ namespace NOWA
 		gameObjectController.def("castCompositorEffectBloomComponent", &GameObjectController::cast<CompositorEffectBloomComponent>);
 		gameObjectController.def("castCompositorEffectGlassComponent", &GameObjectController::cast<CompositorEffectGlassComponent>);
 		gameObjectController.def("castCompositorEffectOldTvComponent", &GameObjectController::cast<CompositorEffectOldTvComponent>);
-		gameObjectController.def("castCompositorEffectKeyholeComponent", &GameObjectController::cast<CompositorEffectKeyholeComponent>);
 		gameObjectController.def("castCompositorEffectBlackAndWhiteComponent", &GameObjectController::cast<CompositorEffectBlackAndWhiteComponent>);
 		gameObjectController.def("castCompositorEffectColorComponent", &GameObjectController::cast<CompositorEffectColorComponent>);
 		gameObjectController.def("castCompositorEffectEmbossedComponent", &GameObjectController::cast<CompositorEffectEmbossedComponent>);
@@ -5300,7 +5287,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "CompositorEffectBloomComponent castCompositorEffectBloomComponent(CompositorEffectBloomComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectGlassComponent castCompositorEffectGlassComponent(CompositorEffectGlassComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectOldTvComponent castCompositorEffectOldTvComponent(CompositorEffectOldTvComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CompositorEffectKeyholeComponent castCompositorEffectKeyholeComponentt(CompositorEffectKeyholeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectBlackAndWhiteComponent castCompositorEffectBlackAndWhiteComponent(CompositorEffectBlackAndWhiteComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectColorComponent castCompositorEffectColorComponent(CompositorEffectColorComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectEmbossedComponent castCompositorEffectEmbossedComponent(CompositorEffectEmbossedComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -8603,27 +8589,6 @@ namespace NOWA
 		AddClassToCollection("CompositorEffectOldTvComponent", "Vector3 getTime()", "Gets the time frequency.");
 		AddClassToCollection("CompositorEffectOldTvComponent", "void setSinusTime(Vector3 sinusTime)", "Sets the since time frequency for the old tv effect.");
 		AddClassToCollection("CompositorEffectOldTvComponent", "Vector3 getSinusTime()", "Gets the sinus time frequency.");
-
-		module(lua)
-		[
-			class_<CompositorEffectKeyholeComponent, CompositorEffectBaseComponent>("CompositorEffectKeyholeComponent")
-			.def("setFrameShape", &CompositorEffectOldTvComponent::setFrameShape)
-			.def("getFrameShape", &CompositorEffectOldTvComponent::getFrameShape)
-			// .def("setTime", &CompositorEffectKeyholeComponent::setTime)
-			// .def("getTime", &CompositorEffectKeyholeComponent::getTime)
-			// .def("setSinusTime", &CompositorEffectKeyholeComponent::setSinusTime)
-			// .def("getSinusTime", &CompositorEffectKeyholeComponent::getSinusTime)
-		];
-
-		AddClassToCollection("CompositorEffectKeyholeComponent", "class inherits CompositorEffectBaseComponent", CompositorEffectKeyholeComponent::getStaticInfoText());
-		AddClassToCollection("CompositorEffectKeyholeComponent", "void setActivated(bool activated)", "Activates the given compositor effect.");
-		AddClassToCollection("CompositorEffectKeyholeComponent", "bool isActivated()", "Gets whether the compositor effect is activated or not.");
-		AddClassToCollection("CompositorEffectKeyholeComponent", "void setFrameShape(float frameShape)", "Sets the frame shape for the key hole effect.");
-		AddClassToCollection("CompositorEffectKeyholeComponent", "float getFrameShape()", "Gets the frame shape.");
-		// AddClassToCollection("CompositorEffectKeyholeComponent", "void setTime(Vector3 time)", "Sets the time frequency for the old tv effect.");
-		// AddClassToCollection("CompositorEffectKeyholeComponent", "Vector3 getTime()", "Gets the time frequency.");
-		// AddClassToCollection("CompositorEffectKeyholeComponent", "void setSinusTime(Vector3 sinusTime)", "Sets the since time frequency for the old tv effect.");
-		// AddClassToCollection("CompositorEffectKeyholeComponent", "Vector3 getSinusTime()", "Gets the sinus time frequency.");
 
 		module(lua)
 			[

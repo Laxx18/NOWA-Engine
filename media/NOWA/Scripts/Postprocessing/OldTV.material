@@ -1,11 +1,11 @@
 fragment_program OldTV_ps_GLSL glsl
 {
 	source OldTV_ps.glsl
-    default_params
+	default_params
 	{
-   		param_named Image int 0
-   		param_named Rand int 1
-   		param_named Noise int 2
+		param_named Image int 0
+		param_named Rand int 1
+		param_named Noise int 2
 	}
 }
 
@@ -66,7 +66,6 @@ material Postprocess/OldTV
 
 			texture_unit
 			{
-                tex_coord_set 0
 				tex_address_mode clamp
 				filtering linear linear linear
 			}

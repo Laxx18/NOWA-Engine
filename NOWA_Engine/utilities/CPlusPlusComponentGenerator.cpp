@@ -781,16 +781,16 @@ namespace NOWA
 
 		{
 			const auto& position = this->generateButton->getPosition();
-			this->generateButton->setPosition(position.left, position.top + this->currentVariableIndex * 40);
+			this->generateButton->setPosition(position.left, position.top + 40);
 		}
 
 		{
 			const auto& position = this->okButton->getPosition();
-			this->okButton->setPosition(position.left, position.top + this->currentVariableIndex * 40);
+			this->okButton->setPosition(position.left, position.top + 40);
 		}
 
-		int height = this->generateButton->getTop() + this->generateButton->getHeight() + 60;
-		this->getMainWidget()->setSize(this->getMainWidget()->getWidth(), height);
+		this->getMainWidget()->setSize(this->getMainWidget()->getWidth(), this->getMainWidget()->getHeight() + 40);
+		this->variantContainer->setSize(this->variantContainer->getWidth(), this->variantContainer->getHeight() + 40);
 
 		// Checks if we can enable the generate button
 		this->validateInputs();
@@ -820,7 +820,5 @@ namespace NOWA
 		modifyHeaderFile(headerFilePath, variants);
 		modifySourceFile(sourceFilePath, className, variants);
 	}
-
-	
 
 }; // namespace end

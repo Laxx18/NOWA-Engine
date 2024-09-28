@@ -633,7 +633,9 @@ namespace NOWA
 		{
 			// Update sprite animation values
 			if (this->timeSinceLastUpdate >= 0.0f)
+			{
 				this->timeSinceLastUpdate -= dt;
+			}
 			else
 			{
 				for (size_t i = 0; i < this->spriteAnimationIndices.size(); i++)
@@ -1082,6 +1084,7 @@ namespace NOWA
 			// Resize the waypoints array for count
 			this->trackableIds.resize(trackableCount);
 			this->trackableImages.resize(trackableCount);
+			this->trackableImageTileSizes.resize(trackableCount);
 
 			for (size_t i = oldSize; i < this->trackableIds.size(); i++)
 			{

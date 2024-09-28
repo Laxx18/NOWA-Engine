@@ -1,22 +1,22 @@
 
 // GLSL shaders
-fragment_program MinimapMask_fp_GLSL glsl
+fragment_program MinimapMask_ps_GLSL glsl
 {
-	source MinimapMask_fp.glsl
+	source MinimapMask_ps.glsl
 }
 
 // HLSL shaders
-fragment_program MinimapMask_fp_HLSL hlsl
+fragment_program MinimapMask_ps_HLSL hlsl
 {
-	source MinimapMask_fp.hlsl
+	source MinimapMask_ps.hlsl
 	entry_point main
 	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
 }
 
-fragment_program MinimapMask_fp unified
+fragment_program MinimapMask_ps unified
 {
-	delegate MinimapMask_fp_HLSL
-	delegate MinimapMask_fp_GLSL
+	delegate MinimapMask_ps_HLSL
+	delegate MinimapMask_ps_GLSL
 	
 	default_params
     {
@@ -34,7 +34,7 @@ material MinimapMask
 			{
 			}
 		
-            fragment_program_ref MinimapMask_fp
+            fragment_program_ref MinimapMask_ps
             {
 				
             }

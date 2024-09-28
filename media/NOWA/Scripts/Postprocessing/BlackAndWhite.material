@@ -46,7 +46,6 @@ material Postprocess/BlackAndWhite
 
 			fragment_program_ref B&W_ps
 			{
-				param_named color float3 0.3 0.59 0.11
 			}
 
 			texture_unit

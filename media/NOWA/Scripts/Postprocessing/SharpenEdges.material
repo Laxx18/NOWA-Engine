@@ -51,7 +51,6 @@ material Postprocess/SharpenEdges
 
 			fragment_program_ref Postprocess/SharpenEdges_ps
 			{
-				param_named weight float 3.0
 			}
 
 			texture_unit

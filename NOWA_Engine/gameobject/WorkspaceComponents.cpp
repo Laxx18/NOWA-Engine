@@ -1668,6 +1668,7 @@ namespace NOWA
 		{
 #if 0
 			pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
+			// pass->mNumViewports = this->cameraComponent->getEyeId() + 1;
 
 			Ogre::CompositorPassDef::ViewportRect rect;
 			Ogre::Vector4 viewportRect = this->viewportRect->getVector4();
@@ -1696,7 +1697,7 @@ namespace NOWA
 
 			if (pass->getType() == Ogre::CompositorPassType::PASS_CLEAR)
 			{
-				// pass->setAllLoadActions(Ogre::LoadAction::Load);
+				pass->setAllLoadActions(Ogre::LoadAction::Clear);
 				pass->setAllStoreActions(Ogre::StoreAction::Store);
 
 				// Gets executed on the first eye
@@ -1708,10 +1709,14 @@ namespace NOWA
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_SCENE && false == isOverlay)
 			{
 				// Gets executed in all eyes
+				// pass->mExecutionMask = this->cameraComponent->getEyeId();
 				pass->mExecutionMask = 0xFF;
 				// Be affected by the modifier, so we render just to a portion of the screen.
 				// That means one part is rendered on first eye and the other on the second eye
 				pass->mViewportModifierMask = 0xFF;
+
+				pass->setAllLoadActions(Ogre::LoadAction::Clear);
+				pass->setAllStoreActions(Ogre::StoreAction::Store);
 			}
 			else if (pass->getType() == Ogre::CompositorPassType::PASS_QUAD && false == isSky)
 			{
@@ -1728,6 +1733,9 @@ namespace NOWA
 				// Be affected by the modifier, so we render just to a portion of the screen.
 				// That means one part is rendered on first eye and the other on the second eye
 				pass->mViewportModifierMask = 0xFF;
+
+				Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+				passQuad->mCameraName = this->cameraComponent->getCamera()->getName();
 
 				pass->setAllLoadActions(Ogre::LoadAction::Load);
 				pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);

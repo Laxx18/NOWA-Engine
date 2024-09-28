@@ -51,6 +51,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MinimapComponent", "Minimap
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RandomImageShuffler", "RandomImageShuffler\RandomImageShuffler.vcxproj", "{9F1F4D35-F830-4743-AF1F-1B602E422930}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyholeEffectComponent", "KeyholeEffectComponent\KeyholeEffectComponent.vcxproj", "{AFC483C7-E666-4463-ADC6-019607E6386C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSpriteComponent", "MyGuiSpriteComponent\MyGuiSpriteComponent.vcxproj", "{B65A73D6-6690-4C1F-BD42-E0AC2466C139}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -153,6 +157,14 @@ Global
 		{9F1F4D35-F830-4743-AF1F-1B602E422930}.Debug|x64.Build.0 = Debug|x64
 		{9F1F4D35-F830-4743-AF1F-1B602E422930}.Release|x64.ActiveCfg = Release|x64
 		{9F1F4D35-F830-4743-AF1F-1B602E422930}.Release|x64.Build.0 = Release|x64
+		{AFC483C7-E666-4463-ADC6-019607E6386C}.Debug|x64.ActiveCfg = Debug|x64
+		{AFC483C7-E666-4463-ADC6-019607E6386C}.Debug|x64.Build.0 = Debug|x64
+		{AFC483C7-E666-4463-ADC6-019607E6386C}.Release|x64.ActiveCfg = Release|x64
+		{AFC483C7-E666-4463-ADC6-019607E6386C}.Release|x64.Build.0 = Release|x64
+		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Debug|x64.ActiveCfg = Debug|x64
+		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Debug|x64.Build.0 = Debug|x64
+		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.ActiveCfg = Release|x64
+		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
