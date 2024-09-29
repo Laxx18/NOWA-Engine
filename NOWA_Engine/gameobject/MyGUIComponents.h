@@ -8,6 +8,28 @@
 
 namespace NOWA
 {
+	class EXPORTED CustomPickingMask
+	{
+	public:
+		CustomPickingMask();
+
+		bool loadFromAlpha(const Ogre::String& filename, int resizeWidth = -1, int resizeHeight = -1);
+
+		// Check if the given point is clickable
+		bool pick(const MyGUI::IntPoint& point) const;
+
+		bool empty() const;
+
+	private:
+		int width;
+		int height;
+		Ogre::String newImageFileName;
+		Ogre::String oldImageFileName;
+		std::vector<bool> mask;  // A 1-bit per pixel mask to track clickable pixels
+	};
+
+	/////////////////////////////////////////////////////////////////////////////////////
+
 	class EXPORTED MyGUIComponent : public GameObjectComponent
 	{
 	public:
@@ -781,6 +803,11 @@ namespace NOWA
 		virtual bool disconnect(void) override;
 
 		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
+
+		/**
 		* @see		GameObjectComponent::getClassName
 		*/
 		virtual Ogre::String getClassName(void) const override;
@@ -853,7 +880,11 @@ namespace NOWA
 		void setRotationSpeed(Ogre::Real rotationSpeed);
 		
 		Ogre::Real getRotationSpeed(void) const;
-		
+
+		void setUsePickingMask(bool usePickingMask);
+
+		bool getUsePickingMask(void) const;
+
 		MyGUI::RotatingSkin* getRotatingSkin(void) const;
 
 	public:
@@ -861,14 +892,22 @@ namespace NOWA
 		static const Ogre::String AttrCenter(void) { return "Rotation Center x, y"; }
 		static const Ogre::String AttrAngle(void) { return "Angle (Degree)"; }
 		static const Ogre::String AttrRotationSpeed(void) { return "Rotation Speed"; }
+		static const Ogre::String AttrUsePickingMask(void) { return "UsePickingMask"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+		virtual void mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id) override;
+
+		void callMousePressLuaFunction(void);
 	protected:
+		MyGUI::RotatingSkin* rotatingSkin;
+		CustomPickingMask* pickingMask;
+
 		Variant* imageFileName;
 		Variant* center;
 		Variant* angle;
 		Variant* rotationSpeed;
-		MyGUI::RotatingSkin* rotatingSkin;
+		Variant* usePickingMask;
+
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

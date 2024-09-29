@@ -14,7 +14,6 @@ GPL v3
 
 namespace NOWA
 {
-
 	/**
 	  * @brief		Usage: An image with sprite tiles can be loaded and manipulated, so that a sprite movement is possible.
 	  */
@@ -173,6 +172,10 @@ namespace NOWA
 
 		bool getRepeat(void) const;
 
+		void setUsePickingMask(bool usePickingMask); 
+
+		bool getUsePickingMask(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -216,13 +219,16 @@ namespace NOWA
 		static const Ogre::String AttrSpeed(void) { return "Speed"; }
 		static const Ogre::String AttrStartEndIndex(void) { return "StartEndIndex"; }
 		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
+		static const Ogre::String AttrUsePickingMask(void) { return "UsePickingMask"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
-
+		virtual void mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id) override;
 	private:
 		void advanceFrame(void);
 	
 		void updateFrame(void);
+
+		void callMousePressLuaFunction(void);
 	private:
 		Ogre::String name;
 		unsigned int currentRow;
@@ -230,6 +236,7 @@ namespace NOWA
 		Ogre::Real timeSinceLastUpdate;
 		int currentFrame;
 		bool finished;
+		CustomPickingMask* pickingMask;
 
 		Variant* image;
 		Variant* tileSize;
@@ -239,6 +246,7 @@ namespace NOWA
 		Variant* speed;
 		Variant* startEndIndex;
 		Variant* repeat;
+		Variant* usePickingMask;
 	};
 
 }; // namespace end

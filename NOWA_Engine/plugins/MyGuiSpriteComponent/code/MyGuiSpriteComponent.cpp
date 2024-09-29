@@ -7,6 +7,7 @@
 #include "gameobject/GameObjectFactory.h"
 
 #include "OgreAbiUtils.h"
+#include "OgreImage2.h"
 
 namespace NOWA
 {
@@ -20,6 +21,7 @@ namespace NOWA
 		currentCol(0),
 		timeSinceLastUpdate(0.0f),
 		finished(false),
+		pickingMask(nullptr),
 		image(new Variant(MyGuiSpriteComponent::AttrImage(), Ogre::String(), this->attributes)),
 		tileSize(new Variant(MyGuiSpriteComponent::AttrTileSize(), Ogre::Vector2(32.0f, 32.0f), this->attributes)),
 		rowsCols(new Variant(MyGuiSpriteComponent::AttrRowsCols(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
@@ -27,7 +29,8 @@ namespace NOWA
 		inverseDirection(new Variant(MyGuiSpriteComponent::AttrInverseDirection(), false, this->attributes)),
 		speed(new Variant(MyGuiSpriteComponent::AttrSpeed(), 10.0f, this->attributes)),
 		startEndIndex(new Variant(MyGuiSpriteComponent::AttrStartEndIndex(), Ogre::Vector2::ZERO, this->attributes)),
-		repeat(new Variant(MyGuiSpriteComponent::AttrRepeat(), true, this->attributes))
+		repeat(new Variant(MyGuiSpriteComponent::AttrRepeat(), true, this->attributes)),
+		usePickingMask(new Variant(MyGuiSpriteComponent::AttrUsePickingMask(), true, this->attributes))
 	{
 		this->image->addUserData(GameObject::AttrActionFileOpenDialog(), "Essential");
 		this->image->setDescription("Sets the image.");
@@ -38,8 +41,11 @@ namespace NOWA
 		this->speed->setDescription("Sets the animation speed.");
 		this->startEndIndex->setDescription("Sets the start and end index, at which the first tile shall start. If set the 0 0 the whole image will be animated.");
 		this->repeat->setDescription("If set to false, the animation will only run once. In lua using 'setActivated(true)' will let play the animation again manually.");
+		this->usePickingMask->setDescription("Sets whether to use pixel exact picking mask for mouse events or not. If set to true, transparent areas will not be clickable.");
 
 		this->currentFrame = static_cast<int>(this->startEndIndex->getVector2().x);
+
+		this->layer->setListSelectedValue("Back");
 	}
 
 	MyGuiSpriteComponent::~MyGuiSpriteComponent(void)
@@ -106,6 +112,11 @@ namespace NOWA
 			this->repeat->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == MyGuiSpriteComponent::AttrUsePickingMask())
+		{
+			this->usePickingMask->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return success;
 	}
 
@@ -130,6 +141,7 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setUsePickingMask(this->usePickingMask->getBool());
 		clonedCompPtr->setImage(this->image->getString());
 		clonedCompPtr->setTileSize(this->tileSize->getVector2());
 		clonedCompPtr->setRowsCols(this->rowsCols->getVector2());
@@ -155,6 +167,7 @@ namespace NOWA
 																						   this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
 		}
 
+		this->setUsePickingMask(this->usePickingMask->getBool());
 		this->setImage(this->image->getString());
 		this->setTileSize(this->tileSize->getVector2());
 		this->setRowsCols(this->rowsCols->getVector2());
@@ -162,6 +175,7 @@ namespace NOWA
 		this->setInverseDirection(this->inverseDirection->getBool());
 		this->setSpeed(this->speed->getReal());
 		this->setStartEndIndex(this->startEndIndex->getVector2());
+		this->setRepeat(this->repeat->getBool());
 
 		this->updateFrame();
 
@@ -193,13 +207,18 @@ namespace NOWA
 
 	bool MyGuiSpriteComponent::onCloned(void)
 	{
-		
 		return true;
 	}
 
 	void MyGuiSpriteComponent::onRemoveComponent(void)
 	{
-		
+		MyGUIComponent::onRemoveComponent();
+
+		if (nullptr != this->pickingMask)
+		{
+			delete this->pickingMask;
+			this->pickingMask = nullptr;
+		}
 	}
 	
 	void MyGuiSpriteComponent::onOtherComponentRemoved(unsigned int index)
@@ -371,6 +390,10 @@ namespace NOWA
 		{
 			this->setRepeat(attribute->getBool());
 		}
+		else if (MyGuiSpriteComponent::AttrUsePickingMask() == attribute->getName())
+		{
+			this->setUsePickingMask(attribute->getBool());
+		}
 	}
 
 	void MyGuiSpriteComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -431,6 +454,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Repeat"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->repeat->getBool())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UsePickingMask"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->usePickingMask->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void MyGuiSpriteComponent::setActivated(bool activated)
@@ -458,7 +487,16 @@ namespace NOWA
 		this->image->setValue(image);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ImageBox>()->setImageTexture(image);
+			this->widget->castType<MyGUI::ImageBox>()->setImageTexture(image);
+			
+			if (true == this->usePickingMask->getBool())
+			{
+				// Create a custom picking mask based on the alpha channel using Ogre::Image2
+				if (this->pickingMask->loadFromAlpha(image))
+				{
+
+				}
+			}
 		}
 		this->updateFrame();
 	}
@@ -604,35 +642,108 @@ namespace NOWA
 		return this->repeat->getBool();
 	}
 
+	void MyGuiSpriteComponent::callMousePressLuaFunction(void)
+	{
+		// Call also function in lua script, if it does exist in the lua script component
+		if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+		{
+			if (this->mouseButtonClickClosureFunction.is_valid())
+			{
+				try
+				{
+					luabind::call_function<void>(this->mouseButtonClickClosureFunction);
+				}
+				catch (luabind::error& error)
+				{
+					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+					std::stringstream msg;
+					msg << errorMsg;
+
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+																+ " details: " + msg.str());
+				}
+			}
+		}
+	}
+
 	void MyGuiSpriteComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
+#if 0
 		if (true == this->isSimulating)
 		{
 			MyGUI::ImageBox* imageBox = sender->castType<MyGUI::ImageBox>();
 			if (nullptr != imageBox)
 			{
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						try
-						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
-
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
-					}
-				}
+				this->callMousePressLuaFunction();
 			}
 		}
+#endif
+	}
+
+	void MyGuiSpriteComponent::mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
+	{
+		MyGUIComponent::mouseButtonPressed(_sender, _left, _top, _id);
+
+		if (true == this->isSimulating)
+		{
+			if (true == this->usePickingMask->getBool())
+			{
+				MyGUI::IntPoint mousePosition(_left, _top);
+				MyGUI::IntCoord imageCoord = _sender->castType<MyGUI::ImageBox>()->getAbsoluteCoord();
+
+				// Get the size of the widget and image
+				int widgetWidth = imageCoord.width;
+				int widgetHeight = imageCoord.height;
+				int imageWidth = this->widget->castType<MyGUI::ImageBox>()->getImageSize().width;
+				int imageHeight = this->widget->castType<MyGUI::ImageBox>()->getImageSize().height;
+
+				// Scale the mouse position to match the image's size
+				int scaledX = (mousePosition.left - imageCoord.left) * imageWidth / widgetWidth;
+				int scaledY = (mousePosition.top - imageCoord.top) * imageHeight / widgetHeight;
+
+				// Check the picking mask using the scaled coordinates
+				if (true == this->pickingMask->pick(MyGUI::IntPoint(scaledX, scaledY)))
+				{
+					// std::cout << "Clickable area clicked!" << std::endl;
+					this->callMousePressLuaFunction();
+				}
+				else
+				{
+					// TODO: What here?
+					// std::cout << "Clicked on a transparent area!" << std::endl;
+				}
+			}
+			else
+			{
+				this->callMousePressLuaFunction();
+			}
+		}
+	}
+
+	void MyGuiSpriteComponent::setUsePickingMask(bool usePickingMask)
+	{
+		this->usePickingMask->setValue(usePickingMask);
+
+		if (true == usePickingMask)
+		{
+			if (nullptr == this->pickingMask)
+			{
+				pickingMask = new CustomPickingMask();
+			}
+		}
+		else
+		{
+			if (nullptr != this->pickingMask)
+			{
+				delete this->pickingMask;
+				this->pickingMask = nullptr;
+			}
+		}
+	}
+
+	bool MyGuiSpriteComponent::getUsePickingMask(void) const
+	{
+		return this->usePickingMask->getBool();
 	}
 
 	// Lua registration part

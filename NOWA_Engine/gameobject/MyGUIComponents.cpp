@@ -17,6 +17,91 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
+
+	CustomPickingMask::CustomPickingMask()
+		: width(0),
+		height(0)
+	{
+	}
+
+	bool CustomPickingMask::loadFromAlpha(const Ogre::String& filename, int resizeWidth, int resizeHeight)
+	{
+		if (true == filename.empty())
+		{
+			return false;
+		}
+
+		// Performance optimization, do not load for the same image the mask x-times
+		this->newImageFileName = filename;
+		this->oldImageFileName = this->newImageFileName;
+
+		if (this->oldImageFileName == this->newImageFileName)
+		{
+			return false == this->mask.empty();
+		}
+		else
+		{
+			this->mask.clear();
+		}
+
+		try
+		{
+			// Load the image using Ogre::Image2
+			Ogre::Image2 image;
+			image.load(filename, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+
+			// Optionally resize the image
+			if (resizeWidth > 0 && resizeHeight > 0)
+			{
+				image.resize(resizeWidth, resizeHeight);
+			}
+
+			this->width = image.getWidth();
+			this->height = image.getHeight();
+
+			this->mask.clear();
+			this->mask.resize(this->width * this->height, false);
+
+			// Get the color value (RGBA) of each pixel and check the alpha channel
+			for (Ogre::uint32 y = 0; y < this->height; ++y)
+			{
+				for (Ogre::uint32 x = 0; x < this->width; ++x)
+				{
+					Ogre::ColourValue pixelColor = image.getColourAt(x, y, 0);
+					if (pixelColor.a > 0.0f)
+					{ 
+						// Checks if alpha > 0
+						this->mask[y * this->width + x] = true;  // Mark as clickable
+					}
+				}
+			}
+
+			return true;
+		}
+		catch (const Ogre::Exception& e)
+		{
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Failed to load image for image mask: " + e.getDescription());
+			return false;
+		}
+	}
+
+	// Checks if the given point is clickable
+	bool CustomPickingMask::pick(const MyGUI::IntPoint& point) const
+	{
+		if (point.left < 0 || point.top < 0 || point.left >= this->width || point.top >= this->height)
+		{
+			return false;
+		}
+		return this->mask[point.top * this->width + point.left];
+	}
+
+	bool CustomPickingMask::empty() const
+	{
+		return this->mask.empty();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	MyGUIComponent::MyGUIComponent()
 		: GameObjectComponent(),
 		widget(nullptr),
@@ -37,7 +122,7 @@ namespace NOWA
 		parentId(new Variant(MyGUIComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->id->setReadOnly(true);
-		this->layer->setListSelectedValue("Middle");
+		this->layer->setListSelectedValue("Back");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
 	}
@@ -2177,16 +2262,22 @@ namespace NOWA
 	MyGUIImageBoxComponent::MyGUIImageBoxComponent()
 		: MyGUIComponent(),
 		rotatingSkin(nullptr),
+		pickingMask(nullptr),
 		imageFileName(new Variant(MyGUIImageBoxComponent::AttrImageFileName(), "NOWA_1D.png", this->attributes)),
 		center(new Variant(MyGUIImageBoxComponent::AttrCenter(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
 		angle(new Variant(MyGUIImageBoxComponent::AttrAngle(), 0.0f, this->attributes)),
-		rotationSpeed(new Variant(MyGUIImageBoxComponent::AttrRotationSpeed(), 0.0f, this->attributes))
+		rotationSpeed(new Variant(MyGUIImageBoxComponent::AttrRotationSpeed(), 0.0f, this->attributes)),
+		usePickingMask(new Variant(MyGUIImageBoxComponent::AttrUsePickingMask(), true, this->attributes))
 	{
 		std::vector<Ogre::String> skins({ "ImageBox", "RotatingSkin" });
 		this->skin = new Variant(MyGUIComponent::AttrSkin(), { skins }, this->attributes);
 
 		this->imageFileName->addUserData(GameObject::AttrActionFileOpenDialog(), "images");
 		this->imageFileName->setDescription("Sets the image.");
+
+		this->usePickingMask->setDescription("Sets whether to use pixel exact picking mask for mouse events or not. If set to true, transparent areas will not be clickable.");
+
+		this->layer->setListSelectedValue("Back");
 	}
 
 	MyGUIImageBoxComponent::~MyGUIImageBoxComponent()
@@ -2218,6 +2309,11 @@ namespace NOWA
 			this->setRotationSpeed(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == MyGUIImageBoxComponent::AttrUsePickingMask())
+		{
+			this->usePickingMask->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return success;
 	}
 
@@ -2237,6 +2333,7 @@ namespace NOWA
 		clonedCompPtr->setParentId(this->parentId->getULong()); // Attention
 		clonedCompPtr->setSkin(this->skin->getListSelectedValue());
 	
+		clonedCompPtr->setUsePickingMask(this->usePickingMask->getBool());
 		clonedCompPtr->setImageFileName(this->imageFileName->getString());
 		clonedCompPtr->setCenter(this->center->getVector2());
 		clonedCompPtr->setAngle(this->angle->getReal());
@@ -2269,6 +2366,7 @@ namespace NOWA
 			this->rotatingSkin = main->castType<MyGUI::RotatingSkin>();
 		}
 
+		this->setUsePickingMask(this->usePickingMask->getBool());
 		this->setImageFileName(this->imageFileName->getString());
 		this->setCenter(this->center->getVector2());
 		this->setAngle(this->angle->getReal());
@@ -2309,31 +2407,78 @@ namespace NOWA
 
 	void MyGUIImageBoxComponent::mouseButtonClick(MyGUI::Widget* sender)
 	{
+#if 0
 		if (true == this->isSimulating)
 		{
 			MyGUI::ImageBox* imageBox = sender->castType<MyGUI::ImageBox>();
 			if (nullptr != imageBox)
 			{
-				// Call also function in lua script, if it does exist in the lua script component
-				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
-				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
-					{
-						try
-						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+				this->callMousePressLuaFunction();
+			}
+		}
+#endif
+	}
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
-					}
+	void MyGUIImageBoxComponent::callMousePressLuaFunction(void)
+	{
+		// Call also function in lua script, if it does exist in the lua script component
+		if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+		{
+			if (this->mouseButtonClickClosureFunction.is_valid())
+			{
+				try
+				{
+					luabind::call_function<void>(this->mouseButtonClickClosureFunction);
 				}
+				catch (luabind::error& error)
+				{
+					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+					std::stringstream msg;
+					msg << errorMsg;
+
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+																+ " details: " + msg.str());
+				}
+			}
+		}
+	}
+
+	void MyGUIImageBoxComponent::mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
+	{
+		MyGUIComponent::mouseButtonPressed(_sender, _left, _top, _id);
+
+		if (true == this->isSimulating)
+		{
+			if (true == this->usePickingMask->getBool())
+			{
+				MyGUI::IntPoint mousePosition(_left, _top);
+				MyGUI::IntCoord imageCoord = _sender->castType<MyGUI::ImageBox>()->getAbsoluteCoord();
+
+				// Get the size of the widget and image
+				int widgetWidth = imageCoord.width;
+				int widgetHeight = imageCoord.height;
+				int imageWidth = this->widget->castType<MyGUI::ImageBox>()->getImageSize().width;
+				int imageHeight = this->widget->castType<MyGUI::ImageBox>()->getImageSize().height;
+
+				// Scale the mouse position to match the image's size
+				int scaledX = (mousePosition.left - imageCoord.left) * imageWidth / widgetWidth;
+				int scaledY = (mousePosition.top - imageCoord.top) * imageHeight / widgetHeight;
+
+				// Check the picking mask using the scaled coordinates
+				if (true == this->pickingMask->pick(MyGUI::IntPoint(scaledX, scaledY)))
+				{
+					// std::cout << "Clickable area clicked!" << std::endl;
+					this->callMousePressLuaFunction();
+				}
+				else
+				{
+					// TODO: What here?
+					// std::cout << "Clicked on a transparent area!" << std::endl;
+				}
+			}
+			else
+			{
+				this->callMousePressLuaFunction();
 			}
 		}
 	}
@@ -2350,6 +2495,17 @@ namespace NOWA
 		// this->setImageFileName(this->imageFileName->getString());
 
 		return MyGUIComponent::disconnect();
+	}
+
+	void MyGUIImageBoxComponent::onRemoveComponent(void)
+	{
+		MyGUIComponent::onRemoveComponent();
+
+		if (nullptr != this->pickingMask)
+		{
+			delete this->pickingMask;
+			this->pickingMask = nullptr;
+		}
 	}
 
 	void MyGUIImageBoxComponent::actualizeValue(Variant* attribute)
@@ -2371,6 +2527,10 @@ namespace NOWA
 		else if (MyGUIImageBoxComponent::AttrRotationSpeed() == attribute->getName())
 		{
 			this->setRotationSpeed(attribute->getReal());
+		}
+		else if (MyGUIImageBoxComponent::AttrUsePickingMask() == attribute->getName())
+		{
+			this->setUsePickingMask(attribute->getBool());
 		}
 	}
 
@@ -2400,6 +2560,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RotationSpeed"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->rotationSpeed->getReal())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UsePickingMask"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->usePickingMask->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -2439,6 +2605,15 @@ namespace NOWA
 		if (nullptr != this->widget)
 		{
 			widget->castType<MyGUI::ImageBox>()->setImageTexture(imageFileName);
+
+			if (true == this->usePickingMask->getBool())
+			{
+				// Create a custom picking mask based on the alpha channel using Ogre::Image2
+				if (this->pickingMask->loadFromAlpha(imageFileName))
+				{
+
+				}
+			}
 		}
 	}
 		
@@ -2485,6 +2660,32 @@ namespace NOWA
 	Ogre::Real MyGUIImageBoxComponent::getRotationSpeed(void) const
 	{
 		return this->rotationSpeed->getReal();
+	}
+
+	void MyGUIImageBoxComponent::setUsePickingMask(bool usePickingMask)
+	{
+		this->usePickingMask->setValue(usePickingMask);
+
+		if (true == usePickingMask)
+		{
+			if (nullptr == this->pickingMask)
+			{
+				pickingMask = new CustomPickingMask();
+			}
+		}
+		else
+		{
+			if (nullptr != this->pickingMask)
+			{
+				delete this->pickingMask;
+				this->pickingMask = nullptr;
+			}
+		}
+	}
+
+	bool MyGUIImageBoxComponent::getUsePickingMask(void) const
+	{
+		return this->usePickingMask->getBool();
 	}
 	
 	MyGUI::RotatingSkin* MyGUIImageBoxComponent::getRotatingSkin(void) const

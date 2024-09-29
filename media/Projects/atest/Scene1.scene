@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.579228" y="0.573577" z="0.579228"/>
+			<hemisphereDir x="0.57735" y="0.57735" z="0.577351"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -140,7 +140,7 @@
 					<property type="8" name="Position" data="0.5 0.5"/>
 					<property type="8" name="Size" data="0.05 0.05"/>
 					<property type="7" name="Align" data="HCenter"/>
-					<property type="7" name="Layer" data="Middle"/>
+					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
 					<property type="12" name="Enabled" data="true"/>
 					<property type="2" name="ParentId" data="0"/>
@@ -152,12 +152,35 @@
 					<property type="6" name="Speed" data="50"/>
 					<property type="8" name="StartEndIndex" data="0 0"/>
 					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="UsePickingMask" data="true"/>
+					<property type="7" name="ComponentMyGuiSpriteComponent" data="MyGuiSpriteComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2235247190"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.4 0.4"/>
+					<property type="8" name="Size" data="0.1 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Image" data="brush.png"/>
+					<property type="8" name="TileSize" data="32 32"/>
+					<property type="8" name="RowsCols" data="1 1"/>
+					<property type="12" name="Horizontal" data="true"/>
+					<property type="12" name="InverseDirection" data="false"/>
+					<property type="6" name="Speed" data="10"/>
+					<property type="8" name="StartEndIndex" data="0 0"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="UsePickingMask" data="true"/>
 				</userData>
 			</entity>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="10" z="0"/>
-			<rotation qw="0.0783618" qx="0.29619" qy="0.350225" qz="0.88514"/>
+			<rotation qw="0.0774008" qx="0.29549" qy="0.352151" qz="0.884695"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -288,7 +311,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 -1"/>
