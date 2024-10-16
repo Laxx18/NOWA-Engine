@@ -942,6 +942,7 @@ namespace NOWA
 		static const Ogre::String AttrActionNoUndo(void) { return "NoUndo"; }
 		static const Ogre::String AttrActionGenerateLuaFunction(void) { return "GenerateLuaFunction"; }
 		static const Ogre::String AttrActionReadOnly(void) { return "ReadOnly"; }
+		static const Ogre::String AttrActionLuaScript(void) { return "LuaScript"; }
 
 		// Custom data strings
 		static const Ogre::String AttrCustomDataSkipCreation(void) { return "SkipCreation"; }

@@ -65,6 +65,7 @@ namespace NOWA
 	{
 		this->scriptFile->setDescription("Name of the script file, e.g. 'Explosion.lua'.");
 		this->scriptFile->addUserData(GameObject::AttrActionNeedRefresh());
+		this->scriptFile->addUserData(GameObject::AttrActionLuaScript());
 		this->cloneScript->addUserData(GameObject::AttrActionNeedRefresh());
 		this->commonScript->addUserData(GameObject::AttrActionNeedRefresh());
 		this->cloneScript->setDescription("If activated, a copy of the original script will be made for the new game object with the new cloned name. Else the cloned components will have no lua script component."
@@ -521,6 +522,7 @@ namespace NOWA
 		}
 
 		this->luaScript->setScriptFile(tempScriptFileName);
+		this->scriptFile->addUserData(GameObject::AttrActionLuaScript(), NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + tempScriptFileName);
 	}
 
 	Ogre::String LuaScriptComponent::getScriptFile(void) const

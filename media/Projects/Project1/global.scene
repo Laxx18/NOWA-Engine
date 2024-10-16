@@ -13,7 +13,7 @@
 					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -46,11 +46,19 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Plane_0_5.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="1.81234" y="3.91271" z="1.55254"/>
+			<position x="0.49979" y="3.91271" z="1.63962"/>
 			<rotation qw="0.989011" qx="-0.144085" qy="0.0327701" qz="0.00477399"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
@@ -79,7 +87,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="1.81234 3.91271 1.55254"/>
+					<property type="9" name="CameraPosition" data="0.49979 3.91271 1.63962"/>
 					<property type="9" name="CameraOrientation" data="-16.5777 3.79551 -1.51993e-05"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>

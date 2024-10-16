@@ -4,6 +4,8 @@
 #include "modules/LuaScriptApi.h"
 #include "main/AppStateManager.h"
 
+#include <thread>
+
 namespace
 {
 	Ogre::String replaceAll(Ogre::String str, const Ogre::String& from, const Ogre::String& to)
@@ -23,11 +25,39 @@ namespace NOWA
 	DeployResourceModule::DeployResourceModule()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DeployResourceModule] Module created");
+
+		this->hwndNOWALuaScript = 0;
 	}
 
 	DeployResourceModule::~DeployResourceModule()
 	{
 		this->taggedResourceMap.clear();
+	}
+
+	void DeployResourceModule::sendFilePathToRunningInstance(const Ogre::String& filePathName)
+	{
+		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");  // Replace with the correct window title
+		if (this->hwndNOWALuaScript)
+		{
+			SetForegroundWindow(this->hwndNOWALuaScript);
+			SetForegroundWindow(this->hwndNOWALuaScript);
+
+			// Prepare a custom message identifier
+			std::string messageId = "LuaScriptPath";
+			std::string message = messageId + "|" + filePathName;  // Combine message ID and file path
+
+			COPYDATASTRUCT cds;
+			cds.dwData = 1;  // Optional identifier
+			cds.cbData = message.size() + 1;  // Size of the message (including null terminator)
+			cds.lpData = (void*)message.c_str();  // Pointer to the message
+
+			SendMessage(this->hwndNOWALuaScript, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
+		}
+		else
+		{
+			// If somehow mutex does exist, even it should not, release the mutex and create process again
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to find running instance of NOWALuaScript.");
+		}
 	}
 
 	void DeployResourceModule::destroyContent(void)
@@ -38,6 +68,63 @@ namespace NOWA
 	Ogre::String DeployResourceModule::getCurrentComponentPluginFolder(void) const
 	{
 		return this->currentComponentPluginFolder;
+	}
+
+	bool DeployResourceModule::openNOWALuaScriptEditor(const Ogre::String& filePathName)
+	{
+		// Try to create a named mutex
+		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");
+		if (0 != this->hwndNOWALuaScript)
+		{
+			// Instance already running, send file path to it
+			this->sendFilePathToRunningInstance(filePathName);
+			return true; // Return true when sending the file path to the existing instance
+		}
+
+		// No instance running, so start NOWALuaScript.exe
+		STARTUPINFOA si = { sizeof(STARTUPINFOA) };
+		PROCESS_INFORMATION pi;
+
+		std::string command = "../../external/NOWALuaScript/bin/NOWALuaScript.exe \"" + filePathName + "\"";
+
+		if (CreateProcessA(NULL, (LPSTR)command.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+		{
+			// Get the window handle of NOWALuaScript
+			this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");
+			
+
+			// Start a thread to monitor the process
+			std::thread([this, processHandle = pi.hProcess]()
+						{
+							this->monitorProcess(processHandle);
+						}).detach();
+
+			if (this->hwndNOWALuaScript != NULL)
+			{
+				// Bring the window to the foreground
+				SetForegroundWindow(this->hwndNOWALuaScript);
+				SetForegroundWindow(this->hwndNOWALuaScript);
+			}
+			// No need to wait for the process here; we handle it in the thread
+			CloseHandle(pi.hThread); // We can close the thread handle, we don't need it
+
+			return true; // Return true when the process is started
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to start NOWALuaScript.exe.");
+		}
+
+		return false;
+	}
+
+	void DeployResourceModule::monitorProcess(HANDLE processHandle)
+	{
+		// Wait for the process to exit
+		WaitForSingleObject(processHandle, INFINITE);
+
+		// Cleanup actions or notifications can go here
+		this->hwndNOWALuaScript = 0;
 	}
 
 	DeployResourceModule* DeployResourceModule::getInstance()

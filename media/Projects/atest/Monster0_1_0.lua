@@ -22,7 +22,6 @@ Monster0_1_0["connect"] = function(gameObject)
     -- Helps the ide to identify the component type for better intelli sense results
     monsterController = AppStateManager:getGameObjectController():castPhysicsPlayerControllerComponent(monsterController);
     
-    
     monsterAnimation = gameObject:getAnimationComponentV2():getAnimationBlender();
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_1, "T-pose");
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle-03");
@@ -123,7 +122,17 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
         otherGameObject = gameObject1;
     end
     
-    if (monsterController:getVelocity():squaredLength() > 10) then
-        terraGameObject:getTerraComponent():paintTerrainLoop(playerContact:getPosition(), 10, 2, 1);
+    if (!isActive) then
+        terraGameObject:getTerraComponent():paintTerrainStart(playerContact:getPosition(), 10, 2, 1);
+    else
+        terraGameObject:getTerraComponent():paintTerrainEnd();
     end
+    
+    if (monsterController:getVelocity():squaredLength() > 10) then
+        -- To expensive, as each time because of undo redo, fps dropdown
+        --terraGameObject:getTerraComponent():paintTerrainLoop(playerContact:getPosition(), 10, 2, 1);
+        terraGameObject:getTerraComponent():paintTerrain(playerContact:getPosition(), 10, 2);
+    end
+    
+    
 end

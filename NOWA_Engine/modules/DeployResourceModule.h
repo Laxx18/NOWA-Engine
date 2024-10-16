@@ -41,14 +41,22 @@ namespace NOWA
 		void destroyContent(void);
 
 		Ogre::String getCurrentComponentPluginFolder(void) const;
+
+		bool openNOWALuaScriptEditor(const Ogre::String& filePathName);
+
+		void monitorProcess(HANDLE processHandle);
 	public:
 		static DeployResourceModule* getInstance();
 	private:
 		DeployResourceModule();
 		~DeployResourceModule();
 	private:
+		// Function to send the file path to the running instance
+		void sendFilePathToRunningInstance(const Ogre::String& filePathName);
+	private:
 		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
 		Ogre::String currentComponentPluginFolder;
+		HWND hwndNOWALuaScript;
 	};
 
 }; //namespace end

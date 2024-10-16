@@ -526,8 +526,12 @@ namespace NOWA
 				return;
 			}
 
-			boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTerraModifyEnd);
+			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
+			if (false == Core::getSingletonPtr()->getIsGame())
+			{
+				boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTerraModifyEnd);
+			}
 
 			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
 			if (nullptr != component)
@@ -546,8 +550,13 @@ namespace NOWA
 				return;
 			}
 
-			boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraModifyEnd);
+			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
+			if (false == Core::getSingletonPtr()->getIsGame())
+			{
+
+				boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraModifyEnd);
+			}
 
 			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
 			if (nullptr != component)
@@ -572,8 +581,12 @@ namespace NOWA
 			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
-			boost::shared_ptr<EventDataTerraPaintEnd> eventDataTerraPaintEnd(new EventDataTerraPaintEnd(this->terra->paintTerrainFinished().first, this->terra->paintTerrainFinished().second, this->gameObjectPtr->getId()));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraPaintEnd);
+			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
+			if (false == Core::getSingletonPtr()->getIsGame())
+			{
+				boost::shared_ptr<EventDataTerraPaintEnd> eventDataTerraPaintEnd(new EventDataTerraPaintEnd(this->terra->paintTerrainFinished().first, this->terra->paintTerrainFinished().second, this->gameObjectPtr->getId()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraPaintEnd);
+			}
 		}
 	}
 

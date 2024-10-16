@@ -1544,6 +1544,15 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
 			this->itemsEdit.push_back(button);
 		}
+		else if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
+		{
+			MyGUI::Button* button = mWidgetClient->createWidget<MyGUI::Button>(MyGUI::WidgetStyle::Overlapped, "Button", MyGUI::IntCoord(valueLeft - 25, heightCurrent + 1, 20, 20), MyGUI::Align::Default, "Main", name + "button");
+			button->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
+			button->setCaption("L");
+			button->setUserData(MyGUI::Any(attribute));
+			button->eventMouseButtonClick += MyGUI::newDelegate(this, &PropertiesPanelDynamic::buttonHit);
+			this->itemsEdit.push_back(button);
+		}
 		break;
 	}
 	}
@@ -2398,6 +2407,11 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 			button->setStateCheck(!button->getStateCheck());
 		}
 
+		if (nullptr == attribute)
+		{
+			return;
+		}
+
 		// Snapshot the old attribute name
 		this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
 
@@ -2989,6 +3003,12 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 			// this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyEndDialog);
 
 			this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+		}
+		else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
+		{
+			Ogre::String relativeLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
+			Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
+			bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(luaScriptFilePathName);
 		}
 		else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
 		{
