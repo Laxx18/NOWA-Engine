@@ -17,6 +17,8 @@ public:
     Q_INVOKABLE void checkSyntax(const QString& filePathName, const QString& luaCode);
 
     Q_INVOKABLE void changeTab(int newTabIndex);
+
+    Q_INVOKABLE void requestSetLuaApi(const QString& filePathName, bool parseSilent);
 public:
     /**
      * @brief instance is the getter used to receive the object of this singleton implementation.
@@ -38,10 +40,14 @@ Q_SIGNALS:
     void signal_requestSyntaxCheck(const QString& filePathName, const QString& luaCode);
     void signal_syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message);
     void signal_changeTab(int newTabIndex);
+    void signal_requestSetLuaApi(const QString& filePathName, bool parseSilent);
+    void signal_luaApiPreparationResult(bool parseSilent, bool success, const QString& message);
 public Q_SLOTS:
     void handleIntellisenseResults(const QString& filePathName, const QStringList& suggestions);  // Slot to handle intellisense results
 
-    void syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString &message);
+    void syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message);
+
+    void luaApiPreparationResult(bool parseSilent, bool success, const QString& message);
 private:
     static LuaScriptQmlAdapter* ms_pInstance;
     static QMutex ms_mutex;

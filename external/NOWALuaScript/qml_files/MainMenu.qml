@@ -20,13 +20,13 @@ MenuBar
     Rectangle
     {
         anchors.fill: parent;
-        color: "green";
+        color: "darkslategrey";
     }
 
     FileDialog
     {
        id: fileOpenDialog;
-       currentFolder: Qt.resolvedUrl("../media/projects");
+       currentFolder: Qt.resolvedUrl("../../media/projects");
 
        nameFilters: ["Lua files (*.lua)"];
 
@@ -47,13 +47,68 @@ MenuBar
        }
     }
 
+    FileDialog
+    {
+       id: apiFileOpenDialog;
+       currentFolder: Qt.resolvedUrl("../bin/Release");
+
+       nameFilters: ["Lua Api File (*.lua)"];
+
+       onAccepted:
+       {
+           var selectedFilePath = apiFileOpenDialog.selectedFile.toString();
+
+           if (Qt.platform.os === "windows")
+           {
+               selectedFilePath = selectedFilePath.replace("file:///", "");
+           }
+           else
+           {
+               selectedFilePath = selectedFilePath.replace("file://", "/");
+           }
+           // false -> parseSilent: Give feedback if it could be parsed
+           LuaScriptQmlAdapter.requestSetLuaApi(selectedFilePath, false);
+       }
+    }
+
+    // Message dialog for unsaved changes prompt
+    MessageDialog
+    {
+        id: messageDialog;
+        visible: false;
+        // Prompt user to save changes
+        text: "Lua Api parse result";
+        informativeText: "";
+        buttons: MessageDialog.Ok;
+
+        // icon: StandardIcon.Warning;
+        onAccepted:
+        {
+            messageDialog.visible = false;
+        }
+    }
+
+    Connections
+    {
+        target: LuaScriptQmlAdapter;
+
+        function onSignal_luaApiPreparationResult(parseSilent, success, message)
+        {
+            if (!parseSilent)
+            {
+                messageDialog.visible = true;
+                messageDialog.informativeText = message;
+            }
+        }
+    }
+
     Menu
     {
-        title: qsTr("&File");
+        title: qsTr("File");
 
         Action
         {
-            text: qsTr("&Open...");
+            text: qsTr("Open...");
             shortcut: "Ctrl+O";
             icon.name: "document-open";  // Common icon for "Open"
             onTriggered: fileOpenDialog.open();
@@ -61,7 +116,7 @@ MenuBar
 
         Action
         {
-            text: qsTr("&Save");
+            text: qsTr("Save");
             shortcut: "Ctrl+S";
             enabled: NOWALuaEditorModel.hasChanges;
             icon.name: "document-save";  // Common icon for "Save"
@@ -89,7 +144,7 @@ MenuBar
 
             onTriggered:
             {
-                // NOWALuaEditorModel.requestAddLuaScript("C:/Users/lukas/Documents/NOWA-Engine/media/Projects/AiLuaTest/Jennifer_2.lua");
+                NOWALuaEditorModel.undo();
             }
         }
 
@@ -98,12 +153,16 @@ MenuBar
             text: qsTr("Redo");
             shortcut: "Ctrl+Y";
             icon.name: "edit-redo";
-            onTriggered: console.log("Redo action triggered");
+
+            onTriggered:
+            {
+                NOWALuaEditorModel.redo();
+            }
         }
 
         Action
         {
-            text: qsTr("&Copy");
+            text: qsTr("Copy");
             shortcut: StandardKey.Copy;
             icon.name: "edit-copy";
             onTriggered: console.log("Copy action triggered");
@@ -132,19 +191,39 @@ MenuBar
             icon.name: "edit-select-all";  // If available, for "Select All"
             onTriggered: console.log("Select All action triggered");
         }
+
+        Action
+        {
+            text: qsTr("Shift Lines");
+            icon.name: "Tab";
+            onTriggered: NOWALuaEditorModel.addTabToSelection();
+        }
+
+        Action
+        {
+            text: qsTr("Unshift Lines");
+            icon.name: "text-comment";  // Might need to check availability
+            onTriggered: NOWALuaEditorModel.removeTabFromSelection();
+        }
+
+        Action
+        {
+            text: qsTr("Comment");
+            icon.name: "text-comment";  // Might need to check availability
+            onTriggered: NOWALuaEditorModel.commentLines();
+        }
+
+        Action
+        {
+            text: qsTr("Uncomment");
+            icon.name: "text-comment";  // Might need to check availability
+            onTriggered: NOWALuaEditorModel.unCommentLines();
+        }
     }
 
     Menu
     {
         title: qsTr("Lua");
-
-        Action
-        {
-            text: qsTr("Comment/Uncomment");
-            shortcut: "Ctrl+Shift+7";
-            icon.name: "text-comment";  // Might need to check availability
-            onTriggered: console.log("Comment line triggered");
-        }
 
         Action
         {
@@ -158,7 +237,14 @@ MenuBar
             text: qsTr("Open Lua Script Folder");
             shortcut: "Ctrl+L";
             icon.name: "folder-open";  // Common icon for opening folders
-            onTriggered: console.log("Open Lua Script Folder triggered");
+            onTriggered: NOWALuaEditorModel.openProjectFolder();
+        }
+
+        Action
+        {
+            text: qsTr("Open Lua Api File");
+            // icon.name: "document-save";  // Common icon for "Save"
+            onTriggered: apiFileOpenDialog.open();
         }
     }
 

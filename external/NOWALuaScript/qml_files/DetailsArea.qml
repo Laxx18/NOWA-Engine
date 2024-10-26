@@ -11,7 +11,11 @@ Rectangle
 
     width: parent.width;
     height: 40;
-    color: "darkslategrey";
+    // color: "darkslategrey";
+    color: "white";
+
+    border.color: "darkgrey";
+    border.width: 2;
 
     // property string filePathName;
 
@@ -28,8 +32,7 @@ Rectangle
         // Dangerous!
         // interactive: false; // Prevent flickable from capturing input events
 
-        boundsMovement: Flickable.StopAtBounds
-        boundsBehavior: Flickable.DragAndOvershootBounds
+        boundsBehavior: Flickable.StopAtBounds;
 
         // Synchronize scroll position
         function ensureVisible(r)
@@ -65,8 +68,10 @@ Rectangle
             selectByMouse: true;
             persistentSelection: true;
 
+            color: "black";
+
             selectedTextColor: "black";
-            selectionColor: "cyan";
+            selectionColor: "#377dbd";
 
             onCursorRectangleChanged:
             {

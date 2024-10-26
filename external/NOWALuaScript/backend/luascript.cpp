@@ -48,6 +48,9 @@ bool LuaScript::loadScriptFromFile(const QString& filePathName)
     // Parse the Lua script and update internal data structures for intellisense
     qDebug() << "Lua script loaded from file:" << filePathName;
 
+    // Must be replaced, else addTab, indent does not work correctly, as it messes up with \t
+    luaCode.replace("\t", "    ");
+
     this->content = luaCode;
 
     Q_EMIT signal_luaScriptLoaded(luaCode);
@@ -121,21 +124,85 @@ void LuaScript::checkSyntax(const QString& luaCode)
 
         // Extract line number and error message using QRegularExpression
         int errorLine = -1;
-        QString errorMessage;
 
-        // Regex to match typical Lua error messages
-        QRegularExpression errorRegex("(.*):([0-9]+): (.*)");
+        // Not necessary and expensive
+#if 0
+        // Step 1: Extract keywords from error message for matching
+        // Look for the part of the error message that might be relevant to the code
+        QStringList keywords;
+        QRegularExpression quoteRegex("\"([^\"]+)\"");  // Match content inside double quotes
+        QRegularExpressionMatchIterator quoteIterator = quoteRegex.globalMatch(errorString);
+
+        while (quoteIterator.hasNext())
+        {
+            QRegularExpressionMatch quoteMatch = quoteIterator.next();
+            QString keyword = quoteMatch.captured(1).trimmed(); // Extract the matched group
+            if (!keyword.isEmpty())
+            {
+                keywords.append(keyword); // Add to keywords list
+            }
+        }
+
+        QStringList lines = luaCode.split('\n');
+        int bestMatchLine = -1;
+        int longestMatchLength = 0;  // Track the length of the longest match
+
+        for (int i = 0; i < lines.size(); ++i)
+        {
+            // Check if any keyword matches the line (case-insensitive)
+            for (const QString& keyword : keywords)
+            {
+                if (lines[i].contains(keyword, Qt::CaseInsensitive))
+                {
+                    // If a match is found, consider this line for the error
+                    int matchLength = keyword.length();
+                    if (matchLength > longestMatchLength)
+                    {
+                        longestMatchLength = matchLength;
+                        bestMatchLine = i;
+                    }
+                }
+            }
+        }
+
+        // If we found a best match, set the errorLine
+        if (bestMatchLine != -1)
+        {
+            errorLine = bestMatchLine + 1; // Set the error line based on the luaCode
+            qDebug() << "Error line found in luaCode: " << errorLine;
+        }
+#endif
+
+        // Step 2: Check for "file:line:message" format
+        QRegularExpression errorRegex(".*:([0-9]+):");
         QRegularExpressionMatch match = errorRegex.match(errorString);
 
         if (match.hasMatch())
         {
-            // Extract the line number and message
-            errorMessage = match.captured(3); // The actual error message
-            errorLine = match.captured(2).toInt(); // The line number
+            errorLine = match.captured(1).toInt();
+            qDebug() << "Error line set from 'file:line:message' to: " << errorLine;
         }
 
-        // Emit the syntax check result
-        Q_EMIT signal_syntaxCheckResult(false, errorLine, 0, 0, errorMessage);
+        // Step 3: Check for "at line X" in the error message
+        errorRegex.setPattern("at line ([0-9]+)");
+        match = errorRegex.match(errorString);
+
+        if (match.hasMatch())
+        {
+            // Found "at line X", set this as the error line
+            errorLine = match.captured(1).toInt();
+            qDebug() << "Error line set from 'at line X' to: " << errorLine;
+        }
+
+        if (-1 != errorLine)
+        {
+            Q_EMIT signal_syntaxCheckResult(false, errorLine, 0, 0, errorString);
+        }
+        else
+        {
+            // Emit the syntax check result
+            Q_EMIT signal_syntaxCheckResult(true, -1, 0, 0, "");
+        }
 
         lua_pop(this->lua, 1); // Pop the error message from the stack
         return;
@@ -148,6 +215,7 @@ void LuaScript::checkSyntax(const QString& luaCode)
     // If the code loads correctly, execute it
     result = lua_pcall(this->lua, 0, LUA_MULTRET, 0);
 }
+
 
 bool LuaScript::saveLuaScript(const QString& content)
 {

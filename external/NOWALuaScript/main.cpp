@@ -5,6 +5,7 @@
 #include "luascriptqmladapter.h"
 #include "luascriptadapter.h"
 #include "model/luaeditormodel.h"
+#include "model/apimodel.h"
 #include "qml/luaeditorqml.h"
 
 #include <QDebug>
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonType<LuaScriptQmlAdapter>("NOWALuaScript", 1, 0, "LuaScriptQmlAdapter", LuaScriptQmlAdapter::getSingletonTypeProvider);
     qmlRegisterSingletonType<LuaEditorModel>("NOWALuaScript", 1, 0, "NOWALuaEditorModel", LuaEditorModel::getSingletonTypeProvider);
     qmlRegisterUncreatableType<LuaEditorModelItem>("NOWALuaScript", 1, 0, "LuaScriptModelItem", "Not ment to be created in qml.");
+    qmlRegisterSingletonType<ApiModel>("NOWALuaScript", 1, 0, "NOWAApiModel", ApiModel::getSingletonTypeProvider);
     // Register LuaEditorQml as a QML type
     qmlRegisterType<LuaEditorQml>("NOWALuaScript", 1, 0, "LuaEditorQml");
 

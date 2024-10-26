@@ -19,7 +19,31 @@ public:
 
     Q_INVOKABLE int count(void);
 
-    Q_INVOKABLE LuaEditorModelItem* getLuaScript(int index) const;
+    Q_INVOKABLE LuaEditorModelItem* getEditorModelItem(int index) const;
+
+    Q_INVOKABLE void commentLines(void);
+
+    Q_INVOKABLE void unCommentLines(void);
+
+    Q_INVOKABLE void addTabToSelection(void);
+
+    Q_INVOKABLE void removeTabFromSelection(void);
+
+    Q_INVOKABLE void breakLine(void);
+
+    Q_INVOKABLE void searchInTextEdit(const QString& searchText, bool wholeWord, bool caseSensitive);
+
+    Q_INVOKABLE void replaceInTextEdit(const QString& searchText, const QString& replaceText);
+
+    Q_INVOKABLE void clearSearch(void);
+
+    Q_INVOKABLE void undo(void);
+
+    Q_INVOKABLE void redo(void);
+
+    Q_INVOKABLE void openProjectFolder(void);
+
+    Q_INVOKABLE void sendTextToEditor(const QString& text);
 public:
     Q_PROPERTY(bool hasChanges READ getHasChanges NOTIFY hasChangesChanged FINAL)
 

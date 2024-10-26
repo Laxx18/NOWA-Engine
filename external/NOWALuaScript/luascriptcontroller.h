@@ -31,6 +31,8 @@ public slots:
     void slot_saveLuaScript(const QString& filePathName, const QString& content);
 
     void slot_luaScriptSaved();
+
+    void prepareLuaApi(const QString& filePathName, bool parseSilent);
 private:
     LuaEditorQml* createNewLuaEditorQml(void);
 

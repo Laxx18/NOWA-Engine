@@ -189,7 +189,7 @@ int LuaEditorModel::count(void)
     return this->luaScripts.size();
 }
 
-LuaEditorModelItem* LuaEditorModel::getLuaScript(int index) const
+LuaEditorModelItem* LuaEditorModel::getEditorModelItem(int index) const
 {
     if (index < 0 || index >= this->luaScripts.count())
     {
@@ -197,6 +197,114 @@ LuaEditorModelItem* LuaEditorModel::getLuaScript(int index) const
     }
 
     return this->luaScripts.at(index);
+}
+
+void LuaEditorModel::commentLines()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_commentLines();
+    }
+}
+
+void LuaEditorModel::unCommentLines()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_unCommentLines();
+    }
+}
+
+void LuaEditorModel::addTabToSelection()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_addTabToSelection();
+    }
+}
+
+void LuaEditorModel::removeTabFromSelection()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_removeTabFromSelection();
+    }
+}
+
+void LuaEditorModel::breakLine()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_breakLine();
+    }
+}
+
+void LuaEditorModel::searchInTextEdit(const QString& searchText, bool wholeWord, bool caseSensitive)
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_searchInTextEdit(searchText, wholeWord, caseSensitive);
+    }
+}
+
+void LuaEditorModel::replaceInTextEdit(const QString& searchText, const QString& replaceText)
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_replaceInTextEdit(searchText, replaceText);
+    }
+}
+
+void LuaEditorModel::clearSearch()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_clearSearch();
+    }
+}
+
+void LuaEditorModel::undo()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_undo();
+    }
+}
+
+void LuaEditorModel::redo()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        Q_EMIT luaEditorModelItem->signal_redo();
+    }
+}
+
+void LuaEditorModel::openProjectFolder()
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        luaEditorModelItem->openProjectFolder();
+    }
+}
+
+void LuaEditorModel::sendTextToEditor(const QString& text)
+{
+    const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
+    if (Q_NULLPTR != luaEditorModelItem)
+    {
+        luaEditorModelItem->signal_sendTextToEditor(text);
+    }
 }
 
 void LuaEditorModel::updateTitle(int row, const QString& newTitle)

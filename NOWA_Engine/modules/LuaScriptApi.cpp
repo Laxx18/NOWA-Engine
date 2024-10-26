@@ -5095,8 +5095,8 @@ namespace NOWA
 		// gameObjectController.def("registerType", &GameObjectController::registerType);
 		// For lua api auto complete when use functions, e.g. connect(gameObject), what is gameObject?
 		gameObjectController.def("castGameObject", &GameObjectController::cast<GameObject>);
-		gameObjectController.def("castContactData", &GameObjectController::cast<OgreNewt::Contact>);
-		gameObjectController.def("castMouseButton", &GameObjectController::cast<OIS::MouseButtonID>);
+		gameObjectController.def("castContact", &GameObjectController::cast<OgreNewt::Contact>);
+		gameObjectController.def("castMouseButtonID", &GameObjectController::cast<OIS::MouseButtonID>);
 
 		gameObjectController.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
 		gameObjectController.def("castAnimationComponent", &GameObjectController::cast<AnimationComponent>);
@@ -5185,6 +5185,7 @@ namespace NOWA
 		gameObjectController.def("castPhysicsCompoundConnectionComponent", &GameObjectController::cast<PhysicsCompoundConnectionComponent>);
 		gameObjectController.def("castPhysicsMaterialComponent", &GameObjectController::cast<PhysicsMaterialComponent>);
 		gameObjectController.def("castPhysicsPlayerControllerComponent", &GameObjectController::cast<PhysicsPlayerControllerComponent>);
+		gameObjectController.def("castPlayerContact", &GameObjectController::cast<PlayerContact>);
 		gameObjectController.def("castPhysicsActiveVehicleComponent", &GameObjectController::cast<PhysicsActiveVehicleComponent>);
 		gameObjectController.def("castPlaneComponent", &GameObjectController::cast<PlaneComponent>);
 		gameObjectController.def("castSimpleSoundComponent", &GameObjectController::cast<SimpleSoundComponent>);
@@ -5345,6 +5346,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "PhysicsCompoundConnectionComponent castPhysicsCompoundConnectionComponent(PhysicsCompoundConnectionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsMaterialComponent castPhysicsMaterialComponent(PhysicsMaterialComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsPlayerControllerComponent castPhysicsPlayerControllerComponent(PhysicsPlayerControllerComponent other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "PlayerContact castPlayerContact(PlayerContact other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsActiveVehicleComponent castPhysicsActiveVehicleComponent(PhysicsActiveVehicleComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PlaneComponent castPlaneComponent(PlaneComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "SimpleSoundComponent castSimpleSoundComponent(SimpleSoundComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -8514,7 +8516,7 @@ namespace NOWA
 
 		module(lua)
 			[
-				class_<CompositorEffectBloomComponent, CompositorEffectBaseComponent>("CompositorEffectBaseComponent")
+				class_<CompositorEffectBloomComponent, CompositorEffectBaseComponent>("CompositorEffectBloomComponent")
 				.def("setImageWeight", &CompositorEffectBloomComponent::setImageWeight)
 			.def("getImageWeight", &CompositorEffectBloomComponent::getImageWeight)
 			.def("setBlurWeight", &CompositorEffectBloomComponent::setBlurWeight)

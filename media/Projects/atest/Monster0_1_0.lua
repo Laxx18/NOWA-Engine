@@ -116,6 +116,8 @@ end
 Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerContact)
     local otherGameObject = nil;
     
+    --playerContact = AppStateManager:getGameObjectController():castPlayerContact(playerContact);
+    
     if (gameObject0 ~= monsterGameObject) then
         otherGameObject = gameObject0;
     else

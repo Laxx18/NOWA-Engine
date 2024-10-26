@@ -33,6 +33,11 @@ void LuaScriptQmlAdapter::changeTab(int newTabIndex)
     Q_EMIT signal_changeTab(newTabIndex);
 }
 
+void LuaScriptQmlAdapter::requestSetLuaApi(const QString& filePathName, bool parseSilent)
+{
+    Q_EMIT signal_requestSetLuaApi(filePathName, parseSilent);
+}
+
 void LuaScriptQmlAdapter::requestIntellisense(const QString& filePathName, const QString& currentText)
 {
     Q_EMIT signal_requestIntellisense(filePathName, currentText);
@@ -51,4 +56,9 @@ void LuaScriptQmlAdapter::handleIntellisenseResults(const QString& filePathName,
 void LuaScriptQmlAdapter::syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message)
 {
     Q_EMIT signal_syntaxCheckResult(filePathName, valid, line, start, end, message);
+}
+
+void LuaScriptQmlAdapter::luaApiPreparationResult(bool parseSilent, bool success, const QString& message)
+{
+    Q_EMIT signal_luaApiPreparationResult(parseSilent, success, message);
 }

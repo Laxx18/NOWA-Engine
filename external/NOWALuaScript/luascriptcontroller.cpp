@@ -1,8 +1,8 @@
 #include "luascriptcontroller.h"
-#include "backend/luascript.h"
 #include "luascriptadapter.h"
 
 #include "model/luaeditormodelitem.h"
+#include "model/apimodel.h"
 
 #include <QDebug>
 
@@ -22,36 +22,25 @@ LuaScriptController::LuaScriptController(QQmlApplicationEngine* qmlEngine, QShar
 
 
     // Connecting request from QML to backend
-    connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestIntellisense, ptrLuaScriptAdapter.data(), &LuaScriptAdapter::generateIntellisense);
+    // connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestIntellisense, ptrLuaScriptAdapter.data(), &LuaScriptAdapter::generateIntellisense);
 
     connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestSyntaxCheck, ptrLuaScriptAdapter.data(), &LuaScriptAdapter::checkSyntax);
+
+    connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_luaApiPrepareInitial, this, &LuaScriptController::prepareLuaApi);
+
+    connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestSetLuaApi, this, &LuaScriptController::prepareLuaApi);
 
     // Connecting backend response to QML
     connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_intellisenseReady, this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::handleIntellisenseResults);
 
     connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_syntaxCheckResult, this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::syntaxCheckResult);
+
+    connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_luaApiPrepareResult, this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::luaApiPreparationResult);
+
 }
 
 LuaScriptController::~LuaScriptController()
 {
-#if 0
-    for (auto& pQmlNode : m_qmlNodes)
-    {
-        // remove child pin qml objects first (don't make the lose their parent!!!)
-        for (const auto& pin : pQmlNode->sinkQmlPins())
-        {
-            pin.value<Workbench_Internal__PinBase_QML*>()->deleteLater();
-        }
-
-        for (const auto& pin : pQmlNode->sourceQmlPins())
-        {
-            pin.value<Workbench_Internal__PinBase_QML*>()->deleteLater();
-        }
-
-        pQmlNode->deleteLater();
-    }
-#endif
-
     // Removes child pin qml objects first (don't make the lose their parent!)
     for (const auto& luaEditorQml : this->luaEditorQmls)
     {
@@ -124,6 +113,8 @@ void LuaScriptController::slot_createLuaScript(const QString& filePathName)
     // luaEditorQml->setProperty("filePathName", tempFilePathName);
     luaEditorQml->setModel(luaEditorModelItem);
 
+    // connect(luaEditorQml, &LuaEditorQml::currentTextChanged, ApiModel::instance(), &ApiModel::onCurrentTextChanged);
+
     this->luaEditorModel->addLuaScript(luaEditorModelItem);
 
     // Sets the new script as active one
@@ -181,6 +172,18 @@ void LuaScriptController::slot_saveLuaScript(const QString& filePathName, const 
 void LuaScriptController::slot_luaScriptSaved()
 {
     this->luaEditorModel->luaScriptSaved();
+}
+
+void LuaScriptController::prepareLuaApi(const QString& filePathName, bool parseSilent)
+{
+    const auto& apiData = this->ptrLuaScriptAdapter->prepareLuaApi(filePathName, parseSilent);
+    if (true == apiData.empty())
+    {
+        qDebug() << "Error parsing lua api for file path name: " << filePathName;
+        return;
+    }
+
+    ApiModel::instance()->setApiData(apiData);
 }
 
 LuaEditorQml* LuaScriptController::createNewLuaEditorQml(void)

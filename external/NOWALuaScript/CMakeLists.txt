@@ -15,7 +15,7 @@ set(NOWA_ENGINE_PATH $ENV{NOWA})
 # Print it out (for debugging purposes)
 message(STATUS "NOWA path is: ${NOWA_ENGINE_PATH}")
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick Concurrent)
 
 # Manually specifies the library path
 set(LUA_LIBRARIES "${CMAKE_SOURCE_DIR}/lua-5_2/lib/lua.lib")
@@ -34,6 +34,8 @@ set(QML_FILES
     qml_files/LuaEditor.qml
     qml_files/Main.qml
     qml_files/MainMenu.qml
+    qml_files/SearchDialog.qml
+    qml_files/IntelliSenseContextMenu.qml
 )
 
 qt_add_resources(NOWALuaScript "qml"
@@ -56,17 +58,13 @@ qt_add_qml_module(NOWALuaScript
     SOURCES backend/luascript.cpp
     SOURCES model/luaeditormodelitem.h model/luaeditormodelitem.cpp
     SOURCES model/luaeditormodel.h model/luaeditormodel.cpp
+    SOURCES model/apimodel.h model/apimodel.cpp
+    SOURCES model/matchclassworker.h model/matchclassworker.cpp
     SOURCES qml/luaeditorqml.h qml/luaeditorqml.cpp
+    SOURCES qml/luahighlighter.h qml/luahighlighter.cpp
     SOURCES luascriptadapter.h luascriptadapter.cpp
     RESOURCES qml.qrc
 )
-
-#qt_add_resources(NOWALuaScript "qml"
-#    PREFIX
-#        "/"
-#    FILES
-#        qml.qrc
-#)
 
 set_target_properties(NOWALuaScript PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -78,7 +76,7 @@ set_target_properties(NOWALuaScript PROPERTIES
 include_directories(${LUA_INCLUDE_DIR})
 
 target_link_libraries(NOWALuaScript
-    PRIVATE Qt6::Quick
+    PRIVATE Qt6::Quick Qt6::Concurrent
     ${LUA_LIBRARIES}
 )
 

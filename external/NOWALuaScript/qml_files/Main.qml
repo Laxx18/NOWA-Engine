@@ -23,6 +23,10 @@ ApplicationWindow
     Material.foreground: "#FFFFFF";
     Material.background: "#1E1E1E";
 
+    color: "darkslategrey";
+
+    id: root;
+
     menuBar: MainMenu
     {
 
@@ -112,26 +116,6 @@ ApplicationWindow
 
         width: parent.width;
         currentIndex: tabBar.currentIndex;
-
-        // Repeater
-        // {
-        //     // NOTE: Do not change this names, as they are used for object matching in C++
-        //     id: luaEditorRepeater;
-        //     objectName: "luaEditorRepeater";
-
-        //     model: NOWALuaEditorModel;
-
-            // delegate: LuaEditor
-            // {
-            //     id: luaEditorDelegate;
-            //     filePathName: NOWALuaEditorModel.getLuaScript(index).filePathName;
-
-            //     onHasChangesChanged:
-            //     {
-            //         tabBar.unsavedChanges[index] = true;
-            //     }
-            // }
-       // }
     }
 
     // Function to close the tab
@@ -173,6 +157,90 @@ ApplicationWindow
         }
     }
 
+    SearchDialog
+    {
+        id: searchDialog;
+        x: luaEditorContainer.width - searchDialog.width - 20;
+        y: 120;
+    }
+
+    IntelliSenseContextMenu
+    {
+        id: intelliSenseContextMenu;
+        z: 2;
+        visible: false;
+    }
+
+    // Overlay Rectangle to detect clicks outside of the menu
+    Rectangle
+    {
+        id: overlay;
+        anchors.fill: parent;
+        color: "transparent";
+        z: 1;
+        visible: intelliSenseContextMenu.visible;
+
+        MouseArea
+        {
+            anchors.fill: parent;
+            onClicked:
+            {
+                intelliSenseContextMenu.visible = false;
+                NOWAApiModel.isShown = false;
+            }
+        }
+    }
+
+    // Shortcut to open the search window with Ctrl+F
+    Shortcut
+    {
+        sequence: "Ctrl+F";
+        onActivated:
+        {
+            searchDialog.visible = !searchDialog.visible; // Toggle visibility
+            if (searchDialog.visible)
+            {
+               searchDialog.raise(); // Bring the window to the front
+            }
+        }
+    }
+
+    Shortcut
+    {
+        sequence: "Shift+Tab";
+        onActivated:
+        {
+            NOWALuaEditorModel.addTabToSelection();
+        }
+    }
+
+    Shortcut
+    {
+        sequence: "Ctrl+Tab";
+        onActivated:
+        {
+            NOWALuaEditorModel.removeTabFromSelection();
+        }
+    }
+
+    Shortcut
+    {
+        sequence: "Ctrl+Shift+7";
+        onActivated:
+        {
+            NOWALuaEditorModel.commentLines();
+        }
+    }
+
+    Shortcut
+    {
+        sequence: "Ctrl+Shift+8";
+        onActivated:
+        {
+            NOWALuaEditorModel.unCommentLines();
+        }
+    }
+
     Connections
     {
         target: LuaScriptQmlAdapter;
@@ -180,6 +248,21 @@ ApplicationWindow
         function onSignal_changeTab(newTabIndex)
         {
             tabBar.currentIndex = newTabIndex; // Change the current tab index
+        }
+    }
+
+    Connections
+    {
+        target: NOWAApiModel;
+
+        function onSignal_showIntelliSenseMenu(x, y)
+        {
+            intelliSenseContextMenu.open(x, y);
+        }
+
+        function onSignal_closeIntellisense()
+        {
+            intelliSenseContextMenu.visible = false;
         }
     }
 }
