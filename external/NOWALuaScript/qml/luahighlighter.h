@@ -41,7 +41,7 @@ public:
 
     void redo(void);
 
-    void insertText(const QString& text);
+    void insertText(int sizeToReplace, const QString& text);
 protected:
     void highlightBlock(const QString& text) override;
 

@@ -6,6 +6,7 @@
 #include <QThread>
 
 #include "matchclassworker.h"
+#include "matchmethodworker.h"
 
 class LuaEditorModelItem : public QObject
 {
@@ -63,6 +64,10 @@ public slots:
     void startIntellisenseProcessing(const QString& currentText, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
 
     void closeIntellisense(void);
+
+    void startMatchedFunctionProcessing(const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+
+    void closeMatchedFunction();
 Q_SIGNALS:
     void filePathNameChanged();
 
@@ -105,8 +110,13 @@ private:
     bool firstTimeContent;
     QMap<QString, LuaVariableInfo> variableMap;
 
-    MatchClassWorker* worker;
-    QThread* thread;
+    MatchClassWorker* matchClassWorker;
+    QThread* matchClassThread;
+
+    MatchMethodWorker* matchMethodWorker;
+    QThread* matchMethodThread;
+
+    QString matchedClassName;
 };
 
 #endif // LUAEDITORMODELITEM_H

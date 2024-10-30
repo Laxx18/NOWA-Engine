@@ -35,7 +35,6 @@ public:
     bool saveLuaScript(const QString& content);
 Q_SIGNALS:
     void signal_luaScriptLoaded(const QString& content);
-    void signal_intellisenseReady(const QStringList& suggestions);
     void signal_syntaxCheckResult(bool valid, int line, int start, int end, const QString& message);
 private:
     // Internal helper methods and members for parsing

@@ -186,9 +186,15 @@ ApplicationWindow
             onClicked:
             {
                 intelliSenseContextMenu.visible = false;
-                NOWAApiModel.isShown = false;
+                NOWAApiModel.isIntellisenseShown = false;
             }
         }
+    }
+
+    MatchedFunctionContextMenu
+    {
+        id: matchedFunctionContextMenu;
+        visible: false;
     }
 
     // Shortcut to open the search window with Ctrl+F
@@ -262,7 +268,22 @@ ApplicationWindow
 
         function onSignal_closeIntellisense()
         {
-            intelliSenseContextMenu.visible = false;
+            intelliSenseContextMenu.close();
+        }
+    }
+
+    Connections
+    {
+        target: NOWAApiModel;
+
+        function onSignal_showMatchedFunctionMenu(x, y)
+        {
+            matchedFunctionContextMenu.open(x, y);
+        }
+
+        function onSignal_closeMatchedFunctionMenu()
+        {
+            matchedFunctionContextMenu.close();
         }
     }
 }

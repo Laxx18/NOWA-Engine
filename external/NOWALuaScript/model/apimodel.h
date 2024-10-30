@@ -19,11 +19,20 @@ public:
 
     Q_PROPERTY(QString selectedClassName READ getSelectedClassName WRITE setSelectedClassName NOTIFY selectedClassNameChanged FINAL)
 
+    Q_PROPERTY(QString selectedMethodName READ getSelectedMethodName WRITE setSelectedMethodName NOTIFY selectedMethodNameChanged FINAL)
+
     Q_PROPERTY(QVariantList methodsForSelectedClass READ getMethodsForSelectedClass NOTIFY methodsForSelectedClassChanged)
 
-    Q_PROPERTY(bool isShown READ getIsShown WRITE setIsShown NOTIFY isShownChanged FINAL)
+    Q_PROPERTY(QVariantList constantsForSelectedClass READ getConstantsForSelectedClass NOTIFY constantsForSelectedClassChanged)
+
+    Q_PROPERTY(bool isIntellisenseShown READ getIsIntellisenseShown WRITE setIsIntellisenseShown NOTIFY isIntellisenseShownChanged FINAL)
+
+    Q_PROPERTY(bool isMatchedFunctionShown READ getIsMatchedFunctionShown WRITE setIsMatchedFunctionShown NOTIFY isMatchedFunctionShownChanged FINAL)
+
 public:
     Q_INVOKABLE void showIntelliSenseMenu(const QString& wordBeforeColon, int mouseX, int mouseY);
+
+    Q_INVOKABLE void showMatchedFunctionMenu(int mouseX, int mouseY);
 public:
     explicit ApiModel(QObject* parent = Q_NULLPTR);
 
@@ -62,15 +71,29 @@ public:
 
     void setSelectedClassName(const QString& selectedClassName);
 
+    QString getSelectedMethodName() const;
+
+    void setSelectedMethodName(const QString& selectedMethodName);
+
     QVariantList getMethodsForSelectedClass() const;
 
+    QVariantList getConstantsForSelectedClass() const;
+
     void processMatchedMethodsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon);
+
+    void processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon);
 
     QString getClassForMethodName(const QString& className, const QString& methodName);
 
     bool isValidClassName(const QString& className);
 
+    bool isValidMethodName(const QString& className, const QString& methodName);
+
     void closeIntellisense(void);
+
+    void closeMatchedFunction(void);
+
+    QVariantMap getMethodDetails(const QString& selectedClassName, const QString& methodName);
 
     QString getClassType() const;
 
@@ -84,14 +107,24 @@ public:
 
     void setClassInherits(const QString& classInherits);
 
-    bool getIsShown() const;
+    bool getIsIntellisenseShown() const;
 
-    void setIsShown(bool isShown);
+    void setIsIntellisenseShown(bool isIntellisenseShown);
+
+    bool getIsMatchedFunctionShown() const;
+
+    void setIsMatchedFunctionShown(bool isMatchedFunctionShown);
+
+    void setConstantsForSelectedClass(const QVariantList& constantsForSelectedClass);
 
 Q_SIGNALS:
     void selectedClassNameChanged();
 
+    void selectedMethodNameChanged();
+
     void methodsForSelectedClassChanged();
+
+    void constantsForSelectedClassChanged();
 
     void classTypeChanged();
 
@@ -103,7 +136,19 @@ Q_SIGNALS:
 
     void signal_closeIntellisense();
 
-    void isShownChanged();
+    void signal_showMatchedFunctionMenu(int mouseX, int mouseY);
+
+    void signal_highlightFunctionParameter(const QString& methodName, const QString& description, int startIndex, int endIndex);
+
+    void signal_noHighlightFunctionParameter();
+
+    void signal_closeMatchedFunctionMenu();
+
+    void signal_getSelectedMethodDetails(const QString& description, const QString& returns, const QString& methodName, const QString& args);
+
+    void isIntellisenseShownChanged();
+
+    void isMatchedFunctionShownChanged();
 
 private:
     static ApiModel* ms_pInstance;
@@ -113,19 +158,24 @@ private:
 
     bool updateMethodsForSelectedClass(); // Helper function to update methods
 
+    bool updateConstantsForSelectedClass(); // Helper function to update methods
+
     QVariantList getMethodsForClassName(const QString& className);
 
-    QVariantMap getMethodDetails(const QString& selectedClassName, const QString& method);
+    QVariantList getConstantsForClassName(const QString& className);
 private:
     QMap<QString, LuaScriptAdapter::ClassData> apiData;
     QString selectedClassName;
+    QString selectedMethodName;
     QVariantList methodsForSelectedClass;
+    QVariantList constantsForSelectedClass;
 
     QString classType;
     QString classDescription;
     QString classInherits;
 
-    bool isShown;
+    bool isIntellisenseShown;
+    bool isMatchedFunctionShown;
 };
 
 #endif // APIMODEL_H

@@ -43,7 +43,6 @@ public:
     bool saveLuaScript(const QString& filePathName, const QString& content);
 
 public Q_SLOTS:
-    void generateIntellisense(const QString& filePathName, const QString& currentText);  // Generate intellisense based on current text
 
     void checkSyntax(const QString& filePathName, const QString& luaCode);
 
@@ -51,7 +50,6 @@ public Q_SLOTS:
 Q_SIGNALS:
     void signal_luaApiPrepareInitial(const QString& filePathName, bool parseSilent);
     void signal_luaScriptReady(const QString& filePathName, const QString& content);
-    void signal_intellisenseReady(const QString& filePathName, const QStringList& suggestions);
     void signal_syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message);
     void signal_luaScriptSaved();
     void signal_luaApiPrepareResult(bool silent, bool success, const QString& message);

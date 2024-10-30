@@ -25,12 +25,6 @@ LuaScript::~LuaScript()
     }
 }
 
-void LuaScript::generateIntellisense(const QString& currentText)
-{
-    QStringList suggestions = searchSuggestions(currentText);
-    Q_EMIT signal_intellisenseReady(suggestions);
-}
-
 bool LuaScript::loadScriptFromFile(const QString& filePathName)
 {
     QFile file(filePathName);
@@ -56,17 +50,6 @@ bool LuaScript::loadScriptFromFile(const QString& filePathName)
     Q_EMIT signal_luaScriptLoaded(luaCode);
 
     return true;
-}
-
-QStringList LuaScript::searchSuggestions(const QString& text)
-{
-    // Example logic: Placeholder for real intellisense processing
-    QStringList suggestions;
-    if (text.startsWith("Ai"))
-    {
-        suggestions << "AiComponent" << "AiFlockingComponent";
-    }
-    return suggestions;
 }
 
 QString LuaScript::getFilePathName() const

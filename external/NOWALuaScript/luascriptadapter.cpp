@@ -71,12 +71,6 @@ QPair<int, LuaEditorModelItem*> LuaScriptAdapter::createLuaScript(const QString&
 
     this->luaScripts.append(luaScript);
 
-    // Connecting backend response to QML
-    connect(luaScript, &LuaScript::signal_intellisenseReady, this, [this, luaScript](const QStringList& suggestions)
-    {
-                 Q_EMIT signal_intellisenseReady(luaScript->getFilePathName(), suggestions);
-    }, Qt::QueuedConnection);
-
     connect(luaScript, &LuaScript::signal_syntaxCheckResult, this, [this, luaScript](bool valid, int line, int start, int end, const QString& message)
     {
                  Q_EMIT signal_syntaxCheckResult(luaScript->getFilePathName(), valid, line, start, end, message);
@@ -199,16 +193,6 @@ bool LuaScriptAdapter::saveLuaScript(const QString& filePathName, const QString&
     }
 
     return success;
-}
-
-void LuaScriptAdapter::generateIntellisense(const QString& filePathName, const QString& currentText)
-{
-    int index = this->findLuaScript(filePathName);
-    if (-1 != index)
-    {
-        LuaScript* luaScript = this->luaScripts.at(index);
-        luaScript->generateIntellisense(currentText);
-    }
 }
 
 void LuaScriptAdapter::checkSyntax(const QString& filePathName, const QString& luaCode)

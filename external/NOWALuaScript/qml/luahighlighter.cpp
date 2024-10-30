@@ -238,7 +238,7 @@ void LuaHighlighter::redo()
     }
 }
 
-void LuaHighlighter::insertText(const QString& text)
+void LuaHighlighter::insertText(int sizeToReplace, const QString& text)
 {
     // Begin an edit block to group changes for undo/redo
     this->cursor.beginEditBlock();
@@ -246,6 +246,10 @@ void LuaHighlighter::insertText(const QString& text)
     QTextCursor cursor = this->cursor;
     QTextBlock block = currentBlock();  // Get the current block
 
+    // Move cursor backwards by sizeToReplace characters to select them
+    cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, sizeToReplace);
+
+    // Insert the new text, replacing the selected characters
     cursor.insertText(text);
 
     this->cursor = cursor;  // Update the cursor after the replacement
@@ -438,6 +442,7 @@ void LuaHighlighter::removeTabFromSelection()
     this->cursor.endEditBlock();
 }
 
+#if 0
 void LuaHighlighter::breakLine()
 {
     this->cursor.beginEditBlock();
@@ -465,6 +470,37 @@ void LuaHighlighter::breakLine()
     this->cursor.movePosition(QTextCursor::StartOfBlock);
 
     // Insert the same number of spaces in the new line
+    if (indentationLevel > 0)
+    {
+        this->cursor.insertText(QString(indentationLevel, ' '));
+    }
+
+    this->cursor.endEditBlock();
+}
+#endif
+
+void LuaHighlighter::breakLine()
+{
+    this->cursor.beginEditBlock();
+
+    // Get the current block and determine the cursor's position within it
+    QTextBlock currentBlock = this->cursor.block();
+    int positionInBlock = this->cursor.position() - currentBlock.position();
+
+    // Get the text of the current line up to the cursor's position
+    QString currentBlockText = currentBlock.text().left(positionInBlock);
+
+    // Insert a line break at the cursor's current position
+    this->cursor.insertText("\n");
+
+    // Determine indentation level by counting leading spaces in the current line up to the cursor position
+    int indentationLevel = 0;
+    while (indentationLevel < currentBlockText.length() && currentBlockText[indentationLevel] == ' ')
+    {
+        indentationLevel++;
+    }
+
+    // Insert the same number of spaces at the start of the new line
     if (indentationLevel > 0)
     {
         this->cursor.insertText(QString(indentationLevel, ' '));

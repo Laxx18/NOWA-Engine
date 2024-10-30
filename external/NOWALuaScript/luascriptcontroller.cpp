@@ -20,10 +20,6 @@ LuaScriptController::LuaScriptController(QQmlApplicationEngine* qmlEngine, QShar
     connect(luaEditorModel, &LuaEditorModel::signal_requestSaveLuaScript, this, &LuaScriptController::slot_saveLuaScript);
     connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_luaScriptSaved, this, &LuaScriptController::slot_luaScriptSaved);
 
-
-    // Connecting request from QML to backend
-    // connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestIntellisense, ptrLuaScriptAdapter.data(), &LuaScriptAdapter::generateIntellisense);
-
     connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestSyntaxCheck, ptrLuaScriptAdapter.data(), &LuaScriptAdapter::checkSyntax);
 
     connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_luaApiPrepareInitial, this, &LuaScriptController::prepareLuaApi);
@@ -31,7 +27,6 @@ LuaScriptController::LuaScriptController(QQmlApplicationEngine* qmlEngine, QShar
     connect(this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::signal_requestSetLuaApi, this, &LuaScriptController::prepareLuaApi);
 
     // Connecting backend response to QML
-    connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_intellisenseReady, this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::handleIntellisenseResults);
 
     connect(ptrLuaScriptAdapter.data(), &LuaScriptAdapter::signal_syntaxCheckResult, this->luaScriptQmlAdapter, &LuaScriptQmlAdapter::syntaxCheckResult);
 

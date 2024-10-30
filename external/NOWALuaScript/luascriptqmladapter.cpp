@@ -38,19 +38,14 @@ void LuaScriptQmlAdapter::requestSetLuaApi(const QString& filePathName, bool par
     Q_EMIT signal_requestSetLuaApi(filePathName, parseSilent);
 }
 
-void LuaScriptQmlAdapter::requestIntellisense(const QString& filePathName, const QString& currentText)
+void LuaScriptQmlAdapter::relayKeyPress(int key)
 {
-    Q_EMIT signal_requestIntellisense(filePathName, currentText);
+    Q_EMIT signal_relayKeyPress(key);
 }
 
 void LuaScriptQmlAdapter::checkSyntax(const QString& filePathName, const QString& luaCode)
 {
     Q_EMIT signal_requestSyntaxCheck(filePathName, luaCode);
-}
-
-void LuaScriptQmlAdapter::handleIntellisenseResults(const QString& filePathName, const QStringList& suggestions)
-{
-    Q_EMIT signal_intellisenseReady(filePathName, suggestions);
 }
 
 void LuaScriptQmlAdapter::syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message)

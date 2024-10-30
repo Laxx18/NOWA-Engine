@@ -1,4 +1,5 @@
 #include "model/luaeditormodel.h"
+#include "apimodel.h"
 
 LuaEditorModel* LuaEditorModel::ms_pInstance = Q_NULLPTR;
 QMutex LuaEditorModel::ms_mutex;
@@ -201,6 +202,11 @@ LuaEditorModelItem* LuaEditorModel::getEditorModelItem(int index) const
 
 void LuaEditorModel::commentLines()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -210,6 +216,11 @@ void LuaEditorModel::commentLines()
 
 void LuaEditorModel::unCommentLines()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -219,6 +230,11 @@ void LuaEditorModel::unCommentLines()
 
 void LuaEditorModel::addTabToSelection()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -228,6 +244,11 @@ void LuaEditorModel::addTabToSelection()
 
 void LuaEditorModel::removeTabFromSelection()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -246,6 +267,11 @@ void LuaEditorModel::breakLine()
 
 void LuaEditorModel::searchInTextEdit(const QString& searchText, bool wholeWord, bool caseSensitive)
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -255,6 +281,11 @@ void LuaEditorModel::searchInTextEdit(const QString& searchText, bool wholeWord,
 
 void LuaEditorModel::replaceInTextEdit(const QString& searchText, const QString& replaceText)
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -273,6 +304,11 @@ void LuaEditorModel::clearSearch()
 
 void LuaEditorModel::undo()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -282,6 +318,11 @@ void LuaEditorModel::undo()
 
 void LuaEditorModel::redo()
 {
+    if (true == ApiModel::instance()->getIsIntellisenseShown() || true == ApiModel::instance()->getIsMatchedFunctionShown())
+    {
+        return;
+    }
+
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
@@ -303,6 +344,7 @@ void LuaEditorModel::sendTextToEditor(const QString& text)
     const auto& luaEditorModelItem = this->getEditorModelItem(this->currentIndex);
     if (Q_NULLPTR != luaEditorModelItem)
     {
+        ApiModel::instance()->setSelectedMethodName(text);
         luaEditorModelItem->signal_sendTextToEditor(text);
     }
 }

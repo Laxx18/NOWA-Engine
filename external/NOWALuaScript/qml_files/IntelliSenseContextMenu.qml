@@ -26,6 +26,55 @@ Rectangle
         property string backgroundClickColor: "darkblue";
         property string textColor: "white";
         property string borderColor: "grey";
+        property int currentIndex: 0;  // Track selected index
+    }
+
+    Connections
+    {
+        target: LuaScriptQmlAdapter;
+
+        // Handles relayed keys from LuaEditor, because normally this context menu gets no focus for key inputs
+        function onSignal_relayKeyPress(key)
+        {
+            if (key === Qt.Key_Down)
+            {
+                p.currentIndex = Math.min(p.currentIndex + 1, repeaterContent.count - 1);
+                keyHoverTimer.restart();
+            }
+            else if (key === Qt.Key_Up)
+            {
+                p.currentIndex = Math.max(p.currentIndex - 1, 0);
+                keyHoverTimer.restart();
+            }
+            else if (key === Qt.Key_Tab && p.currentIndex >= 0)
+            {
+                let selectedMethod = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
+                NOWALuaEditorModel.sendTextToEditor(selectedMethod.name);
+            }
+        }
+    }
+
+    Timer
+    {
+        id: keyHoverTimer;
+        interval: 300; // 300 ms delay
+        repeat: false;
+
+        onTriggered:
+        {
+            let selectedMethod = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
+            let content = "";
+            if (selectedMethod.description)
+            {
+                content = "Details: " + selectedMethod.description + "\n" + selectedMethod.returns + " " + selectedMethod.name + selectedMethod.args;
+            }
+            else
+            {
+                content = "Details: " + selectedMethod.returns + " " + selectedMethod.name + selectedMethod.args;
+            }
+
+            details.text = content;
+        }
     }
 
     Column
@@ -49,7 +98,7 @@ Rectangle
 
                 Text
                 {
-                    id: baseText;
+                    id: classNameText;
                     color: p.textColor;
                     text: "Class Name: " + NOWAApiModel.selectedClassName;
                     verticalAlignment: Text.AlignVCenter;
@@ -75,7 +124,7 @@ Rectangle
 
                 Text
                 {
-                    id: baseText2;
+                    id: descriptionText;
                     color: p.textColor;
                     text: "Description: " + NOWAApiModel.classDescription;
                     verticalAlignment: Text.AlignVCenter;
@@ -101,7 +150,7 @@ Rectangle
 
                 Text
                 {
-                    id: baseText3;
+                    id: inheritsText;
                     color: p.textColor;
                     text: "Inherits: " + NOWAApiModel.classInherits;
                     verticalAlignment: Text.AlignVCenter;
@@ -182,6 +231,7 @@ Rectangle
             Column
             {
                 id: contentWrapper;
+
                 width: 0; // Will be calculated (max function)
                 height: 0; // Will be calculated (max function)
 
@@ -189,6 +239,7 @@ Rectangle
                 Repeater
                 {
                     id: repeaterContent;
+
                     model: NOWAApiModel.methodsForSelectedClass;
 
                     delegate: Rectangle
@@ -201,8 +252,11 @@ Rectangle
                         property int rowTextWidth: internalText.contentWidth;
                         property int rowTextHeight: p.itemHeight;
 
-                        color: itemMouseArea.pressed ? p.backgroundClickColor : (itemMouseArea.containsMouse ? p.backgroundHoverColor : p.backgroundColor);
-                        border.color: itemMouseArea.pressed ? p.backgroundHoverColor : p.borderColor;
+                        property bool isHovered: false;  // Track hover state
+                        property bool isPressed: false;  // Track pressed state
+
+                        color: isHovered || index === p.currentIndex || isPressed ? p.backgroundHoverColor : p.backgroundColor;
+                        border.color: isPressed || isHovered ? p.backgroundHoverColor : p.borderColor;
 
                         property int clickCount: 0;
                         property real lastClickTime: 0;
@@ -218,7 +272,22 @@ Rectangle
                             {
                                 id: internalText;
                                 color: p.textColor;
-                                text: modelData.returns + " " + modelData.name + modelData.args;
+                                textFormat: Text.RichText;
+                                // text: modelData.returns + " " + modelData.name + modelData.args;
+                                text:
+                                {
+                                    var nameText = modelData.name;
+                                    if (modelData.startIndex >= 0 && modelData.endIndex > modelData.startIndex)
+                                    {
+                                        var preMatch = nameText.substring(0, modelData.startIndex);
+                                        var matchText = nameText.substring(modelData.startIndex, modelData.endIndex + 1);
+                                        var postMatch = nameText.substring(modelData.endIndex + 1);
+                                        // #FFDAB9 = Peach Puff
+                                        nameText = preMatch + "<b><span style='color:#FFDAB9;'>" + matchText + "</span></b>" + postMatch;
+                                    }
+                                    return modelData.returns + " " + nameText + modelData.args;
+                                }
+
                                 verticalAlignment: Text.AlignVCenter;
                             }
                         }
@@ -232,15 +301,17 @@ Rectangle
 
                             onClicked:
                             {
+                                p.currentIndex = index;
+
                                 let currentTime = Date.now();
                                 // Check if this click is within the double click threshold
-                                if (currentTime - lastClickTime <= doubleClickThreshold)
+                                if (currentTime - itemContainer.lastClickTime <= doubleClickThreshold)
                                 {
                                     clickCount = 0; // Reset click count
                                     // Handle double-click action here
                                     // For example, you can open a detailed view or perform an action.
                                     root.visible = false;
-                                    NOWAApiModel.isShown = false;
+                                    NOWAApiModel.isIntellisenseShown = false;
                                     NOWALuaEditorModel.sendTextToEditor(modelData.name);
                                 }
                                 else
@@ -251,7 +322,7 @@ Rectangle
                                 }
 
                                 // Update last click time
-                                lastClickTime = currentTime;
+                                itemContainer.lastClickTime = currentTime;
                             }
 
                             Timer
@@ -269,24 +340,25 @@ Rectangle
                             // Track hover and press state for visual feedback
                             onPressed:
                             {
-                                parent.color = p.backgroundClickColor;
+                                isPressed = true;
                             }
 
                             onReleased:
                             {
-                                parent.color = itemMouseArea.containsMouse ? p.backgroundHoverColor : p.backgroundColor;
+                                isPressed = false;
                                 hoverTimer.stop();
                             }
 
                             // Set the hovered state dynamically
-                            onEntered:
-                            {
-                                parent.color = p.backgroundHoverColor;
-                            }
+                            // onEntered:
+                            // {
+                            //     p.currentIndex = index;
+                            //     isHovered = true;
+                            // }
 
                             onExited:
                             {
-                                parent.color = p.backgroundColor;
+                                isHovered = false;
                             }
                         }
                     }
@@ -297,6 +369,8 @@ Rectangle
 
     function open(x, y)
     {
+        p.currentIndex = 0;
+
         calculateMaxWidth();
 
         let pHeight = parent.height;
@@ -316,7 +390,13 @@ Rectangle
         root.x = Math.min(x, parent.width - root.width); // Ensure it stays within width
         root.visible = true;
 
-        NOWAApiModel.isShown = true;
+        NOWAApiModel.isIntellisenseShown = true;
+    }
+
+    function close()
+    {
+        NOWAApiModel.isIntellisenseShown = false;
+        root.visible = false;
     }
 
     function calculateMaxWidth()

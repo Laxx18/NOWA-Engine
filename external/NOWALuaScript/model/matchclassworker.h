@@ -22,6 +22,8 @@ Q_SIGNALS:
     void finished();
 
     void signal_requestProcess();
+
+    void signal_deliverData(const QString& matchedClassName, const QString& matchedMethodName, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
 private:
     LuaEditorModelItem* luaEditorModelItem;
     QString currentText;

@@ -12,13 +12,13 @@ class LuaScriptQmlAdapter : public QObject
 public:
     explicit LuaScriptQmlAdapter(QObject* parent = Q_NULLPTR);
 
-    Q_INVOKABLE void requestIntellisense(const QString& filePathName, const QString& currentText);  // Signal sent to LuaScript
-
     Q_INVOKABLE void checkSyntax(const QString& filePathName, const QString& luaCode);
 
     Q_INVOKABLE void changeTab(int newTabIndex);
 
     Q_INVOKABLE void requestSetLuaApi(const QString& filePathName, bool parseSilent);
+
+    Q_INVOKABLE void relayKeyPress(int key);
 public:
     /**
      * @brief instance is the getter used to receive the object of this singleton implementation.
@@ -35,16 +35,13 @@ public:
     static QObject* getSingletonTypeProvider(QQmlEngine* pEngine, QJSEngine* pScriptEngine);
 
 Q_SIGNALS:
-    void signal_requestIntellisense(const QString& filePathName, const QString& currentText);
-    void signal_intellisenseReady(const QString& filePathName, const QStringList& suggestions);  // Signal when intellisense results are ready
     void signal_requestSyntaxCheck(const QString& filePathName, const QString& luaCode);
     void signal_syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message);
     void signal_changeTab(int newTabIndex);
     void signal_requestSetLuaApi(const QString& filePathName, bool parseSilent);
     void signal_luaApiPreparationResult(bool parseSilent, bool success, const QString& message);
+    void signal_relayKeyPress(int key);
 public Q_SLOTS:
-    void handleIntellisenseResults(const QString& filePathName, const QStringList& suggestions);  // Slot to handle intellisense results
-
     void syntaxCheckResult(const QString& filePathName, bool valid, int line, int start, int end, const QString& message);
 
     void luaApiPreparationResult(bool parseSilent, bool success, const QString& message);

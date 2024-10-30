@@ -6,5 +6,6 @@
         <file>qml_files/MainMenu.qml</file>
         <file>qml_files/SearchDialog.qml</file>
         <file>qml_files/IntelliSenseContextMenu.qml</file>
+        <file>qml_files/MatchedFunctionContextMenu.qml</file>
     </qresource>
 </RCC>

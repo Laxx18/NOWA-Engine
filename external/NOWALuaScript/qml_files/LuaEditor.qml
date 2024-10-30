@@ -156,10 +156,20 @@ LuaEditorQml
                 selectByMouse: true;
                 persistentSelection: true;
                 selectedTextColor: "black";
-                selectionColor: "#377dbd";
+                selectionColor: "lightgreen";
 
                 Keys.onPressed: (event) =>
                 {
+                    // If context menu is shown, relay those key to the context menu for navigation
+                    if (NOWAApiModel.isIntellisenseShown)
+                    {
+                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Up || event.key === Qt.Key_Down)
+                        {
+                            LuaScriptQmlAdapter.relayKeyPress(event.key);
+                            event.accepted = true; // Prevents default behavior if necessary
+                            return;
+                        }
+                    }
                     if (event.key === Qt.Key_Tab)
                     {
                         // Prevent the default Tab behavior
@@ -292,23 +302,6 @@ LuaEditorQml
         ListModel
         {
             id: luaSuggestionsModel;
-        }
-
-        Connections
-        {
-            target: LuaScriptQmlAdapter;
-
-            function onSignal_intellisenseReady(filePathName, suggestions)
-            {
-                if (filePathName === root.model.filePathName)
-                {
-                    luaSuggestionsModel.clear();
-                    for (var i = 0; i < suggestions.length; i++)
-                    {
-                        luaSuggestionsModel.append({"name": suggestions[i]});
-                    }
-                }
-            }
         }
 
         Connections

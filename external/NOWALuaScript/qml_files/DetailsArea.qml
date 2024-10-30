@@ -71,7 +71,7 @@ Rectangle
             color: "black";
 
             selectedTextColor: "black";
-            selectionColor: "#377dbd";
+            selectionColor: "lightgreen";
 
             onCursorRectangleChanged:
             {

@@ -36,6 +36,7 @@ set(QML_FILES
     qml_files/MainMenu.qml
     qml_files/SearchDialog.qml
     qml_files/IntelliSenseContextMenu.qml
+    qml_files/MatchedFunctionContextMenu.qml
 )
 
 qt_add_resources(NOWALuaScript "qml"
@@ -48,10 +49,6 @@ qt_add_resources(NOWALuaScript "qml"
 qt_add_qml_module(NOWALuaScript
     URI NOWALuaScript
     VERSION 1.0
-    #QML_FILES qml_files/Main.qml
-    #QML_FILES qml_files/LuaEditor.qml
-    #QML_FILES qml_files/DetailsArea.qml
-    #QML_FILES qml_files/MainMenu.qml
     SOURCES luascriptcontroller.h luascriptcontroller.cpp
     SOURCES luascriptqmladapter.h luascriptqmladapter.cpp
     SOURCES backend/luascript.h
@@ -60,6 +57,7 @@ qt_add_qml_module(NOWALuaScript
     SOURCES model/luaeditormodel.h model/luaeditormodel.cpp
     SOURCES model/apimodel.h model/apimodel.cpp
     SOURCES model/matchclassworker.h model/matchclassworker.cpp
+    SOURCES model/matchmethodworker.h model/matchmethodworker.cpp
     SOURCES qml/luaeditorqml.h qml/luaeditorqml.cpp
     SOURCES qml/luahighlighter.h qml/luahighlighter.cpp
     SOURCES luascriptadapter.h luascriptadapter.cpp

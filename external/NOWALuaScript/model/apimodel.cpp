@@ -5,7 +5,8 @@ QMutex ApiModel::ms_mutex;
 
 ApiModel::ApiModel(QObject* parent)
     : QAbstractListModel{parent},
-    isShown(false)
+    isIntellisenseShown(false),
+    isMatchedFunctionShown(false)
 {
 
 }
@@ -13,12 +14,24 @@ ApiModel::ApiModel(QObject* parent)
 QVariantList ApiModel::getMethodsForClassName(const QString& className)
 {
     QVariantList methods;
+    if (false == this->isValidClassName(className))
+    {
+        return methods;
+    }
+
     const LuaScriptAdapter::ClassData& classData = this->apiData[className];
 
     // Loop over methods in the selected class and convert them to QVariantMap
-    for (auto it = classData.methods.begin(); it != classData.methods.end(); ++it) {
+    for (auto it = classData.methods.begin(); it != classData.methods.end(); ++it)
+    {
         QVariantMap methodMap;
         QString methodName = it.key(); // Get the method name from the key of the QMap
+
+        // Value types are constants and no methods
+        if (it.value().type == "value")
+        {
+            continue;
+        }
 
         // Populate methodMap with the correct access pattern
         methodMap["name"] = methodName;      // Assuming you want to include the method name
@@ -34,21 +47,54 @@ QVariantList ApiModel::getMethodsForClassName(const QString& className)
     return methods;
 }
 
-bool ApiModel::getIsShown() const
+
+
+
+QVariantList ApiModel::getConstantsForClassName(const QString& className)
 {
-    return this->isShown;
+    QVariantList constants;
+    if (false == this->isValidClassName(className))
+    {
+        return constants;
+    }
+
+    const LuaScriptAdapter::ClassData& classData = this->apiData[className];
+
+    // Loop over methods in the selected class and convert them to QVariantMap
+    for (auto it = classData.methods.begin(); it != classData.methods.end(); ++it)
+    {
+        QVariantMap constantMap;
+
+        // Value types are constants and no methods
+        if (it.value().type != "value")
+        {
+            continue;
+        }
+
+        // Populate methodMap with the correct access pattern
+        constantMap["name"] = it.key();      // Assuming you want to include the method name
+
+        constants.append(constantMap); // Append method to the list
+    }
+
+    return constants;
 }
 
-void ApiModel::setIsShown(bool isShown)
+bool ApiModel::getIsIntellisenseShown() const
 {
-    if (this->isShown == isShown)
+    return this->isIntellisenseShown;
+}
+
+void ApiModel::setIsIntellisenseShown(bool isIntellisenseShown)
+{
+    if (this->isIntellisenseShown == isIntellisenseShown)
     {
         return;
     }
 
-    this->isShown = isShown;
+    this->isIntellisenseShown = isIntellisenseShown;
 
-    Q_EMIT isShownChanged();
+    Q_EMIT isIntellisenseShownChanged();
 }
 
 bool ApiModel::updateMethodsForSelectedClass()
@@ -67,7 +113,7 @@ bool ApiModel::updateMethodsForSelectedClass()
         this->setClassDescription(this->apiData[this->selectedClassName].description);
         this->setClassInherits(this->apiData[this->selectedClassName].inherits);
 
-        this->methodsForSelectedClass = getMethodsForClassName(this->selectedClassName);
+        this->methodsForSelectedClass = this->getMethodsForClassName(this->selectedClassName);
 
         success = true;
     }
@@ -75,6 +121,35 @@ bool ApiModel::updateMethodsForSelectedClass()
     if (true == success)
     {
         Q_EMIT methodsForSelectedClassChanged();  // Notify QML to refresh the list
+    }
+
+    return success;
+}
+
+bool ApiModel::updateConstantsForSelectedClass()
+{
+    bool success = false;
+    this->constantsForSelectedClass.clear();  // Clear existing methods
+
+    if (true == this->selectedClassName.isEmpty())
+    {
+        return success;
+    }
+
+    if (this->apiData.contains(this->selectedClassName))
+    {
+        this->setClassType(this->apiData[this->selectedClassName].type);
+        this->setClassDescription(this->apiData[this->selectedClassName].description);
+        this->setClassInherits(this->apiData[this->selectedClassName].inherits);
+
+        this->constantsForSelectedClass = this->getConstantsForClassName(this->selectedClassName);
+
+        success = true;
+    }
+
+    if (true == success)
+    {
+        Q_EMIT constantsForSelectedClassChanged();  // Notify QML to refresh the list
     }
 
     return success;
@@ -168,6 +243,10 @@ QVariant ApiModel::data(const QModelIndex& index, int role) const
     }
 
     QString className = this->apiData.keys().at(index.row());
+    if (false == this->apiData.contains(className))
+    {
+        return QVariant();
+    }
     const LuaScriptAdapter::ClassData& classData = this->apiData[className];
 
     switch (role)
@@ -197,7 +276,7 @@ QHash<int, QByteArray> ApiModel::roleNames() const
 
 QString ApiModel::getSelectedClassName() const
 {
-    return selectedClassName;
+    return this->selectedClassName;
 }
 
 void ApiModel::setSelectedClassName(const QString& selectedClassName)
@@ -208,7 +287,23 @@ void ApiModel::setSelectedClassName(const QString& selectedClassName)
     // }
     this->selectedClassName = selectedClassName;
 
+    bool hasUpdated = false;
+
     if (true == this->updateMethodsForSelectedClass())
+    {
+        hasUpdated = true;
+    }
+    else
+    {
+        this->selectedClassName = "";
+    }
+
+    if (false == hasUpdated && true == this->updateConstantsForSelectedClass())
+    {
+        hasUpdated = true;
+    }
+
+    if (true == hasUpdated)
     {
         Q_EMIT selectedClassNameChanged();
     }
@@ -218,9 +313,37 @@ void ApiModel::setSelectedClassName(const QString& selectedClassName)
     }
 }
 
+QString ApiModel::getSelectedMethodName() const
+{
+    return this->selectedMethodName;
+}
+
+void ApiModel::setSelectedMethodName(const QString& selectedMethodName)
+{
+    if (this->selectedMethodName == selectedMethodName)
+    {
+        return;
+    }
+    this->selectedMethodName = selectedMethodName;
+
+    Q_EMIT selectedMethodNameChanged();
+
+    const auto& methodDetails = this->getMethodDetails(this->selectedClassName, this->selectedMethodName);
+
+    if (false == methodDetails.isEmpty())
+    {
+        Q_EMIT signal_getSelectedMethodDetails(methodDetails["description"].toString(), methodDetails["returns"].toString(), methodDetails["name"].toString(), methodDetails["args"].toString());
+    }
+}
+
 QVariantList ApiModel::getMethodsForSelectedClass() const
 {
     return this->methodsForSelectedClass;
+}
+
+QVariantList ApiModel::getConstantsForSelectedClass() const
+{
+    return this->constantsForSelectedClass;
 }
 
 void ApiModel::processMatchedMethodsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon)
@@ -241,6 +364,12 @@ void ApiModel::processMatchedMethodsForSelectedClass(const QString& selectedClas
             if (name.contains(typedAfterColon, Qt::CaseInsensitive))
             {
                 QString type = methodMap["type"].toString();
+                // Value types are constants and no methods
+                if (type == "value")
+                {
+                    continue;
+                }
+
                 QString description = methodMap["description"].toString();
                 QString args = methodMap["args"].toString();
                 QString returns = methodMap["returns"].toString();
@@ -278,6 +407,57 @@ void ApiModel::processMatchedMethodsForSelectedClass(const QString& selectedClas
     }
 }
 
+void ApiModel::processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon)
+{
+    this->constantsForSelectedClass.clear();
+
+    if (typedAfterColon.size() >= 3)
+    {
+        // Get all constants for the currently selected class
+        const auto& constants = this->getConstantsForClassName(selectedClassName);
+
+        for (const auto& constant : constants)
+        {
+            QVariantMap constantMap = constant.toMap();
+            QString name = constantMap["name"].toString();
+
+            // Check if the method name contains the typed string
+            if (name.contains(typedAfterColon, Qt::CaseInsensitive))
+            {
+                QString type = constantMap["type"].toString();
+                // Value types are methods and no constants
+                if (type != "value")
+                {
+                    continue;
+                }
+
+                QVariantMap matchDetails;
+                matchDetails["name"] = name;
+
+                // Find the start and end indices of the match
+                int startIndex = name.indexOf(typedAfterColon, 0, Qt::CaseInsensitive);
+                int endIndex = startIndex + typedAfterColon.length() - 1;
+
+                matchDetails["startIndex"] = startIndex;
+                matchDetails["endIndex"] = endIndex;
+
+                this->constantsForSelectedClass.append(matchDetails); // Append the match details to the list
+            }
+        }
+    }
+
+    // If no match, show the whole list
+    if (true == this->constantsForSelectedClass.isEmpty())
+    {
+        this->setSelectedClassName(this->selectedClassName);
+    }
+    else
+    {
+        this->selectedClassName = selectedClassName;
+        Q_EMIT constantsForSelectedClassChanged();
+    }
+}
+
 QString ApiModel::getClassForMethodName(const QString& className, const QString& methodName)
 {
     const auto& methods = this->getMethodsForClassName(className);
@@ -299,33 +479,62 @@ void ApiModel::showIntelliSenseMenu(const QString& wordBeforeColon, int mouseX, 
 {
     this->setSelectedClassName(wordBeforeColon);
 
-    if (true == this->getMethodsForSelectedClass().isEmpty())
+    bool hasSomeThingToShow = false;
+
+    if (false == this->getMethodsForSelectedClass().isEmpty())
     {
-        // Handle the case where no methods are found, e.g., show an empty list or an error
-        // qDebug() << "No methods found for class: " << wordBeforeColon;
+        hasSomeThingToShow = true;
+    }
+
+    if (false == hasSomeThingToShow && false == this->getConstantsForSelectedClass().isEmpty())
+    {
+        hasSomeThingToShow = true;
+    }
+
+    if (false == hasSomeThingToShow)
+    {
         return;
     }
 
     Q_EMIT signal_showIntelliSenseMenu(mouseX, mouseY);
 }
 
-QVariantMap ApiModel::getMethodDetails(const QString& selectedClassName, const QString& method)
+void ApiModel::showMatchedFunctionMenu(int mouseX, int mouseY)
 {
-    QString description;
-    QString args;
-    QString returns;
+    Q_EMIT signal_showMatchedFunctionMenu(mouseX, mouseY);
+}
 
-    const auto& methods = this->getMethodsForClassName(this->selectedClassName);
+QVariantMap ApiModel::getMethodDetails(const QString& selectedClassName, const QString& methodName)
+{
+    const auto& methods = this->getMethodsForClassName(selectedClassName);
     for (const auto& method : methods)
     {
         QVariantMap methodMap = method.toMap();
 
         // Check if the current method's name matches the requested method name
-        if (methodMap["name"].toString() == method)
+        if (methodMap["name"].toString() == methodName)
         {
             return methodMap;
         }
     }
+
+    return QVariantMap();
+}
+
+bool ApiModel::getIsMatchedFunctionShown() const
+{
+    return this->isMatchedFunctionShown;
+}
+
+void ApiModel::setIsMatchedFunctionShown(bool isMatchedFunctionShown)
+{
+    if (this->isMatchedFunctionShown == isMatchedFunctionShown)
+    {
+        return;
+    }
+
+    this->isMatchedFunctionShown = isMatchedFunctionShown;
+    Q_EMIT isMatchedFunctionShownChanged();
 }
 
 bool ApiModel::isValidClassName(const QString& className)
@@ -337,7 +546,20 @@ bool ApiModel::isValidClassName(const QString& className)
     return false;
 }
 
+bool ApiModel::isValidMethodName(const QString& className, const QString& methodName)
+{
+    const auto& methodResult = this->getMethodDetails(className, methodName);
+    return !methodResult.isEmpty();
+}
+
 void ApiModel::closeIntellisense()
 {
+    this->setIsIntellisenseShown(false);
     Q_EMIT signal_closeIntellisense();
+}
+
+void ApiModel::closeMatchedFunction()
+{
+    this->setIsMatchedFunctionShown(false);
+    Q_EMIT signal_closeMatchedFunctionMenu();
 }

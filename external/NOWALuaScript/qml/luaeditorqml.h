@@ -50,11 +50,22 @@ Q_SIGNALS:
     void modelChanged();
     void requestIntellisenseProcessing(const QString& currentText, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
     void requestCloseIntellisense();
+
+    void requestMatchedFunctionContextMenu(const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+    void requestCloseMatchedFunctionContextMenu();
 private:
-    void showContextMenu(const QString& textAfterColon);
+    void showIntelliSenseContextMenu(void);
+
+    void showIntelliSenseContextMenuAtCursor(const QString& textAfterColon);
+
+    void showMachtedFunctionContextMenuAtCursor(const QString& textAfterColon);
 
     // Helper function to get the cursor rectangle
     QPointF cursorAtPosition(const QString& currentText, int cursorPos);
+
+    void resetTextAfterKeyword();
+
+    void processBracket(QChar keyword);
 private:
     LuaEditorModelItem* luaEditorModelItem;
     QQuickItem* lineNumbersEdit;
@@ -70,6 +81,7 @@ private:
     int oldCursorPosition;
     int lastColonIndex;
     QString currentText;
+    bool isInMatchedFunctionProcessing;
 };
 
 #endif // LUAEDITORQML_H
