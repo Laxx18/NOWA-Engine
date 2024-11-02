@@ -9,9 +9,9 @@ class MatchMethodWorker : public QObject
 {
     Q_OBJECT
 public:
-    MatchMethodWorker(LuaEditorModelItem* luaEditorModelItem, const QString& matchedClassName, const QString& typedAfterColon, int cursorPosition, int mouseX, int mouseY);
+    MatchMethodWorker(LuaEditorModelItem* luaEditorModelItem, const QString& matchedClassName, const QString& textAfterKeyword, int cursorPosition, int mouseX, int mouseY);
 
-    void setParameters(const QString& matchedClassName, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+    void setParameters(const QString& matchedClassName, const QString& textAfterKeyword, int cursorPos, int mouseX, int mouseY);
 
     // Method to stop the processing
     void stopProcessing(void);
@@ -24,7 +24,7 @@ Q_SIGNALS:
     void signal_requestProcess();
 private:
     LuaEditorModelItem* luaEditorModelItem;
-    QString typedAfterColon;
+    QString typedAfterKeyword;
     int cursorPosition;
     int mouseX;
     int mouseY;

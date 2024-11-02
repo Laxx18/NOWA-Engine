@@ -56,16 +56,20 @@ public:
 
     QString extractMethodBeforeColon(const QString& currentText, int cursorPosition);
 
+    QString extractClassBeforeDot(const QString& currentText, int cursorPosition);
+
     void detectVariables(void);
+
+    void detectConstants(void);
 
     LuaVariableInfo getClassForVariableName(const QString& variableName);
 
 public slots:
-    void startIntellisenseProcessing(const QString& currentText, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+    void startIntellisenseProcessing(bool forConstant, const QString& currentText, const QString& textAfterKeyword, int cursorPos, int mouseX, int mouseY);
 
     void closeIntellisense(void);
 
-    void startMatchedFunctionProcessing(const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+    void startMatchedFunctionProcessing(const QString& textAfterKeyword, int cursorPos, int mouseX, int mouseY);
 
     void closeMatchedFunction();
 Q_SIGNALS:

@@ -298,7 +298,7 @@ void ApiModel::setSelectedClassName(const QString& selectedClassName)
         this->selectedClassName = "";
     }
 
-    if (false == hasUpdated && true == this->updateConstantsForSelectedClass())
+    if (true == this->updateConstantsForSelectedClass())
     {
         hasUpdated = true;
     }
@@ -407,54 +407,58 @@ void ApiModel::processMatchedMethodsForSelectedClass(const QString& selectedClas
     }
 }
 
-void ApiModel::processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon)
+void ApiModel::processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterKeyword)
 {
     this->constantsForSelectedClass.clear();
 
-    if (typedAfterColon.size() >= 3)
+    // Only process if typedAfterKeyword has a sufficient length
+    if (typedAfterKeyword.size() >= 3)
     {
         // Get all constants for the currently selected class
         const auto& constants = this->getConstantsForClassName(selectedClassName);
 
+        // Check if constants are retrieved correctly
+        if (constants.isEmpty())
+        {
+            qDebug() << "No constants found for class:" << selectedClassName;
+            return; // Exit if no constants are found
+        }
+
+        // Iterate through each constant and find matches
         for (const auto& constant : constants)
         {
             QVariantMap constantMap = constant.toMap();
             QString name = constantMap["name"].toString();
 
-            // Check if the method name contains the typed string
-            if (name.contains(typedAfterColon, Qt::CaseInsensitive))
+            // Check if the constant name contains the typed string
+            if (name.contains(typedAfterKeyword, Qt::CaseInsensitive))
             {
-                QString type = constantMap["type"].toString();
-                // Value types are methods and no constants
-                if (type != "value")
-                {
-                    continue;
-                }
-
+                // Create match details
                 QVariantMap matchDetails;
                 matchDetails["name"] = name;
 
                 // Find the start and end indices of the match
-                int startIndex = name.indexOf(typedAfterColon, 0, Qt::CaseInsensitive);
-                int endIndex = startIndex + typedAfterColon.length() - 1;
+                int startIndex = name.indexOf(typedAfterKeyword, 0, Qt::CaseInsensitive);
+                int endIndex = startIndex + typedAfterKeyword.length() - 1;
 
                 matchDetails["startIndex"] = startIndex;
                 matchDetails["endIndex"] = endIndex;
 
-                this->constantsForSelectedClass.append(matchDetails); // Append the match details to the list
+                // Append the match details to the list
+                this->constantsForSelectedClass.append(matchDetails);
             }
         }
     }
 
-    // If no match, show the whole list
-    if (true == this->constantsForSelectedClass.isEmpty())
+    // Emit signal only if there are matched constants
+    if (this->constantsForSelectedClass.isEmpty())
     {
         this->setSelectedClassName(this->selectedClassName);
     }
     else
     {
         this->selectedClassName = selectedClassName;
-        Q_EMIT constantsForSelectedClassChanged();
+        Q_EMIT constantsForSelectedClassChanged(); // Notify that the list of constants has changed
     }
 }
 
@@ -475,18 +479,18 @@ QString ApiModel::getClassForMethodName(const QString& className, const QString&
     return "";
 }
 
-void ApiModel::showIntelliSenseMenu(const QString& wordBeforeColon, int mouseX, int mouseY)
+void ApiModel::showIntelliSenseMenu(bool forConstant, const QString& wordBeforeColon, int mouseX, int mouseY)
 {
     this->setSelectedClassName(wordBeforeColon);
 
     bool hasSomeThingToShow = false;
 
-    if (false == this->getMethodsForSelectedClass().isEmpty())
+    if (false == forConstant && false == this->getMethodsForSelectedClass().isEmpty())
     {
         hasSomeThingToShow = true;
     }
 
-    if (false == hasSomeThingToShow && false == this->getConstantsForSelectedClass().isEmpty())
+    if (true == forConstant && false == hasSomeThingToShow && false == this->getConstantsForSelectedClass().isEmpty())
     {
         hasSomeThingToShow = true;
     }
@@ -496,7 +500,7 @@ void ApiModel::showIntelliSenseMenu(const QString& wordBeforeColon, int mouseX, 
         return;
     }
 
-    Q_EMIT signal_showIntelliSenseMenu(mouseX, mouseY);
+    Q_EMIT signal_showIntelliSenseMenu(forConstant, mouseX, mouseY);
 }
 
 void ApiModel::showMatchedFunctionMenu(int mouseX, int mouseY)

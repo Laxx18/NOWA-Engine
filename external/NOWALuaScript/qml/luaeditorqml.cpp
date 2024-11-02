@@ -16,7 +16,9 @@ LuaEditorQml::LuaEditorQml(QQuickItem* parent)
     highlighter(Q_NULLPTR),
     scrollY(0.0f),
     isAfterColon(false),
+    isAfterDot(false),
     lastColonIndex(-1),
+    lastDotIndex(-1),
     oldCursorPosition(-1),
     cursorPosition(0),
     isInMatchedFunctionProcessing(false)
@@ -47,27 +49,32 @@ void LuaEditorQml::setModel(LuaEditorModelItem* luaEditorModelItem)
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_commentLines, this, [this] {
         this->highlighter->commentSelection();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_unCommentLines, this, [this] {
         this->highlighter->uncommentSelection();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_addTabToSelection, this, [this] {
         this->highlighter->addTabToSelection();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_removeTabFromSelection, this, [this] {
         this->highlighter->removeTabFromSelection();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_breakLine, this, [this] {
         this->highlighter->breakLine();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_searchInTextEdit, this, [this](const QString& searchText, bool wholeWord, bool caseSensitive) {
@@ -78,7 +85,8 @@ void LuaEditorQml::setModel(LuaEditorModelItem* luaEditorModelItem)
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_replaceInTextEdit, this, [this](const QString& searchText, const QString& replaceText) {
         this->luaEditorTextEdit->forceActiveFocus();
         this->highlighter->replaceInTextEdit(searchText, replaceText);
-       this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_clearSearch, this, [this] {
@@ -89,21 +97,34 @@ void LuaEditorQml::setModel(LuaEditorModelItem* luaEditorModelItem)
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_undo, this, [this] {
         this->luaEditorTextEdit->forceActiveFocus();
         this->highlighter->undo();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_redo, this, [this] {
         this->luaEditorTextEdit->forceActiveFocus();
         this->highlighter->redo();
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
+        this->resetTextAfterDot();
     });
 
     connect(this->luaEditorModelItem, &LuaEditorModelItem::signal_sendTextToEditor, this, [this](const QString& text) {
-        this->showIntelliSenseContextMenuAtCursor(text);
+        this->showIntelliSenseContextMenuAtCursor(false, text);
         this->luaEditorTextEdit->forceActiveFocus();
-        this->highlighter->insertText(this->typedAfterColon.size(), text);
-        // Actualize the typed after colon text, to still show the intelisense for the method
-        this->typedAfterColon = text;
+        if (true == this->isAfterColon)
+        {
+            this->highlighter->insertSentText(this->typedAfterColon.size(), text);
+            // Actualize the typed after colon text, to still show the intelisense for the method
+            this->typedAfterColon = text;
+        }
+        else if (true == this->isAfterDot)
+        {
+            this->highlighter->insertSentText(this->typedAfterDot.size(), text);
+            // Actualize the typed after colon text, to still show the intelisense for the method
+            this->typedAfterDot = text;
+            Q_EMIT requestCloseIntellisense();
+        }
+
         this->oldCursorPosition = this->cursorPosition - 1;
     });
 
@@ -112,6 +133,11 @@ void LuaEditorQml::setModel(LuaEditorModelItem* luaEditorModelItem)
 
     connect(this, &LuaEditorQml::requestMatchedFunctionContextMenu, this->luaEditorModelItem, &LuaEditorModelItem::startMatchedFunctionProcessing);
     connect(this, &LuaEditorQml::requestCloseMatchedFunctionContextMenu, this->luaEditorModelItem, &LuaEditorModelItem::closeMatchedFunction);
+
+
+    connect(this->highlighter, &LuaHighlighter::insertingNewLineChanged, this, [this](bool inserting) {
+        Q_EMIT signal_insertingNewLine(inserting);
+    });
 
     Q_EMIT modelChanged();
 }
@@ -161,10 +187,16 @@ void LuaEditorQml::onTextChanged()
 
 }
 
-void LuaEditorQml::resetTextAfterKeyword()
+void LuaEditorQml::resetTextAfterColon()
 {
     this->isAfterColon = false;
     this->typedAfterColon.clear();
+}
+
+void LuaEditorQml::resetTextAfterDot()
+{
+    this->isAfterDot = false;
+    this->typedAfterDot.clear();
 }
 
 void LuaEditorQml::handleKeywordPressed(QChar keyword)
@@ -180,12 +212,14 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
     // Cursor jump, clear everything
     if (this->cursorPosition != this->oldCursorPosition + 1)
     {
-        this->resetTextAfterKeyword();
+        this->isAfterColon = false;
+        this->typedAfterColon.clear();
         this->isInMatchedFunctionProcessing = false;
     }
 
     // Detect if a colon has been deleted
     bool isColonDeleted = false;
+    bool isDotDeleted = false;
     if (keyword == '\010' || keyword == '\177')  // Handle backspace and delete keys
     {
         if (this->lastColonIndex >= 0 && this->lastColonIndex < this->currentText.size())
@@ -206,7 +240,7 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
                     Q_EMIT requestCloseMatchedFunctionContextMenu();
                 }
                 this->typedAfterColon.removeLast();
-                this->showIntelliSenseContextMenuAtCursor(this->typedAfterColon);
+                this->showIntelliSenseContextMenuAtCursor(false, this->typedAfterColon);
             }
 
             // Check if the character at lastColonIndex is no longer a colon
@@ -216,13 +250,47 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
                 isColonDeleted = true;
             }
         }
+        else if (this->lastDotIndex >= 0 && this->lastDotIndex < this->currentText.size())
+        {
+            if (this->cursorPosition > 0)
+            {
+                this->cursorPosition--;
+                this->oldCursorPosition--;
+                this->cursorPositionChanged(this->cursorPosition);
+            }
+
+            if (true == this->isAfterDot)
+            {
+                // If deleting a char and the opening bracket has been deleted, we are no longer in matched function processing
+                if (this->typedAfterColon.contains("("))
+                {
+                    this->isInMatchedFunctionProcessing = false;
+                    Q_EMIT requestCloseMatchedFunctionContextMenu();
+                }
+                this->typedAfterDot.removeLast();
+                this->showIntelliSenseContextMenuAtCursor(true, this->typedAfterDot);
+            }
+
+            // Check if the character at lastDotIndex is no longer a dot
+            QString textAt = this->currentText[this->cursorPosition];
+            if (textAt == '.')
+            {
+                isDotDeleted = true;
+            }
+        }
     }
 
     // Reset context if a colon was deleted
     if (true == isColonDeleted)
     {
-        this->resetTextAfterKeyword();
+        this->resetTextAfterColon();
         this->lastColonIndex = -1;  // Reset lastColonIndex since the colon is gone
+        Q_EMIT requestCloseIntellisense();
+    }
+    else if (true == isDotDeleted)
+    {
+        this->resetTextAfterDot();
+        this->lastDotIndex = -1;  // Reset lastDotIndex since the dot is gone
         Q_EMIT requestCloseIntellisense();
     }
 
@@ -231,7 +299,7 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
     {
         if (false == this->isInMatchedFunctionProcessing && (this->cursorPosition != this->oldCursorPosition + 1 || keyword == ' ' || keyword == '\n' || keyword == ':' || keyword == '.'))
         {
-            this->resetTextAfterKeyword();
+            this->resetTextAfterColon();
         }
         else
         {
@@ -243,7 +311,28 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
                 // Start autocompletion with at least 3 chars
                 if (this->typedAfterColon.size() >= 3)
                 {
-                    this->showIntelliSenseContextMenuAtCursor(this->typedAfterColon);
+                    this->showIntelliSenseContextMenuAtCursor(false, this->typedAfterColon);
+                }
+            }
+        }
+    }
+    else if (true == this->isAfterDot)
+    {
+        if (false == this->isInMatchedFunctionProcessing && (this->cursorPosition != this->oldCursorPosition + 1 || keyword == ' ' || keyword == '\n' || keyword == ':' || keyword == '.'))
+        {
+            this->resetTextAfterDot();
+        }
+        else
+        {
+            // Do not append backspace or delete keys
+            if (keyword != '\010' && keyword != '\177')
+            {
+                this->typedAfterDot.append(keyword);
+
+                // Start autocompletion with at least 3 chars
+                if (this->typedAfterDot.size() >= 3)
+                {
+                    this->showIntelliSenseContextMenuAtCursor(true, this->typedAfterDot);
                 }
             }
         }
@@ -273,7 +362,16 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
         this->typedAfterColon.clear();
         this->lastColonIndex = this->cursorPosition;
 
-        this->showIntelliSenseContextMenu();
+        this->showIntelliSenseContextMenu(false);
+    }
+    // Detect new dot and update lastDotIndex
+    else if (keyword == '.')
+    {
+        this->isAfterDot = true;
+        this->typedAfterDot.clear();
+        this->lastDotIndex = this->cursorPosition;
+
+        this->showIntelliSenseContextMenu(true);
     }
     else if (keyword == '(' && true == this->isAfterColon)
     {
@@ -281,15 +379,10 @@ void LuaEditorQml::handleKeywordPressed(QChar keyword)
         Q_EMIT requestCloseIntellisense();
 
         this->showMachtedFunctionContextMenuAtCursor(this->typedAfterColon);
-
-        // this->isAfterColon = false;
-        // this->typedAfterColon.clear();
     }
     else if (keyword == ')' && true == this->isAfterColon)
     {
         this->isInMatchedFunctionProcessing = false;
-        // this->isAfterColon = false;
-        // this->typedAfterColon.clear();
     }
 
     // and not removing char
@@ -327,7 +420,7 @@ void LuaEditorQml::processBracket(QChar keyword)
             // Optionally, skip processing based on extracted text or take further actions here
             if (false == textFromColonToBracket.isEmpty())
             {
-                this->showIntelliSenseContextMenu();
+                this->showIntelliSenseContextMenu(false);
 
                 this->isInMatchedFunctionProcessing = true;
                 Q_EMIT requestCloseIntellisense();
@@ -341,7 +434,7 @@ void LuaEditorQml::processBracket(QChar keyword)
     }
 }
 
-void LuaEditorQml::showIntelliSenseContextMenu(void)
+void LuaEditorQml::showIntelliSenseContextMenu(bool forConstant)
 {
     if (true == this->isInMatchedFunctionProcessing)
     {
@@ -354,19 +447,21 @@ void LuaEditorQml::showIntelliSenseContextMenu(void)
 
     // Create modified current text that includes the ":", because at this time, the current text would be without the ":" and that would corrupt the class match.
     QString modifiedText = this->currentText;
-    modifiedText.insert(cursorPos, ":"); // Insert ":" at the cursor position
-
-    // qDebug() << "------->currentText: " << currentText;
-    // qDebug() << "------->modifiedText: " << modifiedText;
+    if (false == forConstant)
+    {
+        modifiedText.insert(cursorPos, ":"); // Insert ":" at the cursor position
+    }
+    else
+    {
+        modifiedText.insert(cursorPos, "."); // Insert "." at the cursor position
+    }
 
     const auto& cursorGlobalPos = this->cursorAtPosition(modifiedText, cursorPos);
 
-    // this->luaEditorModelItem->matchClass(modifiedText, cursorPos, cursorGlobalPos.x(), cursorGlobalPos.y());
-
-    Q_EMIT requestIntellisenseProcessing(this->currentText, "", cursorPos, cursorGlobalPos.x(), cursorGlobalPos.y());
+    Q_EMIT requestIntellisenseProcessing(forConstant, this->currentText, "", cursorPos, cursorGlobalPos.x(), cursorGlobalPos.y());
 }
 
-void LuaEditorQml::showIntelliSenseContextMenuAtCursor(const QString& textAfterColon)
+void LuaEditorQml::showIntelliSenseContextMenuAtCursor(bool forConstant, const QString& textAfterColon)
 {
     if (true == this->isInMatchedFunctionProcessing)
     {
@@ -376,7 +471,7 @@ void LuaEditorQml::showIntelliSenseContextMenuAtCursor(const QString& textAfterC
 
     const auto& cursorGlobalPos = this->cursorAtPosition(this->currentText, this->cursorPosition);
 
-    Q_EMIT requestIntellisenseProcessing(this->currentText, textAfterColon, this->cursorPosition, cursorGlobalPos.x(), cursorGlobalPos.y());
+    Q_EMIT requestIntellisenseProcessing(forConstant, this->currentText, textAfterColon, this->cursorPosition, cursorGlobalPos.x(), cursorGlobalPos.y());
 }
 
 void LuaEditorQml::showMachtedFunctionContextMenuAtCursor(const QString& textAfterColon)

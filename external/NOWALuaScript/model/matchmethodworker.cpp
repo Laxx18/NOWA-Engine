@@ -7,7 +7,7 @@
 MatchMethodWorker::MatchMethodWorker(LuaEditorModelItem* luaEditorModelItem, const QString& matchedClassName, const QString& typedAfterColon, int cursorPosition, int mouseX, int mouseY)
     : luaEditorModelItem(luaEditorModelItem),
     matchedClassName(matchedClassName),
-    typedAfterColon(typedAfterColon),
+    typedAfterKeyword(typedAfterColon),
     cursorPosition(cursorPosition),
     mouseX(mouseX),
     mouseY(mouseY),
@@ -20,7 +20,7 @@ MatchMethodWorker::MatchMethodWorker(LuaEditorModelItem* luaEditorModelItem, con
 void MatchMethodWorker::setParameters(const QString& matchedClassName, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY)
 {
     this->matchedClassName = matchedClassName;
-    this->typedAfterColon = textAfterColon;
+    this->typedAfterKeyword = textAfterColon;
     this->cursorPosition = cursorPos;
     this->mouseX = mouseX;
     this->mouseY = mouseY;
@@ -38,8 +38,8 @@ void MatchMethodWorker::process(void)
 
     ApiModel::instance()->showMatchedFunctionMenu(this->mouseX, this->mouseY);
 
-    // Trim `typedAfterColon` to remove characters after the method name
-    QString trimmedMethodName = this->typedAfterColon;
+    // Trim `typedAfterKeyword` to remove characters after the method name
+    QString trimmedMethodName = this->typedAfterKeyword;
     int bracketIndex = trimmedMethodName.indexOf('(');
     if (bracketIndex != -1)
     {
@@ -67,7 +67,7 @@ void MatchMethodWorker::process(void)
         QString fullSignature = returns + " " + methodName + args;
 
         // Calculate cursor position within typed arguments
-        int cursorPositionInArgs = this->typedAfterColon.length();
+        int cursorPositionInArgs = this->typedAfterKeyword.length();
 
         // Strip the enclosing parentheses from `args`
         QString strippedArgs = args.mid(1, args.length() - 2);
@@ -75,8 +75,8 @@ void MatchMethodWorker::process(void)
         // Split arguments by comma and keep track of indices
         QStringList params = strippedArgs.split(", ");
 
-        // Count commas in `typedAfterColon` to determine the parameter index
-        int commaCount = this->typedAfterColon.count(',');
+        // Count commas in `typedAfterKeyword` to determine the parameter index
+        int commaCount = this->typedAfterKeyword.count(',');
 
         // Calculate base index just after the method name and opening parenthesis
         int currentParamStart = returns.length() + 1 + methodName.length() + 1;

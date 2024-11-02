@@ -30,10 +30,6 @@ public:
     Q_PROPERTY(bool isMatchedFunctionShown READ getIsMatchedFunctionShown WRITE setIsMatchedFunctionShown NOTIFY isMatchedFunctionShownChanged FINAL)
 
 public:
-    Q_INVOKABLE void showIntelliSenseMenu(const QString& wordBeforeColon, int mouseX, int mouseY);
-
-    Q_INVOKABLE void showMatchedFunctionMenu(int mouseX, int mouseY);
-public:
     explicit ApiModel(QObject* parent = Q_NULLPTR);
 
 public:
@@ -81,13 +77,17 @@ public:
 
     void processMatchedMethodsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon);
 
-    void processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterColon);
+    void processMatchedConstantsForSelectedClass(const QString& selectedClassName, const QString& typedAfterKeyword);
 
     QString getClassForMethodName(const QString& className, const QString& methodName);
 
     bool isValidClassName(const QString& className);
 
     bool isValidMethodName(const QString& className, const QString& methodName);
+
+    void showIntelliSenseMenu(bool forConstant, const QString& wordBeforeColon, int mouseX, int mouseY);
+
+    void showMatchedFunctionMenu(int mouseX, int mouseY);
 
     void closeIntellisense(void);
 
@@ -132,7 +132,7 @@ Q_SIGNALS:
 
     void classInheritsChanged();
 
-    void signal_showIntelliSenseMenu(int mouseX, int mouseY);
+    void signal_showIntelliSenseMenu(bool forConstant, int mouseX, int mouseY);
 
     void signal_closeIntellisense();
 

@@ -41,7 +41,9 @@ public:
 
     void redo(void);
 
-    void insertText(int sizeToReplace, const QString& text);
+    void insertSentText(int sizeToReplace, const QString& text);
+Q_SIGNALS:
+    void insertingNewLineChanged(bool isInserting);
 protected:
     void highlightBlock(const QString& text) override;
 
@@ -65,6 +67,7 @@ private:
 
     QVector<HighlightingRule> highlightingRules;
     int errorLine;
+    int oldErrorLine;
     int errorStart;
     int errorEnd;
     QTextCharFormat errorFormat;

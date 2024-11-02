@@ -48,22 +48,26 @@ public slots:
     void onTextChanged(void);
 Q_SIGNALS:
     void modelChanged();
-    void requestIntellisenseProcessing(const QString& currentText, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
+    void requestIntellisenseProcessing(bool forConstant, const QString& currentText, const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
     void requestCloseIntellisense();
 
     void requestMatchedFunctionContextMenu(const QString& textAfterColon, int cursorPos, int mouseX, int mouseY);
     void requestCloseMatchedFunctionContextMenu();
-private:
-    void showIntelliSenseContextMenu(void);
 
-    void showIntelliSenseContextMenuAtCursor(const QString& textAfterColon);
+    void signal_insertingNewLine(bool inserting);
+private:
+    void showIntelliSenseContextMenu(bool forConstant);
+
+    void showIntelliSenseContextMenuAtCursor(bool forConstant, const QString& textAfterColon);
 
     void showMachtedFunctionContextMenuAtCursor(const QString& textAfterColon);
 
     // Helper function to get the cursor rectangle
     QPointF cursorAtPosition(const QString& currentText, int cursorPos);
 
-    void resetTextAfterKeyword();
+    void resetTextAfterColon();
+
+    void resetTextAfterDot();
 
     void processBracket(QChar keyword);
 private:
@@ -77,9 +81,12 @@ private:
 
     bool isAfterColon = false; // Track if we are after a colon
     QString typedAfterColon;    // Store text typed after colon
+    bool isAfterDot = false; // Track if we are after a colon
+    QString typedAfterDot;    // Store text typed after colon
     int cursorPosition;
     int oldCursorPosition;
     int lastColonIndex;
+    int lastDotIndex;
     QString currentText;
     bool isInMatchedFunctionProcessing;
 };

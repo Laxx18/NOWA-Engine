@@ -261,9 +261,9 @@ ApplicationWindow
     {
         target: NOWAApiModel;
 
-        function onSignal_showIntelliSenseMenu(x, y)
+        function onSignal_showIntelliSenseMenu(forConstant, x, y)
         {
-            intelliSenseContextMenu.open(x, y);
+            intelliSenseContextMenu.open(forConstant, x, y);
         }
 
         function onSignal_closeIntellisense()

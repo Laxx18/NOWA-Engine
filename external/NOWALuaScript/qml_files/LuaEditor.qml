@@ -17,18 +17,22 @@ LuaEditorQml
         console.debug("----> LuaEditorQml LOADED");
     }
 
-    onVisibleChanged:
-    {
-        if (visible)
-        {
-            luaEditor.forceActiveFocus();
-        }
-    }
+    // Hugh performance impact and cursor is visible just after a while on a large file
+    // onVisibleChanged:
+    // {
+    //     if (visible)
+    //     {
+    //         luaEditor.forceActiveFocus();
+    //     }
+    // }
 
     property string textColor: "black";
 
     property int leftPadding: 4;
     property int topPadding: 4;
+
+    // Property to track if a new line is being inserted
+    property bool isInsertingNewLine: false
 
     Rectangle
     {
@@ -42,6 +46,15 @@ LuaEditorQml
     function checkSyntax()
     {
         LuaScriptQmlAdapter.checkSyntax(root.model.filePathName, luaEditor.originalText);
+    }
+
+    Connections
+    {
+        target: root
+        function onSignal_insertingNewLine(inserting)
+        {
+            root.isInsertingNewLine = inserting;
+        }
     }
 
     Flickable
@@ -80,14 +93,28 @@ LuaEditorQml
         // Synchronize scroll position
         function ensureVisible(r)
         {
-             if (contentX >= r.x)
-                 contentX = r.x;
-             else if (contentX + width <= r.x + r.width)
-                 contentX = r.x + r.width - width;
-             if (contentY >= r.y)
-                 contentY = r.y;
-             else if (contentY + height <= r.y + r.height)
-                 contentY = r.y + r.height - height;
+            if (root.isInsertingNewLine)
+            {
+                // Do nothing if a new line is being inserted, because it corrupts the "r" with wrong values and so there is always an ugly jump
+                return;
+            }
+
+            if (contentX >= r.x)
+            {
+                contentX = r.x;
+            }
+            else if (contentX + width <= r.x + r.width)
+            {
+                contentX = r.x + r.width - width;
+            }
+            if (contentY >= r.y)
+            {
+                contentY = r.y;
+            }
+            else if (contentY + height <= r.y + r.height)
+            {
+                contentY = r.y + r.height - height;
+            }
         }
 
         onContentYChanged:

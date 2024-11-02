@@ -8,6 +8,7 @@ LuaHighlighter::LuaHighlighter(QQuickItem* luaEditorTextEdit, QObject* parent)
     : QSyntaxHighlighter{parent},
     luaEditorTextEdit(luaEditorTextEdit),
     errorLine(-1),
+    oldErrorLine(-2),
     errorStart(-1),
     errorEnd(-1),
     errorAlreadyCleared(true),
@@ -50,10 +51,14 @@ LuaHighlighter::LuaHighlighter(QQuickItem* luaEditorTextEdit, QObject* parent)
 
 void LuaHighlighter::setErrorLine(int line, int start, int end)
 {
-    this->errorLine = line;
-    this->errorStart = start;
-    this->errorEnd = end;
-    this->rehighlight(); // Rehighlight the document to apply changes
+    if (this->oldErrorLine != this->errorLine)
+    {
+        this->errorLine = line;
+        this->errorStart = start;
+        this->errorEnd = end;
+        this->rehighlight(); // Rehighlight the document to apply changes
+        this->oldErrorLine = this->errorLine;
+    }
 }
 
 void LuaHighlighter::clearErrors()
@@ -238,7 +243,7 @@ void LuaHighlighter::redo()
     }
 }
 
-void LuaHighlighter::insertText(int sizeToReplace, const QString& text)
+void LuaHighlighter::insertSentText(int sizeToReplace, const QString& text)
 {
     // Begin an edit block to group changes for undo/redo
     this->cursor.beginEditBlock();
@@ -323,42 +328,23 @@ void LuaHighlighter::setCursorPosition(int cursorPosition)
 {
     // Q_UNUSED(cursorPosition);
     this->cursor = this->getCursor();
-    this->rehighlight();  // Reapply syntax highlighting
-    // this->highlightMatchingBrackets();
-}
 
-#if 0
-void LuaHighlighter::addTabToSelection()
-{
-    this->cursor.beginEditBlock();
+    QString text = this->cursor.block().text();
 
-    // Determine if there's a selection, get start and end blocks
-    QTextBlock startBlock = this->cursor.block();
-    QTextBlock endBlock = this->cursor.block();
-
-    // Check if there is a selection
-    if (this->cursor.hasSelection())
+    int cursorPos = this->cursor.position() - this->cursor.block().position();  // Position relative to the block
+    if (cursorPos < 0 || cursorPos >= this->cursor.block().length() || cursorPos >= text.length())
     {
-        startBlock = this->cursor.document()->findBlock(this->cursor.selectionStart());
-        endBlock = this->cursor.document()->findBlock(this->cursor.selectionEnd());
+        return;
     }
 
-    QString indent = QString(4, ' ');  // Create a string with 4 spaces
+    QChar currentChar = text.at(cursorPos);
 
-    // Iterate over each selected block or just the current block if nothing is selected
-    QTextBlock block = startBlock;
-    do
+    // Performance optimization
+    if (currentChar == '(' || currentChar == ')')
     {
-        QTextCursor blockCursor(block);
-        blockCursor.movePosition(QTextCursor::StartOfBlock);
-        blockCursor.insertText(indent);  // Insert 4 spaces at the start of each line
-        block = block.next();
+        this->rehighlight();  // Reapply syntax highlighting
     }
-    while (block != endBlock.next() && block.isValid());
-
-    this->cursor.endEditBlock();
 }
-#endif
 
 void LuaHighlighter::addTabToSelection()
 {
@@ -442,45 +428,10 @@ void LuaHighlighter::removeTabFromSelection()
     this->cursor.endEditBlock();
 }
 
-#if 0
 void LuaHighlighter::breakLine()
 {
-    this->cursor.beginEditBlock();
+    Q_EMIT insertingNewLineChanged(true); // Emit signal before inserting a new line
 
-    // Get the current block and the previous block
-    QTextBlock previousBlock = this->cursor.block();
-
-    // Move the cursor to the end of the current line (to insert the line break first)
-    this->cursor.movePosition(QTextCursor::EndOfBlock);
-
-    // Insert a line break
-    this->cursor.insertText("\n");
-
-    // Get the indentation level of the previous block
-    QString previousBlockText = previousBlock.text();
-    int indentationLevel = 0;
-
-    // Count leading spaces in the previous block to determine indentation level
-    while (indentationLevel < previousBlockText.length() && previousBlockText[indentationLevel] == ' ')
-    {
-        indentationLevel++;
-    }
-
-    // Move the cursor to the start of the new block (after the line break)
-    this->cursor.movePosition(QTextCursor::StartOfBlock);
-
-    // Insert the same number of spaces in the new line
-    if (indentationLevel > 0)
-    {
-        this->cursor.insertText(QString(indentationLevel, ' '));
-    }
-
-    this->cursor.endEditBlock();
-}
-#endif
-
-void LuaHighlighter::breakLine()
-{
     this->cursor.beginEditBlock();
 
     // Get the current block and determine the cursor's position within it
@@ -507,90 +458,9 @@ void LuaHighlighter::breakLine()
     }
 
     this->cursor.endEditBlock();
+
+    Q_EMIT insertingNewLineChanged(false); // Emit signal after the new line is inserted
 }
-
-#if 0
-void LuaHighlighter::addTabToSelection()
-{
-    this->cursor.beginEditBlock();
-
-    // Determine if there's a selection, get start and end blocks
-    QTextBlock startBlock = this->cursor.block();
-    QTextBlock endBlock = this->cursor.block();
-
-    if (this->cursor.hasSelection())
-    {
-        startBlock = this->cursor.document()->findBlock(this->cursor.selectionStart());
-        endBlock = this->cursor.document()->findBlock(this->cursor.selectionEnd());
-    }
-
-    QString indent = QString(4, ' ');  // Create a string with 4 spaces
-
-    // Iterate over each selected block and add a tab
-    QTextBlock block = startBlock;
-    do
-    {
-        QTextCursor blockCursor(block);
-        blockCursor.movePosition(QTextCursor::StartOfBlock);
-        blockCursor.insertText(indent);  // Insert a tab at the start of each line
-        block = block.next();
-    }
-    while (block != endBlock.next());
-
-    this->cursor.endEditBlock();
-}
-
-void LuaHighlighter::removeTabFromSelection()
-{
-    this->cursor.beginEditBlock();
-
-    // Determine if there's a selection, get start and end blocks
-    QTextBlock startBlock = this->cursor.block();
-    QTextBlock endBlock = this->cursor.block();
-
-    if (this->cursor.hasSelection())
-    {
-        startBlock = this->cursor.document()->findBlock(this->cursor.selectionStart());
-        endBlock = this->cursor.document()->findBlock(this->cursor.selectionEnd());
-    }
-
-    QString indent = QString(4, ' ');  // Create a string with 4 spaces
-
-    // Iterate over each selected block and remove up to 4 leading spaces
-    QTextBlock block = startBlock;
-    do
-    {
-        QString blockText = block.text();
-        int leadingSpacesCount = 0;
-
-        // Count how many leading spaces the block has
-        while (leadingSpacesCount < blockText.length() && blockText.at(leadingSpacesCount) == ' ' && leadingSpacesCount < 4)
-        {
-            leadingSpacesCount++;
-        }
-
-        if (leadingSpacesCount > 0)
-        {
-            // Remove the leading spaces from the block
-            QTextCursor blockCursor(block);
-            blockCursor.movePosition(QTextCursor::StartOfBlock);
-            blockCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, leadingSpacesCount);
-            blockCursor.removeSelectedText();  // Remove the leading spaces
-        }
-        else if (blockText.isEmpty() && block == endBlock)
-        {
-            // If the block is empty, insert a tab for empty line indent
-            QTextCursor blockCursor(block);
-            blockCursor.movePosition(QTextCursor::StartOfBlock);
-            blockCursor.insertText(indent);
-        }
-        block = block.next();
-    }
-    while (block != endBlock.next());
-
-    this->cursor.endEditBlock();
-}
-#endif
 
 void LuaHighlighter::searchInTextEdit(const QString& searchText, bool wholeWord, bool caseSensitve)
 {
@@ -758,7 +628,3 @@ bool LuaHighlighter::isWholeWord(const QString &text, int startIndex, int length
 
     return isWordBoundaryBefore && isWordBoundaryAfter;
 }
-
-// https://doc.qt.io/qt-6/qsyntaxhighlighter.html
-// https://stackoverflow.com/questions/15280452/how-can-i-get-highlighted-text-from-a-qsyntaxhighlighter-into-an-html-string
-// https://www.qtcentre.org/threads/25483-Highlight-with-two-different-syntaxes-with-QSyntaxHighlighter

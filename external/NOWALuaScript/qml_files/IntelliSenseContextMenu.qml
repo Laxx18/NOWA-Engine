@@ -26,6 +26,7 @@ Rectangle
         property string backgroundClickColor: "darkblue";
         property string textColor: "white";
         property string borderColor: "grey";
+        property bool forConstant: false;
         property int currentIndex: 0;  // Track selected index
     }
 
@@ -48,8 +49,17 @@ Rectangle
             }
             else if (key === Qt.Key_Tab && p.currentIndex >= 0)
             {
-                let selectedMethod = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
-                NOWALuaEditorModel.sendTextToEditor(selectedMethod.name);
+                var selectedIdentifier;
+                if (!p.forConstant)
+                {
+                    selectedIdentifier = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
+                }
+                else
+                {
+                    selectedIdentifier = NOWAApiModel.constantsForSelectedClass[p.currentIndex];
+                }
+
+                NOWALuaEditorModel.sendTextToEditor(selectedIdentifier.name);
             }
         }
     }
@@ -62,16 +72,34 @@ Rectangle
 
         onTriggered:
         {
-            let selectedMethod = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
-            let content = "";
-            if (selectedMethod.description)
+            var selectedIdentifier;
+            var content = "";
+            if (!p.forConstant)
             {
-                content = "Details: " + selectedMethod.description + "\n" + selectedMethod.returns + " " + selectedMethod.name + selectedMethod.args;
+                selectedIdentifier = NOWAApiModel.methodsForSelectedClass[p.currentIndex];
+                if (selectedMethod.description)
+                {
+                    content = "Details: " + selectedIdentifier.description + "\n" + selectedIdentifier.returns + " " + selectedIdentifier.name + selectedIdentifier.args;
+                }
+                else
+                {
+                    content = "Details: " + selectedIdentifier.returns + " " + selectedIdentifier.name + selectedIdentifier.args;
+                }
             }
             else
             {
-                content = "Details: " + selectedMethod.returns + " " + selectedMethod.name + selectedMethod.args;
+                selectedIdentifier = NOWAApiModel.constantsForSelectedClass[p.currentIndex];
+                if (selectedMethod.description)
+                {
+                    content = "Details: Constant: " + selectedIdentifier.description + "\n" + selectedIdentifier.name;
+                }
+                else
+                {
+                    content = "Details: Constant: " + selectedIdentifier.name;
+                }
             }
+
+
 
             details.text = content;
         }
@@ -240,7 +268,8 @@ Rectangle
                 {
                     id: repeaterContent;
 
-                    model: NOWAApiModel.methodsForSelectedClass;
+                    // Sets a model either for constants or for methods
+                    model: !p.forConstant ? NOWAApiModel.methodsForSelectedClass : NOWAApiModel.constantsForSelectedClass;
 
                     delegate: Rectangle
                     {
@@ -277,15 +306,34 @@ Rectangle
                                 text:
                                 {
                                     var nameText = modelData.name;
-                                    if (modelData.startIndex >= 0 && modelData.endIndex > modelData.startIndex)
+                                    var preMatch;
+                                    var matchText;
+                                    var postMatch;
+
+                                    if (!p.forConstant)
                                     {
-                                        var preMatch = nameText.substring(0, modelData.startIndex);
-                                        var matchText = nameText.substring(modelData.startIndex, modelData.endIndex + 1);
-                                        var postMatch = nameText.substring(modelData.endIndex + 1);
-                                        // #FFDAB9 = Peach Puff
-                                        nameText = preMatch + "<b><span style='color:#FFDAB9;'>" + matchText + "</span></b>" + postMatch;
+                                        if (modelData.startIndex >= 0 && modelData.endIndex > modelData.startIndex)
+                                        {
+                                            preMatch = nameText.substring(0, modelData.startIndex);
+                                            matchText = nameText.substring(modelData.startIndex, modelData.endIndex + 1);
+                                            postMatch = nameText.substring(modelData.endIndex + 1);
+                                            // #FFDAB9 = Peach Puff
+                                            nameText = preMatch + "<b><span style='color:#FFDAB9;'>" + matchText + "</span></b>" + postMatch;
+                                        }
+                                        return modelData.returns + " " + nameText + modelData.args;
                                     }
-                                    return modelData.returns + " " + nameText + modelData.args;
+                                    else
+                                    {
+                                        if (modelData.startIndex >= 0 && modelData.endIndex > modelData.startIndex)
+                                        {
+                                            preMatch = nameText.substring(0, modelData.startIndex);
+                                            matchText = nameText.substring(modelData.startIndex, modelData.endIndex + 1);
+                                            postMatch = nameText.substring(modelData.endIndex + 1);
+                                            // #FFDAB9 = Peach Puff
+                                            nameText = preMatch + "<b><span style='color:#FFDAB9;'>" + matchText + "</span></b>" + postMatch;
+                                        }
+                                        return nameText;
+                                    }
                                 }
 
                                 verticalAlignment: Text.AlignVCenter;
@@ -367,8 +415,9 @@ Rectangle
         }
     }
 
-    function open(x, y)
+    function open(forConstant, x, y)
     {
+        p.forConstant = forConstant;
         p.currentIndex = 0;
 
         calculateMaxWidth();
