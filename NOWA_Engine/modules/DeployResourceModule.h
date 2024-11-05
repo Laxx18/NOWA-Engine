@@ -42,6 +42,8 @@ namespace NOWA
 
 		Ogre::String getCurrentComponentPluginFolder(void) const;
 
+		bool checkIfInstanceRunning(void);
+
 		bool openNOWALuaScriptEditor(const Ogre::String& filePathName);
 
 		void monitorProcess(HANDLE processHandle);

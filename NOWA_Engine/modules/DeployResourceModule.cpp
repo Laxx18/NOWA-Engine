@@ -3,6 +3,7 @@
 #include "main/Core.h"
 #include "modules/LuaScriptApi.h"
 #include "main/AppStateManager.h"
+#include "utilities/rapidxml.hpp"
 
 #include <thread>
 
@@ -34,8 +35,41 @@ namespace NOWA
 		this->taggedResourceMap.clear();
 	}
 
+	void DeployResourceModule::destroyContent(void)
+	{
+		this->taggedResourceMap.clear();
+	}
+
+	Ogre::String DeployResourceModule::getCurrentComponentPluginFolder(void) const
+	{
+		return this->currentComponentPluginFolder;
+	}
+
+	bool DeployResourceModule::checkIfInstanceRunning(void)
+	{
+// #if defined(_WIN32)
+#if 0
+		// Try to create a named mutex
+		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");
+		if (0 != this->hwndNOWALuaScript)
+		{
+			return true;
+		}
+#else
+		Ogre::String filePath = "../../external/NOWALuaScript/bin/NOWALuaScript.running";
+
+		struct stat buffer;
+		bool fileExists = (stat(filePath.c_str(), &buffer) == 0);
+
+		return fileExists;
+#endif
+		return false;
+	}
+
 	void DeployResourceModule::sendFilePathToRunningInstance(const Ogre::String& filePathName)
 	{
+// #if defined(_WIN32)
+#if 0
 		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");  // Replace with the correct window title
 		if (this->hwndNOWALuaScript)
 		{
@@ -58,29 +92,64 @@ namespace NOWA
 			// If somehow mutex does exist, even it should not, release the mutex and create process again
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to find running instance of NOWALuaScript.");
 		}
-	}
+#else
+#if defined(_WIN32)
+		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");  // Replace with the correct window title
+		if (this->hwndNOWALuaScript)
+		{
+			SetForegroundWindow(this->hwndNOWALuaScript);
+			SetForegroundWindow(this->hwndNOWALuaScript);
+		}
+#endif
 
-	void DeployResourceModule::destroyContent(void)
-	{
-		this->taggedResourceMap.clear();
-	}
+		// Sends the file path name to the to be opened lua script file
+		// Create an XML document
+		rapidxml::xml_document<> doc;
 
-	Ogre::String DeployResourceModule::getCurrentComponentPluginFolder(void) const
-	{
-		return this->currentComponentPluginFolder;
+		// Create and append the root node
+		rapidxml::xml_node<>* root = doc.allocate_node(rapidxml::node_element, "Message");
+		doc.append_node(root);
+
+		// Create and append the message ID node
+		char* messageId = doc.allocate_string("LuaScriptPath");
+		rapidxml::xml_node<>* idNode = doc.allocate_node(rapidxml::node_element, "MessageId", messageId);
+		root->append_node(idNode);
+
+		// Create and append the file path node
+		char* filePath = doc.allocate_string(filePathName.c_str());
+		rapidxml::xml_node<>* pathNode = doc.allocate_node(rapidxml::node_element, "FilePath", filePath);
+		root->append_node(pathNode);
+
+		// Write the XML to a file
+		std::ofstream outFile("../../external/NOWALuaScript/bin/lua_script_data.xml"); // Use a platform-specific path if necessary
+		if (outFile.is_open())
+		{
+			outFile << doc; // Print the XML content to the file
+			outFile.close();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: XML file created successfully at ../../external/NOWALuaScript/bin/lua_script_data.xml");
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to write to ../../external/NOWALuaScript/bin/lua_script_data.xml");
+		}
+
+		// Clear the document (optional)
+		doc.clear();
+#endif
 	}
 
 	bool DeployResourceModule::openNOWALuaScriptEditor(const Ogre::String& filePathName)
 	{
-		// Try to create a named mutex
-		this->hwndNOWALuaScript = FindWindow(NULL, "NOWALuaScript");
-		if (0 != this->hwndNOWALuaScript)
+		// Check if the process is already running (pseudo-implementation)
+		bool instanceRunning = this->checkIfInstanceRunning(); // Implement platform-specific instance check
+
+		if (instanceRunning)
 		{
-			// Instance already running, send file path to it
 			this->sendFilePathToRunningInstance(filePathName);
-			return true; // Return true when sending the file path to the existing instance
+			return true;
 		}
 
+#if defined(_WIN32)
 		// No instance running, so start NOWALuaScript.exe
 		STARTUPINFOA si = { sizeof(STARTUPINFOA) };
 		PROCESS_INFORMATION pi;
@@ -114,6 +183,20 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to start NOWALuaScript.exe.");
 		}
+#else
+		std::string command = "../../external/NOWALuaScript/bin/NOWALuaScript \"" + filePathName + "\" &";
+		int result = std::system(command.c_str());
+		if (result == 0)
+		{
+			return true;
+		}
+		else
+		{
+			std::cerr << "Failed to start NOWALuaScript on POSIX system." << std::endl;
+			return false;
+		}
+
+#endif
 
 		return false;
 	}
