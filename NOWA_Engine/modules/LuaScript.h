@@ -46,6 +46,10 @@ namespace NOWA
 
 		Ogre::String getScriptContent(void) const;
 
+		void setScriptFilePathName(const Ogre::String& scriptFilePathName);
+
+		Ogre::String getScriptFilePathName(void) const;
+
 		void setInterfaceFunctionsTemplate(const Ogre::String& strInterfaceFunctionsTemplate);
 
 		Ogre::String getInterfaceFunctionsTemplate(void) const;
@@ -282,6 +286,7 @@ namespace NOWA
 	private:
 		Ogre::String scriptPathName;
 		Ogre::String scriptName;
+		Ogre::String scriptFilePathName;
 		Ogre::String scriptContent;
 		const Ogre::String name;
 		// int scriptReference;

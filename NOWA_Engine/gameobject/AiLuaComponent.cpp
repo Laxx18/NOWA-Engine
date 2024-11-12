@@ -327,7 +327,7 @@ namespace NOWA
 			{
 				// If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
 				// luaScriptComponent->setActivated(true);
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot start ai lua state + '" + this->startStateName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
 				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return;
@@ -346,7 +346,7 @@ namespace NOWA
 			bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->startStateName->getString());
 			if (false == startStateAvailable && false == this->componentCloned)
 			{
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot start ai lua state, because the start state name: '" + this->startStateName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
 				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return;
@@ -430,7 +430,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'setCurrentState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}
@@ -444,7 +444,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'setGlobalState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}
@@ -458,7 +458,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'setPreviousState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}
@@ -472,7 +472,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'changeState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}
@@ -486,7 +486,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'exitGlobalState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}
@@ -500,7 +500,7 @@ namespace NOWA
 		}
 		else
 		{
-			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0, 
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot 'revertToPreviousState' in 'connect' function of lua script. It can only be set in an own state and ai lua component must be activated, for game object: " + this->gameObjectPtr->getName()));
 			AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 		}

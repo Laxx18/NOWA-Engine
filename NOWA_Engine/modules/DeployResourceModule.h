@@ -2,6 +2,7 @@
 #define DEPLOY_RESOURCE_MODULE_H
 
 #include "defines.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -55,6 +56,8 @@ namespace NOWA
 	private:
 		// Function to send the file path to the running instance
 		void sendFilePathToRunningInstance(const Ogre::String& filePathName);
+	private:
+		void handleLuaError(NOWA::EventDataPtr eventData);
 	private:
 		std::map<Ogre::String, std::pair<Ogre::String, Ogre::String>> taggedResourceMap;
 		Ogre::String currentComponentPluginFolder;

@@ -345,7 +345,7 @@ namespace NOWA
 			{
 				// If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
 				// luaScriptComponent->setActivated(true);
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0,
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot start ai lua state + '" + this->startGoalCompositeName->getString() + "', because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
 				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return;
@@ -364,7 +364,7 @@ namespace NOWA
 			bool startStateAvailable = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaStateAvailable(this->gameObjectPtr->getLuaScript()->getName(), this->startGoalCompositeName->getString());
 			if (false == startStateAvailable && false == this->componentCloned)
 			{
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0,
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot start ai lua goal, because the start goal name: '" + this->startGoalCompositeName->getString() + "' is not defined for game object: " + this->gameObjectPtr->getName()));
 				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return;

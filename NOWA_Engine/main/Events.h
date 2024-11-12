@@ -1373,8 +1373,9 @@ namespace NOWA
 		{
 		}
 
-		explicit EventDataPrintLuaError(const Ogre::String& scriptName, int line, const Ogre::String& errorMessage)
+		explicit EventDataPrintLuaError(const Ogre::String& scriptName, const Ogre::String& scriptFilePathName, int line, const Ogre::String& errorMessage)
 			: scriptName(scriptName),
+			scriptFilePathName(scriptFilePathName),
 			line(line),
 			errorMessage(errorMessage)
 		{
@@ -1393,18 +1394,20 @@ namespace NOWA
 		virtual void deserialize(std::istrstream& in)
 		{
 			in >> this->scriptName;
+			in >> this->scriptFilePathName;
 			in >> this->line;
 			in >> this->errorMessage;
 		}
 
 		virtual EventDataPtr copy(void) const
 		{
-			return EventDataPtr(new EventDataPrintLuaError(this->scriptName, this->line, this->errorMessage));
+			return EventDataPtr(new EventDataPrintLuaError(this->scriptName, this->scriptFilePathName, this->line, this->errorMessage));
 		}
 
 		virtual void serialize(std::ostrstream& out) const
 		{
 			out << this->scriptName << " ";
+			out << this->scriptFilePathName << " ";
 			out << this->line << " ";
 			out << this->errorMessage << " ";
 		}
@@ -1419,6 +1422,11 @@ namespace NOWA
 			return this->scriptName;
 		}
 
+		Ogre::String getScriptFilePathName(void) const
+		{
+			return this->scriptFilePathName;
+		}
+
 		int getLine(void) const
 		{
 			return this->line;
@@ -1430,6 +1438,7 @@ namespace NOWA
 		}
 	private:
 		Ogre::String scriptName;
+		Ogre::String scriptFilePathName;
 		int line;
 		Ogre::String errorMessage;
 	};

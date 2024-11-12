@@ -28,6 +28,8 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DeployResourceModule] Module created");
 
 		this->hwndNOWALuaScript = 0;
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DeployResourceModule::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	}
 
 	DeployResourceModule::~DeployResourceModule()
@@ -38,6 +40,7 @@ namespace NOWA
 	void DeployResourceModule::destroyContent(void)
 	{
 		this->taggedResourceMap.clear();
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DeployResourceModule::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	}
 
 	Ogre::String DeployResourceModule::getCurrentComponentPluginFolder(void) const
@@ -136,6 +139,64 @@ namespace NOWA
 		// Clear the document (optional)
 		doc.clear();
 #endif
+	}
+
+	void DeployResourceModule::handleLuaError(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataPrintLuaError> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintLuaError>(eventData);
+		// Create an XML document
+		rapidxml::xml_document<> doc;
+
+		// Create and append the root node <Message>
+		rapidxml::xml_node<>* root = doc.allocate_node(rapidxml::node_element, "Message");
+		doc.append_node(root);
+
+		// Create and append the <MessageId> node with the value "LuaRuntimeErrors"
+		char* messageId = doc.allocate_string("LuaRuntimeErrors");
+		rapidxml::xml_node<>* idNode = doc.allocate_node(rapidxml::node_element, "MessageId", messageId);
+		root->append_node(idNode);
+
+		// Allocate and append the <FilePath> node with the script file path from castEventData
+		std::string filePathStr = castEventData->getScriptFilePathName();
+		char* filePath = doc.allocate_string(filePathStr.c_str());
+		rapidxml::xml_node<>* pathNode = doc.allocate_node(rapidxml::node_element, "FilePath", filePath);
+		root->append_node(pathNode);
+
+		// Format the line and start/end attributes for the <error> node
+		int line = castEventData->getLine();
+		std::string lineStr = std::to_string(line);
+		char* lineAttr = doc.allocate_string(lineStr.c_str());
+
+		// Set the error message from castEventData
+		std::string errorMsg = castEventData->getErrorMessage();
+		char* errorMsgText = doc.allocate_string(errorMsg.c_str());
+
+		// Create and append the <error> node with line attribute and error message text
+		rapidxml::xml_node<>* errorNode = doc.allocate_node(rapidxml::node_element, "error", errorMsgText);
+		errorNode->append_attribute(doc.allocate_attribute("line", lineAttr));
+		errorNode->append_attribute(doc.allocate_attribute("start", "-1"));
+		errorNode->append_attribute(doc.allocate_attribute("end", "-1"));
+		root->append_node(errorNode);
+
+		std::hash<Ogre::String> hash;
+		unsigned int hashNumber = static_cast<unsigned int>(hash(filePathStr));
+		Ogre::String outFilePathName = "../../external/NOWALuaScript/bin/lua_script_data" + Ogre::StringConverter::toString(hashNumber) + ".xml";
+
+		// Write the XML document to a file
+		std::ofstream outFile(outFilePathName); // Adjust the file path as needed
+		if (outFile.is_open())
+		{
+			outFile << doc;
+			outFile.close();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWA-Engine]: XML file created successfully at: " + outFilePathName);
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[NOWA-Engine]: Failed to write to: " + outFilePathName);
+		}
+
+		// Clear the document to free memory
+		doc.clear();
 	}
 
 	bool DeployResourceModule::openNOWALuaScriptEditor(const Ogre::String& filePathName)

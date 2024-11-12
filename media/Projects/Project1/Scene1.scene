@@ -4,9 +4,9 @@
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
-			<ambientLightUpperHemisphere r="0.00835963" g="0.0303886" b="0.0758533"/>
-			<ambientLightLowerHemisphere r="0.0142503" g="0.015975" b="0.0144702" a="1"/>
-			<hemisphereDir x="-6.69105e-08" y="0.92388" z="-0.382683"/>
+			<ambientLightUpperHemisphere r="0.00947292" g="0.0328896" b="0.0829284"/>
+			<ambientLightLowerHemisphere r="0.0106194" g="0.0143284" b="0.0192927" a="1"/>
+			<hemisphereDir x="0.499243" y="0.860106" z="-0.104754"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -98,6 +98,66 @@
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="7" name="OnContactFunctionName" data=""/>
+				</userData>
+			</item>
+		</node>
+		<node name="Case3_0" id="1801113553">
+			<position x="2.29851" y="4.76837e-07" z="-2.07275"/>
+			<rotation qw="0.965926" qx="0" qy="-0.258819" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="78318098"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="MaskId" data="1"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Scene1_Case3_0.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
 			</item>
 		</node>

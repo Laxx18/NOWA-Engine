@@ -219,6 +219,11 @@ namespace NOWA
 
 				this->luaScript->decompile();
 			}
+
+			// Reset for the lua script any runtime error, if connect is called. So that any external editor has the chance to clean up errors
+			boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->luaScript->getScriptName(), this->luaScript->getScriptFilePathName(), -1, ""));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
+		
 		}
 		return true;
 	}
@@ -346,9 +351,11 @@ namespace NOWA
 		this->activated->setValue(activated);
 
 		if (nullptr == this->luaScript)
+		{
 			return;
+		}
 
-		if (activated)
+		if (true == activated)
 		{
 			// For performance reasons only call lua table function permanentely if the function does exist in a lua script
 			this->hasUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "update");
@@ -521,8 +528,12 @@ namespace NOWA
 			}
 		}
 
+		Ogre::String relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + tempScriptFileName;
+		Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
+
 		this->luaScript->setScriptFile(tempScriptFileName);
-		this->scriptFile->addUserData(GameObject::AttrActionLuaScript(), NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + tempScriptFileName);
+		this->luaScript->setScriptFilePathName(luaScriptFilePathName);
+		this->scriptFile->addUserData(GameObject::AttrActionLuaScript(), luaScriptFilePathName);
 	}
 
 	Ogre::String LuaScriptComponent::getScriptFile(void) const

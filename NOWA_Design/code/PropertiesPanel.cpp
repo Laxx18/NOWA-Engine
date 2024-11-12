@@ -3006,9 +3006,8 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 		}
 		else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
 		{
-			Ogre::String relativeLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
-			Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
-			bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(luaScriptFilePathName);
+			Ogre::String absoluteLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
+			bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
 		}
 		else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
 		{

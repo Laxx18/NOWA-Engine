@@ -411,7 +411,7 @@ namespace NOWA
 		AddClassToCollection("Vector2", "Radian angleTo(Vector2 other)", "Gets the oriented angle between 2 vectors. Note: Vectors do not have to be unit-length but must represent directions. The angle is comprised between 0 and 2 PI.");
 
 		LUA_CONST_START(Vector2)
-			LUA_CONST(Vector2, ZERO);
+		LUA_CONST(Vector2, ZERO);
 		LUA_CONST(Vector2, UNIT_X);
 		LUA_CONST(Vector2, UNIT_Y);
 		LUA_CONST(Vector2, NEGATIVE_UNIT_X);
@@ -13430,7 +13430,10 @@ namespace NOWA
 					errorMessages.emplace(d.currentline);
 					Ogre::LogManager::getSingletonPtr()->logMessage(msg.str(), Ogre::LML_CRITICAL);
 
-					boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(scriptName, d.currentline, msg.str()));
+					Ogre::String relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+					Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
+
+					boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(scriptName, luaScriptFilePathName, d.currentline, msg.str()));
 					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 
 					lua_pop(lua, 1);

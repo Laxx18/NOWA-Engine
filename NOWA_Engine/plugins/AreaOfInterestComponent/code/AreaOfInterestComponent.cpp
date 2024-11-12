@@ -473,7 +473,7 @@ namespace NOWA
 			{
 				// If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component
 				// luaScriptComponent->setActivated(true);
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), 0,
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->gameObjectPtr->getLuaScript()->getScriptName(), this->gameObjectPtr->getLuaScript()->getScriptFilePathName(), 0,
 					"Cannot activate component, because the 'LuaScriptComponent' is not activated for game object: " + this->gameObjectPtr->getName()));
 				AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return;

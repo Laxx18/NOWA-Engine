@@ -973,26 +973,28 @@ void MainMenuBar::handleProjectEncoded(NOWA::EventDataPtr eventData)
 
 void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 {
-	if (true == this->luaErrorFirstTime)
-	{
-		MyGUI::PointerManager::getInstancePtr()->setVisible(true);
-		this->createLuaAnalysisWindow();
-		this->luaErrorFirstTime = false;
-	}
-
 	boost::shared_ptr<NOWA::EventDataPrintLuaError> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintLuaError>(eventData);
+	if (false == castEventData->getErrorMessage().empty())
+	{
+		if (true == this->luaErrorFirstTime)
+		{
+			MyGUI::PointerManager::getInstancePtr()->setVisible(true);
+			this->createLuaAnalysisWindow();
+			this->luaErrorFirstTime = false;
+		}
 
-	this->luaErrors +=  "<p align='center'><color value='#000088'><h1>Script: " + castEventData->getScriptName() + "</h1><color></p><br/><br/>"
-						"<p align='left'><color value='#880000'><h2>Line: " + Ogre::StringConverter::toString(castEventData->getLine()) + "</h2></color></p><br/>"
-						"<p align='left'><color value='#FFFFFF'><h3>" + castEventData->getErrorMessage() + "</h3></color></p><br/><br/>";
-	this->luaErrorEdit->setCaption(this->luaErrors);
-	this->luaErrorEdit->updateContent();
-	this->errorCount++;
+		this->luaErrors += "<p align='center'><color value='#000088'><h1>Script: " + castEventData->getScriptName() + "</h1><color></p><br/><br/>"
+			"<p align='left'><color value='#880000'><h2>Line: " + Ogre::StringConverter::toString(castEventData->getLine()) + "</h2></color></p><br/>"
+			"<p align='left'><color value='#FFFFFF'><h3>" + castEventData->getErrorMessage() + "</h3></color></p><br/><br/>";
+		this->luaErrorEdit->setCaption(this->luaErrors);
+		this->luaErrorEdit->updateContent();
+		this->errorCount++;
 
-	// zurücksetzen der Farbe fehlt
-	// this->simulationWindow->setColour(MyGUI::Colour(0.6f, 0.1f, 0.1f));
-	this->simulationWindow->getCaptionWidget()->setTextColour(MyGUI::Colour::Red);
-	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getWorldName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
+		// zurücksetzen der Farbe fehlt
+		// this->simulationWindow->setColour(MyGUI::Colour(0.6f, 0.1f, 0.1f));
+		this->simulationWindow->getCaptionWidget()->setTextColour(MyGUI::Colour::Red);
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getWorldName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
+	}
 }
 
 void MainMenuBar::showAnalysisWindow(void)

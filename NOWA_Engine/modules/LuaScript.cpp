@@ -58,7 +58,7 @@ namespace NOWA
 			lineNumber = Ogre::StringConverter::parseInt(strLineNumber);
 		}
 
-		boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, lineNumber, error));
+		boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, this->scriptFilePathName, lineNumber, error));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 
 		// Sent event with feedback
@@ -209,7 +209,7 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage("[LuaScript]: " + error, Ogre::LML_CRITICAL);
 
 				luaFile.close();
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, 1, error));
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, this->scriptFilePathName, 1, error));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 				return false;
 			}
@@ -316,6 +316,16 @@ namespace NOWA
 		this->scriptContent = scriptContent;
 	}
 
+	void LuaScript::setScriptFilePathName(const Ogre::String& scriptFilePathName)
+	{
+		this->scriptFilePathName = scriptFilePathName;
+	}
+
+	Ogre::String LuaScript::getScriptFilePathName(void) const
+	{
+		return this->scriptFilePathName;
+	}
+
 	Ogre::String LuaScript::getScriptContent(void) const
 	{
 		return this->scriptContent;
@@ -384,6 +394,8 @@ namespace NOWA
 
 	void LuaScript::printErrorMessage(const Ogre::String& functionName, luabind::error& error)
 	{
+		// LuaScriptApi seems do handle all those case also with a correct error line!
+#if 0
 		Ogre::String errorString;
 
 		// Flooding prevention
@@ -404,10 +416,11 @@ namespace NOWA
 			// Lua panic called, also in this case feedback event is required
 			if ("lua runtime error" == Ogre::String(error.what()))
 			{
-				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, -1, errorString));
+				boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(this->scriptPathName, this->scriptFilePathName, -1, errorString));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataPrintLuaError);
 			}
-		}	
+		}
+#endif
 	}
 
 }; // namespace end
