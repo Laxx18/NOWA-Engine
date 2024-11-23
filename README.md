@@ -23,7 +23,7 @@ For more information see [http://www.lukas-kalinowski.com/Homepage/?page_id=1631
 
 The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used to create complex virtual environments. The speciality is its ability to test everything at runtime. The user may create a world add some GameObjects arm the GameObjects with some components to obtain some abilities like physics behaviors or particle effects, sounds etc. When the user presses the “Play” button. Everything will be rendered in realtime and the user may interact with the GameObjects. By pressing the “Stop” button everything will be placed in an “undo”-step to its stage before the simulation has happened. The biggest feature is that the LuaScriptComponent, that can be used for any game object, adding custom behavior at runtime, which is demonstrated in the video below “NOWA Design LuaScript AreaOfInterest”. The NOWA-Design editor has a lot of functionalities. Some will be listed below:
 
-- Ogre-Next workspace management to create and change workspaces for “Physically Based Shading” (PBS), skies and sky-reflections at realtime
+- Ogre-Next workspace management to create and change workspaces for “Physically Based Shading” (PBS), skies and sky-reflections at realtime, HDR, Atmosphere
 - Full integrated undo/redo functionality
 - Camera position/orientation undo/redo functionality
 - GameObject selection undo/redo functionality
@@ -37,7 +37,10 @@ The NOWA-Design editor uses the NOWA-Engine intensively. The editor can be used 
 - Lua error feedback integrated in the editor
 - Interface for Lua scripting and on the fly activation of the scripts
 - Recast pathfinding integration
-- Terra integration
+- Terra integration and Terrain editing and painting with undo/redo
+- Minimap Component
+- Possibility to write own Component Plugins also with Lua Integration
+- Coorporation with NOWALuaScript for lua editing (which also can be used as standalone app for other projects)
 
 # Demos
 See: [http://www.lukas-kalinowski.com/Homepage/?page_id=1787](http://www.lukas-kalinowski.com/Homepage/?page_id=1787)
@@ -90,6 +93,10 @@ styles.indicator.fncall.fg = {240,0,0}
 styles.indicator.fncall.st = wxstc.wxSTC_INDIC_HIDDEN
 ```
 - Paste the **NOWA_Api.lua** to the folder 'C:/Program Files (x86)/ZeroBraneStudio/api/lua/NOWA_Api.lua'. **Note:**: You may have different install location.
+
+# Usage of NOWALuaScript
+- I wrote my own LuaEditor, because no editor out there has any suitable Intellisense. So its recommented to use the NOWALuaScript. Also see its readme for detailed infos.
+- https://github.com/Laxx18/NOWALuaScript
 
 # Issues when starting the NOWA-Design
 - If somehow the NOWA-Design does not start because some plugins are missing, just delete in the bin/Release or Debug folder the corresponding plugins in the **plugins.cfg** file.
