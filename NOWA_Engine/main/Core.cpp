@@ -171,7 +171,7 @@ namespace NOWA
 		baseListenerContainer(nullptr)
 	{
 		this->optionDesiredFramesUpdates = this->getScreenRefreshRate();
-		this->optionDesiredSimulationUpdates = 30;
+		this->optionDesiredSimulationUpdates = 60;
 	}
 
 	Core::~Core()

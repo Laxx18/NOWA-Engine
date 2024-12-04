@@ -1793,18 +1793,7 @@ namespace NOWA
 					}
 					else
 					{
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
-						Ogre::HlmsSamplerblock samplerblock(*tempSamplerBlock);
-						samplerblock.mU = Ogre::TAM_WRAP;
-						samplerblock.mV = Ogre::TAM_WRAP;
-						samplerblock.mW = Ogre::TAM_WRAP;
-
-						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-						datablock->setTexture(pbsTextureType, texture, &samplerblock);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
 					}
 				}
 				else

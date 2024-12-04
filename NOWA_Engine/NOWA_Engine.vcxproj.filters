@@ -670,6 +670,9 @@
     <ClInclude Include="gameobject\DescriptionComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\AnimationComponentV2.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1240,6 +1243,9 @@
       <Filter>utilities</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\DescriptionComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AnimationComponentV2.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>

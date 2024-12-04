@@ -294,6 +294,15 @@ namespace NOWA
 	{
 		return this->bWorldLoading;
 	}
+
+	Ogre::SceneManager* GameProgressModule::getCurrentSceneManager(void)
+	{
+		if (nullptr != this->dotSceneImportModule)
+		{
+			return this->dotSceneImportModule->getSceneManager();
+		}
+		return nullptr;
+	}
 	
 	void GameProgressModule::destroyContent(void)
 	{

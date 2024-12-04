@@ -49,6 +49,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	createComponentPluginWindow(nullptr),
 	cPlusPlusComponentGenerator(nullptr),
 	bDrawNavigationMesh(false),
+	bDrawCollisionLines(false),
 	bTestSelectedGameObjects(false),
 	pluginNameEdit(nullptr)
 {
@@ -342,6 +343,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->setEnabled(false);
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
+		menuItem = utilitiesMenuControl->addItem("drawCollisionLinesMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		menuItem->setCaptionWithReplacing("#{DrawCollisionLines}");
+		menuItem->hideItemChild();
+		menuItem->setEnabled(false);
+		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
 		menuItem = utilitiesMenuControl->addItem("optimizeSceneMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		menuItem->setCaptionWithReplacing("#{OptimizeScene}");
 		menuItem->hideItemChild();
@@ -474,7 +481,8 @@ void MainMenuBar::enableMenuEntries(bool enable)
 	this->utilitiesMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // lua api
 	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // mesh utils
 	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
-	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable); // Optimize scene
+	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable); // Draw Collision Lines
+	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Optimize scene
 
 	this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
 	this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
@@ -779,12 +787,18 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 49: // Optimize scene
+		case 49: // Draw Collision Lines
+		{
+			this->bDrawCollisionLines = !this->bDrawCollisionLines;
+			this->drawCollisionLines(this->bDrawCollisionLines);
+			break;
+		}
+		case 50: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 50: // Control selected player
+		case 51: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -797,7 +811,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 51: // Test selected game objects
+		case 52: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -805,12 +819,12 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 52: // About
+		case 53: // About
 		{
 			this->showAboutWindow();
 			break;
 		}
-		case 53: // Scene description
+		case 54: // Scene description
 		{
 			this->showSceneDescriptionWindow();
 			break;
@@ -1688,8 +1702,13 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
-	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setStateCheck(bDraw);
+	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(bDraw);
 	NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
-	this->bDrawNavigationMesh = bDraw;
+}
+
+void MainMenuBar::drawCollisionLines(bool bDraw)
+{
+	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+	NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
 }
 

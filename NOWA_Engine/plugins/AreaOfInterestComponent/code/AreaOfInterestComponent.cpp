@@ -26,11 +26,13 @@ namespace NOWA
 		radius(new Variant(AreaOfInterestComponent::AttrRadius(), 10.0f, this->attributes)),
 		updateThreshold(new Variant(AreaOfInterestComponent::AttrUpdateThreshold(), 0.5f, this->attributes)),
 		categories(new Variant(AreaOfInterestComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
-		shortTimeActivation(new Variant(AreaOfInterestComponent::AttrShortTimeActivation(), false, this->attributes))
+		shortTimeActivation(new Variant(AreaOfInterestComponent::AttrShortTimeActivation(), false, this->attributes)),
+		triggerPermanentely(new Variant(AreaOfInterestComponent::AttrTriggerPermanentely(), true, this->attributes))
 	{
 		this->shortTimeActivation->setDescription("If set to true, this component will be deactivated shortly after it has been activated."
 			"Useful for short action, like check if player is located at an item.");
 		this->updateThreshold->setDescription("Sets how often the area is checked for game objects. Default is 0.5 seconds. The lower the value, the more often the area is checked, but a performance costs, but more precise actualized results.");
+		this->triggerPermanentely->setDescription("Sets whether to trigger e.g. the enter function permanentely or just once and it only can be retriggered if the leave function has been called and vice versa.");
 	}
 
 	AreaOfInterestComponent::~AreaOfInterestComponent(void)
@@ -107,6 +109,11 @@ namespace NOWA
 			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AreaOfInterestComponent::AttrTriggerPermanentely())
+		{
+			this->triggerPermanentely->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -118,11 +125,13 @@ namespace NOWA
 		clonedCompPtr->setRadius(this->radius->getReal());
 		clonedCompPtr->setUpdateThreshold(this->updateThreshold->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
+		clonedCompPtr->setTriggerPermanentely(this->triggerPermanentely->getBool());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
 		clonedCompPtr->setActivated(this->activated->getBool());
+
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -183,9 +192,9 @@ namespace NOWA
 		unsigned long id = castEventData->getGameObjectId();
 		for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
 		{
-			if (it->second->getId() == id)
+			if (it->second.first->getId() == id)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AreaOfInterestComponent] Removing gameobject: " + it->second->getName() + " from life time queue");
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AreaOfInterestComponent] Removing gameobject: " + it->second.first->getName() + " from life time queue");
 				it = this->triggeredGameObjects.erase(it);
 				break;
 			}
@@ -201,6 +210,7 @@ namespace NOWA
 		this->triggerSphereQueryObserver = triggerSphereQueryObserver;
 	}
 
+#if 0
 	void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
 	{
 		if (this->updateThreshold->getReal() > 0.0f)
@@ -377,6 +387,243 @@ namespace NOWA
 			}
 		}
 	}
+#else
+//void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
+//{
+//	if (this->updateThreshold->getReal() > 0.0f)
+//	{
+//		this->triggerUpdateTimer += dt;
+//	}
+//
+//	// Checks area only 2x a second
+//	if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
+//	{
+//		this->triggerUpdateTimer = 0.0f;
+//
+//		Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
+//		this->sphereSceneQuery->setSphere(updateSphere);
+//
+//		// Checks objects in range
+//		Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
+//		for (auto& it = result.cbegin(); it != result.cend(); ++it)
+//		{
+//			Ogre::MovableObject* movableObject = *it;
+//
+//			GameObject* gameObject = nullptr;
+//			try
+//			{
+//				if ("Camera" != movableObject->getMovableType())
+//				{
+//					gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
+//				}
+//			}
+//			catch (Ogre::Exception&)
+//			{
+//			}
+//
+//			if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+//			{
+//				auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
+//				if (otherIt == this->triggeredGameObjects.end())
+//				{
+//					this->callEnterFunction(gameObject);
+//					// Adds the game object to a map and mark as entered
+//					this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
+//				}
+//				else
+//				{
+//					if (false == otherIt->second.second || true == this->triggerPermanentely->getBool()) // Not already entered
+//					{
+//						this->callEnterFunction(gameObject);
+//						// Mark as entered
+//						otherIt->second.second = true;
+//					}
+//				}
+//			}
+//		}
+//
+//		// Check for objects that have left the range
+//		for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
+//		{
+//			GameObject* gameObject = it->second.first;
+//			Ogre::Vector3 direction = this->gameObjectPtr->getPosition() - gameObject->getPosition();
+//			Ogre::Real distanceToGameObject = direction.squaredLength();
+//			Ogre::Real radius = this->radius->getReal();
+//
+//			if (distanceToGameObject > radius * radius)
+//			{
+//				this->callLeaveFunction(gameObject);
+//
+//				// Mark as left
+//				it->second.second = false;
+//
+//				// Remove the object from the map if it's no longer in range
+//				// it = this->triggeredGameObjects.erase(it);
+//
+//				++it;
+//			}
+//			else
+//			{
+//				++it;
+//			}
+//		}
+//
+//		if (this->shortTimeActivation->getBool())
+//		{
+//			this->setActivated(false);
+//		}
+//	}
+//}
+
+void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
+{
+	if (this->updateThreshold->getReal() > 0.0f)
+	{
+		this->triggerUpdateTimer += dt;
+	}
+
+	// Check area at regular intervals
+	if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
+	{
+		this->triggerUpdateTimer = 0.0f;
+
+		Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
+		this->sphereSceneQuery->setSphere(updateSphere);
+
+		// Track objects currently within range
+		std::unordered_set<unsigned long> currentObjectsInRange;
+
+		// Check objects in range
+		Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
+		for (auto& it = result.cbegin(); it != result.cend(); ++it)
+		{
+			Ogre::MovableObject* movableObject = *it;
+
+			GameObject* gameObject = nullptr;
+			try
+			{
+				if ("Camera" != movableObject->getMovableType())
+				{
+					gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
+				}
+			}
+			catch (Ogre::Exception&)
+			{
+			}
+
+			if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+			{
+				if (false == this->triggerPermanentely->getBool())
+				{
+					currentObjectsInRange.insert(gameObject->getId());
+				}
+
+				auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
+				if (otherIt == this->triggeredGameObjects.end())
+				{
+					// First time entering
+					this->callEnterFunction(gameObject);
+					this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
+				}
+				else if (!otherIt->second.second) // Enter only if previously left
+				{
+					this->callEnterFunction(gameObject);
+					otherIt->second.second = true; // Mark as entered
+				}
+			}
+		}
+
+		// Check for objects that have left the range
+		for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
+		{
+			unsigned long objectId = it->first;
+			GameObject* gameObject = it->second.first;
+
+			if (currentObjectsInRange.find(objectId) == currentObjectsInRange.end()) // Not in range
+			{
+				if (it->second.second) // Leave only if previously entered
+				{
+					this->callLeaveFunction(gameObject);
+					it->second.second = false; // Mark as left
+				}
+
+				// Optionally remove the object from the map
+				if (!this->triggerPermanentely->getBool())
+				{
+					it = this->triggeredGameObjects.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+			else
+			{
+				++it;
+			}
+		}
+
+		if (this->shortTimeActivation->getBool())
+		{
+			this->setActivated(false);
+		}
+	}
+}
+
+void AreaOfInterestComponent::logLuaError(const Ogre::String& context, const luabind::error& error)
+{
+	luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+	std::stringstream msg;
+	msg << errorMsg;
+
+	Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+		"[LuaScript] Caught error in '" + context + "' Error: " +
+		Ogre::String(error.what()) + " details: " + msg.str());
+}
+
+void AreaOfInterestComponent::callEnterFunction(GameObject* gameObject)
+{
+	// Notify observer and call Lua function
+	if (this->triggerSphereQueryObserver)
+	{
+		this->triggerSphereQueryObserver->onEnter(gameObject);
+	}
+
+	if (this->gameObjectPtr->getLuaScript() && this->enterClosureFunction.is_valid())
+	{
+		try
+		{
+			luabind::call_function<void>(this->enterClosureFunction, gameObject);
+		}
+		catch (luabind::error& error)
+		{
+			logLuaError("reactOnEnter", error);
+		}
+	}
+}
+
+void AreaOfInterestComponent::callLeaveFunction(GameObject* gameObject)
+{
+	// Notify observer and call Lua function
+	if (this->triggerSphereQueryObserver)
+	{
+		this->triggerSphereQueryObserver->onLeave(gameObject);
+	}
+
+	if (this->gameObjectPtr->getLuaScript() && this->leaveClosureFunction.is_valid())
+	{
+		try
+		{
+			luabind::call_function<void>(this->leaveClosureFunction, gameObject);
+		}
+		catch (luabind::error& error)
+		{
+			logLuaError("reactOnLeave", error);
+		}
+	}
+}
+
+#endif
 
 	void AreaOfInterestComponent::actualizeValue(Variant* attribute)
 	{
@@ -401,6 +648,10 @@ namespace NOWA
 		else if (AreaOfInterestComponent::AttrCategories() == attribute->getName())
 		{
 			this->setCategories(attribute->getString());
+		}
+		else if (AreaOfInterestComponent::AttrTriggerPermanentely() == attribute->getName())
+		{
+			this->setTriggerPermanentely(attribute->getBool());
 		}
 	}
 
@@ -445,6 +696,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TriggerPermanentely"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->triggerPermanentely->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String AreaOfInterestComponent::getClassName(void) const
@@ -487,7 +744,7 @@ namespace NOWA
 			// If not activated remove all objects
 			for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
 			{
-				GameObject* gameObject = it->second;
+				GameObject* gameObject = it->second.first;
 
 				auto activationComponent = NOWA::makeStrongPtr(gameObject->getComponent<ActivationComponent>());
 				if (nullptr != activationComponent)
@@ -594,6 +851,16 @@ namespace NOWA
 	bool AreaOfInterestComponent::getShortTimeActivation(void) const
 	{
 		return this->shortTimeActivation->getBool();
+	}
+
+	void AreaOfInterestComponent::setTriggerPermanentely(bool triggerPermanentely)
+	{
+		this->triggerPermanentely->setValue(triggerPermanentely);
+	}
+
+	bool AreaOfInterestComponent::getTriggerPermanentely(void) const
+	{
+		return this->triggerPermanentely->getBool();
 	}
 
 	// Lua registration part

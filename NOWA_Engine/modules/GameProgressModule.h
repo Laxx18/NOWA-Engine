@@ -215,6 +215,11 @@ namespace NOWA
 		 * @brief		Gets whether the state is in the middle of world loading.
 		 */
 		bool isWorldLoading(void) const;
+
+		/**
+		 * @brief		Gets the current (for this world) scene manager, or null if not existing.
+		 */
+		Ogre::SceneManager* getCurrentSceneManager(void);
 	private:
 		GameProgressModule(const Ogre::String& appStateName);
 		~GameProgressModule();

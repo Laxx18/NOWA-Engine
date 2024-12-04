@@ -218,6 +218,7 @@
 	<Tag name="PointExtends">Punkt Ausdehnung</Tag>
 	<Tag name="KeepInterResults">Resultate behalten</Tag>
 	<Tag name="DrawNavigationMesh">Zeichne Navigationsmesh</Tag>
+	<Tag name="DrawCollisionLines">Zeichne Kollisionslinien</Tag>
 	<Tag name="NavigationMeshCreationFail">Konnte keinen benutzbaren Navigationsmesh erstellen, bitte die Parameter anpassen.</Tag>
 	<Tag name="MeshSplitCreationFail">Mesh konnte nicht zersplittert werden, vll. ist die Mesh zu komplex oder zu klein.</Tag>
 	<Tag name="MeshSplitMissing">Mesh Zerstoerung wird nicht funktionieren, da die entsprechende Mesh noch nicht zersplittert wurde.</Tag>

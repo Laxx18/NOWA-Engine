@@ -216,6 +216,7 @@
 	<Tag name="PointExtends">Point extends</Tag>
 	<Tag name="KeepInterResults">Keep results</Tag>
 	<Tag name="DrawNavigationMesh">Draw Navigationmesh</Tag>
+	<Tag name="DrawCollisionLines">Draw Collision Lines</Tag>
 	<Tag name="NavigationMeshCreationFail">Could not create a usefull navigation mesh, try different parameters.</Tag>
 	<Tag name="MeshSplitCreationFail">Mesh could not be splitted, maybe the mesh is to complex or to small.</Tag>
 	<Tag name="MeshSplitMissing">Mesh destruction cannot work, because the corresponding mesh has not been splitted.</Tag>

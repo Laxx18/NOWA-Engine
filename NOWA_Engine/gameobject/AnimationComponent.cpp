@@ -188,6 +188,11 @@ namespace NOWA
 			this->animationBlender = new NOWA::AnimationBlender(entity);
 			this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
 		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] It seems, that this game object: '" + this->gameObjectPtr->getName() 
+				+ "' is using the wrong animation component type, as it has no v1::entity but item. Please use AnimationComponentV2! So no animations will work so far.");
+		}
 	}
 
 	bool AnimationComponent::connect(void)
@@ -389,6 +394,12 @@ namespace NOWA
 	void AnimationComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+
+		if (false == this->isComplete())
+		{
+			return;
+		}
+
 		// First deactivate
 		if (nullptr != this->animationBlender)
 		{
@@ -397,7 +408,9 @@ namespace NOWA
 		}
 
 		if (true == this->isInSimulation && true == activated)
+		{
 			this->activateAnimation();
+		}
 	}
 
 	bool AnimationComponent::isActivated(void) const

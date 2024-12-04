@@ -4,6 +4,7 @@
 #include "gameobject/PhysicsPlayerControllerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/AnimationComponent.h"
+#include "gameobject/AnimationComponentV2.h"
 #include "gameobject/PlayerControllerComponents.h"
 #include "gameobject/JointComponents.h"
 #include "gameObject/CrowdComponent.h"
@@ -48,7 +49,7 @@ namespace NOWA
 			obstacleHideRangeRadius(10.0f),
 			obstacleAvoidanceRangeRadius(10.0f),
 			obstaclesAvoidanceCategoryIds(0),
-			weightWander(0.1f),
+			weightWander(1.0f),
 			weightObstacleAvoidance(10.0f),
 			weightSeek(1.5f),
 			weightFlee(1.5f),
@@ -2464,6 +2465,18 @@ namespace NOWA
 						this->oldAnimationSpeed = playerControllerCompPtr->getAnimationSpeed();
 						hasAnimation = true;
 					}
+					else
+					{
+						auto animationCompPtrV2 = NOWA::makeStrongPtr(this->agent->getOwner()->getComponent<AnimationComponentV2>());
+						if (nullptr != animationCompPtrV2)
+						{
+							animationBlender = animationCompPtrV2->getAnimationBlender();
+							this->autoAnimation = autoAnimation;
+							this->animationBlender = animationBlender;
+							this->oldAnimationSpeed = animationCompPtrV2->getSpeed();
+							hasAnimation = true;
+						}
+					}
 				}
 				else
 				{
@@ -2839,7 +2852,7 @@ namespace NOWA
 			{
 				return Ogre::Vector3::ZERO;
 			}
-
+			const auto sq = velocity.squaredLength();
 			if (velocity.squaredLength() > this->agent->getMaxSpeed() * this->agent->getMaxSpeed())
 			{
 				velocity = velocity.normalisedCopy() * this->agent->getMaxSpeed();

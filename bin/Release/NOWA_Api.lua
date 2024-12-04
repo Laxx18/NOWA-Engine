@@ -9014,7 +9014,7 @@ return {
 				returns = "(KeyboardRemapComponent)",
 				valuetype = "KeyboardRemapComponent"
 			},
-			getKeyholeEffectComponent2 =
+			getKeyholeEffectComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",

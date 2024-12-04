@@ -44,7 +44,7 @@ namespace NOWA
 		*/
 		class EXPORTED ITriggerSphereQueryObserver
 		{
-		public:
+	public:
 			/**
 			* @brief		Called when a game object enters the sphere area.
 			*				Note that this function will be call as long as the game object is in the area at the given update frequency specified in the @initAreaForActiveObjects.
@@ -196,6 +196,10 @@ namespace NOWA
 		void setShortTimeActivation(bool shortTimeActivation);
 
 		bool getShortTimeActivation(void) const;
+
+		void setTriggerPermanentely(bool triggerPermanentely);
+
+		bool getTriggerPermanentely(void) const;
 	public:
 		/**
 		* @see		GameObjectComponent::canStaticAddComponent
@@ -222,6 +226,7 @@ namespace NOWA
 		static const Ogre::String AttrRadius(void) { return "Radius"; }
 		static const Ogre::String AttrUpdateThreshold(void) { return "Update Threshold"; }
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
+		static const Ogre::String AttrTriggerPermanentely(void) { return "TriggerPermanentely"; }
 	private:
 
 		/**
@@ -238,6 +243,12 @@ namespace NOWA
 		void checkAreaForActiveObjects(Ogre::Real dt);
 
 		void deleteGameObjectDelegate(EventDataPtr eventData);
+
+		void logLuaError(const Ogre::String& context, const luabind::error& error);
+
+		void callEnterFunction(GameObject* gameObject);
+
+		void callLeaveFunction(GameObject* gameObject);
 	private:
 		Ogre::String name;
 
@@ -246,10 +257,12 @@ namespace NOWA
 		Variant* categories;
 		Variant* updateThreshold;
 		Variant* shortTimeActivation;
+		Variant* triggerPermanentely;
 
 		Ogre::SphereSceneQuery* sphereSceneQuery;
 		ITriggerSphereQueryObserver* triggerSphereQueryObserver;
-		std::unordered_map<unsigned long, GameObject*> triggeredGameObjects;
+		std::unordered_map<unsigned long, std::pair<GameObject*, bool>> triggeredGameObjects;
+
 		Ogre::Real triggerUpdateTimer;
 		unsigned int categoriesId;
 		LuaScriptComponent* luaScriptComponent;

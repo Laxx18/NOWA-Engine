@@ -342,6 +342,10 @@ namespace NOWA
 		// this keeps track of time (seconds to keep it easy)
 		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 
+		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
+		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+
 		while (false == this->bShutdown)
 		{
 			// Process signals from system

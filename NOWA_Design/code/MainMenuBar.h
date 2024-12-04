@@ -53,6 +53,8 @@ public:
 	void activateTestSelectedGameObjects(bool bActivated);
 
 	void drawNavigationMap(bool bDraw);
+
+	void drawCollisionLines(bool bDraw);
 private:
 	void notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuItem* item);
 
@@ -158,6 +160,7 @@ private:
 
 	MyGUI::MenuItem* recentFileItem[10];
 	bool bDrawNavigationMesh;
+	bool bDrawCollisionLines;
 	bool bTestSelectedGameObjects;
 };
 

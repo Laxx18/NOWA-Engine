@@ -23,7 +23,7 @@ namespace NOWA
 	/**
 	  * @brief		Play one animation with Ogre Item (v2). Requirements: Item must have a skeleton with animations.
 	  */
-	class EXPORTED AnimationComponentV2 : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED AnimationComponentV2 : public GameObjectComponent
 	{
 	public:
 		typedef boost::shared_ptr<AnimationComponentV2> AnimationComponentV2Ptr;
@@ -50,36 +50,6 @@ namespace NOWA
 		AnimationComponentV2();
 
 		virtual ~AnimationComponentV2();
-
-		/**
-		* @see		Ogre::Plugin::install
-		*/
-		virtual void install(const Ogre::NameValuePairList* options) override;
-
-		/**
-		* @see		Ogre::Plugin::initialise
-		*/
-		virtual void initialise() override;
-
-		/**
-		* @see		Ogre::Plugin::shutdown
-		*/
-		virtual void shutdown() override;
-
-		/**
-		* @see		Ogre::Plugin::uninstall
-		*/
-		virtual void uninstall() override;
-
-		/**
-		* @see		Ogre::Plugin::getName
-		*/
-		virtual const Ogre::String& getName() const override;
-		
-		/**
-		* @see		Ogre::Plugin::getAbiCookie
-		*/
-		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
 
 		/**
 		* @see		GameObjectComponent::init
@@ -242,7 +212,6 @@ namespace NOWA
 		void resetAnimation(void);
 		void createAnimationBlender(void);
 	protected:
-		Ogre::String name;
 		Ogre::SkeletonInstance* skeleton;
 		bool isInSimulation;
 		Variant* activated;

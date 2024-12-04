@@ -169,7 +169,7 @@ namespace NOWA
 		return this->ogreNewt;
 	}
 
-	void OgreNewtModule::enableOgreNewtCollisionLines(Ogre::SceneManager *sceneManager, bool showText)
+	void OgreNewtModule::enableOgreNewtCollisionLines(Ogre::SceneManager* sceneManager, bool showText)
 	{
 		this->showText = showText;
 		if (!this->ogreNewt)

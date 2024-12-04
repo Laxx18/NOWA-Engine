@@ -10,8 +10,6 @@
 #include "Animation/OgreSkeletonAnimation.h"
 #include "Animation/OgreSkeletonInstance.h"
 
-#include "OgreAbiUtils.h"
-
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -65,7 +63,6 @@ namespace NOWA
 
 	AnimationComponentV2::AnimationComponentV2()
 		: GameObjectComponent(),
-		name("AnimationComponentV2"),
 		skeleton(nullptr),
 		isInSimulation(false),
 		animationBlender(nullptr),
@@ -81,36 +78,6 @@ namespace NOWA
 	AnimationComponentV2::~AnimationComponentV2(void)
 	{
 		
-	}
-
-	void AnimationComponentV2::initialise()
-	{
-
-	}
-
-	const Ogre::String& AnimationComponentV2::getName() const
-	{
-		return this->name;
-	}
-
-	void AnimationComponentV2::install(const Ogre::NameValuePairList* options)
-	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
-	}
-
-	void AnimationComponentV2::shutdown()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-	}
-
-	void AnimationComponentV2::uninstall()
-	{
-		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
-	}
-	
-	void AnimationComponentV2::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
-	{
-		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool AnimationComponentV2::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -437,7 +404,9 @@ namespace NOWA
 		}
 
 		if (true == this->isInSimulation && true == activated)
+		{
 			this->activateAnimation();
+		}
 	}
 
 	bool AnimationComponentV2::isActivated(void) const

@@ -1991,7 +1991,7 @@ bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, cons
 			}
 		}
 	}
-	catch (const Ogre::FileNotFoundException& exception)
+	catch (const Ogre::FileNotFoundException&)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name: '" + resourceGroupName + "' does not exist!");
 		return false;
