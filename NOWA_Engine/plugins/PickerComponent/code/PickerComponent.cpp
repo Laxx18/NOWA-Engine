@@ -778,9 +778,9 @@ namespace NOWA
 		gameObjectClass.def("getPickerComponentFromName", &getPickerComponentFromName);
 		gameObjectClass.def("getPickerComponent", (PickerComponent * (*)(GameObject*)) & getPickerComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getPickerComponent2", (PickerComponent * (*)(GameObject*, unsigned int)) & getPickerComponent);
+		gameObjectClass.def("getPickerComponentFromIndex", (PickerComponent * (*)(GameObject*, unsigned int)) & getPickerComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PickerComponent getPickerComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PickerComponent getPickerComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PickerComponent getPickerComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PickerComponent getPickerComponentFromName(String name)", "Gets the component from name.");
 

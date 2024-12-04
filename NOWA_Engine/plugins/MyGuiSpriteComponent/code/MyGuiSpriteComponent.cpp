@@ -785,9 +785,9 @@ namespace NOWA
 		gameObjectClass.def("getMyGuiSpriteComponentFromName", &getMyGuiSpriteComponentFromName);
 		gameObjectClass.def("getMyGuiSpriteComponent", (MyGuiSpriteComponent * (*)(GameObject*)) & getMyGuiSpriteComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getMyGuiSpriteComponent2", (MyGuiSpriteComponent * (*)(GameObject*, unsigned int)) & getMyGuiSpriteComponent);
+		gameObjectClass.def("getMyGuiSpriteComponentFromIndex", (MyGuiSpriteComponent * (*)(GameObject*, unsigned int)) & getMyGuiSpriteComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "MyGuiSpriteComponent getMyGuiSpriteComponentFromName(String name)", "Gets the component from name.");
 

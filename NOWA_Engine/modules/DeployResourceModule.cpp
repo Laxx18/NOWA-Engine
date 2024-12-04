@@ -5,6 +5,7 @@
 #include "main/AppStateManager.h"
 #include "utilities/rapidxml.hpp"
 
+#include <filesystem>
 #include <thread>
 
 namespace
@@ -28,6 +29,8 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DeployResourceModule] Module created");
 
 		this->hwndNOWALuaScript = 0;
+
+		this->deleteLuaRuntimeErrorXmlFiles("../../external/NOWALuaScript/bin");
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DeployResourceModule::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
 	}
@@ -152,6 +155,7 @@ namespace NOWA
 		doc.append_node(root);
 
 		// Create and append the <MessageId> node with the value "LuaRuntimeErrors"
+		Ogre::String id = "LuaRuntimeErrors" + Ogre::StringConverter::toString(castEventData->getLine());
 		char* messageId = doc.allocate_string("LuaRuntimeErrors");
 		rapidxml::xml_node<>* idNode = doc.allocate_node(rapidxml::node_element, "MessageId", messageId);
 		root->append_node(idNode);
@@ -269,6 +273,31 @@ namespace NOWA
 
 		// Cleanup actions or notifications can go here
 		this->hwndNOWALuaScript = 0;
+	}
+
+	void DeployResourceModule::deleteLuaRuntimeErrorXmlFiles(const Ogre::String& directoryPath)
+	{
+		namespace fs = std::filesystem;
+
+		try
+		{
+			// Iterate through the directory
+			for (const auto& entry : fs::directory_iterator(directoryPath))
+			{
+				if (entry.is_regular_file() && entry.path().extension() == ".xml")
+				{
+					fs::remove(entry.path()); // Delete the file
+				}
+			}
+		}
+		catch (const fs::filesystem_error& e)
+		{
+			
+		}
+		catch (const std::exception& e)
+		{
+			
+		}
 	}
 
 	DeployResourceModule* DeployResourceModule::getInstance()

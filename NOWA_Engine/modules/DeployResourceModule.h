@@ -56,6 +56,8 @@ namespace NOWA
 	private:
 		// Function to send the file path to the running instance
 		void sendFilePathToRunningInstance(const Ogre::String& filePathName);
+
+		void deleteLuaRuntimeErrorXmlFiles(const Ogre::String& directoryPath);
 	private:
 		void handleLuaError(NOWA::EventDataPtr eventData);
 	private:

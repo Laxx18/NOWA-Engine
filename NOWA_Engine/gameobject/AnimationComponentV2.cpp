@@ -349,7 +349,7 @@ namespace NOWA
 				Ogre::SkeletonAnimation* animationState = this->skeleton->getAnimation(this->animationName->getListSelectedValue());
 				if (nullptr != animationState)
 				{
-					this->resetAnimation();
+					// this->resetAnimation();
 					// this->animationState->setEnabled(true);
 					// this->animationState->setWeight(5.0f);
 					// this->animationState->setTimePosition(0.0f);
@@ -400,7 +400,7 @@ namespace NOWA
 		if (nullptr != this->animationBlender)
 		{
 			// disable animation
-			this->resetAnimation();
+			// this->resetAnimation();
 		}
 
 		if (true == this->isInSimulation && true == activated)

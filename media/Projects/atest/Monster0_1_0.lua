@@ -25,10 +25,10 @@ Monster0_1_0["connect"] = function(gameObject)
     monsterAnimation = gameObject:getAnimationComponentV2():getAnimationBlender();
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_1, "T-pose");
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle-03");
-	monsterAnimation:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "walk-01");
+    monsterAnimation:registerAnimation(AnimationBlender.ANIM_WALK_NORTH, "walk-01");
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_WALK_SOUTH, "walk-back");
 
-	monsterAnimation:init1(AnimationBlender.ANIM_IDLE_2, true);
+    monsterAnimation:init1(AnimationBlender.ANIM_IDLE_2, true);
     
     --monsterAnimation:setDebugLog(true);
     
@@ -60,8 +60,8 @@ end
 Monster0_1_0["update"] = function(dt)
     moveHorizontal = 0;
     isActive = false;
-	-- local rotation = 0;
-	speed = monsterController:getSpeed();
+    -- local rotation = 0;
+    speed = monsterController:getSpeed();
     
     oldRotation = rotation;
     
@@ -124,8 +124,8 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
         otherGameObject = gameObject1;
     end
     
-    if (!isActive) then
-        terraGameObject:getTerraComponent():paintTerrainStart(playerContact:getPosition(), 10, 2, 1);
+    if (isActive == false) then
+        terraGameObject:getTerraComponent():paintTerrainStart(playerContact:getPosition(), 10, 1);
     else
         terraGameObject:getTerraComponent():paintTerrainEnd();
     end
@@ -135,6 +135,4 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
         --terraGameObject:getTerraComponent():paintTerrainLoop(playerContact:getPosition(), 10, 2, 1);
         terraGameObject:getTerraComponent():paintTerrain(playerContact:getPosition(), 10, 2);
     end
-    
-    
 end

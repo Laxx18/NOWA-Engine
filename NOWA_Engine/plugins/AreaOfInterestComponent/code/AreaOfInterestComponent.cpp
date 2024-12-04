@@ -905,10 +905,10 @@ void AreaOfInterestComponent::callLeaveFunction(GameObject* gameObject)
 							 "Sets whether to react at the moment when a game object leaves the area. Always check if the game object does exist. It may also be null.");
 
 		gameObject.def("getAreaOfInterestComponent", (AreaOfInterestComponent * (*)(GameObject*)) & getAreaOfInterestComponent);
-		gameObject.def("getAreaOfInterestComponent2", (AreaOfInterestComponent * (*)(GameObject*, unsigned int)) & getAreaOfInterestComponent);
+		gameObject.def("getAreaOfInterestComponentFromIndex", (AreaOfInterestComponent * (*)(GameObject*, unsigned int)) & getAreaOfInterestComponent);
 		gameObject.def("getAreaOfInterestComponentFromName", &getAreaOfInterestComponentFromName);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponent2(unsigned int occurrenceIndex)", "Gets the area of interest component by the given occurence index, since a game object may have besides other components several area of interest components.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponentFromIndex(unsigned int occurrenceIndex)", "Gets the area of interest component by the given occurence index, since a game object may have besides other components several area of interest components.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponent()", "Gets the area of interest component. This can be used if the game object just has one area of interest component.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AreaOfInterestComponent getAreaOfInterestComponentFromName(String name)", "Gets the area of interest component.");
 

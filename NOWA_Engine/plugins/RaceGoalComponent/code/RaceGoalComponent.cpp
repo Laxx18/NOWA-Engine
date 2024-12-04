@@ -1130,9 +1130,9 @@ namespace NOWA
 		gameObjectClass.def("getRaceGoalComponentFromName", &getRaceGoalComponentFromName);
 		gameObjectClass.def("getRaceGoalComponent", (RaceGoalComponent * (*)(GameObject*)) & getRaceGoalComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getRaceGoalComponent2", (RaceGoalComponent * (*)(GameObject*, unsigned int)) & getRaceGoalComponent);
+		gameObjectClass.def("getRaceGoalComponentFromIndex", (RaceGoalComponent * (*)(GameObject*, unsigned int)) & getRaceGoalComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "RaceGoalComponent getRaceGoalComponentFromName(String name)", "Gets the component from name.");
 

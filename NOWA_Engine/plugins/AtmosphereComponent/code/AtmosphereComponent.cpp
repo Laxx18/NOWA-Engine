@@ -1924,7 +1924,7 @@ namespace NOWA
 		gameObjectClass.def("getAtmosphereComponentFromName", &getAtmosphereComponentFromName);
 		gameObjectClass.def("getAtmosphereComponent", (AtmosphereComponent * (*)(GameObject*)) & getAtmosphereComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getAtmosphereComponent2", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponent);
+		gameObjectClass.def("getAtmosphereComponentFromIndex", (AtmosphereComponent * (*)(GameObject*, unsigned int)) & getAtmosphereComponent);
 
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AtmosphereComponent getAtmosphereComponentFromName(String name)", "Gets the component from name.");

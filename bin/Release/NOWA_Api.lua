@@ -6678,7 +6678,7 @@ return {
 				returns = "(GameObjectTitleComponent)",
 				valuetype = "GameObjectTitleComponent"
 			},
-			getAnimationComponent2 =
+			getAnimationComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the animation component by the given occurence index, since a game object may have besides other components several animation components.",
@@ -6702,7 +6702,7 @@ return {
 				returns = "(AttributesComponent)",
 				valuetype = "AttributesComponent"
 			},
-			getAttributeEffectComponentComponent =
+			getAttributeEffectComponentComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.",
@@ -6710,10 +6710,10 @@ return {
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
 			},
-			getAttributeEffectComponentComponent2 =
+			getAttributeEffectComponentComponent =
 			{
 				type = "function",
-				description = "Gets the animation component. This can be used if the game object just has one attribute effect component.",
+				description = "Gets the attribute effect component. This can be used if the game object just has one attribute effect component.",
 				args = "()",
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
@@ -7246,7 +7246,7 @@ return {
 				returns = "(ParticleUniverseComponent)",
 				valuetype = "ParticleUniverseComponent"
 			},
-			getParticleUniverseComponent2 =
+			getParticleUniverseComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the particle universe component. This can be used if the game object just has one particle universe component.",
@@ -7342,7 +7342,7 @@ return {
 				returns = "(PhysicsCompoundConnectionComponent)",
 				valuetype = "PhysicsCompoundConnectionComponent"
 			},
-			getPhysicsMaterialComponent2 =
+			getPhysicsMaterialComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the physics material component by the given occurence index, since a game object may have besides other components several physics material components.",
@@ -7382,7 +7382,7 @@ return {
 				returns = "(PlaneComponent)",
 				valuetype = "PlaneComponent"
 			},
-			getSimpleSoundComponent2 =
+			getSimpleSoundComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the simple sound component by the given occurence index, since a game object may have besides other components several simple sound components.",
@@ -7398,7 +7398,7 @@ return {
 				returns = "(SimpleSoundComponent)",
 				valuetype = "SimpleSoundComponent"
 			},
-			getSoundComponent2 =
+			getSoundComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the sound component by the given occurence index, since a game object may have besides other components several sound components.",
@@ -7454,7 +7454,7 @@ return {
 				returns = "(MeshDecalComponent)",
 				valuetype = "MeshDecalComponent"
 			},
-			getTagPointComponent2 =
+			getTagPointComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the tag point component by the given occurence index, since a game object may have besides other components several tag point components.",
@@ -7470,7 +7470,7 @@ return {
 				returns = "(TagPointComponent)",
 				valuetype = "TagPointComponent"
 			},
-			getTimeTriggerComponent2 =
+			getTimeTriggerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the time trigger component by the given occurence index, since a game object may have besides other components several tag point components.",
@@ -7510,7 +7510,7 @@ return {
 				returns = "(TagChildNodeComponent)",
 				valuetype = "TagChildNodeComponent"
 			},
-			getTagChildNodeComponent2 =
+			getTagChildNodeComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the tag child node component. This can be used if the game object just has one tag child node component.",
@@ -7590,7 +7590,7 @@ return {
 				returns = "(RibbonTrailComponent)",
 				valuetype = "RibbonTrailComponent"
 			},
-			getMyGUIWindowComponent2 =
+			getMyGUIWindowComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI window component by the given occurence index, since a game object may have besides other components several MyGUI window components.",
@@ -7622,7 +7622,7 @@ return {
 				returns = "(InventoryItemComponent)",
 				valuetype = "InventoryItemComponent"
 			},
-			getMyGUITextComponent2 =
+			getMyGUITextComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI text component by the given occurence index, since a game object may have besides other components several MyGUI text components.",
@@ -7638,7 +7638,7 @@ return {
 				returns = "(MyGUITextComponent)",
 				valuetype = "MyGUITextComponent"
 			},
-			getMyGUIButtonComponent2 =
+			getMyGUIButtonComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI button component by the given occurence index, since a game object may have besides other components several MyGUI button components.",
@@ -7654,7 +7654,7 @@ return {
 				returns = "(MyGUIButtonComponent)",
 				valuetype = "MyGUIButtonComponent"
 			},
-			getMyGUICheckBoxComponent2 =
+			getMyGUICheckBoxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI check box component by the given occurence index, since a game object may have besides other components several MyGUI check box components.",
@@ -7670,7 +7670,7 @@ return {
 				returns = "(MyGUICheckBoxComponent)",
 				valuetype = "MyGUICheckBoxComponent"
 			},
-			getMyGUIImageBoxComponent2 =
+			getMyGUIImageBoxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI image box component by the given occurence index, since a game object may have besides other components several MyGUI image box components.",
@@ -7686,7 +7686,7 @@ return {
 				returns = "(MyGUIImageBoxComponent)",
 				valuetype = "MyGUIImageBoxComponent"
 			},
-			getMyGUIProgressBarComponent2 =
+			getMyGUIProgressBarComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI progress bar component by the given occurence index, since a game object may have besides other components several MyGUI progress bar components.",
@@ -7702,7 +7702,7 @@ return {
 				returns = "(MyGUIProgressBarComponent)",
 				valuetype = "MyGUIProgressBarComponent"
 			},
-			getMyGUIListBoxComponent2 =
+			getMyGUIListBoxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI list box component by the given occurence index, since a game object may have besides other components several MyGUI list box components.",
@@ -7718,7 +7718,7 @@ return {
 				returns = "(MyGUIListBoxComponent)",
 				valuetype = "MyGUIListBoxComponent"
 			},
-			getMyGUIComboBoxComponent2 =
+			getMyGUIComboBoxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI combo box component by the given occurence index, since a game object may have besides other components several MyGUI combo box components.",
@@ -7734,7 +7734,7 @@ return {
 				returns = "(MyGUIComboBoxComponent)",
 				valuetype = "MyGUIComboBoxComponent"
 			},
-			getMyGUIMessageBoxComponent2 =
+			getMyGUIMessageBoxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI message box component by the given occurence index, since a game object may have besides other components several MyGUI message box components.",
@@ -7750,7 +7750,7 @@ return {
 				returns = "(MyGUIMessageBoxComponent)",
 				valuetype = "MyGUIMessageBoxComponent"
 			},
-			getMyGUIPositionControllerComponent2 =
+			getMyGUIPositionControllerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI position controller component by the given occurence index, since a game object may have besides other components several MyGUI position controller components.",
@@ -7766,7 +7766,7 @@ return {
 				returns = "(MyGUIPositionControllerComponent)",
 				valuetype = "MyGUIPositionControllerComponent"
 			},
-			getMyGUIFadeAlphaControllerComponent2 =
+			getMyGUIFadeAlphaControllerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI fade alpha controller component by the given occurence index, since a game object may have besides other components several MyGUI fade alpha components.",
@@ -7782,7 +7782,7 @@ return {
 				returns = "(MyGUIFadeAlphaControllerComponent)",
 				valuetype = "MyGUIFadeAlphaControllerComponent"
 			},
-			getMyGUIScrollingMessageControllerComponent2 =
+			getMyGUIScrollingMessageControllerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI scrolling message controller component by the given occurence index, since a game object may have besides other components several MyGUI scrolling message components.",
@@ -7798,7 +7798,7 @@ return {
 				returns = "(MyGUIScrollingMessageControllerComponent)",
 				valuetype = "MyGUIScrollingMessageControllerComponent"
 			},
-			getMyGUIEdgeHideControllerComponent2 =
+			getMyGUIEdgeHideControllerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI hide edge controller component by the given occurence index, since a game object may have besides other components several MyGUI hide edge components.",
@@ -7814,7 +7814,7 @@ return {
 				returns = "(MyGUIEdgeHideControllerComponent)",
 				valuetype = "MyGUIEdgeHideControllerComponent"
 			},
-			getMyGUIRepeatClickControllerComponent2 =
+			getMyGUIRepeatClickControllerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the MyGUI repeat click controller component by the given occurence index, since a game object may have besides other components several MyGUI repeat click components.",
@@ -7866,7 +7866,7 @@ return {
 			{
 				type = "function",
 				description = "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.",
-				args = "(string namenumber occurrenceIndex)",
+				args = "(string name, number occurrenceIndex)",
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
 			},
@@ -8862,7 +8862,7 @@ return {
 				returns = "(AnimationSequenceComponent)",
 				valuetype = "AnimationSequenceComponent"
 			},
-			getAreaOfInterestComponent2 =
+			getAreaOfInterestComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the area of interest component by the given occurence index, since a game object may have besides other components several area of interest components.",
@@ -8902,7 +8902,7 @@ return {
 				returns = "(AtmosphereComponent)",
 				valuetype = "AtmosphereComponent"
 			},
-			getCrowdComponent2 =
+			getCrowdComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -8926,6 +8926,14 @@ return {
 				returns = "(CrowdComponent)",
 				valuetype = "CrowdComponent"
 			},
+			getCrowdComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component from occurrence index.",
+				args = "(number index)",
+				returns = "(CrowdComponent)",
+				valuetype = "CrowdComponent"
+			},
 			getDistortionComponent =
 			{
 				type = "function",
@@ -8942,7 +8950,7 @@ return {
 				returns = "(DistortionComponent)",
 				valuetype = "DistortionComponent"
 			},
-			getGpuParticlesComponent2 =
+			getGpuParticlesComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9038,7 +9046,7 @@ return {
 				returns = "(KeyholeEffectComponent)",
 				valuetype = "KeyholeEffectComponent"
 			},
-			getMinimapComponent2 =
+			getMinimapComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9062,7 +9070,7 @@ return {
 				returns = "(MinimapComponent)",
 				valuetype = "MinimapComponent"
 			},
-			getMyGuiSpriteComponent2 =
+			getMyGuiSpriteComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9086,7 +9094,7 @@ return {
 				returns = "(MyGuiSpriteComponent)",
 				valuetype = "MyGuiSpriteComponent"
 			},
-			getParticleFxComponent2 =
+			getParticleFxComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9110,7 +9118,7 @@ return {
 				returns = "(ParticleFxComponent)",
 				valuetype = "ParticleFxComponent"
 			},
-			getPickerComponent2 =
+			getPickerComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9134,7 +9142,7 @@ return {
 				returns = "(PickerComponent)",
 				valuetype = "PickerComponent"
 			},
-			getPurePursuitComponent2 =
+			getPurePursuitComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9158,7 +9166,7 @@ return {
 				returns = "(PurePursuitComponent)",
 				valuetype = "PurePursuitComponent"
 			},
-			getRaceGoalComponent2 =
+			getRaceGoalComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9206,7 +9214,7 @@ return {
 				returns = "(RandomImageShuffler)",
 				valuetype = "RandomImageShuffler"
 			},
-			getRect2DComponent2 =
+			getRect2DComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9230,7 +9238,15 @@ return {
 				returns = "(Rect2DComponent)",
 				valuetype = "Rect2DComponent"
 			},
-			getReferenceComponent2 =
+			getRect2DComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component from occurrence index.",
+				args = "(number index)",
+				returns = "(Rect2DComponent)",
+				valuetype = "Rect2DComponent"
+			},
+			getReferenceComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9286,7 +9302,7 @@ return {
 				returns = "(SpeechBubbleComponent)",
 				valuetype = "SpeechBubbleComponent"
 			},
-			getSplitScreenComponent2 =
+			getSplitScreenComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9310,7 +9326,7 @@ return {
 				returns = "(SplitScreenComponent)",
 				valuetype = "SplitScreenComponent"
 			},
-			getTransformEaseComponent2 =
+			getTransformEaseComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
@@ -9334,7 +9350,7 @@ return {
 				returns = "(TransformEaseComponent)",
 				valuetype = "TransformEaseComponent"
 			},
-			getTransformHistoryComponent2 =
+			getTransformHistoryComponentFromIndex =
 			{
 				type = "function",
 				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",

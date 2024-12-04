@@ -1113,9 +1113,9 @@ namespace NOWA
 		gameObjectClass.def("getTransformEaseComponentFromName", &getTransformEaseComponentFromName);
 		gameObjectClass.def("getTransformEaseComponent", (TransformEaseComponent * (*)(GameObject*)) & getTransformEaseComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getTransformEaseComponent2", (TransformEaseComponent * (*)(GameObject*, unsigned int)) & getTransformEaseComponent);
+		gameObjectClass.def("getTransformEaseComponentFromIndex", (TransformEaseComponent * (*)(GameObject*, unsigned int)) & getTransformEaseComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformEaseComponent getTransformEaseComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformEaseComponent getTransformEaseComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformEaseComponent getTransformEaseComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformEaseComponent getTransformEaseComponentFromName(String name)", "Gets the component from name.");
 

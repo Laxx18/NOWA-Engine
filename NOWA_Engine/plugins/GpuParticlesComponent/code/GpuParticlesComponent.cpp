@@ -751,9 +751,9 @@ namespace NOWA
 		gameObjectClass.def("getGpuParticlesComponentFromName", &getGpuParticlesComponentFromName);
 		gameObjectClass.def("getGpuParticlesComponent", (GpuParticlesComponent * (*)(GameObject*)) & getGpuParticlesComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getGpuParticlesComponent2", (GpuParticlesComponent * (*)(GameObject*, unsigned int)) & getGpuParticlesComponent);
+		gameObjectClass.def("getGpuParticlesComponentFromIndex", (GpuParticlesComponent * (*)(GameObject*, unsigned int)) & getGpuParticlesComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "GpuParticlesComponent getGpuParticlesComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "GpuParticlesComponent getGpuParticlesComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "GpuParticlesComponent getGpuParticlesComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "GpuParticlesComponent getGpuParticlesComponentFromName(String name)", "Gets the component from name.");
 

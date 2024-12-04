@@ -226,7 +226,7 @@ namespace NOWA
 		static const Ogre::String AttrRadius(void) { return "Radius"; }
 		static const Ogre::String AttrUpdateThreshold(void) { return "Update Threshold"; }
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
-		static const Ogre::String AttrTriggerPermanentely(void) { return "TriggerPermanentely"; }
+		static const Ogre::String AttrTriggerPermanentely(void) { return "Trigger Permanentely"; }
 	private:
 
 		/**

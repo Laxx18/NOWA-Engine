@@ -238,9 +238,9 @@ namespace NOWA
 		gameObjectClass.def("getReferenceComponentFromName", &getReferenceComponentFromName);
 		gameObjectClass.def("getReferenceComponent", (ReferenceComponent * (*)(GameObject*)) & getReferenceComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getReferenceComponent2", (ReferenceComponent * (*)(GameObject*, unsigned int)) & getReferenceComponent);
+		gameObjectClass.def("getReferenceComponentFromIndex", (ReferenceComponent * (*)(GameObject*, unsigned int)) & getReferenceComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "ReferenceComponent getReferenceComponentFromName(String name)", "Gets the component from name.");
 

@@ -311,11 +311,12 @@ namespace NOWA
 		gameObjectClass.def("getRect2DComponentFromName", &getRect2DComponentFromName);
 		gameObjectClass.def("getRect2DComponent", (Rect2DComponent * (*)(GameObject*)) & getRect2DComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getRect2DComponent2", (Rect2DComponent * (*)(GameObject*, unsigned int)) & getRect2DComponent);
+		gameObjectClass.def("getRect2DComponentFromIndex", (Rect2DComponent * (*)(GameObject*, unsigned int)) & getRect2DComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponentFromName(String name)", "Gets the component from name.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "Rect2DComponent getRect2DComponentFromIndex(number index)", "Gets the component from occurrence index.");
 
 		gameObjectControllerClass.def("castRect2DComponent", &GameObjectController::cast<Rect2DComponent>);
 		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "Rect2DComponent castRect2DComponent(Rect2DComponent other)", "Casts an incoming type from function for lua auto completion.");

@@ -525,11 +525,12 @@ namespace NOWA
 		gameObjectClass.def("getCrowdComponentFromName", &getCrowdComponentFromName);
 		gameObjectClass.def("getCrowdComponent", (CrowdComponent * (*)(GameObject*)) & getCrowdComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getCrowdComponent2", (CrowdComponent * (*)(GameObject*, unsigned int)) & getCrowdComponent);
+		gameObjectClass.def("getCrowdComponentFromIndex", (CrowdComponent * (*)(GameObject*, unsigned int)) & getCrowdComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CrowdComponent getCrowdComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CrowdComponent getCrowdComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CrowdComponent getCrowdComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CrowdComponent getCrowdComponentFromName(String name)", "Gets the component from name.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CrowdComponent getCrowdComponentFromIndex(number index)", "Gets the component from occurrence index.");
 
 		gameObjectControllerClass.def("castCrowdComponent", &GameObjectController::cast<CrowdComponent>);
 		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CrowdComponent castCrowdComponent(CrowdComponent other)", "Casts an incoming type from function for lua auto completion.");

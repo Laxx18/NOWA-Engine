@@ -658,9 +658,9 @@ namespace NOWA
 		gameObjectClass.def("getTransformHistoryComponentFromName", &getTransformHistoryComponentFromName);
 		gameObjectClass.def("getTransformHistoryComponent", (TransformHistoryComponent * (*)(GameObject*)) & getTransformHistoryComponent);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getTransformHistoryComponent2", (TransformHistoryComponent * (*)(GameObject*, unsigned int)) & getTransformHistoryComponent);
+		gameObjectClass.def("getTransformHistoryComponentFromIndex", (TransformHistoryComponent * (*)(GameObject*, unsigned int)) & getTransformHistoryComponent);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformHistoryComponent getTransformHistoryComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformHistoryComponent getTransformHistoryComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformHistoryComponent getTransformHistoryComponent()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TransformHistoryComponent getTransformHistoryComponentFromName(String name)", "Gets the component from name.");
 
