@@ -171,7 +171,7 @@ namespace NOWA
 		if (nullptr != cameraCompPtr)
 		{
 			// If camera is not activated, this compositor effect should not be played
-			if (false == cameraCompPtr->isActivated())
+			if (false == cameraCompPtr->isActivated() && false == WorkspaceModule::getInstance()->getSplitScreenScenarioActive())
 			{
 				return;
 			}

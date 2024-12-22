@@ -82,9 +82,11 @@ namespace NOWA
 
 		bool hasMoreThanOneWorkspace(void) const;
 
-		Ogre::uint8 getLastExecutionMask(void) const;
-
 		Ogre::uint8 getCountCameras(void);
+
+		void setSplitScreenScenarioActive(bool splitScreenScenarioActive);
+
+		bool getSplitScreenScenarioActive(void) const;
 	public:
 		static WorkspaceModule* getInstance();
 		const Ogre::String workspaceNamePbs = "NOWAPbsWorkspace";
@@ -144,6 +146,8 @@ namespace NOWA
 		};
 
 		std::map<Ogre::Camera*, WorkspaceData> workspaceMap;
+
+		bool splitScreenScenarioActive;
 	};
 
 }; //namespace end

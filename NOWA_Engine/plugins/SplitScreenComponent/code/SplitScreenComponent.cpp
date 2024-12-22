@@ -302,8 +302,9 @@ namespace NOWA
 
 		this->cameraComponent = cameraCompPtr.get();
 
-		// TODO: Set proper eye id!!
-		this->cameraComponent->applySplitScreen(true, this->gameObjectPtr->getId());
+		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
+
+		this->cameraComponent->applySplitScreen(true, this->gameObjectPtr->getMaskId());
 
 		const auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr == workspaceBaseCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
@@ -449,6 +450,8 @@ namespace NOWA
 
 	void SplitScreenComponent::cleanupSplitScreen(void)
 	{
+		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(false);
+
 		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
 		if (nullptr != this->tempCamera)

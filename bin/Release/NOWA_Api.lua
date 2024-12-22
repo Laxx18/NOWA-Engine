@@ -24641,7 +24641,7 @@ return {
 	SplitScreenComponent =
 	{
 		type = "class",
-		description = "Usage: This component can be placed under the MainGameObject in order to active split screening. For that, it is necessary, to create several camera with a workspace and setting the viewport rect appropriate. E.g. in order to split vertically, set the first rect to (0, 0, 0.5, 1) and de second rect to (0.5, 0, 0.5, 1).",
+		description = "Usage: Can be used to render a workspace in a split screen texture.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

@@ -334,12 +334,16 @@ namespace NOWA
 			}
 		}
 
-		auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
-
-		for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+		if (true == this->cameraComponent->isActivated() || true == this->involvedInSplitScreen)
 		{
-			compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
+			auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+			for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+			{
+				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
+			}
 		}
+
 		this->reconnectAllNodes();
 
 		return true;
@@ -689,7 +693,7 @@ namespace NOWA
 			}
 			else
 			{
-				hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
+				// hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
 			}
 		}
 		// };
@@ -2203,7 +2207,7 @@ namespace NOWA
 			auto& lightDirectionalCompPtr = NOWA::makeStrongPtr(lightGameObjectPtr->getComponent<LightDirectionalComponent>());
 			if (nullptr != lightDirectionalCompPtr)
 			{
-				lightDirectionalCompPtr->setPowerScale(1.0f);
+				lightDirectionalCompPtr->setPowerScale(3.14159f);
 			}
 #endif
 		}
@@ -2893,19 +2897,9 @@ namespace NOWA
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
+			
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
 
 			if (this->superSampling->getReal() <= 0.0f)
 			{
@@ -3045,19 +3039,8 @@ namespace NOWA
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
 
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
 
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
@@ -3074,8 +3057,10 @@ namespace NOWA
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				texDef->width = 0.0f;
-				texDef->height = 0.0f;
+				
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+				
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				// ?? Is this necessary?
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture; // Here also | Ogre::TextureFlags::MsaaExplicitResolve;??
@@ -3498,20 +3483,9 @@ namespace NOWA
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
-
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
+			
 			// For SSAO necessary?
 			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -3541,19 +3515,10 @@ namespace NOWA
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
+			
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
+			
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -3648,6 +3613,9 @@ namespace NOWA
 						passScene->mFirstRQ = 0;
 						passScene->mLastRQ = 2;
 
+						// passScene->setVisibilityMask(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId(this->gameObjectPtr->getCategory()));
+						// passScene->setVisibilityMask(0xFFFFFFFF & (~this->gameObjectPtr->getMaskId()));
+
 						if (true == this->usePlanarReflection->getBool())
 						{
 							// Used to identify this pass wants planar reflections
@@ -3696,6 +3664,8 @@ namespace NOWA
 						passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
 						passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 						passScene->mFirstRQ = 2;
+
+						// passScene->setVisibilityMask(0xFFFFFFFF & (~this->gameObjectPtr->getMaskId()));
 
 						passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
 					}
@@ -4098,19 +4068,8 @@ namespace NOWA
 				this->superSampling->setValue(1.0f);
 			}
 
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
 
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
@@ -4144,19 +4103,10 @@ namespace NOWA
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			if (false == this->involvedInSplitScreen)
-			{
-				texDef->width = 0; // target_width
-				texDef->height = 0; // target_height
-			}
-			else
-			{
-				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
-
-				texDef->width = windowWidth;
-				texDef->height = windowHeight;
-			}
+			
+			texDef->width = 0; // target_width
+			texDef->height = 0; // target_height
+			
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;

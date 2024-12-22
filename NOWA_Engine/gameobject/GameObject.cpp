@@ -1621,7 +1621,14 @@ namespace NOWA
 			this->sceneNode->setVisible(visible);
 			if (nullptr != this->movableObject)
 			{
-				this->movableObject->setVisible(this->visible->getBool());
+				this->movableObject->setVisible(visible);
+			}
+
+			// E.g. mygui painted components will also be hidden or shown
+			for (size_t i = 0; i < this->getComponents()->size(); i++)
+			{
+				auto component = std::get<COMPONENT>(this->getComponents()->at(i)).get();
+				component->setActivated(visible);
 			}
 		}
 	}

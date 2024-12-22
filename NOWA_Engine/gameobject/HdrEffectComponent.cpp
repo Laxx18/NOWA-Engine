@@ -3,6 +3,7 @@
 #include "utilities/XMLConverter.h"
 #include "LightDirectionalComponent.h"
 #include "WorkspaceComponents.h"
+#include "CameraComponent.h"
 #include "main/AppStateManager.h"
 #include "main/ProcessManager.h"
 #include "main/Core.h"
@@ -154,24 +155,30 @@ namespace NOWA
 				this->workspaceBaseComponent->setUseHdr(true);
 			}
 		}
-
-		// Apply loaded effect
-		this->setEffectName(this->effectName->getListSelectedValue());
-
-		this->postApplySunPower();
 		
 		return true;
 	}
 
 	bool HdrEffectComponent::connect(void)
 	{
-		this->postApplySunPower();
+		auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+		if (nullptr != cameraCompPtr)
+		{
+			// Note: If its a camera, e.g. MainCamera and hdr effect shall be set, but there is split screen scenario active, the hdr effect may not be set for a camera, which is not involved in split screen scenario
+			if ((true == cameraCompPtr->isActivated() && false == WorkspaceModule::getInstance()->getSplitScreenScenarioActive()) || true == this->workspaceBaseComponent->getInvolvedInSplitScreen())
+			{
+				// Apply loaded effect
+				this->setEffectName(this->effectName->getListSelectedValue());
+
+				this->postApplySunPower();
+			}
+		}
 		return true;
 	}
 
 	bool HdrEffectComponent::disconnect(void)
 	{
-		this->postApplySunPower();
+		this->resetShining();
 		return true;
 	}
 
@@ -333,7 +340,7 @@ namespace NOWA
 		// Reset shining and set default values
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			this->lightDirectionalComponent->setPowerScale(4.0f);
+			this->lightDirectionalComponent->setPowerScale(3.14159f);
 		}
 		this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.03375f, 0.05625f, 0.07875f), Ogre::ColourValue(0.04388f, 0.03291f, 0.02194f, 0.07312f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 	}

@@ -1271,7 +1271,7 @@ namespace NOWA
 		// widget->castType<MyGUI::EditBox>()->setCaptionWithReplacing
 		// widget->castType<MyGUI::EditBox>()->setEditMultiLine
 		// widget->castType<MyGUI::EditBox>()->setOnlyText
-		widget->castType<MyGUI::EditBox>()->setTextAlign(MyGUI::Align::Left);
+		// widget->castType<MyGUI::EditBox>()->setTextAlign(MyGUI::Align::Left);
 		// widget->castType<MyGUI::EditBox>()->setEditPassword
 
 		// Skin: Window, WindowC, WindowCX, WindowCS, WindowCSX

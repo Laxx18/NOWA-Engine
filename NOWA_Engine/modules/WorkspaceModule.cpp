@@ -21,7 +21,8 @@ namespace NOWA
 		hlmsManager(nullptr),
 		compositorManager(nullptr),
 		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
-		ambientLightMode(Ogre::HlmsPbs::AmbientAuto)
+		ambientLightMode(Ogre::HlmsPbs::AmbientAuto),
+		splitScreenScenarioActive(false)
 	{
 		// Get hlms data
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -54,6 +55,7 @@ namespace NOWA
 			}
 		}
 		this->workspaceMap.clear();
+		this->splitScreenScenarioActive = false;
 	}
 
 	WorkspaceModule* WorkspaceModule::getInstance()
@@ -779,6 +781,16 @@ namespace NOWA
 			}
 		}
 		return count;
+	}
+
+	void WorkspaceModule::setSplitScreenScenarioActive(bool splitScreenScenarioActive)
+	{
+		this->splitScreenScenarioActive = splitScreenScenarioActive;
+	}
+
+	bool WorkspaceModule::getSplitScreenScenarioActive(void) const
+	{
+		return this->splitScreenScenarioActive;
 	}
 
 	Ogre::CompositorWorkspace* WorkspaceModule::createDummyWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
