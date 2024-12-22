@@ -210,7 +210,6 @@ namespace NOWA
 		this->triggerSphereQueryObserver = triggerSphereQueryObserver;
 	}
 
-#if 0
 	void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
 	{
 		if (this->updateThreshold->getReal() > 0.0f)
@@ -218,161 +217,80 @@ namespace NOWA
 			this->triggerUpdateTimer += dt;
 		}
 
-		// Checks area only 2x a second
+		// Check area at regular intervals
 		if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
 		{
 			this->triggerUpdateTimer = 0.0f;
 
 			Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
 			this->sphereSceneQuery->setSphere(updateSphere);
-			// if (this->categoriesId > 0)
-			// 	this->sphereSceneQuery->setQueryMask(this->categoriesId);
 
-			// Checks objects in range
+			// Track objects currently within range
+			std::unordered_set<unsigned long> currentObjectsInRange;
+
+			// Check objects in range
 			Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
 			for (auto& it = result.cbegin(); it != result.cend(); ++it)
 			{
 				Ogre::MovableObject* movableObject = *it;
 
-				// if the query flags are part of the final category
-				// unsigned int finalCategory = this->sphereSceneQuery->getQueryMask() & movableObject->getQueryFlags();
-				// if (this->sphereSceneQuery->getQueryMask() == finalCategory)
+				GameObject* gameObject = nullptr;
+				try
 				{
-					GameObject* gameObject = nullptr;
-					try
+					if ("Camera" != movableObject->getMovableType())
 					{
-						if ("Camera" != movableObject->getMovableType())
-						{
-							gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-						}
+						gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
 					}
-					catch (Ogre::Exception&)
-					{
+				}
+				catch (Ogre::Exception&)
+				{
+				}
 
+				if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+				{
+					if (false == this->triggerPermanentely->getBool())
+					{
+						currentObjectsInRange.insert(gameObject->getId());
 					}
-					// Do not trigger this game object itself!
-					if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+
+					auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
+					if (otherIt == this->triggeredGameObjects.end())
 					{
-						auto activationComponent = NOWA::makeStrongPtr(gameObject->getComponent<ActivationComponent>());
-						if (nullptr != activationComponent)
-						{
-							// Activate all components of that game object
-							activationComponent->setActivated(true);
-						}
-
-						// when this is active, the onEnter callback will only be called once for the object!
-						auto& it = this->triggeredGameObjects.find(gameObject->getId());
-						if (it == this->triggeredGameObjects.end())
-						{
-							// notify the observer
-							if (nullptr != this->triggerSphereQueryObserver)
-							{
-								this->triggerSphereQueryObserver->onEnter(gameObject);
-							}
-
-							// Call also function in lua script, if it does exist in the lua script component
-							if (nullptr != this->gameObjectPtr->getLuaScript())
-							{
-								if (this->enterClosureFunction.is_valid())
-								{
-									try
-									{
-										luabind::call_function<void>(this->enterClosureFunction, gameObject);
-									}
-									catch (luabind::error& error)
-									{
-										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-										std::stringstream msg;
-										msg << errorMsg;
-
-										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what())
-																					+ " details: " + msg.str());
-									}
-								}
-							}
-
-							// add the game object to a map
-							this->triggeredGameObjects.emplace(gameObject->getId(), gameObject);
-						}
+						// First time entering
+						this->callEnterFunction(gameObject);
+						this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
 					}
-					else
+					else if (!otherIt->second.second) // Enter only if previously left
 					{
-						// Else call with null
-
-						if (nullptr != this->triggerSphereQueryObserver)
-						{
-							this->triggerSphereQueryObserver->onEnter(nullptr);
-						}
-
-						// Call also function in lua script, if it does exist in the lua script component
-						if (nullptr != this->gameObjectPtr->getLuaScript())
-						{
-							if (this->enterClosureFunction.is_valid())
-							{
-								try
-								{
-									luabind::call_function<void>(this->enterClosureFunction, nullptr);
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
-
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what())
-																				+ " details: " + msg.str());
-								}
-							}
-						}
-						break;
+						this->callEnterFunction(gameObject);
+						otherIt->second.second = true; // Mark as entered
 					}
 				}
 			}
 
-			// Goes through the map with the triggered game objects that are in range
-			for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend();)
+			// Check for objects that have left the range
+			for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
 			{
-				GameObject* gameObject = it->second;
-				Ogre::Vector3& direction = this->gameObjectPtr->getPosition() - gameObject->getPosition();
-				// if a game objects comes out of the range, remove it and notify the observer
-				Ogre::Real distanceToGameObject = direction.squaredLength();
-				Ogre::Real radius = this->radius->getReal();
-				if (distanceToGameObject > radius * radius)
+				unsigned long objectId = it->first;
+				GameObject* gameObject = it->second.first;
+
+				if (currentObjectsInRange.find(objectId) == currentObjectsInRange.end()) // Not in range
 				{
-					auto activationComponent = NOWA::makeStrongPtr(gameObject->getComponent<ActivationComponent>());
-					if (nullptr != activationComponent)
+					if (it->second.second) // Leave only if previously entered
 					{
-						// Activate all components of that game object
-						activationComponent->setActivated(false);
+						this->callLeaveFunction(gameObject);
+						it->second.second = false; // Mark as left
 					}
 
-					if (nullptr != this->triggerSphereQueryObserver)
+					// Optionally remove the object from the map
+					if (!this->triggerPermanentely->getBool())
 					{
-						this->triggerSphereQueryObserver->onLeave(gameObject);
+						it = this->triggeredGameObjects.erase(it);
 					}
-
-					// Call also function in lua script, if it does exist in the lua script component
-					if (nullptr != this->gameObjectPtr->getLuaScript())
+					else
 					{
-						if (this->leaveClosureFunction.is_valid())
-						{
-							try
-							{
-								luabind::call_function<void>(this->leaveClosureFunction, gameObject);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
-
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
-																			+ " details: " + msg.str());
-							}
-						}
+						++it;
 					}
-
-					it = this->triggeredGameObjects.erase(it);
 				}
 				else
 				{
@@ -380,250 +298,65 @@ namespace NOWA
 				}
 			}
 
-			// Deactivates after half a second if flag is set
-			if (true == this->shortTimeActivation->getBool())
+			if (this->shortTimeActivation->getBool())
 			{
 				this->setActivated(false);
 			}
 		}
 	}
-#else
-//void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
-//{
-//	if (this->updateThreshold->getReal() > 0.0f)
-//	{
-//		this->triggerUpdateTimer += dt;
-//	}
-//
-//	// Checks area only 2x a second
-//	if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
-//	{
-//		this->triggerUpdateTimer = 0.0f;
-//
-//		Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
-//		this->sphereSceneQuery->setSphere(updateSphere);
-//
-//		// Checks objects in range
-//		Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-//		for (auto& it = result.cbegin(); it != result.cend(); ++it)
-//		{
-//			Ogre::MovableObject* movableObject = *it;
-//
-//			GameObject* gameObject = nullptr;
-//			try
-//			{
-//				if ("Camera" != movableObject->getMovableType())
-//				{
-//					gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-//				}
-//			}
-//			catch (Ogre::Exception&)
-//			{
-//			}
-//
-//			if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
-//			{
-//				auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
-//				if (otherIt == this->triggeredGameObjects.end())
-//				{
-//					this->callEnterFunction(gameObject);
-//					// Adds the game object to a map and mark as entered
-//					this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
-//				}
-//				else
-//				{
-//					if (false == otherIt->second.second || true == this->triggerPermanentely->getBool()) // Not already entered
-//					{
-//						this->callEnterFunction(gameObject);
-//						// Mark as entered
-//						otherIt->second.second = true;
-//					}
-//				}
-//			}
-//		}
-//
-//		// Check for objects that have left the range
-//		for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
-//		{
-//			GameObject* gameObject = it->second.first;
-//			Ogre::Vector3 direction = this->gameObjectPtr->getPosition() - gameObject->getPosition();
-//			Ogre::Real distanceToGameObject = direction.squaredLength();
-//			Ogre::Real radius = this->radius->getReal();
-//
-//			if (distanceToGameObject > radius * radius)
-//			{
-//				this->callLeaveFunction(gameObject);
-//
-//				// Mark as left
-//				it->second.second = false;
-//
-//				// Remove the object from the map if it's no longer in range
-//				// it = this->triggeredGameObjects.erase(it);
-//
-//				++it;
-//			}
-//			else
-//			{
-//				++it;
-//			}
-//		}
-//
-//		if (this->shortTimeActivation->getBool())
-//		{
-//			this->setActivated(false);
-//		}
-//	}
-//}
 
-void AreaOfInterestComponent::checkAreaForActiveObjects(Ogre::Real dt)
-{
-	if (this->updateThreshold->getReal() > 0.0f)
+	void AreaOfInterestComponent::logLuaError(const Ogre::String& context, const luabind::error& error)
 	{
-		this->triggerUpdateTimer += dt;
+		luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+		std::stringstream msg;
+		msg << errorMsg;
+
+		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+			"[LuaScript] Caught error in '" + context + "' Error: " +
+			Ogre::String(error.what()) + " details: " + msg.str());
 	}
 
-	// Check area at regular intervals
-	if (this->triggerUpdateTimer >= this->updateThreshold->getReal())
+	void AreaOfInterestComponent::callEnterFunction(GameObject* gameObject)
 	{
-		this->triggerUpdateTimer = 0.0f;
-
-		Ogre::Sphere updateSphere(this->gameObjectPtr->getPosition(), this->radius->getReal());
-		this->sphereSceneQuery->setSphere(updateSphere);
-
-		// Track objects currently within range
-		std::unordered_set<unsigned long> currentObjectsInRange;
-
-		// Check objects in range
-		Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-		for (auto& it = result.cbegin(); it != result.cend(); ++it)
+		// Notify observer and call Lua function
+		if (this->triggerSphereQueryObserver)
 		{
-			Ogre::MovableObject* movableObject = *it;
+			this->triggerSphereQueryObserver->onEnter(gameObject);
+		}
 
-			GameObject* gameObject = nullptr;
+		if (this->gameObjectPtr->getLuaScript() && this->enterClosureFunction.is_valid())
+		{
 			try
 			{
-				if ("Camera" != movableObject->getMovableType())
-				{
-					gameObject = Ogre::any_cast<GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-				}
+				luabind::call_function<void>(this->enterClosureFunction, gameObject);
 			}
-			catch (Ogre::Exception&)
+			catch (luabind::error& error)
 			{
+				logLuaError("reactOnEnter", error);
 			}
+		}
+	}
 
-			if (nullptr != gameObject && gameObject != this->gameObjectPtr.get())
+	void AreaOfInterestComponent::callLeaveFunction(GameObject* gameObject)
+	{
+		// Notify observer and call Lua function
+		if (this->triggerSphereQueryObserver)
+		{
+			this->triggerSphereQueryObserver->onLeave(gameObject);
+		}
+
+		if (this->gameObjectPtr->getLuaScript() && this->leaveClosureFunction.is_valid())
+		{
+			try
 			{
-				if (false == this->triggerPermanentely->getBool())
-				{
-					currentObjectsInRange.insert(gameObject->getId());
-				}
-
-				auto& otherIt = this->triggeredGameObjects.find(gameObject->getId());
-				if (otherIt == this->triggeredGameObjects.end())
-				{
-					// First time entering
-					this->callEnterFunction(gameObject);
-					this->triggeredGameObjects.emplace(gameObject->getId(), std::make_pair(gameObject, true));
-				}
-				else if (!otherIt->second.second) // Enter only if previously left
-				{
-					this->callEnterFunction(gameObject);
-					otherIt->second.second = true; // Mark as entered
-				}
+				luabind::call_function<void>(this->leaveClosureFunction, gameObject);
 			}
-		}
-
-		// Check for objects that have left the range
-		for (auto it = this->triggeredGameObjects.begin(); it != this->triggeredGameObjects.end();)
-		{
-			unsigned long objectId = it->first;
-			GameObject* gameObject = it->second.first;
-
-			if (currentObjectsInRange.find(objectId) == currentObjectsInRange.end()) // Not in range
+			catch (luabind::error& error)
 			{
-				if (it->second.second) // Leave only if previously entered
-				{
-					this->callLeaveFunction(gameObject);
-					it->second.second = false; // Mark as left
-				}
-
-				// Optionally remove the object from the map
-				if (!this->triggerPermanentely->getBool())
-				{
-					it = this->triggeredGameObjects.erase(it);
-				}
-				else
-				{
-					++it;
-				}
-			}
-			else
-			{
-				++it;
+				logLuaError("reactOnLeave", error);
 			}
 		}
-
-		if (this->shortTimeActivation->getBool())
-		{
-			this->setActivated(false);
-		}
 	}
-}
-
-void AreaOfInterestComponent::logLuaError(const Ogre::String& context, const luabind::error& error)
-{
-	luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-	std::stringstream msg;
-	msg << errorMsg;
-
-	Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-		"[LuaScript] Caught error in '" + context + "' Error: " +
-		Ogre::String(error.what()) + " details: " + msg.str());
-}
-
-void AreaOfInterestComponent::callEnterFunction(GameObject* gameObject)
-{
-	// Notify observer and call Lua function
-	if (this->triggerSphereQueryObserver)
-	{
-		this->triggerSphereQueryObserver->onEnter(gameObject);
-	}
-
-	if (this->gameObjectPtr->getLuaScript() && this->enterClosureFunction.is_valid())
-	{
-		try
-		{
-			luabind::call_function<void>(this->enterClosureFunction, gameObject);
-		}
-		catch (luabind::error& error)
-		{
-			logLuaError("reactOnEnter", error);
-		}
-	}
-}
-
-void AreaOfInterestComponent::callLeaveFunction(GameObject* gameObject)
-{
-	// Notify observer and call Lua function
-	if (this->triggerSphereQueryObserver)
-	{
-		this->triggerSphereQueryObserver->onLeave(gameObject);
-	}
-
-	if (this->gameObjectPtr->getLuaScript() && this->leaveClosureFunction.is_valid())
-	{
-		try
-		{
-			luabind::call_function<void>(this->leaveClosureFunction, gameObject);
-		}
-		catch (luabind::error& error)
-		{
-			logLuaError("reactOnLeave", error);
-		}
-	}
-}
-
-#endif
 
 	void AreaOfInterestComponent::actualizeValue(Variant* attribute)
 	{

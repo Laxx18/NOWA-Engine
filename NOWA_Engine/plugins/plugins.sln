@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AtmosphereComponent", "Atmo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimationSequenceComponent", "AnimationSequenceComponent\AnimationSequenceComponent.vcxproj", "{8479A509-BAD2-4EED-A38E-EA4DAD2878B8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AiLuaGoalComponent", "AiLuaGoalComponent\AiLuaGoalComponent.vcxproj", "{E21FBD7E-1D02-44F8-BD27-E0A991433F95}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ParticleFxComponent", "ParticleFxComponent\ParticleFxComponent.vcxproj", "{428A0A3E-852E-4FDB-BA1B-4F63595FDD1A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SpeechBubbleComponent", "SpeechBubbleComponent\SpeechBubbleComponent.vcxproj", "{34DAF400-8AC4-4B69-8C49-B781062984F2}"
@@ -37,8 +35,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GpuParticlesComponent", "Gp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransformHistoryComponent", "TransformHistoryComponent\TransformHistoryComponent.vcxproj", "{0990E680-4CC1-4D95-970E-EC42CE758BE3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SplitScreenComponent", "SplitScreenComponent\SplitScreenComponent.vcxproj", "{A4DFDF34-A545-4716-B34E-CE2893928021}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransformEaseComponent", "TransformEaseComponent\TransformEaseComponent.vcxproj", "{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PurePursuitComponent", "PurePursuitComponent\PurePursuitComponent.vcxproj", "{F826AF49-6343-4046-9533-B2B44C8CDC1B}"
@@ -52,6 +48,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyholeEffectComponent", "KeyholeEffectComponent\KeyholeEffectComponent.vcxproj", "{AFC483C7-E666-4463-ADC6-019607E6386C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSpriteComponent", "MyGuiSpriteComponent\MyGuiSpriteComponent.vcxproj", "{B65A73D6-6690-4C1F-BD42-E0AC2466C139}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSplitScreenComponent", "MyGuiSplitScreenComponent\MyGuiSplitScreenComponent.vcxproj", "{4F46C542-442B-4599-9B9F-C0DD452C5C18}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -79,10 +77,6 @@ Global
 		{8479A509-BAD2-4EED-A38E-EA4DAD2878B8}.Debug|x64.Build.0 = Debug|x64
 		{8479A509-BAD2-4EED-A38E-EA4DAD2878B8}.Release|x64.ActiveCfg = Release|x64
 		{8479A509-BAD2-4EED-A38E-EA4DAD2878B8}.Release|x64.Build.0 = Release|x64
-		{E21FBD7E-1D02-44F8-BD27-E0A991433F95}.Debug|x64.ActiveCfg = Debug|x64
-		{E21FBD7E-1D02-44F8-BD27-E0A991433F95}.Debug|x64.Build.0 = Debug|x64
-		{E21FBD7E-1D02-44F8-BD27-E0A991433F95}.Release|x64.ActiveCfg = Release|x64
-		{E21FBD7E-1D02-44F8-BD27-E0A991433F95}.Release|x64.Build.0 = Release|x64
 		{428A0A3E-852E-4FDB-BA1B-4F63595FDD1A}.Debug|x64.ActiveCfg = Debug|x64
 		{428A0A3E-852E-4FDB-BA1B-4F63595FDD1A}.Debug|x64.Build.0 = Debug|x64
 		{428A0A3E-852E-4FDB-BA1B-4F63595FDD1A}.Release|x64.ActiveCfg = Release|x64
@@ -127,10 +121,6 @@ Global
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Debug|x64.Build.0 = Debug|x64
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Release|x64.ActiveCfg = Release|x64
 		{0990E680-4CC1-4D95-970E-EC42CE758BE3}.Release|x64.Build.0 = Release|x64
-		{A4DFDF34-A545-4716-B34E-CE2893928021}.Debug|x64.ActiveCfg = Debug|x64
-		{A4DFDF34-A545-4716-B34E-CE2893928021}.Debug|x64.Build.0 = Debug|x64
-		{A4DFDF34-A545-4716-B34E-CE2893928021}.Release|x64.ActiveCfg = Release|x64
-		{A4DFDF34-A545-4716-B34E-CE2893928021}.Release|x64.Build.0 = Release|x64
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Debug|x64.ActiveCfg = Debug|x64
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Debug|x64.Build.0 = Debug|x64
 		{77CB3325-2A3C-47C3-8D2A-A9CEC0A0EF40}.Release|x64.ActiveCfg = Release|x64
@@ -159,6 +149,10 @@ Global
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Debug|x64.Build.0 = Debug|x64
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.ActiveCfg = Release|x64
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.Build.0 = Release|x64
+		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Debug|x64.ActiveCfg = Debug|x64
+		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Debug|x64.Build.0 = Debug|x64
+		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Release|x64.ActiveCfg = Release|x64
+		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

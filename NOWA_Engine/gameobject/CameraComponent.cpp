@@ -23,7 +23,7 @@ namespace NOWA
 		hideEntity(true),
 		timeSinceLastUpdate(5.0f),
 		workspaceBaseComponent(nullptr),
-		eyeId(0),
+		eyeId(-1),
 		active(new Variant(CameraComponent::AttrActive(), false, this->attributes)),
 		position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		orientation(new Variant(CameraComponent::AttrOrientation(), Ogre::Vector3::ZERO, this->attributes)),
@@ -330,8 +330,8 @@ namespace NOWA
 				}
 				else
 				{
-					// If its not the active camera
-					if (false == this->dummyEntity->isVisible() && false == this->active->getBool())
+					// If its not the active camera and not in split screen
+					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId)
 					{
 						this->dummyEntity->setVisible(true);
 					}
@@ -353,14 +353,18 @@ namespace NOWA
 		{
 			if (nullptr != this->gameObjectPtr)
 			{
-				Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
+				// Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
+				Ogre::Vector3 cameraPosition = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
 
 				if (false == MathHelper::getInstance()->vector3Equals(this->position->getVector3(), cameraPosition, 0.001f))
 				{
 					this->position->setValue(cameraPosition);
 				}
 
-				Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
+				// Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
+
+				// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+				Ogre::Quaternion cameraOrientation = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
 				Ogre::Vector3 orientationDegree = MathHelper::getInstance()->quatToDegrees(cameraOrientation);
 
 				if (false == MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), orientationDegree, 0.001f))
@@ -711,66 +715,21 @@ namespace NOWA
 		return this->active->getBool();
 	}
 
-	void CameraComponent::applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask, Ogre::uint8 eyeId)
+	void CameraComponent::applySplitScreen(bool useSplitScreen, int eyeId)
 	{
-		if (nullptr != this->camera)
+		if (nullptr != this->camera && this->gameObjectPtr->getId() != GameObjectController::MAIN_CAMERA_ID)
 		{
-			this->eyeId = eyeId;
-
-			// this->camera->setWindow(...)
-
-			if (false == useSplitScreen)
+			if (true == useSplitScreen)
 			{
-				WorkspaceModule::getInstance()->setCameraPrimaryWorkspaceActive();
-			}
-
-			auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
-			if (nullptr != workspaceBaseCompPtr)
-			{
-				// All split screen cameras must be activated!
-				this->active->setValue(true);
-
-				workspaceBaseCompPtr->setUseSplitScreen(useSplitScreen);
-				workspaceBaseCompPtr->setExecutionMask(executionMask);
-				workspaceBaseCompPtr->setViewportModifierMask(viewportModifierMask);
-
+				this->eyeId = eyeId;
 				this->hideEntity = true;
 				this->dummyEntity->setVisible(false);
-
-				if (true == useSplitScreen)
-				{
-					AppStateManager::getSingletonPtr()->getCameraManager()->addSplitCamera(this->camera);
-				}
-			
-				auto primaryWorkSpaceComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-				if (workspaceBaseCompPtr.get() == primaryWorkSpaceComponent)
-				{
-					// Creates the workspace
-					workspaceBaseCompPtr->createWorkspace();
-					WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-				}
-				else if (true == useSplitScreen)
-				{
-					// Creates the workspace
-					workspaceBaseCompPtr->createWorkspace();
-					WorkspaceModule::getInstance()->addNthWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-				}
-				else
-				{
-					WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->camera);
-					// Not a primary workspace remove
-					workspaceBaseCompPtr->nullWorkspace();
-				}
 			}
 			else
 			{
-				// Illegal case
-				this->active->setValue(false);
-				Ogre::String message = "[CameraComponent] Could not switch workspace, because this camera component has no corresponding workspace component! Affected game object: " + this->gameObjectPtr->getName();
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-				boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+				this->eyeId = -1;
+				this->hideEntity = false;
+				this->dummyEntity->setVisible(true);
 			}
 		}
 	}

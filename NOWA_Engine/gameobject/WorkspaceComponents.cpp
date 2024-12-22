@@ -7,6 +7,7 @@
 #include "main/Core.h"
 #include "main/AppStateManager.h"
 #include "CameraComponent.h"
+#include "camera/BaseCamera.h"
 #include "PlanarReflectionComponent.h"
 #include "ReflectionCameraComponent.h"
 #include "LightDirectionalComponent.h"
@@ -24,8 +25,6 @@
 #include "Compositor/OgreCompositorWorkspaceListener.h"
 
 #include "TerraShadowMapper.h"
-
-// #define USE_OWN_SPLITTING_COMPOSITOR
 
 // #define GPU_PARTICLES
 
@@ -152,9 +151,7 @@ namespace NOWA
 		useOcean(false),
 		hlmsListener(nullptr),
 		hlmsWind(nullptr),
-		useSplitScreen(false),
-		executionMask(0xFF),
-		viewportModifierMask(0x00)
+		involvedInSplitScreen(false)
 	{
 		this->backgroundColor->addUserData(GameObject::AttrActionColorDialog());
 		this->superSampling->setDescription("Sets the supersampling for whole scene texture rendering. E.g. a value of 0.25 will pixelize the scene for retro Game experience.");
@@ -328,27 +325,22 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::connect(void)
 	{
-		// Do only for the first camera and not twice
-		if (this->viewportModifierMask == 0x01 || false == this->useSplitScreen)
+		if (nullptr != this->workspace)
 		{
-			if (nullptr != this->workspace)
+			Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+			if (nullptr != workspaceDef)
 			{
-				Ogre::CompositorWorkspaceDef* workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
-				if (nullptr != workspaceDef)
-				{
-					workspaceDef->clearAllInterNodeConnections();
-				}
+				workspaceDef->clearAllInterNodeConnections();
 			}
-
-			auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
-
-			for (size_t i = 0; i < compositorEffectComponents.size(); i++)
-			{
-				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
-			}
-
-			this->reconnectAllNodes();
 		}
+
+		auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
+
+		for (size_t i = 0; i < compositorEffectComponents.size(); i++)
+		{
+			compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
+		}
+		this->reconnectAllNodes();
 
 		return true;
 	}
@@ -379,16 +371,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::internalInitWorkspaceData(void)
 	{
-		Ogre::String workspacePostfix;
-#ifdef USE_OWN_SPLITTING_COMPOSITOR
-		workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-		
-#else
-		if (false == this->useSplitScreen)
-		{
-			workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-		}
-#endif
+		Ogre::String workspacePostfix = Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 		this->workspaceName = "NOWAWorkspace" + workspacePostfix;
 		this->renderingNodeName = "NOWARenderingNode" + workspacePostfix;
 		this->finalRenderingNodeName = "NOWAFinalCompositionNode" + workspacePostfix;
@@ -410,21 +393,17 @@ namespace NOWA
 		// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// auto ptrFunction = [this]() {
 		if (nullptr == this->compositorManager)
+		{
 			return true;
+		}
 
-		// Only create workspace if the camera is activated
-		if (false == this->cameraComponent->isActivated())
+		// Only create workspace if the camera is activated and there are no custom external channels (from split screen component)
+		if (false == this->cameraComponent->isActivated() && false == this->involvedInSplitScreen)
+		{
 			return true;
+		}
 
 		this->internalInitWorkspaceData();
-#ifndef USE_OWN_SPLITTING_COMPOSITOR
-		// Do nothing more as add the workspace for all other split screens, besides the first main screen
-		if (this->viewportModifierMask >= 0x02 && true == this->useSplitScreen)
-		{
-			this->addWorkspace();
-			return this->workspace != nullptr;
-		}
-#endif
 
 		this->removeWorkspace();
 
@@ -501,7 +480,7 @@ namespace NOWA
 			}
 		}*/
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspacePbsComponent] Creating workspace: " + this->workspaceName);
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBaseComponent] Creating workspace: " + this->workspaceName);
 
 		const Ogre::IdString workspaceNameId(this->workspaceName);
 		if (false == this->compositorManager->hasWorkspaceDefinition(workspaceNameId))
@@ -603,7 +582,6 @@ namespace NOWA
 						reflectionCameraCompPtr->postInit();
 					}
 
-					// TODO: What about splitscreen?
 					this->workspaceCubemap = this->compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), cubemapExternalChannels, reflectionCameraCompPtr->getCamera(),
 																				   workspaceCubemapName, true);
 
@@ -659,68 +637,65 @@ namespace NOWA
 
 		bool success = this->internalCreateWorkspace(workspaceDef);
 
-		if (this->viewportModifierMask == 0x01 || false == this->useSplitScreen)
+		if (true == this->usePlanarReflection->getBool() && true == success)
 		{
-			if (true == this->usePlanarReflection->getBool() && true == success)
-			{
-				// Setup PlanarReflections, 1.0 = max distance
-				this->planarReflections = new Ogre::PlanarReflections(this->gameObjectPtr->getSceneManager(), this->compositorManager, 1.0f, nullptr);
-				this->planarReflectionsWorkspaceListener = new PlanarReflectionsWorkspaceListener(this->planarReflections);
-				this->workspace->addListener(this->planarReflectionsWorkspaceListener);
+			// Setup PlanarReflections, 1.0 = max distance
+			this->planarReflections = new Ogre::PlanarReflections(this->gameObjectPtr->getSceneManager(), this->compositorManager, 1.0f, nullptr);
+			this->planarReflectionsWorkspaceListener = new PlanarReflectionsWorkspaceListener(this->planarReflections);
+			this->workspace->addListener(this->planarReflectionsWorkspaceListener);
 
-				// Attention: Only one planar reflection setting is possible!
-				this->pbs->setPlanarReflections(this->planarReflections);
-			}
-
-			if (true == this->canUseReflection || true == this->usePlanarReflection->getBool())
-			{
-				// Restore the reflections
-				unsigned int j = 0;
-				for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
-				{
-					auto& gameObjectPtr = it->second;
-					if (nullptr != gameObjectPtr)
-					{
-						// Refresh reflections
-						gameObjectPtr->setUseReflection(reflections[j]);
-
-						if (true == this->usePlanarReflection->getBool())
-						{
-							auto planarReflectionCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlanarReflectionComponent>());
-							if (nullptr != planarReflectionCompPtr)
-							{
-								planarReflectionCompPtr->createPlane();
-							}
-						}
-
-						j++;
-					}
-				}
-			}
-
-			this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
-			hlmsWind->setup(this->gameObjectPtr->getSceneManager());
-
-			auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
-			if (nullptr != hdrEffectCompPtr)
-			{
-				if (false == useHdr)
-				{
-					// Reset hdr values
-					hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
-					hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
-					hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
-				}
-				else
-				{
-					hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
-				}
-			}
-			// };
-			// NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-			// delayProcess->attachChild(closureProcess);
-			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			// Attention: Only one planar reflection setting is possible!
+			this->pbs->setPlanarReflections(this->planarReflections);
 		}
+
+		if (true == this->canUseReflection || true == this->usePlanarReflection->getBool())
+		{
+			// Restore the reflections
+			unsigned int j = 0;
+			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
+			{
+				auto& gameObjectPtr = it->second;
+				if (nullptr != gameObjectPtr)
+				{
+					// Refresh reflections
+					gameObjectPtr->setUseReflection(reflections[j]);
+
+					if (true == this->usePlanarReflection->getBool())
+					{
+						auto planarReflectionCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlanarReflectionComponent>());
+						if (nullptr != planarReflectionCompPtr)
+						{
+							planarReflectionCompPtr->createPlane();
+						}
+					}
+
+					j++;
+				}
+			}
+		}
+
+		this->hlmsWind = dynamic_cast<HlmsWind*>(Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_USER0));
+		hlmsWind->setup(this->gameObjectPtr->getSceneManager());
+
+		auto& hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
+		if (nullptr != hdrEffectCompPtr)
+		{
+			if (false == useHdr)
+			{
+				// Reset hdr values
+				hdrEffectCompPtr->applyHdrSkyColor(Ogre::ColourValue(0.2f, 0.4f, 0.6f), 1.0f);
+				hdrEffectCompPtr->applyExposure(1.0f, 1.0f, 1.0f);
+				hdrEffectCompPtr->applyBloomThreshold(0.0f, 0.0f);
+			}
+			else
+			{
+				hdrEffectCompPtr->setEffectName(hdrEffectCompPtr->getEffectName());
+			}
+		}
+		// };
+		// NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+		// delayProcess->attachChild(closureProcess);
+		// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 
 
 		return true;
@@ -796,6 +771,8 @@ namespace NOWA
 			}
 			this->workspace = nullptr;
 			this->externalChannels.clear();
+
+			this->customExternalChannels.clear();
 
 			if (nullptr != this->planarReflectionsWorkspaceListener)
 			{
@@ -884,15 +861,8 @@ namespace NOWA
 			WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->cameraComponent->getCamera());
 		}
 
-		// ATTENTION!: Causes crash if loading another scene, because nullWorkspace does not delete everything
-		if (true == this->useSplitScreen)
-		{
-			this->nullWorkspace();
-		}
-		else
-		{
-			this->removeWorkspace();
-		}
+		// TODO: nullWorkspace??
+		this->removeWorkspace();
 	}
 
 	void WorkspaceBaseComponent::actualizeValue(Variant* attribute)
@@ -1221,8 +1191,8 @@ namespace NOWA
 				// depthTexture2
 				{
 					Ogre::TextureDefinitionBase::TextureDefinition* depthTexDef = finalNodeDef->addTextureDefinition("depthTexture2");
-					depthTexDef->width = 0; // target_width
-					depthTexDef->height = 0; // target_height
+					depthTexDef->width = 0.0f; // target_width
+					depthTexDef->height = 0.0f; // target_height
 					depthTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 					depthTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 					depthTexDef->preferDepthTexture = true;
@@ -1243,8 +1213,8 @@ namespace NOWA
 				// depthTextureCopy2
 				{
 					Ogre::TextureDefinitionBase::TextureDefinition* depthTexDef = finalNodeDef->addTextureDefinition("depthTextureCopy2");
-					depthTexDef->width = 0; // target_width
-					depthTexDef->height = 0; // target_height
+					depthTexDef->width = 0.0f; // target_width
+					depthTexDef->height = 0.0f; // target_height
 					depthTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 					depthTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 					depthTexDef->preferDepthTexture = true;
@@ -1307,13 +1277,11 @@ namespace NOWA
 						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
 						passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->mMaterialName = "Ogre/Depth/DownscaleMax";
 						passQuad->addQuadTextureSource(0, "depthTexture");
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Pass_Quad";
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -1328,7 +1296,8 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Texture_Target_Pass_Quad";
 
-						// passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
+						// TODO: Correct?? Or Dont Care?
+						passQuad->setAllLoadActions(Ogre::LoadAction::Clear);
 						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 						passQuad->mClearColour[0] = Ogre::ColourValue::White;
 
@@ -1336,8 +1305,6 @@ namespace NOWA
 						passQuad->addQuadTextureSource(0, "depthTextureCopy");
 						passQuad->addQuadTextureSource(1, "gBufferNormals");
 						passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::VIEW_SPACE_CORNERS;
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -1352,14 +1319,12 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Horizontal_Target_Pass_Quad";
 
-						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 
 						passQuad->mMaterialName = "SSAO/BlurH";
 						passQuad->addQuadTextureSource(0, "ssaoTexture");
 						passQuad->addQuadTextureSource(1, "depthTextureCopy");
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -1374,14 +1339,12 @@ namespace NOWA
 
 						passQuad->mProfilingId = "NOWA_Final_SSAO_Blur_Texture_Vertical_Target_Pass_Quad";
 
-						// passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
 						passQuad->setAllLoadActions(Ogre::LoadAction::Load);
 
 						passQuad->mMaterialName = "SSAO/BlurV";
 						passQuad->addQuadTextureSource(0, "blurTextureHorizontal");
 						passQuad->addQuadTextureSource(1, "depthTextureCopy");
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 			}
@@ -1396,16 +1359,12 @@ namespace NOWA
 					auto pass = targetDef->addPass(Ogre::PASS_QUAD);
 					Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
-					if (false == this->useSplitScreen)
-					{
-						passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-					}
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+
 					passQuad->mMaterialName = "Ogre/Copy/4xFP32";
 					passQuad->addQuadTextureSource(0, "rtN");
 
 					passQuad->mProfilingId = "NOWA_Final_rtN_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 
 				if (true == this->useSSAO->getBool())
@@ -1421,19 +1380,18 @@ namespace NOWA
 						passQuad->mMaterialName = "SSAO/Apply";
 						passQuad->addQuadTextureSource(0, "blurTextureVertical");
 						passQuad->addQuadTextureSource(1, "rt_output");
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
-
-				// Pass custom MYGUI
+				
+				if (false == this->involvedInSplitScreen)
 				{
-					Ogre::CompositorPassDef* passMyGUI;
-					passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
+					// Pass custom MYGUI
+					{
+						Ogre::CompositorPassDef* passMyGUI;
+						passMyGUI = static_cast<Ogre::CompositorPassDef*>(targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI"));
 
-					passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
-
-					this->applySplitScreenModifier(passMyGUI);
+						passMyGUI->mProfilingId = "NOWA_Final_Render_MyGUI_Pass_Custom";
+					}
 				}
 
 				// Render Scene
@@ -1450,11 +1408,7 @@ namespace NOWA
 					passScene->mIncludeOverlays = true;
 					passScene->mFirstRQ = 254;
 					passScene->mLastRQ = 255;
-
-					this->applySplitScreenModifier(pass, true);
 				}
-
-				
 			}
 
 #ifdef GPU_PARTICLES
@@ -1489,8 +1443,8 @@ namespace NOWA
 
 				// rt_output is the new in texture, instead of like in the script in 2 rt_output whichs is externally connected
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_output");
-				distortionTexDef->width = 0; // target_width
-				distortionTexDef->height = 0; // target_height
+				distortionTexDef->width = 0.0f; // target_width
+				distortionTexDef->height = 0.0f; // target_height
 				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
@@ -1530,7 +1484,7 @@ namespace NOWA
 		}
 	}
 
-	void WorkspaceBaseComponent::addWorkspace(void)
+	void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
 		if (true == this->externalChannels.empty())
 		{
@@ -1538,27 +1492,32 @@ namespace NOWA
 			this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 		}
 
-		if (false == this->useSplitScreen)
+		if (false == this->customExternalChannels.empty() && true == this->involvedInSplitScreen)
 		{
-			this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-																								   this->cameraComponent->getCamera(), this->workspaceName, true);
-		}
-		else
-		{
-
-			this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-																								   this->cameraComponent->getCamera(), this->workspaceName,
-																								   true, -1, (Ogre::UavBufferPackedVec*)0, (Ogre::ResourceStatusMap*)0, this->viewportRect->getVector4(), this->viewportModifierMask, this->executionMask);
-
-
-#if 0
-			// if(2 == this->viewportModifierMask)
+			size_t priorCount = 0;
+			// Note: Just eat the Core::getSingletonPtr()->getOgreRenderWindow()->getTexture(), because its surely used differently via customExternalChannels, but take all other existing channels, (e.g. cubeMap, terra etc.)
+			if (this->externalChannels.size() > 0)
 			{
-				this->changeViewportRect(this->viewportModifierMask - 1, this->viewportRect->getVector4(), this->renderingNodeName);
-				this->changeViewportRect(this->viewportModifierMask - 1, this->viewportRect->getVector4(), this->finalRenderingNodeName);
+				priorCount = this->externalChannels.size() - 1;
 			}
-#endif
+			this->externalChannels.resize(priorCount + this->customExternalChannels.size());
+			for (size_t i = 0; i < this->customExternalChannels.size(); i++)
+			{
+				if (i >= priorCount)
+				{
+					this->externalChannels[i] = this->customExternalChannels[i];
+					// workspaceDef->connectExternal(priorCount + i, this->finalRenderingNodeName, priorCount + i);
+				}
+			}
 		}
+
+		int position = -1;
+
+		if (true == this->involvedInSplitScreen)
+		{
+			position = 0;
+		}
+		this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), this->externalChannels, this->cameraComponent->getCamera(), this->workspaceName, true, position);
 	}
 
 	Ogre::String WorkspaceBaseComponent::getDistortionNode(void) const
@@ -1573,11 +1532,13 @@ namespace NOWA
 		{
 			return;
 		}
+
 		Ogre::CompositorManager2::CompositorNodeDefMap nodeDefinitions = this->compositorManager->getNodeDefinitions();
 		Ogre::CompositorNodeDef* nodeDef;
 		Ogre::CompositorTargetDef* targetDef;
 		Ogre::CompositorPassDef* passDef;
 		Ogre::CompositorPassClearDef* clearDef;
+
 		bool foundPass = false;
 		for (auto& it = nodeDefinitions.cbegin(); it != nodeDefinitions.cend(); ++it)
 		{
@@ -1613,164 +1574,6 @@ namespace NOWA
 		if (true == foundPass)
 		{
 			this->createWorkspace();
-		}
-	}
-
-	void WorkspaceBaseComponent::changeViewportRect(unsigned short viewportIndex, const Ogre::Vector4& viewportRect, const Ogre::String& compositorNodeName)
-	{
-#if 1
-		if (true == compositorNodeName.empty())
-		{
-			return;
-		}
-
-		Ogre::CompositorNodeDef* nodeDef = this->compositorManager->getNodeDefinitionNonConst(compositorNodeName);
-
-		assert(nodeDef->getNumTargetPasses() >= 1);
-
-		Ogre::CompositorTargetDef* targetDef = nodeDef->getTargetPass(0);
-		Ogre::CompositorPassDefVec& passDefs = targetDef->getCompositorPassesNonConst();
-		assert(passDefs.size() >= 1);
-
-		// Not 4thm times, but camera count times splitting!
-		// for (size_t i = 0; i < WorkspaceModule::getInstance()->getCountCameras(); i++)
-		for (size_t i = 0; i < passDefs.size(); i++)
-		{
-			Ogre::CompositorPassDef*& passDef = passDefs[i];
-
-			// if (passDef->getType() == Ogre::CompositorPassType::PASS_SCENE || (passDef->getType() == Ogre::CompositorPassType::PASS_QUAD /*&& passDef->mProfilingId != "Sky"*/))
-			// if (passDef->getType() == Ogre::CompositorPassType::PASS_SCENE || Ogre::CompositorPassType::PASS_CLEAR)
-			{
-				Ogre::CompositorPassDef::ViewportRect rect;
-				rect.mVpLeft = viewportRect.x;
-				rect.mVpTop = viewportRect.y;
-				rect.mVpWidth = viewportRect.z;
-				rect.mVpHeight = viewportRect.w;
-				rect.mVpScissorLeft = rect.mVpLeft;
-				rect.mVpScissorTop = rect.mVpTop;
-				rect.mVpScissorWidth = rect.mVpWidth;
-				rect.mVpScissorHeight = rect.mVpHeight;
-
-				passDef->mVpRect[viewportIndex] = rect;
-				passDef->mNumViewports = viewportIndex + 1;
-				int i = 0;
-				i = 1;
-			}
-		}
-		int brems = 0;
-		brems = 1;
-#endif
-	}
-
-	void WorkspaceBaseComponent::applySplitScreenModifier(Ogre::CompositorPassDef*& pass, bool isOverlay, bool isSky)
-	{
-		if (true == this->useSplitScreen)
-		{
-#if 0
-			pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
-			// pass->mNumViewports = this->cameraComponent->getEyeId() + 1;
-
-			Ogre::CompositorPassDef::ViewportRect rect;
-			Ogre::Vector4 viewportRect = this->viewportRect->getVector4();
-
-			rect.mVpLeft = viewportRect.x;
-			rect.mVpTop = viewportRect.y;
-			rect.mVpWidth = viewportRect.z;
-			rect.mVpHeight = viewportRect.w;
-			rect.mVpScissorLeft = rect.mVpLeft;
-			rect.mVpScissorTop = rect.mVpTop;
-			rect.mVpScissorWidth = rect.mVpWidth;
-			rect.mVpScissorHeight = rect.mVpHeight;
-
-			pass->mVpRect[this->cameraComponent->getEyeId()] = rect;
-
-
-#endif
-
-			// pass->setAllLoadActions(Ogre::LoadAction::Load);
-			// pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-
-			// pass->mNumViewports = WorkspaceModule::getInstance()->getCountCameras();
-			// pass->setAllLoadActions(Ogre::LoadAction::Load);
-
-			pass->mProfilingId += "_" + Ogre::StringConverter::toString(this->cameraComponent->getEyeId());
-
-			if (pass->getType() == Ogre::CompositorPassType::PASS_CLEAR)
-			{
-				pass->setAllLoadActions(Ogre::LoadAction::Clear);
-				pass->setAllStoreActions(Ogre::StoreAction::Store);
-
-				// Gets executed on the first eye
-				pass->mExecutionMask = 0x01;
-				// Don't be affected by the modifier, apply to the whole screen
-				// Will be cleared once for all eyes
-				pass->mViewportModifierMask = 0x00;
-			}
-			else if (pass->getType() == Ogre::CompositorPassType::PASS_SCENE && false == isOverlay)
-			{
-				// Gets executed in all eyes
-				// pass->mExecutionMask = this->cameraComponent->getEyeId();
-				pass->mExecutionMask = 0xFF;
-				// Be affected by the modifier, so we render just to a portion of the screen.
-				// That means one part is rendered on first eye and the other on the second eye
-				pass->mViewportModifierMask = 0xFF;
-
-				pass->setAllLoadActions(Ogre::LoadAction::Clear);
-				pass->setAllStoreActions(Ogre::StoreAction::Store);
-			}
-			else if (pass->getType() == Ogre::CompositorPassType::PASS_QUAD && false == isSky)
-			{
-				// Ogre::RenderSystem* rs = Ogre::Root::getSingletonPtr()->getRenderSystem();
-				// rs->_setViewMatrix(this->cameraComponent->getCamera()->getViewMatrix(true));
-				// rs->_setProjectionMatrix(this->cameraComponent->getCamera()->getVrProjectionMatrix(this->cameraComponent->getEyeId()));
-
-				//pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				//// Don't be affected by the modifier, apply to the whole screen
-				//pass->mViewportModifierMask = 0x00;
-
-				// Gets executed in all eyes
-				pass->mExecutionMask = 0xFF;
-				// Be affected by the modifier, so we render just to a portion of the screen.
-				// That means one part is rendered on first eye and the other on the second eye
-				pass->mViewportModifierMask = 0xFF;
-
-				Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
-				passQuad->mCameraName = this->cameraComponent->getCamera()->getName();
-
-				pass->setAllLoadActions(Ogre::LoadAction::Load);
-				pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-			}
-			else if (pass->getType() == Ogre::CompositorPassType::PASS_QUAD && true == isSky)
-			{
-				pass->mProfilingId = "Sky";
-
-				//pass->mExecutionMask = WorkspaceModule::getInstance()->getCountCameras();
-				//// Don't be affected by the modifier, apply to the whole screen
-				//pass->mViewportModifierMask = 0x00;
-
-				// Gets executed in all eyes
-				pass->mExecutionMask = 0xFF;
-				// Be affected by the modifier, so we render just to a portion of the screen.
-				// That means one part is rendered on first eye and the other on the second eye
-				pass->mViewportModifierMask = 0xFF;
-
-				pass->setAllLoadActions(Ogre::LoadAction::Load);
-				pass->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-			}
-			else if (pass->getType() == Ogre::CompositorPassType::PASS_SCENE && true == isOverlay)
-			{
-				// Gets executed in all eyes
-				pass->mExecutionMask = 0xFF;
-				// GUI gets executed on the first eye (left side)
-				pass->mViewportModifierMask = 0x01;
-			}
-			else if (pass->getType() == Ogre::CompositorPassType::PASS_CUSTOM)
-			{
-				// Gets executed in all eyes
-				pass->mExecutionMask = 0xFF;
-				// GUI gets executed on the first eye (left side)
-				pass->mViewportModifierMask = 0x01;
-			}
 		}
 	}
 
@@ -1882,8 +1685,6 @@ namespace NOWA
 					passQuad->mMaterialName = "Postprocess/BrightPass2";
 					passQuad->addQuadTextureSource(0, "rt_input");
 					passQuad->mProfilingId = "NOWA_Post_Effect_Bright_Pass2_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 			{
@@ -1898,8 +1699,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(0, "rt0");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_BlurV_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 			{
@@ -1914,8 +1713,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(0, "rt1");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_BlurH_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 			{
@@ -1931,8 +1728,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(1, "rt0");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_Bloom_Blend2_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 
@@ -1967,8 +1762,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(0, "rt_input");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_Glass_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 
@@ -2020,8 +1813,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(0, "rt_input");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Input_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 			/// Do the motion blur
@@ -2038,8 +1829,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(1, "sum");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_Combine_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 			/// Copy back sum texture for the next frame
@@ -2055,8 +1844,6 @@ namespace NOWA
 					passQuad->addQuadTextureSource(0, "rt_output");
 
 					passQuad->mProfilingId = "NOWA_Post_Effect_Copy_4xFP32_Output_Pass_Quad";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 
@@ -2648,36 +2435,6 @@ namespace NOWA
 		psParamsApply->setNamedConstant("powerScale", 3.0f);
 	}
 
-	void WorkspaceBaseComponent::setUseSplitScreen(bool useSplitScreen)
-	{
-		this->useSplitScreen = useSplitScreen;
-	}
-
-	bool WorkspaceBaseComponent::getUseSplitScreen(void) const
-	{
-		return this->useSplitScreen;
-	}
-
-	void WorkspaceBaseComponent::setExecutionMask(Ogre::uint8 executionMask)
-	{
-		this->executionMask = executionMask;
-	}
-
-	Ogre::uint8 WorkspaceBaseComponent::getExecutionMask(void) const
-	{
-		return this->executionMask;
-	}
-
-	void WorkspaceBaseComponent::setViewportModifierMask(Ogre::uint8 viewportModifierMask)
-	{
-		this->viewportModifierMask = viewportModifierMask;
-	}
-
-	Ogre::uint8 WorkspaceBaseComponent::getViewportModifierMask(void) const
-	{
-		return this->viewportModifierMask;
-	}
-
 	void WorkspaceBaseComponent::reconnectAllNodes(void)
 	{
 		//Now that we're done, tell the instance to update itself.
@@ -2986,6 +2743,21 @@ namespace NOWA
 		return this->shadowSplitPadding->getReal();
 	}
 
+	void WorkspaceBaseComponent::setCustomExternalChannels(const Ogre::CompositorChannelVec& customExternalChannels)
+	{
+		this->customExternalChannels = customExternalChannels;
+	}
+
+	void WorkspaceBaseComponent::setInvolvedInSplitScreen(bool involvedInSplitScreen)
+	{
+		this->involvedInSplitScreen = involvedInSplitScreen;
+	}
+
+	bool WorkspaceBaseComponent::getInvolvedInSplitScreen(void) const
+	{
+		return this->involvedInSplitScreen;
+	}
+
 	void WorkspaceBaseComponent::updateShadowGlobalBias(void)
 	{
 		Ogre::CompositorShadowNodeDef* node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
@@ -3121,8 +2893,19 @@ namespace NOWA
 			compositorNodeDefinition->setNumLocalTextureDefinitions(numTexturesDefinitions);
 
 			Ogre::TextureDefinitionBase::TextureDefinition* texDef = compositorNodeDefinition->addTextureDefinition("rt0");
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
 
 			if (this->superSampling->getReal() <= 0.0f)
 			{
@@ -3142,20 +2925,20 @@ namespace NOWA
 
 				// Add all necessary textures
 				Ogre::TextureDefinitionBase::TextureDefinition* gBufferNormalsTexDef = compositorNodeDefinition->addTextureDefinition("gBufferNormals");
-				gBufferNormalsTexDef->width = 0; // target_width
-				gBufferNormalsTexDef->height = 0; // target_height
+				gBufferNormalsTexDef->width = 0.0f; // target_width
+				gBufferNormalsTexDef->height = 0.0f; // target_height
 				gBufferNormalsTexDef->format = Ogre::PFG_R10G10B10A2_UNORM;
 				gBufferNormalsTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureTexDef = compositorNodeDefinition->addTextureDefinition("depthTexture");
-				depthTextureTexDef->width = 0; // target_width
-				depthTextureTexDef->height = 0; // target_height
+				depthTextureTexDef->width = 0.0f; // target_width
+				depthTextureTexDef->height = 0.0f; // target_height
 				depthTextureTexDef->format = Ogre::PFG_D32_FLOAT;
 				depthTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture /*| Ogre::TextureFlags::MsaaExplicitResolv*/;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* depthTextureCopyTexDef = compositorNodeDefinition->addTextureDefinition("depthTextureCopy");
-				depthTextureCopyTexDef->width = 0; // target_width
-				depthTextureCopyTexDef->height = 0; // target_height
+				depthTextureCopyTexDef->width = 0.0f; // target_width
+				depthTextureCopyTexDef->height = 0.0f; // target_height
 				depthTextureCopyTexDef->widthFactor = 0.5f;
 				depthTextureCopyTexDef->heightFactor = 0.5f;
 				depthTextureCopyTexDef->format = Ogre::PFG_D32_FLOAT;
@@ -3166,8 +2949,8 @@ namespace NOWA
 				// depthTextureCopyTexDef->depthBufferId = 0;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* ssaoTextureTexDef = compositorNodeDefinition->addTextureDefinition("ssaoTexture");
-				ssaoTextureTexDef->width = 0; // target_width
-				ssaoTextureTexDef->height = 0; // target_height
+				ssaoTextureTexDef->width = 0.0f; // target_width
+				ssaoTextureTexDef->height = 0.0f; // target_height
 				ssaoTextureTexDef->widthFactor = 0.5f;
 				ssaoTextureTexDef->heightFactor = 0.5f;
 				ssaoTextureTexDef->format = Ogre::PFG_R16_FLOAT;
@@ -3175,15 +2958,15 @@ namespace NOWA
 				ssaoTextureTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureHorizontalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureHorizontal");
-				blurTextureHorizontalTexDef->width = 0; // target_width
-				blurTextureHorizontalTexDef->height = 0; // target_height
+				blurTextureHorizontalTexDef->width = 0.0f; // target_width
+				blurTextureHorizontalTexDef->height = 0.0f; // target_height
 				blurTextureHorizontalTexDef->format = Ogre::PFG_R16_FLOAT;
 				blurTextureHorizontalTexDef->depthBufferId = 0;
 				blurTextureHorizontalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* blurTextureVerticalTexDef = compositorNodeDefinition->addTextureDefinition("blurTextureVertical");
-				blurTextureVerticalTexDef->width = 0; // target_width
-				blurTextureVerticalTexDef->height = 0; // target_height
+				blurTextureVerticalTexDef->width = 0.0f; // target_width
+				blurTextureVerticalTexDef->height = 0.0f; // target_height
 				blurTextureVerticalTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 				blurTextureVerticalTexDef->depthBufferId = 0;
 				blurTextureVerticalTexDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
@@ -3196,8 +2979,8 @@ namespace NOWA
 				// texDef->preferDepthTexture = true;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-				distortionTexDef->width = 0; // target_width
-				distortionTexDef->height = 0; // target_height
+				distortionTexDef->width = 0.0f; // target_width
+				distortionTexDef->height = 0.0f; // target_height
 				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
@@ -3261,8 +3044,21 @@ namespace NOWA
 			}
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
+
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
+
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -3278,8 +3074,8 @@ namespace NOWA
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				texDef->width = 1;
-				texDef->height = 1;
+				texDef->width = 0.0f;
+				texDef->height = 0.0f;
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				// ?? Is this necessary?
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture; // Here also | Ogre::TextureFlags::MsaaExplicitResolve;??
@@ -3323,7 +3119,7 @@ namespace NOWA
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
 				{
-					// if (true == this->useSplitScreen)
+					// if (true == this->canUseSplitscreen)
 					{
 						// Clear Pass
 						{
@@ -3337,8 +3133,6 @@ namespace NOWA
 							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
 							
 							passClear->mProfilingId = "NOWA_Pbs_Split_Clear_Pass_Clear";
-
-							this->applySplitScreenModifier(pass);
 						}
 					}
 
@@ -3362,12 +3156,9 @@ namespace NOWA
 						passScene->mClearColour[0] = color;
 						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why? Because MSAA must be switched on!
 
-						if (false == this->useSplitScreen)
-						{
-							passScene->setAllLoadActions(Ogre::LoadAction::Clear);
-							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
-							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
-						}
+						passScene->setAllLoadActions(Ogre::LoadAction::Clear);
+						passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
+						passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
 						
 						// passScene->mFirstRQ = 10;
 						// passScene->mLastRQ = 253;
@@ -3389,7 +3180,7 @@ namespace NOWA
 
 						passScene->mProfilingId = "NOWA_Pbs_Render_Scene_Pass_Scene";
 
-						this->applySplitScreenModifier(pass);
+						passScene->mCameraName = this->cameraComponent->getCamera()->getName();
 
 						if (true == this->useSSAO->getBool())
 						{
@@ -3412,8 +3203,6 @@ namespace NOWA
 					passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 
 					passClear->mProfilingId = "NOWA_Pbs_Hdr_Pass_Clear";
-
-					this->applySplitScreenModifier(pass);
 				}
 			}
 
@@ -3438,8 +3227,6 @@ namespace NOWA
 					passScene->mIncludeOverlays = false;
 					passScene->mFirstRQ = 16;
 					passScene->mLastRQ = 17;
-
-					this->applySplitScreenModifier(pass);
 				}
 
 				this->createDistortionNode();
@@ -3534,7 +3321,7 @@ namespace NOWA
 							passScene->setAllLoadActions(Ogre::LoadAction::Clear);
 							passScene->mClearColour[0] = color;
 
-							// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
+							passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
 							passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve; // Ogre::StoreAction::StoreAndMultisampleResolve; causes a crash, why?
 							passScene->mStoreActionDepth = Ogre::StoreAction::DontCare;
 							passScene->mStoreActionStencil = Ogre::StoreAction::DontCare;
@@ -3545,8 +3332,6 @@ namespace NOWA
 							passScene->mIncludeOverlays = false;
 
 							// passScene->mVisibilityMask = 0xfffffffe;
-
-							this->applySplitScreenModifier(pass);
 
 							//https://forums.ogre3d.org/viewtopic.php?t=93636
 							//https://forums.ogre3d.org/viewtopic.php?t=94748
@@ -3573,7 +3358,7 @@ namespace NOWA
 		// Call base workspace creation, which does already main node connections
 		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
-		this->addWorkspace();
+		this->addWorkspace(workspaceDef);
 
 		this->setBackgroundColor(this->backgroundColor->getVector3());
 		// For VR: disable this line and use NOWAPbsRenderingNodeVR
@@ -3713,6 +3498,20 @@ namespace NOWA
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
 
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
+
 			// For SSAO necessary?
 			// texDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -3724,8 +3523,8 @@ namespace NOWA
 				// texDef->preferDepthTexture = true;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-				distortionTexDef->width = 0; // target_width
-				distortionTexDef->height = 0; // target_height
+				distortionTexDef->width = 0.0f; // target_width
+				distortionTexDef->height = 0.0f; // target_height
 				distortionTexDef->format = Ogre::PFG_RGBA16_FLOAT;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
@@ -3742,8 +3541,19 @@ namespace NOWA
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -3759,8 +3569,8 @@ namespace NOWA
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				texDef->width = 1;
-				texDef->height = 1;
+				texDef->width = 0.0f;
+				texDef->height = 0.0f;
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 				texDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
@@ -3795,7 +3605,7 @@ namespace NOWA
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 				{
 #if 1
-					// if (true == this->useSplitScreen)
+					// if (true == this->canUseSplitscreen)
 					{
 						// Clear Pass
 						{
@@ -3810,8 +3620,6 @@ namespace NOWA
 							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
 
 							passClear->mProfilingId = "NOWA_Sky_Split_Clear_Pass_Clear";
-
-							this->applySplitScreenModifier(pass);
 						}
 					}
 #endif
@@ -3860,8 +3668,6 @@ namespace NOWA
 							passScene->mExposedTextures.emplace_back(Ogre::IdString("rt1"));
 						}
 						passScene->mIncludeOverlays = false;
-
-						this->applySplitScreenModifier(pass);
 					}
 
 					//https://forums.ogre3d.org/viewtopic.php?t=93636
@@ -3878,8 +3684,6 @@ namespace NOWA
 						passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
 
 						passQuad->mProfilingId = "NOWA_Sky_Pass_Quad";
-
-						this->applySplitScreenModifier(pass, false, true);
 					}
 
 					// Render Scene
@@ -3894,8 +3698,6 @@ namespace NOWA
 						passScene->mFirstRQ = 2;
 
 						passScene->mProfilingId = "NOWA_Sky_After_Sky_Pass_Scene";
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -3913,8 +3715,6 @@ namespace NOWA
 						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 
 						passClear->mProfilingId = "NOWA_Sky_Hdr_Pass_Clear";
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -3938,8 +3738,6 @@ namespace NOWA
 						passScene->mIncludeOverlays = false;
 						passScene->mFirstRQ = 16;
 						passScene->mLastRQ = 17;
-
-						this->applySplitScreenModifier(pass);
 					}
 
 					this->createDistortionNode();
@@ -3958,7 +3756,7 @@ namespace NOWA
 				outputChannel = 3;
 			}
 
-			/*if (true == this->useSplitScreen)
+			/*if (true == this->canUseSplitscreen)
 			{
 				outputChannel++;
 			}*/
@@ -4036,8 +3834,6 @@ namespace NOWA
 
 							// passScene->mVisibilityMask = 0xfffffffe;
 
-							this->applySplitScreenModifier(pass);
-
 							//https://forums.ogre3d.org/viewtopic.php?t=93636
 							//https://forums.ogre3d.org/viewtopic.php?t=94748
 							passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
@@ -4052,8 +3848,6 @@ namespace NOWA
 							passQuad->mFrustumCorners = Ogre::CompositorPassQuadDef::CAMERA_DIRECTION;
 
 							passQuad->mProfilingId = "NOWA_Sky_PlanarReflections_Pass_Quad";
-
-							this->applySplitScreenModifier(pass);
 						}
 
 						// Render Scene
@@ -4067,8 +3861,6 @@ namespace NOWA
 							passScene->mFirstRQ = 2;
 
 							passScene->mProfilingId = "NOWA_Sky_Before_Sky_PlanarReflections_Pass_Scene";
-
-							this->applySplitScreenModifier(pass);
 						}
 
 						// Generate Mipmaps
@@ -4091,7 +3883,7 @@ namespace NOWA
 		// Call base workspace creation, which does already main node connections
 		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
-		this->addWorkspace();
+		this->addWorkspace(workspaceDef);
 
 		this->changeSkyBox(this->skyBoxName->getListSelectedValue());
 
@@ -4306,6 +4098,20 @@ namespace NOWA
 				this->superSampling->setValue(1.0f);
 			}
 
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
+
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->textureFlags = Ogre::TextureFlags::RenderToTexture | Ogre::TextureFlags::MsaaExplicitResolve;
@@ -4321,8 +4127,8 @@ namespace NOWA
 				// texDef->preferDepthTexture = true;
 
 				Ogre::TextureDefinitionBase::TextureDefinition* distortionTexDef = compositorNodeDefinition->addTextureDefinition("rt_distortion");
-				distortionTexDef->width = 0; // target_width
-				distortionTexDef->height = 0; // target_height
+				distortionTexDef->width = 0.0f; // target_width
+				distortionTexDef->height = 0.0f; // target_height
 				distortionTexDef->format = Ogre::PFG_RGBA8_UNORM_SRGB;
 				distortionTexDef->depthBufferFormat = Ogre::PFG_D32_FLOAT;
 				distortionTexDef->preferDepthTexture = true;
@@ -4338,8 +4144,19 @@ namespace NOWA
 			rtv->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
 
 			texDef = compositorNodeDefinition->addTextureDefinition("rt1");
-			texDef->width = 0; // target_width
-			texDef->height = 0; // target_height
+			if (false == this->involvedInSplitScreen)
+			{
+				texDef->width = 0; // target_width
+				texDef->height = 0; // target_height
+			}
+			else
+			{
+				Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
+				Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+
+				texDef->width = windowWidth;
+				texDef->height = windowHeight;
+			}
 			texDef->widthFactor = this->superSampling->getReal();
 			texDef->heightFactor = this->superSampling->getReal();
 			texDef->format = Ogre::PFG_RGBA16_FLOAT;
@@ -4354,8 +4171,8 @@ namespace NOWA
 			if (true == this->useHdr->getBool())
 			{
 				texDef = compositorNodeDefinition->addTextureDefinition("oldLumRt");
-				texDef->width = 1;
-				texDef->height = 1;
+				texDef->width = 0.0f;
+				texDef->height = 0.0f;
 				texDef->format = Ogre::PFG_RGBA16_FLOAT;
 				texDef->textureFlags = Ogre::TextureFlags::RenderToTexture;
 				texDef->depthBufferId = Ogre::DepthBuffer::POOL_DEFAULT;
@@ -4390,7 +4207,7 @@ namespace NOWA
 				Ogre::CompositorTargetDef* targetDef = compositorNodeDefinition->addTargetPass("rt0");
 
 				{
-					// if (true == this->useSplitScreen)
+					// if (true == this->canUseSplitscreen)
 					{
 						// Clear Pass
 						{
@@ -4404,8 +4221,6 @@ namespace NOWA
 							passClear->mStoreActionDepth = Ogre::StoreAction::Store;
 							passClear->mStoreActionStencil = Ogre::StoreAction::Store;
 							passClear->mProfilingId = "NOWA_Background_Split_Pass_Clear";
-
-							this->applySplitScreenModifier(pass);
 						}
 					}
 
@@ -4438,8 +4253,8 @@ namespace NOWA
 						passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
 
 						// passScene->setAllStoreActions(Ogre::StoreAction::StoreOrResolve);
-						/*passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
-						*/
+						passScene->mStoreActionColour[0] = Ogre::StoreAction::StoreOrResolve;
+						
 
 						if (true == this->canUseReflection)
 						{
@@ -4452,8 +4267,6 @@ namespace NOWA
 						}
 
 						passScene->mIncludeOverlays = false;
-
-						this->applySplitScreenModifier(pass);
 					}
 
 					//https://forums.ogre3d.org/viewtopic.php?t=93636
@@ -4545,8 +4358,6 @@ namespace NOWA
 						passScene->mFirstRQ = 2;
 
 						passScene->mProfilingId = "NOWA_Background_After_Background_Pass_Scene";
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -4562,8 +4373,6 @@ namespace NOWA
 						passClear->mNumInitialPasses = 1;
 						passClear->mClearColour[0] = Ogre::ColourValue(0.01f, 0.01f, 0.01f, 1.0f);
 						passClear->mProfilingId = "NOWA_Background_Hdr_Pass_Clear";
-
-						this->applySplitScreenModifier(pass);
 					}
 				}
 
@@ -4587,8 +4396,6 @@ namespace NOWA
 						passScene->mIncludeOverlays = false;
 						passScene->mFirstRQ = 16;
 						passScene->mLastRQ = 17;
-
-						this->applySplitScreenModifier(pass);
 					}
 
 					this->createDistortionNode();
@@ -4678,8 +4485,6 @@ namespace NOWA
 
 								// passScene->mVisibilityMask = 0xfffffffe;
 
-								this->applySplitScreenModifier(pass);
-
 								//https://forums.ogre3d.org/viewtopic.php?t=93636
 								//https://forums.ogre3d.org/viewtopic.php?t=94748
 								passScene->mShadowNode = WorkspaceModule::getInstance()->shadowNodeName;
@@ -4700,8 +4505,6 @@ namespace NOWA
 
 								passQuad->mMaterialName = strMaterialName;
 								passQuad->mProfilingId = "NOWA_Background_Background_" + Ogre::StringConverter::toString(i) + "_Pass_Scene";
-
-								this->applySplitScreenModifier(pass);
 							}
 
 							// Render Scene
@@ -4715,8 +4518,6 @@ namespace NOWA
 								passScene->mShadowNodeRecalculation = Ogre::ShadowNodeRecalculation::SHADOW_NODE_REUSE;
 								passScene->mFirstRQ = 2;
 								passScene->mProfilingId = "NOWA_Background_Before_Background_Pass_Scene";
-
-								this->applySplitScreenModifier(pass);
 							}
 
 							// Generate Mipmaps
@@ -4802,7 +4603,7 @@ namespace NOWA
 			material->compile();
 		}
 
-		this->addWorkspace();
+		this->addWorkspace(workspaceDef);
 
 		if (this->msaaLevel == 1)
 		{
@@ -5023,19 +4824,7 @@ namespace NOWA
 				this->externalChannels[0] = Core::getSingletonPtr()->getOgreRenderWindow()->getTexture();
 			}
 
-			if (false == this->useSplitScreen)
-			{
-				this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-																									   this->cameraComponent->getCamera(), this->customWorkspaceName->getString(), true);
-			}
-			else
-			{
-				this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels,
-																									   this->cameraComponent->getCamera(), this->customWorkspaceName->getString(),
-																									   true, -1, (Ogre::UavBufferPackedVec*)0, (Ogre::ResourceStatusMap*)0, this->viewportRect->getVector4(), this->viewportModifierMask, this->executionMask);
-				// this->changeViewportRect(this->viewportModifierMask - 1, this->viewportRect->getVector4(), this->renderingNodeName);
-				// this->changeViewportRect(this->viewportModifierMask - 1, this->viewportRect->getVector4(), this->finalRenderingNodeName);
-			}
+			this->workspace = WorkspaceModule::getInstance()->getCompositorManager()->addWorkspace(this->gameObjectPtr->getSceneManager(), externalChannels, this->cameraComponent->getCamera(), this->customWorkspaceName->getString(), true);
 		}
 
 		return nullptr != this->workspace;

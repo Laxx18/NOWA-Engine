@@ -290,11 +290,11 @@ namespace NOWA
 				}
 			}
 		}
-		catch (const fs::filesystem_error& e)
+		catch (const fs::filesystem_error&)
 		{
 			
 		}
-		catch (const std::exception& e)
+		catch (const std::exception&)
 		{
 			
 		}

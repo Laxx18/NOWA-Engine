@@ -673,6 +673,9 @@
     <ClInclude Include="gameobject\AnimationComponentV2.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\AiLuaGoalComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1246,6 +1249,9 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\AnimationComponentV2.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\AiLuaGoalComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
   </ItemGroup>

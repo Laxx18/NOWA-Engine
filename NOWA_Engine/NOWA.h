@@ -103,6 +103,7 @@ extern "C"
 #include "gameobject/PhysicsTriggerComponent.h"
 #include "gameobject/PhysicsActiveKinematicComponent.h"
 #include "gameobject/AiLuaComponent.h"
+#include "gameobject/AiLuaGoalComponent.h"
 #include "gameobject/PlaneComponent.h"
 #include "gameobject/LightDirectionalComponent.h"
 #include "gameobject/LightSpotComponent.h"
@@ -189,6 +190,8 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsActiveKinematicComponent> PhysicsActiveKinematicCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveVehicleComponent> PhysicsActiveVehicleCompPtr;
 	typedef boost::shared_ptr<AiLuaComponent> AiLuaCompPtr;
+	typedef boost::shared_ptr<AiLuaGoalComponent> AiLuaGoalCompPtr;
+	
 	typedef boost::shared_ptr<PlaneComponent> PlaneCompPtr;
 	typedef boost::shared_ptr<LightDirectionalComponent> LightDirectionalCompPtr;
 	typedef boost::shared_ptr<LightSpotComponent> LightSpotCompPtr;

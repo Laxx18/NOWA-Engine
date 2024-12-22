@@ -15,10 +15,10 @@ skidSound = nil;
 Scene1_QuatBike_0["connect"] = function(gameObject)
     AppStateManager:getGameObjectController():activatePlayerController(true, gameObject:getId(), true);
     physicsActiveVehicleComponent = gameObject:getPhysicsActiveVehicleComponent();
-    rollSound = gameObject:getSimpleSoundComponent2(0);
+    rollSound = gameObject:getSimpleSoundComponentFromIndex(0);
     rollSound:setVolume(200);
     
-    skidSound = gameObject:getSimpleSoundComponent2(1);
+    skidSound = gameObject:getSimpleSoundComponentFromIndex(1);
 end
 
 Scene1_QuatBike_0["disconnect"] = function()
@@ -29,15 +29,15 @@ Scene1_QuatBike_0["update"] = function(dt)
     --log("vel: " .. toString(physicsActiveVehicleComponent:getVelocity():squaredLength()));
     local motion = physicsActiveVehicleComponent:getVelocity():squaredLength() + 40;
     if motion > 40 + (0.2 * 0.2) then
-		rollSound:setActivated(true);
+        rollSound:setActivated(true);
         -- If started to drive, motor engine sound shall remain in a deep voice
         if (motion < 40) then
             motion = 40;
         end
-		rollSound:setPitch(motion * 0.01);
-	--else
-	--	rollSound:setActivated(false);
-	end
+        rollSound:setPitch(motion * 0.01);
+    --else
+    --    rollSound:setActivated(false);
+    end
 end
 
 

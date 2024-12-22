@@ -455,14 +455,14 @@ return {
 	AiLuaGoalComponent =
 	{
 		type = "class",
-		description = "Usage: Define lua script tables with the corresponding for goal driven behavior. Goals can also be composed goals which can have sub-goals. Requirements: A kind of physics active component must exist and a LuaScriptComponent, which references the script file.",
+		description = "Usage: Define lua script tables with the corresponding goals, composite goals and logic. Requirements: A kind of physics active component must exist and a LuaScriptComponent, which references the script file.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
 			setActivated =
 			{
 				type = "method",
-				description = "Sets whether this component should be activated or not.",
+				description = "Activates the components behaviour, so that the lua script will be executed.",
 				args = "(boolean activated)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -470,7 +470,7 @@ return {
 			isActivated =
 			{
 				type = "function",
-				description = "Gets whether this component is activated.",
+				description = "Gets whether the component behaviour is activated or not.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -507,18 +507,18 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			setStartGoalCompositeName =
+			setRootGoalName =
 			{
 				type = "method",
-				description = "Sets the start goal composite name, which will be loaded in lua script and executed.",
-				args = "(string startGoalCompositeName)",
+				description = "Sets the root goal name, which will be loaded in lua script and executed.",
+				args = "(string rootGoalName)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getStartStateName =
+			getRootGoalName =
 			{
 				type = "function",
-				description = "Gets the start goal composite name, which is loaded in lua script and executed.",
+				description = "Gets the root goal name, which is loaded in lua script and executed.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -531,35 +531,35 @@ return {
 				returns = "(MovingBehavior)",
 				valuetype = "MovingBehavior"
 			},
-			addSubGoal =
+			setRootGoal =
 			{
 				type = "method",
-				description = "Adds a sub goal lua table.",
-				args = "(table luaGoalTable)",
+				description = "Sets the root goal for this AI component. Can be a LuaGoalComposite or any derived goal.",
+				args = "(Table rootGoal)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			removeAllSubGoals =
+			addSubGoal =
 			{
 				type = "method",
-				description = "Removes all sub goals.",
-				args = "()",
+				description = "Adds a subgoal to the root goal. Can be a LuaGoal or LuaGoalComposite.",
+				args = "(Table subGoal)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			reactOnPathGoalReached =
 			{
 				type = "method",
-				description = "Sets wheather to react the agent reached the goal. The target object is, where this function should be called in lua script. Optional game object to use in the function. May be nil. Note: The target game object should be the game object with the lua script component, in which this function is called!",
-				args = "(GameObject targetGameObject, string functionName, GameObject gameObject)",
+				description = "Sets whether to react the agent reached the goal.",
+				args = "(func closure, GameObject targetGameObject, string functionName, GameObject gameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			reactOnAgentStuck =
 			{
 				type = "method",
-				description = "Sets wheather to react the agent got stuck. The target object is, where this function should be called in lua script. Optional game object to use in the function. May be nil. Note: The target game object should be the game object with the lua script component, in which this function is called!",
-				args = "(GameObject targetGameObject, string functionName, GameObject gameObject)",
+				description = "Sets whether to react the agent got stuck.",
+				args = "(func closure, GameObject targetGameObject, string functionName, GameObject gameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
@@ -8809,7 +8809,7 @@ return {
 			getAiLuaGoalComponent =
 			{
 				type = "function",
-				description = "Gets the component. This can be used if the game object this component just once.",
+				description = "Gets the ai lua goal component. This can be used if the game object just has one ai lua goal component.",
 				args = "()",
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
@@ -8817,7 +8817,7 @@ return {
 			getAiLuaGoalComponentFromName =
 			{
 				type = "function",
-				description = "Gets the component from name.",
+				description = "Gets the ai lua goal component.",
 				args = "(string name)",
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
@@ -10662,6 +10662,14 @@ return {
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
 			},
+			castGoalResult =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(GoalResult other)",
+				returns = "(GoalResult)",
+				valuetype = "GoalResult"
+			},
 			castAnimationComponentV2 =
 			{
 				type = "function",
@@ -11116,7 +11124,33 @@ return {
 	GoalResult =
 	{
 		type = "class",
-		description = "A class that hold a status of the current goal."
+		description = "Class representing the result of a goals execution.",
+		childs = 
+		{
+			GoalResult() =
+			{
+				type = "value"
+			},
+			setStatus =
+			{
+				type = "method",
+				description = "Sets the status of the goal. Use one of the following states: ACTIVE, INACTIVE, COMPLETED, FAILED.",
+				args = "(LuaGoalState status)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getStatus =
+			{
+				type = "function",
+				description = "Gets the current status of the goal.",
+				args = "()",
+				returns = "(LuaGoalState)",
+				valuetype = "LuaGoalState"
+			},
+			LuaGoalState =
+			{
+				type = "value"
+			},
 	},
 	GpuParticlesComponent =
 	{
@@ -16790,25 +16824,9 @@ return {
 	LuaGoal =
 	{
 		type = "class",
-		description = "LuaGoal class",
+		description = "A leaf atomic goal, which cannot have children anymore.",
 		childs = 
 		{
-			setStatus =
-			{
-				type = "method",
-				description = "Sets the lua goal state. Possible values: ACTIVE, INACTIVE, COMPLETED, Failed.",
-				args = "(LuaGoalState status)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getStatus =
-			{
-				type = "function",
-				description = "Gets the lua goal state. Possible values: ACTIVE, INACTIVE, COMPLETED, Failed.",
-				args = "()",
-				returns = "(LuaGoalState)",
-				valuetype = "LuaGoalState"
-			},
 			isComplete =
 			{
 				type = "function",
@@ -16846,7 +16864,7 @@ return {
 	LuaGoalComposite =
 	{
 		type = "class",
-		description = "A composite goal can be brocken in to child composite sub goals or goals.",
+		description = "Composite goal class used for managing hierarchical goal structures.",
 		inherits = "LuaGoal",
 		childs = 
 		{
@@ -16885,18 +16903,42 @@ return {
 			addSubGoal =
 			{
 				type = "method",
-				description = "Adds a sub goal lua table.",
-				args = "(table luaGoalTable)",
+				description = "Adds a new atomic or composite sub-goal to this composite goal.",
+				args = "(Table luaGoalTable)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			removeAllSubGoals =
 			{
 				type = "method",
-				description = "Removes all sub goals.",
+				description = "Removes and terminates all sub-goals managed by this composite goal.",
 				args = "()",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			activate =
+			{
+				type = "method",
+				description = "Activates this composite goal by calling its 'activate' function in Lua.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			terminate =
+			{
+				type = "method",
+				description = "Terminates this composite goal and calls its 'terminate' function in Lua.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			process =
+			{
+				type = "function",
+				description = "Processes the composite goal and its sub-goals, calling their 'process' functions in Lua. Returns the result of the goal's processing.",
+				args = "(Ogre::Real dt)",
+				returns = "(GoalResult)",
+				valuetype = "GoalResult"
 			}
 		}
 	},

@@ -223,17 +223,11 @@ namespace NOWA
 
 		Ogre::Real getShadowSplitPadding(void) const;
 
-		void setUseSplitScreen(bool useSplitScreen);
+		void setCustomExternalChannels(const Ogre::CompositorChannelVec& customExternalChannels);
 
-		bool getUseSplitScreen(void) const;
+		void setInvolvedInSplitScreen(bool involvedInSplitScreen);
 
-		void setExecutionMask(Ogre::uint8 executionMask);
-
-		Ogre::uint8 getExecutionMask(void) const;
-
-		void setViewportModifierMask(Ogre::uint8 viewportModifierMask);
-
-		Ogre::uint8 getViewportModifierMask(void) const;
+		bool getInvolvedInSplitScreen(void) const;
 	public:
 		static const Ogre::String AttrBackgroundColor(void) { return "Background Color"; }
 		static const Ogre::String AttrViewportRect(void) { return "Viewport Rect"; }
@@ -264,13 +258,11 @@ namespace NOWA
 
 		virtual void createDistortionNode(void);
 
-		void addWorkspace(void);
+		virtual void addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef);
 
 		Ogre::String getDistortionNode(void) const;
 
 		void changeBackgroundColor(const Ogre::ColourValue& backgroundColor);
-
-		void changeViewportRect(unsigned short viewportIndex, const Ogre::Vector4& viewportRect, const Ogre::String& compositorNodeName);
 
 		unsigned char getMSAA(void);
 
@@ -321,7 +313,6 @@ namespace NOWA
 
 		void createSSAONoiseTexture(void);
 
-		void applySplitScreenModifier(Ogre::CompositorPassDef*& pass, bool isOverlay = false, bool isSky = false);
 	private:
 		void reconnectAllNodes(void);
 	protected:
@@ -362,8 +353,7 @@ namespace NOWA
 		Ogre::TextureGpu* cubemapTexture;
 		Ogre::CompositorWorkspace* workspaceCubemap;
 		Ogre::CompositorChannelVec externalChannels;
-		// Ogre::ResourceLayoutMap initialCubemapLayouts;
-		// Ogre::ResourceAccessMap initialCubemapUavAccess;
+		Ogre::CompositorChannelVec customExternalChannels;
 
 		Ogre::PlanarReflections* planarReflections;
 		PlanarReflectionsWorkspaceListener* planarReflectionsWorkspaceListener;
@@ -383,9 +373,7 @@ namespace NOWA
 
 		HlmsWind* hlmsWind;
 
-		bool useSplitScreen;
-		Ogre::uint8 executionMask;
-		Ogre::uint8 viewportModifierMask;
+		bool involvedInSplitScreen;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

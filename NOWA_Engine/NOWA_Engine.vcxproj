@@ -364,6 +364,7 @@
     <ClInclude Include="gameobject\ActivationComponent.h" />
     <ClInclude Include="gameobject\AiComponents.h" />
     <ClInclude Include="gameobject\AiLuaComponent.h" />
+    <ClInclude Include="gameobject\AiLuaGoalComponent.h" />
     <ClInclude Include="gameobject\AnimationComponent.h" />
     <ClInclude Include="gameobject\AnimationComponentV2.h" />
     <ClInclude Include="gameobject\AttributeEffectComponent.h" />
@@ -584,6 +585,7 @@
     <ClCompile Include="gameobject\ActivationComponent.cpp" />
     <ClCompile Include="gameobject\AiComponents.cpp" />
     <ClCompile Include="gameobject\AiLuaComponent.cpp" />
+    <ClCompile Include="gameobject\AiLuaGoalComponent.cpp" />
     <ClCompile Include="gameobject\AnimationComponent.cpp" />
     <ClCompile Include="gameobject\AnimationComponentV2.cpp" />
     <ClCompile Include="gameobject\AttributeEffectComponent.cpp" />

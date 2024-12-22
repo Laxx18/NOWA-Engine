@@ -21,10 +21,7 @@ namespace NOWA
 		hlmsManager(nullptr),
 		compositorManager(nullptr),
 		shadowFilter(Ogre::HlmsPbs::PCF_4x4),
-		ambientLightMode(Ogre::HlmsPbs::AmbientAuto),
-		useSplitScreen(false),
-		executionMask(0xFF),
-		viewportModifierMask(0x00)
+		ambientLightMode(Ogre::HlmsPbs::AmbientAuto)
 	{
 		// Get hlms data
 		this->hlms = Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -512,6 +509,57 @@ namespace NOWA
 		}
 	}
 
+	void WorkspaceModule::setPrimaryWorkspace2(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::CompositorWorkspace* workspace)
+	{
+		if (nullptr == workspace)
+		{
+			return;
+		}
+
+		auto found = this->workspaceMap.find(camera);
+		if (found != this->workspaceMap.cend())
+		{
+			// If there is a dummy workspace, it must be first removed
+			if (true == found->second.isDummy)
+			{
+				// cannot be used anymore, still necessary?
+				// found->second.workspace->setListener(nullptr);
+				// found->second.workspace->removeListener()
+				this->compositorManager->removeWorkspace(found->second.workspace);
+				found->second.workspace = nullptr;
+				found->second.workspaceBaseComponent->setWorkspace(nullptr);
+			}
+
+			found->second.workspaceBaseComponent = nullptr;
+			found->second.workspace = workspace;
+			found->second.isDummy = true;
+		}
+		else
+		{
+			// Remove an existing current workspace before another one is added, because only one workspace can be running actively!
+			for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+			{
+				if (false == it->second.isDummy)
+				{
+					it->second.workspaceBaseComponent->removeWorkspace();
+				}
+				else
+				{
+					this->compositorManager->removeWorkspace(it->second.workspace);
+					found->second.workspace = nullptr;
+					// it->second.workspaceBaseComponent->setWorkspace(nullptr);
+				}
+			}
+
+			WorkspaceData workspaceData;
+			workspaceData.workspaceBaseComponent = nullptr;
+			workspaceData.workspace = workspace;
+			workspaceData.isDummy = true;
+
+			this->workspaceMap.emplace(camera, workspaceData);
+		}
+	}
+
 	void WorkspaceModule::addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent)
 	{
 		auto found = this->workspaceMap.find(camera);
@@ -634,6 +682,29 @@ namespace NOWA
 		return nullptr;
 	}
 
+	CameraComponent* WorkspaceModule::getPrimaryCameraComponent(void) const
+	{
+		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
+
+		for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+		{
+			// Main camera should be the first one
+			for (size_t i = 0; i < gameObjects.size(); i++)
+			{
+				const auto& gameObjectPtr = gameObjects[i];
+				auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+				if (nullptr != cameraCompPtr)
+				{
+					if (cameraCompPtr->getCamera() == it->first && true == it->second.isPrimary)
+					{
+						return cameraCompPtr.get();
+					}
+				}
+			}
+		}
+		return nullptr;
+	}
+
 	void WorkspaceModule::removeWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
 	{
 		auto found = this->workspaceMap.find(camera);
@@ -691,109 +762,6 @@ namespace NOWA
 	bool WorkspaceModule::hasMoreThanOneWorkspace(void) const
 	{
 		return this->workspaceMap.size() > 1;
-	}
-
-	void WorkspaceModule::setUseSplitScreen(bool useSplitScreen)
-	{
-		/*if (this->oldUseSplitScreen == useSplitScreen)
-		{
-			return;
-		}*/
-
-		/*
-			Each workspace contains an offset and scale to be applied to each pass; passed as a Vector4 to CompositorManager2::addWorkspace. The XY components contain the offset, the ZW contain the scale.
-			On each pass, its final viewport is calculated this way:
-			Real left   = mDefinition->mVpLeft      + vpModifier.x;
-			Real top    = mDefinition->mVpTop       + vpModifier.y;
-			Real width  = mDefinition->mVpWidth     * vpModifier.z;
-			Real height = mDefinition->mVpHeight    * vpModifier.w;
-			This means that to render to the left eye, you would need to specify Vector4( 0.0f, 0.0f, 0.5f, 1.0f ) and to render to the right eye you would specify Vector4( 0.5f, 0.0f, 0.5f, 1.0f ).
-		
-			Viewport modifier mask
-			You don't want the modifier to affect all passes. The viewport modifer mask is a per-pass 8-bit value that is AND'ed with the workspace's mask. 
-			If the result is non-zero, the offset and scale is applied.
-			For example, you can apply postprocessing passes to entire screen instead of just a single eye.
-			The most common use for this mask is clearing: The GPU prefers that you clear the entire buffer in one go, rather than two partial clears. 
-			Therefore you can use the mask to prevent the clear's viewport from being affected, and end up affecting the whole screen.
-			There's still a problem though: You have two workspaces (one per eye). The first workspace will work as intended. 
-			However the workspace will execute the clear again, and remove the contents drawn to the left eye. 
-			The Execution Mask solves this problem.
-
-			Execution mask
-			The execution mask is per-pass 8-bit value that is AND'ed with the workspace's execution mask. When zero, the pass is skipped, when non-zero, the pass is executed.
-			Continuing the example from the previous section, you can use an execution mask to cause the clear to only be executed when rendering the first left eye; 
-			and the clear pass will not be performed when rendering the right eye.
-			As another example, you could use two render_pass to perform Anaglyph 3D, i.e. red tint on the left eye, cyan tint on the right eye. 
-			You would set the viewport modifier mask to 0 so that it's not be affected by the workspace's offset and scale; but set the execution masks so that the red tint pass only gets executed for the left eye's workspace, 
-			and the cyan pass only gets executed for the right eye's workspace.
-		*/
-
-		
-
-		this->useSplitScreen = useSplitScreen;
-
-		if (true == useSplitScreen)
-		{
-			this->executionMask = 0x00;
-			this->viewportModifierMask = 0x00;
-		}
-		else
-		{
-			this->executionMask = 0xFF;
-			this->viewportModifierMask = 0x00;
-		}
-
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(CameraComponent::getStaticClassName());
-
-		unsigned char eyeId = 0;
-
-		// Main camera should be the first one
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			const auto& gameObjectPtr = gameObjects[i];
-			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-			if (nullptr != cameraCompPtr)
-			{
-				if (gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
-				{
-					if (true == this->useSplitScreen)
-					{
-						this->executionMask++;
-						this->viewportModifierMask++;
-					}
-					cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask, eyeId++);
-				}
-			}
-		}
-
-		// All other cameras are handled in second iteration
-		for (size_t i = 0; i < gameObjects.size(); i++)
-		{
-			const auto& gameObjectPtr = gameObjects[i];
-			auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-			if (nullptr != cameraCompPtr)
-			{
-				if (gameObjectPtr->getId() != GameObjectController::MAIN_CAMERA_ID)
-				{
-					if (true == this->useSplitScreen)
-					{
-						this->executionMask++;
-						this->viewportModifierMask++;
-					}
-					cameraCompPtr->applySplitScreen(this->useSplitScreen, this->executionMask, this->viewportModifierMask, eyeId++);
-				}
-			}
-		}
-	}
-
-	bool WorkspaceModule::getUseSplitScreen(void) const
-	{
-		return this->useSplitScreen;
-	}
-
-	Ogre::uint8 WorkspaceModule::getLastExecutionMask(void) const
-	{
-		return this->executionMask;
 	}
 
 	Ogre::uint8 WorkspaceModule::getCountCameras(void)

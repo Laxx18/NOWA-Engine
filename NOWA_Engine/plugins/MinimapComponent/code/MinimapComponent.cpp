@@ -432,8 +432,8 @@ namespace NOWA
 				texture->setResolution(width, height);
 				texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
 				texture->setNumMipmaps(1u);
-				texture->scheduleTransitionTo(GpuResidency::Resident);
-				texture->_setNextResidencyStatus(GpuResidency::Resident);
+				texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+				texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
 			}
 			else
 			{
@@ -441,8 +441,8 @@ namespace NOWA
 				texture->setResolution(width, height);
 				texture->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(width, height));
 				texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-				texture->scheduleTransitionTo(GpuResidency::Resident);
-				texture->_setNextResidencyStatus(GpuResidency::Resident);
+				texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+				texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
 			}
 		}
 		else
@@ -537,6 +537,7 @@ namespace NOWA
 					}
 				}
 			}
+			nodeDef->setNumOutputChannels(1);
 			nodeDef->mapOutputChannel(0, "MinimapRT");
 		}
 

@@ -34,6 +34,7 @@
 #include "PhysicsActiveVehicleComponent.h"
 #include "PhysicsBuoyancyComponent.h"
 #include "AiLuaComponent.h"
+#include "AiLuaGoalComponent.h"
 #include "PlaneComponent.h"
 #include "LightDirectionalComponent.h"
 #include "LightSpotComponent.h"
@@ -115,6 +116,8 @@ namespace NOWA
 		this->componentFactory.registerClass<ParticleUniverseComponent>(ParticleUniverseComponent::getStaticClassId(), ParticleUniverseComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlaneComponent>(PlaneComponent::getStaticClassId(), PlaneComponent::getStaticClassName());
 		this->componentFactory.registerClass<AiLuaComponent>(AiLuaComponent::getStaticClassId(), AiLuaComponent::getStaticClassName());
+		this->componentFactory.registerClass<AiLuaGoalComponent>(AiLuaGoalComponent::getStaticClassId(), AiLuaGoalComponent::getStaticClassName());
+
 		this->componentFactory.registerClass<NodeComponent>(NodeComponent::getStaticClassId(), NodeComponent::getStaticClassName());
 		this->componentFactory.registerClass<NodeTrackComponent>(NodeTrackComponent::getStaticClassId(), NodeTrackComponent::getStaticClassName());
 		this->componentFactory.registerClass<LineComponent>(LineComponent::getStaticClassId(), LineComponent::getStaticClassName());

@@ -7,6 +7,7 @@ namespace NOWA
 {
 	
 	class WorkspaceBaseComponent;
+	class CameraComponent;
 
 
 	class EXPORTED WorkspaceModule
@@ -57,6 +58,8 @@ namespace NOWA
 
 		void setPrimaryWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent);
 
+		void setPrimaryWorkspace2(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::CompositorWorkspace* workspace);
+
 		void addNthWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, WorkspaceBaseComponent* workspaceBaseComponent);
 
 		Ogre::CompositorWorkspace* getPrimaryWorkspace(Ogre::Camera* camera);
@@ -67,6 +70,8 @@ namespace NOWA
 
 		WorkspaceBaseComponent* getWorkspaceComponent(void);
 
+		CameraComponent* getPrimaryCameraComponent(void) const;
+
 		void removeWorkspace(Ogre::SceneManager* sceneManager, Ogre::Camera* camera);
 
 		void removeCamera(Ogre::Camera* camera);
@@ -76,10 +81,6 @@ namespace NOWA
 		bool hasAnyWorkspace(void) const;
 
 		bool hasMoreThanOneWorkspace(void) const;
-
-		void setUseSplitScreen(bool useSplitScreen);
-
-		bool getUseSplitScreen(void) const;
 
 		Ogre::uint8 getLastExecutionMask(void) const;
 
@@ -133,10 +134,6 @@ namespace NOWA
 		Ogre::CompositorManager2* compositorManager;
 		Ogre::HlmsPbs::ShadowFilter shadowFilter;
 		Ogre::HlmsPbs::AmbientLightMode ambientLightMode;
-
-		bool useSplitScreen;
-		Ogre::uint8 executionMask;
-		Ogre::uint8 viewportModifierMask;
 
 		struct WorkspaceData
 		{

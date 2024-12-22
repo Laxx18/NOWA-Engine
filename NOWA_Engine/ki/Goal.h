@@ -14,120 +14,6 @@ namespace NOWA
 {
 	namespace KI
 	{
-		// class Event;
-
-		template <class Owner>
-		class EXPORTED Goal
-		{
-		public:
-
-			enum
-			{
-				active,
-				inactive,
-				completed,
-				failed
-			};
-		public:
-
-			//! @note How goals start off in the inactive state
-			Goal(Owner* owner, int type)
-				: type(type),
-				owner(owner),
-				status(inactive)
-			{
-			}
-
-			virtual ~Goal()
-			{
-			}
-
-			//! @brief Logic to run when the goal is activated.
-			virtual void activate(void) = 0;
-
-			//! @brief Logic to run each update-step
-			virtual int process(Ogre::Real dt) = 0;
-
-			//! @brief Logic to run when the goal is satisfied. (typically used to switch off any active steering behaviors)
-			virtual void terminate(void) = 0;
-
-			//! @brief Goals can handle messages. Many do not though, so this defines a default behavior
-			/*virtual bool handleEvent(const Event& event)
-			{
-				return false;
-			}*/
-
-			//! @brief A Goal is atomic and cannot aggregate subgoals yet we must implement
-			//! this method to provide the uniform interface required for the goal
-			//! hierarchy.
-			virtual void addSubGoal(Goal<Owner>* owner)
-			{
-				throw std::runtime_error("Cannot add goals to atomic goals");
-			}
-
-			bool isComplete(void) const
-			{
-				return status == completed;
-			}
-
-			bool isActive(void) const
-			{
-				return status == active;
-			}
-
-			bool isInactive(void) const
-			{
-				return status == inactive;
-			}
-
-			bool hasFailed(void) const
-			{
-				return status == failed;
-			}
-
-			int getType(void) const
-			{
-				return type;
-			}
-		protected:
-			/* the following methods were created to factor out some of the commonality
-			in the implementations of the process method() */
-
-			//! @brief If status = inactive this method sets it to active and calls activate()
-			template <class Owner>
-			void activateIfInactive()
-			{
-				if (this->isInactive())
-				{
-					this->activate();
-				}
-			}
-
-			//! @brief If status is failed this method sets it to inactive so that the goal
-			//! will be reactivated (and therefore re-planned) on the next update-step.
-			template <class Owner>
-			void reactivateIfFailed()
-			{
-				if (this->hasFailed())
-				{
-					status = inactive;
-				}
-			}
-
-		protected:
-
-			//an enumerated type specifying the type of goal
-			int type;
-
-			//a pointer to the entity that owns this goal
-			Owner* owner;
-
-			//an enumerated value indicating the goal's status (active, inactive, completed, failed)
-			int status;
-		};
-
-		////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 		class EXPORTED GoalResult
 		{
 		public:
@@ -169,7 +55,7 @@ namespace NOWA
 			LuaGoal(Owner* owner, const luabind::object& thisLuaGoal/*, int type*/)
 				: owner(owner),
 				thisLuaGoal(thisLuaGoal),
-				// type(type),
+				/*type(type),*/
 				goalResult(boost::make_shared<GoalResult>())
 			{
 
@@ -188,7 +74,9 @@ namespace NOWA
 					// Call the entry method of the new state
 					auto& goal = this->thisLuaGoal["activate"];
 					if (goal)
+					{
 						goal(this->owner, this->goalResult.get());
+					}
 				}
 				catch (luabind::error& error)
 				{
@@ -213,7 +101,9 @@ namespace NOWA
 					// Call the entry method of the new state
 					auto& goal = this->thisLuaGoal["process"];
 					if (goal)
+					{
 						goal(this->owner, dt, this->goalResult.get());
+					}
 				}
 				catch (luabind::error& error)
 				{
@@ -238,7 +128,9 @@ namespace NOWA
 					// Call the entry method of the new state
 					auto& goal = this->thisLuaGoal["terminate"];
 					if (goal)
+					{
 						goal(this->owner, this->goalResult.get());
+					}
 				}
 				catch (luabind::error& error)
 				{
@@ -285,10 +177,10 @@ namespace NOWA
 				return this->goalResult->getStatus() == GoalResult::FAILED;
 			}
 
-			// int getType(void) const
-			// {
+			//int getType(void) const
+			//{
 			// 	return this->type;
-			// }
+			//}
 		public:
 			/* the following methods were created to factor out some of the commonality
 			in the implementations of the process method() */
@@ -326,6 +218,8 @@ namespace NOWA
 
 			// An enumerated value indicating the goal's status (active, inactive, completed, failed)
 			boost::shared_ptr<GoalResult> goalResult;
+
+			// int type;
 		};
 
 	}; //end namespace KI

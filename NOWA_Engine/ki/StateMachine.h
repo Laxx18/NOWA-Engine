@@ -311,7 +311,9 @@ namespace NOWA
 					// Call the entry method of the new state
 					auto& state = this->currentState["enter"];
 					if (state)
+					{
 						state(this->owner);
+					}
 				}
 				catch(luabind::error& error)
 				{
@@ -333,7 +335,9 @@ namespace NOWA
 					// Call the entry method of the new state
 					auto& state = this->globalState["enter"];
 					if (state)
+					{
 						state(this->owner);
+					}
 				}
 				catch (luabind::error& error)
 				{
@@ -376,14 +380,18 @@ namespace NOWA
 					{
 						auto& state = this->currentState["execute"];
 						if (state)
+						{
 							state(this->owner, dt);
+						}
 					}
 					
 					if (this->globalState.is_valid())
 					{
 						auto& state = this->globalState["execute"];
 						if (state)
+						{
 							state(this->owner, dt);
+						}
 					}
 				}
 				catch (luabind::error& error)
@@ -415,7 +423,9 @@ namespace NOWA
 					// Call the exit method of the existing state
 					auto& state = this->currentState["exit"];
 					if (state)
+					{
 						state(this->owner);
+					}
 
 					// Change state to the new state
 					this->currentState = newState;
@@ -425,7 +435,9 @@ namespace NOWA
 						// Call the entry method of the new state
 						auto& state = this->currentState["enter"];
 						if (state)
+						{
 							state(this->owner);
+						}
 					}
 				}
 				catch (luabind::error& error)
@@ -448,7 +460,9 @@ namespace NOWA
 						// Call the exit method of the existing state
 						auto& state = this->globalState["exit"];
 						if (state)
+						{
 							state(this->owner);
+						}
 					}
 				}
 				catch (luabind::error& error)

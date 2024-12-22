@@ -97,7 +97,7 @@ namespace NOWA
 
 		virtual bool isActivated(void) const override;
 
-		void applySplitScreen(bool useSplitScreen, Ogre::uint8 executionMask, Ogre::uint8 viewportModifierMask, Ogre::uint8 eyeId);
+		void applySplitScreen(bool useSplitScreen, int eyeId);
 
 		/**
 		 * @brief	Just sets internally the actived flag
@@ -186,7 +186,7 @@ namespace NOWA
 		bool hideEntity;
 		Ogre::Real timeSinceLastUpdate;
 		WorkspaceBaseComponent* workspaceBaseComponent;
-		Ogre::uint8 eyeId;
+		int eyeId;
 	};
 
 }; //namespace end
