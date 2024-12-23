@@ -3498,6 +3498,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getCategoryId());
 	}
 
+	Ogre::String getRenderCategoryId(GameObject* instance)
+	{
+		return Ogre::StringConverter::toString(instance->getRenderCategoryId());
+	}
+
 	Ogre::String getGameObjectReferenceId(GameObject* instance)
 	{
 		return Ogre::StringConverter::toString(instance->getReferenceId());
@@ -3515,13 +3520,16 @@ namespace NOWA
 		gameObject.def("getSceneNode", &GameObject::getSceneNode);
 		// Here later multiplicate out all types in anonym function
 		gameObject.def("getEntity", &getEntity);
-		// gameObject.def("getMovableObject", &getMovableObject);
 		gameObject.def("getCategory", &GameObject::getCategory);
-		// gameObject.def("getCategoryId", &GameObject::getCategoryId);
+		gameObject.def("getRenderCategory", &GameObject::getRenderCategory);
 		gameObject.def("getCategoryId", &getCategoryId);
+		gameObject.def("getRenderCategoryId", &getRenderCategoryId);
 		gameObject.def("getTagName", &GameObject::getTagName);
 		gameObject.def("changeCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeCategory);
 		gameObject.def("changeCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeCategory);
+
+		gameObject.def("changeRenderCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeRenderCategory);
+		gameObject.def("changeRenderCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeRenderCategory);
 
 		// gameObject.def("GameObjectComponents", &GameObject::getComponents);
 		// gameObject.def("addComponent", &GameObject::addComponent);
@@ -3550,8 +3558,6 @@ namespace NOWA
 		gameObject.def("showBoundingBox", &GameObject::showBoundingBox);
 		gameObject.def("showDebugData", &GameObject::showDebugData);
 		gameObject.def("getConnectedGameObject", &getConnectedGameObject);
-		gameObject.def("setMaskId", &GameObject::setMaskId);
-		gameObject.def("getMaskId", &GameObject::getMaskId);
 
 		// get access to all components and cast them to strong shared ptr internally here
 		gameObject.def("getComponentByIndex", &getGameObjectComponentByIndex);
@@ -3859,11 +3865,15 @@ namespace NOWA
 		AddClassToCollection("GameObject", "Entity getEntity()", "Gets the entity of this game object.");
 		AddClassToCollection("GameObject", "Vector3 getDefaultDirection()", "Gets the direction the game object's entity is modelled.");
 		AddClassToCollection("GameObject", "string getCategory()", "Gets the category to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
-		AddClassToCollection("GameObject", "string getCategoryId()", "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
+		AddClassToCollection("GameObject", "string getTagName()", "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
 			"This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.");
-		AddClassToCollection("GameObject", "string getTagName()", "Gets the category id to which this game object does belong. Note: Categories are specified in a level editor and are read from XML. This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
+		AddClassToCollection("GameObject", "string getCategoryId()", "Gets the category id to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
+		AddClassToCollection("GameObject", "string getRenderCategory()", "Gets the render category to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");
+		AddClassToCollection("GameObject", "string getRenderCategoryId()", "Gets the render category id to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");
 		AddClassToCollection("GameObject", "void changeCategory(string oldCategory, string newCategory)", "Changes the category name, this game object belongs to.");
 		AddClassToCollection("GameObject", "void changeCategory2(string newCategory)", "Changes the category name, this game object belongs to.");
+		AddClassToCollection("GameObject", "void changeRenderCategory(string oldRenderCategory, string newRenderCategory)", "Changes the render category name, this game object belongs to.");
+		AddClassToCollection("GameObject", "void changeRenderCategory2(string newRenderCategory)", "Changes the render category name, this game object belongs to.");
 		AddClassToCollection("GameObject", "setAttributePosition(Vector3 position)", "Sets the position of this game object and actualizes the position attribute.");
 		AddClassToCollection("GameObject", "setAttributeScale(Vector3 scale)", "Sets the scale of this game object and actualizes the scale attribute.");
 		AddClassToCollection("GameObject", "setAttributeOrientation(Quaternion orientation)", "Sets the orientation of this game object and actualizes the orientation attribute.");
@@ -3883,13 +3893,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "void setUseReflection(bool useReflection)", "Sets whether this game object uses shader reflection for visual effects.");
 		AddClassToCollection("GameObject", "bool getUseReflection(bool getUseReflection)", "Gets whether this game object uses shader reflection for visual effects.");
 		AddClassToCollection("GameObject", "bool showBoundingBox(bool show)", "Shows a bounding box for this game object if set to true.");
-		AddClassToCollection("GameObject", "void setMaskId(number maskId)", "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera. "
-								" If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap."
-								" If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
-		AddClassToCollection("GameObject", "number getMaskId()", "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera. "
-							 " If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap."
-							 " If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
-
+		
 		AddClassToCollection("GameObject", "bool showDebugData()", "Shows a debug data (if exists) for this game object and all its components. If called a second time debug data will not be shown.");
 		AddClassToCollection("GameObject", "GameObjectComponent getGameObjectComponentByIndex(unsigned int index)", "Gets the game object component by the given index. If the index is out of bounds, nil will be delivered.");
 		AddClassToCollection("GameObject", "GameObjectComponent getComponentByIndex(GameObject gameObject, int index)", "Gets the component from the game objects by the index.");
@@ -4264,6 +4268,25 @@ namespace NOWA
 		return obj;
 	}
 
+	luabind::object getGameObjectsFromRenderCategory(GameObjectController* instance, const Ogre::String& renderCategory)
+	{
+		// Game objects need to be transformed to a lua object, which is a table
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		unsigned int i = 0;
+		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		{
+			if (it->second->getRenderCategory() == renderCategory)
+			{
+				obj[i++] = it->second.get();
+			}
+		}
+
+		currentErrorGameObject = renderCategory;
+		currentCalledFunction = "getGameObjectsFromRenderCategory";
+
+		return obj;
+	}
 	
 	luabind::object getGameObjectsFromComponent(GameObjectController* instance, const Ogre::String& componentClassName)
 	{
@@ -4433,6 +4456,23 @@ namespace NOWA
 		return obj;
 	}
 
+	luabind::object getIdsFromRenderCategory(GameObjectController* instance, const Ogre::String& renderCategory)
+	{
+		// Game objects need to be transformed to a lua object, which is a table
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		unsigned int i = 0;
+		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		{
+			if (it->second->getRenderCategory() == renderCategory)
+			{
+				obj[i++] = it->second->getId();
+			}
+		}
+
+		return obj;
+	}
+
 	luabind::object getOtherIdsFromCategory(GameObjectController* instance, GameObject* excludedGameObject, const Ogre::String& category)
 	{
 		// Game objects need to be transformed to a lua object, which is a table
@@ -4442,6 +4482,23 @@ namespace NOWA
 		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
 		{
 			if (it->second->getCategory() == category && it->second.get() != excludedGameObject)
+			{
+				obj[i++] = Ogre::StringConverter::toString(it->second->getId());
+			}
+		}
+
+		return obj;
+	}
+
+	luabind::object getOtherIdsFromRenderCategory(GameObjectController* instance, GameObject* excludedGameObject, const Ogre::String& renderCategory)
+	{
+		// Game objects need to be transformed to a lua object, which is a table
+		luabind::object obj = luabind::newtable(LuaScriptApi::getInstance()->getLua());
+
+		unsigned int i = 0;
+		for (auto& it = instance->getGameObjects()->cbegin(); it != instance->getGameObjects()->cend(); ++it)
+		{
+			if (it->second->getRenderCategory() == renderCategory && it->second.get() != excludedGameObject)
 			{
 				obj[i++] = Ogre::StringConverter::toString(it->second->getId());
 			}
@@ -5032,6 +5089,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getCategoryId(category));
 	}
 
+	Ogre::String getRenderCategoryId2(GameObjectController* instance, const Ogre::String& renderCategory)
+	{
+		return Ogre::StringConverter::toString(instance->getRenderCategoryId(renderCategory));
+	}
+
 	void activatePlayerController(GameObjectController* instance, bool active, const Ogre::String& id, bool onlyOneActive)
 	{
 		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(id), onlyOneActive);
@@ -5055,22 +5117,25 @@ namespace NOWA
 		gameObjectController.def("getClonedGameObjectFromPriorId", &getClonedGameObjectFromPriorId);
 		// gameObjectController.def("getGameObjectsFromCategory", &getGameObjectsFromCategory, out_value(boost::arg<1>(), return_stl_iterator)) // nothing does work here :(
 		gameObjectController.def("getGameObjectsFromCategory", &getGameObjectsFromCategory);
+		gameObjectController.def("getGameObjectsFromRenderCategory", &getGameObjectsFromRenderCategory);
 		gameObjectController.def("getGameObjectsControlledByClientId", &getGameObjectsControlledByClientId);
 		gameObjectController.def("getGameObjectsFromTagName", &getGameObjectsFromTagName);
 		// gameObjectController.def("getAllCategoriesSoFar", &getAllCategoriesSoFar) does not work for lua at the moment, because the typeDB container is private and cannot be iterated here
 		gameObjectController.def("getIdsFromCategory", &getIdsFromCategory);
+		gameObjectController.def("getIdsFromRenderCategory", &getIdsFromRenderCategory);
 		gameObjectController.def("getGameObjectFromReferenceId", &getGameObjectFromReferenceId);
 		gameObjectController.def("getGameObjectComponentsFromReferenceId", &getGameObjectComponentsFromReferenceId);
 		gameObjectController.def("activateGameObjectComponentsFromReferenceId", &activateGameObjectComponentsFromReferenceId);
 
 		gameObjectController.def("getOtherIdsFromCategory", &getOtherIdsFromCategory);
+		gameObjectController.def("getOtherIdsFromRenderCategory", &getOtherIdsFromRenderCategory);
 		gameObjectController.def("getGameObjectFromName", &getGameObjectFromName);
 		gameObjectController.def("getGameObjectsFromNamePrefix", &getGameObjectsFromNamePrefix);
 		gameObjectController.def("getGameObjectFromNamePrefix", &getGameObjectFromNamePrefix);
 		gameObjectController.def("getGameObjectsFromComponent", &getGameObjectsFromComponent);
 		
-		// gameObjectController.def("getCategoryId", &GameObjectController::getCategoryId);
 		gameObjectController.def("getCategoryId", &getCategoryId2);
+		gameObjectController.def("getRenderCategoryId", &getRenderCategoryId2);
 		//// gameObjectController.def("getAffectedCategories", &getAffectedCategories);
 		// gameObjectController.def("getNextGameObjectId", &GameObjectController::getNextGameObjectId) Does not work, because the internal algorithm is here not usable -> must be somehow re-implemented here
 		// gameObjectController.def("getMaterialID", &GameObjectController::getMaterialID);
@@ -5237,7 +5302,8 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjects()", "Gets all game objects as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
 		AddClassToCollection("GameObjectController", "GameObject getGameObjectFromId(String gameObjectId)", "Gets a game object by the given id.");
 		AddClassToCollection("GameObjectController", "GameObject getClonedGameObjectFromPriorId(String gameObjectId)", "Gets a cloned game object by its prior id. This can be used, when a game object has been cloned, it gets a new id, but a trace of its prior id can be made, so that a matching can be done, which game object has been cloned.");
-		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromCategory(string category)", "Gets all game objects that are belonging to the given category as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
+		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromCategory(string category)", "Gets all game objects that are belonging to the given category as lua table. Which can be traversed via 'for key, category in categories do'.");
+		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromRenderCategory(string Renderategory)", "Gets all game objects that are belonging to the given render category as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.");
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromComponent(string componentClassName)", "Gets all game objects that are belonging to the given category as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsControlledByClientId(unsigned int clientId)", "Gets all game objects that are belonging to the given client id in a network scenario as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromTagName(string tagName)", "Gets all game objects that are belonging to the given tag name as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
@@ -5246,12 +5312,15 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "activateGameObjectComponentsFromReferenceId(String referenceId, bool activate)", "Activates all game object components, that have the same id, as the referenced game object.");
 		AddClassToCollection("GameObjectController", "Table[number][string] getAllCategoriesSoFar()", "Gets all currently created categories as lua table. Which can be traversed via 'for key, category in categories do'.");
 		AddClassToCollection("GameObjectController", "Table[number][string] getIdsFromCategory(string category)", "Gets all game object ids that are belonging to the given category as lua table. Which can be traversed via 'for key, category in categories do'.");
+		AddClassToCollection("GameObjectController", "Table[number][string] getIdsFromRenderCategory(string RenderCategory)", "Gets all game object ids that are belonging to the given render category as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.");
 		AddClassToCollection("GameObjectController", "Table[number][string] getOtherIdsFromCategory(GameObject excludedGameObject, string category)", "Gets all game object ids besides the excluded one that are belonging to the given category as lua table. Which can be traversed via 'for key, category in categories do'.");
+		AddClassToCollection("GameObjectController", "Table[number][string] getOtherIdsFromRenderCategory(GameObject excludedGameObject, string renderCategory)", "Gets all game object ids besides the excluded one that are belonging to the given renderCategory as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.");
 		AddClassToCollection("GameObjectController", "GameObject getGameObjectFromName(string name)", "Gets a game object from the given name.");
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectsFromNamePrefix(string pattern)", "Gets all game objects that are matching the given pattern as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.");
 		AddClassToCollection("GameObjectController", "GameObject getGameObjectFromNamePrefix(string pattern)", "Gets first game object that is matching the given pattern.");
 		AddClassToCollection("GameObjectController", "Table[number][GameObject] getGameObjectFromNamePrefix(string pattern)", "Gets all game objects which contain at least one of this component class name sorted by name.");
 		AddClassToCollection("GameObjectController", "number getCategoryId(string categoryName)", "Gets id of the given category name.");
+		AddClassToCollection("GameObjectController", "number getRenderCategoryId(string renderCategoryName)", "Gets id of the given renderCategory name.");
 		AddClassToCollection("GameObjectController", "number getMaterialIDFromCategory(string categoryName)", "Gets physics material id of the given category name. In order to connect physics components together for collision detection etc.");
 		AddClassToCollection("GameObjectController", "void activatePlayerController(bool active, String id, bool onlyOneActive)", "Activates the given player component from the given game object id. "
 			"If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.");

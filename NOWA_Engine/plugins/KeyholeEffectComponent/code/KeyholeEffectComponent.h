@@ -1,33 +1,31 @@
 /*
-Copyright (c) 2023 Lukas Kalinowski
+Copyright (c) 2024 Lukas Kalinowski
 
 GPL v3
 */
 
-#ifndef SPLITSCREENCOMPONENT_H
-#define SPLITSCREENCOMPONENT_H
+#ifndef KEYHOLEEFFECTCOMPONENT_H
+#define KEYHOLEEFFECTCOMPONENT_H
 
-#include "gameobject/GameObjectComponent.h"
+#include "gameobject/CompositorEffectComponents.h"
 #include "main/Events.h"
 #include "OgrePlugin.h"
 
 namespace NOWA
 {
-	class CameraComponent;
-	class WorkspaceBaseComponent;
 
 	/**
-	  * @brief		Can be used to render a workspace in a split screen texture.
+	  * @brief		Creates a keyhole effect which is applied to the screen. Also another custom shape can be used.
 	  */
-	class EXPORTED SplitScreenComponent : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED KeyholeEffectComponent : public CompositorEffectBaseComponent, public Ogre::Plugin
 	{
 	public:
-		typedef boost::shared_ptr<SplitScreenComponent> SplitScreenCompPtr;
+		typedef boost::shared_ptr<KeyholeEffectComponent> KeyholeEffectComponentPtr;
 	public:
 
-		SplitScreenComponent();
+		KeyholeEffectComponent();
 
-		virtual ~SplitScreenComponent();
+		virtual ~KeyholeEffectComponent();
 
 		/**
 		* @see		Ogre::Plugin::install
@@ -56,7 +54,7 @@ namespace NOWA
 		* @see		Ogre::Plugin::getName
 		*/
 		virtual const Ogre::String& getName() const override;
-
+		
 		/**
 		* @see		Ogre::Plugin::getAbiCookie
 		*/
@@ -91,7 +89,7 @@ namespace NOWA
 		* @see		GameObjectComponent::onRemoveComponent
 		*/
 		virtual void onRemoveComponent(void);
-
+		
 		/**
 		 * @see		GameObjectComponent::onOtherComponentRemoved
 		 */
@@ -132,25 +130,25 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
 
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
-		virtual void setActivated(bool activated) override;
+		void setRadius(Ogre::Real radius); 
 
-		/**
-		* @see		GameObjectComponent::isActivated
-		*/
-		virtual bool isActivated(void) const override;
+		Ogre::Real getRadius(void) const;
 
-		void setTextureSize(const Ogre::Vector2& textureSize);
+		void setCenter(const Ogre::Vector2& center); 
 
-		Ogre::Vector2 getTextureSize(void) const;
+		Ogre::Vector2 getCenter(void) const;
 
-		void setGeometry(const Ogre::Vector4& geometry);
+		void setGrow(bool grow); 
 
-		Ogre::Vector4 getGeometry(void) const;
+		bool getGrow(void) const;
 
-		Ogre::TextureGpu* getSplitScreenTexture(void) const;
+		void setShapeMask(const Ogre::String& shapeMask); 
+
+		Ogre::String getShapeMask(void) const;
+
+		void setSpeed(Ogre::Real speed); 
+
+		Ogre::Real getSpeed(void) const;
 
 	public:
 		/**
@@ -158,7 +156,7 @@ namespace NOWA
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("SplitScreenComponent");
+			return NOWA::getIdFromName("KeyholeEffectComponent");
 		}
 
 		/**
@@ -166,9 +164,9 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "SplitScreenComponent";
+			return "KeyholeEffectComponent";
 		}
-
+	
 		/**
 		* @see		GameObjectComponent::canStaticAddComponent
 		*/
@@ -179,38 +177,36 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Can be used to render a workspace in a split screen texture.";
+			return "Usage: Creates a keyhole effect which is applied to the screen. Also another custom shape can be used.";
 		}
-
+		
 		/**
 		 * @see	GameObjectComponent::createStaticApiForLua
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 	public:
-		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrTextureSize(void) { return "Texture Size (w, h)"; }
-		static const Ogre::String AttrGeometry(void) { return "Geometry"; }
-		
+		static const Ogre::String AttrRadius(void) { return "Radius"; }
+		static const Ogre::String AttrCenter(void) { return "Center"; }
+		static const Ogre::String AttrGrow(void) { return "Grow"; }
+		static const Ogre::String AttrShapeMask(void) { return "ShapeMask"; }
+		static const Ogre::String AttrSpeed(void) { return "Speed"; }
 	private:
-		Ogre::TextureGpu* createSplitScreenTexture(const Ogre::String& name);
-
-		void setupSplitScreen(void);
-
-		void cleanupSplitScreen(void);
+		void createKeyholeCompositorEffect(void);
+		void destroyShape(void);
 	private:
 		Ogre::String name;
-		Ogre::TextureGpu* splitScreenTexture;
-		Ogre::TextureGpuManager* textureManager;
-		CameraComponent* cameraComponent;
-		WorkspaceBaseComponent* workspaceBaseComponent;
-		Ogre::CompositorChannelVec externalChannels;
-		bool componentBeingLoaded;
-		Ogre::Camera* tempCamera;
-		Ogre::CompositorWorkspace* finalCombinedWorkspace;
+		Ogre::TextureGpu* shapeTexture;
+		Ogre::StagingTexture* shapeStagingTexture;
+		Ogre::MaterialPtr material;
+		Ogre::Pass* pass;
+		Ogre::Real tempRadius;
+		bool tempGrow;
 
-		Variant* activated;
-		Variant* textureSize;
-		Variant* geometry;
+		Variant* radius;
+		Variant* center;
+		Variant* grow;
+		Variant* shapeMask;
+		Variant* speed;
 	};
 
 }; // namespace end

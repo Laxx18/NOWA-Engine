@@ -64,7 +64,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="6" name="MaskId" data="1"/>
+					
 					<property type="7" name="DataBlock0" data="BarrelTable"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -124,7 +124,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
 					<property type="2" name="ShadowRenderingDistance" data="300"/>
-					<property type="6" name="MaskId" data="1"/>
+					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>

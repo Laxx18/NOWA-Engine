@@ -306,7 +306,8 @@ namespace NOWA
 	{
 		rapidxml::xml_node<>* propertyElement = xmlNode->first_node("property");
 		Ogre::String gameObjectName;
-		Ogre::String category;
+		Ogre::String category = "Default";
+		Ogre::String renderCategory = "All";
 		Ogre::String tagName;
 		Ogre::String startPoseName;
 		int controlledByClientID = 0;
@@ -323,10 +324,8 @@ namespace NOWA
 		unsigned int renderDistance = 0;
 		Ogre::Real lodDistance = 0.0f;
 		unsigned int shadowRenderingDistance = 0;
-		unsigned long maskId = 1; // 0 would not be visible!
 		bool renderDistanceSet = false;
 		bool shadowRenderingDistanceSet = false;
-		bool maskIdSet = false;
 
 		// Attention: IMPORTANT: All those attributes must also be set in GameObjectController::internalClone function!
 
@@ -344,6 +343,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Category")
 		{
 			category = XMLConverter::getAttrib(propertyElement, "data", "Default");
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RenderCategory")
+		{
+			renderCategory = XMLConverter::getAttrib(propertyElement, "data", "All");
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TagName")
@@ -414,12 +418,6 @@ namespace NOWA
 			propertyElement = propertyElement->next_sibling("property");
 			shadowRenderingDistanceSet = true;
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaskId")
-		{
-			maskId = XMLConverter::getAttribUnsignedLong(propertyElement, "data", 1);
-			propertyElement = propertyElement->next_sibling("property");
-			maskIdSet = true;
-		}
 
 		// Read all datablocks, this is necessary e.g. for plane component, because its mesh is created at runtime and never saved as resource
 		// But the datablock does exist on disk, so in order not to have always a data block with the name 'Missing', get the data block name from game object
@@ -489,7 +487,7 @@ namespace NOWA
 				// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
 				if (nullptr == existingGameObjectPtr)
 				{
-					gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, dynamic, type, id);
+					gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
 				}
 				else
 				{
@@ -535,10 +533,6 @@ namespace NOWA
 				if (true == shadowRenderingDistanceSet)
 				{
 					gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
-				}
-				if (true == maskIdSet)
-				{
-					gameObjectPtr->setMaskId(maskId);
 				}
 				// Do not set via setter, because else the lod distance is re-calculated, but its just required to re-calculate if the user sets a different distance.
 				gameObjectPtr->lodDistance->setValue(lodDistance);
@@ -743,9 +737,10 @@ namespace NOWA
 	GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, GameObject::eType type, const unsigned long id)
 	{
 		Ogre::String category = "Default";
+		Ogre::String renderCategory = "All";
 		bool dynamic = true;
 
-		GameObjectPtr gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, dynamic, type, id);
+		GameObjectPtr gameObjectPtr = boost::make_shared<GameObject>(sceneManager, sceneNode, movableObject, category, renderCategory, dynamic, type, id);
 		gameObjectPtr->setControlledByClientID(0);
 		gameObjectPtr->setName(sceneNode->getName());
 

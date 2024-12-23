@@ -1280,6 +1280,7 @@ namespace NOWA
 		this->mouseButtonId = mouseButtonId;
 
 		AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory("Default");
+		AppStateManager::getSingletonPtr()->getGameObjectController()->registerRenderCategory("All");
 
 		this->gizmo = new Gizmo();
 		this->gizmo->init(this->sceneManager, this->camera, thickness, materialNameX, materialNameY, materialNameZ, materialNameHighlight);

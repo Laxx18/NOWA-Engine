@@ -122,7 +122,7 @@ namespace NOWA
 		parentId(new Variant(MyGUIComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->id->setReadOnly(true);
-		this->layer->setListSelectedValue("Back");
+		this->layer->setListSelectedValue("Wallpaper");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
 	}

@@ -1080,7 +1080,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			edit->setEditReadOnly(attribute->isReadOnly());
 			edit->setMouseHitThreshold(6, 6, 3, 3);
-			if (NOWA::GameObject::AttrCategoryId() == attribute->getName())
+			if (NOWA::GameObject::AttrCategoryId() == attribute->getName() || NOWA::GameObject::AttrRenderCategoryId() == attribute->getName())
 			{
 				edit->setEditReadOnly(true);
 			}
@@ -1335,6 +1335,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			MyGUI::ComboBox* comboBox = mWidgetClient->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth - 15, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
 			comboBox->setTextColour(MyGUIHelper::getInstance()->getTextSelectColour());
 			comboBox->setMouseHitThreshold(6, 6, 3, 3);
+
 			if (attribute->getName() == NOWA::GameObject::AttrCategory())
 			{
 				if (this->gameObjects.size() > 1)
@@ -1356,7 +1357,52 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
 				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-				keyTextBox->setCaption("New ");
+				keyTextBox->setCaption("New Category:");
+				this->itemsText.push_back(keyTextBox);
+
+				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
+				edit->setInvertSelected(false);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setMouseHitThreshold(6, 6, 3, 3);
+				edit->setUserData(MyGUI::Any(attribute));
+				edit->eventEditSelectAccept += MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEditSelectAccept);
+				edit->eventMouseSetFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::setFocus);
+				edit->eventMouseButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onMouseClick);
+				edit->eventKeyButtonPressed += MyGUI::newDelegate(this, &PropertiesPanelDynamic::onKeyButtonPressed);
+				edit->setNeedKeyFocus(true);
+				edit->setNeedMouseFocus(true);
+				// No lost focus for list, because the new is empty but in attribute a content may be exist like 'default', so when mouse hovering above a list will trigger undo commands
+				// // edit->eventMouseLostFocus += MyGUI::newDelegate(this, &PropertiesPanelDynamic::mouseLostFocus);
+
+				if (true == attribute->hasUserDataKey(NOWA::GameObject::AttrActionReadOnly()))
+				{
+					edit->setEnabled(false);
+				}
+
+				this->itemsEdit.push_back(edit);
+			}
+			else if (attribute->getName() == NOWA::GameObject::AttrRenderCategory())
+			{
+				if (this->gameObjects.size() > 1)
+				{
+					comboBox->setEditStatic(false);
+				}
+
+				// Set all available categories + ability to add a new render category
+				std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
+				if (allRenderCategories.size() > 0)
+				{
+					for (auto& renderCategory : allRenderCategories)
+					{
+						comboBox->addItem(renderCategory);
+					}
+				}
+				this->heightCurrent += heightStep;
+
+				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("New Render Category:");
 				this->itemsText.push_back(keyTextBox);
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, name);
@@ -1382,6 +1428,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 			}
 			else
 			{
+#if 0
 				// Set all available categories in read only, if the keyword is found e.g. Repeller Category
 				size_t found = attribute->getName().find("Category");
 				if (Ogre::String::npos != found)
@@ -1396,6 +1443,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 					}
 				}
 				else
+#endif
 				{
 					for (unsigned int i = 0; i < static_cast<unsigned int>(attribute->getList().size()); i++)
 					{
@@ -1403,6 +1451,7 @@ void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant
 					}
 				}
 			}
+
 			comboBox->setOnlyText(attribute->getListSelectedValue());
 
 			comboBox->setEditReadOnly(true);
@@ -2320,6 +2369,31 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		// Regenerate categories
 		boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
+
+		// Sent when a name has changed, so that the resources panel can be refreshed with new values
+		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+	}
+	else if (NOWA::GameObject::AttrRenderCategory() == (*attribute)->getName())
+	{
+		// When typed something in the new render category text box, set this text as selected
+
+		for (size_t i = 0; i < this->gameObjects.size(); i++)
+		{
+			if (false == sender->getOnlyText().empty())
+			{
+				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+				// Store the old render category, that was selected, so that when changing internally the render category, the old one can be removed, if no game object does use the category
+				currentAttribute->setListSelectedOldValue(currentAttribute->getListSelectedValue());
+				auto& list = currentAttribute->getList();
+				list.emplace_back(sender->getOnlyText());
+				currentAttribute->setValue(list);
+				currentAttribute->setListSelectedValue(sender->getOnlyText());
+				this->gameObjects[i]->actualizeValue(*attribute);
+			}
+		}
+
+		sender->setCaption("");
 
 		// Sent when a name has changed, so that the resources panel can be refreshed with new values
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());

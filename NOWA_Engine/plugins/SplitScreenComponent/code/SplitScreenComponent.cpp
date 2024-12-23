@@ -304,7 +304,7 @@ namespace NOWA
 
 		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
 
-		this->cameraComponent->applySplitScreen(true, this->gameObjectPtr->getMaskId());
+		this->cameraComponent->applySplitScreen(true, 1);
 
 		const auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr == workspaceBaseCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
@@ -331,31 +331,33 @@ namespace NOWA
 		Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
 
 		// Iterate through Compositor Managers resources
-		Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator it = nodeDefs.begin();
-		Ogre::CompositorManager2::CompositorNodeDefMap::const_iterator end = nodeDefs.end();
+		auto& it = nodeDefs.begin();
+		auto& end = nodeDefs.end();
 
-		Ogre::IdString compositorId = "Ogre/Postprocess";
-
-		// Add all compositor resources to the view container
+		// Goes through all passes for the given workspace and set the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
+		// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
 		while (it != end)
 		{
-			if (it->second->getNameStr() == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getFinalRenderingNodeName())
+			if (it->second->getNameStr() == this->workspaceBaseComponent->getRenderingNodeName() ||
+				it->second->getNameStr() == this->workspaceBaseComponent->getFinalRenderingNodeName())
 			{
-				// this->compositorNames.emplace_back(it->second->getNameStr());
-
-				// Manually disable the node and add it to the workspace without any connection
-				// it->second->setStartEnabled(false);
-				// workspaceDef->addNodeAlias(it->first, it->first);
-
-				// it->second->getTargetPass(0)->
-
-				// Hier pass dazu?
-				// it->second->addTargetPass
+				for (size_t i = 0; i < it->second->getNumTargetPasses(); i++)
+				{
+					for (size_t j = 0; j < it->second->getTargetPass(i)->getCompositorPasses().size(); j++)
+					{
+						const auto& pass = it->second->getTargetPass(i)->getCompositorPasses()[j];
+						if (pass->getType() == Ogre::PASS_SCENE)
+						{
+							Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+							unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+							passScene->setVisibilityMask(finalRenderMask);
+						}
+					}
+				}
 			}
 
 			++it;
 		}
-
 
 		auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
 

@@ -33,7 +33,8 @@ namespace NOWA
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
 		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
-		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes))
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes)),
+		excludeRenderCategories(new Variant(CameraComponent::AttrExcludeRenderCategories(), Ogre::String("All"), this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
 		this->orthoWindowSize->setVisible(false);
@@ -54,6 +55,9 @@ namespace NOWA
 			"straight ahead.You can change this behaviour by calling this "
 			"method, which you will want to do if you are making a completely "
 			"free camera like the kind used in a flight simulator. ");
+
+		this->excludeRenderCategories->setDescription("Sets the render categories, which shall be excluded from this camera rendering. By default nothing will be excluded. Possible is also: 'All-LeftCamera-Enemy'. "
+			"For this case e.g. all render categories but the game object which do belong to the left camera and the enemy would not be rendered by this camera.");
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
@@ -190,7 +194,12 @@ namespace NOWA
 			this->showDummyEntity->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ExcludeRenderCategories")
+		{
+			this->excludeRenderCategories->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		
 		return true;
 	}
 
@@ -208,6 +217,7 @@ namespace NOWA
 		clonedCompPtr->setOrthographic(this->orthographic->getBool());
 		clonedCompPtr->setOrthoWindowSize(this->orthoWindowSize->getVector2());
 		clonedCompPtr->setFixedYawAxis(this->fixedYawAxis->getBool());
+		clonedCompPtr->setExcludeRenderCategories(this->excludeRenderCategories->getString());
 		
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -494,6 +504,10 @@ namespace NOWA
 		{
 			this->setShowDummyEntity(attribute->getBool());
 		}
+		else if (CameraComponent::AttrExcludeRenderCategories() == attribute->getName())
+		{
+			this->setExcludeRenderCategories(attribute->getString());
+		}
 	}
 
 	void CameraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -565,6 +579,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShowDummyEntity"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->showDummyEntity->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ExcludeRenderCategories"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->excludeRenderCategories->getString())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -859,6 +879,16 @@ namespace NOWA
 	bool CameraComponent::getShowDummyEntity(void) const
 	{
 		return 	this->showDummyEntity->getBool();
+	}
+
+	void CameraComponent::setExcludeRenderCategories(const Ogre::String& excludeRenderCategories)
+	{
+		this->excludeRenderCategories->setValue(excludeRenderCategories);
+	}
+
+	Ogre::String CameraComponent::getExcludeRenderCategories(void) const
+	{
+		return this->excludeRenderCategories->getString();
 	}
 
 	Ogre::Camera* CameraComponent::getCamera(void) const

@@ -251,36 +251,59 @@ namespace NOWA
 		 * @brief		Registers an internal type from the given game object ptr and its category. Internally called when calling @GameObjectController::registerGameObject()
 		 * @param[in]	gameObjectPtr	The game object to register the type for
 		 * @param[in]	category		The category to register the type for
+		 * @param[in]	renderCategory	The render category to register the type for
 		 */
-		void registerType(boost::shared_ptr<GameObject> gameObjectPtr, const Ogre::String& category);
+		void registerType(boost::shared_ptr<GameObject> gameObjectPtr, const Ogre::String& category, const Ogre::String& renderCategory);
 
 		/**
 		* @brief		Registers an internal type from the given game object and its category. Internally called when calling @GameObjectController::registerGameObject()
-		* @param[in]	gameObject	The game object raw pointer to register the type for
+		* @param[in]	gameObject		The game object raw pointer to register the type for
 		* @param[in]	category		The category to register the type for
+		* @param[in]	renderCategory	The render category to register the type for
 		*/
-		void registerType(GameObject* gameObject, const Ogre::String& category);
+		void registerType(GameObject* gameObject, const Ogre::String& category, const Ogre::String& renderCategory);
 
 		/**
-		* @brief		Just registers a category. Which is then available by this class besides other categories.
-		* @param[in]	category		The category name to register
-		* @return       The assigned category id
-		*/
+		 * @brief		Just registers a category. Which is then available by this class besides other categories.
+		 * @param[in]	category		The category name to register
+		 * @return       The assigned category id
+		 */
 		unsigned int registerCategory(const Ogre::String& category);
 
 		/**
-		* @brief		Changes the category name, this game object belongs to
-		* @param[in]	gameObject		The game object to change the category
-		* @param[in]	oldCategory		The old category name to check if it does exist, after a new category is set
-		* @param[in]	newCategory		The new category name to set
-		*/
+		 * @brief		Just registers a render category. Which is then available by this class besides other categories.
+		 * @param[in]	renderCategory		The render category name to register
+		 * @return       The assigned render category id
+		 */
+		unsigned int registerRenderCategory(const Ogre::String& renderCategory);
+
+		/**
+		 * @brief		Changes the category name, this game object belongs to
+		 * @param[in]	gameObject		The game object to change the category
+		 * @param[in]	oldCategory		The old category name to check if it does exist, after a new category is set
+		 * @param[in]	newCategory		The new category name to set
+		 */
 		void changeCategory(GameObject* gameObject, const Ogre::String& oldCategory, const Ogre::String& newCategory);
 
 		/**
-		* @brief		Frees the given category. So when there is no game object using this category any more, it will be deleted
-		* @param[in]	category		The category to un-register from game object
-		*/
+		 * @brief		Changes the render category name, this game object belongs to
+		 * @param[in]	gameObject			The game object to change the category
+		 * @param[in]	oldRenderCategory	The old render category name to check if it does exist, after a new render category is set
+		 * @param[in]	newRenderCategory	The new render category name to set
+		 */
+		void changeRenderCategory(GameObject* gameObject, const Ogre::String& oldRenderCategory, const Ogre::String& newRenderCategory);
+
+		/**
+		 * @brief		Frees the given category. So when there is no game object using this category any more, it will be deleted
+		 * @param[in]	category		The category to un-register from game object
+		 */
 		void freeCategoryFromGameObject(const Ogre::String& category);
+
+		/**
+		 * @brief		Frees the given render category. So when there is no game object using this render category any more, it will be deleted
+		 * @param[in]	renderCategory		The render category to un-register from game object
+		 */
+		void freeRenderCategoryFromGameObject(const Ogre::String& renderCategory);
 
 		/**
 		 * @brief		Gets the game object from the given id.
@@ -319,6 +342,14 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromCategory(const Ogre::String& category);
 
 		/**
+		 * @brief		Gets all game objects belonging to the given render category name.
+		 * @param[in]	renderCategory	The render category name to get the list of game objects from
+		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 * @note		Be careful with this game object as the life cycle will be extended. E.g. when using this game object as a part in the app state. Call gameObjectPtr.reset() in the @AppState::exit() method.
+		 */
+		std::vector<GameObjectPtr> getGameObjectsFromRenderCategory(const Ogre::String& renderCategory);
+
+		/**
 		 * @brief		Gets all game objects which contain at least one of this component class name sorted by game object name.
 		 * @param[in]	componentClassName		The component class name to get the game objects for.
 		 * @return		gameObjectList	A by name sorted list with game object ptr's. If nothing can be found, an empty list will be delivered.
@@ -348,6 +379,14 @@ namespace NOWA
 		std::vector<GameObjectPtr> getGameObjectsFromCategoryId(unsigned int categoryId);
 
 		/**
+		 * @brief		Gets all game objects belonging to the given render category id.
+		 * @param[in]	renderCategoryId	The render category id to get the list of game objects from. It can be a combined id, generated via @generateRenderCategoryId
+		 * @return		gameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 * @note		Be careful with this game object as the life cycle will be extended. E.g. when using this game object as a part in the app state. Call gameObjectPtr.reset() in the @AppState::exit() method.
+		 */
+		std::vector<GameObjectPtr> getGameObjectsFromRenderCategoryId(unsigned int renderCategoryId);
+
+		/**
 		 * @brief		Gets all game objects belonging to the given category name but separate list by the given game object names.
 		 * @param[in]	category			The category name to get the list of game objects from
 		 * @param[in]	excludeGameObjects	The list of game objects that should be in a separate list
@@ -355,6 +394,15 @@ namespace NOWA
 		 * @note		Be careful with this game object as the life cycle will be extended. E.g. when using this game object as a part in the app state. Call gameObjectPtr.reset() in the @AppState::exit() method.
 		 */
 		std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> getGameObjectsFromCategorySeparate(const Ogre::String& category, const std::vector<Ogre::String> separateGameObjects);
+
+		/**
+		 * @brief		Gets all game objects belonging to the given render category name but separate list by the given game object names.
+		 * @param[in]	category			The render category name to get the list of game objects from
+		 * @param[in]	excludeGameObjects	The list of game objects that should be in a separate list
+		 * @return		gameObjectList, separatedGameObjectList	A list with game object ptr's. If nothing can be found, an empty list will be delivered.
+		 * @note		Be careful with this game object as the life cycle will be extended. E.g. when using this game object as a part in the app state. Call gameObjectPtr.reset() in the @AppState::exit() method.
+		 */
+		std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> getGameObjectsFromRenderCategorySeparate(const Ogre::String& renderCategory, const std::vector<Ogre::String> separateGameObjects);
 
 		/**
 		 * @brief		Gets the next game object from the given group id.
@@ -415,7 +463,7 @@ namespace NOWA
 				}
 			}
 			
-			return std::move(vec);
+			return vec;
 		}
 
 		/**
@@ -432,11 +480,24 @@ namespace NOWA
 		std::vector<Ogre::String> getAllCategoriesSoFar(void) const;
 
 		/**
-		* @brief		Checks whether the given category is registered
-		* @param[in]	category	The category name to check
-		* @return		true, if the category is registered, else false
-		*/
+		 * @brief		Gets all render categories at this time point.
+		 * @return		categoryList	A list with all yet registered render category names. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<Ogre::String> getAllRenderCategoriesSoFar(void) const;
+
+		/**
+		 * @brief		Checks whether the given category is registered
+		 * @param[in]	category	The category name to check
+		 * @return		true, if the category is registered, else false
+		 */
 		bool hasCategory(const Ogre::String& category) const;
+
+		/**
+		 * @brief		Checks whether the given render category is registered
+		 * @param[in]	renderCategory	The render category name to check
+		 * @return		true, if the render category is registered, else false
+		 */
+		bool hasRenderCategory(const Ogre::String& renderCategory) const;
 
 		/**
 		 * @brief		Gets all game object id's belonging to the given category name.
@@ -446,12 +507,27 @@ namespace NOWA
 		std::vector<unsigned long> getIdsFromCategory(const Ogre::String& category) const;
 
 		/**
+		 * @brief		Gets all game object id's belonging to the given render category name.
+		 * @param[in]	renderCategory	The render category name to get the list of game objects id's from
+		 * @return		gameObjectIdList	A list with game object id's. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<unsigned long> getIdsFromRenderCategory(const Ogre::String& renderCategory) const;
+
+		/**
 		 * @brief		Gets all other game object id's belonging to the given category name except the excluded one.
 		 * @param[in]	excludedGameObjectPtr	The excluded game object ptr
 		 * @param[in]	category	The category name to get the list of game objects id's from
 		 * @return		gameObjectIdList	A list with game object id's. If nothing can be found, an empty list will be delivered.
 		 */
 		std::vector<unsigned long> getOtherIdsFromCategory(GameObjectPtr excludedGameObjectPtr, const Ogre::String& category) const;
+
+		/**
+		 * @brief		Gets all other game object id's belonging to the given render category name except the excluded one.
+		 * @param[in]	excludedGameObjectPtr	The excluded game object ptr
+		 * @param[in]	renderCategory			The render category name to get the list of game objects id's from
+		 * @return		gameObjectIdList	A list with game object id's. If nothing can be found, an empty list will be delivered.
+		 */
+		std::vector<unsigned long> getOtherIdsFromRenderCategory(GameObjectPtr excludedGameObjectPtr, const Ogre::String& renderCategory) const;
 
 		/**
 		 * @brief		Gets the game object from the given name.
@@ -520,6 +596,14 @@ namespace NOWA
 		unsigned int getCategoryId(const Ogre::String& category);
 
 		/**
+		 * @brief		Gets the render category id from the given category name.
+		 * @param[in]	renderCategory	The render category name to get the id from
+		 * @return		renderCategoryId	The render category id
+		 * @note		If the render category name cannot be found, 0 will be delivered.
+		 */
+		unsigned int getRenderCategoryId(const Ogre::String& renderCategory);
+
+		/**
 		 * @brief		Gets the generated type id from category names. This is useful for selection of specific objects etc.
 		 * @param[in]	categoryNames	The category names as a string sequence
 		 * @Note		A [+] prefix following by the category name adds those category to the type mask and a [-] subtracts it from a specified category name.
@@ -536,12 +620,36 @@ namespace NOWA
 		unsigned int generateCategoryId(const Ogre::String& categoryNames);
 
 		/**
+		 * @brief		Gets the generated type id from render category names. This is useful for selection of specific objects etc.
+		 * @param[in]	renderCategoryNames	The render category names as a string sequence
+		 * @Note		A [+] prefix following by the render category name adds those render category to the type mask and a [-] subtracts it from a specified render category name.
+		 *				The render category name 'ALL' has a special meaning. It enables all categories. Example:
+		 *				- generateCategoryId("+All-LeftCamera") generates an id, with which all objects but for the left camera
+		 *				  for example should be rendered in the e.g. RightCamera.
+		 *				- generateCategoryId("+Player+Enemy") would mark Players and Enemies to be rendered for a camera
+		 *				The render category names are case independent. The best way is to generate the id when starting the application
+		 *				and not during runtime.
+		 *				Attention: Since the render categories are defined by a designer, specifying a render category that does not exist
+		 *				prints just a warning in the log.
+		 * @return		generated Id	The generated id from the render category names
+		 */
+		unsigned int generateRenderCategoryId(const Ogre::String& renderCategoryNames);
+
+		/**
 		 * @brief		Gets the category name pieces from the given category names string.
 		 * @param[in]	categoryNames	The category names to get pieces of categories in a list.
 		 * @return		categoryNamesList	The category names list. If not found, 0 will be delivered.
 		 * @note		If categoryNames = "+All-House-Floor", all category names except 'House' and 'Floor' will be delivered.
 		 */
 		std::vector<Ogre::String> getAffectedCategories(const Ogre::String& categoryNames);
+
+		/**
+		 * @brief		Gets the render category name pieces from the given render category names string.
+		 * @param[in]	renderCategoryNames	The category names to get pieces of render categories in a list.
+		 * @return		renderCategoryNamesList	The render category names list. If not found, 0 will be delivered.
+		 * @note		If renderCategoryNames = "+All-House-Floor", all render category names except 'House' and 'Floor' will be delivered.
+		 */
+		std::vector<Ogre::String> getAffectedRenderCategories(const Ogre::String& renderCategoryNames);
 
 		/**
 		 * @brief		Gets the ogre newt physics material Id from the game object.
@@ -879,6 +987,9 @@ namespace NOWA
 		std::map<Ogre::String, std::pair<unsigned int, bool>> typeDBMap;
 		unsigned int shiftIndex;
 		std::list<GameObjectPtr> queryList;
+
+		std::map<Ogre::String, std::pair<unsigned int, bool>> renderTypeDBMap;
+		unsigned int renderShiftIndex;
 
 		std::map<Ogre::String, OgreNewt::MaterialID*> materialIDMap;
 

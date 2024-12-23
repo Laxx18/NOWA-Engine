@@ -340,6 +340,7 @@ namespace NOWA
 		: appStateName(appStateName),
 		gameObjects(new GameObjects),
 		shiftIndex(0), // 0 - 4 are reserved for gizmo, see defines.h
+		renderShiftIndex(0),
 		triggerUpdateTimer(0.0f),
 		sphereSceneQuery(nullptr),
 		currentSceneManager(nullptr),
@@ -351,7 +352,8 @@ namespace NOWA
 		bIsDestroying(false),
 		bAddListenerFirstTime(true)
 	{
-		
+		// Sets the "All" visibility flags, for all future movable objects
+		Ogre::MovableObject::setDefaultVisibilityFlags(static_cast<Ogre::uint32>(0xFFFFFFFF));
 	}
 
 	GameObjectController::~GameObjectController()
@@ -465,10 +467,11 @@ namespace NOWA
 		clonedMovableObject->setVisible(originalMovableObject->getVisible());
 		clonedMovableObject->setCastShadows(originalMovableObject->getCastShadows());
 		clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
+		clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
 
 		// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
 		GameObjectPtr clonedGameObjectPtr(boost::make_shared<GameObject>(sceneManager, clonedSceneNode, clonedMovableObject,
-			originalGameObjectPtr->getCategory(), originalGameObjectPtr->isDynamic(), originalGameObjectPtr->getType(), targetId));
+			originalGameObjectPtr->getCategory(), originalGameObjectPtr->getRenderCategory(), originalGameObjectPtr->isDynamic(), originalGameObjectPtr->getType(), targetId));
 
 		clonedGameObjectPtr->setName(originalGameObjectPtr->getName());
 
@@ -486,7 +489,6 @@ namespace NOWA
 		clonedGameObjectPtr->setRenderDistance(originalGameObjectPtr->getRenderDistance());
 		clonedGameObjectPtr->setLodDistance(originalGameObjectPtr->getLodDistance());
 		clonedGameObjectPtr->setShadowRenderingDistance(originalGameObjectPtr->getShadowRenderingDistance());
-		clonedGameObjectPtr->setMaskId(originalGameObjectPtr->getMaskId());
 
 		if (!clonedGameObjectPtr->init())
 		{
@@ -665,7 +667,7 @@ namespace NOWA
 		// Destroy content can be called again
 		this->alreadyDestroyed = false;
 		this->gameObjects->emplace(gameObjectPtr->getId(), gameObjectPtr);
-		this->registerType(gameObjectPtr, gameObjectPtr->category->getListSelectedValue());
+		this->registerType(gameObjectPtr, gameObjectPtr->category->getListSelectedValue(), gameObjectPtr->renderCategory->getListSelectedValue());
 
 		if (true == this->bAddListenerFirstTime)
 		{
@@ -806,9 +808,10 @@ namespace NOWA
 			// this->pActiveGameObjects->erase(this->pActiveGameObjects->begin(), this->pActiveGameObjects->end());
 			this->gameObjects->clear();
 			this->typeDBMap.clear();
+			this->renderTypeDBMap.clear();
 			this->shiftIndex = 0;
+			this->renderShiftIndex = 0;
 			this->triggeredGameObjects.clear();
-
 
 			// Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
 			// That means, if an AppState is exited and started and GameObjects are created
@@ -885,6 +888,7 @@ namespace NOWA
 	{
 		// Frees the category, internally a check will be made if there is still a game object with the category, if not it will be un-occupied, for a next new category
 		this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
+		this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
 		unsigned long id = gameObjectPtr->getId();
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + gameObjectPtr->getName());
 		boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(gameObjectPtr->getId()));
@@ -967,6 +971,7 @@ namespace NOWA
 		delayProcess->attachChild(NOWA::ProcessPtr(new DeleteDelayedProcess(this->appStateName, gameObjectPtr->getId())));
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);*/
 		this->freeCategoryFromGameObject(gameObjectPtr->getCategory());
+		this->freeRenderCategoryFromGameObject(gameObjectPtr->getRenderCategory());
 		this->deleteGameObject(gameObjectPtr->getId());
 	}
 
@@ -1663,7 +1668,21 @@ namespace NOWA
 				vec.emplace_back(it->second->getId());
 			}
 		}
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<unsigned long> GameObjectController::getIdsFromRenderCategory(const Ogre::String& renderCategory) const
+	{
+		std::vector<unsigned long> vec;
+		// do not delete with iterator since the iterator changes then during the loop
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if (it->second->getRenderCategory() == renderCategory)
+			{
+				vec.emplace_back(it->second->getId());
+			}
+		}
+		return vec;
 	}
 
 	std::vector<unsigned long> GameObjectController::getOtherIdsFromCategory(GameObjectPtr excludedGameObjectPtr, const Ogre::String& category) const
@@ -1678,7 +1697,22 @@ namespace NOWA
 				vec.emplace_back(it->second->getId());
 			}
 		}
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<unsigned long> GameObjectController::getOtherIdsFromRenderCategory(GameObjectPtr excludedGameObjectPtr, const Ogre::String& renderCategory) const
+	{
+		std::vector<unsigned long> vec;
+		// do not delete with iterator since the iterator changes then during the loop
+		// Attention here with find, because its o(log2n) and not o(n)
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if (it->second->getRenderCategory() == renderCategory && it->second != excludedGameObjectPtr)
+			{
+				vec.emplace_back(it->second->getId());
+			}
+		}
+		return vec;
 	}
 
 	GameObjectPtr GameObjectController::getGameObjectFromName(const Ogre::String& name) const
@@ -1708,7 +1742,7 @@ namespace NOWA
 			}
 		}
 
-		return std::move(vec);
+		return vec;
 	}
 
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromType(GameObject::eType type) const
@@ -1723,7 +1757,7 @@ namespace NOWA
 			}
 		}
 
-		return std::move(vec);
+		return vec;
 	}
 
 	GameObjectPtr GameObjectController::getGameObjectFromNamePrefix(const Ogre::String& pattern) const
@@ -1856,7 +1890,22 @@ namespace NOWA
 				vec.emplace_back(it->second);
 			}
 		}
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromRenderCategory(const Ogre::String& renderCategory)
+	{
+		std::vector<GameObjectPtr> vec;
+
+		unsigned int finalCategories = this->generateRenderCategoryId(renderCategory);
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if ((it->second->getRenderCategoryId() | finalCategories) == finalCategories)
+			{
+				vec.emplace_back(it->second);
+			}
+		}
+		return vec;
 	}
 	
 	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromCategoryId(unsigned int categoryId)
@@ -1870,7 +1919,21 @@ namespace NOWA
 				vec.emplace_back(it->second);
 			}
 		}
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<GameObjectPtr> GameObjectController::getGameObjectsFromRenderCategoryId(unsigned int renderCategoryId)
+	{
+		std::vector<GameObjectPtr> vec;
+
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if ((it->second->getRenderCategoryId() | renderCategoryId) == renderCategoryId)
+			{
+				vec.emplace_back(it->second);
+			}
+		}
+		return vec;
 	}
 
 	std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectController::getGameObjectsFromCategorySeparate(const Ogre::String& category, 
@@ -1896,7 +1959,40 @@ namespace NOWA
 				}
 
 				if (false == addedToSeparateList)
+				{
 					vec1.emplace_back(it->second);
+				}
+			}
+		}
+		return std::make_pair(vec1, vec2);
+	}
+
+	std::pair<std::vector<GameObjectPtr>, std::vector<GameObjectPtr>> GameObjectController::getGameObjectsFromRenderCategorySeparate(const Ogre::String& renderCategory, 
+		const std::vector<Ogre::String> separateGameObjects)
+	{
+		std::vector<GameObjectPtr> vec1;
+		std::vector<GameObjectPtr> vec2;
+
+		unsigned int finalRenderCategories = this->generateRenderCategoryId(renderCategory);
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if ((it->second->getCategoryId() | finalRenderCategories) == finalRenderCategories)
+			{
+				bool addedToSeparateList = false;
+				for (size_t i = 0; i < separateGameObjects.size(); i++)
+				{
+					if (it->second->getName() == separateGameObjects[i])
+					{
+						vec2.emplace_back(it->second);
+						addedToSeparateList = true;
+						break;
+					}
+				}
+
+				if (false == addedToSeparateList)
+				{
+					vec1.emplace_back(it->second);
+				}
 			}
 		}
 		return std::make_pair(vec1, vec2);
@@ -2116,7 +2212,17 @@ namespace NOWA
 		{
 			vec.emplace_back(it->first);
 		}
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<Ogre::String> GameObjectController::getAllRenderCategoriesSoFar(void) const
+	{
+		std::vector<Ogre::String> vec;
+		for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+		{
+			vec.emplace_back(it->first);
+		}
+		return vec;
 	}
 
 	bool GameObjectController::hasCategory(const Ogre::String& category) const
@@ -2125,81 +2231,133 @@ namespace NOWA
 		return found != this->typeDBMap.cend();
 	}
 
+	bool GameObjectController::hasRenderCategory(const Ogre::String& renderCategory) const
+	{
+		auto& found = this->renderTypeDBMap.find(renderCategory);
+		return found != this->renderTypeDBMap.cend();
+	}
+
 	std::map<unsigned long, GameObjectPtr> const* GameObjectController::getGameObjects(void) const
 	{
 		return this->gameObjects;
 	}
 
-	void GameObjectController::registerType(boost::shared_ptr<GameObject> gameObjectPtr, const Ogre::String& category)
+	void GameObjectController::registerType(boost::shared_ptr<GameObject> gameObjectPtr, const Ogre::String& category, const Ogre::String& renderCategory)
 	{
-		this->registerType(gameObjectPtr.get(), category);
+		this->registerType(gameObjectPtr.get(), category, renderCategory);
 	}
 
-	void GameObjectController::registerType(GameObject* gameObject, const Ogre::String& category)
+	void GameObjectController::registerType(GameObject* gameObject, const Ogre::String& category, const Ogre::String& renderCategory)
 	{
 		unsigned int categoryId = 1;
-		// skip default category, since its for everything
-		/*if ("Default" == category)
+		unsigned int renderCategoryId = 1;
+
+		if (false == category.empty())
 		{
-		return;
-		}*/
-		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
-		// only 31 distinct types are possible!
-		auto& it = this->typeDBMap.find(category);
-		// if the type is not in the map, then its a new type, so increment the physics type id
-		if (it == this->typeDBMap.end())
-		{
-			bool foundFreeId = false;
-			// First check if there is an old remaining category id, that is not occupied
-			for (auto& it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
+			// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
+			// only 31 distinct types are possible!
+			auto& it = this->typeDBMap.find(category);
+			// if the type is not in the map, then its a new type, so increment the physics type id
+			if (it == this->typeDBMap.end())
 			{
-				if (false == it->second.second)
+				bool foundFreeId = false;
+				// First check if there is an old remaining category id, that is not occupied
+				for (auto& it = this->typeDBMap.begin(); it != this->typeDBMap.end(); ++it)
 				{
-					foundFreeId = true;
-					// Change the key
-					std::swap(this->typeDBMap[category], it->second);
-					this->typeDBMap.erase(it);
-					break;
+					if (false == it->second.second)
+					{
+						foundFreeId = true;
+						// Change the key
+						std::swap(this->typeDBMap[category], it->second);
+						this->typeDBMap.erase(it);
+						break;
+					}
 				}
+
+				if (false == foundFreeId)
+				{
+					// deliver the categoryId to the gameobject
+					categoryId <<= this->shiftIndex++;
+					// unsigned int = 4 Byte = FF FF FF FF
+					if (32 == this->shiftIndex)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Querymask overflow, because to many different categories are defined. Allowed are up to 31.");
+						throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectController] Querymask overflow, because to many different categories are defined. Allowed are up to 31.", "NOWA");
+					}
+					// name, id, occupied
+					this->typeDBMap.emplace(category, std::pair<unsigned int, bool>(categoryId, true));
+				}
+			}
+			else
+			{
+				// set the knowing id but do not insert to map
+				categoryId = it->second.first;
 			}
 
-			if (false == foundFreeId)
-			{
-				// deliver the categoryId to the gameobject
-				categoryId <<= this->shiftIndex++;
-				// unsigned int = 4 Byte = FF FF FF FF
-				if (32 == this->shiftIndex)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Querymask overflow, because to many different categories are defined. Allowed are up to 31.");
-					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectController] Querymask overflow, because to many different categories are defined. Allowed are up to 31.", "NOWA");
-				}
-				// name, id, occupied
-				this->typeDBMap.emplace(category, std::pair<unsigned int, bool>(categoryId, true));
-			}
-		}
-		else
-		{
 			// set the knowing id but do not insert to map
-			categoryId = it->second.first;
+			gameObject->categoryId->setValue(categoryId);
+			Ogre::MovableObject* movableObject = gameObject->getMovableObject();
+			if (nullptr != movableObject)
+			{
+				movableObject->setQueryFlags(categoryId);
+			}
 		}
 
-		// set the knowing id but do not insert to map
-		gameObject->categoryId->setValue(categoryId);
-		Ogre::MovableObject* movableObject = gameObject->getMovableObject();
-		if (nullptr != movableObject)
+		if (false == renderCategory.empty())
 		{
-			movableObject->setQueryFlags(categoryId);
+			// only 31 distinct types are possible!
+			auto& renderIt = this->renderTypeDBMap.find(renderCategory);
+			// if the type is not in the map, then its a new type, so increment the physics type id
+			if (renderIt == this->renderTypeDBMap.end())
+			{
+				bool foundFreeId = false;
+				// First check if there is an old remaining render category id, that is not occupied
+				for (auto& renderIt = this->renderTypeDBMap.begin(); renderIt != this->renderTypeDBMap.end(); ++renderIt)
+				{
+					if (false == renderIt->second.second)
+					{
+						foundFreeId = true;
+						// Change the key
+						std::swap(this->renderTypeDBMap[renderCategory], renderIt->second);
+						this->renderTypeDBMap.erase(renderIt);
+						break;
+					}
+				}
+
+				if (false == foundFreeId)
+				{
+					// deliver the categoryId to the gameobject
+					renderCategoryId <<= this->renderShiftIndex++;
+					// unsigned int = 4 Byte = FF FF FF FF
+					if (32 == this->renderShiftIndex)
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Querymask overflow, because to many different render categories are defined. Allowed are up to 31.");
+						throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectController] Querymask overflow, because to many different render categories are defined. Allowed are up to 31.", "NOWA");
+					}
+					// name, id, occupied
+					this->renderTypeDBMap.emplace(renderCategory, std::pair<unsigned int, bool>(renderCategoryId, true));
+				}
+			}
+			else
+			{
+				// set the knowing id but do not insert to map
+				renderCategoryId = renderIt->second.first;
+			}
+
+			// set the knowing id but do not insert to map
+			gameObject->renderCategoryId->setValue(renderCategoryId);
+			Ogre::MovableObject* movableObject = gameObject->getMovableObject();
+			if (nullptr != movableObject)
+			{
+				movableObject->setVisibilityFlags(renderCategoryId);
+			}
 		}
 	}
 
 	unsigned int GameObjectController::registerCategory(const Ogre::String& category)
 	{
 		unsigned int categoryId = 1;
-		// skip default category, since its for everything
-		/*if ("Default" == category)
-		{
-		return;
-		}*/
+
 		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
 		// only 31 distinct types are possible!
 		auto& foundIt = this->typeDBMap.find(category);
@@ -2240,6 +2398,49 @@ namespace NOWA
 		return categoryId;
 	}
 
+	unsigned int GameObjectController::registerRenderCategory(const Ogre::String& renderCategory)
+	{
+		unsigned int renderCategoryId = 1;
+		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=Intermediate+Tutorial+3
+		// only 31 distinct types are possible!
+		auto& foundIt = this->renderTypeDBMap.find(renderCategory);
+
+		if (foundIt == this->renderTypeDBMap.end())
+		{
+			bool foundFreeId = false;
+			// First check if there is an old remaining render category id, that is not occupied
+			for (auto& it = this->renderTypeDBMap.begin(); it != this->renderTypeDBMap.end(); ++it)
+			{
+				// Not occupied
+				if (false == it->second.second)
+				{
+					// Occupie the render category!
+					it->second.second = true;
+					foundFreeId = true;
+					// Change the key
+					std::swap(this->renderTypeDBMap[renderCategory], it->second);
+					this->renderTypeDBMap.erase(it);
+					break;
+				}
+			}
+
+			if (false == foundFreeId)
+			{
+				// shift the render category id
+				renderCategoryId <<= this->renderShiftIndex++;
+				// unsigned int = 4 Byte = FF FF FF FF
+				if (32 == this->renderShiftIndex)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Querymask overflow, because to many different render categories are defined. Allowed are up to 31.");
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectController] Querymask overflow, because to many different render categories are defined. Allowed are up to 31.", "NOWA");
+				}
+				// name, id, occupied
+				this->renderTypeDBMap.emplace(renderCategory, std::pair<unsigned int, bool>(renderCategoryId, true));
+			}
+		}
+		return renderCategoryId;
+	}
+
 	void GameObjectController::changeCategory(GameObject* gameObject, const Ogre::String& oldCategory, const Ogre::String& newCategory)
 	{
 		// Check if there is a remaining game object with the old category, if not set the category occupied = false, so that a new category may use that one
@@ -2262,7 +2463,7 @@ namespace NOWA
 				it->second.second = false;
 			}
 		}
-		this->registerType(gameObject, newCategory);
+		this->registerType(gameObject, newCategory, "");
 
 		// Since a category may change at any time, adjust the material group id
 		auto& physicsCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PhysicsComponent>());
@@ -2274,6 +2475,31 @@ namespace NOWA
 				physicsCompPtr->getBody()->setType(gameObject->getCategoryId());
 			}
 		}
+	}
+
+	void GameObjectController::changeRenderCategory(GameObject* gameObject, const Ogre::String& oldRenderCategory, const Ogre::String& newRenderCategory)
+	{
+		// Check if there is a remaining game object with the old category, if not set the category occupied = false, so that a new category may use that one
+		bool found = false;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if (oldRenderCategory == it->second->getRenderCategory())
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (false == found)
+		{
+			auto& it = this->renderTypeDBMap.find(oldRenderCategory);
+			if (it != this->renderTypeDBMap.end())
+			{
+				// set occupied = false
+				it->second.second = false;
+			}
+		}
+		this->registerType(gameObject, "", newRenderCategory);
 	}
 
 	void GameObjectController::freeCategoryFromGameObject(const Ogre::String& category)
@@ -2299,10 +2525,43 @@ namespace NOWA
 		}
 	}
 
+	void GameObjectController::freeRenderCategoryFromGameObject(const Ogre::String& renderCategory)
+	{
+		bool found = false;
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			if (renderCategory == it->second->getRenderCategory())
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (false == found)
+		{
+			auto& it = this->renderTypeDBMap.find(renderCategory);
+			if (it != this->renderTypeDBMap.end())
+			{
+				// set occupied = false
+				it->second.second = false;
+			}
+		}
+	}
+
 	unsigned int GameObjectController::getCategoryId(const Ogre::String& category)
 	{
 		auto& it = this->typeDBMap.find(category);
 		if (it != this->typeDBMap.end())
+		{
+			return it->second.first;
+		}
+		return 0;
+	}
+
+	unsigned int GameObjectController::getRenderCategoryId(const Ogre::String& renderCategory)
+	{
+		auto& it = this->renderTypeDBMap.find(renderCategory);
+		if (it != this->renderTypeDBMap.end())
 		{
 			return it->second.first;
 		}
@@ -2418,19 +2677,125 @@ namespace NOWA
 		return generatedCategoryId;
 	}
 
+	unsigned int GameObjectController::generateRenderCategoryId(const Ogre::String& renderCategoryNames)
+	{
+		Ogre::String tempRenderCategoryNames = renderCategoryNames;
+		// Ogre::StringUtil::toLowerCase(tempCategoryNames);
+		if (tempRenderCategoryNames == "All")
+		{
+			return GameObjectController::ALL_CATEGORIES_ID;
+		}
+
+		if (tempRenderCategoryNames.substr(0, 1) != "-" && tempRenderCategoryNames.substr(0, 1) != "+")
+		{
+			tempRenderCategoryNames = "+" + tempRenderCategoryNames;
+		}
+
+		unsigned int generatedRenderCategoryId = 0;
+		Ogre::StringVector::iterator it;
+		Ogre::StringVector categoryNamesToAdd;
+		Ogre::StringVector categoryNamesToSubstract;
+
+		short addIndex = -1;
+		short substractIndex = -1;
+		unsigned int i = 0;
+		for (; i < tempRenderCategoryNames.size(); i++)
+		{
+			if (tempRenderCategoryNames[i] == '+')
+			{
+				if (substractIndex != -1)
+				{
+					categoryNamesToSubstract.push_back(tempRenderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+					substractIndex = -1;
+				}
+				else if (addIndex != -1)
+				{
+					categoryNamesToAdd.push_back(tempRenderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+					addIndex = -1;
+				}
+				addIndex = i;
+			}
+			else if (tempRenderCategoryNames[i] == '-')
+			{
+				if (addIndex != -1)
+				{
+					categoryNamesToAdd.push_back(tempRenderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+					addIndex = -1;
+				}
+				else if (substractIndex != -1)
+				{
+					categoryNamesToSubstract.push_back(tempRenderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+					substractIndex = -1;
+				}
+				substractIndex = i;
+			}
+		}
+		// finally if there comes no sign anymore, add the category so far
+		if (substractIndex != -1)
+		{
+			categoryNamesToSubstract.push_back(tempRenderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+		}
+		else if (addIndex != -1)
+		{
+			categoryNamesToAdd.push_back(tempRenderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+		}
+
+		if (categoryNamesToAdd.size() > 0)
+		{
+			for (it = categoryNamesToAdd.begin(); it != categoryNamesToAdd.end(); ++it)
+			{
+				Ogre::String renderCategoryName = *it;
+				// match to lower case
+				// Ogre::StringUtil::toLowerCase(categoryName);
+				if (renderCategoryName == "All")
+				{
+					generatedRenderCategoryId |= GameObjectController::ALL_CATEGORIES_ID;
+				}
+				else
+				{
+					unsigned int currentRenderCategoryId = this->getRenderCategoryId(*it);
+					// if there is no such category throw an exception to warn the developer
+					if (currentRenderCategoryId == 0)
+					{
+						// Not necessary, because if its a global scene, it may be that the given category is in another scene
+						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning could not find render category id for " + *it);
+						currentRenderCategoryId = 0;
+					}
+					// add the bits
+					generatedRenderCategoryId |= currentRenderCategoryId;
+				}
+			}
+		}
+		if (categoryNamesToSubstract.size() > 0)
+		{
+			for (it = categoryNamesToSubstract.begin(); it != categoryNamesToSubstract.end(); ++it)
+			{
+				// match to lower case
+				// Ogre::StringUtil::toLowerCase(categoryName);
+				unsigned int currentRenderCategoryId = this->getRenderCategoryId(*it);
+				// if there is no such category throw an exception to warn the developer
+				if (currentRenderCategoryId == -1)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning could not find render category id for " + *it);
+					currentRenderCategoryId = 0;
+				}
+				generatedRenderCategoryId &= ~currentRenderCategoryId;
+			}
+		}
+		return generatedRenderCategoryId;
+	}
+
 	std::vector<Ogre::String> GameObjectController::getAffectedCategories(const Ogre::String& categoryNames)
 	{
 		std::vector<Ogre::String> vec;
 
-		Ogre::String tempCategoryNames = categoryNames;
-		// Ogre::StringUtil::toLowerCase(tempCategoryNames);
-		if (tempCategoryNames == "All")
+		if (categoryNames == "All")
 		{
 			for (auto& it = this->typeDBMap.cbegin(); it != this->typeDBMap.cend(); ++it)
 			{
 				vec.emplace_back(it->first);
 			}
-			return std::move(vec);
+			return vec;
 		}
 
 		Ogre::StringVector::iterator it;
@@ -2522,7 +2887,111 @@ namespace NOWA
 			}
 		}
 
-		return std::move(vec);
+		return vec;
+	}
+
+	std::vector<Ogre::String> GameObjectController::getAffectedRenderCategories(const Ogre::String& renderCategoryNames)
+	{
+		std::vector<Ogre::String> vec;
+
+		if (renderCategoryNames == "All")
+		{
+			for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+			{
+				vec.emplace_back(it->first);
+			}
+			return vec;
+		}
+
+		Ogre::StringVector::iterator it;
+		Ogre::StringVector categoryNamesToAdd;
+		Ogre::StringVector categoryNamesToSubstract;
+
+		short addIndex = -1;
+		short substractIndex = -1;
+		int i = 0;
+		for (; i < static_cast<int>(renderCategoryNames.size()); i++)
+		{
+			if (renderCategoryNames[i] == '+')
+			{
+				if (substractIndex != -1)
+				{
+					categoryNamesToSubstract.push_back(renderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+					substractIndex = -1;
+				}
+				else if (addIndex != -1)
+				{
+					categoryNamesToAdd.push_back(renderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+					addIndex = -1;
+				}
+				addIndex = i;
+			}
+			else if (renderCategoryNames[i] == '-')
+			{
+				if (addIndex != -1)
+				{
+					categoryNamesToAdd.push_back(renderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+					addIndex = -1;
+				}
+				else if (substractIndex != -1)
+				{
+					categoryNamesToSubstract.push_back(renderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+					substractIndex = -1;
+				}
+				substractIndex = i;
+			}
+		}
+		// finally if there comes no sign anymore, add the category so far
+		if (substractIndex != -1)
+		{
+			categoryNamesToSubstract.push_back(renderCategoryNames.substr(substractIndex + 1, i - substractIndex - 1));
+		}
+		else if (addIndex != -1)
+		{
+			categoryNamesToAdd.push_back(renderCategoryNames.substr(addIndex + 1, i - addIndex - 1));
+		}
+		// First add all category ids
+		if (categoryNamesToAdd.size() > 0)
+		{
+			for (it = categoryNamesToAdd.begin(); it != categoryNamesToAdd.end(); ++it)
+			{
+				Ogre::String categoryName = *it;
+
+				if (categoryName == "All")
+				{
+					for (auto& it = this->renderTypeDBMap.cbegin(); it != this->renderTypeDBMap.cend(); ++it)
+					{
+						vec.emplace_back(it->first);
+					}
+				}
+				else
+				{
+					vec.emplace_back(categoryName);
+				}
+			}
+		}
+		// Substract from the category ids that had been added
+		if (categoryNamesToSubstract.size() > 0)
+		{
+			for (it = categoryNamesToSubstract.begin(); it != categoryNamesToSubstract.end(); ++it)
+			{
+				Ogre::String categoryNameToSubstract = *it;
+				// match to lower case
+				// Ogre::StringUtil::toLowerCase(categoryNameToSubstract);
+				for (int i = 0; i < static_cast<int>(vec.size()); i++)
+				{
+					Ogre::String currentCategoryName = vec[i];
+
+					if (categoryNameToSubstract == currentCategoryName)
+					{
+						vec.erase(vec.begin() + i);
+						break;
+					}
+				}
+			}
+		}
+
+		return vec;
 	}
 
 	void GameObjectController::getValidatedGameObjectName(Ogre::String& gameObjectName, unsigned long excludeId)

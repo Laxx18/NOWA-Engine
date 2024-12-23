@@ -69,7 +69,7 @@ namespace NOWA
 		friend class TerraComponent;
 		friend class LuaScriptComponent;
 	public:
-		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", 
+		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default",
 			bool dynamic = true, eType type = eType::ENTITY, unsigned long id = 0);
 
 		virtual ~GameObject();
@@ -226,6 +226,19 @@ namespace NOWA
 		* @param[in]	newCategory		The new category name to set
 		*/
 		void changeCategory(const Ogre::String& newCategory);
+
+		/**
+		 * @brief		Changes the render category name, this game object belongs to
+		 * @param[in]	oldRenderCategory		The old render category name to check if it does exist, after a new render category is set
+		 * @param[in]	newRenderCategory		The new render category name to set
+		 */
+		void changeRenderCategory(const Ogre::String& oldRenderCategory, const Ogre::String& newRenderCategory);
+
+		/**
+		* @brief		Changes the render category name, this game object belongs to
+		* @param[in]	newRenderCategory		The new render category name to set
+		*/
+		void changeRenderCategory(const Ogre::String& newRenderCategory);
 		
 		/**
 		 * @brief	Gets the category to which this game object does belong.
@@ -236,12 +249,28 @@ namespace NOWA
 		Ogre::String getCategory(void) const;
 
 		/**
+		 * @brief	Gets the render category to which this game object does belong.
+		 * @return	renderCategory	The render category name to get.
+		 * @note Render Categories are specified in a level editor and are read from XML.
+		 *		 This is useful in order to manage, which game objects shall be renderd for which camera.
+		 */
+		Ogre::String getRenderCategory(void) const;
+
+		/**
 		 * @brief	Gets the category id to which this game object does belong.
 		 * @return	categoryId	The category id to get.
 		 * @note Categories are specified in a level editor and are read from XML. 
 		 *		 This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.
 		 */
 		unsigned int getCategoryId(void) const;
+
+		/**
+		 * @brief	Gets the render category to which this game object does belong.
+		 * @return	renderCategoryId	The render category id to get.
+		 * @note Render Categories are specified in a level editor and are read from XML.
+		 *		 This is useful in order to manage, which game objects shall be renderd for which camera.
+		 */
+		unsigned int getRenderCategoryId(void) const;
 
 		/**
 		 * @brief		Sets an optional tag name for this game object, for better identification.
@@ -575,22 +604,6 @@ namespace NOWA
 		unsigned int getShadowRenderingDistance(void) const;
 
 		/**
-		 * @brief Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. 
-		 *	If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
-		 *  If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap.
-		 * @param[in] maskId The mask id to set. Default value is 1 and is visible to any camera.
-		 */
-		void setMaskId(unsigned long maskId);
-
-		/**
-		 * @brief Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. 
-		 *	If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
-		 *  If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap.
-		 * @return maskId The mask id to get. Default value is 1 and is visible to any camera.
-		 */
-		unsigned long getMaskId(void) const;
-
-		/**
 		 * Performs a ray cast and clamps the game object y coordinate
 		 * @note		This is useful when game object is loaded, so that it will be automatically placed upon the next lower game object.
 		 *				Especially when the game object is a global one and will be loaded for different worlds, that start at a different height.
@@ -908,6 +921,8 @@ namespace NOWA
 		static const Ogre::String AttrName(void) { return "Name"; }
 		static const Ogre::String AttrCategoryId(void) { return "Category Id"; }
 		static const Ogre::String AttrCategory(void) { return "Category"; }
+		static const Ogre::String AttrRenderCategoryId(void) { return "Render Category Id"; }
+		static const Ogre::String AttrRenderCategory(void) { return "Render Category"; }
 		static const Ogre::String AttrMeshName(void) { return "Mesh Name"; }
 		static const Ogre::String AttrTagName(void) { return "Tag Name"; }
 		static const Ogre::String AttrDataBlock(void) { return "Data Block "; }
@@ -928,7 +943,6 @@ namespace NOWA
 		static const Ogre::String AttrRenderDistance(void) { return "Render Distance"; }
 		static const Ogre::String AttrLodDistance(void) { return "Lod Distance"; }
 		static const Ogre::String AttrShadowDistance(void) { return "Shadow Distance"; }
-		static const Ogre::String AttrMaskId(void) { return "Mask Id"; }
 
 		// Attribute actions
 		static const Ogre::String AttrActionNeedRefresh(void) { return "NeedRefresh"; }
@@ -969,6 +983,8 @@ namespace NOWA
 		Variant* name;
 		Variant* categoryId;
 		Variant* category;
+		Variant* renderCategoryId;
+		Variant* renderCategory;
 		Variant* meshName;
 		Variant* tagName;
 		std::vector<Variant*> dataBlocks;
@@ -991,7 +1007,6 @@ namespace NOWA
 		Variant* renderDistance;
 		Variant* lodDistance;
 		Variant* shadowRenderingDistance;
-		Variant* maskId;
 
 		Ogre::WireAabb* boundingBoxDraw;
 		unsigned long priorId;

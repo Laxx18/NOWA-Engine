@@ -1510,7 +1510,6 @@ namespace NOWA
 				if (i >= priorCount)
 				{
 					this->externalChannels[i] = this->customExternalChannels[i];
-					// workspaceDef->connectExternal(priorCount + i, this->finalRenderingNodeName, priorCount + i);
 				}
 			}
 		}

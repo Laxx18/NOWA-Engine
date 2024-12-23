@@ -41,7 +41,8 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	GameObject::GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category,
+	GameObject::GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, 
+		const Ogre::String& category, const Ogre::String& renderCategory,
 		bool dynamic, GameObject::eType type, unsigned long id)
 		: sceneManager(sceneManager),
 		sceneNode(sceneNode),
@@ -58,7 +59,6 @@ namespace NOWA
 		luaScript(nullptr),
 		bConnectPriority(false)
 	{
-		
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
 		{
@@ -69,6 +69,7 @@ namespace NOWA
 			this->id = new Variant(GameObject::AttrId(), id, this->attributes, true);
 		}
 		this->categoryId = new Variant(GameObject::AttrCategoryId(), static_cast<unsigned int>(0), this->attributes);
+		this->renderCategoryId = new Variant(GameObject::AttrRenderCategoryId(), static_cast<unsigned int>(GameObjectController::ALL_CATEGORIES_ID), this->attributes);
 		this->meshName = new Variant(GameObject::AttrMeshName(), Ogre::String(), this->attributes);
 		
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
@@ -159,6 +160,15 @@ namespace NOWA
 			this->category->addUserData(GameObject::AttrActionNeedRefresh());
 		}
 
+		// Special treatement for render category
+		{
+			// List all available categories
+			std::vector<Ogre::String> allRenderCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllRenderCategoriesSoFar();
+			this->renderCategory = new Variant(GameObject::AttrRenderCategory(), allRenderCategories, this->attributes);
+			this->renderCategory->setListSelectedValue(renderCategory);
+			this->renderCategory->addUserData(GameObject::AttrActionNeedRefresh());
+		}
+
 		this->tagName = new Variant(GameObject::AttrTagName(), Ogre::String(), this->attributes);
 		this->size = new Variant(GameObject::AttrSize(), Ogre::Vector3::ZERO, this->attributes);
 		this->position = new Variant(GameObject::AttrPosition(), Ogre::Vector3::ZERO, this->attributes);
@@ -209,12 +219,16 @@ namespace NOWA
 		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
 		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 300.0f, this->attributes, false);
 		this->shadowRenderingDistance = new Variant(GameObject::AttrShadowDistance(), static_cast<unsigned int>(300), this->attributes, false);
-		this->maskId = new Variant(GameObject::AttrMaskId(), static_cast<unsigned long>(1), this->attributes, false);
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Creating Gameobject " + this->id->getString() + " for scene node name: " + this->sceneNode->getName());
+		if (nullptr != this->sceneNode)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Creating Gameobject " + this->id->getString() + " for scene node name: " + this->sceneNode->getName());
+		}
 
 		this->meshName->setDescription("Mesh location: '" + Core::getSingletonPtr()->getResourceFilePathName(this->meshName->getString()) + "'");
 		this->category->setDescription("Only 30 distinct types are possible. Use also tag names in combination with categories. E.g. category: 'Enemy', tag names: 'Stone', 'EnemyMonster', 'Boss1', 'Boss2' etc.");
+		this->renderCategory->setDescription("Only 30 distinct types are possible. Render categories are used for cameras. That is, which camera shall render which game objects. "
+			"E.g. the LeftCamera shall render all game objects but the ones, which do belong to the RightCamera render category.");
 		this->tagName->setDescription("Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
 			"This is useful when doing ray - casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.");
 		this->dynamic->setDescription("Set to true, if you are sure, the game object will be moved always, else set to false due to performance reasons.");
@@ -230,8 +244,6 @@ namespace NOWA
 			"There are always 4 levels of reduction, beginning at the given lod distance and increasing based on the bounding radius of the mesh of the game object. The mesh with the lod levels is also stored on the file disc.");
 		this->defaultDirection->setDescription("The default local direction of the loaded mesh. Note: Its important: If the created mesh e.g. points to x-axis, its default direction should be set to (1 0 0)."
 			" If it points to z-direction, its default direction should be set to (0 0 1) etc..");
-		this->maskId->setDescription("Manages all game objects that will be visible on a specifig camera. If the mask id is set to 0, the game object is not visible to any camera. If set to e.g. 1, and e.g. the minimap camera has its id set to 1, it will be rendered also on the minimap."
-										" If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.");
 	}
 
 	GameObject::~GameObject()
@@ -323,6 +335,7 @@ namespace NOWA
 		{
 			this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
 			this->movableObject->setQueryFlags(this->categoryId->getUInt());
+			this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
 
 			// calculate size and offset from center
 			// Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
@@ -704,6 +717,15 @@ namespace NOWA
 		
 			this->movableObject->setQueryFlags(this->categoryId->getUInt());
 		}
+		else if (GameObject::AttrRenderCategory() == attribute->getName())
+		{
+			// Call with the default value and the new one from selected list item
+			this->renderCategory->setListSelectedValue(attribute->getListSelectedValue());
+			this->changeRenderCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
+			this->renderCategoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getRenderCategoryId(attribute->getListSelectedValue()));
+
+			this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+		}
 		if (GameObject::AttrTagName() == attribute->getName())
 		{
 			this->tagName->setValue(attribute->getString());
@@ -794,10 +816,6 @@ namespace NOWA
 		else if (GameObject::AttrShadowDistance() == attribute->getName())
 		{
 			this->setShadowRenderingDistance(attribute->getUInt());
-		}
-		else if (GameObject::AttrMaskId() == attribute->getName())
-		{
-			this->setMaskId(attribute->getULong());
 		}
 		else
 		{
@@ -928,6 +946,12 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "RenderCategory"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->renderCategory->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TagName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->tagName->getString())));
 		propertiesXML->append_node(propertyXML);
@@ -1002,12 +1026,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ShadowRenderingDistance"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->shadowRenderingDistance->getUInt())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "MaskId"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maskId->getULong())));
 		propertiesXML->append_node(propertyXML);
 
 		for (size_t i = 0; i < this->dataBlocks.size(); i++)
@@ -1094,14 +1112,36 @@ namespace NOWA
 		this->category->setListSelectedValue(newCategory);
 	}
 
+	void GameObject::changeRenderCategory(const Ogre::String& oldRenderCategory, const Ogre::String& newRenderCategory)
+	{
+		this->renderCategory->setListSelectedValue(newRenderCategory);
+		AppStateManager::getSingletonPtr()->getGameObjectController()->changeRenderCategory(this, oldRenderCategory, newRenderCategory);
+	}
+
+	void GameObject::changeRenderCategory(const Ogre::String& newRenderCategory)
+	{
+		AppStateManager::getSingletonPtr()->getGameObjectController()->changeRenderCategory(this, this->renderCategory->getListSelectedValue(), newRenderCategory);
+		this->renderCategory->setListSelectedValue(newRenderCategory);
+	}
+
 	Ogre::String GameObject::getCategory(void) const
 	{
 		return this->category->getListSelectedValue();
 	}
 
+	Ogre::String GameObject::getRenderCategory(void) const
+	{
+		return this->renderCategory->getListSelectedValue();
+	}
+
 	unsigned int GameObject::getCategoryId(void) const
 	{
 		return this->categoryId->getUInt();
+	}
+
+	unsigned int GameObject::getRenderCategoryId(void) const
+	{
+		return this->renderCategoryId->getUInt();
 	}
 
 	void GameObject::setTagName(const Ogre::String& tagName)
@@ -2087,20 +2127,6 @@ namespace NOWA
 	unsigned int GameObject::getShadowRenderingDistance(void) const
 	{
 		return this->shadowRenderingDistance->getUInt();
-	}
-
-	void GameObject::setMaskId(unsigned long maskId)
-	{
-		this->maskId->setValue(maskId);
-		if (nullptr != this->movableObject)
-		{
-			this->movableObject->setVisibilityFlags(maskId);
-		}
-	}
-
-	unsigned long GameObject::getMaskId(void) const
-	{
-		return this->maskId->getULong();
 	}
 
 	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)

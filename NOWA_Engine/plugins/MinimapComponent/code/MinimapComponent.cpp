@@ -517,8 +517,12 @@ namespace NOWA
 
 						passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
+						// Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
+						// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
+						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+						passScene->setVisibilityMask(finalRenderMask);
+
 						passScene->mIncludeOverlays = false;
-						passScene->setVisibilityMask(this->cameraComponent->getOwner()->getMaskId());
 
 					}
 				}
@@ -591,8 +595,12 @@ namespace NOWA
 
 						passScene->setAllStoreActions(Ogre::StoreAction::Store);
 
+						// Sets the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
+						// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
+						unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+						passScene->setVisibilityMask(finalRenderMask);
+
 						passScene->mIncludeOverlays = false;
-						passScene->setVisibilityMask(this->cameraComponent->getOwner()->getMaskId());
 					}
 				}
 			}

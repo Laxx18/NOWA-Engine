@@ -143,6 +143,10 @@ namespace NOWA
 
 		bool getShowDummyEntity(void) const;
 
+		void setExcludeRenderCategories(const Ogre::String& excludeRenderCategories);
+
+		Ogre::String getExcludeRenderCategories(void) const;
+
 		Ogre::Camera* getCamera(void) const;
 
 		Ogre::uint8 getEyeId(void) const;
@@ -157,6 +161,7 @@ namespace NOWA
 		static const Ogre::String AttrFovy(void) { return "Fovy"; }
 		static const Ogre::String AttrFixedYawAxis(void) { return "Fixed Yaw Axis"; }
 		static const Ogre::String AttrShowDummyEntity(void) { return "Show Dummy Entity"; }
+		static const Ogre::String AttrExcludeRenderCategories(void) { return "Exclude Render Categories"; }
 
 		/**
 		* @brief This is required when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button.
@@ -182,6 +187,7 @@ namespace NOWA
 		Variant* fovy;
 		Variant* fixedYawAxis;
 		Variant* showDummyEntity;
+		Variant* excludeRenderCategories;
 		
 		bool hideEntity;
 		Ogre::Real timeSinceLastUpdate;
