@@ -581,7 +581,7 @@ void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 		informationEdit->showHScroll(true);
 		informationEdit->setCaptionWithReplacing(className + "\n\n" + information);
 		informationEdit->setEditReadOnly(true);
-		informationEdit->setEditStatic(true);
+		informationEdit->setEditStatic(false);
 		this->itemsText.push_back(informationEdit);
 		this->heightCurrent += informationHeight + 2;
 	}
@@ -837,7 +837,7 @@ void PropertiesPanelInfo::initialise()
 	this->propertyInfo->setEditMultiLine(true);
 	this->propertyInfo->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
 	this->propertyInfo->setEditWordWrap(true);
-	this->propertyInfo->setEditStatic(true);
+	this->propertyInfo->setEditStatic(false);
 	this->propertyInfo->setEditReadOnly(true);
 	this->propertyInfo->showVScroll(true);
 	this->propertyInfo->showHScroll(true);

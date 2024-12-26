@@ -37,7 +37,12 @@ namespace NOWA
 	{
 		this->activated->setDescription("If activated the scene from a prior workspace component will be rendered into a texture.");
 		this->textureSize->setDescription("Sets the split screen texture size in pixels. Note: The texture is quadratic. Also note: The higher the texture size, the less performant the application will run.");
-		this->geometry->setDescription("Sets the geometry of the split screen relative to the window screen in the format Vector4(pos.x, pos.y, width, height).");
+		this->geometry->setDescription("Sets the geometry of the split screen relative to the window screen in the format Vector4(pos.x, pos.y, width, height).\n"
+			"Example: 2 player vertical split: geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1\n"
+			"Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5\n"
+			"Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1\n"
+			"Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5\n"
+		);
 	}
 
 	SplitScreenComponent::~SplitScreenComponent(void)
@@ -312,6 +317,14 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, because the game object: " + this->gameObjectPtr->getName() + " is the main camera. Choose a different camera!");
 			return;
 		}
+
+		auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
+		if (splitScreenComponents.size() > 4)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, there are more than 4 cameras. Only 4 cameras are supported!");
+			return;
+		}
+
 		
 		this->workspaceBaseComponent = workspaceBaseCompPtr.get();
 
@@ -359,11 +372,8 @@ namespace NOWA
 			++it;
 		}
 
-		auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
-
 		bool isLastComponent = false;
 		
-
 		if (splitScreenComponents.size() > 0)
 		{
 			isLastComponent = this == splitScreenComponents[splitScreenComponents.size() - 1].get();
@@ -371,6 +381,31 @@ namespace NOWA
 
 		if (true == isLastComponent)
 		{
+			std::vector<Ogre::String> textureNames;
+			std::vector<Ogre::Vector4> geometryVectors;
+
+			for (size_t i = 0; i < splitScreenComponents.size(); i++)
+			{
+				textureNames.emplace_back(splitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+				geometryVectors.emplace_back(splitScreenComponents[i]->getGeometry());
+			}
+
+			Ogre::String materialName = "DynamicSplitMaterial";
+			auto splitMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+			Ogre::GpuProgramParametersSharedPtr fragmentParams = splitMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+			for (size_t i = 0; i < geometryVectors.size(); ++i)
+			{
+				Ogre::String paramName = "geomData" + Ogre::StringConverter::toString(i + 1); // Match shader uniform
+				if (fragmentParams->_findNamedConstantDefinition(paramName, false))
+				{
+					fragmentParams->setNamedConstant(paramName, geometryVectors[i]);
+				}
+				else
+				{
+					Ogre::LogManager::getSingleton().logMessage("[SplitScreenComponent]: Shader uniform not found: " + paramName, Ogre::LML_CRITICAL);
+				}
+			}
+
 			Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
 			Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
@@ -394,8 +429,9 @@ namespace NOWA
 			{
 				auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
 				passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-				passQuad->mMaterialName = "SplitScreen_2h";
-				passQuad->mProfilingId = "QuadPass_SplitScreen_2h";
+				passQuad->mMaterialName = materialName;
+				// passQuad->mMaterialName = "SplitScreen_2h";
+				passQuad->mProfilingId = "QuadPass_DynamicSplitMaterial";
 
 				for (size_t i = 0; i < splitScreenComponents.size(); i++)
 				{

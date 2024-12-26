@@ -33,7 +33,7 @@ namespace NOWA
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
 		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
-		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes)),
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), true, this->attributes)),
 		excludeRenderCategories(new Variant(CameraComponent::AttrExcludeRenderCategories(), Ogre::String("All"), this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
@@ -452,7 +452,14 @@ namespace NOWA
 			
 				if ("Camera.mesh" == this->dummyEntity->getMesh()->getName())
 				{
-					this->hideEntity = true;
+					if (true == CameraComponent::justCreated)
+					{
+						this->hideEntity = false;
+					}
+					else
+					{
+						this->hideEntity = true;
+					}
 				}
 			}
 			// Call activation, because e.g. new workspace must be set

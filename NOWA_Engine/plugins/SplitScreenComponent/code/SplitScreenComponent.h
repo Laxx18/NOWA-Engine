@@ -179,7 +179,11 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Can be used to render a workspace in a split screen texture.";
+			return "Usage: Can be used to render a workspace in a split screen texture.\n"
+				"Example: 2 player vertical split : geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1\n"
+				"Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5\n"
+				"Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1\n"
+				"Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5\n";
 		}
 
 		/**

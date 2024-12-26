@@ -6446,7 +6446,7 @@ return {
 				returns = "(string)",
 				valuetype = "string"
 			},
-			getCategoryId =
+			getTagName =
 			{
 				type = "function",
 				description = "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.",
@@ -6454,10 +6454,26 @@ return {
 				returns = "(string)",
 				valuetype = "string"
 			},
-			getTagName =
+			getCategoryId =
 			{
 				type = "function",
-				description = "Gets the category id to which this game object does belong. Note: Categories are specified in a level editor and are read from XML. This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.",
+				description = "Gets the category id to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getRenderCategory =
+			{
+				type = "function",
+				description = "Gets the render category to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getRenderCategoryId =
+			{
+				type = "function",
+				description = "Gets the render category id to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -6475,6 +6491,22 @@ return {
 				type = "method",
 				description = "Changes the category name, this game object belongs to.",
 				args = "(string newCategory)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			changeRenderCategory =
+			{
+				type = "method",
+				description = "Changes the render category name, this game object belongs to.",
+				args = "(string oldRenderCategory, string newRenderCategory)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			changeRenderCategory2 =
+			{
+				type = "method",
+				description = "Changes the render category name, this game object belongs to.",
+				args = "(string newRenderCategory)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -6605,22 +6637,6 @@ return {
 				args = "(boolean show)",
 				returns = "(boolean)",
 				valuetype = "boolean"
-			},
-			setMaskId =
-			{
-				type = "method",
-				description = "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera.  If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap. If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.",
-				args = "(number maskId)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getMaskId =
-			{
-				type = "function",
-				description = "Manages all game objects that will be visible on a specifig camera.If the mask id is set to 0, the game object is not visible to any camera.  If set to e.g. 1, and e.g.the minimap camera has its id set to 1, it will be rendered also on the minimap. If set to e.g. 2 but minimap comopnent has set to 1, it will not be rendered on the minimap. Default value is 1 and is visible to any camera.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
 			},
 			showDebugData =
 			{
@@ -9505,8 +9521,16 @@ return {
 			getGameObjectsFromCategory =
 			{
 				type = "function",
-				description = "Gets all game objects that are belonging to the given category as lua table. Which can be traversed via 'for key, gameObject in gameObjects do'.",
+				description = "Gets all game objects that are belonging to the given category as lua table. Which can be traversed via 'for key, category in categories do'.",
 				args = "(string category)",
+				returns = "(Table[number][GameObject])",
+				valuetype = "Table[number][GameObject]"
+			},
+			getGameObjectsFromRenderCategory =
+			{
+				type = "function",
+				description = "Gets all game objects that are belonging to the given render category as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.",
+				args = "(string Renderategory)",
 				returns = "(Table[number][GameObject])",
 				valuetype = "Table[number][GameObject]"
 			},
@@ -9566,11 +9590,27 @@ return {
 				returns = "(Table[number][string])",
 				valuetype = "Table[number][string]"
 			},
+			getIdsFromRenderCategory =
+			{
+				type = "function",
+				description = "Gets all game object ids that are belonging to the given render category as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.",
+				args = "(string RenderCategory)",
+				returns = "(Table[number][string])",
+				valuetype = "Table[number][string]"
+			},
 			getOtherIdsFromCategory =
 			{
 				type = "function",
 				description = "Gets all game object ids besides the excluded one that are belonging to the given category as lua table. Which can be traversed via 'for key, category in categories do'.",
 				args = "(GameObject excludedGameObject, string category)",
+				returns = "(Table[number][string])",
+				valuetype = "Table[number][string]"
+			},
+			getOtherIdsFromRenderCategory =
+			{
+				type = "function",
+				description = "Gets all game object ids besides the excluded one that are belonging to the given renderCategory as lua table. Which can be traversed via 'for key, renderCategory in renderCategories do'.",
+				args = "(GameObject excludedGameObject, string renderCategory)",
 				returns = "(Table[number][string])",
 				valuetype = "Table[number][string]"
 			},
@@ -9611,6 +9651,14 @@ return {
 				type = "function",
 				description = "Gets id of the given category name.",
 				args = "(string categoryName)",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			getRenderCategoryId =
+			{
+				type = "function",
+				description = "Gets id of the given renderCategory name.",
+				args = "(string renderCategoryName)",
 				returns = "(number)",
 				valuetype = "number"
 			},
