@@ -18,7 +18,6 @@ namespace NOWA
 		: GameObjectComponent(),
 		name("JoystickRemapComponent"),
 		hasParent(false),
-		isInSimulation(false),
 		widget(nullptr),
 		messageLabel(nullptr),
 		okButton(nullptr),
@@ -142,6 +141,8 @@ namespace NOWA
 
 	bool JoystickRemapComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		// Sets the event handler
 		if (nullptr != this->widget)
 		{
@@ -166,6 +167,8 @@ namespace NOWA
 
 	bool JoystickRemapComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		if (nullptr != this->okButton)
 		{
 			this->okButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &JoystickRemapComponent::buttonHit);
@@ -201,10 +204,7 @@ namespace NOWA
 
 	void JoystickRemapComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
-
 		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getPressedButton();
-
 	}
 
 	void JoystickRemapComponent::actualizeValue(Variant* attribute)
@@ -396,7 +396,7 @@ namespace NOWA
 
 	bool JoystickRemapComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		if (false == this->isInSimulation)
+		if (false == this->bIsInSimulation)
 		{
 			return false;
 		}
@@ -467,7 +467,7 @@ namespace NOWA
 	{
 		const unsigned short count = 7;
 
-		if (false == this->isInSimulation)
+		if (false == this->bIsInSimulation)
 		{
 			return false;
 		}

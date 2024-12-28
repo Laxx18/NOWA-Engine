@@ -280,7 +280,8 @@ namespace NOWA
 		void setDirection(const Ogre::Vector3& direction);
 		
 		Ogre::Vector3 getDirection(void) const;
-
+	private:
+		void setupSound(void);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrSoundName(void) { return "Sound Name"; }
@@ -309,7 +310,6 @@ namespace NOWA
 		OgreAL::Sound* sound;
 		OgreAL::SoundManager* soundManager;
 		Ogre::String oldSoundName;
-		bool isInSimulation;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
 	};

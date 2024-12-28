@@ -22,7 +22,6 @@ namespace NOWA
 		animationCount(new Variant(AnimationSequenceComponent::AttrAnimationCount(), static_cast<unsigned int>(0), this->attributes)),
 		animationBlender(nullptr),
 		skeletonVisualizer(nullptr),
-		isInSimulation(false),
 		timePosition(0.0f),
 		firstTimeRepeat(true),
 		currentAnimationIndex(0)
@@ -258,6 +257,8 @@ namespace NOWA
 
 	bool AnimationSequenceComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		if (true == this->activated->getBool())
 		{
 			this->activateAnimation();
@@ -267,6 +268,8 @@ namespace NOWA
 
 	bool AnimationSequenceComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		this->resetAnimation();
 		return true;
 	}
@@ -299,8 +302,6 @@ namespace NOWA
 
 	void AnimationSequenceComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
-
 		if (true == this->activated->getBool() && false == notSimulating)
 		{
 			if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
@@ -550,8 +551,10 @@ namespace NOWA
 			this->resetAnimation();
 		}
 
-		if (true == this->isInSimulation && true == activated)
+		if (true == this->bIsInSimulation && true == activated)
+		{
 			this->activateAnimation();
+		}
 	}
 
 	bool AnimationSequenceComponent::isActivated(void) const

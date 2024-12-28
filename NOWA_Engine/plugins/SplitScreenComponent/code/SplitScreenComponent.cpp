@@ -104,8 +104,8 @@ namespace NOWA
 
 		if (false == this->componentBeingLoaded)
 		{
-			Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f;
-			Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * 1.0f;
+			Ogre::Real windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth()/* * 0.5f*/;
+			Ogre::Real windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() /** 1.0f*/;
 
 			this->textureSize->setValue(Ogre::Vector2(windowWidth, windowHeight));
 		}
@@ -265,29 +265,24 @@ namespace NOWA
 		Ogre::TextureGpu* texture = nullptr;
 		if (false == this->textureManager->hasTextureResource(name, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
 		{
-			int windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * this->geometry->getVector4().z;
-			int windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() * this->geometry->getVector4().w;
-#if 0
-			if (false == this->transparent->getBool())
-			{
-				texture = this->textureManager->createTexture(name, Ogre::GpuPageOutStrategy::SaveToSystemRam, Ogre::TextureFlags::RenderToTexture, Ogre::TextureTypes::Type2D);
+			Ogre::TextureGpu* manualTexture = this->textureManager->createTexture("ManualTexture_" + name, GpuPageOutStrategy::SaveToSystemRam, TextureFlags::ManualTexture, TextureTypes::Type2D);
 
-				texture->setResolution(windowWidth, windowHeight);
-				texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-				texture->setNumMipmaps(1u);
-				texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-				texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-			}
-			else
-#endif
-			{
-				texture = this->textureManager->createTexture(name, Ogre::GpuPageOutStrategy::SaveToSystemRam, Ogre::TextureFlags::RenderToTexture, Ogre::TextureTypes::Type2D);
-				texture->setResolution(windowWidth, windowHeight);
-				texture->setNumMipmaps(1);
-				texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-				texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-				texture->_setNextResidencyStatus(Ogre::GpuResidency::Resident);
-			}
+			int windowWidth = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth()/* * this->geometry->getVector4().z*/;
+			int windowHeight = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight() /** this->geometry->getVector4().w*/;
+
+			manualTexture->setResolution(windowWidth, windowHeight);
+			manualTexture->scheduleTransitionTo(GpuResidency::OnStorage);
+			manualTexture->setNumMipmaps(1);
+
+			manualTexture->setPixelFormat(PFG_RGBA8_UNORM_SRGB);
+			manualTexture->scheduleTransitionTo(GpuResidency::Resident);
+
+			texture = this->textureManager->createTexture(name, GpuPageOutStrategy::Discard, TextureFlags::RenderToTexture, TextureTypes::Type2D);
+			texture->copyParametersFrom(manualTexture);
+			texture->scheduleTransitionTo(GpuResidency::Resident);
+			texture->_setDepthBufferDefaults(DepthBuffer::POOL_DEFAULT, false, PFG_D32_FLOAT);
+
+			return texture;
 		}
 		else
 		{
@@ -307,10 +302,6 @@ namespace NOWA
 
 		this->cameraComponent = cameraCompPtr.get();
 
-		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
-
-		this->cameraComponent->applySplitScreen(true, 1);
-
 		const auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 		if (nullptr == workspaceBaseCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 		{
@@ -319,12 +310,25 @@ namespace NOWA
 		}
 
 		auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
-		if (splitScreenComponents.size() > 4)
+
+		// Only use activated components
+		std::vector<boost::shared_ptr<SplitScreenComponent>> tempSplitScreenComponents;
+		for (size_t i = 0; i < splitScreenComponents.size(); i++)
+		{
+			if (true == splitScreenComponents[i]->isActivated())
+			{
+				tempSplitScreenComponents.emplace_back(splitScreenComponents[i]);
+			}
+		}
+
+		if (tempSplitScreenComponents.size() > 4)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, there are more than 4 cameras. Only 4 cameras are supported!");
 			return;
 		}
 
+		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
+		this->cameraComponent->applySplitScreen(true, tempSplitScreenComponents.size());
 		
 		this->workspaceBaseComponent = workspaceBaseCompPtr.get();
 
@@ -374,9 +378,9 @@ namespace NOWA
 
 		bool isLastComponent = false;
 		
-		if (splitScreenComponents.size() > 0)
+		if (tempSplitScreenComponents.size() > 0)
 		{
-			isLastComponent = this == splitScreenComponents[splitScreenComponents.size() - 1].get();
+			isLastComponent = this == tempSplitScreenComponents[tempSplitScreenComponents.size() - 1].get();
 		}
 
 		if (true == isLastComponent)
@@ -384,10 +388,10 @@ namespace NOWA
 			std::vector<Ogre::String> textureNames;
 			std::vector<Ogre::Vector4> geometryVectors;
 
-			for (size_t i = 0; i < splitScreenComponents.size(); i++)
+			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 			{
-				textureNames.emplace_back(splitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
-				geometryVectors.emplace_back(splitScreenComponents[i]->getGeometry());
+				textureNames.emplace_back(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+				geometryVectors.emplace_back(tempSplitScreenComponents[i]->getGeometry());
 			}
 
 			Ogre::String materialName = "DynamicSplitMaterial";
@@ -415,9 +419,9 @@ namespace NOWA
 			finalNodeDef->addTextureSourceName("rt_renderwindow", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 
 			// Add split textures as inputs
-			for (size_t i = 0; i < splitScreenComponents.size(); i++)
+			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 			{
-				finalNodeDef->addTextureSourceName(splitScreenComponents[i]->getSplitScreenTexture()->getNameStr(), i + 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				finalNodeDef->addTextureSourceName(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr(), i + 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
 			}
 
 			finalNodeDef->setNumTargetPass(1);
@@ -433,9 +437,9 @@ namespace NOWA
 				// passQuad->mMaterialName = "SplitScreen_2h";
 				passQuad->mProfilingId = "QuadPass_DynamicSplitMaterial";
 
-				for (size_t i = 0; i < splitScreenComponents.size(); i++)
+				for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 				{
-					passQuad->addQuadTextureSource(i, splitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+					passQuad->addQuadTextureSource(i, tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
 				}
 			}
 
@@ -451,7 +455,7 @@ namespace NOWA
 			workspaceDef->connectExternal(0, finalRenderingNodeName, 0);
 
 			// Connect all split textures
-			for (size_t i = 0; i < splitScreenComponents.size(); i++)
+			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 			{
 				workspaceDef->connectExternal(i + 1, finalRenderingNodeName, i + 1);
 			}
@@ -462,9 +466,9 @@ namespace NOWA
 			finalExternalChannels.push_back(Core::getSingletonPtr()->getOgreRenderWindow()->getTexture());
 
 			// Add split RTTs
-			for (size_t i = 0; i < splitScreenComponents.size(); i++)
+			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 			{
-				finalExternalChannels.push_back(splitScreenComponents[i]->getSplitScreenTexture());
+				finalExternalChannels.push_back(tempSplitScreenComponents[i]->getSplitScreenTexture());
 			}
 
 			// Is not used, just a dummy, also the finalRenderingNodeName is just a node without a scene, which just combines the textures in a shader

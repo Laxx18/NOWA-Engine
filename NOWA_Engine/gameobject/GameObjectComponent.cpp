@@ -47,6 +47,7 @@ namespace NOWA
 		occurrenceIndex(0),
 		index(0),
 		bShowDebugData(false),
+		bIsInSimulation(false),
 		bConnectedSuccess(true),
 		bIsExpanded(true),
 		bTaggedForRemovement(false),
@@ -128,6 +129,7 @@ namespace NOWA
 
 	bool GameObjectComponent::connect(void)
 	{
+		this->bIsInSimulation = true;
 		// If this game object has a lua script component, and it could not be compiled, its dangerous to connect this game object
 		auto luaScriptComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<LuaScriptComponent>());
 		if (nullptr != luaScriptComponent)
@@ -138,6 +140,12 @@ namespace NOWA
 			}
 		}
 
+		return true;
+	}
+
+	bool GameObjectComponent::disconnect(void)
+	{
+		this->bIsInSimulation = false;
 		return true;
 	}
 

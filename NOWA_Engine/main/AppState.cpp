@@ -51,6 +51,8 @@ namespace NOWA
 		// React when world has been loaded to get data
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
 
+		ProcessManager::getInstance()->attachProcess(ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 0.1f)));
+
 		// Attention: Load world is loaded at an different frame, so after that camera, etc is not available, use EventDataWorldChanged event to get data
 		if (false == this->currentWorldName.empty())
 		{

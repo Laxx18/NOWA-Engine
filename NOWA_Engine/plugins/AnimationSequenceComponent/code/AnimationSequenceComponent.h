@@ -270,7 +270,6 @@ namespace NOWA
 		Ogre::String name;
 		AnimationBlender* animationBlender;
 		SkeletonVisualizer* skeletonVisualizer;
-		bool isInSimulation;
 		Ogre::Real timePosition;
 		bool firstTimeRepeat;
 		size_t currentAnimationIndex;

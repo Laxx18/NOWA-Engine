@@ -67,11 +67,13 @@ namespace NOWA
 
 	bool PhysicsComponent::connect(void)
 	{
+		GameObjectComponent::connect();
 		return true;
 	}
 
 	bool PhysicsComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
 		if (nullptr != this->physicsBody)
 		{
 			this->physicsBody->setVelocity(Ogre::Vector3::ZERO);

@@ -24689,7 +24689,7 @@ return {
 	SplitScreenComponent =
 	{
 		type = "class",
-		description = "Usage: Can be used to render a workspace in a split screen texture.",
+		description = "Usage: Can be used to render a workspace in a split screen texture. Example: 2 player vertical split : geometry1 0.5 0 0.5 1 geometry2 0 0 0.5 1 Example: 2 player horizonal split: geometry1 0 0.5 1 0.5 geometry2 0 0 1 0.5 Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1 Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5 ",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

@@ -53,12 +53,13 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 
 	Ogre::LogManager::getSingletonPtr()->logMessage("TemplateName initialized!");
 
-	NOWA::AppStateManager::restrictFPS(true);
-
 	// Create states
 	// Attention: always use NOWA:: + name of the state if the class is located in the NOWA workspace.
+	// If another state shall be used, do e.g.:
+	// IntroState::create(NOWA::AppStateManager::getSingletonPtr(), "IntroState", "GameState");
+	// NOWA::AppStateManager::getSingletonPtr()->start("IntroState", false, NOWA::AppStateManager::ADAPTIVE);
 	GameState::create(NOWA::AppStateManager::getSingletonPtr(), "GameState", "GameState");
 
 	// Lets start with the Game
-	NOWA::AppStateManager::getSingletonPtr()->start("GameState", false, NOWA::AppStateManager::FPS_INDEPENDENT);
+	NOWA::AppStateManager::getSingletonPtr()->start("GameState", false, NOWA::AppStateManager::ADAPTIVE);
 }

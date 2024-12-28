@@ -247,6 +247,13 @@ namespace NOWA
 
 	bool CameraComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+		return true;
+	}
+
+	bool CameraComponent::disconnect(void)
+	{
+		GameObjectComponent::disconnect();
 		return true;
 	}
 
@@ -341,7 +348,7 @@ namespace NOWA
 				else
 				{
 					// If its not the active camera and not in split screen
-					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId)
+					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId && false == this->bIsInSimulation)
 					{
 						this->dummyEntity->setVisible(true);
 					}
@@ -687,7 +694,7 @@ namespace NOWA
 				AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
 			}
 
-			if (nullptr != this->dummyEntity)
+			if (false == this->bIsInSimulation && nullptr != this->dummyEntity)
 			{
 				this->dummyEntity->setVisible(true);
 			}
@@ -710,7 +717,11 @@ namespace NOWA
 			if (false == activated)
 			{
 				this->hideEntity = false;
-				this->dummyEntity->setVisible(true);
+
+				if (false == this->bIsInSimulation)
+				{
+					this->dummyEntity->setVisible(true);
+				}
 
 				// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())
 				{
@@ -756,7 +767,10 @@ namespace NOWA
 			{
 				this->eyeId = -1;
 				this->hideEntity = false;
-				this->dummyEntity->setVisible(true);
+				if (false == this->bIsInSimulation)
+				{
+					this->dummyEntity->setVisible(true);
+				}
 			}
 		}
 	}

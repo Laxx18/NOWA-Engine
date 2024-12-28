@@ -258,7 +258,6 @@ namespace NOWA
 		MyGUI::Button* okButton;
 		MyGUI::Button* abordButton;
 		bool hasParent;
-		bool isInSimulation;
 		InputDeviceModule::JoyStickButton lastButton;
 
 		Variant* activated;

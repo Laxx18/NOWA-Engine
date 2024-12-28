@@ -26,7 +26,6 @@ namespace NOWA
 		gpuParticleSystemWorld(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
-		isInSimulation(false),
 		particleInstanceId(0),
 		globalPosition(Ogre::Math::POS_INFINITY),
 		globalOrientation(Ogre::Quaternion(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
@@ -360,7 +359,8 @@ namespace NOWA
 
 	bool GpuParticlesComponent::connect(void)
 	{
-		this->isInSimulation = true;
+		GameObjectComponent::connect();
+
 		bool success = this->createParticleEffect();
 		if (true == success)
 		{
@@ -379,7 +379,7 @@ namespace NOWA
 
 	bool GpuParticlesComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
 
 		if (0 != this->particleInstanceId)
 		{
@@ -567,7 +567,7 @@ namespace NOWA
 	void GpuParticlesComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (0 != this->particleInstanceId && true == this->isInSimulation)
+		if (0 != this->particleInstanceId && true == this->bIsInSimulation)
 		{
 			if (false == activated)
 			{

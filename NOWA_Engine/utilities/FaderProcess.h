@@ -7,6 +7,7 @@
 #include "boost/weak_ptr.hpp"
 #include "OgreOverlay.h"
 #include "OgreHlmsUnlitDatablock.h"
+#include "Interpolator.h"
 
 namespace NOWA
 {
@@ -20,7 +21,7 @@ namespace NOWA
 			FADE_OUT,
 		} eFadeOperation;
 	public:
-		explicit FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Ogre::Real continueAlpha = 0.0f, Ogre::Real continueDuration = 0.0f, Ogre::Real speedMultiplier = 1.0f);
+		explicit FaderProcess(FadeOperation fadeOperation, Ogre::Real duration, Interpolator::EaseFunctions selectedEaseFunction = Interpolator::Linear, Ogre::Real continueAlpha = 0.0f, Ogre::Real continueDuration = 0.0f, Ogre::Real speedMultiplier = 1.0f);
 
 		virtual ~FaderProcess();
 
@@ -38,6 +39,8 @@ namespace NOWA
 		Ogre::Real currentDuration;
 		Ogre::Real stallDuration;
 		Ogre::Real totalDuration;
+		Interpolator::EaseFunctions selectedEaseFunction;
+		Ogre::Real continueAlpha;
 		Ogre::Real speedMultiplier;
 		Ogre::HlmsUnlitDatablock* datablock;
 		Ogre::v1::Overlay* overlay;

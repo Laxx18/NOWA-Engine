@@ -3,7 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerCommand>$(NOWA)\bin\Debug\ProjectTemplate_d.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>ogre.cfg</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>ProjectTemplateGraphics.cfg</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(NOWA)\bin\Debug</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
 </Project>

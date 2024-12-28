@@ -349,6 +349,8 @@ void ConfigPanelProject::resetSettings(void)
 	this->createProjectCheck->setStateCheck(false);
 	this->openProjectCheck->setStateCheck(false);
 	this->createStateCheck->setStateCheck(false);
+	this->createStateCheck->setEnabled(true);
+
 	this->ignoreGlobalSceneCheck->setStateCheck(false);
 	this->useV2ItemCheck->setStateCheck(!NOWA::Core::getSingletonPtr()->getUseEntityType());
 

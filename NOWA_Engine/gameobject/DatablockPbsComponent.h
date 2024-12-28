@@ -3,6 +3,8 @@
 
 #include "GameObjectComponent.h"
 
+class Ogre::HlmsDatablock;
+
 // TODO: Print info for each GO, which kind of datablock is uses, separate also unlit in own datablock component and terra
 
 namespace NOWA

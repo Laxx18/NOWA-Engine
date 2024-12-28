@@ -238,7 +238,7 @@ namespace NOWA
 			}
 			catch (std::exception& exception)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "Error in set text for Log console: " + Ogre::String(exception.what()));
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Error in set text for Log console: " + Ogre::String(exception.what()));
 			}
 			this->textChanged = false;
 		}

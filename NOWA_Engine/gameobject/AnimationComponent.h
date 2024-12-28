@@ -175,7 +175,6 @@ namespace NOWA
 		Variant* showSkeleton;
 		AnimationBlender* animationBlender;
 		SkeletonVisualizer* skeletonVisualizer;
-		bool isInSimulation;
 		AnimationBlenderObserver* animationBlenderObserver;
 	};
 

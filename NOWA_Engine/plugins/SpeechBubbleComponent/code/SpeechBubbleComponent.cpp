@@ -50,7 +50,6 @@ namespace NOWA
 		gameObjectTitleComponent(nullptr),
 		simpleSoundComponent(nullptr),
 		indices(0),
-		isInSimulation(false),
 		currentCaptionWidth(0.0f),
 		currentCaptionHeight(0.0f),
 		currentCharIndex(0),
@@ -182,6 +181,8 @@ namespace NOWA
 
 	bool SpeechBubbleComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		bool success = GameObjectComponent::connect();
 		if (false == success)
 		{
@@ -219,14 +220,13 @@ namespace NOWA
 
 		this->lineNode->setVisible(true);
 
-		this->isInSimulation = true;
-
 		return success;
 	}
 
 	bool SpeechBubbleComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
+
 		this->currentCharIndex = 0;
 		this->timeSinceLastChar = 0.0f;
 		this->timeSinceLastRun = 0.0f;
@@ -391,7 +391,7 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (false == activated)
 			{

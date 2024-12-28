@@ -269,7 +269,6 @@ namespace NOWA
 		GameObjectTitleComponent* gameObjectTitleComponent;
 		SimpleSoundComponent* simpleSoundComponent;
 		unsigned long indices;
-		bool isInSimulation;
 		Ogre::Real currentCaptionWidth;
 		Ogre::Real currentCaptionHeight;
 		unsigned short currentCharIndex;

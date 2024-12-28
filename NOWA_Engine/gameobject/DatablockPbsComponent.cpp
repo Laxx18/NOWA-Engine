@@ -1705,8 +1705,10 @@ namespace NOWA
 
 				Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
 
-				if (datablock->suggestUsingSRGB(pbsTextureType))
+				if (this->datablock->suggestUsingSRGB(pbsTextureType))
+				{
 					textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
+				}
 
 				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
 				if (Ogre::PBSM_REFLECTION == pbsTextureType)
@@ -1718,7 +1720,7 @@ namespace NOWA
 				}
 
 				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-				filters |= datablock->suggestFiltersForType(pbsTextureType);
+				filters |= this->datablock->suggestFiltersForType(pbsTextureType);
 
 				// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
 				// it will be filled with correct data when setDataBlock is called
@@ -1776,7 +1778,7 @@ namespace NOWA
 						texture = nullptr;
 					}
 
-					const Ogre::HlmsSamplerblock* tempSamplerBlock = datablock->getSamplerblock(pbsTextureType);
+					const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);
 					if (nullptr != tempSamplerBlock)
 					{
 						Ogre::HlmsSamplerblock samplerblock(*tempSamplerBlock);
@@ -1789,11 +1791,24 @@ namespace NOWA
 						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
 						samplerblock.mMaxAnisotropy = 1; // test also with -1;
 
-						datablock->setTexture(pbsTextureType, texture, &samplerblock);
+						this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
 					}
 					else
 					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
+						Ogre::HlmsSamplerblock samplerblock;
+						samplerblock.mU = Ogre::TAM_WRAP;
+						samplerblock.mV = Ogre::TAM_WRAP;
+						samplerblock.mW = Ogre::TAM_WRAP;
+
+						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
+						this->datablock->setSamplerblock(pbsTextureType, samplerblock);
+						this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
+
+						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
 					}
 				}
 				else

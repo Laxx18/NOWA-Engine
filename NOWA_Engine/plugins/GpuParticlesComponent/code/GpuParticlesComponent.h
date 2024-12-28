@@ -243,7 +243,6 @@ namespace NOWA
 		Variant* particleScale;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
-		bool isInSimulation;
 		Ogre::uint64 particleInstanceId;
 		Ogre::Vector3 globalPosition;
 		Ogre::Quaternion globalOrientation;

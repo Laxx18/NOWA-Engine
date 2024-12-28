@@ -45,7 +45,7 @@ namespace NOWA
 		 * @brief		Disconnects data to other game objects
 		 * @return		success			true, if the disconnection did work, else false
 		 */
-		virtual bool disconnect(void) { return true; }
+		virtual bool disconnect(void);
 
 		/**
 		 * @brief		In each component @onCloned is called so that each component, that has connections to other game objects,
@@ -416,6 +416,7 @@ namespace NOWA
 		short occurrenceIndex;
 		short index;
 		bool bShowDebugData;
+		bool bIsInSimulation;
 		Ogre::String customDataString;
 		bool bConnectPriority;
 	private:

@@ -348,7 +348,6 @@ namespace NOWA
 			void deleteBodyDelegate(EventDataPtr eventData);
 	private:
 		Ogre::String name;
-		bool isInSimulation;
 		GameObjectPicker* picker;
 		OIS::MouseButtonID mouseButtonId;
 		int joystickButtonId;

@@ -598,7 +598,6 @@ namespace NOWA
 		{
 			this->setTranslationEaseFunction(attribute->getListSelectedValue());
 		}
-
 		else if (TransformEaseComponent::AttrScaleActivated() == attribute->getName())
 		{
 			this->setScaleActivated(attribute->getBool());
@@ -745,8 +744,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TranslationEaseFunction"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->translationEaseFunction->getListSelectedValue())));
 		propertiesXML->append_node(propertyXML);
-
-
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));

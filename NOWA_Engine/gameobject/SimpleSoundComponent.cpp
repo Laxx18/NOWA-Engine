@@ -15,7 +15,6 @@ namespace NOWA
 	SimpleSoundComponent::SimpleSoundComponent()
 		: GameObjectComponent(),
 		sound(nullptr),
-		isInSimulation(false),
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
 		activated(new Variant(SimpleSoundComponent::AttrActivated(), false, this->attributes)),
@@ -293,42 +292,17 @@ namespace NOWA
 
 	bool SimpleSoundComponent::connect(void)
 	{
-		this->oldPosition = this->gameObjectPtr->getPosition();
-		this->oldOrientation = this->gameObjectPtr->getOrientation();
+		GameObjectComponent::connect();
 
-		if (true == this->activated->getBool())
-		{
-			if (nullptr != this->sound)
-			{
-				// Do not interrupt sound, when it is currently playing
-				if (this->sound->isPlaying())
-				{
-					return true;
-				}
-			}
-		}
-		this->createSound();
-		if (nullptr != this->sound)
-		{
-			if (true == this->activated->getBool())
-			{
-				if (this->sound->isPlaying())
-				{
-					this->sound->stop();
-				}
-				this->sound->play();
-			}
-			else
-			{
-				this->sound->stop();
-				this->destroySound();
-			}
-		}
+		this->setupSound();
+		
 		return true;
 	}
 
 	bool SimpleSoundComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		this->oldPosition = this->gameObjectPtr->getPosition();
 		this->oldOrientation = this->gameObjectPtr->getOrientation();
 
@@ -341,9 +315,7 @@ namespace NOWA
 
 	void SimpleSoundComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
-
-		if (true == this->isInSimulation && true == this->playWhenInMotion->getBool())
+		if (true == this->bIsInSimulation && true == this->playWhenInMotion->getBool())
 		{
 			bool canPlay = false;
 
@@ -505,9 +477,9 @@ namespace NOWA
 		}
 		else
 		{
-			if (true == this->isInSimulation)
+			if (true == this->bIsInSimulation)
 			{
-				this->connect();
+				this->setupSound();
 			}
 		}
 	}
@@ -802,6 +774,41 @@ namespace NOWA
 			return this->sound->getDirection();
 		}
 		return Ogre::Vector3::NEGATIVE_UNIT_Z;
+	}
+
+	void SimpleSoundComponent::setupSound(void)
+	{
+		this->oldPosition = this->gameObjectPtr->getPosition();
+		this->oldOrientation = this->gameObjectPtr->getOrientation();
+
+		if (true == this->activated->getBool())
+		{
+			if (nullptr != this->sound)
+			{
+				// Do not interrupt sound, when it is currently playing
+				if (this->sound->isPlaying())
+				{
+					return;
+				}
+			}
+		}
+		this->createSound();
+		if (nullptr != this->sound)
+		{
+			if (true == this->activated->getBool())
+			{
+				if (this->sound->isPlaying())
+				{
+					this->sound->stop();
+				}
+				this->sound->play();
+			}
+			else
+			{
+				this->sound->stop();
+				this->destroySound();
+			}
+		}
 	}
 		
 	OgreAL::Sound* SimpleSoundComponent::getSound(void) const

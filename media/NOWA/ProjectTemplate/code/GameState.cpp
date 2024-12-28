@@ -12,15 +12,20 @@ void GameState::enter(void)
 	this->currentWorldName = "ProjectTemplate/World1";
 	
 	NOWA::AppState::enter();
-
-	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+	
+	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
 }
 
 void GameState::start(const NOWA::SceneParameter& sceneParameter)
 {
-	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
-
 	// World loaded finished. Get scene manager, camera, ogrenewt etc. from scene parameter here for custom functionality
+	
+	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+}
+
+void GameState::exit(void)
+{
+	NOWA::AppState::exit();
 }
 
 void GameState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle _result)

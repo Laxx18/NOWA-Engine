@@ -1480,7 +1480,6 @@ namespace NOWA
 		Variant* stylesCount;
 		std::vector<Variant*> styles;
 
-		bool isInSimulation;
 		MyGUI::Message* messageBox;
 	};
 

@@ -370,7 +370,7 @@ void DesignState::createScene(void)
 	//entity->setDatablockOrMaterialName("GroundDirtPlane");
 	//entity->setCastShadows(true);
 
-	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, 1.0f, 0.0f, 1.0f)));
+	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
 }
 
 void DesignState::setupMyGUIWidgets(void)

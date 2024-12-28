@@ -4226,7 +4226,6 @@ namespace NOWA
 
 	MyGUIMessageBoxComponent::MyGUIMessageBoxComponent()
 		: GameObjectComponent(),
-		isInSimulation(false),
 		messageBox(nullptr)
 	{
 		this->activated = new Variant(MyGUIMessageBoxComponent::AttrActivated(), false, this->attributes);
@@ -4323,7 +4322,7 @@ namespace NOWA
 
 	void MyGUIMessageBoxComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
+
 	}
 
 	bool MyGUIMessageBoxComponent::connect(void)
@@ -4420,7 +4419,7 @@ namespace NOWA
 	void MyGUIMessageBoxComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (true == activated)
 			{
@@ -4567,7 +4566,7 @@ namespace NOWA
 
 	void MyGUIMessageBoxComponent::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			// Call also function in lua script, if it does exist in the lua script component
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->resultEventName->getString().empty())

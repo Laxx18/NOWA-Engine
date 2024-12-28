@@ -2,6 +2,7 @@
 #define FADE_COMPONENT_H
 
 #include "GameObjectComponent.h"
+#include "utilities/Interpolator.h"
 
 namespace NOWA
 {
@@ -107,6 +108,10 @@ namespace NOWA
 
 		Ogre::Real getDurationSec(void) const;
 
+		void setEaseFunction(const Ogre::String& easeFunction);
+
+		Ogre::String getEaseFunction(void) const;
+
 		/**
 		 * @brief Lua closure function gets called in order to react when the fading has completed.
 		 * @param[in] closureFunction The closure function set.
@@ -117,11 +122,14 @@ namespace NOWA
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrFadeMode(void) { return "Fade Mode"; }
 		static const Ogre::String AttrDuration(void) { return "Duration"; }
+		static const Ogre::String AttrEaseFunction(void) { return "Ease Function"; }
 	private:
 		Variant* activated;
 		Variant* fadeMode;
 		Variant* duration;
-		bool isInSimulation;
+		Variant* easeFunction;
+
+		Interpolator::EaseFunctions selectedEaseFunction;
 		luabind::object fadeCompletedClosureFunction;
 	};
 

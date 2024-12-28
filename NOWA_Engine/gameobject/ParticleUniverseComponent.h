@@ -129,7 +129,6 @@ namespace NOWA
 		Variant* particleScale;
 		Ogre::String oldParticleTemplateName;
 		bool oldActivated;
-		bool isInSimulation;
 	};
 
 }; //namespace end

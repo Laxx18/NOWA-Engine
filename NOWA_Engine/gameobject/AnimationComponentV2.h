@@ -213,7 +213,6 @@ namespace NOWA
 		void createAnimationBlender(void);
 	protected:
 		Ogre::SkeletonInstance* skeleton;
-		bool isInSimulation;
 		Variant* activated;
 		Variant* animationName;
 		Variant* animationSpeed;

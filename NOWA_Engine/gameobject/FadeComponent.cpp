@@ -13,8 +13,8 @@ namespace NOWA
 	class EXPORTED FaderLuaProcess : public FaderProcess
 	{
 	public:
-		explicit FaderLuaProcess(FaderProcess::FadeOperation fadeOperation, Ogre::Real duration, class FadeComponent* fadeComponent)
-			: FaderProcess(fadeOperation, duration),
+		explicit FaderLuaProcess(FaderProcess::FadeOperation fadeOperation, Ogre::Real duration, Interpolator::EaseFunctions selectedEaseFunction, class FadeComponent* fadeComponent)
+			: FaderProcess(fadeOperation, duration, selectedEaseFunction),
 			fadeComponent(fadeComponent)
 		{
 		
@@ -46,6 +46,7 @@ namespace NOWA
 			}
 		}
 	private:
+		Interpolator::EaseFunctions selectedEaseFunction;
 		FadeComponent* fadeComponent;
 	};
 
@@ -53,9 +54,11 @@ namespace NOWA
 
 	FadeComponent::FadeComponent()
 		: GameObjectComponent(),
+		selectedEaseFunction(Interpolator::Linear),
 		activated(new Variant(FadeComponent::AttrActivated(), true, this->attributes)),
 		fadeMode(new Variant(FadeComponent::AttrFadeMode(), { Ogre::String("FadeIn"), Ogre::String("FadeOut") }, this->attributes)),
-		duration(new Variant(FadeComponent::AttrDuration(), 5.0f, this->attributes))
+		duration(new Variant(FadeComponent::AttrDuration(), 5.0f, this->attributes)),
+		easeFunction(new Variant(FadeComponent::AttrEaseFunction(), Interpolator::getInstance()->getAllEaseFunctionNames(), this->attributes))
 	{
 	}
 
@@ -83,6 +86,11 @@ namespace NOWA
 			this->duration->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "EaseFunction")
+		{
+			this->setEaseFunction(XMLConverter::getAttrib(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -101,18 +109,18 @@ namespace NOWA
 
 	void FadeComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
+
 	}
 
 	bool FadeComponent::connect(void)
 	{
-		
+		GameObjectComponent::connect();
 		return true;
 	}
 
 	bool FadeComponent::disconnect(void)
 	{
-		
+		GameObjectComponent::disconnect();
 		return true;
 	}
 
@@ -131,6 +139,10 @@ namespace NOWA
 		else if (FadeComponent::AttrDuration() == attribute->getName())
 		{
 			this->setDurationSec(attribute->getReal());
+		}
+		else if (FadeComponent::AttrEaseFunction() == attribute->getName())
+		{
+			this->setEaseFunction(attribute->getListSelectedValue());
 		}
 	}
 
@@ -162,13 +174,19 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Duration"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->duration->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "EaseFunction"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->easeFunction->getListSelectedValue())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void FadeComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
 
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (true == activated)
 			{
@@ -183,7 +201,7 @@ namespace NOWA
 					fadeMode = FaderProcess::FadeOperation::FADE_OUT;
 				}
 		
-				ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderLuaProcess(fadeMode, this->duration->getReal(), this)));
+				ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderLuaProcess(fadeMode, this->duration->getReal(), this->selectedEaseFunction, this)));
 			}
 		}
 	}
@@ -206,13 +224,26 @@ namespace NOWA
 	void FadeComponent::setDurationSec(Ogre::Real duration)
 	{
 		if (duration < 0.0f)
+		{
 			duration = 1.0f;
+		}
 		this->duration->setValue(duration);
 	}
 
 	Ogre::Real FadeComponent::getDurationSec(void) const
 	{
 		return this->duration->getReal();
+	}
+
+	void FadeComponent::setEaseFunction(const Ogre::String& easeFunction)
+	{
+		this->easeFunction->setListSelectedValue(easeFunction);
+		this->selectedEaseFunction = Interpolator::getInstance()->mapStringToEaseFunctions(easeFunction);
+	}
+
+	Ogre::String FadeComponent::getEaseFunction(void) const
+	{
+		return this->easeFunction->getListSelectedValue();
 	}
 
 	void FadeComponent::reactOnFadeCompleted(luabind::object closureFunction)

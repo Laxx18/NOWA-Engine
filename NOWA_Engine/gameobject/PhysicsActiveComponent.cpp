@@ -56,7 +56,6 @@ namespace NOWA
 		clampedOmega(0.0f),
 		lastTime(0.0),
 		dt(0.0f),
-		isInSimulation(false),
 		usesBounds(false),
 		minBounds(Ogre::Vector3::ZERO),
 		maxBounds(Ogre::Vector3::ZERO)
@@ -349,8 +348,6 @@ namespace NOWA
 
 	void PhysicsActiveComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
-
 		if (true == this->usesBounds)
 		{
 			Ogre::Vector3 position = this->physicsBody->getPosition();
@@ -2466,7 +2463,7 @@ namespace NOWA
 
 	void PhysicsActiveComponent::updateCallback(OgreNewt::Body* body)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			double dt = (static_cast<double>(this->timer.getMilliseconds()) * 0.001) - this->lastTime;
 			this->lastTime += dt;

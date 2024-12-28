@@ -18,7 +18,6 @@ namespace NOWA
 	PickerComponent::PickerComponent()
 		: GameObjectComponent(),
 		name("PickerComponent"),
-		isInSimulation(false),
 		picker(nullptr),
 		mouseButtonId(OIS::MouseButtonID::MB_Left),
 		joystickButtonId(-1),
@@ -157,7 +156,7 @@ namespace NOWA
 
 	bool PickerComponent::connect(void)
 	{
-		this->isInSimulation = true;
+		GameObjectComponent::connect();
 
 		if (0 != this->targetId->getULong())
 		{
@@ -181,7 +180,8 @@ namespace NOWA
 
 	bool PickerComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
+
 		this->draggingStartedFirstTime = true;
 		this->draggingEndedFirstTime = true;
 		return true;
@@ -503,7 +503,7 @@ namespace NOWA
 
 	bool PickerComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (this->mouseButtonId == id && true == this->isInSimulation)
+		if (this->mouseButtonId == id && true == this->bIsInSimulation)
 		{
 			this->mouseIdPressed = true;
 		}
@@ -539,7 +539,7 @@ namespace NOWA
 
 	bool PickerComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		if (true == this->mouseIdPressed && true == this->isInSimulation && true == this->activated->getBool())
+		if (true == this->mouseIdPressed && true == this->bIsInSimulation && true == this->activated->getBool())
 		{
 			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.X.abs), static_cast<Ogre::Real>(evt.state.Y.abs)),
@@ -594,7 +594,7 @@ namespace NOWA
 
 	bool PickerComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 	{
-		if (this->joystickButtonId == button && true == this->isInSimulation && true == this->activated->getBool())
+		if (this->joystickButtonId == button && true == this->bIsInSimulation && true == this->activated->getBool())
 		{
 			this->joystickIdPressed = true;
 		}
@@ -630,7 +630,7 @@ namespace NOWA
 
 	bool PickerComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		if (true == this->joystickIdPressed && true == this->isInSimulation && true == this->activated->getBool())
+		if (true == this->joystickIdPressed && true == this->bIsInSimulation && true == this->activated->getBool())
 		{
 			this->picker->grabGameObject(AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt(),
 										 Ogre::Vector2(static_cast<Ogre::Real>(evt.state.mAxes[0].abs), static_cast<Ogre::Real>(evt.state.mAxes[1].abs)),

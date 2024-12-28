@@ -32,9 +32,9 @@ namespace NOWA
 	protected:
 		virtual void onInit(void) override
 		{
-			// Show black picture
-			FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
-			Ogre::Root::getSingletonPtr()->renderOneFrame();
+			// Shows black picture
+			// FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
+			// Ogre::Root::getSingletonPtr()->renderOneFrame();
 			
 			this->succeed();
 			
@@ -75,8 +75,8 @@ namespace NOWA
 				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
 			}*/
 
-			NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
-			Ogre::Root::getSingletonPtr()->renderOneFrame();
+			// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+			// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 			// Set the data for a state
 			NOWA::SceneParameter sceneParameter;
@@ -153,9 +153,9 @@ namespace NOWA
 					return;
 				}
 
-				// Show black picture
-				FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
-				Ogre::Root::getSingletonPtr()->renderOneFrame();
+				// Shows black picture
+				// FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
+				// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->resetContent();
 
@@ -193,8 +193,8 @@ namespace NOWA
 					NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
 				}*/
 
-				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
-				Ogre::Root::getSingletonPtr()->renderOneFrame();
+				// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
+				// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 				// Set the data for a state
 				NOWA::SceneParameter sceneParameter;

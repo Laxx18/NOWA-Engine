@@ -536,7 +536,6 @@ namespace NOWA
 		double lastTime;
 		Ogre::Real dt;
 		Ogre::Timer timer;
-		bool isInSimulation;
 		bool usesBounds;
 		Ogre::Vector3 minBounds;
 		Ogre::Vector3 maxBounds;

@@ -264,7 +264,6 @@ namespace NOWA
 	private:
 		Ogre::String name;
 		SelectionManager* selectionManager;
-		bool isInSimulation;
 		luabind::object closureFunction;
 
 		Variant* activated;

@@ -19,7 +19,6 @@ namespace NOWA
 		indices(0),
 		orientationTargetGameObject(nullptr),
 		gameObjectTitleComponent(nullptr),
-		isInSimulation(false),
 		activated(new Variant(ValueBarComponent::AttrActivated(), true, this->attributes)),
 		twoSided(new Variant(ValueBarComponent::AttrTwoSided(), true, this->attributes)),
 		innerColor(new Variant(ValueBarComponent::AttrInnerColor(), Ogre::Vector3(1.0f, 0.0f, 0.0f), this->attributes)),
@@ -186,15 +185,13 @@ namespace NOWA
 		}
 
 		this->createValueBar();
-
-		this->isInSimulation = true;
 		
 		return success;
 	}
 
 	bool ValueBarComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
 
 		this->destroyValueBar();
 
@@ -385,7 +382,7 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (false == activated)
 			{

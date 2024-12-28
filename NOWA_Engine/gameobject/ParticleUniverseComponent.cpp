@@ -17,7 +17,6 @@ namespace NOWA
 		particleNode(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
-		isInSimulation(false),
 		activated(new Variant(ParticleUniverseComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleUniverseComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleUniverseComponent::AttrRepeat(), false, this->attributes)),
@@ -269,7 +268,8 @@ namespace NOWA
 
 	bool ParticleUniverseComponent::connect(void)
 	{
-		this->isInSimulation = true;
+		GameObjectComponent::connect();
+
 		bool success = this->createParticleEffect();
 		if (true == success)
 		{
@@ -286,7 +286,7 @@ namespace NOWA
 
 	bool ParticleUniverseComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
 		// this->destroyParticleEffect();
 		if (nullptr != this->particle)
 		{
@@ -451,7 +451,7 @@ namespace NOWA
 	void ParticleUniverseComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (nullptr != this->particle && true == this->isInSimulation)
+		if (nullptr != this->particle && true == this->bIsInSimulation)
 		{
 			if (false == activated)
 			{

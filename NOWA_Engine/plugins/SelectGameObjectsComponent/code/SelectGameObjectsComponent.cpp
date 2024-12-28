@@ -52,7 +52,6 @@ namespace NOWA
 	SelectGameObjectsComponent::SelectGameObjectsComponent()
 		: GameObjectComponent(),
 		name("SelectGameObjectsComponent"),
-		isInSimulation(false),
 		activated(new Variant(SelectGameObjectsComponent::AttrActivated(), true, this->attributes)),
 		categories(new Variant(SelectGameObjectsComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useMultiSelection(new Variant(SelectGameObjectsComponent::AttrUseMultiSelection(), true, this->attributes)),
@@ -156,17 +155,18 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
 		this->setCategories(this->categories->getString());
-		
-		this->isInSimulation = true;
 		
 		return true;
 	}
 
 	bool SelectGameObjectsComponent::disconnect(void)
 	{
-		this->isInSimulation = false;
+		GameObjectComponent::disconnect();
+
 		return true;
 	}
 
@@ -320,7 +320,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::keyPressed(const OIS::KeyEvent& keyEventRef)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (true == this->useMultiSelection->getBool())
 			{
@@ -333,7 +333,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::keyReleased(const OIS::KeyEvent& keyEventRef)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (true == this->useMultiSelection->getBool())
 			{
@@ -345,7 +345,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			if (nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget())
 			{
@@ -357,7 +357,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			this->selectionManager->handleMouseRelease(evt, id);
 
@@ -416,7 +416,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		if (true == this->isInSimulation)
+		if (true == this->bIsInSimulation)
 		{
 			// this->selectionManager->isSelecting = false;
 

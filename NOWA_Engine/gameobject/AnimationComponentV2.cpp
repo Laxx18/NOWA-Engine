@@ -64,7 +64,6 @@ namespace NOWA
 	AnimationComponentV2::AnimationComponentV2()
 		: GameObjectComponent(),
 		skeleton(nullptr),
-		isInSimulation(false),
 		animationBlender(nullptr),
 		activated(new Variant(AnimationComponentV2::AttrActivated(), true, this->attributes)),
 		animationName(new Variant(AnimationComponentV2::AttrName(), std::vector<Ogre::String>(), this->attributes)),
@@ -184,6 +183,7 @@ namespace NOWA
 
 	bool AnimationComponentV2::connect(void)
 	{
+		GameObjectComponent::connect();
 		if (true == this->activated->getBool())
 		{
 			this->activateAnimation();
@@ -193,6 +193,7 @@ namespace NOWA
 
 	bool AnimationComponentV2::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
 		this->resetAnimation();
 		return true;
 	}
@@ -229,8 +230,6 @@ namespace NOWA
 	
 	void AnimationComponentV2::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isInSimulation = !notSimulating;
-
 		if (true == this->activated->getBool() && false == notSimulating)
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponentV2] weight: " + Ogre::StringConverter::toString(this->animationState->getWeight()));
@@ -403,7 +402,7 @@ namespace NOWA
 			// this->resetAnimation();
 		}
 
-		if (true == this->isInSimulation && true == activated)
+		if (true == this->bIsInSimulation && true == activated)
 		{
 			this->activateAnimation();
 		}
