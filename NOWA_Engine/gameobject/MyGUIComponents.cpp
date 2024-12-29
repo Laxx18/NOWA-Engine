@@ -122,7 +122,7 @@ namespace NOWA
 		parentId(new Variant(MyGUIComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->id->setReadOnly(true);
-		this->layer->setListSelectedValue("Wallpaper");
+		this->layer->setListSelectedValue("Back");
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->skin = nullptr; // Is created in each derived MyGUI Component
 	}
@@ -326,11 +326,13 @@ namespace NOWA
 
 	void MyGUIComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isSimulating = !notSimulating;
+	
 	}
 
 	bool MyGUIComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		this->oldCoordinate = Ogre::Vector4(static_cast<Ogre::Real>(this->widget->getCoord().left), static_cast<Ogre::Real>(this->widget->getCoord().top),
 											static_cast<Ogre::Real>(this->widget->getCoord().width), static_cast<Ogre::Real>(this->widget->getCoord().height));
 
@@ -342,6 +344,8 @@ namespace NOWA
 
 	bool MyGUIComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		// Causes wrong position if position was one time wrong
 #if 0
 		// Reset transform as precaution
@@ -1273,47 +1277,6 @@ namespace NOWA
 		// widget->castType<MyGUI::EditBox>()->setOnlyText
 		// widget->castType<MyGUI::EditBox>()->setTextAlign(MyGUI::Align::Left);
 		// widget->castType<MyGUI::EditBox>()->setEditPassword
-
-		// Skin: Window, WindowC, WindowCX, WindowCS, WindowCSX
-		// widget->castType<MyGUI::Window>()->setMovable
-		// widget->castType<MyGUI::Window>()->setSnap
-		
-	
-		// widget->castType<MyGUI::Button>()->setCaption
-		// widget->castType<MyGUI::Button>()->setCaptionWithReplacing
-		// widget->castType<MyGUI::Button>()->eventMouseButtonClick
-
-		// widget->castType<MyGUI::EditBox>()->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUITextComponent::rootMouseChangeFocus);
-
-		// widget->castType<MyGUI::Button>()->setStateSelected
-		
-		// MyGUI::ImageBox
-		// widget->castType<MyGUI::ImageBox>()->setImageTexture
-		/*
-		void setImageRect(const IntRect& _value);
-
-		 Set _coord - part of texture where we take tiles
-		void setImageCoord(const IntCoord& _value);
-
-		Set _tile size 
-		void setImageTile(const IntSize& _value);
-
-		/** Set current tile index
-		@param _index - tile index
-		@remarks Tiles in file start numbering from left to right and from top to bottom.
-		\n For example:\n
-		<pre>
-		+---+---+---+
-		| 0 | 1 | 2 |
-		+---+---+---+
-		| 3 | 4 | 5 |
-		+---+---+---+
-		</pre>
-		
-		void setImageIndex(size_t _index);
-		
-
-		*/
 	}
 
 	void MyGUITextComponent::mouseButtonClick(MyGUI::Widget* sender)
@@ -4226,7 +4189,8 @@ namespace NOWA
 
 	MyGUIMessageBoxComponent::MyGUIMessageBoxComponent()
 		: GameObjectComponent(),
-		messageBox(nullptr)
+		messageBox(nullptr),
+		isSimulating(false)
 	{
 		this->activated = new Variant(MyGUIMessageBoxComponent::AttrActivated(), false, this->attributes);
 		this->title = new Variant(MyGUIMessageBoxComponent::AttrTitle(), "My Title", this->attributes);
@@ -4322,7 +4286,7 @@ namespace NOWA
 
 	void MyGUIMessageBoxComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-
+		this->isSimulating = !notSimulating;
 	}
 
 	bool MyGUIMessageBoxComponent::connect(void)
@@ -4419,7 +4383,7 @@ namespace NOWA
 	void MyGUIMessageBoxComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (true == this->bIsInSimulation)
+		if (true == this->isSimulating)
 		{
 			if (true == activated)
 			{
@@ -4566,7 +4530,7 @@ namespace NOWA
 
 	void MyGUIMessageBoxComponent::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->isSimulating)
 		{
 			// Call also function in lua script, if it does exist in the lua script component
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->resultEventName->getString().empty())
@@ -4651,8 +4615,7 @@ namespace NOWA
 
 	void MyGUITrackComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->isSimulating = !notSimulating;
-		if (true == this->isSimulating)
+		if (false == notSimulating)
 		{
 			if (nullptr != this->camera && nullptr != this->widget)
 			{
@@ -4702,6 +4665,8 @@ namespace NOWA
 
 	bool MyGUITrackComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		GameObjectPtr cameraGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraId->getULong());
 		if (nullptr != cameraGameObjectPtr)
 		{
@@ -4731,6 +4696,8 @@ namespace NOWA
 
 	bool MyGUITrackComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		this->camera = nullptr;
 		this->widget = nullptr;
 

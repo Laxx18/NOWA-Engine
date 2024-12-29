@@ -64,7 +64,8 @@ namespace NOWA
 		showSkeleton(new Variant(AnimationComponent::AttrShowSkeleton(), false, this->attributes)),
 		animationBlender(nullptr),
 		skeletonVisualizer(nullptr),
-		animationBlenderObserver(nullptr)
+		animationBlenderObserver(nullptr),
+		bIsInSimulation(false)
 	{
 		
 	}
@@ -230,6 +231,8 @@ namespace NOWA
 
 	void AnimationComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (true == this->activated->getBool() && false == notSimulating)
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] weight: " + Ogre::StringConverter::toString(this->animationState->getWeight()));

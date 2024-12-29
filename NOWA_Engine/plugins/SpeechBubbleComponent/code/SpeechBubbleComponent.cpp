@@ -56,6 +56,7 @@ namespace NOWA
 		timeSinceLastRun(0.0f),
 		couldDraw(false),
 		speechDone(false),
+		bIsInSimulation(false),
 		activated(new Variant(SpeechBubbleComponent::AttrActivated(), true, this->attributes)),
 		caption(new Variant(SpeechBubbleComponent::AttrCaption(), "MyCaption", this->attributes)),
 		runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
@@ -247,6 +248,8 @@ namespace NOWA
 
 	void SpeechBubbleComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (false == notSimulating)
 		{
 			if (nullptr == this->manualObject)

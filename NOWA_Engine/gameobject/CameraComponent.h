@@ -198,6 +198,7 @@ namespace NOWA
 		Ogre::Real timeSinceLastUpdate;
 		WorkspaceBaseComponent* workspaceBaseComponent;
 		int eyeId;
+		bool bIsInSimulation;
 	};
 
 }; //namespace end

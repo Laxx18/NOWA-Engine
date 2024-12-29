@@ -17,6 +17,7 @@ namespace NOWA
 		sound(nullptr),
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
+		bIsInSimulation(false),
 		activated(new Variant(SimpleSoundComponent::AttrActivated(), false, this->attributes)),
 		soundName(new Variant(SimpleSoundComponent::AttrSoundName(), "Health.wav", this->attributes)),
 		volume(new Variant(SimpleSoundComponent::AttrVolume(), 100.0f, this->attributes)),
@@ -315,6 +316,8 @@ namespace NOWA
 
 	void SimpleSoundComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (true == this->bIsInSimulation && true == this->playWhenInMotion->getBool())
 		{
 			bool canPlay = false;

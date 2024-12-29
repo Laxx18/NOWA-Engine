@@ -17,7 +17,6 @@ namespace NOWA
 		controllerItem(nullptr),
 		sourceWidget(nullptr),
 		sourceMyGUIComponent(nullptr),
-		isInSimulation(false),
 		oldCoordinate(Ogre::Vector4::ZERO),
 		activated(new Variant(MyGUIControllerComponent::AttrActivated(), true, this->attributes)),
 		sourceId(new Variant(MyGUIControllerComponent::AttrSourceId(), static_cast<unsigned long>(0), this->attributes, true))
@@ -54,18 +53,20 @@ namespace NOWA
 		return true;
 	}
 
-	void MyGUIControllerComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		this->isInSimulation = !notSimulating;
-	}
-
 	bool MyGUIControllerComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		if (nullptr != this->sourceWidget && nullptr != this->controllerItem)
 		{
 			// If the controller succeeded, it will be deleted internally!
 			this->controllerItem = nullptr;
 			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+		}
+
+		if (false == this->activated->getBool())
+		{
+			return true;
 		}
 
 		for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
@@ -86,12 +87,16 @@ namespace NOWA
 			}
 		}
 
+		this->activateController(this->activated->getBool());
+
 		return true;
 	}
 
 	bool MyGUIControllerComponent::disconnect(void)
 	{
-		
+		GameObjectComponent::disconnect();
+
+		this->activateController(false);
 		return true;
 	}
 	
@@ -178,25 +183,14 @@ namespace NOWA
 	void MyGUIControllerComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (true == this->isInSimulation)
-		{
-			if (true == activated)
-			{
-				this->connect();
-				this->activateController(activated);
-			}
-		}
-		if (false == activated)
-		{
-			this->activateController(activated);
-			this->disconnect();
-		}
 	}
 
 	void MyGUIControllerComponent::activateController(bool bActivate)
 	{
 		if (nullptr != this->sourceWidget)
 		{
+			this->sourceMyGUIComponent->refreshTransform();
+
 			if (true == bActivate)
 			{
 				// Store old coordinate, because widget will be moved
@@ -213,6 +207,7 @@ namespace NOWA
 					// Set widget to old coordinate
 					this->sourceWidget->setCoord(static_cast<int>(this->oldCoordinate.x), static_cast<int>(this->oldCoordinate.y),
 												 static_cast<int>(this->oldCoordinate.z), static_cast<int>(this->oldCoordinate.w));
+
 
 					MyGUI::FloatCoord oldRelativeCoord = MyGUI::CoordConverter::convertToRelative(MyGUI::IntCoord(this->oldCoordinate.x, this->oldCoordinate.y, this->oldCoordinate.z, this->oldCoordinate.w), MyGUI::RenderManager::getInstance().getViewSize());
 
@@ -298,23 +293,32 @@ namespace NOWA
 	bool MyGUIPositionControllerComponent::connect(void)
 	{
 		bool success = MyGUIControllerComponent::connect();
-		
+
 		if (nullptr == this->controllerItem)
 		{
 			MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
 			this->controllerItem = item->castType<MyGUI::ControllerPosition>();
 
+			// Event: After each animation frame
+			this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
+
+
 			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
 		}
-		
+
 		if (true == this->activated->getBool())
 		{
 			if (nullptr != this->sourceWidget)
 			{
-				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+				// this->sourceMyGUIComponent->refreshTransform();
 
+				// Remove any existing controllers
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+
+				// Set transition duration
 				this->controllerItem->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
 
+				// Set the desired easing function
 				if (this->function->getListSelectedValue() == "Inertional")
 					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::inertionalMoveFunction));
 				else if (this->function->getListSelectedValue() == "Accelerated")
@@ -323,7 +327,8 @@ namespace NOWA
 					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::acceleratedMoveFunction<4>));
 				else
 					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::jumpMoveFunction<5>));
-		
+
+				// Calculate target coordinates
 				Ogre::Vector4 tempCoordinate = this->coordinate->getVector4();
 				MyGUI::FloatSize relWidgetSize = MyGUI::CoordConverter::convertToRelative(this->sourceWidget->getSize(), MyGUI::RenderManager::getInstance().getViewSize());
 
@@ -333,7 +338,11 @@ namespace NOWA
 					tempCoordinate.w = relWidgetSize.height;
 
 				MyGUI::FloatCoord floatCoord(tempCoordinate.x, tempCoordinate.y, tempCoordinate.z, tempCoordinate.w);
-				this->controllerItem->castType<MyGUI::ControllerPosition>()->setCoord(MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
+				this->controllerItem->castType<MyGUI::ControllerPosition>()->setCoord(
+					MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
+
+				// Apply controller to the widget
+				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
 			}
 		}
 		return success;
@@ -341,17 +350,14 @@ namespace NOWA
 
 	bool MyGUIPositionControllerComponent::disconnect(void)
 	{
-		if (nullptr != this->sourceWidget)
-		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-		}
+		this->activateController(false);
 
 		if (nullptr != this->controllerItem)
 		{
 			// If the controller succeeded, it will be deleted internally!
 			this->controllerItem = nullptr;
 		}
-		
+
 		return MyGUIControllerComponent::disconnect();
 	}
 
@@ -359,6 +365,15 @@ namespace NOWA
 	{
 		// Bad, as the widget will get its init position and not the target one
 		// this->disconnect();
+	}
+
+	void MyGUIPositionControllerComponent::onFrameUpdate(MyGUI::Widget* widget, MyGUI::ControllerItem* controller)
+	{
+		// Important, so that child widgets remain their transform during parent widget transform
+		if (nullptr != this->sourceMyGUIComponent)
+		{
+			this->sourceMyGUIComponent->refreshTransform();
+		}
 	}
 
 	void MyGUIPositionControllerComponent::actualizeValue(Variant* attribute)
@@ -450,7 +465,8 @@ namespace NOWA
 		alpha(new Variant(MyGUIFadeAlphaControllerComponent::AttrAlpha(), Ogre::Real(1.0f), this->attributes)),
 		coefficient(new Variant(MyGUIFadeAlphaControllerComponent::AttrCoefficient(), Ogre::Real(1.0f), this->attributes))
 	{
-		
+		this->alpha->setDescription("Sets the target alpha. If its desired to start with invisible widget and fade in, set alpha to 0.");
+		this->coefficient->setDescription("Controlls the speed of the alpha changes. If its desired to start with invisible widget and fade in, set alpha to 0.");
 	}
 
 	MyGUIFadeAlphaControllerComponent::~MyGUIFadeAlphaControllerComponent()
@@ -464,12 +480,12 @@ namespace NOWA
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Alpha")
 		{
-			this->alpha->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			this->setAlpha(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Coefficient")
 		{
-			this->coefficient->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
+			this->setCoefficient(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -504,8 +520,6 @@ namespace NOWA
 		{
 			if (nullptr != this->sourceWidget)
 			{
-				this->activated->setValue(activated);
-
 				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
 				if (nullptr == this->controllerItem)
 				{
@@ -517,6 +531,17 @@ namespace NOWA
 
 				// Store old alpha, because alpha will be changed
 				this->oldAlpha = this->sourceWidget->getAlpha();
+
+				// Determine the fade target from the property
+				Ogre::Real targetAlpha = this->alpha->getReal(); // Desired target alpha (0.0f or 1.0f)
+				Ogre::Real currentAlpha = this->sourceWidget->getAlpha();
+
+				// Force-reset alpha if already at the target to ensure animation triggers
+				if (currentAlpha == targetAlpha)
+				{
+					// Temporarily set to the opposite alpha
+					this->sourceWidget->setAlpha((targetAlpha == 1.0f) ? 0.0f : 1.0f);
+				}
 
 				this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setAlpha(this->alpha->getReal());
 				this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setCoef(this->coefficient->getReal());
@@ -571,7 +596,7 @@ namespace NOWA
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Alpha"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->alpha->getVector4())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->alpha->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -603,6 +628,10 @@ namespace NOWA
 		
 	void MyGUIFadeAlphaControllerComponent::setCoefficient(Ogre::Real coefficient)
 	{
+		if (coefficient <= 0.0f)
+		{
+			coefficient = 0.01f;
+		}
 		this->coefficient->setValue(coefficient);
 	}
 		
@@ -734,6 +763,14 @@ namespace NOWA
 
 	bool MyGUIScrollingMessageControllerComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
+		if (nullptr != this->controllerItem)
+		{
+			// If the controller succeeded, it will be deleted internally!
+			this->controllerItem = nullptr;
+		}
+
 		this->timeToGo = 0.0f;
 		this->justAdded = false;
 		if (nullptr != this->sourceWidget)
@@ -1055,7 +1092,6 @@ namespace NOWA
 		if (nullptr != this->controllerItem)
 		{
 			// If the controller succeeded, it will be deleted internally!
-			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
 			this->controllerItem = nullptr;
 		}
 		if (nullptr != this->sourceWidget)

@@ -27,6 +27,7 @@ namespace NOWA
 		body(nullptr),
 		draggingStartedFirstTime(true),
 		draggingEndedFirstTime(true),
+		bIsInSimulation(false),
 		activated(new Variant(PickerComponent::AttrActivated(), true, this->attributes)),
 		targetId(new Variant(PickerComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		offsetPosition(new Variant(PickerComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
@@ -248,10 +249,7 @@ namespace NOWA
 	
 	void PickerComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating)
-		{
-			// Do something
-		}
+		this->bIsInSimulation = !notSimulating;
 	}
 
 	void PickerComponent::actualizeValue(Variant* attribute)

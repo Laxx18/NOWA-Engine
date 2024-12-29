@@ -295,7 +295,7 @@ namespace NOWA
 
 	void DistributedComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getRakNetModule()->isServer() && true == notSimulating && true == AppStateManager::getSingletonPtr()->getRakNetModule()->isNetworkSzenario())
+		if (false == AppStateManager::getSingletonPtr()->getRakNetModule()->isServer() && false == notSimulating && true == AppStateManager::getSingletonPtr()->getRakNetModule()->isNetworkSzenario())
 		{
 			unsigned long pastTime = 0;
 			Ogre::Vector3 position;

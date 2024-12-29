@@ -416,7 +416,6 @@ namespace NOWA
 		short occurrenceIndex;
 		short index;
 		bool bShowDebugData;
-		bool bIsInSimulation;
 		Ogre::String customDataString;
 		bool bConnectPriority;
 	private:

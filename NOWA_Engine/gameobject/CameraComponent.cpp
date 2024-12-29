@@ -24,6 +24,7 @@ namespace NOWA
 		timeSinceLastUpdate(5.0f),
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
+		bIsInSimulation(false),
 		active(new Variant(CameraComponent::AttrActive(), false, this->attributes)),
 		position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		orientation(new Variant(CameraComponent::AttrOrientation(), Ogre::Vector3::ZERO, this->attributes)),
@@ -333,6 +334,8 @@ namespace NOWA
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (nullptr != dummyEntity && true == this->hideEntity)
 		{
 			if (true == this->dummyEntity->isVisible() && false == this->showDummyEntity->getBool())
@@ -348,7 +351,7 @@ namespace NOWA
 				else
 				{
 					// If its not the active camera and not in split screen
-					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId && false == this->bIsInSimulation)
+					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId && true == notSimulating)
 					{
 						this->dummyEntity->setVisible(true);
 					}

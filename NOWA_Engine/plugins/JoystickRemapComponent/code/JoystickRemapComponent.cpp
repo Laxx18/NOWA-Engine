@@ -23,6 +23,7 @@ namespace NOWA
 		okButton(nullptr),
 		abordButton(nullptr),
 		lastButton(InputDeviceModule::BUTTON_NONE),
+		bIsInSimulation(false),
 		activated(new Variant(JoystickRemapComponent::AttrActivated(), true, this->attributes)),
 		deviceName(new Variant(JoystickRemapComponent::AttrDeviceName(), Ogre::String(""), this->attributes)),
 		relativePosition(new Variant(JoystickRemapComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
@@ -204,6 +205,8 @@ namespace NOWA
 
 	void JoystickRemapComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getPressedButton();
 	}
 

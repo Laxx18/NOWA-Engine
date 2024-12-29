@@ -19,6 +19,7 @@ namespace NOWA
 		indices(0),
 		orientationTargetGameObject(nullptr),
 		gameObjectTitleComponent(nullptr),
+		bIsInSimulation(false),
 		activated(new Variant(ValueBarComponent::AttrActivated(), true, this->attributes)),
 		twoSided(new Variant(ValueBarComponent::AttrTwoSided(), true, this->attributes)),
 		innerColor(new Variant(ValueBarComponent::AttrInnerColor(), Ogre::Vector3(1.0f, 0.0f, 0.0f), this->attributes)),
@@ -203,6 +204,8 @@ namespace NOWA
 
 	void ValueBarComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (false == notSimulating)
 		{
 			if (nullptr == this->manualObject)

@@ -64,11 +64,6 @@ namespace NOWA
 		*/
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) = 0;
 
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
-
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("MyGUIControllerComponent");
@@ -135,7 +130,6 @@ namespace NOWA
 		MyGUI::ControllerItem* controllerItem;
 		MyGUI::Widget* sourceWidget;
 		MyGUIComponent* sourceMyGUIComponent;
-		bool isInSimulation;
 		Ogre::Real elapsedTime;
 		Ogre::Vector4 oldCoordinate;
 	};
@@ -238,6 +232,8 @@ namespace NOWA
 		static const Ogre::String AttrDurationSec(void) { return "Duration (Sec)"; }
 	protected:
 		virtual void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller) override;
+
+		void onFrameUpdate(MyGUI::Widget* widget, MyGUI::ControllerItem* controller);
 	private:
 		Variant* coordinate;
 		Variant* function;
@@ -333,7 +329,7 @@ namespace NOWA
 
 		Ogre::Real getCoefficient(void) const;
 	public:
-		static const Ogre::String AttrAlpha(void) { return "Alpha"; }
+		static const Ogre::String AttrAlpha(void) { return "Target Alpha"; }
 		static const Ogre::String AttrCoefficient(void) { return "Coefficient"; }
 	protected:
 		void controllerFinished(MyGUI::Widget* sender, MyGUI::ControllerItem* controller);

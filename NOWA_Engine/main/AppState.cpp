@@ -456,7 +456,7 @@ namespace NOWA
 			this->ogreRecastModule->update(dt);
 			this->particleUniverseModule->update(dt); // PlayerControllerComponents are using this directly for smoke effect etc.
 			// Update the GameObjects
-			this->gameObjectController->update(dt, false);
+			this->gameObjectController->update(dt);
 		}
 	}
 
@@ -465,7 +465,7 @@ namespace NOWA
 		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
 		{
 			// Late update the GameObjects
-			this->gameObjectController->lateUpdate(dt, false);
+			this->gameObjectController->lateUpdate(dt);
 		}
 	}
 

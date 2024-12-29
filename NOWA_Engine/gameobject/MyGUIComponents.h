@@ -216,6 +216,8 @@ namespace NOWA
 		 * @param[in] closureFunction The closure function set.
 		 */
 		void reactOnMouseLeave(luabind::object closureFunction);
+
+		void refreshTransform(void);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrPosition(void) { return "Position"; }
@@ -241,8 +243,6 @@ namespace NOWA
 		Ogre::String mapAlignToString(MyGUI::Align align);
 
 		void internalSetPriorId(unsigned long priorId);
-
-		void refreshTransform(void);
 
 		MyGUI::Widget* findWidgetAtPosition(MyGUI::Widget* root, const MyGUI::IntPoint& position);
 
@@ -1481,6 +1481,7 @@ namespace NOWA
 		std::vector<Variant*> styles;
 
 		MyGUI::Message* messageBox;
+		bool isSimulating;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

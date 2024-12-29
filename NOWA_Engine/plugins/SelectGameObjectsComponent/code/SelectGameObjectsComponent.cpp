@@ -52,6 +52,7 @@ namespace NOWA
 	SelectGameObjectsComponent::SelectGameObjectsComponent()
 		: GameObjectComponent(),
 		name("SelectGameObjectsComponent"),
+		bIsInSimulation(false),
 		activated(new Variant(SelectGameObjectsComponent::AttrActivated(), true, this->attributes)),
 		categories(new Variant(SelectGameObjectsComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useMultiSelection(new Variant(SelectGameObjectsComponent::AttrUseMultiSelection(), true, this->attributes)),
@@ -315,7 +316,7 @@ namespace NOWA
 
 	void SelectGameObjectsComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		
+		this->bIsInSimulation = !notSimulating;
 	}
 
 	bool SelectGameObjectsComponent::keyPressed(const OIS::KeyEvent& keyEventRef)

@@ -500,6 +500,8 @@ namespace NOWA
 		Ogre::Vector3 forceForVelocity;
 		bool canAddForceForVelocity;
 		bool bResetForce;
+		bool bIsInSimulation;
+
 		Variant* activated;
 		Variant* force;
 		Variant* gravity;

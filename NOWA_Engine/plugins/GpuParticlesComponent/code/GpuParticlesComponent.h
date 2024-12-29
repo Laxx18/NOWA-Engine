@@ -246,6 +246,7 @@ namespace NOWA
 		Ogre::uint64 particleInstanceId;
 		Ogre::Vector3 globalPosition;
 		Ogre::Quaternion globalOrientation;
+		bool bIsInSimulation;
 	};
 
 }; // namespace end

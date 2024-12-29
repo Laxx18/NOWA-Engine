@@ -17,6 +17,7 @@ namespace NOWA
 		particleNode(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
+		bIsInSimulation(false),
 		activated(new Variant(ParticleUniverseComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleUniverseComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleUniverseComponent::AttrRepeat(), false, this->attributes)),
@@ -309,6 +310,8 @@ namespace NOWA
 
 	void ParticleUniverseComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (false == notSimulating && nullptr != this->particle)
 		{
 			// Only play activated particle effect

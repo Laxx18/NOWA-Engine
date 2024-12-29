@@ -53,6 +53,7 @@ namespace NOWA
 		forceForVelocity(Ogre::Vector3::ZERO),
 		canAddForceForVelocity(false),
 		bResetForce(false),
+		bIsInSimulation(false),
 		clampedOmega(0.0f),
 		lastTime(0.0),
 		dt(0.0f),
@@ -348,6 +349,8 @@ namespace NOWA
 
 	void PhysicsActiveComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		this->bIsInSimulation = !notSimulating;
+
 		if (true == this->usesBounds)
 		{
 			Ogre::Vector3 position = this->physicsBody->getPosition();
