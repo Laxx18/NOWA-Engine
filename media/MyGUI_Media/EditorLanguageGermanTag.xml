@@ -152,7 +152,7 @@
 	<Tag name="AddVariable">Variable hinzufuegen</Tag>
 	<Tag name="CreateCPlusPlusProject">C++ Projekt für Szenen erzeugen</Tag>
 	<Tag name="OpenLog">Log Datei oeffnen</Tag>
-	<Tag name="CopyScene">Szene kopieren</Tag>
+	<Tag name="CopyScene">Szene kopieren nach...</Tag>
 	<Tag name="ComponentName">Name der Komponente:</Tag>
 	<Tag name="Close">Beenden</Tag>
 	<Tag name="SaveGroup">Gruppe Speichern</Tag>

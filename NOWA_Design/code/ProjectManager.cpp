@@ -788,24 +788,22 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 		}
 		else if (this->openSaveFileDialog->getMode() == "CopyScene")
 		{
-			if (false == this->checkProjectExists(this->projectParameter.projectName + "/" + this->openSaveFileDialog->getFileName() + ".scene"))
-			{
-				// NOWA::DeployResourceModule::getInstance()->copyScene(currentFilePathName + ".scene", newFilePathName + ".scene");
-				Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
-				// Remove the scene extension, because its added in dot scene import module automatically
-				size_t found = tempFileName.find(".");
-				if (Ogre::String::npos != found)
-				{
-					tempFileName = tempFileName.substr(0, found);
-				}
+			Ogre::String tempFileName = this->openSaveFileDialog->getCurrentFolder();
+			tempFileName += "/" + this->openSaveFileDialog->getFileName();
 
-				if (nullptr != this->dotSceneExportModule)
-				{
-					delete this->dotSceneExportModule;
-					this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
-				}
-				this->dotSceneExportModule->copyScene(this->projectParameter.sceneName, this->projectParameter.projectName, tempFileName, "Projects");
+			// Remove the scene extension, because its added in dot scene import module automatically
+			size_t found = tempFileName.rfind(".scene");
+			if (Ogre::String::npos == found)
+			{
+				tempFileName += ".scene";
 			}
+
+			if (nullptr != this->dotSceneExportModule)
+			{
+				delete this->dotSceneExportModule;
+				this->dotSceneExportModule = new NOWA::DotSceneExportModule(this->sceneManager, this->ogreNewt, this->projectParameter);
+			}
+			this->dotSceneExportModule->copyScene(this->projectParameter.sceneName, this->projectParameter.projectName, tempFileName, "Projects");
 		}
 	}
 	else

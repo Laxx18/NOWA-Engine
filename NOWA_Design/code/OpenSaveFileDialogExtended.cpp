@@ -108,6 +108,13 @@ void OpenSaveFileDialogExtended::notifyListChangePosition(MyGUI::ListBox* _sende
 	else
 	{
 		common::FileInfo info = *_sender->getItemDataAt<common::FileInfo>(_index);
+
+		if (L".." == info.name)
+		{
+			upFolder();
+			return;
+		}
+
 		if (!info.folder)
 		{
 			mEditFileName->setCaption(info.name);
@@ -232,6 +239,9 @@ void OpenSaveFileDialogExtended::accept()
 
 void OpenSaveFileDialogExtended::upFolder()
 {
+	this->autoCompleteSearch.reset();
+	mEditSearchName->setCaption("");
+
 	size_t index = mCurrentFolder.find_last_of(L"\\/");
 	if (index != std::string::npos)
 	{

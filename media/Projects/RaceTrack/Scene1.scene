@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Scene1">
+<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Scene1.scene">
 	<resourceLocations/>
 	<environment>
 		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
@@ -54,6 +54,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4214154120"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -67,7 +68,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -87,6 +87,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3754458005"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -100,7 +101,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -119,6 +119,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1621402295"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -132,7 +133,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -196,6 +196,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -209,7 +210,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -225,6 +225,7 @@
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -275,6 +276,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -288,7 +290,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -316,6 +317,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4117195880"/>
 					<property type="7" name="Category" data="Track"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -329,7 +331,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="RaceTrack"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -402,6 +403,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3400631979"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -415,7 +417,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -455,6 +456,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3267634121"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -468,7 +470,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -488,6 +489,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2448030336"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -501,7 +503,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -521,6 +522,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4109819073"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -534,7 +536,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -554,6 +555,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3566598075"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -567,7 +569,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -587,6 +588,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1616991900"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -600,7 +602,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -620,6 +621,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2800573848"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -633,7 +635,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -653,6 +654,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1126256536"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -666,7 +668,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -686,6 +687,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1022161970"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -699,7 +701,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -719,6 +720,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3600126520"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -732,7 +734,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -752,6 +753,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="449531535"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -765,7 +767,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -785,6 +786,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2419177620"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -798,7 +800,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -818,6 +819,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3926044298"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -831,7 +833,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -851,6 +852,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="285095429"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -864,7 +866,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -884,6 +885,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2283952087"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -897,7 +899,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -917,6 +918,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2958733854"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -930,7 +932,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -950,6 +951,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3216709546"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -963,7 +965,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -983,6 +984,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3864274772"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -996,7 +998,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1016,6 +1017,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4044692513"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1029,7 +1031,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1049,6 +1050,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3759828703"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1062,7 +1064,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1082,6 +1083,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="473558304"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1095,7 +1097,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1115,6 +1116,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3620843427"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1128,7 +1130,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1148,6 +1149,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1428695656"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1161,7 +1163,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1181,6 +1182,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="333882904"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1194,7 +1196,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1214,6 +1215,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3150237861"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1227,7 +1229,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1247,6 +1248,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3402832053"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1260,7 +1262,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1280,6 +1281,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1795727344"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1293,7 +1295,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1313,6 +1314,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="428908313"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1326,7 +1328,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1346,6 +1347,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3783972870"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1359,7 +1361,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1379,6 +1380,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2795837495"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1392,7 +1394,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1412,6 +1413,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4005548339"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1425,7 +1427,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1445,6 +1446,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3321716664"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1458,7 +1460,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1478,6 +1479,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2491195255"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1491,7 +1493,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1511,6 +1512,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4026906950"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1524,7 +1526,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1544,6 +1545,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="420771653"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1557,7 +1559,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1577,6 +1578,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="177054610"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1590,7 +1592,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1610,6 +1611,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="674156932"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1623,7 +1625,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1643,6 +1644,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3259085630"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1656,7 +1658,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1676,6 +1677,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1226174257"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1689,7 +1691,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1709,6 +1710,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2271797770"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1722,7 +1724,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1742,6 +1743,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1524042297"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1755,7 +1757,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1775,6 +1776,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="695638078"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1788,7 +1790,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1808,6 +1809,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4247811608"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1821,7 +1823,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1841,6 +1842,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3669755955"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1854,7 +1856,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1874,6 +1875,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1006873693"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1887,7 +1889,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1907,6 +1908,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="513677892"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1920,7 +1922,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1940,6 +1941,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1343929358"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1953,7 +1955,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1973,6 +1974,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1935762166"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -1986,7 +1988,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2006,6 +2007,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2928850828"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2019,7 +2021,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2039,6 +2040,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4082577908"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2052,7 +2054,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2072,6 +2073,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2860514259"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2085,7 +2087,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2105,6 +2106,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4175792457"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2118,7 +2120,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2138,6 +2139,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3669080537"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2151,7 +2153,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2171,6 +2172,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="617336987"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -2184,7 +2186,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="[Default]__03814105050"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2269,6 +2270,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2881178658"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2282,7 +2284,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2345,6 +2346,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1587109043"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2358,7 +2360,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2421,6 +2422,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1531990417"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2434,7 +2436,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2498,6 +2499,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2441058316"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2511,7 +2513,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat__0528669575"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -2758,6 +2759,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2467387307"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2771,7 +2773,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2834,6 +2835,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3982832706"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -2847,7 +2849,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2887,6 +2888,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="354669523"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -2900,7 +2902,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2921,6 +2922,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1697632722"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -2934,7 +2936,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2955,6 +2956,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="152154737"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -2968,7 +2970,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -2989,6 +2990,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4114362462"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -3002,7 +3004,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3023,6 +3024,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2980990231"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -3036,7 +3038,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="[Default]__0617336987"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3121,6 +3122,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3526229100"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -3134,7 +3136,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="[Default]__02980990231"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3219,6 +3220,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2950837390"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3232,7 +3234,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
 			</entity>
@@ -3250,6 +3251,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3618778865"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -3263,7 +3265,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="looping_part1"/>
 					<property type="7" name="DataBlock1" data="looping_part2"/>
 					<property type="7" name="DataBlock2" data="looping_part3"/>
@@ -3287,6 +3288,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="836771217"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="true"/>
@@ -3300,7 +3302,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3321,6 +3322,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3998965920"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3334,7 +3336,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3397,6 +3398,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1681601510"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3410,7 +3412,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3473,6 +3474,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="168488942"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3486,7 +3488,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3549,6 +3550,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="758148109"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3562,7 +3564,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3626,6 +3627,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4043518881"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3639,7 +3641,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat__0528669575"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -3886,6 +3887,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3822586893"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3899,7 +3901,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -3962,6 +3963,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3100212184"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -3975,7 +3977,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4038,6 +4039,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="128194111"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4051,7 +4053,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4114,6 +4115,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="402180886"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4127,7 +4129,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4191,6 +4192,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1180990894"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4204,7 +4206,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat__04043518881"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -4451,6 +4452,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1619089859"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4464,7 +4466,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4527,6 +4528,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="331118574"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4540,7 +4542,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4603,6 +4604,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4060480801"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4616,7 +4618,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4679,6 +4680,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2000280789"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4692,7 +4694,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -4756,6 +4757,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="448796856"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -4769,7 +4771,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat__04043518881"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -5016,6 +5017,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="598762456"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5029,7 +5031,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5093,6 +5094,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3224016953"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5106,7 +5108,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -5301,6 +5302,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="964406155"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5314,7 +5316,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5377,6 +5378,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1758697798"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5390,7 +5392,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5453,6 +5454,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4132376499"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5466,7 +5468,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5529,6 +5530,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="356103281"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5542,7 +5544,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5606,6 +5607,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="528669575"/>
 					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5619,7 +5621,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="racer_mat"/>
 					<property type="7" name="DataBlock1" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
@@ -5866,6 +5867,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3170981798"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5879,7 +5881,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -5942,6 +5943,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3616256602"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -5955,7 +5957,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -6018,6 +6019,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1594936604"/>
 					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -6031,7 +6033,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="qbike_mat"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>

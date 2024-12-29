@@ -11,6 +11,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -24,7 +25,6 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>

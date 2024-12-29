@@ -129,7 +129,7 @@ namespace NOWA
 		}
 		else if (PhysicsArtifactComponent::AttrSerialize() == attribute->getName())
 		{
-			this->serialize->setValue(attribute->getBool());
+			this->setSerialize(attribute->getBool());
 		}
 	}
 
@@ -383,6 +383,10 @@ namespace NOWA
 	void PhysicsArtifactComponent::setSerialize(bool serialize)
 	{
 		this->serialize->setValue(serialize);
+		if (true == serialize)
+		{
+			this->reCreateCollision(true);
+		}
 	}
 
 	bool PhysicsArtifactComponent::getSerialize(void) const

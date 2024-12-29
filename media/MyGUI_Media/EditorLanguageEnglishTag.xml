@@ -152,7 +152,7 @@
 	<Tag name="CreateCPlusPlusProject">Create C++ project for scenes</Tag>
 	<Tag name="ComponentName">Component name:</Tag>
 	<Tag name="OpenLog">Open log file</Tag>
-	<Tag name="CopyScene">Copy scene</Tag>
+	<Tag name="CopyScene">Copy scene to...</Tag>
 	<Tag name="Close">Close</Tag>
 	<Tag name="SaveGroup">Save Group</Tag>
 	<Tag name="LoadGroup">Load Group</Tag>

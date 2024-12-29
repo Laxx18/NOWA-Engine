@@ -50,6 +50,21 @@
 				<Widget type="MenuItem" position="0 191 185 19" name="recentFileMenuItem5">
 					<Property key="Caption" value="--"/>
 				</Widget>
+				<Widget type="MenuItem" position="0 210 185 19" name="recentFileMenuItem6">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 229 185 19" name="recentFileMenuItem7">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 248 185 19" name="recentFileMenuItem8">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 267 185 19" name="recentFileMenuItem9">
+					<Property key="Caption" value="--"/>
+				</Widget>
+				<Widget type="MenuItem" position="0 286 185 19" name="recentFileMenuItem10">
+					<Property key="Caption" value="--"/>
+				</Widget>
 				<Widget type="MenuItem" skin="PopupMenuSeparator_Dark" position="0 201 185 10">
 					<Property key="MenuItemType" value="Separator"/>
 				</Widget>

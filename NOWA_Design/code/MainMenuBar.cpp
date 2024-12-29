@@ -164,17 +164,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		this->recentFileItem[7]->hideItemChild();
 		this->recentFileItem[7]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		this->recentFileItem[7] = fileMenuControl->addItem("recentFileMenuItem9", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
-		this->recentFileItem[7]->setCaption("--");
-		this->recentFileItem[7]->hideItemChild();
-		this->recentFileItem[7]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-
-		this->recentFileItem[8] = fileMenuControl->addItem("recentFileMenuItem10", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[8] = fileMenuControl->addItem("recentFileMenuItem9", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		this->recentFileItem[8]->setCaption("--");
 		this->recentFileItem[8]->hideItemChild();
 		this->recentFileItem[8]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		this->recentFileItem[9] = fileMenuControl->addItem("recentFileMenuItem11", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		this->recentFileItem[9] = fileMenuControl->addItem("recentFileMenuItem10", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		this->recentFileItem[9]->setCaption("--");
 		this->recentFileItem[9]->hideItemChild();
 		this->recentFileItem[9]->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
@@ -948,20 +943,18 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 void MainMenuBar::updateRecentFilesMenu()
 {
 	const RecentFilesManager::VectorUString& recentFiles = RecentFilesManager::getInstance().getRecentFiles();
-	if (!recentFiles.empty())
-	{
-		// First reset
-		for (size_t i = 0; i < RecentFilesManager::maxRecentFiles; i++)
-		{
-			this->recentFileItem[i]->setCaption("--");
-		}
 
-		// Then fill
-		size_t index = 0;
-		for (RecentFilesManager::VectorUString::const_iterator iter = recentFiles.begin(); iter != recentFiles.end(); ++iter, ++index)
-		{
-			this->recentFileItem[index]->setCaption(*iter);
-		}
+	// First reset
+	for (size_t i = 0; i < RecentFilesManager::maxRecentFiles; i++)
+	{
+		this->recentFileItem[i]->setCaption("--");
+	}
+
+	// Then fill
+	for (size_t i = 0; i < recentFiles.size(); i++)
+	{
+		Ogre::String file = recentFiles[i];
+		this->recentFileItem[i]->setCaption(file);
 	}
 }
 

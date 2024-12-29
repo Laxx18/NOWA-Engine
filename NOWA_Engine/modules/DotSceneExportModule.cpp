@@ -288,13 +288,34 @@ namespace NOWA
 		file.close();
 	}
 
-	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneName, const Ogre::String& worldResourceGroupName)
+	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& worldResourceGroupName)
 	{
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
 
 		// Project is always: "projects/projectName/sceneName.scene"
 		Ogre::String filePath = projectPath + "/" + newProjectName;
-		Ogre::String filePathName = filePath + "/" + newSceneName + ".scene";
+		Ogre::String filePathName = newSceneFilePathName;
+
+		Ogre::String tempFileNameWithoutEnding = newSceneFilePathName;
+
+		size_t found = tempFileNameWithoutEnding.rfind("/");
+		if (Ogre::String::npos != found)
+		{
+			tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(found + 1, tempFileNameWithoutEnding.size() - 1);
+		}
+
+		found = tempFileNameWithoutEnding.rfind(".");
+		if (Ogre::String::npos != found)
+		{
+			tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(0, found);
+		}
+
+		Ogre::String tempFilePath = newSceneFilePathName;
+		found = tempFilePath.rfind("/");
+		if (Ogre::String::npos != found)
+		{
+			tempFilePath = tempFilePath.substr(0, found);
+		}
 
 		// Maybe create a folder
 		Core::getSingletonPtr()->createFolders(filePathName);
@@ -322,9 +343,12 @@ namespace NOWA
 							size_t found = luaScriptCompPtr->getScriptFile().find(oldSeneName);
 							if (Ogre::String::npos != found)
 							{
-								Ogre::String newName = replaceAll(luaScriptCompPtr->getScriptFile(), oldSeneName, newSceneName);
+								Ogre::String newName = replaceAll(luaScriptCompPtr->getScriptFile(), oldSeneName, tempFileNameWithoutEnding);
 								luaScriptCompPtr->setScriptFile(newName, LuaScriptComponent::WRITE_XML);
-								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(luaScriptCompPtr->getScriptFile(), newName, false);
+
+								Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + luaScriptCompPtr->getScriptFile();
+								Ogre::String targetFilePathName = tempFilePath + "/" + newName;
+								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceFilePathName, targetFilePathName, false);
 							}
 						}
 					}
