@@ -24,6 +24,7 @@
 #include "gameobject/DecalComponent.h"
 #include "gameobject/OceanComponent.h"
 #include "gameobject/TerraComponent.h"
+#include "gameobject/PhysicsTerrainComponent.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
 #include "main/Core.h"
@@ -3993,7 +3994,54 @@ namespace NOWA
 					if (nullptr != component)
 					{
 						gameObject->setDynamic(false);
+
+						Ogre::String meshName;
+						Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
+						if (nullptr != entity)
+						{
+							meshName = entity->getMesh()->getName();
+						}
+						else
+						{
+							Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
+							if (nullptr != item)
+							{
+								meshName = item->getMesh()->getName();
+							}
+						}
+						Ogre::FileInfoListPtr fileInfoList = nullptr;
+						try
+						{
+							Ogre::String meshResourceFolderName = Ogre::ResourceGroupManager::getSingleton().findGroupContainingResource(meshName);
+							fileInfoList = Ogre::FileInfoListPtr(Ogre::ResourceGroupManager::getSingletonPtr()->findResourceFileInfo(meshResourceFolderName, meshName));
+						}
+						catch (...)
+						{
+
+						}
+						if (nullptr != fileInfoList && false == fileInfoList->empty())
+						{
+							// Serialize collision hulls for biggers meshes
+							if (fileInfoList->at(0).uncompressedSize > 100000)
+							{
+								if (false == component->getSerialize())
+								{
+									component->setSerialize(true);
+								}
+							}
+						}
+
 						continue;
+					}
+				}
+
+				auto& component = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::PhysicsTerrainComponent>());
+				if (nullptr != component)
+				{
+					// Serialize collision hull for terrain
+					if (false == component->getSerialize())
+					{
+						component->setSerialize(true);
 					}
 				}
 

@@ -4,6 +4,8 @@
 #include "GameObjectComponent.h"
 #include "modules/LuaScript.h"
 
+class Terra;
+
 namespace NOWA
 {
 	/**
@@ -213,6 +215,8 @@ namespace NOWA
 	protected:
 		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId, bool overwrite = false);
 
+		OgreNewt::CollisionPtr serializeHeightFieldCollision(const Ogre::String& worldPath, unsigned int categoryId, Ogre::Terra* terra, bool overwrite = false);
+
 		OgreNewt::CollisionPtr createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition,
 			const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId);
 		
@@ -227,6 +231,8 @@ namespace NOWA
 		OgreNewt::CollisionPtr getWeightedBoneConvexHull(Ogre::v1::OldBone* bone, Ogre::v1::MeshPtr mesh, Ogre::Real minWeight,
 			Ogre::Vector3& inertia, Ogre::Vector3& massOrigin, unsigned int categoryId, const Ogre::Vector3& offsetPosition, const Ogre::Quaternion& offsetOrientation,
 			const Ogre::Vector3& scale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
+
+		OgreNewt::CollisionPtr createHeightFieldCollision(Ogre::Terra* terra);
 	protected:
 		OgreNewt::World* ogreNewt;
 		OgreNewt::Body* physicsBody;

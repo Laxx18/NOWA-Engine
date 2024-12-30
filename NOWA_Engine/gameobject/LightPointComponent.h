@@ -20,6 +20,16 @@ namespace NOWA
 
 		virtual bool postInit(void) override;
 
+		/**
+		 * @see		GameObjectComponent::connect
+		 */
+		virtual bool connect(void) override;
+
+		/**
+		 * @see		GameObjectComponent::disconnect
+		 */
+		virtual bool disconnect(void) override;
+
 		virtual Ogre::String getClassName(void) const override;
 
 		virtual Ogre::String getParentClassName(void) const override;

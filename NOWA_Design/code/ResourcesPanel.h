@@ -11,6 +11,8 @@
 #include "Ogre/RenderBox/RenderBoxScene.h"
 #endif
 
+class ProjectManager;
+
 class ResourcesPanelCell : public wraps::BasePanelViewCell
 {
 public:
@@ -69,6 +71,7 @@ class ResourcesPanelMeshPreview;
 #endif
 class ResourcesPanelDataBlocks;
 class ResourcesPanelTextures;
+class ResourcesPanelProject;
 
 class ResourcesPanel : public wraps::BaseLayout
 {
@@ -76,6 +79,8 @@ public:
 	ResourcesPanel(const MyGUI::FloatCoord& coords);
 
 	void setEditorManager(NOWA::EditorManager* editorManager);
+
+	void setProjectManager(ProjectManager* projectManager);
 
 	void destroyContent(void);
 
@@ -88,10 +93,12 @@ private:
 	NOWA::EditorManager* editorManager;
 	ResourcesPanelView* resourcesPanelView1;
 	ResourcesPanelView* resourcesPanelView2;
+	ResourcesPanelView* resourcesPanelView3;
 	ResourcesPanelMeshes* resourcesPanelMeshes;
 	ResourcesPanelGameObjects* resourcesPanelGameObjects;
 	ResourcesPanelDataBlocks* resourcesPanelDataBlocks;
 	ResourcesPanelTextures* resourcesPanelTextures;
+	ResourcesPanelProject* resourcesPanelProject;
 #if 0
 	ResourcesPanelMeshPreview* resourcesPanelMeshPreview;
 #endif
@@ -245,6 +252,46 @@ private:
 	MyGUI::TreeControl* texturesTree;
 	Ogre::String selectedText;
 	MyGUI::ImageBox* texturePreview;
+};
+
+///////////////////////////////////////////////////////////////////////
+
+class ResourcesPanelProject : public wraps::BasePanelViewItem
+{
+public:
+	ResourcesPanelProject();
+
+	void setEditorManager(NOWA::EditorManager* editorManager);
+
+	void setProjectManager(ProjectManager* projectManager);
+
+	virtual void initialise();
+	virtual void shutdown();
+
+	void clear(void);
+
+	void populateFilesList(const Ogre::String& folderPath);
+private:
+	void notifyListSelectAccept(MyGUI::ListBox* sender, size_t index);
+	void notifyListChangePosition(MyGUI::ListBox* sender, size_t index);
+	void notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
+	void notifyListMouseItemActivate(MyGUI::ListBox* sender, size_t index);
+private:
+	void handleSingleClick(size_t index);
+	void handleDoubleClick(size_t index);
+	void sortListByFileExtension(void);
+	void sortListByName(void);
+
+	void handleEventDataResourceCreated(NOWA::EventDataPtr eventData);
+private:
+	MyGUI::ListBox* filesListBox;
+	NOWA::EditorManager* editorManager;
+	ProjectManager* projectManager;
+	Ogre::String selectedText;
+
+	// For double-click tracking
+	std::chrono::steady_clock::time_point lastClickTime;
+	size_t lastClickedIndex;
 };
 
 #endif

@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.577351" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -356,7 +356,7 @@
 		</node>
 		<node name="MainCamera" id="4010617415">
 			<position x="5.83526" y="7.16813" z="-13.2089"/>
-			<rotation qw="0.704683" qx="-0.291238" qy="0.597938" qz="0.24713"/>
+			<rotation qw="0.702524" qx="-0.290995" qy="0.600012" qz="0.248533"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -385,14 +385,14 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="9" name="CameraPosition" data="5.83526 7.16813 -13.2089"/>
-					<property type="9" name="CameraOrientation" data="-44.9102 80.6302 0.000964425"/>
+					<property type="9" name="CameraOrientation" data="-45 81 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -421,7 +421,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="0.229851" qx="0.22985" qy="0.398113" qz="0.857813"/>
+			<rotation qw="0.230874" qx="0.230874" qy="0.396337" qz="0.858086"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -1182,7 +1182,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
@@ -1198,7 +1198,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1227,7 +1227,7 @@
 		</node>
 		<node name="Case3_0" id="1801113553">
 			<position x="-3.49812" y="0" z="-12.179"/>
-			<rotation qw="0.967533" qx="0" qy="0.252746" qz="0"/>
+			<rotation qw="0.968148" qx="0" qy="0.25038" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
 				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
@@ -1247,7 +1247,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
 				</userData>
@@ -1275,7 +1275,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="10"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
 				</userData>
@@ -1302,8 +1302,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1354,12 +1354,13 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Serialize" data="true"/>
 				</userData>
 			</terra>
 		</node>
 		<node name="Doorway_a_0" id="1970721611">
 			<position x="-4.5201" y="-0.00114441" z="-16.947"/>
-			<rotation qw="0.5" qx="0" qy="-0.866025" qz="0"/>
+			<rotation qw="-0.5" qx="0" qy="0.866025" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="Doorway_a_0" meshFile="Doorway_a.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="StoneDungeon"/>
@@ -1379,8 +1380,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="StoneDungeon"/>
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>

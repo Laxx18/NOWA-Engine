@@ -16,6 +16,12 @@
 					<Property key="VisibleHScroll" value="false"/>
 				</Widget>
             </Widget>
+			<Widget type="TabItem" skin="" position="2 24 209 472">
+                <Property key="Caption" value="#{Project}"/>
+                <Widget type="ScrollView" skin="ScrollView" position="5 5 368 465" align="Stretch" name="resources3ScrollView">
+					<Property key="VisibleHScroll" value="false"/>
+				</Widget>
+            </Widget>
         </Widget>
     </Widget>
 </MyGUI>

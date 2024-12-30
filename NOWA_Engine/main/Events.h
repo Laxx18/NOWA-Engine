@@ -2149,6 +2149,48 @@ namespace NOWA
 		unsigned int gameObjectComponentIndex;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataResourceCreated - This event is sent out if a resource on the file disc has been created
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataResourceCreated : public BaseEventData
+	{
+	public:
+
+		explicit EventDataResourceCreated()
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe8329A06;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe8329A06;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataResourceCreated());
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+		}
+
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataResourceCreated";
+		}
+	};
+
 }; // namespace end
 
 #endif

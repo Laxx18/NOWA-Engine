@@ -146,23 +146,23 @@ namespace NOWA
 		return true;
 	}
 
+	bool LightPointComponent::connect(void)
+	{
+		this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+
+		return true;
+	}
+
+	bool LightPointComponent::disconnect(void)
+	{
+		this->dummyEntity->setVisible(true);
+
+		return true;
+	}
+
 	void LightPointComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (nullptr != dummyEntity && false == this->showDummyEntity->getBool())
-		{
-			if (false == notSimulating && true == this->dummyEntity->isVisible())
-			{
-				this->dummyEntity->setVisible(false);
-			}
-			else if (true == notSimulating)
-			{
-				if (false == this->dummyEntity->isVisible())
-				{
-					this->dummyEntity->setVisible(true);
-				}
-			}
-		}
-		// Here stop simulation is missing, so that the entity may be visible again!, bool simulation stopped
+		
 	}
 
 	void LightPointComponent::createLight(void)

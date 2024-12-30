@@ -57,7 +57,8 @@ namespace NOWA
 		doNotDestroyMovableObject(false),
 		bShowDebugData(false),
 		luaScript(nullptr),
-		bConnectPriority(false)
+		bConnectPriority(false),
+		doNotTouchVisibleAttribute(false)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -1658,18 +1659,19 @@ namespace NOWA
 		if (isVisible != visible)
 		{
 			this->visible->setValue(visible);
-			this->sceneNode->setVisible(visible);
-			if (nullptr != this->movableObject)
+			// Because of e.g. active camera, so that if reset is made (undo), the movable camera object is not visible for the active camera!
+			if (nullptr != this->movableObject && false == this->doNotTouchVisibleAttribute)
 			{
+				this->sceneNode->setVisible(visible);
 				this->movableObject->setVisible(visible);
 			}
 
 			// E.g. mygui painted components will also be hidden or shown
-			for (size_t i = 0; i < this->getComponents()->size(); i++)
+			/*for (size_t i = 0; i < this->getComponents()->size(); i++)
 			{
 				auto component = std::get<COMPONENT>(this->getComponents()->at(i)).get();
 				component->setActivated(visible);
-			}
+			}*/
 		}
 	}
 

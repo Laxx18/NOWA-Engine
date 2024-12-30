@@ -221,6 +221,18 @@ namespace NOWA
 		return true;
 	}
 
+	bool LightAreaComponent::connect(void)
+	{
+		
+		return true;
+	}
+
+	bool LightAreaComponent::disconnect(void)
+	{
+		
+		return true;
+	}
+
 	void LightAreaComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		

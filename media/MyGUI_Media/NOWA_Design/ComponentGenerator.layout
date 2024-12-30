@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+	<Widget type="Window" skin="Window" position="260 195 560 585" caption="#{CreateComponentPlugin}" layer="Overlapped" name="componentGeneratorWindow">
+		<Property key="Movable" value="true"/>
+		<Property key="Caption" value="#{CreateComponentPlugin}"/>
+		
+		<Widget type="TextBox" skin="TextBox" position="10 15 185 30" name="componentNameLabel">
+            <Property key="Caption" value="#{ComponentName}"/>
+            <Property key="ReadOnly" value="true"/>
+            <Property key="Static" value="true"/>
+        </Widget>
+		
+		<Widget type="EditBox" skin="EditBox" name="ClassNameEdit" position="300 15 180 30" />
+		<!--<Widget type="EditBox" name="VariantCountEdit" position="10 46 200 26" caption="#{VariableCount}:"/>-->
+		<Widget type="Button" skin="Button" name="AddVariableButton" position="10 55 185 30">
+			<Property key="Caption" value="#{AddVariable}"/>
+		</Widget>
+		
+		<Widget type="Widget" name="VariantContainer" position="10 95 560 160"/>
+		
+		<Widget type="Button" skin="Button" name="GenerateButton" position="10 135 185 30">
+			<Property key="Caption" value="#{Generate}"/>
+		</Widget>
+		<Widget type="Button" skin="Button" name="OkButton" position="300 135 185 30">
+			<Property key="Caption" value="Ok"/>
+		</Widget>
+	</Widget>
+</MyGUI>

@@ -17,6 +17,11 @@
 #include <windows.h>
 #include <shellapi.h>
 
+namespace
+{
+	const short START_INDEX = 20;
+}
+
 MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	: wraps::BaseLayout("MainMenu.layout", _parent),
 	projectManager(projectManager),
@@ -619,38 +624,38 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			break;
 		}
 		
-		case 20: // Close
+		case 19: // Close
 		{
 			boost::shared_ptr<EventDataExit> eventDataExit(new EventDataExit());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataExit);
 			break;
 		}
-		case SAVE_GROUP + 21: // Save Group
+		case SAVE_GROUP + START_INDEX: // Save Group
 		{
 			this->projectManager->showFileSaveDialog("SaveGroup", "*.group");
 			break;
 		}
-		case LOAD_GROUP + 21: // Load Group
+		case LOAD_GROUP + START_INDEX: // Load Group
 		{
 			this->projectManager->showFileOpenDialog("LoadGroup", "*.group");
 			break;
 		}
-		case LOAD_MESH_RESOURCE + 21: // Add Mesh Resources
+		case LOAD_MESH_RESOURCE + START_INDEX: // Add Mesh Resources
 		{
 			this->projectManager->showFileOpenDialog("AddMeshResources", "");
 			break;
 		}
-		case SAVE_DATABLOCKS + 21: // Save datablocks
+		case SAVE_DATABLOCKS + START_INDEX: // Save datablocks
 		{
 			this->projectManager->showFileSaveDialog("SaveDatablocks", "*.json");
 			break;
 		}
-		case OPEN_PROJECT_FOLDER + 21: // Open project folder
+		case OPEN_PROJECT_FOLDER + START_INDEX: // Open project folder
 		{
 			NOWA::Core::getSingletonPtr()->openFolder(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
 			break;
 		}
-		case START_GAME + 21: // Start game
+		case START_GAME + START_INDEX: // Start game
 		{
 			if (NOWA::DeployResourceModule::getInstance()->startGame(NOWA::Core::getSingletonPtr()->getProjectName()))
 			{
@@ -663,7 +668,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case UNDO + 21: // Undo
+		case UNDO + START_INDEX: // Undo
 		{
 			this->projectManager->getEditorManager()->undo();
 			
@@ -674,7 +679,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 			break;
 		}
-		case REDO + 21: // Redo
+		case REDO + START_INDEX: // Redo
 		{
 			this->projectManager->getEditorManager()->redo();
 
@@ -685,115 +690,115 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
 			break;
 		}
-		case SELECTION_UNDO + 21: // Selection Undo
+		case SELECTION_UNDO + START_INDEX: // Selection Undo
 		{
 			this->projectManager->getEditorManager()->getSelectionManager()->selectionUndo();
 			break;
 		}
-		case SELECTION_REDO + 21: // Selection Redo
+		case SELECTION_REDO + START_INDEX: // Selection Redo
 		{
 			this->projectManager->getEditorManager()->getSelectionManager()->selectionRedo();
 			break;
 		}
-		case 32: // Front View
+		case 31: // Front View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_FRONT);
 			break;
 		}
-		case 33: // TOP View
+		case 32: // TOP View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_TOP);
 			break;
 		}
-		case 34: // Back View
+		case 33: // Back View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BACK);
 			break;
 		}
-		case 35: // Bottom View
+		case 34: // Bottom View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BOTTOM);
 			break;
 		}
-		case 36: // Left View
+		case 35: // Left View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_LEFT);
 			break;
 		}
-		case 37: // Right View
+		case 36: // Right View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_RIGHT);
 			break;
 		}
-		case 38: // Camera Undo
+		case 37: // Camera Undo
 		{
 			this->projectManager->getEditorManager()->cameraUndo();
 			break;
 		}
-		case 39: // Camera Redo
+		case 38: // Camera Redo
 		{
 			this->projectManager->getEditorManager()->cameraRedo();
 			break;
 		}
-		case 40: // Render Solid
+		case 39: // Render Solid
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(3);
 			break;
 		}
-		case 41: // Render Wireframe
+		case 40: // Render Wireframe
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(2);
 			break;
 		}
-		case 42: // Render Points
+		case 41: // Render Points
 		{
 			// Does not work, do not know why
 			NOWA::Core::getSingletonPtr()->setPolygonMode(1);
 			break;
 		}
-		case 43: // Scene analysis
+		case 42: // Scene analysis
 		{
 			this->showAnalysisWindow();
 			break;
 		}
-		case 44: // Deploy
+		case 43: // Deploy
 		{
 			this->showDeployWindow();
 			break;
 		}
-		case 45: // Lua Analysis
+		case 44: // Lua Analysis
 		{
 			this->showLuaAnalysisWindow();
 			break;
 		}
-		case 46: // Lua Api
+		case 45: // Lua Api
 		{
 			this->showLuaApiWindow();
 			break;
 		}
-		case 47: // Mesh Tool
+		case 46: // Mesh Tool
 		{
 			this->showMeshToolWindow();
 			break;
 		}
-		case 48: // Draw Navigation Mesh
+		case 47: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 49: // Draw Collision Lines
+		case 48: // Draw Collision Lines
 		{
 			this->bDrawCollisionLines = !this->bDrawCollisionLines;
 			this->drawCollisionLines(this->bDrawCollisionLines);
 			break;
 		}
-		case 50: // Optimize scene
+		case 49: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 51: // Control selected player
+		case 50: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -806,7 +811,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 52: // Test selected game objects
+		case 51: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -814,12 +819,12 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 53: // About
+		case 52: // About
 		{
 			this->showAboutWindow();
 			break;
 		}
-		case 54: // Scene description
+		case 53: // Scene description
 		{
 			this->showSceneDescriptionWindow();
 			break;

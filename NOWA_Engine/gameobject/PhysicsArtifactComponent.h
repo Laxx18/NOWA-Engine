@@ -78,7 +78,6 @@ namespace NOWA
 		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
 	protected:
 		Variant* serialize;
-		Ogre::String serializeFilename;
 	};
 
 }; //namespace end

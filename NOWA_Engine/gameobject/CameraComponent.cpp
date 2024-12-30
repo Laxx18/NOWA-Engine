@@ -20,7 +20,6 @@ namespace NOWA
 		: GameObjectComponent(),
 		camera(nullptr),
 		dummyEntity(nullptr),
-		hideEntity(true),
 		timeSinceLastUpdate(5.0f),
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
@@ -34,7 +33,7 @@ namespace NOWA
 		orthographic(new Variant(CameraComponent::AttrOrthographic(), false, this->attributes)),
 		orthoWindowSize(new Variant(CameraComponent::AttrOrthoWindowSize(), Ogre::Vector2(10.0f, 10.0f), this->attributes)),
 		fixedYawAxis(new Variant(CameraComponent::AttrFixedYawAxis(), true, this->attributes)),
-		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), true, this->attributes)),
+		showDummyEntity(new Variant(CameraComponent::AttrShowDummyEntity(), false, this->attributes)),
 		excludeRenderCategories(new Variant(CameraComponent::AttrExcludeRenderCategories(), Ogre::String("All"), this->attributes))
 	{
 		this->orthographic->addUserData(GameObject::AttrActionNeedRefresh());
@@ -248,13 +247,29 @@ namespace NOWA
 
 	bool CameraComponent::connect(void)
 	{
-		GameObjectComponent::connect();
+		this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+
+		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+		{
+			this->gameObjectPtr->doNotTouchVisibleAttribute = true;
+		}
+
 		return true;
 	}
 
 	bool CameraComponent::disconnect(void)
 	{
-		GameObjectComponent::disconnect();
+		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+		{
+			this->gameObjectPtr->doNotTouchVisibleAttribute = true;
+			this->dummyEntity->setVisible(false);
+		}
+		else
+		{
+			this->gameObjectPtr->doNotTouchVisibleAttribute = false;
+			this->dummyEntity->setVisible(true);
+		}
+		
 		return true;
 	}
 
@@ -336,29 +351,6 @@ namespace NOWA
 	{
 		this->bIsInSimulation = !notSimulating;
 
-		if (nullptr != dummyEntity && true == this->hideEntity)
-		{
-			if (true == this->dummyEntity->isVisible() && false == this->showDummyEntity->getBool())
-			{
-				this->dummyEntity->setVisible(false);
-			}
-			else if (true == this->showDummyEntity->getBool())
-			{
-				if (true == this->dummyEntity->isVisible() && true == this->active->getBool())
-				{
-					this->dummyEntity->setVisible(false);
-				}
-				else
-				{
-					// If its not the active camera and not in split screen
-					if (false == this->dummyEntity->isVisible() && false == this->active->getBool() && -1 == this->eyeId && true == notSimulating)
-					{
-						this->dummyEntity->setVisible(true);
-					}
-				}
-			}
-		}
-
 		/*if (false == this->active->getBool())
 		{
 			return;
@@ -436,6 +428,13 @@ namespace NOWA
 			this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
 			this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
 
+			// Borrow the entity from the game object
+			this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != this->dummyEntity)
+			{
+				this->dummyEntity->setCastShadows(false);
+			}
+
 			// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
 			// So if its the main camera add the camera to the camera manager to have public available
 			if ("MainCamera" == this->camera->getName())
@@ -449,29 +448,14 @@ namespace NOWA
 					previousCamera = nullptr;
 				}
 
+				this->dummyEntity->setVisible(false);
+
 				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
 			}
 
 			// AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, this->active->getBool());
 
-			// Borrow the entity from the game object
-			this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != this->dummyEntity)
-			{
-				this->dummyEntity->setCastShadows(false);
 			
-				if ("Camera.mesh" == this->dummyEntity->getMesh()->getName())
-				{
-					if (true == CameraComponent::justCreated)
-					{
-						this->hideEntity = false;
-					}
-					else
-					{
-						this->hideEntity = true;
-					}
-				}
-			}
 			// Call activation, because e.g. new workspace must be set
 			this->setActivated(this->active->getBool());
 		}
@@ -623,9 +607,6 @@ namespace NOWA
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
 				{
-					this->hideEntity = true;
-					this->dummyEntity->setVisible(false);
-
 					// if ("MainCamera" == this->camera->getName())
 					{
 						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
@@ -696,11 +677,6 @@ namespace NOWA
 				WorkspaceModule::getInstance()->removeCamera(this->camera);
 				AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
 			}
-
-			if (false == this->bIsInSimulation && nullptr != this->dummyEntity)
-			{
-				this->dummyEntity->setVisible(true);
-			}
 		}
 
 		if (true == success && nullptr != this->gameObjectPtr)
@@ -716,16 +692,23 @@ namespace NOWA
 		this->active->setValue(activated);
 		if (nullptr != this->camera)
 		{
+			if (true == this->bIsInSimulation)
+			{
+				this->dummyEntity->setVisible(true);
+			}
+
+			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+			{
+				this->dummyEntity->setVisible(false);
+			}
+			else
+			{
+				this->gameObjectPtr->doNotTouchVisibleAttribute = false;
+			}
+
 			// AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, activated);
 			if (false == activated)
 			{
-				this->hideEntity = false;
-
-				if (false == this->bIsInSimulation)
-				{
-					this->dummyEntity->setVisible(true);
-				}
-
 				// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())
 				{
 					auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
@@ -763,17 +746,10 @@ namespace NOWA
 			if (true == useSplitScreen)
 			{
 				this->eyeId = eyeId;
-				this->hideEntity = true;
-				this->dummyEntity->setVisible(false);
 			}
 			else
 			{
 				this->eyeId = -1;
-				this->hideEntity = false;
-				if (false == this->bIsInSimulation)
-				{
-					this->dummyEntity->setVisible(true);
-				}
 			}
 		}
 	}

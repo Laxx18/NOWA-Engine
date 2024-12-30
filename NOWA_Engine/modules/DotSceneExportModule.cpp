@@ -13,6 +13,9 @@
 #include "OgreForwardClustered.h"
 #include "res/resource.h"
 #include "gameobject/LuaScriptComponent.h"
+#include "gameobject/PhysicsArtifactComponent.h"
+#include "gameobject/PhysicsTerrainComponent.h"
+#include "gameobject/TerraComponent.h"
 
 namespace
 {
@@ -351,6 +354,52 @@ namespace NOWA
 								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceFilePathName, targetFilePathName, false);
 							}
 						}
+					}
+
+					// Copy any .col file
+					auto physicsArtifactCompPtr = boost::dynamic_pointer_cast<PhysicsArtifactComponent>(std::get<COMPONENT>(*it));
+					if (nullptr != physicsArtifactCompPtr)
+					{
+						Ogre::String meshName;
+						Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+						if (nullptr != entity)
+						{
+							meshName = entity->getMesh()->getName();
+						}
+						else
+						{
+							Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+							if (nullptr != item)
+							{
+								meshName = item->getMesh()->getName();
+							}
+						}
+						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
+						Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".col";
+						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+					}
+
+					// Copy a terra .col file, if it does exist
+					auto physicsTerrainCompPtr = boost::dynamic_pointer_cast<PhysicsTerrainComponent>(std::get<COMPONENT>(*it));
+					if (nullptr != physicsTerrainCompPtr)
+					{
+						Ogre::String name = gameObjectPtr->getName();
+						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + name + ".col";
+						Ogre::String targetFilePathName = tempFilePath + "/" + name + ".col";
+						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+					}
+
+					// Copy a terra map image file if does exist
+					auto terraCompPtr = boost::dynamic_pointer_cast<TerraComponent>(std::get<COMPONENT>(*it));
+					if (nullptr != terraCompPtr)
+					{
+						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + oldSeneName + "_detailMap.png";
+						Ogre::String targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_detailMap.png";
+						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+
+						sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + oldSeneName + "_heightMap.png";
+						targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_heightMap.png";
+						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 					}
 				}
 			}

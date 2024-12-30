@@ -128,22 +128,22 @@ namespace NOWA
 		return true;
 	}
 
+	bool LightDirectionalComponent::connect(void)
+	{
+		this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+
+		return true;
+	}
+
+	bool LightDirectionalComponent::disconnect(void)
+	{
+		this->dummyEntity->setVisible(true);
+
+		return true;
+	}
+
 	void LightDirectionalComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (nullptr != dummyEntity && false == this->showDummyEntity->getBool())
-		{
-			if (false == notSimulating && true == this->dummyEntity->isVisible())
-			{
-				this->dummyEntity->setVisible(false);
-			}
-			else if (true == notSimulating)
-			{
-				if (false == this->dummyEntity->isVisible())
-				{
-					this->dummyEntity->setVisible(true);
-				}
-			}
-		}
 		if (false == notSimulating)
 		{
 			this->transformUpdateTimer += dt;

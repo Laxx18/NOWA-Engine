@@ -434,6 +434,9 @@ namespace NOWA
 				workspaceBaseComponent->getWorkspace()->addListener(this->terraWorkspaceListener);
 			}
 		}
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 	}
 
 	void TerraComponent::modifyTerrainStart(const Ogre::Vector3& position, float strength)

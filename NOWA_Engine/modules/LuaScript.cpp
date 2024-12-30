@@ -288,6 +288,9 @@ namespace NOWA
 			{
 				outFile << this->scriptContent;
 				outFile.close();
+
+				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 			}
 		}
 // Attention:

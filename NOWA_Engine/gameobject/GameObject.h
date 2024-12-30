@@ -68,6 +68,7 @@ namespace NOWA
 		friend class TagPointComponent;
 		friend class TerraComponent;
 		friend class LuaScriptComponent;
+		friend class CameraComponent;
 	public:
 		GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, const Ogre::String& category = "Default", const Ogre::String& renderCategory = "Default",
 			bool dynamic = true, eType type = eType::ENTITY, unsigned long id = 0);
@@ -1021,6 +1022,7 @@ namespace NOWA
 		bool bShowDebugData;
 		LuaScript* luaScript;
 		bool bConnectPriority;
+		bool doNotTouchVisibleAttribute;
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
 	};

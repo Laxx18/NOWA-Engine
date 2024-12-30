@@ -194,7 +194,6 @@ namespace NOWA
 		Variant* showDummyEntity;
 		Variant* excludeRenderCategories;
 		
-		bool hideEntity;
 		Ogre::Real timeSinceLastUpdate;
 		WorkspaceBaseComponent* workspaceBaseComponent;
 		int eyeId;

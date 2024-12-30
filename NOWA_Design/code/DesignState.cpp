@@ -816,6 +816,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 			this->resourcesPanel->clear();
 			// Actualize the editor manager pointer, because e.g. when a new world is created, the editor manager will be destroyed first, so the pointer is no more valid
 			this->resourcesPanel->setEditorManager(this->editorManager);
+			this->resourcesPanel->setProjectManager(this->projectManager);
 		}
 
 		// Creates the components panel
@@ -1008,6 +1009,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		}
 		if (nullptr != gameObjectPtr)
 		{
+			this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
 			this->editorManager->focusCameraGameObject(gameObjectPtr.get());
 			this->editorManager->getSelectionManager()->clearSelection();
 			this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());

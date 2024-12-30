@@ -164,12 +164,18 @@ namespace NOWA
 		{
 			luaOutFile << luaInFileContent;
 			luaOutFile.close();
+
+			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 		}
 
 		if (true == deleteSourceScript)
 		{
 			::DeleteFile(sourceScriptFilePathName.c_str());
 		}
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 	}
 
 	bool LuaScriptModule::checkLuaScriptFileExists(const Ogre::String& scriptName, const Ogre::String& filePath)
@@ -253,6 +259,9 @@ namespace NOWA
 				{
 					outFile << luaInFileContent;
 					outFile.close();
+
+					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 				}
 			}
 
@@ -306,6 +315,9 @@ namespace NOWA
 				{
 					outFile << luaInFileContent;
 					outFile.close();
+
+					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 				}
 			}
 		}
@@ -470,6 +482,9 @@ namespace NOWA
 			{
 				outFile << luaInFileContent;
 				outFile.close();
+
+				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 			}
 		}
 	}

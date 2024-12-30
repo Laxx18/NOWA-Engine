@@ -2,6 +2,7 @@
 #include "PhysicsArtifactComponent.h"
 #include "utilities/XMLConverter.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -10,11 +11,8 @@ namespace NOWA
 
 	PhysicsArtifactComponent::PhysicsArtifactComponent()
 		: PhysicsComponent(),
-		serialize(new Variant("Serialize", false, this->attributes))
+		serialize(new Variant(PhysicsArtifactComponent::AttrSerialize(), false, this->attributes))
 	{
-		// std::vector<Ogre::String> collisionTypes(1);
-		// collisionTypes[0] = "Tree";
-		// this->collisionType->setValue(collisionTypes);
 		this->collisionType->setVisible(false);
 		this->mass->setValue(10000.0f);
 		this->mass->setDescription("Mass for physics artifact component can be used, when this component is the gravity source, else mass has no meaning and can be anything.");
@@ -22,7 +20,6 @@ namespace NOWA
 
 	PhysicsArtifactComponent::~PhysicsArtifactComponent()
 	{
-		// this->ogreNewt->RemoveSceneCollision(this->physicsBody->getNewtonCollision());
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsArtifactComponent] Destructor physics artifact component for game object: " + this->gameObjectPtr->getName());
 	}
 
@@ -38,23 +35,9 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Serialize")
 		{
 			this->serialize->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
-			this->serializeFilename = filename;
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		// collision type is mandantory
-		//if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CollisionType")
-		//{
-		//	this->collisionType->setListSelectedValue(XMLConverter::getAttrib(propertyElement, "data", ""));
-		//	// For artifact component only tree collision hull is possible
-		//	// this->collisionType->setReadOnly(true);
-		//	// Do not double the propagation, in gameobjectfactory there is also a propagation
-		//	propertyElement = propertyElement->next_sibling("property");
-		//}
-		//else
-		//{
-		//	return false;
-		//}
-
+		
 		// Snapshot loaded, game object pointer should exist, set transform
 		if (nullptr != this->gameObjectPtr)
 		{
@@ -247,9 +230,9 @@ namespace NOWA
 		}
 		else
 		{
-			//Für komplexe Objekte bietet es sich an, eine Kollision vorher abzuspeichern und diese dann nur noch zu laden, statt sie immer muehsam zu berechnen!
-			// treeCol = OgreNewt::CollisionPtr(this->serializeTreeCollision(entity));
-			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(this->serializeFilename, this->gameObjectPtr->getCategoryId()));
+			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+
+			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
 		}
 
 		if (nullptr == staticCollision)
@@ -302,82 +285,81 @@ namespace NOWA
 	void PhysicsArtifactComponent::reCreateCollision(bool overwrite)
 	{
 		Ogre::String meshName;
-		// if (this->collisionType->getListSelectedValue() == "Tree")
+		
+		if (nullptr != this->physicsBody)
 		{
-			if (nullptr != this->physicsBody)
-			{
-				this->destroyCollision();
-				this->ogreNewt->RemoveSceneCollision(this->physicsBody->getNewtonCollision());
-			}
+			this->destroyCollision();
+			this->ogreNewt->RemoveSceneCollision(this->physicsBody->getNewtonCollision());
+		}
 
-			// Collision for static objects
-			OgreNewt::CollisionPtr staticCollision;
-			if (false == this->serialize->getBool())
+		// Collision for static objects
+		OgreNewt::CollisionPtr staticCollision;
+		if (false == this->serialize->getBool())
+		{
+			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
 			{
-				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
+				meshName = entity->getMesh()->getName();
+				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
-					meshName = entity->getMesh()->getName();
+					// if the mesh name is a plane, the tree collision does not work, so use box
+					// Attention: Is this correct?
+					Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+					size.y = 0.001f;
+					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
+						Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+				}
+				else
+				{
+					staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
+				}
+			}
+			else
+			{
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					meshName = item->getMesh()->getName();
 					if (Ogre::StringUtil::match(meshName, "Plane*", true))
 					{
 						// if the mesh name is a plane, the tree collision does not work, so use box
 						// Attention: Is this correct?
-						Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
+						Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
 						size.y = 0.001f;
 						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
 							Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
 					}
 					else
 					{
-						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
+						staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
 					}
 				}
 				else
 				{
-					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-					if (nullptr != item)
-					{
-						meshName = item->getMesh()->getName();
-						if (Ogre::StringUtil::match(meshName, "Plane*", true))
-						{
-							// if the mesh name is a plane, the tree collision does not work, so use box
-							// Attention: Is this correct?
-							Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
-							size.y = 0.001f;
-							staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(),
-								Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
-						}
-						else
-						{
-							staticCollision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
-						}
-					}
-					else
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-						throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
-					}
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
+					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName() + ".\n", "NOWA");
 				}
 			}
-			else
-			{
-				// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
-				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(this->serializeFilename, this->gameObjectPtr->getCategoryId(), overwrite));
-			}
-
-			if (nullptr == staticCollision)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Could create collision file for game object: "
-					+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
-				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Could create collision file for game object: "
-					+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
-			}
-
-			// Set the new collision hull
-			this->physicsBody->setCollision(staticCollision);
-
-			this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
 		}
+		else
+		{
+			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
+			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
+		}
+
+		if (nullptr == staticCollision)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsArtifactComponent] Could create collision file for game object: "
+				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsArtifactComponent] Could create collision file for game object: "
+				+ this->gameObjectPtr->getName() + " and mesh: " + meshName + ". Maybe the mesh is corrupt.\n", "NOWA");
+		}
+
+		// Set the new collision hull
+		this->physicsBody->setCollision(staticCollision);
+
+		this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
 	}
 
 	void PhysicsArtifactComponent::setSerialize(bool serialize)

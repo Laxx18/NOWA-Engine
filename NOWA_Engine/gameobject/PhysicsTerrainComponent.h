@@ -69,7 +69,15 @@ namespace NOWA
 
 		virtual void reCreateCollision(bool overwrite = false) override;
 
+		void setSerialize(bool serialize);
+
+		bool getSerialize(void) const;
+
 		void changeCollisionFaceId(unsigned int id);
+	public:
+		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
+	protected:
+		Variant* serialize;
 	};
 
 }; //namespace end

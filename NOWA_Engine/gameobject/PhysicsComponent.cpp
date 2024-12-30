@@ -6,14 +6,7 @@
 #include "JointComponents.h"
 #include "main/AppStateManager.h"
 
-namespace
-{
-	Ogre::String getDirectoryNameFromFilePathName(const Ogre::String& filePathName)
-	{
-		size_t pos = filePathName.find_last_of("\\/");
-		return (std::string::npos == pos) ? "" : filePathName.substr(0, pos);
-	}
-}
+#include "Terra.h"
 
 namespace NOWA
 {
@@ -575,8 +568,13 @@ namespace NOWA
 	// maybe move this to physicsArtifactComp
 	OgreNewt::CollisionPtr PhysicsComponent::serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId, bool overwrite)
 	{
+		if (true == worldPath.empty())
+		{
+			return OgreNewt::CollisionPtr();
+		}
+
 		OgreNewt::CollisionPtr col;
-		Ogre::String serializeCollisionPath = getDirectoryNameFromFilePathName(worldPath);
+		Ogre::String serializeCollisionPath = worldPath;
 
 		Ogre::String meshName;
 		if (GameObject::ENTITY == this->gameObjectPtr->getType())
@@ -622,6 +620,9 @@ namespace NOWA
 			Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
 			// Export collision file for faster loading
 			saveWorldCollision.exportCollision(col, serializeCollisionPath);
+
+			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 		}
 
 		if (false == overwrite)
@@ -658,6 +659,121 @@ namespace NOWA
 				fclose(file);
 			}
 		}
+
+		return col;
+	}
+
+	OgreNewt::CollisionPtr PhysicsComponent::serializeHeightFieldCollision(const Ogre::String& worldPath, unsigned int categoryId, Ogre::Terra* terra, bool overwrite)
+	{
+		if (true == worldPath.empty())
+		{
+			return OgreNewt::CollisionPtr();
+		}
+
+		OgreNewt::CollisionPtr col;
+		Ogre::String serializeCollisionPath = worldPath;
+		serializeCollisionPath += "/";
+		serializeCollisionPath += this->gameObjectPtr->getName();
+		//"../media/TestWorld/gameObjectName.col"
+		serializeCollisionPath += ".col";
+
+		// Check if serialized collision file does exist
+		FILE* file;
+		file = fopen(serializeCollisionPath.c_str(), "rb");
+
+		if (nullptr == file || true == overwrite)
+		{
+			col = this->createHeightFieldCollision(terra);
+
+			if (nullptr == col)
+			{
+				return OgreNewt::CollisionPtr();
+			}
+
+			Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
+			// Export collision file for faster loading
+
+			OgreNewt::CollisionSerializer saveWorldCollision;
+			saveWorldCollision.exportCollision(col, serializeCollisionPath);
+
+			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+		}
+
+		if (false == overwrite)
+		{
+			file = fopen(serializeCollisionPath.c_str(), "rb");
+			if (nullptr == file)
+			{
+				Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open the object tree collision file!");
+
+				OgreNewt::CollisionSerializer saveWorldCollision;
+
+				col = this->createHeightFieldCollision(terra);
+			}
+			else
+			{
+				Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
+				OgreNewt::CollisionSerializer loadWorldCollision;
+				// Import collision from file for faster loading
+				col = loadWorldCollision.importCollision(streamFile, ogreNewt);
+
+				streamFile.close();
+				fclose(file);
+			}
+		}
+
+		return col;
+	}
+
+	OgreNewt::CollisionPtr PhysicsComponent::createHeightFieldCollision(Ogre::Terra* terra)
+	{
+		OgreNewt::CollisionPtr col;
+
+		int sizeX = (int)terra->getXZDimensions().x;
+		int sizeZ = (int)terra->getXZDimensions().y;
+
+		Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, /*is not required: terra->getHeight()*/0, terra->getXZDimensions().y) / 2.0f);
+
+		int startX = (int)terra->getTerrainOrigin().x;
+		int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
+
+		int startZ = (int)terra->getTerrainOrigin().z;
+		int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
+
+		// terra->setLocalAabb(Ogre::Aabb::newFromExtents(newMin, newMax));
+
+		Ogre::Real* elevation = new Ogre::Real[sizeX * sizeZ];
+
+		int xx = 0;
+		int zz = 0;
+
+		for (int x = startX; x < endX; x++)
+		{
+			for (int z = startZ; z < endZ; z++)
+			{
+				Ogre::Vector3 pos((Ogre::Real)x, 0.0f, (Ogre::Real)z);
+				bool res = terra->getHeightAt(pos);
+				xx = (x - (int)terra->getTerrainOrigin().x);
+				zz = (z - (int)terra->getTerrainOrigin().z);
+				elevation[zz * sizeZ + xx] = pos.y;
+			}
+		}
+
+		Ogre::Real cellSize = 1.0f;
+
+		char* attibutesCol = new char[sizeX * sizeZ];
+		memset(attibutesCol, 0, sizeX * sizeZ * sizeof(char));
+
+		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
+		Ogre::Vector3 position = Ogre::Vector3(terra->getTerrainOrigin().x - this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y, terra->getTerrainOrigin().z - this->gameObjectPtr->getPosition().z);
+
+		col = OgreNewt::CollisionPtr(
+			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, 1, elevation, attibutesCol, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
+				position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
+
+		delete[] elevation;
+		delete[] attibutesCol;
 
 		return col;
 	}

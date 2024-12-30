@@ -4,6 +4,7 @@
 #include "TerraComponent.h"
 #include "utilities/XMLConverter.h"
 #include "main/AppStateManager.h"
+#include "main/Core.h"
 
 namespace NOWA
 {
@@ -11,7 +12,8 @@ namespace NOWA
 	using namespace luabind;
 
 	PhysicsTerrainComponent::PhysicsTerrainComponent()
-		: PhysicsComponent()
+		: PhysicsComponent(),
+		serialize(new Variant(PhysicsTerrainComponent::AttrSerialize(), true, this->attributes))
 	{
 
 	}
@@ -25,28 +27,11 @@ namespace NOWA
 	{
 		GameObjectComponent::init(propertyElement, filename);
 
-#if 0
-		if (propertyElement)
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Serialize")
 		{
-			FILE* file = fopen(filename.c_str(), "rb");
-			if (!file)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTerrainComponent] Could not open the terrain collision file!");
-				return false;
-			}
-
-			Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
-			OgreNewt::CollisionSerializer loadWorldCollision;
-			OgreNewt::CollisionPtr col = loadWorldCollision.importCollision(streamFile, this->ogreNewt);
-			// OgreNewt::Body *pTerrainBody = new OgreNewt::Body(this->ogreNewt, col);
-			this->physicsBody = new OgreNewt::Body(this->ogreNewt, col);
-			// this->physicsBody->setGravity(Ogre::Vector3::ZERO);
-
-			streamFile.close();
-
+			this->serialize->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-#endif
 
 		return true;
 	}
@@ -71,7 +56,9 @@ namespace NOWA
 	void PhysicsTerrainComponent::reCreateCollision(bool overwrite)
 	{
 		if (nullptr != this->physicsBody)
+		{
 			this->destroyCollision();
+		}
 		
 		Ogre::Terra* terra = nullptr;
 
@@ -89,47 +76,27 @@ namespace NOWA
 			return;
 		}
 
-		int sizeX = (int)terra->getXZDimensions().x;
-		int sizeZ = (int)terra->getXZDimensions().y;
-
-		Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, /*is not required: terra->getHeight()*/0, terra->getXZDimensions().y) / 2.0f);
-
-		int startX = (int)terra->getTerrainOrigin().x;
-		int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
-
-		int startZ = (int)terra->getTerrainOrigin().z;
-		int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
-
-		// terra->setLocalAabb(Ogre::Aabb::newFromExtents(newMin, newMax));
-
-		Ogre::Real* elevation = new Ogre::Real[sizeX * sizeZ];
-
-		int xx = 0;
-		int zz = 0;
-
-		for (int x = startX; x < endX; x++)
+		// Collision for static objects
+		OgreNewt::CollisionPtr staticCollision;
+		if (false == this->serialize->getBool())
 		{
-			for (int z = startZ; z < endZ; z++)
-			{
-				Ogre::Vector3 pos((Ogre::Real)x, 0.0f, (Ogre::Real)z);
-				bool res = terra->getHeightAt(pos);
-				xx = (x - (int)terra->getTerrainOrigin().x);
-				zz = (z - (int)terra->getTerrainOrigin().z);
-				elevation[zz * sizeZ + xx] = pos.y;
-			}
+			staticCollision = this->createHeightFieldCollision(terra);
+		}
+		else
+		{
+			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+
+			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
+			staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
 		}
 
-		Ogre::Real cellSize = 1.0f;
-
-		char* attibutesCol = new char[sizeX * sizeZ];
-		memset(attibutesCol, 0, sizeX * sizeZ * sizeof(char));
-
-		Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-		Ogre::Vector3 position = Ogre::Vector3(terra->getTerrainOrigin().x - this->gameObjectPtr->getPosition().x, this->gameObjectPtr->getPosition().y, terra->getTerrainOrigin().z - this->gameObjectPtr->getPosition().z);
-
-		OgreNewt::CollisionPtr staticCollision = OgreNewt::CollisionPtr(
-			new OgreNewt::CollisionPrimitives::HeightField(this->ogreNewt, sizeX, sizeZ, 1, elevation, attibutesCol, 1.0f /* cellSize */, cellSize * 1.0f, cellSize * 1.0f,
-				position, orientation, this->gameObjectPtr->getCategoryId())); // move the collision hull to x = -184 and z = -184 as origin
+		if (nullptr == staticCollision)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTerrainComponent] Could create collision file for game object: "
+				+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[PhysicsTerrainComponent] Could create collision file for game object: "
+				+ this->gameObjectPtr->getName() + " and terrain mesh. Maybe the mesh is corrupt.\n", "NOWA");
+		}
 
 		if (nullptr == this->physicsBody)
 		{
@@ -157,26 +124,16 @@ namespace NOWA
 		{
 			this->physicsBody->setCollision(staticCollision);
 		}
-
-		delete[] elevation;
-		delete[] attibutesCol;
-	}
-
-	void PhysicsTerrainComponent::changeCollisionFaceId(unsigned int id)
-	{
-		if (nullptr != this->collisionPtr)
-		{
-			auto heightFieldCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::HeightField>(this->collisionPtr);
-			if (nullptr != heightFieldCollision)
-			{
-				heightFieldCollision->setFaceId(id);
-			}
-		}
 	}
 
 	void PhysicsTerrainComponent::actualizeValue(Variant* attribute)
 	{
 		GameObjectComponent::actualizeValue(attribute);
+
+		if (PhysicsTerrainComponent::AttrSerialize() == attribute->getName())
+		{
+			this->setSerialize(attribute->getBool());
+		}
 	}
 
 	void PhysicsTerrainComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
@@ -190,7 +147,11 @@ namespace NOWA
 		// 12 = bool
 		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
 
-		// PhysicsComponent::writePhysicsMaterialsProperties(propertiesXML, doc);
+		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Serialize"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->serialize->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String PhysicsTerrainComponent::getClassName(void) const
@@ -210,6 +171,32 @@ namespace NOWA
 		{
 			// Note: When selecting a game object, it will become for a short time dynamic for movement via gizmo...
 			this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), this->bShowDebugData);
+		}
+	}
+
+	void PhysicsTerrainComponent::setSerialize(bool serialize)
+	{
+		this->serialize->setValue(serialize);
+		if (true == serialize)
+		{
+			this->reCreateCollision(true);
+		}
+	}
+
+	bool PhysicsTerrainComponent::getSerialize(void) const
+	{
+		return this->serialize->getBool();
+	}
+
+	void PhysicsTerrainComponent::changeCollisionFaceId(unsigned int id)
+	{
+		if (nullptr != this->collisionPtr)
+		{
+			auto heightFieldCollision = std::dynamic_pointer_cast<OgreNewt::CollisionPrimitives::HeightField>(this->collisionPtr);
+			if (nullptr != heightFieldCollision)
+			{
+				heightFieldCollision->setFaceId(id);
+			}
 		}
 	}
 
