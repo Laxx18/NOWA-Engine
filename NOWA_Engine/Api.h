@@ -14,7 +14,7 @@ namespace NOWA
 
 	///////////////////////////////////////////Callbacks/////////////////////////////////////////////
 
-	typedef void (*HandleSceneLoaded) (bool worldChanged, ProjectParameter projectParameter);
+	typedef void (*HandleSceneLoaded) (bool sceneChanged, ProjectParameter projectParameter);
 
 	///////////////////////////////////////////Main Functions////////////////////////////////////////
 

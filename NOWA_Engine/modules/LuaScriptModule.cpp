@@ -65,7 +65,7 @@ namespace NOWA
 		return it->second;
 	}
 
-	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName)
+	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName, bool isGlobal)
 	{
 		auto& it = this->scripts.find(name);
 		if (it != this->scripts.end())
@@ -78,12 +78,16 @@ namespace NOWA
 			// It may be desired to use the same script for several game object if they should behave the same, also for performance reasons
 			return it->second;
 		}
-		LuaScript* luaScript = new LuaScript(name, scriptName);
+		LuaScript* luaScript = new LuaScript(name, scriptName, isGlobal);
 		this->scripts.emplace(name, luaScript);
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+
 		return luaScript;
 	}
 
-	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName, const Ogre::String& scriptContent)
+	LuaScript* LuaScriptModule::createScript(const Ogre::String& name, const Ogre::String& scriptName, const Ogre::String& scriptContent, bool isGlobal)
 	{
 		auto& it = this->scripts.find(name);
 		if (it != this->scripts.end())
@@ -97,8 +101,12 @@ namespace NOWA
 		}
 
 		// Get the file contents
-		LuaScript* luaScript = new LuaScript(name, scriptName, scriptContent);
+		LuaScript* luaScript = new LuaScript(name, scriptName, isGlobal, scriptContent);
 		this->scripts.emplace(name, luaScript);
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+
 		return luaScript;
 	}
 
@@ -124,20 +132,37 @@ namespace NOWA
 		return this->scripts.find(name) != this->scripts.end();
 	}
 
-	void LuaScriptModule::copyScript(const Ogre::String& sourceScriptName, const Ogre::String& targetScriptName, bool deleteSourceScript)
+	void LuaScriptModule::copyScript(const Ogre::String& sourceScriptName, const Ogre::String& targetScriptName, bool deleteSourceScript, bool isGlobal)
 	{
-		Ogre::String tempSourceScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + sourceScriptName;
-		Ogre::String tempTargetScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + targetScriptName;
+		Ogre::String tempSourceScriptFilePathName;
+		if (false == isGlobal)
+		{
+			tempSourceScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + sourceScriptName;
+		}
+		else
+		{
+			tempSourceScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + sourceScriptName;
+		}
 
-		this->internalCopyScript(tempSourceScriptFilePathName, tempTargetScriptFilePathName, deleteSourceScript, false);
+		Ogre::String tempTargetScriptFilePathName;
+		if (false == isGlobal)
+		{
+			tempTargetScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + targetScriptName;
+		}
+		else
+		{
+			tempTargetScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + targetScriptName;
+		}
+
+		this->internalCopyScript(tempSourceScriptFilePathName, tempTargetScriptFilePathName, deleteSourceScript, false, isGlobal);
 	}
 
-	void LuaScriptModule::copyScriptAbsolutePath(const Ogre::String& sourceScriptFilePathName, const Ogre::String& targetScriptFilePathName, bool deleteSourceScript)
+	void LuaScriptModule::copyScriptAbsolutePath(const Ogre::String& sourceScriptFilePathName, const Ogre::String& targetScriptFilePathName, bool deleteSourceScript, bool isGlobal)
 	{
-		this->internalCopyScript(sourceScriptFilePathName, targetScriptFilePathName, deleteSourceScript, true);
+		this->internalCopyScript(sourceScriptFilePathName, targetScriptFilePathName, deleteSourceScript, true, isGlobal);
 	}
 
-	void LuaScriptModule::internalCopyScript(const Ogre::String& sourceScriptFilePathName, const Ogre::String& targetScriptFilePathName, bool deleteSourceScript, bool isAbsolutePath)
+	void LuaScriptModule::internalCopyScript(const Ogre::String& sourceScriptFilePathName, const Ogre::String& targetScriptFilePathName, bool deleteSourceScript, bool isAbsolutePath, bool isGlobal)
 	{
 		Ogre::String sourceScriptName = Core::getSingletonPtr()->getFileNameFromPath(sourceScriptFilePathName);
 		Ogre::String targetScriptName = Core::getSingletonPtr()->getFileNameFromPath(targetScriptFilePathName);
@@ -154,9 +179,13 @@ namespace NOWA
 		// Get source content (internally replace old names with new ones)
 		Ogre::String luaInFileContent;
 		if (false == isAbsolutePath)
-			luaInFileContent = this->getScriptAdaptedContent(sourceScriptName, targetModuleName, sourceModuleName);
+		{
+			luaInFileContent = this->getScriptAdaptedContent(sourceScriptName, targetModuleName, isGlobal, sourceModuleName);
+		}
 		else
+		{
 			luaInFileContent = this->getScriptAdaptedContentAbsolute(sourceScriptFilePathName, targetModuleName, sourceModuleName);
+		}
 
 		// Write to target file
 		std::ofstream luaOutFile(targetScriptFilePathName);
@@ -178,13 +207,24 @@ namespace NOWA
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 	}
 
-	bool LuaScriptModule::checkLuaScriptFileExists(const Ogre::String& scriptName, const Ogre::String& filePath)
+	bool LuaScriptModule::checkLuaScriptFileExists(const Ogre::String& scriptName, bool isGlobal, const Ogre::String& filePath)
 	{
 		Ogre::String tempScriptFilePathName;
 		if (true == filePath.empty())
-			tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+		{
+			if (false == isGlobal)
+			{
+				tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + scriptName;
+			}
+			else
+			{
+				tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+			}
+		}
 		else
+		{
 			tempScriptFilePathName = filePath + "/" + scriptName;
+		}
 
 		// Note: if its a read only file, it can only be opened with the flag ios::in
 		std::fstream luaInFile(tempScriptFilePathName, std::ios::in);
@@ -195,11 +235,11 @@ namespace NOWA
 		return false;
 	}
 
-	Ogre::String LuaScriptModule::getValidatedLuaScriptName(const Ogre::String& scriptName, const Ogre::String& filePath)
+	Ogre::String LuaScriptModule::getValidatedLuaScriptName(const Ogre::String& scriptName, bool isGlobal, const Ogre::String& filePath)
 	{
 		Ogre::String validatedScriptName = scriptName;
 		// If a lua  script with this name does already exist, rename it
-		if (false == this->checkLuaScriptFileExists(scriptName, filePath))
+		if (false == this->checkLuaScriptFileExists(scriptName, isGlobal, filePath))
 		{
 			return validatedScriptName;
 		}
@@ -224,15 +264,24 @@ namespace NOWA
 				}
 				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
 				validatedScriptName += Ogre::StringConverter::toString(id++) + ".lua";
-			} while (true == this->checkLuaScriptFileExists(validatedScriptName, filePath));
+			} while (true == this->checkLuaScriptFileExists(validatedScriptName, isGlobal, filePath));
 		}
 
 		return validatedScriptName;
 	}
 
-	Ogre::String LuaScriptModule::getScriptAdaptedContent(const Ogre::String& scriptName, const Ogre::String& targetModuleName, const Ogre::String& sourceModuleName)
+	Ogre::String LuaScriptModule::getScriptAdaptedContent(const Ogre::String& scriptName, const Ogre::String& targetModuleName, bool isGlobal, const Ogre::String& sourceModuleName)
 	{
-		Ogre::String tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+		Ogre::String tempScriptFilePathName;
+		if (false == isGlobal)
+		{
+			tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + scriptName;
+		}
+		else
+		{
+			tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+		}
+
 		return this->internalGetScriptAdaptedContent(tempScriptFilePathName, targetModuleName, sourceModuleName);
 	}
 
@@ -414,9 +463,17 @@ namespace NOWA
 		return false;
 	}
 
-	void LuaScriptModule::generateLuaFunctionName(const Ogre::String& scriptName, const Ogre::String& functionName)
+	void LuaScriptModule::generateLuaFunctionName(const Ogre::String& scriptName, const Ogre::String& functionName, bool isGlobal)
 	{
-		Ogre::String tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+		Ogre::String tempScriptFilePathName;
+		if (false == isGlobal)
+		{
+			tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + scriptName;
+		}
+		else
+		{
+			tempScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+		}
 
 		// Get source content
 		std::fstream luaInFile(tempScriptFilePathName, std::ios::in);

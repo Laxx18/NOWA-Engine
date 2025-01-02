@@ -344,6 +344,7 @@ namespace NOWA
 		else
 		{
 			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
+			// Note: Collision file is located in the project folder for all scenes
 			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
 			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
 		}
@@ -368,6 +369,28 @@ namespace NOWA
 		if (true == serialize)
 		{
 			this->reCreateCollision(true);
+		}
+		else
+		{
+			Ogre::String meshName;
+			if (GameObject::ENTITY == this->gameObjectPtr->getType())
+			{
+				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>()->getMesh()->getName();
+			}
+			else
+			{
+				meshName = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->getMesh()->getName();
+			}
+
+			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
+			try
+			{
+				DeleteFile(sourceCollisionFilePathName.c_str());
+			}
+			catch (...)
+			{
+
+			}
 		}
 	}
 

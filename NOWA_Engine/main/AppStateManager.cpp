@@ -278,7 +278,7 @@ namespace NOWA
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "cFrametime: " + Ogre::StringConverter::toString(cFrametime));
 
 				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 				{
 					InputDeviceCore::getSingletonPtr()->capture(frameTime);
 
@@ -294,7 +294,7 @@ namespace NOWA
 
 				accumulator -= frameTime;
 
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 				{
 					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(frameTime));
 				}
@@ -356,7 +356,7 @@ namespace NOWA
 			currentTime += dt;
 
 			// update input devices
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
 				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
 
@@ -369,7 +369,7 @@ namespace NOWA
 			Core::getSingletonPtr()->update(static_cast<Ogre::Real>(dt));
 
 			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
 				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
 			}
@@ -499,7 +499,7 @@ namespace NOWA
 			if (false == this->bShutdown)
 			{
 				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 				{
 					// Updates the active state
 					this->activeStateStack.back()->update(tickCountDt);
@@ -532,7 +532,7 @@ namespace NOWA
 			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count() / 1000.0f) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
 			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
 				this->activeStateStack.back()->lateUpdate(dt);
 			}
@@ -613,7 +613,7 @@ namespace NOWA
 				if (false == this->bShutdown)
 				{
 					// update input devices
-					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 					{
 						// Updates the active state
 						this->activeStateStack.back()->update(logicDeltaTime);
@@ -622,7 +622,7 @@ namespace NOWA
 					// Update core
 					Core::getSingletonPtr()->update(logicDeltaTime);
 
-					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isWorldLoading())
+					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 					{
 						this->activeStateStack.back()->lateUpdate(logicDeltaTime);
 					}
@@ -845,8 +845,8 @@ namespace NOWA
 		{
 			this->bStall = true;
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-			// Creates the delay process and changes the world at another tick. Note, this is necessary
-			// because changing the world destroys all game objects and its components.
+			// Creates the delay process and changes the scene at another tick. Note, this is necessary
+			// because changing the scene destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
 			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::ChangeAppState)));
@@ -872,8 +872,8 @@ namespace NOWA
 		{
 			this->bStall = true;
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-			// Creates the delay process and changes the world at another tick. Note, this is necessary
-			// because changing the world destroys all game objects and its components.
+			// Creates the delay process and changes the scene at another tick. Note, this is necessary
+			// because changing the scene destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
 			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PushAppState)));
@@ -890,8 +890,8 @@ namespace NOWA
 		{
 			this->bStall = true;
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-			// Creates the delay process and changes the world at another tick. Note, this is necessary
-			// because changing the world destroys all game objects and its components.
+			// Creates the delay process and changes the scene at another tick. Note, this is necessary
+			// because changing the scene destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
 			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::PopAppState)));
@@ -917,8 +917,8 @@ namespace NOWA
 		{
 			this->bStall = true;
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-			// Creates the delay process and changes the world at another tick. Note, this is necessary
-			// because changing the world destroys all game objects and its components.
+			// Creates the delay process and changes the scene at another tick. Note, this is necessary
+			// because changing the scene destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
 			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(state, eAppStateOperation::PopAllAndPushAppState)));
@@ -932,8 +932,8 @@ namespace NOWA
 		if (true == Core::getSingletonPtr()->getIsGame())
 		{
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.2f));
-			// Creates the delay process and changes the world at another tick. Note, this is necessary
-			// because changing the world destroys all game objects and its components.
+			// Creates the delay process and changes the scene at another tick. Note, this is necessary
+			// because changing the scene destroys all game objects and its components.
 			// So changing the state directly inside a component would create a mess, since everything will be destroyed
 			// and the game object map in update loop becomes invalid while its iterating
 			// delayProcess->attachChild(NOWA::ProcessPtr(new ChangeAppStateProcess(eAppStateOperation::ExitGame)));

@@ -31,13 +31,13 @@ namespace NOWA
 
 		~DotSceneExportModule();
 
-		void exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName, bool crypted = false);
+		void exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& sceneResourceGroupName, bool crypted = false);
 
 		void saveSceneSnapshot(const Ogre::String& filePathName, bool crypted = false);
 
-		void copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& worldResourceGroupName);
+		void copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName);
 
-		void exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName, bool crypted = false);
+		void exportGlobalScene(const Ogre::String& sceneResourceGroupName, const Ogre::String& projectName, bool crypted = false);
 
 		void exportResourceLocations(rapidxml::xml_node<>* resourcesXML, rapidxml::xml_document<>& doc);
 

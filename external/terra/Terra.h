@@ -131,6 +131,7 @@ namespace Ogre
         uint8                   m_blendLayer;
         Ogre::String            m_prefix;
         Ogre::String            m_currentBlendWeightImageName;
+        Ogre::String            m_currentHeightMapImageName;
         Ogre::Image2            m_blendWeightImage;
 
         /// Creates the Ogre texture based on the image data.
@@ -359,6 +360,10 @@ namespace Ogre
         inline Vector3 toYUp( Vector3 value ) const;
         /// Same as toYUp, but preserves original sign. Needed when value is a scale
         inline Vector3 toYUpSignPreserving( Vector3 value ) const;
+
+        Ogre::String getHeightMapTextureName(void) const;
+
+        Ogre::String getBlendWeightTextureName(void) const;
     public:
         Ogre::uint32 mHlmsTerraIndex;
     };

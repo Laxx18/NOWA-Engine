@@ -211,17 +211,17 @@ namespace NOWA
 		Ogre::String getWindowTitle(void) const;
 
 		/**
-		* @brief		Gets the world names
-		* @return		worldNames	The world names
-		* @note			The format of the data structure is: <worldName, projectName>
+		* @brief		Gets the scene names
+		* @return		sceneNames	The scene names
+		* @note			The format of the data structure is: <sceneName, projectName>
 		*/
-		std::map<Ogre::String, Ogre::String> getWorldNames(void) const;
+		std::map<Ogre::String, Ogre::String> getSceneNames(void) const;
 
 		/**
 		* @brief		Sets the project name
 		* @param[in]	projectName	The project to set
 		* @note			This can be used to form the project prefix (like Network), combining with the virtual environment name,
-		*				so that the client load the map (e.g. Network-World1)
+		*				so that the client load the map (e.g. Network-Scene1)
 		*/
 		void setProjectName(const Ogre::String& projectName);
 
@@ -232,18 +232,18 @@ namespace NOWA
 		Ogre::String getProjectName(void) const;
 
 		/**
-		* @brief		Sets the world name
-		* @param[in]	worldName	The world name to set
+		* @brief		Sets the scene name
+		* @param[in]	sceneName	The scene name to set
 		* @note			This can be used to form the project prefix (like Network), combining with the virtual environment name,
-		*				so that the client load the map (e.g. Network-World1)
+		*				so that the client load the map (e.g. Network-Scene1)
 		*/
-		void setWorldName(const Ogre::String& worldName);
+		void setSceneName(const Ogre::String& sceneName);
 
 		/**
-		* @brief		Gets the world name
-		* @return		worldName	The world name to get
+		* @brief		Gets the scene name
+		* @return		sceneName	The scene name to get
 		*/
-		Ogre::String getWorldName(void) const;
+		Ogre::String getSceneName(void) const;
 
 		/**
 		* @brief		Gets whether this application is the server or not. This query can be used, to perform code for a client application or server application
@@ -271,26 +271,26 @@ namespace NOWA
 		bool isServerInConsole(void) const;
 
 		/**
-		* @brief		Parses all worlds from a section and delivers a map
+		* @brief		Parses all scenes from a section and delivers a map
 		* @param[in]	section	The section to parse
-		* @return		worlds	The worlds in the format <worldName, projectName>
+		* @return		scenes	The scenes in the format <sceneName, projectName>
 		*/
-		std::map<Ogre::String, Ogre::String> parseWorlds(const Ogre::String& section, const Ogre::String& resourceName = "resources.cfg");
+		std::map<Ogre::String, Ogre::String> parseScenes(const Ogre::String& section, const Ogre::String& resourceName = "resources.cfg");
 
 		/**
-		* @brief		Pre parses a world from a resource group and filename to find out, how many clients can participate
+		* @brief		Pre parses a scene from a resource group and filename to find out, how many clients can participate
 		* @param[in]	resourceGroup	The resource group for parsing
 		* @param[in]	projectName		The project name
-		* @param[in]	worldName		The world name
+		* @param[in]	sceneName		The scene name
 		*/
-		void preParseWorld(const Ogre::String& resourceGroup, const Ogre::String& projectName, const Ogre::String& worldName);
+		void preParseScene(const Ogre::String& resourceGroup, const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		/**
-		* @brief		Finds the project from the given world name
-		* @param[in]	worldName	The world name to set
-		* @return		iterator	The iterator from a world name
+		* @brief		Finds the project from the given scene name
+		* @param[in]	sceneName	The scene name to set
+		* @return		iterator	The iterator from a scene name
 		*/
-		std::map<Ogre::String, Ogre::String>::iterator findProject(const Ogre::String& worldName);
+		std::map<Ogre::String, Ogre::String>::iterator findProject(const Ogre::String& sceneName);
 
 		/**
 		* @brief		Gets client start data
@@ -375,9 +375,9 @@ namespace NOWA
 		RakNet::SystemAddress serverAddress;
 		RakNet::SystemAddress localAddress;
 		
-		//<worldName, projectName>
-		std::map<Ogre::String, Ogre::String> worldNames;
-		Ogre::String worldName;
+		//<sceneName, projectName>
+		std::map<Ogre::String, Ogre::String> sceneNames;
+		Ogre::String sceneName;
 		Ogre::String projectName;
 		bool server;
 		bool clientConnectionToServer;

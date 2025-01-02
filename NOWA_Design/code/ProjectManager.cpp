@@ -24,17 +24,13 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
 	this->openSaveFileDialog = new OpenSaveFileDialogExtended();
 	this->openSaveFileDialog->setFileMask("*.scene");
 	this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
-
-	// this->openSaveFileDialog->eventEndDialog.connect(this, &ProjectControl::notifyEndDialogOpenSaveFile);
-	// // this->openSaveFileDialog->setCurrentFolder(RecentFilesManager::getInstance().getRecentFolder());
-	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 }
 
 ProjectManager::~ProjectManager()
 {
 	if (this->dotSceneImportModule)
 	{
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProjectManager]: Destroying World");
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProjectManager]: Destroying Scene");
 		delete this->dotSceneImportModule;
 		this->dotSceneImportModule = nullptr;
 	}
@@ -302,7 +298,7 @@ void ProjectManager::saveProject(const Ogre::String& optionalFileName)
 	this->dotSceneExportModule->exportScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects");
 
 	// Add file name to recent file names
-	RecentFilesManager::getInstance().addRecentFile(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene");
+	RecentFilesManager::getInstance().addRecentFile(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
 
 	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::SAVE));
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
@@ -311,7 +307,7 @@ void ProjectManager::saveProject(const Ogre::String& optionalFileName)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
 }
 
-void ProjectManager::loadProject(const Ogre::String& filePathName)
+void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned short recentFileIndex)
 {
 	Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
 	MyGUI::PointerManager::getInstancePtr()->setPointer("link");
@@ -337,7 +333,7 @@ void ProjectManager::loadProject(const Ogre::String& filePathName)
 		this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
 	}
 
-	Ogre::String projectFilePathName = this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene";
+	Ogre::String projectFilePathName = this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
 
 	if (nullptr == this->dotSceneImportModule)
 	{
@@ -349,7 +345,10 @@ void ProjectManager::loadProject(const Ogre::String& filePathName)
 		bool success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
 		if (false == success)
 		{
-			RecentFilesManager::getInstance().removeRecentFile(0);
+			if (-1 != recentFileIndex)
+			{
+				RecentFilesManager::getInstance().removeRecentFile(recentFileIndex);
+			}
 
 			// Trigger for main menu bar, that the recent list will be updated via this event
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
@@ -638,7 +637,7 @@ void ProjectManager::showFileSaveDialog(const Ogre::String& action, const Ogre::
 	if ("*.group" == fileMask)
 		targetFolder += "/Groups";
 
-	// Set the target folder specified in world resource group
+	// Set the target folder specified in scene resource group
 	this->openSaveFileDialog->setCurrentFolder(targetFolder);
 	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 	this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveFile}"),
@@ -689,7 +688,7 @@ bool ProjectManager::showFileOpenDialog(const Ogre::String& action, const Ogre::
 		}
 	}
 
-	// Set the target folder specified in world resource group
+	// Set the target folder specified in scene resource group
 	this->openSaveFileDialog->setCurrentFolder(targetFolder);
 	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 
@@ -723,9 +722,9 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 			}
 			this->projectParameter.sceneName = tempFileName;
 
-			if (false == this->checkProjectExists(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene"))
+			if (false == this->checkProjectExists(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene"))
 			{
-				this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene");
+				this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
 			}
 		}
 		else if (this->openSaveFileDialog->getMode() == "LoadProject")
@@ -808,8 +807,8 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 	}
 	else
 	{
-		// Only set scene valid, if a world has already been loaded
-		if (false == NOWA::Core::getSingletonPtr()->getCurrentWorldPath().empty())
+		// Only set scene valid, if a scene has already been loaded
+		if (false == NOWA::Core::getSingletonPtr()->getCurrentScenePath().empty())
 		{
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
@@ -852,7 +851,7 @@ void ProjectManager::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageB
 {
 	if (result == MyGUI::MessageBoxStyle::Yes)
 	{
-		this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene");
+		this->saveProject(this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene");
 	}
 	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);

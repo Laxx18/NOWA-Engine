@@ -72,6 +72,7 @@ void DesignState::enter(void)
 	this->mainMenuBar = nullptr;
 	this->nextInfoUpdate = 1.0f;
 	this->validScene = false;
+	this->hasSceneChanges = false;
 	this->activeCategory = "All";
 	this->cameraMoveSpeed = 10.0f;
 	this->lastOrbitValue = Ogre::Vector2::ZERO;
@@ -79,6 +80,7 @@ void DesignState::enter(void)
 	this->playerInControl = false;
 	this->ogreNewt = nullptr;
 	this->selectQuery = nullptr;
+	this->undoPressed = false;
 
 	// Register the tree control
 	MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -132,17 +134,20 @@ void DesignState::exit(void)
 	factory.unregisterFactory<MyGUI::StackPanel>(widgetCategory);
 	factory.unregisterFactory<MyGUI::ScrollViewPanel>(widgetCategory);
 	
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsSimulation);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgetsManipulation);
@@ -241,17 +246,20 @@ void DesignState::createScene(void)
 
 	this->initializeModules(false, false);
 
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
 	//this->sceneManager->setAmbientLight(Ogre::ColourValue(0.3f, 0.5f, 0.7f) * 0.1f * 0.75f, Ogre::ColourValue(0.6f, 0.45f, 0.3f) * 0.065f * 0.75f, Ogre::Vector3(-1, -1, -1).normalisedCopy());
 	////Set sane defaults for proper shadow mapping
@@ -659,12 +667,6 @@ void DesignState::simulate(bool pause, bool withUndo)
 
 	if (false == pause)
 	{
-		// Always first save before starting simulation, so that newest values are set, for later resetVariants etc.
-		if (nullptr != this->projectManager)
-		{
-			// this->projectManager->saveProject();
-		}
-
 		if (false == NOWA::Core::getSingletonPtr()->getIsGame())
 		{
 			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->snapshotGameObjects();
@@ -748,7 +750,20 @@ void DesignState::handleGenerateCategoriesDelegate(NOWA::EventDataPtr eventData)
 
 void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
-	this->bQuit = true;
+	if (true == this->hasSceneChanges)
+	{
+		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
+			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+		messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
+	}
+	else
+	{
+		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
+			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+		messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
+	}
 }
 
 void DesignState::handleStopSimulation(NOWA::EventDataPtr eventData)
@@ -793,7 +808,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->generateCategories();
 
 		this->projectManager->setEditorManager(this->editorManager);
-		// When a new world has been loaded e.g. via GameProgressModule, the project manager must get the new ogre newt and must not work with the old one!
+		// When a new scene has been loaded e.g. via GameProgressModule, the project manager must get the new ogre newt and must not work with the old one!
 		this->projectManager->setOgreNewt(this->ogreNewt);
 
 		// Creates the properties panel
@@ -803,7 +818,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 				this->propertiesPanel = new PropertiesPanel(MyGUI::FloatCoord(0.78f, 0.0f, 0.23f, 0.93f));
 			}
 			this->propertiesPanel->clearProperties();
-			// Actualize the editor manager pointer, because e.g. when a new world is created, the editor manager will be destroyed first, so the pointer is no more valid
+			// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
 			this->propertiesPanel->setEditorManager(this->editorManager);
 		}
 
@@ -814,7 +829,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 				this->resourcesPanel = new ResourcesPanel(MyGUI::FloatCoord(0.0f, 0.03f, 0.18f, 0.90f));
 			}
 			this->resourcesPanel->clear();
-			// Actualize the editor manager pointer, because e.g. when a new world is created, the editor manager will be destroyed first, so the pointer is no more valid
+			// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
 			this->resourcesPanel->setEditorManager(this->editorManager);
 			this->resourcesPanel->setProjectManager(this->projectManager);
 		}
@@ -825,7 +840,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 			{
 				this->componentsPanel = new ComponentsPanel(MyGUI::FloatCoord(0.6f, 0.03f, 0.18f, 0.90f));
 			}
-			// Actualize the editor manager pointer, because e.g. when a new world is created, the editor manager will be destroyed first, so the pointer is no more valid
+			// Actualize the editor manager pointer, because e.g. when a new scene is created, the editor manager will be destroyed first, so the pointer is no more valid
 			this->componentsPanel->setEditorManager(this->editorManager);
 			this->componentsPanel->setVisible(false);
 		}
@@ -833,9 +848,16 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->enableWidgets(true);
 		this->simulationWindow->setVisible(true);
 		this->manipulationWindow->setVisible(true);
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getWorldName());
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+
+		this->hasSceneChanges = false;
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, NOWA::Core::getSingletonPtr()->dumpGraphicsMemory());
+	}
+	else if (ProjectManager::eProjectMode::SAVE == projectMode)
+	{
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+		this->hasSceneChanges = false;
 	}
 }
 
@@ -895,9 +917,9 @@ void DesignState::handlePlayerInControl(NOWA::EventDataPtr eventData)
 	this->playerInControl = castEventData->getIsActive();
 }
 
-void DesignState::handleWorldLoaded(NOWA::EventDataPtr eventData)
+void DesignState::handleSceneLoaded(NOWA::EventDataPtr eventData)
 {
-	boost::shared_ptr<NOWA::EventDataWorldLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataWorldLoaded>(eventData);
+	boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
 	// Event not for this state
 	if (castEventData->getSceneParameter().appStateName != this->appStateName)
@@ -908,13 +930,13 @@ void DesignState::handleWorldLoaded(NOWA::EventDataPtr eventData)
 	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(ProjectManager::eProjectMode::NEW));
 	this->handleProjectManipulation(eventDataProjectManipulation);
 
-	// Note: When world has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-	// and the world has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-	if (true == castEventData->getWorldChanged())
+	// Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+	// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+	if (true == castEventData->getSceneChanged())
 	{
-		this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old world is loaded?
+		this->simulate(false, false); // With undo false, how to solve this: when stopping, that the old scene is loaded?
 
-		// Set project parameter for project manager when a new world has been loaded in running simulation
+		// Set project parameter for project manager when a new scene has been loaded in running simulation
 		if (nullptr != this->projectManager)
 		{
 			this->projectManager->setProjectParameter(castEventData->getProjectParameter());
@@ -962,6 +984,40 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 			}
 		}
 	}
+}
+
+void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
+{
+	this->hasSceneChanges = true;
+
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+}
+
+void DesignState::handleTerraChanged(NOWA::EventDataPtr eventData)
+{
+	// Do not set changes, if undo button has pressed, because things for terra have been made back, so not changes
+	if (false == this->undoPressed)
+	{
+		this->hasSceneChanges = true;
+
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+	}
+	else
+	{
+		this->undoPressed = false;
+	}
+}
+
+void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData)
+{
+	// Changed game object global state, scene must be stored!
+	if (nullptr != this->projectManager)
+	{
+		this->projectManager->saveProject();
+	}
+
+	this->hasSceneChanges = false;
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
 }
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
@@ -1151,9 +1207,19 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		// Show properties
 		this->propertiesPanel->showProperties();
 		this->resourcesPanel->refresh();
+
+		if (false == this->editorManager->canUndo())
+		{
+			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+			this->hasSceneChanges = false;
+			this->undoPressed = true;
+		}
 	}
 	else if (this->redoButton == sender)
 	{
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+		this->hasSceneChanges = true;
+
 		this->editorManager->redo();
 		// Show properties
 		this->propertiesPanel->showProperties();
@@ -1288,9 +1354,28 @@ void DesignState::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo&
 
 }
 
-void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle _result)
+void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle result)
 {
-	if (_result == MyGUI::MessageBoxStyle::Yes)
+	if (result == MyGUI::MessageBoxStyle::Yes)
+	{
+		if (nullptr != this->projectManager)
+		{
+			this->projectManager->saveProject();
+		}
+	}
+
+	this->hasSceneChanges = false;
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+
+	MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
+		MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+	messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
+}
+
+void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
+{
+	if (result == MyGUI::MessageBoxStyle::Yes)
 	{
 		this->bQuit = true;
 	}
@@ -1441,7 +1526,7 @@ void DesignState::update(Ogre::Real dt)
 	NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->update(dt);
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isWorldLoading())
+	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())
 	{
 		if (true == this->simulating)
 		{
@@ -1673,7 +1758,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 	MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
 }
 
-bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
+bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 {
 	// Prevent scene manipulation, when user does something in GUI
 	/*if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget())
@@ -1753,17 +1838,17 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				if (true == this->simulating)
 				{
 					if (GetAsyncKeyState(VK_LCONTROL))
+					{
 						this->simulate(true, false); // Stop without undo
+					}
 					else
+					{
 						this->simulate(true, true);
+					}
 				}
 				else
 				{
-					// Ask user whether he really wants to quit the application
-					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
-
-					messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
+					this->handleExit(nullptr);
 				}
 				return true;
 			}
@@ -1804,7 +1889,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 			}
 			case OIS::KC_F7:
 			{
-				NOWA::DeployResourceModule::getInstance()->createAndStartExecutable(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getWorldName());
+				NOWA::DeployResourceModule::getInstance()->createAndStartExecutable(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getSceneName());
 				// NOWA::AppStateManager::getSingletonPtr()->pause();
 				NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
 				return true;
@@ -1836,8 +1921,12 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 				{
 					if (nullptr != this->componentsPanel)
 					{
-						this->componentsPanel->showComponents(-1);
+						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
+						{
+							this->componentsPanel->showComponents(-1);
+						}
 					}
+					return true;
 				}
 				else if (GetAsyncKeyState(VK_LCONTROL))
 				{
@@ -1869,6 +1958,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent &keyEventRef)
 						if (nullptr != this->projectManager)
 						{
 							this->projectManager->saveProject();
+							this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
 						}
 					}
 					return true;
@@ -2010,6 +2100,14 @@ bool DesignState::keyReleased(const OIS::KeyEvent &keyEventRef)
 
 void DesignState::processUnbufferedKeyInput(Ogre::Real dt)
 {
+	const auto& keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+
+	if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
+	{
+		bQuit = true;
+		return;
+	}
+
 	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
 	{
 		return;

@@ -72,11 +72,16 @@ namespace NOWA
 			"Attention: Cloning a lua script may be dangerous, because its content of this original component will also be cloned and executed.");
 		this->commonScript->setDescription("Several game object may use the same script, if the script name for the lua script components is the same. This is useful if they should behave the same. This also increases the performance."
 			"Also for example when the game object is cloned, the lua script component is cloned too, but referencing the original lua script file.");
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &LuaScriptComponent::handleGroupLoaded), EventDataGroupLoaded::getStaticEventType());
 	}
 
 	LuaScriptComponent::~LuaScriptComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LuaScriptComponent] Destructor lua script component component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &LuaScriptComponent::handleGroupLoaded), EventDataGroupLoaded::getStaticEventType());
+
 		if (nullptr != this->luaScript)
 		{
 			AppStateManager::getSingletonPtr()->getLuaScriptModule()->destroyScript(this->luaScript->getName());
@@ -127,7 +132,15 @@ namespace NOWA
 			break;
 		}
 
-		Ogre::String scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
+		Ogre::String scriptDestFilePathName;
+		if (false == this->gameObjectPtr->getGlobal())
+		{
+			scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
+		}
+		else
+		{
+			scriptDestFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
+		}
 
 		// Copy script to location, if it does not exist there
 		std::ifstream scriptFile(scriptDestFilePathName, std::ios::in);
@@ -160,13 +173,13 @@ namespace NOWA
 		if (false == this->cloneScript->getBool() && true == this->commonScript->getBool() && true == this->scriptFile->getString().empty())
 		{
 			// Use original name, so that cloned game object will automatically use the same script
-			clonedCompPtr->setScriptFile(Core::getSingletonPtr()->getWorldName() + "_" + this->gameObjectPtr->getName() + ".lua", eScriptAction::LOAD);
+			clonedCompPtr->setScriptFile(this->gameObjectPtr->getName() + ".lua", eScriptAction::LOAD);
 		}
 		else if (true == this->cloneScript->getBool())
 		{
 			// Set the original name
 			clonedCompPtr->scriptFile->setValue(this->scriptFile->getString());
-			clonedCompPtr->setScriptFile(Core::getSingletonPtr()->getWorldName() + "_" + clonedGameObjectPtr->getName() + ".lua", eScriptAction::CLONE);
+			clonedCompPtr->setScriptFile(clonedGameObjectPtr->getName() + ".lua", eScriptAction::CLONE);
 			this->componentCloned = true;
 		}
 		else
@@ -299,22 +312,39 @@ namespace NOWA
 		size_t foundGroup = filePath.find("Groups");
 		if (Ogre::String::npos != foundGroup)
 		{
-			std::ifstream scriptFile(filePath + "/" + this->scriptFile->getString(), std::ios::in);
+			std::ifstream scriptFileInGroup(filePath + "/" + Core::getSingletonPtr()->getProjectName() + "/" + this->scriptFile->getString(), std::ios::in);
 			// If its a common script, overwrite an existing file
-			if (false == scriptFile.good()  || true == this->commonScript->getBool())
+			if (false == scriptFileInGroup.good()  || true == this->commonScript->getBool())
 			{
-				Ogre::String scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
+				Ogre::String scriptSourceFilePathName;
+				if (false == this->gameObjectPtr->getGlobal())
+				{
+					scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
+				}
+				else
+				{
+					scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath()  + "/" + this->scriptFile->getString();
+				}
+
 				Ogre::String scriptDestFilePathName = filePath + "/" + this->scriptFile->getString();
-				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false);
+				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, this->gameObjectPtr->getGlobal());
 			}
 			else
 			{
-				Ogre::String scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
+				Ogre::String scriptSourceFilePathName;
+				if (false == this->gameObjectPtr->getGlobal())
+				{
+					scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptFile->getString();
+				}
+				else
+				{
+					scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptFile->getString();
+				}
 
-				Ogre::String tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(this->scriptFile->getString());
-				Ogre::String scriptDestFilePathName = filePath + "/" + tempScriptFileName;
+				Ogre::String tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(this->scriptFile->getString(), this->gameObjectPtr->getGlobal());
+				Ogre::String scriptDestFilePathName = filePath + "/" + Core::getSingletonPtr()->getProjectName() + "/" + tempScriptFileName;
 				this->scriptFile->setValue(tempScriptFileName);
-				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName.c_str(), scriptDestFilePathName.c_str(), false);
+				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName.c_str(), scriptDestFilePathName.c_str(), false, this->gameObjectPtr->getGlobal());
 			}
 		}
 
@@ -407,37 +437,26 @@ namespace NOWA
 		{
 			if (true == tempScriptFileName.empty())
 			{
-				if (false == this->gameObjectPtr->global->getBool())
-					tempScriptFileName = Core::getSingletonPtr()->getWorldName() + "_" + this->gameObjectPtr->getName() + ".lua";
-				else
-					tempScriptFileName = this->gameObjectPtr->getName() + ".lua";
+				tempScriptFileName = this->gameObjectPtr->getName() + ".lua";
 			}
 			// Script name may exist and must be replaced, before a copy is made
-			tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName);
+			tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->gameObjectPtr->getGlobal());
 		}
 		else if (eScriptAction::CLONE == scriptAction)
 		{
-			// Maybe copy a script from groups folder, if a group has been cloned
-			if (false == this->scriptFile->getString().empty() && true == this->cloneScript->getBool())
-			{
-				this->maybeCopyScriptFromGroups();
-			}
-
 			// Script name may exist and must be replaced, before a copy is made
-			Ogre::String newScriptName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName);
-			if (newScriptName != tempScriptFileName)
-			{
-				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, true);
-			}
-			else
-			{
-				tempScriptFileName = this->scriptFile->getString();
-			}
+			Ogre::String newScriptName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(tempScriptFileName, this->gameObjectPtr->getGlobal());
+			AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->scriptFile->getString(), tempScriptFileName, false, this->gameObjectPtr->getGlobal());
+
+			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 		}
 
 		size_t found = tempScriptFileName.find(".lua");
 		if (Ogre::String::npos == found)
+		{
 			tempScriptFileName += ".lua";
+		}
 
 		this->scriptFile->setValue(tempScriptFileName);
 
@@ -451,12 +470,15 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && scriptFile != this->luaScript->getName())
 			{
-				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->luaScript->getScriptName(), tempScriptFileName, true);
+				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScript(this->luaScript->getScriptName(), tempScriptFileName, true, this->gameObjectPtr->getGlobal());
 				AppStateManager::getSingletonPtr()->getLuaScriptModule()->destroyScript(this->luaScript);
+
+				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 			}
 		}
 
-		this->luaScript = AppStateManager::getSingletonPtr()->getLuaScriptModule()->createScript(unqiueScriptName, tempScriptFileName);
+		this->luaScript = AppStateManager::getSingletonPtr()->getLuaScriptModule()->createScript(unqiueScriptName, tempScriptFileName, this->gameObjectPtr->getGlobal());
 
 		if (nullptr == this->luaScript)
 		{
@@ -466,7 +488,7 @@ namespace NOWA
 		// Set the lua script also for the game object
 		this->gameObjectPtr->luaScript = this->luaScript;
 
-		if (false == AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaScriptFileExists(tempScriptFileName))
+		if (false == AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaScriptFileExists(tempScriptFileName, this->gameObjectPtr->getGlobal()))
 		{
 			Ogre::String firstLetter = tempScriptName.substr(0, 1);
 			Ogre::StringUtil::toLowerCase(firstLetter);
@@ -478,7 +500,7 @@ namespace NOWA
 			}
 
 			this->luaScript->setInterfaceFunctionsTemplate("-- physicsActiveComponent = nil;\n" + tempScriptName + " = {}\n\n"
-				+ "-- Scene: " + Core::getSingletonPtr()->getWorldName() + "\n\n"
+				+ "-- Scene: " + Core::getSingletonPtr()->getSceneName() + "\n\n"
 				+ "require(""\"init""\");\n\n"
 				+ tempScriptVariable + " = nil\n\n"
 				+ tempScriptName + "[""\"connect""\"] = function(gameObject)\n"
@@ -500,7 +522,7 @@ namespace NOWA
 			//// we can refer to it from c++
 			//this->thisClassObject = luabind::globals(LuaScriptApi::getInstance()->getLua())[this->getClassName()];
 
-			if (eScriptAction::NEW == scriptAction)
+			if (eScriptAction::NEW == scriptAction || eScriptAction::LOAD == scriptAction)
 			{
 				this->compileScript();
 			}
@@ -528,12 +550,32 @@ namespace NOWA
 			}
 		}
 
-		Ogre::String relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + tempScriptFileName;
+		Ogre::String relativeLuaScriptFilePathName;
+		if (false == this->gameObjectPtr->getGlobal())
+		{
+			relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + tempScriptFileName;
+		}
+		else
+		{
+			relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + tempScriptFileName;
+		}
 		Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
 
 		this->luaScript->setScriptFile(tempScriptFileName);
 		this->luaScript->setScriptFilePathName(luaScriptFilePathName);
 		this->scriptFile->addUserData(GameObject::AttrActionLuaScript(), luaScriptFilePathName);
+	}
+
+	void LuaScriptComponent::handleGroupLoaded(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataGroupLoaded> castEventData = boost::static_pointer_cast<EventDataGroupLoaded>(eventData);
+
+		if (castEventData->getGameObjectId() != this->gameObjectPtr->getId())
+		{
+			return;
+		}
+
+		this->maybeCopyScriptFromGroups();
 	}
 
 	Ogre::String LuaScriptComponent::getScriptFile(void) const

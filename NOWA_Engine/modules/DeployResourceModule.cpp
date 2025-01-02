@@ -583,7 +583,7 @@ namespace NOWA
 		ofs.close();
 	}
 
-	bool DeployResourceModule::createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& worldName)
+	bool DeployResourceModule::createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName)
 	{
 		{
 			// Check if project already exists
@@ -701,7 +701,7 @@ namespace NOWA
 			ifs.close();
 
 			content = replaceAll(content, "ProjectTemplate", projectName);
-			content = replaceAll(content, "World1", worldName);
+			content = replaceAll(content, "Scene1", sceneName);
 
 			// Write new content
 			std::ofstream ofs(destinationFilePathName);
@@ -1053,11 +1053,11 @@ namespace NOWA
 		return true;
 	}
 
-	bool DeployResourceModule::createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& worldName)
+	bool DeployResourceModule::createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& sceneName)
 	{
 		Ogre::String destinationFolder = "../../" + projectName + "/";
-		Ogre::String destinationHeaderFilePathName = destinationFolder + "code/" + worldName + "State.h";
-		Ogre::String destinationImplFilePathName = destinationFolder + "code/" + worldName + "State.cpp";
+		Ogre::String destinationHeaderFilePathName = destinationFolder + "code/" + sceneName + "State.h";
+		Ogre::String destinationImplFilePathName = destinationFolder + "code/" + sceneName + "State.cpp";
 
 		Ogre::String sourceFolder = "../../media/NOWA/ProjectTemplate/code/";
 		Ogre::String sourceHeaderFilePathName = sourceFolder + "GameState.h";
@@ -1089,8 +1089,8 @@ namespace NOWA
 			Ogre::String content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 			ifs.close();
 
-			content = replaceAll(content, "GameState", worldName + "State");
-			Ogre::String makroName = worldName;
+			content = replaceAll(content, "GameState", sceneName + "State");
+			Ogre::String makroName = sceneName;
 			Ogre::StringUtil::toUpperCase(makroName);
 			content = replaceAll(content, "GAME_STATE_H", makroName + "_STATE_H");
 
@@ -1113,9 +1113,9 @@ namespace NOWA
 			Ogre::String content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 			ifs.close();
 
-			content = replaceAll(content, "GameState", worldName + "State");
+			content = replaceAll(content, "GameState", sceneName + "State");
 			content = replaceAll(content, "ProjectTemplate", projectName);
-			content = replaceAll(content, "World1", worldName);
+			content = replaceAll(content, "Scene1", sceneName);
 
 			// Write new content
 			std::ofstream ofs(destinationImplFilePathName);
@@ -1167,9 +1167,9 @@ namespace NOWA
 		return true;
 	}
 
-	bool DeployResourceModule::createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& worldName)
+	bool DeployResourceModule::createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& sceneName)
 	{
-		this->createCPlusPlusProject(projectName, worldName);
+		this->createCPlusPlusProject(projectName, sceneName);
 
 		Ogre::String destinationFolder = "../../" + projectName;
 		Ogre::String destinationFilePathName = destinationFolder + "/" + projectName + ".vcxproj";
@@ -1222,7 +1222,7 @@ namespace NOWA
 		return true;
 	}
 
-	bool DeployResourceModule::createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName)
+	bool DeployResourceModule::createProjectBackup(const Ogre::String& projectName, const Ogre::String& sceneName)
 	{
 		std::list<Ogre::String> sceneBackupList;
 		auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("", "../../media/Projects/backup/" + projectName, "*.*");
@@ -1241,15 +1241,14 @@ namespace NOWA
 			sceneBackupList.pop_front();
 		}
 
-		Ogre::String tempWorldName = worldName;
-		size_t found = tempWorldName.find(".scene");
+		Ogre::String tempSceneName = sceneName;
+		size_t found = tempSceneName.find(".scene");
 		if (found != Ogre::String::npos)
 		{
-			tempWorldName = tempWorldName.substr(0, tempWorldName.size() - 6);
+			tempSceneName = tempSceneName.substr(0, tempSceneName.size() - 6);
 		}
 
 		Ogre::String destinationFolder = "../../media/Projects/backup/" + projectName;
-		Core::getSingletonPtr()->createFolders(destinationFolder + "/");
 		Ogre::String sourceFolder = "../../media/Projects/" + projectName;
 
 		time_t rawtime;
@@ -1260,9 +1259,20 @@ namespace NOWA
 		strftime(strTempTime, sizeof(strTempTime), "%Y_%m_%d_%H_%M_%S", timeinfo);
 		Ogre::String strTime = strTempTime;
 
-		Ogre::String destinationFilePathName = destinationFolder + "/" + tempWorldName + "_backup_" + strTime + ".scene";
-		Ogre::String sourceFilePathName = sourceFolder + "/" + tempWorldName + ".scene";
+		Ogre::String destinationFilePathName = destinationFolder + "/" + tempSceneName + "/" + tempSceneName + "_backup_" + strTime + ".scene";
+		Ogre::String sourceFilePathName = sourceFolder + "/" + tempSceneName + "/" + tempSceneName + ".scene";
+
+		Core::getSingletonPtr()->createFolders(destinationFilePathName);
+
 		CopyFile(sourceFilePathName.data(), destinationFilePathName.data(), TRUE);
+
+		Ogre::String sourceGlobalSceneFilePathName = sourceFolder + "/" + "global.scene";
+		Ogre::String destinationGlobalSceneFilePathName = destinationFolder + "/" + "global.scene";
+		CopyFile(sourceGlobalSceneFilePathName.data(), destinationGlobalSceneFilePathName.data(), TRUE);
+
+		Ogre::String sourceLuaInitSceneFilePathName = sourceFolder + "/" + "init.lua";
+		Ogre::String destinationLuaInitSceneFilePathName = destinationFolder + "/" + "init.lua";
+		CopyFile(sourceLuaInitSceneFilePathName.data(), destinationLuaInitSceneFilePathName.data(), TRUE);
 
 		std::ifstream ifs(destinationFilePathName);
 		if (false == ifs.good())

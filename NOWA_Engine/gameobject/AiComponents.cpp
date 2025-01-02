@@ -333,7 +333,7 @@ namespace NOWA
 			if (nullptr != this->movingBehaviorPtr)
 			{
 				// Only delete later if not in the middle of destruction of all game objects
-				if (false == Core::getSingletonPtr()->getIsWorldBeingDestroyed())
+				if (false == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
 				{
 					// Delete later, as this may be called from lua script and cause trouble else
 					NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));

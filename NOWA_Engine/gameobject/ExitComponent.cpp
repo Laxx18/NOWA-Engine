@@ -15,7 +15,7 @@ namespace NOWA
 	ExitComponent::ExitComponent()
 		: GameObjectComponent(),
 		activated(new Variant(ExitComponent::AttrActivated(), true, this->attributes)),
-		targetWorldName(new Variant(ExitComponent::AttrTargetWorldName(), Ogre::String(""), this->attributes)),
+		targetSceneName(new Variant(ExitComponent::AttrTargetSceneName(), Ogre::String(""), this->attributes)),
 		targetLocationName(new Variant(ExitComponent::AttrTargetLocationName(), Ogre::String(""), this->attributes)),
 		sourceGameObjectId(new Variant(ExitComponent::AttrSourceId(), static_cast<unsigned long>(0), this->attributes, true)),
 		exitDirection(new Variant(ExitComponent::AttrExitDirection(), Ogre::Vector2::ZERO, this->attributes)),
@@ -23,11 +23,11 @@ namespace NOWA
 		sourceGameObject(nullptr),
 		processAlreadyAttached(false)
 	{
-		this->targetWorldName->setDescription("Sets the target world name, that should be loaded.");
-		this->targetLocationName->setDescription("Sets the target location name (GameObject name with exit component in target world name), at which the source game object should be placed.");
+		this->targetSceneName->setDescription("Sets the target scene name, that should be loaded.");
+		this->targetLocationName->setDescription("Sets the target location name (GameObject name with exit component in target scene name), at which the source game object should be placed.");
 		this->sourceGameObjectId->setDescription("The id for the source game object for target location placement.");
-		this->exitDirection->setDescription("The exit direction at which the source game object will leave the current world.");
-		this->axis->setDescription("The axis for exit direction. For Jump'n'Run e.g. 'X,Y' is correct and for a casual 3D world 'X,Z'.");
+		this->exitDirection->setDescription("The exit direction at which the source game object will leave the current scene.");
+		this->axis->setDescription("The axis for exit direction. For Jump'n'Run e.g. 'X,Y' is correct and for a casual 3D scene 'X,Z'.");
 		
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ExitComponent::handlePhysicsTrigger), EventPhysicsTrigger::getStaticEventType());
 	}
@@ -47,9 +47,9 @@ namespace NOWA
 			this->activated->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetWorldName")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetSceneName")
 		{
-			this->targetWorldName->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
+			this->targetSceneName->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetLocationName")
@@ -57,7 +57,7 @@ namespace NOWA
 			this->targetLocationName->setValue(XMLConverter::getAttrib(propertyElement, "data", ""));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-// Attention: SourceGameObjectId will change in next world!?
+// Attention: SourceGameObjectId will change in next scene!?
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SourceGameObjectId")
 		{
 			this->sourceGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
@@ -79,8 +79,8 @@ namespace NOWA
 
 	bool ExitComponent::postInit(void)
 	{
-		AppStateManager::getSingletonPtr()->getGameProgressModule()->addWorld(Core::getSingletonPtr()->getProjectName() + "/" + Core::getSingletonPtr()->getFileNameFromPath(Core::getSingletonPtr()->getCurrentWorldPath()), 
-			this->targetWorldName->getString(), this->targetLocationName->getString(), this->exitDirection->getVector2(), 
+		AppStateManager::getSingletonPtr()->getGameProgressModule()->addScene(Core::getSingletonPtr()->getProjectName() + "/" + Core::getSingletonPtr()->getFileNameFromPath(Core::getSingletonPtr()->getCurrentScenePath()), 
+			this->targetSceneName->getString(), this->targetLocationName->getString(), this->exitDirection->getVector2(), 
 			this->gameObjectPtr->getPosition(), this->axis->getListSelectedValue() == "X,Y" ? true : false);
 		return true;
 	}
@@ -105,7 +105,7 @@ namespace NOWA
 					+ Ogre::StringConverter::toString(this->sourceGameObjectId->getULong()) + "' does not exist.");
 				return false;
 			}
-			AppStateManager::getSingletonPtr()->getGameProgressModule()->addWorld(this->getCurrentWorldName(), this->targetWorldName->getString(), this->targetLocationName->getString(), 
+			AppStateManager::getSingletonPtr()->getGameProgressModule()->addScene(this->getCurrentSceneName(), this->targetSceneName->getString(), this->targetLocationName->getString(), 
 				this->exitDirection->getVector2(), this->gameObjectPtr->getPosition(), this->axis->getListSelectedValue() == "X,Y" ? true : false);
 		}
 		else
@@ -176,10 +176,10 @@ namespace NOWA
 		{
 			if (true == entered)
 			{
-				if (false == this->targetWorldName->getString().empty())
+				if (false == this->targetSceneName->getString().empty())
 				{
 					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "------------->[handlePhysicsTrigger");
-					AppStateManager::getSingletonPtr()->getGameProgressModule()->changeWorld(this->targetWorldName->getString());
+					AppStateManager::getSingletonPtr()->getGameProgressModule()->changeScene(this->targetSceneName->getString());
 					this->processAlreadyAttached = true;
 				}
 			}
@@ -214,10 +214,10 @@ namespace NOWA
 			// Newton ragdoll may become corrupt and pos will be nan and so new level would be loaded
 			if (distanceToGoal <= 0.2f && !isnan(distanceToGoal))
 			{
-				if (false == this->targetWorldName->getString().empty())
+				if (false == this->targetSceneName->getString().empty())
 				{
 					// change application state to target one
-					AppStateManager::getSingletonPtr()->getGameProgressModule()->changeWorld(this->targetWorldName->getString());
+					AppStateManager::getSingletonPtr()->getGameProgressModule()->changeScene(this->targetSceneName->getString());
 					this->processAlreadyAttached = true;
 				}
 			}
@@ -232,9 +232,9 @@ namespace NOWA
 		{
 			this->setActivated(attribute->getBool());
 		}
-		else if (ExitComponent::AttrTargetWorldName() == attribute->getName())
+		else if (ExitComponent::AttrTargetSceneName() == attribute->getName())
 		{
-			this->targetWorldName->setValue(attribute->getString());
+			this->targetSceneName->setValue(attribute->getString());
 		}
 		else if (ExitComponent::AttrTargetLocationName() == attribute->getName())
 		{
@@ -273,8 +273,8 @@ namespace NOWA
 		
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetWorldName"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetWorldName->getString())));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "TargetSceneName"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->targetSceneName->getString())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -302,14 +302,14 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
-	Ogre::String ExitComponent::getTargetWorldName(void) const
+	Ogre::String ExitComponent::getTargetSceneName(void) const
 	{
-		return this->targetWorldName->getString();
+		return this->targetSceneName->getString();
 	}
 
-	Ogre::String ExitComponent::getCurrentWorldName(void) const
+	Ogre::String ExitComponent::getCurrentSceneName(void) const
 	{
-		return AppStateManager::getSingletonPtr()->getGameProgressModule()->getCurrentWorldName();
+		return AppStateManager::getSingletonPtr()->getGameProgressModule()->getCurrentSceneName();
 	}
 
 	Ogre::Vector2 ExitComponent::getExitDirection(void) const

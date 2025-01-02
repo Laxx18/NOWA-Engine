@@ -48,19 +48,19 @@ namespace NOWA
 
 		this->initializeModules(true, true);
 		// Note: All listener must be added after the modules are initialized
-		// React when world has been loaded to get data
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
+		// React when scene has been loaded to get data
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 0.1f)));
 
-		// Attention: Load world is loaded at an different frame, so after that camera, etc is not available, use EventDataWorldChanged event to get data
-		if (false == this->currentWorldName.empty())
+		// Attention: Load scene is loaded at an different frame, so after that camera, etc is not available, use EventDataSceneChanged event to get data
+		if (false == this->currentSceneName.empty())
 		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadWorld(this->currentWorldName);
+			NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadScene(this->currentSceneName);
 		}
 		else
 		{
-			// If no world name specified, just call start and set default parameter
+			// If no scene name specified, just call start and set default parameter
 			NOWA::SceneParameter sceneParameter;
 			sceneParameter.sceneManager = this->sceneManager;
 			sceneParameter.dotSceneImportModule = nullptr;
@@ -77,14 +77,14 @@ namespace NOWA
 		this->canUpdate = false;
 		this->hasStarted = false;
 
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		this->destroyModules();
 	}
 
-	void AppState::handleWorldLoaded(NOWA::EventDataPtr eventData)
+	void AppState::handleSceneLoaded(NOWA::EventDataPtr eventData)
 	{
-		boost::shared_ptr<NOWA::EventDataWorldLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataWorldLoaded>(eventData);
+		boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
 		this->sceneManager = castEventData->getSceneParameter().sceneManager;
 		this->camera = castEventData->getSceneParameter().mainCamera;
@@ -169,7 +169,7 @@ namespace NOWA
 
 	void AppState::render(Ogre::Real alpha)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
 		{
 			this->gameObjectController->render(alpha);
 		}
@@ -450,7 +450,7 @@ namespace NOWA
 
 	void AppState::updateModules(Ogre::Real dt)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
 		{
 			this->ogreNewtModule->update(dt);
 			this->ogreRecastModule->update(dt);
@@ -462,7 +462,7 @@ namespace NOWA
 
 	void AppState::lateUpdateModules(Ogre::Real dt)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isWorldLoading())
+		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
 		{
 			// Late update the GameObjects
 			this->gameObjectController->lateUpdate(dt);

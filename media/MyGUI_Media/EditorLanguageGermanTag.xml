@@ -8,6 +8,7 @@
 	<Tag name="Back_To_Menue">Zurück zum Menue</Tag>
 	<Tag name="Quit">Beenden</Tag>
 	<Tag name="Overwrite">Datei existiert schon, ueberschreiben?</Tag>
+	<Tag name="SceneModified">Die Szene hat Aenderungen, speichern?</Tag>
 	<Tag name="Options">Optionen</Tag>
 	<Tag name="Rendersystem">Rendersystem</Tag>
 	<Tag name="Anti_Aliasing">Kantenglaettung</Tag>

@@ -866,13 +866,13 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
-	// EventDataWorldLoaded - Sent when the world has been loaded
+	// EventDataSceneLoaded - Sent when the scene has been loaded
 	//---------------------------------------------------------------------------------------------------------------------
-	class EventDataWorldLoaded : public NOWA::BaseEventData
+	class EventDataSceneLoaded : public NOWA::BaseEventData
 	{
 	public:
-		EventDataWorldLoaded(bool worldChanged, const NOWA::ProjectParameter& projectParameter, const NOWA::SceneParameter& sceneParameter)
-			: worldChanged(worldChanged),
+		EventDataSceneLoaded(bool sceneChanged, const NOWA::ProjectParameter& projectParameter, const NOWA::SceneParameter& sceneParameter)
+			: sceneChanged(sceneChanged),
 			projectParameter(projectParameter),
 			sceneParameter(sceneParameter)
 		{
@@ -901,12 +901,12 @@ namespace NOWA
 
 		virtual NOWA::EventDataPtr copy() const
 		{
-			return NOWA::EventDataPtr(new EventDataWorldLoaded(this->worldChanged, this->projectParameter, this->sceneParameter));
+			return NOWA::EventDataPtr(new EventDataSceneLoaded(this->sceneChanged, this->projectParameter, this->sceneParameter));
 		}
 
 		virtual const char* getName(void) const
 		{
-			return "EventDataWorldLoaded";
+			return "EventDataSceneLoaded";
 		}
 		
 		NOWA::ProjectParameter getProjectParameter(void) const
@@ -919,12 +919,12 @@ namespace NOWA
 			return this->sceneParameter;
 		}
 
-		bool getWorldChanged(void) const
+		bool getSceneChanged(void) const
 		{
-			return this->worldChanged;
+			return this->sceneChanged;
 		}
 	private:
-		bool worldChanged;
+		bool sceneChanged;
 		NOWA::ProjectParameter projectParameter;
 		NOWA::SceneParameter sceneParameter;
 	};
@@ -1029,7 +1029,7 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
-	// EventDataBoundsUpdated - This event is sent out when the world bounds have been updated (world stored)
+	// EventDataBoundsUpdated - This event is sent out when the scene bounds have been updated (scene stored)
 	//---------------------------------------------------------------------------------------------------------------------
 	class EXPORTED EventDataBoundsUpdated : public BaseEventData
 	{
@@ -1896,8 +1896,9 @@ namespace NOWA
 		{
 		}
 
-		explicit EventDataTerraChanged(bool heightMapChanged, bool blendMapChanged)
-			: heightMapChanged(heightMapChanged),
+		explicit EventDataTerraChanged(const unsigned long id, bool heightMapChanged, bool blendMapChanged)
+			: id(id),
+			heightMapChanged(heightMapChanged),
 			blendMapChanged(blendMapChanged)
 		{
 		}
@@ -1919,7 +1920,7 @@ namespace NOWA
 
 		virtual EventDataPtr copy(void) const
 		{
-			return EventDataPtr(new EventDataTerraChanged(this->heightMapChanged, this->blendMapChanged));
+			return EventDataPtr(new EventDataTerraChanged(this->id, this->heightMapChanged, this->blendMapChanged));
 		}
 
 		virtual void serialize(std::ostrstream& out) const
@@ -1933,6 +1934,11 @@ namespace NOWA
 			return "EventDataTerraChanged";
 		}
 
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
 		bool getIsHeightMapChanged(void) const
 		{
 			return this->heightMapChanged;
@@ -1943,6 +1949,7 @@ namespace NOWA
 			return this->blendMapChanged;
 		}
 	private:
+		unsigned long id;
 		bool heightMapChanged;
 		bool blendMapChanged;
 	};
@@ -2189,6 +2196,113 @@ namespace NOWA
 		{
 			return "EventDataResourceCreated";
 		}
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataGameObjectMadeGlobal - Sent when a game object has been made global or not at runtime
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataGameObjectMadeGlobal : public NOWA::BaseEventData
+	{
+	public:
+		EventDataGameObjectMadeGlobal(const unsigned long id, bool isGlobal)
+			: id(id),
+			isGlobal(isGlobal)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe8329A07;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe8329A07;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->id) << " " << Ogre::StringConverter::toString(this->isGlobal);
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->id) >> Ogre::StringConverter::toString(this->isGlobal);
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataGameObjectMadeGlobal(this->id, this->isGlobal));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataGameObjectMadeGlobal";
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
+		bool getIsGlobal(void) const
+		{
+			return this->isGlobal;
+		}
+	private:
+		unsigned long id;
+		bool isGlobal;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataGroupLoaded - Sent when a group has been loaded
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataGroupLoaded : public NOWA::BaseEventData
+	{
+	public:
+		EventDataGroupLoaded(const unsigned long id)
+			: id(id)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe8329A08;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe8329A08;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			out << Ogre::StringConverter::toString(this->id);
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			in >> Ogre::StringConverter::toString(this->id);
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataGroupLoaded(this->id));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataGroupLoaded";
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+	private:
+		unsigned long id;
 	};
 
 }; // namespace end

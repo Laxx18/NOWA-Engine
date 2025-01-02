@@ -8,8 +8,9 @@
 
 namespace NOWA
 {
-	LuaScript::LuaScript(const Ogre::String& name, const Ogre::String& scriptPathName, const Ogre::String& scriptContent)
+	LuaScript::LuaScript(const Ogre::String& name, const Ogre::String& scriptPathName, bool isGlobal, const Ogre::String& scriptContent)
 		: scriptPathName(scriptPathName),
+		isGlobal(isGlobal),
 		scriptContent(scriptContent),
 		compiled(false),
 		compileError(false),
@@ -23,11 +24,36 @@ namespace NOWA
 		
 	}
 
-	void LuaScript::createLuaScriptFile(void)
+	void LuaScript::setIsGlobal(bool isGlobal)
 	{
-		Ogre::String luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+		this->isGlobal = isGlobal;
 
-		this->checkLuaFile(luaScriptFilePathName);
+		if (true == AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaScriptFileExists(this->scriptName, isGlobal))
+		{
+			return;
+		}
+
+		// Cuts/Pastes the script if it does not exist either to parent project folder if its global, or to the deeper scene folder if its not global
+		if (true == isGlobal)
+		{
+			Ogre::String sourceLuaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptPathName;
+			Ogre::String destinationLuaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+			AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceLuaScriptFilePathName, destinationLuaScriptFilePathName, true, isGlobal);
+		}
+		else
+		{
+			Ogre::String sourceLuaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+			Ogre::String destinationLuaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptPathName;
+			AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceLuaScriptFilePathName, destinationLuaScriptFilePathName, true, isGlobal);
+		}
+
+		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+	}
+
+	bool LuaScript::getIsGlobal(void) const
+	{
+		return this->isGlobal;
 	}
 
 	void LuaScript::errorHandler()
@@ -223,11 +249,21 @@ namespace NOWA
 	{
 		lua_State* lua = LuaScriptApi::getInstance()->getLua();
 		this->compileError = false;
-
-		Ogre::String luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+		
+		Ogre::String luaScriptFilePathName;
+		if (false == this->isGlobal)
+		{
+			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptPathName;
+		}
+		else
+		{
+			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+		}
 
 		if (false == this->checkLuaFile(luaScriptFilePathName))
+		{
 			return;
+		}
 
 		// https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c
 		// Add the lua script path to global package path, so that other lua scripts can be found when using 'require' like include
@@ -239,7 +275,7 @@ namespace NOWA
 		// That is: There can be one lua script defined with a module name on the disc. Now when several GameObjects want to use the one script
 		// The content is loaded and the module name replaced to a unique name for each GameObject and then the string is run via luaL_dostring
 		// This is done each time, connect is called
-		this->scriptContent = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getScriptAdaptedContent(this->scriptPathName, this->name);
+		this->scriptContent = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getScriptAdaptedContent(this->scriptPathName, this->name, this->isGlobal);
 		this->moduleName = this->name;
 
 		int result = 0;
@@ -264,7 +300,15 @@ namespace NOWA
 	{
 		lua_State* lua = LuaScriptApi::getInstance()->getLua();
 
-		Ogre::String luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+		Ogre::String luaScriptFilePathName;
+		if (false == this->isGlobal)
+		{
+			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->scriptPathName;
+		}
+		else
+		{
+			luaScriptFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->scriptPathName;
+		}
 
 		// If the script has the crypt file flags, encode again
 		if (GetFileAttributes(luaScriptFilePathName.data()) & FileFlag && false == this->scriptContent.empty())
@@ -288,9 +332,6 @@ namespace NOWA
 			{
 				outFile << this->scriptContent;
 				outFile.close();
-
-				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 			}
 		}
 // Attention:

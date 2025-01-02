@@ -2051,7 +2051,7 @@ bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, cons
 		return false;
 	}
 
-	// Set the target folder specified in world resource group
+	// Set the target folder specified in scene resource group
 	this->openSaveFileDialog->setCurrentFolder(targetFolder);
 	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 
@@ -3087,7 +3087,7 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 		{
 			if (nullptr != this->gameObject->getLuaScript())
 			{
-				NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()));
+				NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()), this->gameObject->getGlobal());
 			}
 		}
 		else if (button == this->appendComponentButton)

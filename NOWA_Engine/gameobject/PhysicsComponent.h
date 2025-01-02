@@ -213,9 +213,9 @@ namespace NOWA
 		static const Ogre::String AttrMass(void) { return "Mass"; }
 		static const Ogre::String AttrCollidable(void) { return "Collidable"; }
 	protected:
-		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& worldPath, unsigned int categoryId, bool overwrite = false);
+		OgreNewt::CollisionPtr serializeTreeCollision(const Ogre::String& scenePath, unsigned int categoryId, bool overwrite = false);
 
-		OgreNewt::CollisionPtr serializeHeightFieldCollision(const Ogre::String& worldPath, unsigned int categoryId, Ogre::Terra* terra, bool overwrite = false);
+		OgreNewt::CollisionPtr serializeHeightFieldCollision(const Ogre::String& scenePath, unsigned int categoryId, Ogre::Terra* terra, bool overwrite = false);
 
 		OgreNewt::CollisionPtr createDynamicCollision(Ogre::Vector3& inertia, const Ogre::Vector3& collisionSize, const Ogre::Vector3& collisionPosition,
 			const Ogre::Quaternion& collisionOrientation, Ogre::Vector3& massOrigin, unsigned int categoryId);

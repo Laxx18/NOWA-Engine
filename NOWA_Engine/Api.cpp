@@ -22,7 +22,7 @@ std::string utf16ToUtf8(const std::wstring& utf16Str)
 class SimulationState : public NOWA::AppState
 {
 public:
-	typedef void (__cdecl* OnHandleSceneLoadedFuncPtr) (bool worldChanged, NOWA::ProjectParameter projectParameter);
+	typedef void (__cdecl* OnHandleSceneLoadedFuncPtr) (bool sceneChanged, NOWA::ProjectParameter projectParameter);
 	// Weitere callback für key, mousemove etc.!?
 public:
 	DECLARE_APPSTATE_CLASS(SimulationState)
@@ -38,15 +38,15 @@ public:
 		this->ogreNewt = nullptr;
 		this->canUpdate = true;
 		this->onHandleSceneLoadedFuncPtr = nullptr;
-		// React when world has been loaded to get data
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &SimulationState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
+		// React when scene has been loaded to get data
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &SimulationState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 
 		this->createScene();
 	}
 
 	void exit(void)
 	{
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &SimulationState::handleWorldLoaded), NOWA::EventDataWorldLoaded::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &SimulationState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		this->canUpdate = false;
 		this->destroyModules();
@@ -56,13 +56,13 @@ public:
 	{
 		this->initializeModules(true, true);
 
-		// Attention: Load world is loaded at an different frame, so after that camera, etc is not available, use EventDataWorldChanged event to get data
+		// Attention: Load scene is loaded at an different frame, so after that camera, etc is not available, use EventDataSceneChanged event to get data
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectName();
-		Ogre::String sceneName = NOWA::Core::getSingletonPtr()->getWorldName();
+		Ogre::String sceneName = NOWA::Core::getSingletonPtr()->getSceneName();
 
 		if (false == projectName.empty())
 		{
-			NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadWorld(projectName + "/" + sceneName);
+			NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->loadScene(projectName + "/" + sceneName + "/" + sceneName);
 		}
 
 		// MyGUI::PointerManager::getInstancePtr()->setVisible(false);
@@ -70,18 +70,18 @@ public:
 		NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f)));
 	}
 
-	void handleWorldLoaded(NOWA::EventDataPtr eventData)
+	void handleSceneLoaded(NOWA::EventDataPtr eventData)
 	{
-		boost::shared_ptr<NOWA::EventDataWorldLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataWorldLoaded>(eventData);
+		boost::shared_ptr<NOWA::EventDataSceneLoaded> castEventData = boost::static_pointer_cast<NOWA::EventDataSceneLoaded>(eventData);
 
 		if (nullptr != this->onHandleSceneLoadedFuncPtr)
 		{
-			this->onHandleSceneLoadedFuncPtr(castEventData->getWorldChanged(), castEventData->getProjectParameter());
+			this->onHandleSceneLoadedFuncPtr(castEventData->getSceneChanged(), castEventData->getProjectParameter());
 		}
 
-		// setSceneCallback(castEventData->getWorldChanged(), castEventData->getProjectParameter());
+		// setSceneCallback(castEventData->getSceneChanged(), castEventData->getProjectParameter());
 
-		//if (true == castEventData->getWorldChanged())
+		//if (true == castEventData->getSceneChanged())
 		//{
 		//	this->camera = NOWA::GameProgressModule::instance()->get()->getData().mainCamera;
 		//	// Start game
@@ -195,6 +195,14 @@ public:
 
 	void processUnbufferedKeyInput(Ogre::Real dt)
 	{
+		const auto& keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+
+		if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
+		{
+			bQuit = true;
+			return;
+		}
+
 		if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
 		{
 			return;

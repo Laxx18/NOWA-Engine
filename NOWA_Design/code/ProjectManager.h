@@ -36,7 +36,7 @@ public:
 
 	void saveProject(const Ogre::String& optionalFileName = Ogre::String());
 
-	void loadProject(const Ogre::String& filePathName);
+	void loadProject(const Ogre::String& filePathName, unsigned short recentFileIndex = -1);
 
 	void saveGroup(const Ogre::String& filePathName);
 
@@ -52,6 +52,7 @@ public:
 private:
 	void notifyEndDialog(tools::Dialog* sender, bool result);
 	void notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
+
 	bool checkProjectExists(const Ogre::String& fileName);
 	Ogre::Light* createSunLight(void);
 	Ogre::Camera* createMainCamera(void);

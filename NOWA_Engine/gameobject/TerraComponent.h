@@ -204,6 +204,7 @@ namespace NOWA
 	private:
 		void destroyTerra(void);
 		void handleSwitchCamera(NOWA::EventDataPtr eventData);
+		void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
 	private:
 		Variant* center;
 		Variant* pixelSize;

@@ -358,31 +358,70 @@ namespace NOWA
 		Ogre::String getSaveFilePathName(const Ogre::String& saveName, const Ogre::String& fileEnding = ".sav");
 
 		/*
-		* @brief		Creates a folder for the given path
+		* @brief		Creates a folder for the given path.
 		* @param[in] path	The path to create the folder
 		* @return			true If the folder could be created, else false
 		*/
 		bool createFolder(const Ogre::String& path);
 		
 		/*
-		* @brief		Creates all folders for the given path
+		* @brief		Creates all folders for the given path.
 		* @param[in] path	The path to create the folders
 		*/
 		void createFolders(const Ogre::String& path);
 
 		/*
-		* @brief	Gets the file name from path
+		* @brief	Gets the file name from path.
 		* @param[in] filePath	The whole file path to extract the file name
 		* @return fileName  The file name extracted out of the path
 		*/
 		Ogre::String getFileNameFromPath(const Ogre::String& filePath);
 		
 		/*
-		* @brief	Gets the project name from path
+		* @brief	Gets the project name from path.
 		* @param[in] filePath	The whole file path to extract the project name
 		* @return projectName  The project name extracted out of the path
+		* @details	E.g. "../media/projects/blub/scene1/scene1.scene" would deliver: "blub"
 		*/
 		Ogre::String getProjectNameFromPath(const Ogre::String& filePath);
+
+		/*
+		* @brief	Gets the scene name from path.
+		* @param[in] filePath	The whole file path to extract the scene name
+		* @return sceneName		The scene name extracted out of the path
+		* @details	E.g. "../media/projects/blub/scene1/scene1.scene" would deliver: "scene1"
+		*/
+		Ogre::String getSceneNameFromPath(const Ogre::String& filePath);
+
+		/*
+		* @brief	Gets the project file path name from path.
+		* @param[in] filePath	The whole file path to extract the project name
+		* @return projectFilePathName  The project file path name name extracted out of the path
+		* @details	E.g. "../media/projects/blub/scene1/scene1.scene" would deliver: "../media/projects/blub"
+		*/
+		Ogre::String getProjectFilePathNameFromPath(const Ogre::String& filePath);
+
+		/*
+		* @brief	Gets the scene file path name from path.
+		* @param[in] filePath	The whole file path to extract the project name
+		* @return sceneFilePathName  The scene file path name extracted out of the path
+		* @details	E.g. "../media/projects/blub/scene1/scene1.scene" would deliver: "../media/projects/blub/scene1"
+		*/
+		Ogre::String getSceneFilePathNameFromPath(const Ogre::String& filePath);
+
+		/*
+		* @brief	Gets all scene folders for a project name.
+		* @param[in] projectFilePathName	The project file path name to set.
+		* @details	E.g. having "../media/projects/blub/scene1/scene1.scene", "../media/projects/blub/scene2/scene2.scene" would deliver: { "scene1", "scene2" }.
+		*/
+		std::vector<Ogre::String> getSceneFoldersInProject(const Ogre::String& projectFilePathName);
+
+		/*
+		* @brief	Gets all scene file names for a project name.
+		* @param[in] projectFilePathName	The project file path name to set.
+		* @details	E.g. having "../media/projects/blub/scene1/scene1.scene", "../media/projects/blub/scene2/scene2.scene" would deliver: { "scene1.scene", "scene2.scene" }.
+		*/
+		std::vector<Ogre::String> getSceneFileNamesInProject(const Ogre::String& projectFilePathName);
 
 		/*
 		* @brief	Gets absolute path from a relative path
@@ -511,21 +550,21 @@ namespace NOWA
 		
 		Ogre::String getProjectName(void) const;
 
-		Ogre::String getWorldName(void) const;
+		Ogre::String getSceneName(void) const;
 
-		Ogre::String getCurrentWorldPath(void) const;
+		Ogre::String getCurrentScenePath(void) const;
 
 		Ogre::String getCurrentProjectPath(void) const;
 
-		Ogre::Vector3 getCurrentWorldBoundLeftNear(void);
+		Ogre::Vector3 getCurrentSceneBoundLeftNear(void);
 
-		Ogre::Vector3 getCurrentWorldBoundRightFar(void);
+		Ogre::Vector3 getCurrentSceneBoundRightFar(void);
 
 		/**
-		 * @brief		Gets whether the current world is being destroyed (maybe the applicatoin about to quit, causing the destruction, or the world being changed).
-		 * @return		True, if the world is being destroyed, else false.
+		 * @brief		Gets whether the current scene is being destroyed (maybe the applicatoin about to quit, causing the destruction, or the scene being changed).
+		 * @return		True, if the scene is being destroyed, else false.
 		 */
-		bool getIsWorldBeingDestroyed(void) const;
+		bool getIsSceneBeingDestroyed(void) const;
 
 		/**
 		 * @brief		Gets whether the engine is used in a game and not in an editor.
@@ -772,8 +811,8 @@ namespace NOWA
 		void updateFrameStats(Ogre::Real dt);
 		void registerHlms(void);
 		void initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName);
-		void setCurrentWorldPath(const Ogre::String& currentWorldPath);
-		void setCurrentWorldBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition);
+		void setCurrentScenePath(const Ogre::String& currentScenePath);
+		void setCurrentSceneBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition);
 
 		void loadHlmsDiskCache(void);
 
@@ -823,10 +862,10 @@ namespace NOWA
 		Ogre::String resourcesName;
 		Ogre::String customConfigName;
 		Ogre::String title;
-		Ogre::String currentWorldPath;
+		Ogre::String currentScenePath;
 		Ogre::String currentProjectPath;
 		Ogre::String projectName;
-		Ogre::String worldName;
+		Ogre::String sceneName;
 		std::set<Ogre::String> resourceGroupNames;
 
 		Ogre::Vector3 mostLeftNearPosition;

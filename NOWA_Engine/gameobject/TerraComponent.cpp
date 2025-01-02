@@ -71,6 +71,7 @@ namespace NOWA
 		brush(new Variant(TerraComponent::AttrBrush(), this->attributes))
 	{
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &TerraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &TerraComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
 
 		this->lightId->setDescription("The directional light game object id, in order to calculate light position for shading and shadows. Note: Initially no shadows are shown, if no light id is set!");
 		this->cameraId->setDescription("The optional camera game object id which can be set. E.g. useful if the MinimapComponent is involved, to set the minimap camera, so that terra is painted correctly on minimap. Can be left of, default is the main active camera.");
@@ -89,6 +90,10 @@ namespace NOWA
 		this->strength->addUserData(GameObject::AttrActionNoUndo());
 
 		this->brush->setValue(compatibleBrushNames);
+		if (compatibleBrushNames.size() > 1)
+		{
+			this->brush->setListSelectedValue(compatibleBrushNames[1]);
+		}
 		this->brush->addUserData(GameObject::AttrActionImage());
 		this->brush->addUserData(GameObject::AttrActionNoUndo());
 
@@ -106,6 +111,7 @@ namespace NOWA
 	TerraComponent::~TerraComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TerraComponent] Destructor terra component for game object: " + this->gameObjectPtr->getName());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &TerraComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &TerraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 		
 		this->destroyTerra();
@@ -319,17 +325,31 @@ namespace NOWA
 			// Attention: Shadows must not be casted for terra, else ugly crash shader cache is created
 			this->terra->setCastShadows(false);
 			this->terra->setName(this->gameObjectPtr->getName());
-			this->terra->setPrefix(Core::getSingletonPtr()->getWorldName());
+			this->terra->setPrefix(Core::getSingletonPtr()->getSceneName());
 
 			// There can be up to 4 blend maps! one for texture state in datablock!
-			Ogre::String existingDetailMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getWorldName() + "_detailMap.png";
+
+
+			Ogre::String existingDetailMapFilePathName;
+			Ogre::String existingHeightMapFilePathName;
+			if (false == this->gameObjectPtr->getGlobal())
+			{
+				existingDetailMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + "_detailMap.png";
+				existingHeightMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + "_heightMap.png";
+			}
+			else
+			{
+				existingDetailMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "_detailMap.png";
+				existingHeightMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "_heightMap.png";
+			}
+
 			std::fstream detailMapFile(existingDetailMapFilePathName);
 			if (false == detailMapFile.good())
 			{
 				existingDetailMapFilePathName = "";
 			}
 
-			Ogre::String existingHeightMapFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getWorldName() + "_heightMap.png";
+			
 			std::fstream heightMapFile(existingHeightMapFilePathName);
 			if (true == heightMapFile.good())
 			{
@@ -435,6 +455,11 @@ namespace NOWA
 			}
 		}
 
+		if (nullptr != this->terra)
+		{
+			this->terra->setBrushName(this->brush->getListSelectedValue());
+		}
+
 		boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
 	}
@@ -529,6 +554,9 @@ namespace NOWA
 				return;
 			}
 
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
 			if (false == Core::getSingletonPtr()->getIsGame())
 			{
@@ -546,25 +574,21 @@ namespace NOWA
 
 	void TerraComponent::smoothTerrainEnd(void)
 	{
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return;
+		}
+
 		if (nullptr != this->terra)
 		{
-			if (true == this->brush->getListSelectedValue().empty())
-			{
-				return;
-			}
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
 			if (false == Core::getSingletonPtr()->getIsGame())
 			{
-
 				boost::shared_ptr<EventDataTerraModifyEnd> eventDataTerraModifyEnd(new EventDataTerraModifyEnd(this->terra->modifyTerrainFinished().first, this->terra->modifyTerrainFinished().second, this->gameObjectPtr->getId()));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraModifyEnd);
-			}
-
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
-			if (nullptr != component)
-			{
-				component->reCreateCollision();
 			}
 		}
 	}
@@ -573,15 +597,15 @@ namespace NOWA
 	{
 		std::pair<std::vector<Ogre::uint8>, std::vector<Ogre::uint8>> detailBlendData;
 
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return;
+		}
+
 		if (nullptr != this->terra)
 		{
-			if (true == this->brush->getListSelectedValue().empty())
-			{
-				return;
-			}
-
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
 			// Prevents undo redo in game, because of fps dropdown (heavy operation). For editor mode its ok
@@ -595,6 +619,11 @@ namespace NOWA
 
 	void TerraComponent::modifyTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount)
 	{
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return;
+		}
+
 		this->modifyTerrainStart(position, strength);
 
 		for (unsigned int i = 0; i < loopCount; i++)
@@ -607,6 +636,11 @@ namespace NOWA
 
 	void TerraComponent::smoothTerrainLoop(const Ogre::Vector3& position, float strength, unsigned int loopCount)
 	{
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return;
+		}
+
 		this->smoothTerrainStart(position, strength);
 
 		for (unsigned int i = 0; i < loopCount; i++)
@@ -619,6 +653,11 @@ namespace NOWA
 
 	void TerraComponent::paintTerrainLoop(const Ogre::Vector3& position, float intensity, int imageLayer, unsigned int loopCount)
 	{
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return;
+		}
+
 		this->paintTerrainStart(position, intensity, imageLayer);
 
 		for (unsigned int i = 0; i < loopCount; i++)
@@ -633,20 +672,20 @@ namespace NOWA
 	{
 		std::pair<std::vector<Ogre::uint16>, std::vector<Ogre::uint16>> heightData;
 
-		if (nullptr != this->terra)
+		if (true == this->brush->getListSelectedValue().empty())
 		{
-			heightData = this->terra->modifyTerrainFinished();
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
-			if (nullptr != component)
-			{
-				component->reCreateCollision();
-			}
+			return std::move(heightData);
 		}
 
-		// Sends event, that terra has been modified
-		boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
-		
+		if (nullptr != this->terra)
+		{
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+
+			heightData = this->terra->modifyTerrainFinished();
+		}
+
 		return std::move(heightData);
 	}
 
@@ -654,19 +693,19 @@ namespace NOWA
 	{
 		std::pair<std::vector<Ogre::uint16>, std::vector<Ogre::uint16>> heightData;
 
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return std::move(heightData);
+		}
+
 		if (nullptr != this->terra)
 		{
 			heightData = this->terra->smoothTerrainFinished();
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
-			if (nullptr != component)
-			{
-				component->reCreateCollision();
-			}
-		}
 
-		// Sends event, that terra has been modified
-		boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+			// Sends event, that terra has been modified
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
+		}
 		
 		return std::move(heightData);
 	}
@@ -675,10 +714,15 @@ namespace NOWA
 	{
 		std::pair<std::vector<Ogre::uint8>, std::vector<Ogre::uint8>> detailBlendData;
 
+		if (true == this->brush->getListSelectedValue().empty())
+		{
+			return std::move(detailBlendData);
+		}
+
 		if (nullptr != this->terra)
 		{
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
 			detailBlendData = this->terra->paintTerrainFinished();
@@ -694,14 +738,8 @@ namespace NOWA
 			this->terra->setHeightData(heightData);
 
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(true, false));
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
-
-			auto& component = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsTerrainComponent>());
-			if (nullptr != component)
-			{
-				component->reCreateCollision();
-			}
 		}
 	}
 
@@ -710,7 +748,7 @@ namespace NOWA
 		if (nullptr != this->terra)
 		{
 			// Sends event, that terra has been modified
-			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(false, true));
+			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
 			this->terra->setBlendWeightData(blendWeightData);
@@ -841,7 +879,79 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->basePixelDimension->getUInt())));
 		propertiesXML->append_node(propertyXML);
 	
-		this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath(), Core::getSingletonPtr()->getWorldName());
+		if (false == this->gameObjectPtr->getGlobal())
+		{
+			this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName(), Core::getSingletonPtr()->getSceneName());
+		}
+		else
+		{
+			this->terra->saveTextures(Core::getSingletonPtr()->getCurrentProjectPath(), Core::getSingletonPtr()->getSceneName());
+		}
+	}
+
+	void TerraComponent::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData)
+	{
+		if (nullptr == this->terra || true == this->terra->getHeightMapTextureName().empty())
+		{
+			return;
+		}
+
+		boost::shared_ptr<EventDataGameObjectMadeGlobal> castEventData = boost::static_pointer_cast<EventDataGameObjectMadeGlobal>(eventData);
+
+		if (this->gameObjectPtr->getId() != castEventData->getGameObjectId())
+		{
+			return;
+		}
+
+		bool isGlobal = castEventData->getIsGlobal();
+		if (false == isGlobal)
+		{
+			Ogre::String sourceTerraTextureFilePathName1 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->terra->getHeightMapTextureName();
+			Ogre::String destinationTerraTextureFilePathName1 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->terra->getHeightMapTextureName();
+			CopyFile(sourceTerraTextureFilePathName1.c_str(), destinationTerraTextureFilePathName1.c_str(), false);
+			
+			Ogre::String sourceTerraTextureFilePathName2 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->terra->getBlendWeightTextureName();
+			Ogre::String destinationTerraTextureFilePathName2 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->terra->getBlendWeightTextureName();
+			CopyFile(sourceTerraTextureFilePathName2.c_str(), destinationTerraTextureFilePathName2.c_str(), false);
+
+			this->destroyTerra();
+
+			try
+			{
+				DeleteFile(sourceTerraTextureFilePathName1.c_str());
+				DeleteFile(sourceTerraTextureFilePathName2.c_str());
+			}
+			catch (...)
+			{
+
+			}
+			
+			this->createTerra();
+		}
+		else
+		{
+			Ogre::String sourceTerraTextureFilePathName1 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->terra->getHeightMapTextureName();
+			Ogre::String destinationTerraTextureFilePathName1 = Core::getSingletonPtr()->getCurrentProjectPath()  + "/" + this->terra->getHeightMapTextureName();
+			CopyFile(sourceTerraTextureFilePathName1.c_str(), destinationTerraTextureFilePathName1.c_str(), false);
+			
+			Ogre::String sourceTerraTextureFilePathName2 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->terra->getBlendWeightTextureName();
+			Ogre::String destinationTerraTextureFilePathName2 = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->terra->getBlendWeightTextureName();
+			CopyFile(sourceTerraTextureFilePathName2.c_str(), destinationTerraTextureFilePathName2.c_str(), false);
+
+			this->destroyTerra();
+
+			try
+			{
+				DeleteFile(sourceTerraTextureFilePathName1.c_str());
+				DeleteFile(sourceTerraTextureFilePathName2.c_str());
+			}
+			catch (...)
+			{
+
+			}
+			
+			this->createTerra();
+		}
 	}
 
 	void TerraComponent::setPixelSize(const Ogre::Vector2& pixelSize)

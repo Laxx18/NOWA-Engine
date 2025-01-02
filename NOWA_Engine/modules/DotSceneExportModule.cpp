@@ -69,23 +69,23 @@ namespace NOWA
 
 	}
 
-	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& worldResourceGroupName, bool crypted)
+	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& sceneResourceGroupName, bool crypted)
 	{
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
-		// Announce the current world path to core
-		Core::getSingletonPtr()->setCurrentWorldPath(projectPath + "/" + projectName + "/" + sceneName + ".scene");
+		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
+		// Announce the current scene path to core
+		Core::getSingletonPtr()->setCurrentScenePath(projectPath + "/" + projectName + "/" + sceneName + "/" + sceneName + ".scene");
 
-		// Project is always: "projects/projectName/sceneName.scene"
+		// Project is always: "projects/projectName/sceneName/sceneName.scene"
 		Ogre::String filePath = projectPath + "/" + projectName;
-		Ogre::String filePathName = filePath + "/" + sceneName + ".scene";
+		Ogre::String filePathName = filePath + "/" + sceneName + "/" + sceneName + ".scene";
 
 		// Maybe create a folder
 		Core::getSingletonPtr()->createFolders(filePathName);
 
 		if (filePathName.empty())
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + worldResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + worldResourceGroupName + "\n", "NOWA");
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName);
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
 		}
 		
 		xml_document<> doc;
@@ -156,7 +156,7 @@ namespace NOWA
 			}
 			
 			// Export all global game objects in projectName/global.scene separately
-			this->exportGlobalScene(worldResourceGroupName, projectName);
+			this->exportGlobalScene(sceneResourceGroupName, projectName);
 
 			// Bounds element (after bounds have been calculated for each object
 			{
@@ -166,10 +166,10 @@ namespace NOWA
 				environmentXML->append_node(boundsXML);
 			}
 
-			// Send event and set bounds for current world
+			// Send event and set bounds for current scene
 			boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
 			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
-			Core::getSingletonPtr()->setCurrentWorldBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
+			Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 		}
 
 		std::stringstream stream;
@@ -211,7 +211,7 @@ namespace NOWA
 			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
 			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
 			sceneXML->append_attribute(doc.allocate_attribute("projectName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getProjectName())));
-			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getWorldName())));
+			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getSceneName())));
 
 			// ResourceLocations element
 			// Is no more required
@@ -291,11 +291,11 @@ namespace NOWA
 		file.close();
 	}
 
-	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& worldResourceGroupName)
+	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)
 	{
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
+		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 
-		// Project is always: "projects/projectName/sceneName.scene"
+		// Project is always: "projects/projectName/sceneName/sceneName.scene"
 		Ogre::String filePath = projectPath + "/" + newProjectName;
 		Ogre::String filePathName = newSceneFilePathName;
 
@@ -325,8 +325,8 @@ namespace NOWA
 
 		if (true == filePathName.empty())
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + worldResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[WorldLoader] Error: There is no such group name resource: " + worldResourceGroupName + "\n", "NOWA");
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
 		}
 
 		for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
@@ -349,9 +349,9 @@ namespace NOWA
 								Ogre::String newName = replaceAll(luaScriptCompPtr->getScriptFile(), oldSeneName, tempFileNameWithoutEnding);
 								luaScriptCompPtr->setScriptFile(newName, LuaScriptComponent::WRITE_XML);
 
-								Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + luaScriptCompPtr->getScriptFile();
+								Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
 								Ogre::String targetFilePathName = tempFilePath + "/" + newName;
-								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceFilePathName, targetFilePathName, false);
+								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceFilePathName, targetFilePathName, false, gameObjectPtr->getGlobal());
 							}
 						}
 					}
@@ -374,6 +374,7 @@ namespace NOWA
 								meshName = item->getMesh()->getName();
 							}
 						}
+						// Note: Col files are outside the scene folders in the parent project folder
 						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
 						Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".col";
 						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
@@ -393,11 +394,11 @@ namespace NOWA
 					auto terraCompPtr = boost::dynamic_pointer_cast<TerraComponent>(std::get<COMPONENT>(*it));
 					if (nullptr != terraCompPtr)
 					{
-						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + oldSeneName + "_detailMap.png";
+						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_detailMap.png";
 						Ogre::String targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_detailMap.png";
 						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 
-						sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + oldSeneName + "_heightMap.png";
+						sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_heightMap.png";
 						targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_heightMap.png";
 						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 					}
@@ -479,10 +480,10 @@ namespace NOWA
 				environmentXML->append_node(boundsXML);
 			}
 
-			// Send event and set bounds for current world
+			// Send event and set bounds for current scene
 			boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
 			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
-			Core::getSingletonPtr()->setCurrentWorldBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
+			Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 		}
 
 		std::ofstream file;
@@ -491,9 +492,9 @@ namespace NOWA
 		file.close();
 	}
 
-	void DotSceneExportModule::exportGlobalScene(const Ogre::String& worldResourceGroupName, const Ogre::String& projectName, bool crypted)
+	void DotSceneExportModule::exportGlobalScene(const Ogre::String& sceneResourceGroupName, const Ogre::String& projectName, bool crypted)
 	{
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(worldResourceGroupName)[0];
+		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 		// Project is always: "projects/projectName/global.scene"
 		Ogre::String filePath = projectPath + "/" + projectName;
 		Ogre::String filePathName = filePath + "/global.scene";
@@ -503,7 +504,7 @@ namespace NOWA
 		if (projectPath.empty())
 		{
 			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: The project path is empty!");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[WorldLoader] Error: The project path is empty!\n", "NOWA");
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: The project path is empty!\n", "NOWA");
 		}
 
 		xml_document<> doc;
@@ -1393,7 +1394,7 @@ namespace NOWA
 		}
 	}
 
-	void DotSceneExportModule::exportGroup(const std::vector<unsigned long>& gameObjectIds, const Ogre::String& fileName, const Ogre::String& worldResourceGroupName)
+	void DotSceneExportModule::exportGroup(const std::vector<unsigned long>& gameObjectIds, const Ogre::String& fileName, const Ogre::String& sceneResourceGroupName)
 	{
 		// First change all the id's and look for connection patterns, to set the same new ids, so that the connections remain still active
 		// This is necessary, because if a group is later loaded into a scene, where the original GO's are located, the GO's will not be added, because their ids do have collision with the original GO ids
@@ -1486,7 +1487,7 @@ namespace NOWA
 			}
 		}
 
-		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(worldResourceGroupName);
+		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList(sceneResourceGroupName);
 		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
 		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
@@ -1534,8 +1535,8 @@ namespace NOWA
 
 		if (filePathName.empty())
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + worldResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[WorldLoader] Error: There is no such group name resource: " + worldResourceGroupName + "\n", "NOWA");
+			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
+			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
 		}
 
 		std::ofstream file;

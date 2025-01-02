@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.1.0" generator="NOWA-Engine">
+	<nodes>
+		<node name="MainGameObject" id="1366663313">
+			<position x="0" y="0.658422" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111111"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="1 0 0"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="Category1" data="QuatTire"/>
+					<property type="7" name="Category2" data="Track"/>
+					<property type="8" name="Friction" data="0.4 0.2"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Scene1_MainGameObject.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="7" name="ComponentSelectGameObjectsComponent" data="SelectGameObjectsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Categories" data="Quat"/>
+					<property type="12" name="UseMultiSelection" data="false"/>
+					<property type="12" name="UseSelectionRectangle" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="SpeedText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3228326145"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.01 0.1"/>
+					<property type="8" name="Size" data="0.08 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Speed:"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="LapText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3480677044"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.08 0.1"/>
+					<property type="8" name="Size" data="0.08 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Lap: 0"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIListBoxComponent" data="MyGUIListBoxComponent"/>
+					<property type="7" name="Name" data="LapTimeList"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="745077099"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.4 0"/>
+					<property type="8" name="Size" data="0.2 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="ListBox"/>
+					<property type="2" name="ItemHeight" data="21"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="2" name="ItemCount" data="0"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="WrongDirectionText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="4034975864"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.5 0.2"/>
+					<property type="8" name="Size" data="0.2 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Wrong Direction!"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="Center"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 0 0 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="FinishedText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1090347672"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.5 0.5"/>
+					<property type="8" name="Size" data="0.2 0.1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Finished!"/>
+					<property type="2" name="FontHeight" data="40"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0.35458 0.48828 0.30327 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="RacePositionText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3243813636"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.4 0.1"/>
+					<property type="8" name="Size" data="0.08 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Racing Position:"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="CountdownText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2142438967"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.4 0.2"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data=""/>
+					<property type="2" name="FontHeight" data="60"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+				</userData>
+			</entity>
+		</node>
+	</nodes>
+</scene>
+

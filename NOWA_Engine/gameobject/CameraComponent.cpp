@@ -409,7 +409,7 @@ namespace NOWA
 			this->setOrthographic(this->orthographic->getBool());
 #endif
 			// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-			// But when a camera is loaded from world, it must not have an orientation, else there are ugly side effects
+			// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
 			if (true == CameraComponent::justCreated)
 			{
 				// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
@@ -591,7 +591,7 @@ namespace NOWA
 
 	void CameraComponent::setActivated(bool activated)
 	{
-		if (true == Core::getSingletonPtr()->getIsWorldBeingDestroyed())
+		if (true == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
 		{
 			return;
 		}

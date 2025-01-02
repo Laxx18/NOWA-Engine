@@ -126,26 +126,26 @@ namespace NOWA
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: (#{Off})");
 		}
 		
-		std::map<Ogre::String, Ogre::String> worldNames = AppStateManager::getSingletonPtr()->getRakNetModule()->parseWorlds("Projects", Core::getSingletonPtr()->getResourcesName());
+		std::map<Ogre::String, Ogre::String> sceneNames = AppStateManager::getSingletonPtr()->getRakNetModule()->parseScenes("Projects", Core::getSingletonPtr()->getResourcesName());
 		//Karten hinzufuegen
-		for (std::map<Ogre::String, Ogre::String>::iterator it = worldNames.begin(); it != worldNames.end(); ++it)
+		for (std::map<Ogre::String, Ogre::String>::iterator it = sceneNames.begin(); it != sceneNames.end(); ++it)
 		{
 			this->mapsCombo->addItem((*it).first);
 		}
 		//this->pMapMenu->setItems(strMapNames);
-		if (false == worldNames.empty())
+		if (false == sceneNames.empty())
 		{
 			Ogre::String selectedMap = Ogre::String(this->mapsCombo->getItemNameAt(0));
-			AppStateManager::getSingletonPtr()->getRakNetModule()->setWorldName(selectedMap);
+			AppStateManager::getSingletonPtr()->getRakNetModule()->setSceneName(selectedMap);
 
 			//Ressourcegruppe zur virtuellen Umgebung finden
-			std::map<Ogre::String, Ogre::String>::iterator it = worldNames.find(selectedMap);
+			std::map<Ogre::String, Ogre::String>::iterator it = sceneNames.find(selectedMap);
 
 			AppStateManager::getSingletonPtr()->getRakNetModule()->setProjectName(it->second);
 
 			//Ogre::LogManager::getSingletonPtr()->logMessage("------------------->" + this->pMapMenu->getSelectedItem() + ".scene");
 			//Startpositionen aus der virtuellen Umgebung erhalten
-			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseWorld("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getWorldName());
+			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseScene("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName());
 
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: " 
 				+ Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getRakNetModule()->getAllowedPlayerCount()));
@@ -218,12 +218,13 @@ namespace NOWA
 		if (_sender == this->mapsCombo)
 		{
 			Ogre::String selectedMap = Ogre::String(this->mapsCombo->getItemNameAt(this->mapsCombo->getIndexSelected()));
-			AppStateManager::getSingletonPtr()->getRakNetModule()->setWorldName(selectedMap);
+			AppStateManager::getSingletonPtr()->getRakNetModule()->setSceneName(selectedMap);
 
 			std::map<Ogre::String, Ogre::String>::iterator it = AppStateManager::getSingletonPtr()->getRakNetModule()->findProject(selectedMap);
 			AppStateManager::getSingletonPtr()->getRakNetModule()->setProjectName(it->second);
 
-			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseWorld("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getWorldName() + ".scene");
+			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseScene("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName() 
+				+ "/" + AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName() + ".scene");
 
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: "
 				+ Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getRakNetModule()->getAllowedPlayerCount()));

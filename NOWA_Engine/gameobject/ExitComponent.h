@@ -95,20 +95,20 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Adds possibility to load a specified new world, when the source GameObject reaches the GameObject with the ExitComponent. "
-				   "Note: Each GameObject may have only one ExitComponent. When this GameObject does have a PhysicsTriggerComponent, that component is used to trigger the new world when the source GameObject entered the trigger.";
+			return "Usage: Adds possibility to load a specified new scene, when the source GameObject reaches the GameObject with the ExitComponent. "
+				   "Note: Each GameObject may have only one ExitComponent. When this GameObject does have a PhysicsTriggerComponent, that component is used to trigger the new scene when the source GameObject entered the trigger.";
 		}
 
-		Ogre::String getTargetWorldName(void) const;
+		Ogre::String getTargetSceneName(void) const;
 
-		Ogre::String getCurrentWorldName(void) const;
+		Ogre::String getCurrentSceneName(void) const;
 
 		Ogre::Vector2 getExitDirection(void) const;
 
 		Ogre::String getAxis(void) const;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrTargetWorldName(void) { return "Target World Name"; }
+		static const Ogre::String AttrTargetSceneName(void) { return "Target Scene Name"; }
 		static const Ogre::String AttrTargetLocationName(void) { return "Target Location Name"; }
 		static const Ogre::String AttrSourceId(void) { return "Source Id"; }
 		static const Ogre::String AttrExitDirection(void) { return "Exit Direction"; }
@@ -117,7 +117,7 @@ namespace NOWA
 		void handlePhysicsTrigger(NOWA::EventDataPtr eventData);
 	private:
 		Variant* activated;
-		Variant* targetWorldName;
+		Variant* targetSceneName;
 		Variant* targetLocationName;
 		Variant* sourceGameObjectId;
 		Variant* exitDirection;

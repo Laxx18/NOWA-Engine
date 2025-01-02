@@ -30,18 +30,19 @@ namespace OgreNewt
 		}
 
 		mStream = Ogre::DataStreamPtr(new Ogre::FileStreamDataStream(file, true));
-		NewtonCollisionSerialize(collision->getWorld()->getNewtonWorld(),
-			collision->m_col,
-			&CollisionSerializer::_newtonSerializeCallback, this);
+		NewtonCollisionSerialize(collision->getWorld()->getNewtonWorld(), collision->m_col, &CollisionSerializer::_newtonSerializeCallback, this);
 
 		mStream->close();
 	}
 
-
-	//  CollisionPtr CollisionSerializer::importCollision(Ogre::DataStreamPtr& stream, OgreNewt::World* world)
 	CollisionPtr CollisionSerializer::importCollision(Ogre::DataStream& stream, OgreNewt::World* world)
 	{
 		CollisionPtr dest;
+
+		if (nullptr == world)
+		{
+			return dest;
+		}
 
 		NewtonCollision* col = NewtonCreateCollisionFromSerialization(world->getNewtonWorld(), &CollisionSerializer::_newtonDeserializeCallback, &stream);
 
@@ -81,9 +82,9 @@ namespace OgreNewt
 		case NullPrimitiveType:
 			dest = CollisionPtr(new CollisionPrimitives::Null(world));
 			break;
-			/* case HeighFieldPrimitiveType:
-				 dest = CollisionPtr(new CollisionPrimitives::HeightField(world));
-				 break;*/
+		case HeighFieldPrimitiveType:
+			dest = CollisionPtr(new CollisionPrimitives::HeightField(world));
+			break;
 		case DeformableType:
 			dest = CollisionPtr(new CollisionPrimitives::TetrahedraDeformableCollision(world));
 			break;
@@ -97,6 +98,8 @@ namespace OgreNewt
 		}
 
 		dest->m_col = col;
+
+		stream.close();
 
 		return dest;
 	}

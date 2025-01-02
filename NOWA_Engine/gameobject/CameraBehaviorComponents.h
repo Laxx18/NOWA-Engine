@@ -624,7 +624,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Zoom a camera for all game objects of the given category. Note: Camera position and orientation is important! Else World could be clipped away. A good orientation value for the camera is: -80 -60 0. Requirements: Camera must be in orthogonal mode.";
+			return "Zoom a camera for all game objects of the given category. Note: Camera position and orientation is important! Else scene could be clipped away. A good orientation value for the camera is: -80 -60 0. Requirements: Camera must be in orthogonal mode.";
 		}
 
 		/**

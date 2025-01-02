@@ -10,7 +10,15 @@ namespace NOWA
 	class EXPORTED LuaScript
 	{
 	public:
-		LuaScript(const Ogre::String& name, const Ogre::String& scriptPathName, const Ogre::String& scriptContent = Ogre::String());
+		/*
+		* @brief	Creates the lua script.
+		* @param[in] name				The name of the lua script.
+		* @param[in] scriptPathName		The lua script file path name to set.
+		* @param[in] isGlobal			Sets whether the lua script is part of a global game object, which is used for all scenes in the project.
+		*								In this case, the lua script will not be located in the scene folder, but in the parent project folder for all scenes.
+		* @param[in] scriptContent		The optional script lua content as string.
+		*/
+		LuaScript(const Ogre::String& name, const Ogre::String& scriptPathName, bool isGlobal, const Ogre::String& scriptContent = Ogre::String());
 
 		~LuaScript();
 
@@ -257,7 +265,9 @@ namespace NOWA
 			}
 		}
 
-		void createLuaScriptFile(void);
+		void setIsGlobal(bool isGlobal);
+
+		bool getIsGlobal(void) const;
 
 		void compile(void);
 
@@ -297,6 +307,7 @@ namespace NOWA
 		Ogre::String strInterfaceFunctionsTemplate;
 		Ogre::String moduleName;
 		std::set<Ogre::String> errorMessages;
+		bool isGlobal;
 	};
 
 }; // namespace end

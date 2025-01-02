@@ -1,0 +1,1312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="AiLuaGoalTest">
+	<resourceLocations/>
+	<environment>
+		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
+		<ambient>
+			<ambientLightUpperHemisphere r="0.0225" g="0.0375" b="0.0525"/>
+			<ambientLightLowerHemisphere r="0.02925" g="0.0219375" b="0.014625" a="1"/>
+			<hemisphereDir x="0" y="0.882948" z="0.469471"/>
+			<envmapScale x="1"/>
+		</ambient>
+		<shadows>
+			<shadowFarDistance distance="1000"/>
+			<shadowDirectionalLightExtrusionDistance distance="1000"/>
+			<shadowDirLightTextureOffset offset="0.6"/>
+			<shadowColor r="0.25" g="0.25" b="0.25"/>
+			<shadowQuality index="3"/>
+			<ambientLightMode index="1"/>
+		</shadows>
+		<lightFoward>
+			<forwardMode value="1"/>
+			<lightWidth value="4"/>
+			<lightHeight value="4"/>
+			<numLightSlices value="3"/>
+			<lightsPerCell value="91"/>
+			<decalsPerCell/>
+			<cubemapProbesPerCell/>
+			<minLightDistance value="1"/>
+			<maxLightDistance value="100"/>
+		</lightFoward>
+		<mainParameter>
+			<ignoreGlobalScene value="false"/>
+			<renderDistance distance="100"/>
+			<useV2Item value="false"/>
+		</mainParameter>
+		<fog mode="none" start="0" end="0" density="0"/>
+		<bounds mostLeftNearPosition="-51 -0.1615 -51" mostRightFarPosition="51 3.00003 51"/>
+	</environment>
+	<OgreNewt solverModel="1" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="60" defaultLinearDamping="0.1">
+		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
+		<globalGravity x="0" y="-19.8" z="0"/>
+	</OgreNewt>
+	<OgreRecast CellSize="0.15" CellHeight="0.2" AgentMaxSlope="30" AgentMaxClimb="0.9" AgentHeight="0.5" AgentRadius="0.8" EdgeMaxLen="12" EdgeMaxError="1.3" RegionMinSize="20" RegionMergeSize="20" VertsPerPoly="5" DetailSampleDist="6" DetailSampleMaxError="1" KeepInterResults="false">
+		<PointExtends x="5" y="5" z="5"/>
+	</OgreRecast>
+	<nodes>
+		<node name="SunLight" id="1479238507">
+			<position x="0" y="37.2738" z="50"/>
+			<rotation qw="0.76995" qx="-0.462633" qy="0.226352" qz="0.376713"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111113"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
+					<property type="6" name="PowerScale" data="1"/>
+					<property type="9" name="Direction" data="0 -0.882948 -0.469471"/>
+					<property type="12" name="AffectParentNode" data="true"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="MainGameObject" id="1366663313">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111111"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="MainCamera" id="4010617415">
+			<position x="-17.8309" y="8.44105" z="-27.1943"/>
+			<rotation qw="0.32069" qx="-0.120979" qy="0.878963" qz="0.331581"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111112"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="true"/>
+					<property type="9" name="CameraPosition" data="-0.713508 7.10668 -15.8062"/>
+					<property type="9" name="CameraOrientation" data="-31.8031 179.893 -0.000123589"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="BackgroundColor" data="0 0 0"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
+					<property type="6" name="SuperSampling" data="1"/>
+					<property type="12" name="UseHdr" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
+					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
+					<property type="12" name="UseTerra" data="false"/>
+					<property type="12" name="UseOcean" data="false"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.125"/>
+					<property type="6" name="ShadowSplitFade" data="0.313"/>
+					<property type="6" name="ShadowSplitPadding" data="1"/>
+					<property type="7" name="SkyBoxName" data="ash_hills_cube.dds"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Plane_0" id="1695645354">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Plane_0mesh" meshFile="Plane_0" castShadows="true" visible="true">
+				<subitem index="0" datablockName="GroundDirtPlane2100072714"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2100072714"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="9"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
+					<property type="7" name="ComponentPlaneComponent" data="PlaneComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Distance" data="0"/>
+					<property type="6" name="Width" data="100"/>
+					<property type="6" name="Height" data="100"/>
+					<property type="2" name="XSegments" data="2"/>
+					<property type="2" name="YSegments" data="2"/>
+					<property type="2" name="NumTexCoordSets" data="1"/>
+					<property type="6" name="UTile" data="20"/>
+					<property type="6" name="VTile" data="20"/>
+					<property type="9" name="Normal" data="0 1 0"/>
+					<property type="9" name="Up" data="0 0 1"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Monster01_0" id="2507280561">
+			<position x="-0.89904" y="0.018561" z="-9.24629"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Monster01"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1794266727"/>
+					<property type="7" name="Category" data="Enemy"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="Monster01"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -12.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="2"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="10"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="Monster01_0.lua"/>
+					<property type="12" name="CloneScript" data="true"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="walk-01"/>
+					<property type="6" name="AnimationSpeed" data="2"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="12" name="ShowSkeleton" data="false"/>
+					<property type="7" name="ComponentGameObjectTitleComponent" data="GameObjectTitleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="FontName" data="BlueHighway"/>
+					<property type="7" name="Caption" data="Enemy Pursuit"/>
+					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="12" name="AlwaysPresent" data="false"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="0 0 0"/>
+					<property type="10" name="Color" data="1 0 0 1"/>
+					<property type="8" name="Alignment" data="1 1"/>
+					<property type="12" name="LookAtCamera" data="true"/>
+					<property type="7" name="ComponentAiLuaGoalComponent" data="AiLuaGoalComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="7" name="RootGoalName" data="LuaGoalComposite"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Case1_0" id="1662965383">
+			<position x="-2.47188" y="0" z="1.1856"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case1_0" meshFile="Case1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2390072045"/>
+					<property type="7" name="Category" data="Obstacle"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Case1_1" id="1662964948">
+			<position x="6.74682" y="0" z="-16.3243"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case1_1" meshFile="Case1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3749008832"/>
+					<property type="7" name="Category" data="Obstacle"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="Case1_2" id="1662966253">
+			<position x="-16.8168" y="0" z="-16.3243"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case1_2" meshFile="Case1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3443774939"/>
+					<property type="7" name="Category" data="Obstacle"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="stone_wall_arc_big_0" id="963371514">
+			<position x="12.3975" y="0.0704961" z="12.4277"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="stone_wall_arc_big_0" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2452918183"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_0" id="51720660">
+			<position x="4.03683" y="3.09944e-06" z="14.6905"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_0" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3380952055"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_1" id="51721095">
+			<position x="-4.96317" y="3.09944e-06" z="14.6905"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_1" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4252563213"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_2" id="51721530">
+			<position x="-13.9632" y="3.09944e-06" z="14.6905"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_2" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1688608439"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_3" id="51721965">
+			<position x="-22.9632" y="3.09944e-06" z="14.6905"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_3" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4226621979"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_arc_big_1" id="963371949">
+			<position x="-31.2572" y="0.0704961" z="12.4277"/>
+			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="stone_wall_arc_big_1" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3671110043"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_4" id="51718920">
+			<position x="-33.5532" y="3.09944e-06" z="4.09497"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_4" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2190935136"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_5" id="51719355">
+			<position x="-33.5532" y="3.09944e-06" z="-4.95136"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_5" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="85367755"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_6" id="51719790">
+			<position x="-33.5532" y="3.09944e-06" z="-13.9183"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_6" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="768322758"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_7" id="51720225">
+			<position x="-33.5532" y="3.09944e-06" z="-22.9031"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_7" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3665619654"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_arc_big_2" id="963370644">
+			<position x="-31.2572" y="0.0704961" z="-31.2605"/>
+			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="stone_wall_arc_big_2" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2221741886"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_8" id="51717180">
+			<position x="4.03683" y="3.09944e-06" z="-33.3094"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_8" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4085145128"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_9" id="51717615">
+			<position x="-4.96317" y="3.09944e-06" z="-33.3094"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_9" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3891637859"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_10" id="1023860725">
+			<position x="-13.9632" y="3.09944e-06" z="-33.3094"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_10" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="201042206"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_11" id="1023860290">
+			<position x="-22.9632" y="3.09944e-06" z="-33.3094"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_11" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1320671218"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_arc_big_3" id="963371079">
+			<position x="12.3975" y="0.0704961" z="-31.0827"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="stone_wall_arc_big_3" meshFile="stone_wall_arc_big.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="644387140"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_12" id="1023859855">
+			<position x="14.587" y="3.09944e-06" z="4.09497"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_12" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2530194115"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_13" id="1023859420">
+			<position x="14.587" y="3.09944e-06" z="-4.95136"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_13" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3349427891"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_14" id="1023858985">
+			<position x="14.587" y="3.09944e-06" z="-13.9183"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_14" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="483452756"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="stone_wall_15" id="1023858550">
+			<position x="14.587" y="3.09944e-06" z="-22.9031"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="3" y="1" z="1"/>
+			<entity name="stone_wall_15" meshFile="stone_wall.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="stone_wall"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4165351860"/>
+					<property type="7" name="Category" data="Wall"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="stone_wall"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Case1_3" id="1662965818">
+			<position x="-23.7749" y="0" z="-1.84959"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case1_3" meshFile="Case1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3335442145"/>
+					<property type="7" name="Category" data="Obstacle"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+					<property type="7" name="ComponentNavMeshComponent" data="NavMeshComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="NavigationType" data="Static Obstacle"/>
+					<property type="12" name="Walkable" data="false"/>
+				</userData>
+			</item>
+		</node>
+	</nodes>
+</scene>
+

@@ -3,6 +3,7 @@
 
 #include "GameObjectComponent.h"
 #include "modules/LuaScript.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -132,7 +133,7 @@ namespace NOWA
 		 * @brief Sets the lua script file for storage.
 		 * @param[in] scriptFile The lua script file to set
 		 * @param[in] scriptAction The script action to use (new, load, clone, rename)
-		 * @note		The script is created in the same directory as the current world
+		 * @note		The script is created in the same directory as the current scene.
 		 */
 		void setScriptFile(const Ogre::String& scriptFile, eScriptAction scriptAction);
 
@@ -201,6 +202,8 @@ namespace NOWA
 		static const Ogre::String AttrHasCommonScript(void) { return "Has Common Script"; }
 	private:
 		void maybeCopyScriptFromGroups(void);
+	private:
+		void handleGroupLoaded(NOWA::EventDataPtr eventData);
 	private:
 		Variant* activated;
 		Variant* scriptFile;

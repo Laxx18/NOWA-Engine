@@ -260,38 +260,41 @@ class ResourcesPanelProject : public wraps::BasePanelViewItem
 {
 public:
 	ResourcesPanelProject();
+	virtual ~ResourcesPanelProject();
 
 	void setEditorManager(NOWA::EditorManager* editorManager);
-
 	void setProjectManager(ProjectManager* projectManager);
 
-	virtual void initialise();
-	virtual void shutdown();
-
+	void initialise(void) override;
+	void shutdown(void) override;
 	void clear(void);
 
-	void populateFilesList(const Ogre::String& folderPath);
+	void populateFilesTree(const Ogre::String& folderPath);
 private:
-	void notifyListSelectAccept(MyGUI::ListBox* sender, size_t index);
-	void notifyListChangePosition(MyGUI::ListBox* sender, size_t index);
-	void notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
-	void notifyListMouseItemActivate(MyGUI::ListBox* sender, size_t index);
-private:
-	void handleSingleClick(size_t index);
-	void handleDoubleClick(size_t index);
-	void sortListByFileExtension(void);
-	void sortListByName(void);
+	void handleSingleClick(MyGUI::TreeControl::Node* node);
+	void handleDoubleClick(MyGUI::TreeControl::Node* node);
 
-	void handleEventDataResourceCreated(NOWA::EventDataPtr eventData);
+	void sortTreeNodesByName(MyGUI::TreeControl::Node* parentNode);
+	// void sortTreeNodesByExtension(MyGUI::TreeControl::Node* parentNode);
 private:
-	MyGUI::ListBox* filesListBox;
+	void handleEventDataResourceCreated(NOWA::EventDataPtr eventData);
+	void handleSceneModified(NOWA::EventDataPtr eventData);
+	void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
+private:
+	void notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch);
+	void notifyTreeNodeClick(MyGUI::TreeControl* sender, MyGUI::TreeControl::Node* node);
+	void notifyTreeNodeDoubleClick(MyGUI::TreeControl* sender, MyGUI::TreeControl::Node* node);
+	void notifyMessageBoxEndLoad(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
+private:
+	MyGUI::TreeControl* filesTreeControl;
 	NOWA::EditorManager* editorManager;
 	ProjectManager* projectManager;
-	Ogre::String selectedText;
 
-	// For double-click tracking
+	std::string selectedText;
 	std::chrono::steady_clock::time_point lastClickTime;
-	size_t lastClickedIndex;
+	MyGUI::TreeControl::Node* lastClickedNode;
+	bool hasSceneChanges;
+	Ogre::String currentSceneName;
 };
 
 #endif

@@ -1162,7 +1162,7 @@ namespace NOWA
 
 	void VegetationComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
 	{
-		// When a new game object has been added to the world, update the bounds for vegetation
+		// When a new game object has been added to the scene, update the bounds for vegetation
 		boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
 		this->minimumBounds = castEventData->getCalculatedBounds().first;
 		this->maximumBounds = castEventData->getCalculatedBounds().second;
@@ -1172,8 +1172,8 @@ namespace NOWA
 
 	void VegetationComponent::handleSceneParsed(NOWA::EventDataPtr eventData)
 	{
-		this->minimumBounds = Core::getSingletonPtr()->getCurrentWorldBoundLeftNear();
-		this->maximumBounds = Core::getSingletonPtr()->getCurrentWorldBoundRightFar();
+		this->minimumBounds = Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
+		this->maximumBounds = Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
 		this->regenerateVegetation();
 	}
 

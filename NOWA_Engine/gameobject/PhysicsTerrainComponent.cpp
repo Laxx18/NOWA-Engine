@@ -15,12 +15,16 @@ namespace NOWA
 		: PhysicsComponent(),
 		serialize(new Variant(PhysicsTerrainComponent::AttrSerialize(), true, this->attributes))
 	{
-
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
 	}
 
 	PhysicsTerrainComponent::~PhysicsTerrainComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsTerrainComponent] Destructor physics terrain component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleEventDataGameObjectMadeGlobal), EventDataGameObjectMadeGlobal::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PhysicsTerrainComponent::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
 	}
 
 	bool PhysicsTerrainComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
@@ -84,7 +88,16 @@ namespace NOWA
 		}
 		else
 		{
-			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+			// Note: Terra collision file is located in the corresponding scene folder
+			Ogre::String projectFilePath;
+			if (false == this->gameObjectPtr->getGlobal())
+			{
+				projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+			}
+			else
+			{
+				projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+			}
 
 			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
 			staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
@@ -177,9 +190,35 @@ namespace NOWA
 	void PhysicsTerrainComponent::setSerialize(bool serialize)
 	{
 		this->serialize->setValue(serialize);
-		if (true == serialize)
+		this->reCreateCollision(true);
+
+		if (false == serialize)
 		{
-			this->reCreateCollision(true);
+			bool isGlobal = this->gameObjectPtr->getGlobal();
+			if (false == isGlobal)
+			{
+				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
+				try
+				{
+					DeleteFile(sourceCollisionFilePathName.c_str());
+				}
+				catch (...)
+				{
+
+				}
+			}
+			else
+			{
+				Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
+				try
+				{
+					DeleteFile(sourceCollisionFilePathName.c_str());
+				}
+				catch (...)
+				{
+
+				}
+			}
 		}
 	}
 
@@ -198,6 +237,84 @@ namespace NOWA
 				heightFieldCollision->setFaceId(id);
 			}
 		}
+	}
+
+	void PhysicsTerrainComponent::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataGameObjectMadeGlobal> castEventData = boost::static_pointer_cast<EventDataGameObjectMadeGlobal>(eventData);
+
+		if (this->gameObjectPtr->getId() != castEventData->getGameObjectId())
+		{
+			return;
+		}
+
+		bool isGlobal = castEventData->getIsGlobal();
+		if (false == isGlobal)
+		{
+			if (nullptr != this->physicsBody)
+			{
+				this->destroyBody();
+				// this->destroyCollision();
+			}
+
+			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
+			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
+			CopyFile(sourceCollisionFilePathName.c_str(), destinationCollisionFilePathName.c_str(), false);
+
+			try
+			{
+				DeleteFile(sourceCollisionFilePathName.c_str());
+			}
+			catch (...)
+			{
+
+			}
+
+			this->reCreateCollision(true);
+		}
+		else
+		{
+			if (nullptr != this->physicsBody)
+			{
+				this->destroyBody();
+				// this->destroyCollision();
+			}
+
+			Ogre::String sourceCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + this->gameObjectPtr->getName() + ".col";
+			Ogre::String destinationCollisionFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + this->gameObjectPtr->getName() + ".col";
+			CopyFile(sourceCollisionFilePathName.c_str(), destinationCollisionFilePathName.c_str(), false);
+
+			try
+			{
+				DeleteFile(sourceCollisionFilePathName.c_str());
+			}
+			catch (...)
+			{
+
+			}
+
+			this->reCreateCollision(true);
+		}
+	}
+
+	void PhysicsTerrainComponent::handleTerraChanged(NOWA::EventDataPtr eventData)
+	{
+		boost::shared_ptr<NOWA::EventDataTerraChanged> castEventData = boost::static_pointer_cast<NOWA::EventDataTerraChanged>(eventData);
+
+		// Event not for this state
+		if (this->gameObjectPtr->getId() != castEventData->getGameObjectId())
+		{
+			// Not for this game object
+			return;
+		}
+
+		if (nullptr != this->physicsBody)
+		{
+			this->destroyBody();
+			// this->destroyCollision();
+		}
+		// Must overwrite the collision file
+		this->reCreateCollision(true);
 	}
 
 }; // namespace end

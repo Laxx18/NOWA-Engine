@@ -870,7 +870,7 @@ namespace NOWA
 		if (nullptr != this->baseCamera)
 		{
 			static_cast<FollowCamera2D*>(this->baseCamera)->setBorderOffset(this->borderOffset->getVector3());
-			static_cast<FollowCamera2D*>(this->baseCamera)->setBounds(Core::getSingletonPtr()->getCurrentWorldBoundLeftNear(), Core::getSingletonPtr()->getCurrentWorldBoundRightFar());
+			static_cast<FollowCamera2D*>(this->baseCamera)->setBounds(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
 		}
 	}
 
@@ -908,8 +908,8 @@ namespace NOWA
 	{
 		Ogre::Vector3 tempBorderOffset = Ogre::Vector3(Ogre::Math::Abs(borderOffset.x), Ogre::Math::Abs(borderOffset.y), Ogre::Math::Abs(borderOffset.z));
 
-		Ogre::Vector3 leftNearBound = Core::getSingletonPtr()->getCurrentWorldBoundLeftNear();
-		Ogre::Vector3 rightFarBound = Core::getSingletonPtr()->getCurrentWorldBoundRightFar();
+		Ogre::Vector3 leftNearBound = Core::getSingletonPtr()->getCurrentSceneBoundLeftNear();
+		Ogre::Vector3 rightFarBound = Core::getSingletonPtr()->getCurrentSceneBoundRightFar();
 
 		Ogre::Vector3 border = (leftNearBound + rightFarBound) / 4.0f;
 

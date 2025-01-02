@@ -76,7 +76,7 @@ namespace NOWA
 		}
 		else
 		{
-			// trigger the parse game object event, so that it will be parsed in the world loader
+			// trigger the parse game object event, so that it will be parsed in the scene loader
 			// 0 means, the control by client does not matter
 			boost::shared_ptr<NOWA::EventDataParseGameObject> parseGameObjectEvent(new NOWA::EventDataParseGameObject(name, 0));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(parseGameObjectEvent);

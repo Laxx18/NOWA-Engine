@@ -233,9 +233,10 @@ namespace NOWA
 		this->tagName->setDescription("Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
 			"This is useful when doing ray - casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.");
 		this->dynamic->setDescription("Set to true, if you are sure, the game object will be moved always, else set to false due to performance reasons.");
-		this->global->setDescription("This is useful if a project does consist of several scenes, which do share this game object, so when a change is made, it will be available for all scenes.");
+		this->global->setDescription("This is useful if a project does consist of several scenes, which do share this game object, so when a change is made, it will be available for all scenes. "
+			"Also a potential lua script will be made globally available for this game object in all scenes.");
 		this->clampY->setDescription("This is useful when game object is loaded, so that it will be automatically placed upon the next lower game object."
-							"Especially when the game object is a global one and will be loaded for different worlds, that start at a different height."
+							"Especially when the game object is a global one and will be loaded for different scenes, that start at a different height."
 							"If there is no game object below, the next game object above is searched.If this also does not exist, the current y coordinate is just used.");
 		this->renderQueueIndex->setDescription("Sets the render queue group index, which controls the rendering order of the game object. Possible values are from 0 to 255. Constraints: "
 			"RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items); RenderQueue ID range[100; 200)& [225; 256) default to V1_FAST(i.e. for v1 objects, like v1::Entity)");
@@ -776,13 +777,13 @@ namespace NOWA
 		{
 			this->setDefaultDirection(attribute->getVector3());
 		}
+		else if (GameObject::AttrGlobal() == attribute->getName())
+		{
+			this->setInternalAttributeGlobal(attribute->getBool());
+		}
 		else if (GameObject::AttrVisible() == attribute->getName())
 		{
 			this->setVisible(attribute->getBool());
-		}
-		else if (GameObject::AttrGlobal() == attribute->getName())
-		{
-			this->global->setValue(attribute->getBool());
 		}
 		else if (GameObject::AttrClampY() == attribute->getName())
 		{
@@ -1772,6 +1773,24 @@ namespace NOWA
 	void GameObject::setGlobal(bool global)
 	{
 		this->global->setValue(global);
+
+		if (nullptr != this->luaScript)
+		{
+			this->luaScript->setIsGlobal(global);
+		}
+	}
+
+	void GameObject::setInternalAttributeGlobal(bool isGlobal)
+	{
+		this->global->setValue(isGlobal);
+
+		if (nullptr != this->luaScript)
+		{
+			this->luaScript->setIsGlobal(isGlobal);
+		}
+
+		boost::shared_ptr<EventDataGameObjectMadeGlobal> eventDataGameObjectMadeGlobal(new EventDataGameObjectMadeGlobal(this->id->getULong(), isGlobal));
+		AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectMadeGlobal);
 	}
 	
 	bool GameObject::getGlobal(void) const

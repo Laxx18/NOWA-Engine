@@ -88,7 +88,7 @@ namespace NOWA
 
 			resultMiniMapDataList.emplace_back(resultMiniMapData);
 
-			std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextWorlds();
+			std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextScenes();
 
 			for (int i = 0; i < exitData.size(); i++)
 			{
@@ -176,7 +176,7 @@ namespace NOWA
 				resultMiniMapData.sceneName = miniMapTile.sceneName;
 				resultMiniMapDataList.emplace_back(resultMiniMapData);
 
-				std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextWorlds();
+				std::vector<std::pair<Ogre::Vector2, Ogre::String>> exitData = dotSceneImportModulePtr->parseExitDirectionsNextScenes();
 				
 				// Calculate the position for each world in contrast to its neighbour worlds
 
@@ -234,7 +234,7 @@ namespace NOWA
 		bool success = false;
 
 		// Get the current world
-		Ogre::String currentWorld = Core::getSingletonPtr()->getWorldName();
+		Ogre::String currentWorld = Core::getSingletonPtr()->getSceneName();
 		
 		// Found global id like player, get its current position
 		Ogre::Vector3 currentPosition = position;
@@ -246,7 +246,7 @@ namespace NOWA
 
 		Ogre::Vector2 currentWorldPosition = Ogre::Vector2::ZERO;
 		Ogre::Vector2 currentWorldSize = Ogre::Vector2::ZERO;
-		Ogre::Vector2 currentWorldOrigin = Ogre::Vector2::ZERO;
+		Ogre::Vector2 currentSceneOrigin = Ogre::Vector2::ZERO;
 
 		for (size_t i = 0; i < this->resultMiniMapDataList.size(); i++)
 		{
@@ -254,7 +254,7 @@ namespace NOWA
 			{
 				currentWorldPosition = this->resultMiniMapDataList[i].position;
 				currentWorldSize = this->resultMiniMapDataList[i].size;
-				currentWorldOrigin = this->resultMiniMapDataList[i].origin;
+				currentSceneOrigin = this->resultMiniMapDataList[i].origin;
 				break;
 			}
 		}
@@ -270,8 +270,8 @@ namespace NOWA
 		*/
 		if (Ogre::Vector2::ZERO != currentWorldSize)
 		{
-			miniMapPosition.x = (miniMapPosition.x - currentWorldOrigin.x) + currentWorldPosition.x;
-			miniMapPosition.y = (currentWorldOrigin.y - miniMapPosition.y) + currentWorldPosition.y + currentWorldSize.y;
+			miniMapPosition.x = (miniMapPosition.x - currentSceneOrigin.x) + currentWorldPosition.x;
+			miniMapPosition.y = (currentSceneOrigin.y - miniMapPosition.y) + currentWorldPosition.y + currentWorldSize.y;
 			success = true;
 		}
 

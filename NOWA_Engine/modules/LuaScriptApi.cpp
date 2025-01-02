@@ -4987,12 +4987,12 @@ namespace NOWA
 			[
 				class_<GameProgressModule>("GameProgressModule")
 				// .def("getInstance", &GameProgressModule::getInstance) //returns static singleton instance
-				// .def("addWorld", &GameProgressModule::addWorld)
-				// .def("loadWorld", &GameProgressModule::loadWorld)
-				// .def("loadWorldShowProgress", &GameProgressModule::loadWorldShowProgress)
+				// .def("addScene", &GameProgressModule::addScene)
+				// .def("loadScene", &GameProgressModule::loadScene)
+				// .def("loadSceneShowProgress", &GameProgressModule::loadSceneShowProgress)
 				// .def("setPlayerName", &GameProgressModule::setPlayerName)
 				// .def("determinePlayerStartLocation", &GameProgressModule::determinePlayerStartLocation)
-			.def("getCurrentWorldName", &GameProgressModule::getCurrentWorldName)
+			.def("getCurrentSceneName", &GameProgressModule::getCurrentSceneName)
 			.def("saveProgress", &GameProgressModule::saveProgress)
 			.def("saveValue", &saveValue)
 			.def("saveValues", &saveValues)
@@ -5010,15 +5010,15 @@ namespace NOWA
 			.def("setGlobalVector2Value", &GameProgressModule::setGlobalVector2Value)
 			.def("setGlobalVector3Value", &GameProgressModule::setGlobalVector3Value)
 			.def("setGlobalVector4Value", &GameProgressModule::setGlobalVector4Value)
-			.def("changeWorld", &GameProgressModule::changeWorld)
-			.def("changeWorldShowProgress", &GameProgressModule::changeWorldShowProgress)
+			.def("changeScene", &GameProgressModule::changeScene)
+			.def("changeSceneShowProgress", &GameProgressModule::changeSceneShowProgress)
 			];
 
 		// object globalVars = globals(lua);
 		// globalVars["GameProgressModule"] = AppStateManager::getSingletonPtr()->getGameProgressModule();
 
 		AddClassToCollection("GameProgressModule", "class", "Class that is reponsible for the game progress specific topics like switching a scene at runtime or loading saving the game.");
-		AddClassToCollection("GameProgressModule", "String getCurrentWorldName()", "Gets the current world name.");
+		AddClassToCollection("GameProgressModule", "String getCurrentSceneName()", "Gets the current scene name.");
 		AddClassToCollection("GameProgressModule", "void saveProgress(String saveName, bool crypted, bool sceneSnapshot)", "Saves the current progress for all game objects with its attribute components. "
 			"Optionally crypts the content, so that it is not readable anymore. Optionally can saves a whole scene snapshot");
 		AddClassToCollection("GameProgressModule", "String saveValue(String saveName, String gameObjectId, unsigned int attributeIndex, bool crypted)", "Saves a value for the given game object id and its attribute index. Optionally crypts the content, so that it is not readable anymore.");
@@ -5042,8 +5042,8 @@ namespace NOWA
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
 		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, Vector4 value)", "Sets the Vector4 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "void changeWorld(String worldName)", "Changes the current world to the new given one.");
-		AddClassToCollection("GameProgressModule", "void changeWorldShowProgress(String worldName)", "Changes the current world to the new given one. Also shows the loading progress.");
+		AddClassToCollection("GameProgressModule", "void changeScene(String sceneName)", "Changes the current scene to the new given one.");
+		AddClassToCollection("GameProgressModule", "void changeSceneShowProgress(String sceneName)", "Changes the current scene to the new given one. Also shows the loading progress.");
 	}
 
 	void deleteDelayedGameObject(GameObjectController* instance, const Ogre::String& id, Ogre::Real timeOffsetSec)
@@ -13274,8 +13274,8 @@ namespace NOWA
 		[
 			class_<Core>("Core")
 			.def("getSingletonPtr", &Core::getSingletonPtr)
-			.def("getCurrentWorldBoundLeftNear", &Core::getCurrentWorldBoundLeftNear)
-			.def("getCurrentWorldBoundRightFar", &Core::getCurrentWorldBoundRightFar)
+			.def("getCurrentSceneBoundLeftNear", &Core::getCurrentSceneBoundLeftNear)
+			.def("getCurrentSceneBoundRightFar", &Core::getCurrentSceneBoundRightFar)
 			.def("isGame", &Core::getIsGame)
 			.def("getCurrentDateAndTime", &getCurrentDateAndTime)
 			.def("getCurrentDateAndTime2", &Core::getCurrentDateAndTime)
@@ -13285,7 +13285,7 @@ namespace NOWA
 			.def("getSceneSnapshotsInProject", &getSceneSnapshotsInProject)
 			.def("getSaveNamesInProject", &getSaveNamesInProject)
 			.def("getProjectName", &Core::getProjectName)
-			.def("getWorldName", &Core::getWorldName)
+			.def("getSceneName", &Core::getSceneName)
 		];
 
 		object globalVars = globals(lua);
@@ -13311,8 +13311,8 @@ namespace NOWA
 		AddClassToCollection("InputDeviceCore", "Mouse getMouse()", "Gets the mouse for direct manipulation.");
 
 		AddClassToCollection("Core", "class", "Some functions for NOWA core functionality.");
-		AddClassToCollection("Core", "Vector3 getCurrentWorldBoundLeftNear()", "Gets left near bounding box of the currently loaded scene.");
-		AddClassToCollection("Core", "Vector3 getCurrentWorldBoundRightFar()", "Gets right far bounding box of the currently loaded scene.");
+		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundLeftNear()", "Gets left near bounding box of the currently loaded scene.");
+		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundRightFar()", "Gets right far bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "bool getIsGame()", "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.");
 		AddClassToCollection("Core", "String getCurrentDateAndTime()", "Gets the current date and time. The default format is in the form Year_Month_Day_Hour_Minutes_Seconds.");
 		AddClassToCollection("Core", "String getCurrentDateAndTime2(String format)", "Gets the current date and time. E.g. format = '%Y_%m_%d_%X' which formats the value as Year_Month_Day_Hour_Minutes_Seconds.");
@@ -13320,7 +13320,7 @@ namespace NOWA
 		AddClassToCollection("Core", "String getCurrentSaveGameName()", "Gets the current save game name, or empty string, if does not exist.");
 		AddClassToCollection("Core", "String getSaveFilePathName(String saveGameName)", "Gets the save file path name, or empty string, if does not exist. Note: This is usefull for debug purposes, to see, where a game does store its content and open those files for analysis etc.");
 		AddClassToCollection("Core", "String getProjectName()", "Gets the current project name.");
-		AddClassToCollection("Core", "String getWorldName()", "Gets the current world (scene) name.");
+		AddClassToCollection("Core", "String getSceneName()", "Gets the current scene name.");
 		AddClassToCollection("Core", "Table[number][string] getSceneSnapshotsInProject(String projectName)", "Gets a list of saved game scene snapshots from the save directory for the given project name.");
 		AddClassToCollection("Core", "Table[number][string] getSaveNamesInProject(String projectName)", "Gets a list of saved game saves (*.sav) file names from the save directory for the given project name.");
 	}
@@ -13499,7 +13499,7 @@ namespace NOWA
 					errorMessages.emplace(d.currentline);
 					Ogre::LogManager::getSingletonPtr()->logMessage(msg.str(), Ogre::LML_CRITICAL);
 
-					Ogre::String relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + scriptName;
+					Ogre::String relativeLuaScriptFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "/" + scriptName;
 					Ogre::String luaScriptFilePathName = NOWA::Core::getSingletonPtr()->getAbsolutePath(relativeLuaScriptFilePathName);
 
 					boost::shared_ptr<EventDataPrintLuaError> eventDataPrintLuaError(new EventDataPrintLuaError(scriptName, luaScriptFilePathName, d.currentline, msg.str()));
@@ -13918,20 +13918,31 @@ namespace NOWA
 
 	void LuaScriptApi::appendLuaFilePathToPackage(const Ogre::String& luaFilePath)
 	{
-		// Only append new path, if world path has changed
+		// Only append new path, if scene path has changed
 		auto found = this->luaScriptPathes.find(luaFilePath);
 
 		if (this->luaScriptPathes.cend() == found)
 		{
-			// Ogre::String packagePath = "package.path = package.path .. ';" + luaFilePath + "/?.lua";
-			// luaL_dostring(lua, worldPackagePath.c_str());
-
 			lua_getglobal(lua, "package");
 			lua_getfield(lua, -1, "path"); // get field "path" from table at top of stack (-1)
 			std::string currentPath = lua_tostring(lua, -1); // grab path string from top of stack
-			currentPath.append(";"); // do your path magic here
+			currentPath.append(";");
 			currentPath.append(luaFilePath);
+
+			currentPath.append(";");
+			currentPath.append(luaFilePath + "/?.lua");
+
+			const auto& sceneFilePathNames = Core::getSingletonPtr()->getSceneFoldersInProject(luaFilePath);
+			for (size_t i = 0; i < sceneFilePathNames.size(); i++)
+			{
+				currentPath.append(";");
+				currentPath.append(luaFilePath + "/" + sceneFilePathNames[i] + "/?.lua");
+			}
+
+			currentPath.append(";");
 			currentPath.append("/?.lua");
+			currentPath.append(";");
+			currentPath.append("../?.lua");
 			lua_pop(lua, 1); // get rid of the string on the stack we just pushed on line 5
 			lua_pushstring(lua, currentPath.c_str()); // push the new one
 			lua_setfield(lua, -2, "path"); // set the field "path" in table at -2 with value at top of stack

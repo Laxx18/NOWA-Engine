@@ -46,7 +46,7 @@ namespace NOWA
 		* @param[in]	filename					The file name where the data is located. Is used maybe for collision hull serialization.
 		* @param[in]	gameObjectPtr				The owner game object to set.
 		* @param[in]	existingGameObjectCompPtr	If null the component will be created, else the existing one will be used
-		* @Note		The file name can be received via: Core::getSingletonPtr()->getSectionPath("Projects")[0], if in the cfg, a world is specified for the section
+		* @Note		The file name can be received via: Core::getSingletonPtr()->getSectionPath("Projects")[0], if in the cfg, a scene is specified for the section
 		*/
 		virtual GameObjectCompPtr createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr = nullptr);
 		

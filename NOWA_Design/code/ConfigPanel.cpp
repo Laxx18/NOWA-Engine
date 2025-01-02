@@ -238,7 +238,7 @@ bool ConfigPanel::checkProjectExists(const Ogre::String& projectName, const Ogre
 	for (; it != itEnd; ++it)
 	{
 		// Project is always: "projects/projectName/sceneName.scene"
-		filePathName = (*it)->archive->getName() + "/" + projectName + "/" + sceneName + ".scene";
+		filePathName = (*it)->archive->getName() + "/" + projectName + "/" + sceneName + "/" + sceneName + ".scene";
 		// Check if a project with the same name does already exist
 		std::ifstream ifs(filePathName);
 		if (true == ifs.good())
@@ -262,7 +262,7 @@ void ConfigPanel::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxS
 		Ogre::String sceneName = std::get<1>(this->configPanelProject->getParameter());
 
 		Ogre::String projectPath = NOWA::Core::getSingletonPtr()->getSectionPath("Projects")[0];
-		Ogre::String deletePath = projectPath + "/" + projectName + "/" + sceneName + ".scene";
+		Ogre::String deletePath = projectPath + "/" + projectName + "/" + sceneName + "/" + sceneName + ".scene";
 
 		// First delete existing scene
 		std::remove(deletePath.c_str());
@@ -354,7 +354,7 @@ void ConfigPanelProject::resetSettings(void)
 	this->ignoreGlobalSceneCheck->setStateCheck(false);
 	this->useV2ItemCheck->setStateCheck(!NOWA::Core::getSingletonPtr()->getUseEntityType());
 
-	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "*.*");
+	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "/*");
 	for (auto filePathName : filePathNames)
 	{
 		size_t found = filePathName.find_last_of("/\\");

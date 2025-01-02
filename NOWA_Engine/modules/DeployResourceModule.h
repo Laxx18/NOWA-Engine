@@ -21,11 +21,11 @@ namespace NOWA
 
 		void deploy(const Ogre::String& applicationName, const Ogre::String& jsonFilePathName);
 
-		bool createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& worldName);
+		bool createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		bool createCPlusPlusComponentPluginProject(const Ogre::String& componentName);
 
-		bool createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& worldName);
+		bool createSceneInOwnState(const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		void openProject(const Ogre::String& projectName);
 
@@ -33,11 +33,11 @@ namespace NOWA
 
 		bool startGame(const Ogre::String& projectName);
 
-		bool createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& worldName);
+		bool createAndStartExecutable(const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		bool createLuaInitScript(const Ogre::String& projectName);
 
-		bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& worldName);
+		bool createProjectBackup(const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		void destroyContent(void);
 

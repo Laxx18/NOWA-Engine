@@ -125,7 +125,7 @@ namespace NOWA
 		{
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption(AppStateManager::getSingletonPtr()->getRakNetModule()->getServerName() + ":"
 				+ AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName()
-				+ "-" + AppStateManager::getSingletonPtr()->getRakNetModule()->getWorldName());
+				+ "-" + AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName());
 
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption("Server IP: " + AppStateManager::getSingletonPtr()->getRakNetModule()->getServerIP());
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("connectToServerButton")->setEnabled(true);

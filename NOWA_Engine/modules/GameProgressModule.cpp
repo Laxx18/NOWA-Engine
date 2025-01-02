@@ -14,16 +14,16 @@
 
 namespace NOWA
 {
-	class LoadWorldProcess : public NOWA::Process
+	class LoadSceneProcess : public NOWA::Process
 	{
 	public:
-		explicit LoadWorldProcess(const Ogre::String& appStateName, DotSceneImportModule* dotSceneImportModule, const Ogre::String& nextWorldName, const Ogre::String& playerName, 
-			bool worldChanged, bool showProgress = false)
+		explicit LoadSceneProcess(const Ogre::String& appStateName, DotSceneImportModule* dotSceneImportModule, const Ogre::String& nextSceneName, const Ogre::String& playerName, 
+			bool sceneChanged, bool showProgress = false)
 			: appStateName(appStateName),
 			dotSceneImportModule(dotSceneImportModule),
-			nextWorldName(nextWorldName),
+			nextSceneName(nextSceneName),
 			playerName(playerName),
-			worldChanged(worldChanged),
+			sceneChanged(sceneChanged),
 			showProgress(showProgress)
 		{
 
@@ -50,7 +50,7 @@ namespace NOWA
 				engineResourceListener->showLoadingBar();
 			}
 
-			bool success = this->dotSceneImportModule->parseScene(Core::getSingletonPtr()->getProjectName(), this->nextWorldName, "Projects", nullptr, nullptr, showProgress);
+			bool success = this->dotSceneImportModule->parseScene(Core::getSingletonPtr()->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, showProgress);
 			
 			std::pair<Ogre::Real, Ogre::Real> continueData(0.0f, 0.0f);
 
@@ -65,11 +65,11 @@ namespace NOWA
 			
 			if (false == success)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse world: '" + this->nextWorldName + "' correctly!");
-				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->nextSceneName + "' correctly!");
+				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
 				return;
 			}
-			// Continue fading after loading world, if there is enough time left
+			// Continue fading after loading scene, if there is enough time left
 			/*if (continueData.second > 1.0f)
 			{
 				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
@@ -89,19 +89,19 @@ namespace NOWA
 
 			// NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
 
-			// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextWorldName);
+			// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextSceneName);
 
-			// Send event, that world has been loaded. Note: When world has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-			// and the world has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-			boost::shared_ptr<EventDataWorldLoaded> eventDataWorldLoaded(new EventDataWorldLoaded(this->worldChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(eventDataWorldLoaded);
+			// Send event, that scene has been loaded. Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+			// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+			boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
 			
 			 for (unsigned short i = 0; i < 2; i++)
 			 {
 			 	Ogre::Root::getSingletonPtr()->renderOneFrame();
 			 }
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
 		}
 
 		virtual void onUpdate(float dt) override
@@ -111,9 +111,9 @@ namespace NOWA
 	private:
 		Ogre::String appStateName;
 		DotSceneImportModule* dotSceneImportModule;
-		Ogre::String nextWorldName;
+		Ogre::String nextSceneName;
 		Ogre::String playerName;
-		bool worldChanged;
+		bool sceneChanged;
 		bool showProgress;
 	};
 
@@ -122,7 +122,7 @@ namespace NOWA
 	class LoadProgressProcess : public NOWA::Process
 	{
 	public:
-		explicit LoadProgressProcess(const Ogre::String& appStateName, DotSceneImportModule* dotSceneImportModule, const Ogre::String& saveName, bool crypted, bool sceneSnapshot, const Ogre::String& globalAttributesStream, const Ogre::String& playerName, bool worldChanged, bool showProgress = false)
+		explicit LoadProgressProcess(const Ogre::String& appStateName, DotSceneImportModule* dotSceneImportModule, const Ogre::String& saveName, bool crypted, bool sceneSnapshot, const Ogre::String& globalAttributesStream, const Ogre::String& playerName, bool sceneChanged, bool showProgress = false)
 			: appStateName(appStateName),
 			dotSceneImportModule(dotSceneImportModule),
 			saveName(saveName),
@@ -130,7 +130,7 @@ namespace NOWA
 			sceneSnapshot(sceneSnapshot),
 			globalAttributesStream(globalAttributesStream),
 			playerName(playerName),
-			worldChanged(worldChanged),
+			sceneChanged(sceneChanged),
 			showProgress(showProgress)
 		{
 
@@ -149,7 +149,7 @@ namespace NOWA
 				if (true == openFilePathName.empty())
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse saved name: '" + this->saveName + "' because its unclear to which scene the save snapshot belongs!");
-					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
+					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
 					return;
 				}
 
@@ -187,7 +187,7 @@ namespace NOWA
 					engineResourceListener = nullptr;
 				}
 
-				// Continue fading after loading world, if there is enough time left
+				// Continue fading after loading scene, if there is enough time left
 				/*if (continueData.second > 1.0f)
 				{
 					NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
@@ -207,12 +207,12 @@ namespace NOWA
 
 				// NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
 
-				// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextWorldName);
+				// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextSceneName);
 
-				// Send event, that world has been loaded. Note: When world has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-				// and the world has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-				boost::shared_ptr<EventDataWorldLoaded> eventDataWorldLoaded(new EventDataWorldLoaded(this->worldChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(eventDataWorldLoaded);
+				// Send event, that scene has been loaded. Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+				// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+				boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
 			}
 
 			bool success = AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->internalReadGlobalAttributes(globalAttributesStream);
@@ -226,7 +226,7 @@ namespace NOWA
 				Ogre::Root::getSingletonPtr()->renderOneFrame();
 			}
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsWorldLoading(false);
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
 		}
 
 		virtual void onUpdate(float dt) override
@@ -241,7 +241,7 @@ namespace NOWA
 		bool crypted;
 		bool sceneSnapshot;
 		Ogre::String globalAttributesStream;
-		bool worldChanged;
+		bool sceneChanged;
 		bool showProgress;
 	};
 	
@@ -280,7 +280,7 @@ namespace NOWA
 		player(nullptr),
 		dotSceneImportModule(nullptr),
 		dotSceneExportModule(nullptr),
-		bWorldLoading(false)
+		bSceneLoading(false)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameProgressModule] Module created");
 	}
@@ -290,9 +290,9 @@ namespace NOWA
 
 	}
 
-	bool GameProgressModule::isWorldLoading(void) const
+	bool GameProgressModule::isSceneLoading(void) const
 	{
-		return this->bWorldLoading;
+		return this->bSceneLoading;
 	}
 
 	Ogre::SceneManager* GameProgressModule::getCurrentSceneManager(void)
@@ -316,7 +316,7 @@ namespace NOWA
 			delete this->dotSceneExportModule;
 			this->dotSceneExportModule = nullptr;
 		}
-		this->worldMap.clear();
+		this->sceneMap.clear();
 		
 		// Delete all global attributes
 		auto& it = this->globalAttributesMap.begin();
@@ -329,7 +329,7 @@ namespace NOWA
 			++it;
 		}
 		this->globalAttributesMap.clear();
-		this->bWorldLoading = false;
+		this->bSceneLoading = false;
 	}
 
 	void GameProgressModule::resetContent(void)
@@ -395,37 +395,37 @@ namespace NOWA
 			return "";
 	}
 
-	void GameProgressModule::addWorld(const Ogre::String& currentWorldName, const Ogre::String& reachableWorldName, 
+	void GameProgressModule::addScene(const Ogre::String& currentSceneName, const Ogre::String& reachableSceneName, 
 		const Ogre::String& targetLocationName, const Ogre::Vector2& exitDirection, const Ogre::Vector3& startPosition, bool xyAxis)
 	{
-		this->currentWorldName = currentWorldName;
-		Ogre::String reachableWorldProjectName;
-		if (!reachableWorldName.empty())
+		this->currentSceneName = currentSceneName;
+		Ogre::String reachableSceneProjectName;
+		if (!reachableSceneName.empty())
 		{
-			reachableWorldProjectName = Core::getSingletonPtr()->getProjectName() + "/" + reachableWorldName + ".scene";
+			reachableSceneProjectName = Core::getSingletonPtr()->getProjectName() + "/" + reachableSceneName + "/" + reachableSceneName + ".scene";
 		}
 
-		auto& it = this->worldMap.find(currentWorldName);
-		if (this->worldMap.end() == it)
+		auto& it = this->sceneMap.find(currentSceneName);
+		if (this->sceneMap.end() == it)
 		{
-			GameProgressModule::WorldData worldData(currentWorldName, targetLocationName, exitDirection, startPosition, xyAxis);
-			if (!reachableWorldName.empty())
+			GameProgressModule::SceneData sceneData(currentSceneName, targetLocationName, exitDirection, startPosition, xyAxis);
+			if (!reachableSceneName.empty())
 			{
-				worldData.addReachableWorld(reachableWorldProjectName);
+				sceneData.addReachableScene(reachableSceneProjectName);
 			}
-			this->worldMap.emplace(currentWorldName, worldData);
+			this->sceneMap.emplace(currentSceneName, sceneData);
 			// actualize iterator for predecessor settings below
-			it = this->worldMap.find(currentWorldName);
+			it = this->sceneMap.find(currentSceneName);
 		}
 		else
 		{
-			if (!currentWorldName.empty())
+			if (!currentSceneName.empty())
 			{
-				it->second.setWorldName(currentWorldName);
+				it->second.setSceneName(currentSceneName);
 			}
-			if (!reachableWorldName.empty())
+			if (!reachableSceneName.empty())
 			{
-				it->second.addReachableWorld(reachableWorldProjectName);
+				it->second.addReachableScene(reachableSceneProjectName);
 			}
 			if (Ogre::Vector2::ZERO != exitDirection)
 			{
@@ -437,78 +437,78 @@ namespace NOWA
 			}
 			it->second.setUseXYAxis(xyAxis);
 		}
-		if (!reachableWorldName.empty() && this->worldMap.end() != it)
+		if (!reachableSceneName.empty() && this->sceneMap.end() != it)
 		{
 			// check if the reachable app state name already exist, if yes, it is the predecessor!
-			const auto& it2 = this->worldMap.find(reachableWorldProjectName);
-			if (this->worldMap.end() != it2)
+			const auto& it2 = this->sceneMap.find(reachableSceneProjectName);
+			if (this->sceneMap.end() != it2)
 			{
 				// the currents app state predecessor is the reachable one
-				it->second.predecessorWorldData = &(it2->second);
+				it->second.predecessorSceneData = &(it2->second);
 				// ?? e.g. SimulationState is predecessor of SimulationState2 and vice versa??
-				// it2->second.predecessorWorld = &(it->second);
+				// it2->second.predecessorScene = &(it->second);
 			}
 		}
 	}
 
-	std::vector<Ogre::String>* GameProgressModule::getReachableWorlds(const Ogre::String& currentWorldName)
+	std::vector<Ogre::String>* GameProgressModule::getReachableScenes(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->worldMap.find(currentWorldName);
-		if (this->worldMap.end() != it)
+		const auto& it = this->sceneMap.find(currentSceneName);
+		if (this->sceneMap.end() != it)
 		{
-			return &it->second.getReachableWorlds();
+			return &it->second.getReachableScenes();
 		}
 		return nullptr;
 	}
 
-	GameProgressModule::WorldData* GameProgressModule::getPredecessorWorldData(const Ogre::String& currentWorldName)
+	GameProgressModule::SceneData* GameProgressModule::getPredecessorSceneData(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->worldMap.find(currentWorldName);
-		if (this->worldMap.end() != it)
+		const auto& it = this->sceneMap.find(currentSceneName);
+		if (this->sceneMap.end() != it)
 		{
-			return it->second.getPredecessorWorldData();
+			return it->second.getPredecessorSceneData();
 		}
 		return nullptr;
 	}
 
-	GameProgressModule::WorldData* GameProgressModule::getWorldData(const Ogre::String& currentWorldName)
+	GameProgressModule::SceneData* GameProgressModule::getSceneData(const Ogre::String& currentSceneName)
 	{
-		const auto& it = this->worldMap.find(currentWorldName);
-		if (this->worldMap.end() != it)
+		const auto& it = this->sceneMap.find(currentSceneName);
+		if (this->sceneMap.end() != it)
 		{
 			return &(it->second);
 		}
 		return nullptr;
 	}
 
-	unsigned int GameProgressModule::getWorldsCount(void) const
+	unsigned int GameProgressModule::getScenesCount(void) const
 	{
-		return static_cast<unsigned int>(this->worldMap.size());
+		return static_cast<unsigned int>(this->sceneMap.size());
 	}
 
-	void GameProgressModule::determinePlayerStartLocation(const Ogre::String& currentWorldName)
+	void GameProgressModule::determinePlayerStartLocation(const Ogre::String& currentSceneName)
 	{
 		Ogre::Vector3 startPosition = Ogre::Vector3::ZERO;
 		Ogre::Quaternion startOrientation = Ogre::Quaternion::IDENTITY;
 
 		// if this is not the first loaded app state, calculate the player position, where to start in the app state
-		if (0 < this->worldMap.size())
+		if (0 < this->sceneMap.size())
 		{
-			const auto& predessorWorldData = this->getPredecessorWorldData(Core::getSingletonPtr()->getProjectName() + "/" + currentWorldName + ".scene");
-			if (nullptr != predessorWorldData)
+			const auto& predessorSceneData = this->getPredecessorSceneData(Core::getSingletonPtr()->getProjectName() + "/" + currentSceneName + "/" + currentSceneName + ".scene");
+			if (nullptr != predessorSceneData)
 			{
-				const auto& targetLocation = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromName(predessorWorldData->getTargetLocationName()).get();
+				const auto& targetLocation = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromName(predessorSceneData->getTargetLocationName()).get();
 				if (nullptr != targetLocation)
 				{
 				/*	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] Cannot determine start position, because there is no such location name: '"
-						+ predessorWorldData->getTargetLocationName() + "'!");
+						+ predessorSceneData->getTargetLocationName() + "'!");
 					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameProgressModule] Cannot determine start position, because there is no such location name: '"
-						+ predessorWorldData->getTargetLocationName() + "'!\n", "NOWA");*/
+						+ predessorSceneData->getTargetLocationName() + "'!\n", "NOWA");*/
 
 						// get the position of the current app state and the exit direction of the previews one, to determine the final position and orientation
 					startPosition = targetLocation->getPosition();
-					Ogre::Vector2 exitDirection = predessorWorldData->getExitDirection();
-					bool xyAxis = predessorWorldData->getIsXYAxisUsed();
+					Ogre::Vector2 exitDirection = predessorSceneData->getExitDirection();
+					bool xyAxis = predessorSceneData->getIsXYAxisUsed();
 					// offset the player start position, so that the player does not land on an exit but nearby
 
 					if (true == xyAxis)
@@ -566,70 +566,70 @@ namespace NOWA
 		}
 	}
 
-	void GameProgressModule::loadWorld(const Ogre::String& worldName)
+	void GameProgressModule::loadScene(const Ogre::String& sceneName)
 	{
-		this->setIsWorldLoading(true);
+		this->setIsSceneLoading(true);
 
-		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
+		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(sceneName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
-		Ogre::String fileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(worldName);
+		Ogre::String fileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(sceneName);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-		// Creates the delay process and changes the world at another tick. Note, this is necessary
-		// because changing the world destroys all game objects and its components.
+		// Creates the delay process and changes the scene at another tick. Note, this is necessary
+		// because changing the scene destroys all game objects and its components.
 		// So changing the state directly inside a component would create a mess, since everything will be destroyed
 		// and the game object map in update loop becomes invalid while its iterating
-		delayProcess->attachChild(NOWA::ProcessPtr(new LoadWorldProcess(this->appStateName, this->dotSceneImportModule, fileName, nullptr != this->player ? this->player->getName() : "", false)));
+		delayProcess->attachChild(NOWA::ProcessPtr(new LoadSceneProcess(this->appStateName, this->dotSceneImportModule, fileName, nullptr != this->player ? this->player->getName() : "", false)));
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
-	void GameProgressModule::loadWorldShowProgress(const Ogre::String& worldName)
+	void GameProgressModule::loadSceneShowProgress(const Ogre::String& sceneName)
 	{
-		this->setIsWorldLoading(true);
+		this->setIsSceneLoading(true);
 
 
-		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(worldName);
+		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(sceneName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
-		Ogre::String fileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(worldName);
+		Ogre::String fileName = NOWA::Core::getSingletonPtr()->getFileNameFromPath(sceneName);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-		// Creates the delay process and changes the world at another tick. Note, this is necessary
-		// because changing the world destroys all game objects and its components.
+		// Creates the delay process and changes the scene at another tick. Note, this is necessary
+		// because changing the scene destroys all game objects and its components.
 		// So changing the state directly inside a component would create a mess, since everything will be destroyed
 		// and the game object map in update loop becomes invalid while its iterating
-		delayProcess->attachChild(NOWA::ProcessPtr(new LoadWorldProcess(this->appStateName, this->dotSceneImportModule, fileName, nullptr != this->player ? this->player->getName() : "", false, true)));
+		delayProcess->attachChild(NOWA::ProcessPtr(new LoadSceneProcess(this->appStateName, this->dotSceneImportModule, fileName, nullptr != this->player ? this->player->getName() : "", false, true)));
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
-	void GameProgressModule::changeWorld(const Ogre::String& worldName)
+	void GameProgressModule::changeScene(const Ogre::String& sceneName)
 	{
-		this->setIsWorldLoading(true);
+		this->setIsSceneLoading(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-		// Creates the delay process and changes the world at another tick. Note, this is necessary
-		// because changing the world destroys all game objects and its components.
+		// Creates the delay process and changes the scene at another tick. Note, this is necessary
+		// because changing the scene destroys all game objects and its components.
 		// So changing the state directly inside a component would create a mess, since everything will be destroyed
 		// and the game object map in update loop becomes invalid while its iterating
-		delayProcess->attachChild(NOWA::ProcessPtr(new LoadWorldProcess(this->appStateName, this->dotSceneImportModule, worldName, nullptr != this->player ? this->player->getName() : "", true)));
+		delayProcess->attachChild(NOWA::ProcessPtr(new LoadSceneProcess(this->appStateName, this->dotSceneImportModule, sceneName, nullptr != this->player ? this->player->getName() : "", true)));
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
-	void GameProgressModule::changeWorldShowProgress(const Ogre::String& worldName)
+	void GameProgressModule::changeSceneShowProgress(const Ogre::String& sceneName)
 	{
-		this->setIsWorldLoading(true);
+		this->setIsSceneLoading(true);
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-		// Creates the delay process and changes the world at another tick. Note, this is necessary
-		// because changing the world destroys all game objects and its components.
+		// Creates the delay process and changes the scene at another tick. Note, this is necessary
+		// because changing the scene destroys all game objects and its components.
 		// So changing the state directly inside a component would create a mess, since everything will be destroyed
 		// and the game object map in update loop becomes invalid while its iterating
-		delayProcess->attachChild(NOWA::ProcessPtr(new LoadWorldProcess(this->appStateName, this->dotSceneImportModule, worldName,  nullptr != this->player ? this->player->getName() : "", true, true)));
+		delayProcess->attachChild(NOWA::ProcessPtr(new LoadSceneProcess(this->appStateName, this->dotSceneImportModule, sceneName,  nullptr != this->player ? this->player->getName() : "", true, true)));
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 
-	Ogre::String GameProgressModule::getCurrentWorldName(void)
+	Ogre::String GameProgressModule::getCurrentSceneName(void)
 	{
-		return this->currentWorldName;
+		return this->currentSceneName;
 	}
 
 	void GameProgressModule::saveProgress(const Ogre::String& saveName, bool crypted, bool sceneSnapshot)
@@ -753,7 +753,7 @@ namespace NOWA
 
 	bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
 	{
-		this->setIsWorldLoading(true);
+		this->setIsSceneLoading(true);
 
 		bool success = false;
 		this->saveName = saveName;
@@ -772,8 +772,8 @@ namespace NOWA
 		}
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-		// Creates the delay process and changes the world at another tick. Note, this is necessary
-		// because changing the world destroys all game objects and its components.
+		// Creates the delay process and changes the scene at another tick. Note, this is necessary
+		// because changing the scene destroys all game objects and its components.
 		// So changing the state directly inside a component would create a mess, since everything will be destroyed
 		// and the game object map in update loop becomes invalid while its iterating
 		delayProcess->attachChild(NOWA::ProcessPtr(new LoadProgressProcess(this->appStateName, this->dotSceneImportModule, saveName, streamData.first, sceneSnapshot, streamData.second, nullptr != this->player ? this->player->getName() : "", true)));
@@ -898,9 +898,9 @@ namespace NOWA
 		return success;
 	}
 
-	void GameProgressModule::setIsWorldLoading(bool bWorldLoading)
+	void GameProgressModule::setIsSceneLoading(bool bSceneLoading)
 	{
-		this->bWorldLoading = bWorldLoading;
+		this->bSceneLoading = bSceneLoading;
 	}
 	
 	void GameProgressModule::saveValues(const Ogre::String& saveName, unsigned long gameObjectId, bool crypted)
@@ -1452,92 +1452,92 @@ namespace NOWA
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	GameProgressModule::WorldData::WorldData(const Ogre::String& stateName)
-		: worldName(worldName),
+	GameProgressModule::SceneData::SceneData(const Ogre::String& stateName)
+		: sceneName(sceneName),
 		exitDirection(Ogre::Vector2::ZERO),
 		startPosition(Ogre::Vector3::ZERO),
-		predecessorWorldData(nullptr)
+		predecessorSceneData(nullptr)
 	{
 
 	}
 
-	GameProgressModule::WorldData::WorldData(const Ogre::String& worldName, const Ogre::String& targetLocationName,
+	GameProgressModule::SceneData::SceneData(const Ogre::String& sceneName, const Ogre::String& targetLocationName,
 		const Ogre::Vector2& exitDirection, const Ogre::Vector3& startPosition, bool xyAxis)
-		: worldName(worldName),
+		: sceneName(sceneName),
 		targetLocationName(targetLocationName),
 		exitDirection(exitDirection),
 		startPosition(startPosition),
 		xyAxis(xyAxis),
-		predecessorWorldData(nullptr)
+		predecessorSceneData(nullptr)
 	{
 
 	}
 
-	void GameProgressModule::WorldData::addReachableWorld(const Ogre::String& reachableWorldName)
+	void GameProgressModule::SceneData::addReachableScene(const Ogre::String& reachableSceneName)
 	{
-		bool foundWorld = false;
-		for (size_t i = 0; i < this->reachableWorlds.size(); i++)
+		bool foundScene = false;
+		for (size_t i = 0; i < this->reachableScenes.size(); i++)
 		{
-			if (reachableWorldName == this->reachableWorlds[i])
+			if (reachableSceneName == this->reachableScenes[i])
 			{
-				foundWorld = true;
+				foundScene = true;
 			}
 		}
-		if (false == foundWorld)
-			this->reachableWorlds.emplace_back(reachableWorldName);
+		if (false == foundScene)
+			this->reachableScenes.emplace_back(reachableSceneName);
 	}
 
-	std::vector<Ogre::String>& GameProgressModule::WorldData::getReachableWorlds(void)
+	std::vector<Ogre::String>& GameProgressModule::SceneData::getReachableScenes(void)
 	{
-		return this->reachableWorlds;
+		return this->reachableScenes;
 	}
 
-	void GameProgressModule::WorldData::setExitDirection(const Ogre::Vector2& exitDirection)
+	void GameProgressModule::SceneData::setExitDirection(const Ogre::Vector2& exitDirection)
 	{
 		this->exitDirection = exitDirection;
 	}
 
-	Ogre::Vector2 GameProgressModule::WorldData::getExitDirection(void) const
+	Ogre::Vector2 GameProgressModule::SceneData::getExitDirection(void) const
 	{
 		return this->exitDirection;
 	}
 
-	void GameProgressModule::WorldData::setStartPosition(const Ogre::Vector3& startPosition)
+	void GameProgressModule::SceneData::setStartPosition(const Ogre::Vector3& startPosition)
 	{
 		this->startPosition = startPosition;
 	}
 
-	Ogre::Vector3 GameProgressModule::WorldData::getStartPosition(void) const
+	Ogre::Vector3 GameProgressModule::SceneData::getStartPosition(void) const
 	{
 		return this->startPosition;
 	}
 
-	void GameProgressModule::WorldData::setUseXYAxis(bool xyAxis)
+	void GameProgressModule::SceneData::setUseXYAxis(bool xyAxis)
 	{
 		this->xyAxis = xyAxis;
 	}
 
-	bool GameProgressModule::WorldData::getIsXYAxisUsed(void) const
+	bool GameProgressModule::SceneData::getIsXYAxisUsed(void) const
 	{
 		return this->xyAxis;
 	}
 
-	GameProgressModule::WorldData* GameProgressModule::WorldData::getPredecessorWorldData(void) const
+	GameProgressModule::SceneData* GameProgressModule::SceneData::getPredecessorSceneData(void) const
 	{
-		return this->predecessorWorldData;
+		return this->predecessorSceneData;
 	}
 
-	void GameProgressModule::WorldData::setWorldName(const Ogre::String& worldName)
+	void GameProgressModule::SceneData::setSceneName(const Ogre::String& sceneName)
 	{
-		this->worldName = worldName;
+		this->sceneName = sceneName;
 	}
 
-	Ogre::String GameProgressModule::WorldData::getWorldName(void) const
+	Ogre::String GameProgressModule::SceneData::getSceneName(void) const
 	{
-		return this->worldName;
+		return this->sceneName;
 	}
 
-	Ogre::String GameProgressModule::WorldData::getTargetLocationName(void) const
+	Ogre::String GameProgressModule::SceneData::getTargetLocationName(void) const
 	{
 		return this->targetLocationName;
 	}

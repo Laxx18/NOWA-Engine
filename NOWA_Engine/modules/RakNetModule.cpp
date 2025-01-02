@@ -63,7 +63,7 @@ namespace NOWA
 			this->areaOfInterest = 60;
 			this->highestLatencyToServer = 0;
 			this->serverName = "";
-			this->worldName = "";
+			this->sceneName = "";
 			this->projectName = "";
 			this->clientConnectionToServer = false;
 			this->serverInConsole = false;
@@ -120,12 +120,12 @@ namespace NOWA
 			strcpy(serverData, this->serverName.c_str());
 			//serverData = GameServer1:
 			strcat(serverData, ":");
-			//serverData = GameServer1:World1
+			//serverData = GameServer1:Scene1
 			strcat(serverData, this->projectName.c_str());
-			//serverData = GameServer1:World1:
+			//serverData = GameServer1:Scene1:
 			strcat(serverData, "-");
-			//serverData = GameServer1:World1-BoidsWorld
-			strcat(serverData, this->worldName.c_str());
+			//serverData = GameServer1:Scene1-BoidsWorld
+			strcat(serverData, this->sceneName.c_str());
 
 			strcat(serverData, ";\0");
 
@@ -238,11 +238,11 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RakNetModule] server ip: " + this->serverIP + " server name: " + this->serverName);
 
 				size_t pos2 = serverData.find("-");
-				this->projectName = serverData.substr(pos + 1, pos2 - pos - 1); //e.g. World1
+				this->projectName = serverData.substr(pos + 1, pos2 - pos - 1); //e.g. Scene1
 				//this->foundServerLabel->setCaption("pos: " + Ogre::StringConverter::toString(pos+1) + " pos2: " +  Ogre::StringConverter::toString(pos2));
 				size_t pos3 = serverData.find(";");
-				this->worldName = serverData.substr(pos2 + 1, pos3 - pos2 - 1); //e.g. BoidsWorld
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RakNetModule] World: " + this->worldName);
+				this->sceneName = serverData.substr(pos2 + 1, pos3 - pos2 - 1); //e.g. BoidsWorld
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RakNetModule] Scene: " + this->sceneName);
 
 				this->localAddress = this->rakPeer->GetInternalID();
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RakNetModule] local client system address: " + Ogre::String(this->localAddress.ToString()));
@@ -254,7 +254,7 @@ namespace NOWA
 			{
 				this->serverName = "";
 				this->projectName = "";
-				this->worldName = "";
+				this->sceneName = "";
 				serverFound = false;
 			}
 			this->rakPeer->DeallocatePacket(packet);
@@ -695,10 +695,10 @@ namespace NOWA
 		return this->windowTitle;
 	}
 
-	std::map<Ogre::String, Ogre::String> RakNetModule::getWorldNames(void) const
+	std::map<Ogre::String, Ogre::String> RakNetModule::getSceneNames(void) const
 	{
-		// <worldName, projectName>
-		return this->worldNames;
+		// <sceneName, projectName>
+		return this->sceneNames;
 	}
 
 	void RakNetModule::setProjectName(const Ogre::String& projectName)
@@ -711,14 +711,14 @@ namespace NOWA
 		return this->projectName;
 	}
 
-	void RakNetModule::setWorldName(const Ogre::String& worldName)
+	void RakNetModule::setSceneName(const Ogre::String& sceneName)
 	{
-		this->worldName = worldName;
+		this->sceneName = sceneName;
 	}
 
-	Ogre::String RakNetModule::getWorldName(void) const
+	Ogre::String RakNetModule::getSceneName(void) const
 	{
-		return this->worldName;
+		return this->sceneName;
 	}
 
 	bool RakNetModule::isServer(void) const
@@ -769,17 +769,17 @@ namespace NOWA
 		return this->guid;
 	}
 
-	std::map<Ogre::String, Ogre::String> RakNetModule::parseWorlds(const Ogre::String& section, const Ogre::String& resourcesFile)
+	std::map<Ogre::String, Ogre::String> RakNetModule::parseScenes(const Ogre::String& section, const Ogre::String& resourcesFile)
 	{
 		// clear everything first
-		this->worldName = "";
+		this->sceneName = "";
 		this->projectName = "";
-		for (std::map<Ogre::String, Ogre::String>::iterator it = this->worldNames.begin(); it != this->worldNames.end(); ++it)
+		for (std::map<Ogre::String, Ogre::String>::iterator it = this->sceneNames.begin(); it != this->sceneNames.end(); ++it)
 		{
 			(*it).second = "";
 		}
 
-		//secName = World
+		//secName = Scene
 		//typeName = FileSystem
 		//archName = ../media/BoidsWorld
 		Ogre::String secName;
@@ -797,8 +797,8 @@ namespace NOWA
 			secName = seci.peekNextKey();
 			Ogre::ConfigFile::SettingsMultiMap* pSettings = seci.getNext();
 
-			//if (secName == "World")
-			// all ressource groups must start with the postfix "World" (e.g. World_A, World_1, ...)
+			//if (secName == "Scene")
+			// all ressource groups must start with the postfix "Scene" (e.g. Scene_A, Scene_1, ...)
 			if (Ogre::StringUtil::startsWith(secName, section, false))
 			{
 				Ogre::ConfigFile::SettingsMultiMap::const_iterator i;
@@ -826,21 +826,21 @@ namespace NOWA
 					// Key must not be equal to value (Projects = Projects)
 					if (sceneName != secName)
 					{
-						this->worldNames[sceneName] = projectName;
+						this->sceneNames[sceneName] = projectName;
 					}
 				}
 			}
 		}
-		return this->worldNames;
+		return this->sceneNames;
 	}
 
-	void RakNetModule::preParseWorld(const Ogre::String& resourceGroup, const Ogre::String& projectName, const Ogre::String& worldName)
+	void RakNetModule::preParseScene(const Ogre::String& resourceGroup, const Ogre::String& projectName, const Ogre::String& sceneName)
 	{
 		this->clients.clear();
 		this->allowedPlayerCount = 0;
 
 		// get the xml file from the resourcegroup
-		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(projectName + "/" + worldName + ".scene", resourceGroup);
+		Ogre::DataStreamPtr stream = Ogre::ResourceGroupManager::getSingleton().openResource(projectName + "/" + sceneName + "/" + sceneName + ".scene", resourceGroup);
 
 		char* scene = _strdup(stream->getAsString().c_str());
 
@@ -896,7 +896,7 @@ namespace NOWA
 
 	std::map<Ogre::String, Ogre::String>::iterator RakNetModule::findProject(const Ogre::String& mapName)
 	{
-		return this->worldNames.find(mapName);
+		return this->sceneNames.find(mapName);
 	}
 
 	/*//Serverstatistik herausschreiben

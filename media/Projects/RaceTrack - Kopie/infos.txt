@@ -1,0 +1,13 @@
+- Set MainGameObject -> Global
+- Check: Lua Script -> Clone Script is active! for both: Player and computer
+- Only use save group for player quat
+- Only use save group for compouter quat!
+  -> Only then the lua script will work properly 
+  
+- Add node waypoints in the correct direction and set mesh orientation: 1 0 0
+- Assign nodes to purepuresuitcompoint via ^ in console. Use C:\Users\lukas\Documents\NOWA-Engine\media\lua\luaConsoleExample.lua
+  -> Adapt the game object id, to be one of the quat
+- Add Checkpoints in the correct direction and set mesh orientation: 1 0 0
+-> Assing checkpoints
+-> Attenion: The first checkpoint is not the one at the goal! Its the last one!
+  

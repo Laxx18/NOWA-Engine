@@ -62,6 +62,7 @@ private:
 	void notifyEditSelectAccept(MyGUI::EditBox* sender);
 	void notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo& info);
 	void notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
+	void notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result);
 	void setFocus(MyGUI::Widget* sender, MyGUI::Widget* oldWidget);
 	void wakeSleepGameObjects(bool allGameObjects, bool sleep);
 	void simulate(bool pause, bool withUndo);
@@ -85,9 +86,12 @@ private:
 	void handleSceneValid(NOWA::EventDataPtr eventData);
 	void handleFeedback(NOWA::EventDataPtr eventData);
 	void handlePlayerInControl(NOWA::EventDataPtr eventData);
-	void handleWorldLoaded(NOWA::EventDataPtr eventData);
+	void handleSceneLoaded(NOWA::EventDataPtr eventData);
 	void handleTestSelectedGameObjects(NOWA::EventDataPtr eventData);
 	void handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData);
+	void handleSceneModified(NOWA::EventDataPtr eventData);
+	void handleTerraChanged(NOWA::EventDataPtr eventData);
+	void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
 private:
 	ProjectManager* projectManager;
 	OgreNewt::World* ogreNewt;
@@ -138,6 +142,7 @@ private:
 	MainMenuBar* mainMenuBar;
 
 	bool validScene;
+	bool hasSceneChanges;
 	Ogre::Real cameraMoveSpeed;
 	Ogre::String description;
 
@@ -145,6 +150,7 @@ private:
 	bool firstTimeValueSet;
 
 	bool playerInControl;
+	bool undoPressed;
 
 	std::set<unsigned long> oldSelectedGameObjectIds;
 	Ogre::RaySceneQuery* selectQuery;

@@ -251,7 +251,7 @@ namespace NOWA
 	{
 		this->loadInc = this->groupInitProportion / scriptCount;
 		this->faderProcess->onUpdate(0.016f);
-		// Causes, that world is loaded to long and maybe a crash
+		// Causes, that scene is loaded to long and maybe a crash
 		 Core::getSingletonPtr()->getOgreRoot()->renderOneFrame();
 	}
 

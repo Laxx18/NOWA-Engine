@@ -57,15 +57,15 @@ namespace NOWA
 	{
 		this->useAccurateLighting->setDescription("When true, overall scene CPU usage may be higher, but lighting information in the reflections will"
 			"be accurate. Turning it to false is faster. This is a performance optimization that rarely has a noticeable impact on quality."
-			"Note: Value change will be applied when world is loaded next time.");
+			"Note: Value change will be applied when scene is loaded next time.");
 		this->imageSize->setDescription("Resolution of the RTT assigned to this reflection plane."
-			"Note: Value change will be applied when world is loaded next time.");
+			"Note: Value change will be applied when scene is loaded next time.");
 		this->useMipmaps->setDescription("When true, mipmaps will be created; which are useful for glossy reflections (i.e. roughness close to 1)."
 			"Set this to false if you only plan on using it for a mirror (which are always a perfect reflection... unless you want to use a roughness map to add scratches and stains to it)."
-			"Note: Value change will be applied when world is loaded next time.");
+			"Note: Value change will be applied when scene is loaded next time.");
 
 		this->useMipmapMethodCompute->setDescription("Set to true if the workspace assigned via PlanarReflectionActor::workspaceName will filter the RTT with a compute filter (usually for higher quality)."
-			"Note: Value change will be applied when world is loaded next time.");
+			"Note: Value change will be applied when scene is loaded next time.");
 
 		// this->mirrorSize->setDescription("The mirror plane size.");
 		this->datablockName->setDescription("Datablock to set for more heavy mirror computation. When left empty cheaper unlit is used automatically.");

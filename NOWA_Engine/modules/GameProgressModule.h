@@ -15,23 +15,23 @@ namespace NOWA
 	{
 	public:
 		friend class ExitComponent;
-		friend class LoadWorldProcess;
+		friend class LoadSceneProcess;
 		friend class LoadProgressProcess;
 		friend class AppState; // Only AppState may create this class
 	private:
-		class WorldData
+		class SceneData
 		{
 		public:
-			WorldData(const Ogre::String& worldName);
+			SceneData(const Ogre::String& sceneName);
 
-			WorldData(const Ogre::String& worldName, const Ogre::String& targetLocationName,
+			SceneData(const Ogre::String& sceneName, const Ogre::String& targetLocationName,
 				const Ogre::Vector2& exitDirection, const Ogre::Vector3& startPosition, bool xyAxis);
 
-			Ogre::String getWorldName(void) const;
+			Ogre::String getSceneName(void) const;
 
 			Ogre::String getTargetLocationName(void) const;
 
-			std::vector<Ogre::String>& getReachableWorlds(void);
+			std::vector<Ogre::String>& getReachableScenes(void);
 
 			Ogre::Vector2 getExitDirection(void) const;
 
@@ -39,14 +39,14 @@ namespace NOWA
 
 			bool getIsXYAxisUsed(void) const;
 
-			WorldData* getPredecessorWorldData(void) const;
+			SceneData* getPredecessorSceneData(void) const;
 
 		private:
 			friend class GameProgressModule;
 
-			void setWorldName(const Ogre::String& appStateName);
+			void setSceneName(const Ogre::String& appStateName);
 
-			void addReachableWorld(const Ogre::String& reachableWorldName);
+			void addReachableScene(const Ogre::String& reachableSceneName);
 
 			void setExitDirection(const Ogre::Vector2& exitDirection);
 
@@ -54,13 +54,13 @@ namespace NOWA
 
 			void setUseXYAxis(bool xyAxis);
 		private:
-			Ogre::String worldName;
+			Ogre::String sceneName;
 			Ogre::String targetLocationName;
-			std::vector<Ogre::String> reachableWorlds;
+			std::vector<Ogre::String> reachableScenes;
 			Ogre::Vector2 exitDirection;
 			Ogre::Vector3 startPosition;
 			bool xyAxis;
-			WorldData* predecessorWorldData;
+			SceneData* predecessorSceneData;
 		};
 	public:
 		void destroyContent(void);
@@ -73,36 +73,36 @@ namespace NOWA
 
 		void init(Ogre::SceneManager* sceneManager);
 
-		void addWorld(const Ogre::String& currentWorldName, const Ogre::String& reachableWorldName, 
+		void addScene(const Ogre::String& currentSceneName, const Ogre::String& reachableSceneName, 
 			const Ogre::String& targetLocationName, const Ogre::Vector2& exitDirection, const Ogre::Vector3& startPosition, bool xyAxis);
 
-		std::vector<Ogre::String>* getReachableWorlds(const Ogre::String& currentWorldName);
+		std::vector<Ogre::String>* getReachableScenes(const Ogre::String& currentSceneName);
 
-		WorldData* getPredecessorWorldData(const Ogre::String& currentWorldName);
+		SceneData* getPredecessorSceneData(const Ogre::String& currentSceneName);
 
-		WorldData* getWorldData(const Ogre::String& currentWorldName);
+		SceneData* getSceneData(const Ogre::String& currentSceneName);
 
-		unsigned int getWorldsCount(void) const;
+		unsigned int getScenesCount(void) const;
 
 		Ogre::String getPlayerName(void) const;
 
-		void determinePlayerStartLocation(const Ogre::String& currentWorldName);
+		void determinePlayerStartLocation(const Ogre::String& currentSceneName);
 
 		/**
-		* @brief		Loads the given world.
-		* @param[in]	worldName The world to load. If the world does not exist, or there is an internal error during load, an exception will be thrown.
-		* @note			In order to get data like mainCamera, sunLight etc. after world has been loaded, use NOWA::EventDataWorldLoaded event.
-		*				In that event call NOWA::AppStateManager::getSingletonptr()->getGameProgressModule()->getData() ... because the world will not be loaded immediately but in the next frame, so that object may be finished in the current frame.
+		* @brief		Loads the given scene.
+		* @param[in]	sceneName The scene to load. If the scene does not exist, or there is an internal error during load, an exception will be thrown.
+		* @note			In order to get data like mainCamera, sunLight etc. after scene has been loaded, use NOWA::EventDataSceneLoaded event.
+		*				In that event call NOWA::AppStateManager::getSingletonptr()->getGameProgressModule()->getData() ... because the scene will not be loaded immediately but in the next frame, so that object may be finished in the current frame.
 		*/
-		void loadWorld(const Ogre::String& worldName);
+		void loadScene(const Ogre::String& sceneName);
 
-		void loadWorldShowProgress(const Ogre::String& worldName);
+		void loadSceneShowProgress(const Ogre::String& sceneName);
 
 		/**
-		* @brief		Gets the current world name.
-		* @return		The world name
+		* @brief		Gets the current scene name.
+		* @return		The scene name
 		*/
-		Ogre::String getCurrentWorldName(void);
+		Ogre::String getCurrentSceneName(void);
 		
 		// This values are dependant of game objects and attributes components
 
@@ -200,24 +200,24 @@ namespace NOWA
 		// Variant* setGlobalListValue(const Ogre::String& attributeName, const std::vector<Ogre::String>& list);
 
 	   /**
-		* @brief		Changes the current world to the new specified one.
-		* @param[in]	worldName The world name set.
+		* @brief		Changes the current scene to the new specified one.
+		* @param[in]	sceneName The scene name set.
 		*/
-		void changeWorld(const Ogre::String& worldName);
+		void changeScene(const Ogre::String& sceneName);
 
 	   /**
-		* @brief		Changes the current world to the new specified one. Also shows the load worlding progress.
-		* @param[in]	worldName The world name set.
+		* @brief		Changes the current scene to the new specified one. Also shows the load scene progress.
+		* @param[in]	sceneName The scene name set.
 		*/
-		void changeWorldShowProgress(const Ogre::String& worldName);
+		void changeSceneShowProgress(const Ogre::String& sceneName);
 
 		/**
-		 * @brief		Gets whether the state is in the middle of world loading.
+		 * @brief		Gets whether the state is in the middle of scene loading.
 		 */
-		bool isWorldLoading(void) const;
+		bool isSceneLoading(void) const;
 
 		/**
-		 * @brief		Gets the current (for this world) scene manager, or null if not existing.
+		 * @brief		Gets the current (for this scene) scene manager, or null if not existing.
 		 */
 		Ogre::SceneManager* getCurrentSceneManager(void);
 	private:
@@ -228,13 +228,13 @@ namespace NOWA
 
 		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
 
-		void setIsWorldLoading(bool bWorldLoading);
+		void setIsSceneLoading(bool bSceneLoading);
 	private:
 		std::pair<bool, Ogre::String> getSaveFileContent(const Ogre::String& saveName);
 	private:
 		Ogre::String appStateName;
 
-		std::map<Ogre::String, WorldData> worldMap;
+		std::map<Ogre::String, SceneData> sceneMap;
 		GameObject* player;
 		
 		DotSceneImportModule* dotSceneImportModule;
@@ -247,9 +247,9 @@ namespace NOWA
 		// For user defined attributes, without the need for a game objects attributes component
 		std::map<Ogre::String, Variant*> globalAttributesMap;
 
-		Ogre::String currentWorldName;
+		Ogre::String currentSceneName;
 
-		bool bWorldLoading;
+		bool bSceneLoading;
 		
 	};
 

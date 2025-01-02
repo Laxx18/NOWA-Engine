@@ -34,7 +34,7 @@ namespace NOWA
 	class TerraComponent;
 
 	/**
-	  * @brief		Its possible to generate controlled random vegetation and map over a target game object or whole world.
+	  * @brief		Its possible to generate controlled random vegetation and map over a target game object or whole scene.
 	  */
 	class EXPORTED VegetationComponent : public GameObjectComponent, public Ogre::Plugin
 	{
@@ -226,7 +226,7 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Its possible to generate controlled random vegetation and map over a target game object or whole world.";
+			return "Usage: Its possible to generate controlled random vegetation and map over a target game object or whole scene.";
 		}
 		
 		/**

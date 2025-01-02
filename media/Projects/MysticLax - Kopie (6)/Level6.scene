@@ -1,0 +1,917 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Level6">
+	<resourceLocations/>
+	<environment>
+		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
+		<ambient>
+			<ambientLightUpperHemisphere r="0.03375" g="0.05625" b="0.07875"/>
+			<ambientLightLowerHemisphere r="0.043875" g="0.0329062" b="0.0219375" a="0.073125"/>
+			<hemisphereDir x="0.371386" y="0.642788" z="0.669998"/>
+			<envmapScale x="1"/>
+		</ambient>
+		<shadows>
+			<shadowFarDistance distance="100"/>
+			<shadowDirectionalLightExtrusionDistance distance="100"/>
+			<shadowDirLightTextureOffset offset="0.6"/>
+			<shadowColor r="0.25" g="0.25" b="0.25"/>
+			<shadowQuality index="2"/>
+			<ambientLightMode index="0"/>
+		</shadows>
+		<lightFoward>
+			<forwardMode value="1"/>
+			<lightWidth value="4"/>
+			<lightHeight value="4"/>
+			<numLightSlices value="5"/>
+			<lightsPerCell value="217"/>
+			<decalsPerCell/>
+			<cubemapProbesPerCell/>
+			<minLightDistance value="3"/>
+			<maxLightDistance value="100"/>
+		</lightFoward>
+		<mainParameter>
+			<ignoreGlobalScene value="false"/>
+			<renderDistance distance="100"/>
+			<useV2Item value="true"/>
+		</mainParameter>
+		<fog mode="none" start="0" end="0" density="0"/>
+		<bounds mostLeftNearPosition="-72.4438 -72.0634 -125.065" mostRightFarPosition="132.855 643.617 80.2337"/>
+	</environment>
+	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="4" desiredFps="120" defaultLinearDamping="0.1">
+		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
+		<globalGravity x="0" y="-26.8" z="0"/>
+	</OgreNewt>
+	<nodes>
+		<node name="birch_a_1" id="3793535985">
+			<position x="29.6216" y="9.8622" z="-27.8462"/>
+			<rotation qw="0.382683" qx="0" qy="0.92388" qz="0"/>
+			<scale x="20" y="80" z="20"/>
+			<item name="birch_a_1" meshFile="birch_a.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="/dural/plants/trees/birch/texture/branches_birch_bare__0542327585"/>
+				<subitem index="1" datablockName="/dural/plants/trees/birch/texture/leaves_fall__0542327585"/>
+				<subitem index="2" datablockName="/dural/plants/trees/bark/texture/birch__0542327585"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="542327585"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/birch/texture/branches_birch_bare3766041996"/>
+					<property type="7" name="DataBlock1" data="/dural/plants/trees/birch/texture/leaves_fall3766041996"/>
+					<property type="7" name="DataBlock2" data="/dural/plants/trees/bark/texture/birch3766041996"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="2"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.0625 0.01986 0.00317"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.21484 0.09248 0.02266"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_birchD.png"/>
+					<property type="7" name="NormalTextureName" data="bark_birchN.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data="bark_birchS.png"/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.01"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="1"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="true"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_NONE"/>
+					<property type="7" name="AlphaTest" data="CMPF_GREATER"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.14342 0.15161 0.15234"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_leaves_fallD.png"/>
+					<property type="7" name="NormalTextureName" data=""/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="Fade"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.01"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="true"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_NONE"/>
+					<property type="7" name="AlphaTest" data="CMPF_GREATER"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.03955 0.34766 0.02173"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_branches_birch_bareD.png"/>
+					<property type="7" name="NormalTextureName" data=""/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="Transparent"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.01"/>
+				</userData>
+			</item>
+		</node>
+		<node name="MainCamera" id="4010617415">
+			<position x="25.1403" y="12.613" z="11.2085"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111112"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="true"/>
+					<property type="9" name="CameraPosition" data="25.1403 12.613 11.2085"/>
+					<property type="9" name="CameraOrientation" data="0 0 0"/>
+					<property type="6" name="NearClipDistance" data="0.5"/>
+					<property type="6" name="FarClipDistance" data="100"/>
+					<property type="6" name="Fovy" data="45"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="7" name="ComponentWorkspaceBackgroundComponent" data="WorkspaceBackgroundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="BackgroundColor" data="0.2 0.4 0.6"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
+					<property type="6" name="SuperSampling" data="1"/>
+					<property type="12" name="UseHdr" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
+					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
+					<property type="12" name="UseTerra" data="false"/>
+					<property type="12" name="UseOcean" data="false"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.125"/>
+					<property type="6" name="ShadowSplitFade" data="0.313"/>
+					<property type="6" name="ShadowSplitPadding" data="1"/>
+					<property type="12" name="HardwareGammaEnabled" data="true"/>
+					<property type="7" name="ComponentHdrEffectComponent" data="HdrEffectComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="EffectName" data="Custom"/>
+					<property type="10" name="SkyColor" data="1.2 2.4 3.6 6"/>
+					<property type="10" name="UpperHemisphere" data="0.03375 0.05625 0.07875 0.1125"/>
+					<property type="10" name="LowerHemisphere" data="0.043875 0.0329062 0.0219375 0.073125"/>
+					<property type="6" name="SunPower" data="4"/>
+					<property type="6" name="Exposure" data="0.5"/>
+					<property type="6" name="MinAutoExposure" data="1"/>
+					<property type="6" name="MaxAutoExposure" data="2.5"/>
+					<property type="6" name="Bloom" data="3"/>
+					<property type="6" name="EnvMapScale" data="1"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="SunLight" id="1479238507">
+			<position x="0" y="37.2738" z="50"/>
+			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111113"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
+					<property type="6" name="PowerScale" data="4"/>
+					<property type="9" name="Direction" data="0 -0.882948 -0.469471"/>
+					<property type="12" name="AffectParentNode" data="true"/>
+					<property type="6" name="AttenuationRadius" data="10"/>
+					<property type="6" name="AttenuationLumThreshold" data="0.00192"/>
+					<property type="12" name="CastShadows" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="platform2_floating_island1_Layer1_0" id="148640650">
+			<position x="0" y="0" z="-22"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="10" y="8" z="4"/>
+			<entity name="platform2_floating_island1_Layer1_0" meshFile="platform2_floating_island1_Layer1.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="transition_grassrock"/>
+				<subentity index="1" datablockName="rocks_boulder"/>
+				<subentity index="2" datablockName="grass_clean"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1632150266"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="transition_grassrock"/>
+					<property type="7" name="DataBlock1" data="rocks_boulder"/>
+					<property type="7" name="DataBlock2" data="grass_clean"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="StartNorth" id="1430289374">
+			<position x="-31.4005" y="20.8837" z="-22"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="StartNorth" meshFile="Plattform2.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="Material/SOLID/TEX/plattform2.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3342307231"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/plattform2.png"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Case3_0" id="1801113553">
+			<position x="-9.55533" y="6.96973" z="-21.6678"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case3_0" meshFile="Case3.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/Case3.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="895261536"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="true"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -26.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointPlaneComponent" data="JointPlaneComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointPlaneComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2447461672"/>
+					<property type="2" name="JointPredecessorId" data="0"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="AnchorPosition" data="0 0 0"/>
+					<property type="9" name="Normal" data="0 0 1"/>
+				</userData>
+			</item>
+		</node>
+		<node name="trunk_low_0" id="3912474987">
+			<position x="26.341" y="16.048" z="-22"/>
+			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
+			<scale x="2" y="2" z="10"/>
+			<entity name="trunk_low_0" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0580154196"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="580154196"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/gnarly/texture"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.0625 0.01986 0.00317"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.21484 0.09248 0.02266"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_birchD.png"/>
+					<property type="7" name="NormalTextureName" data="bark_birchN.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="1"/>
+					<property type="6" name="ClearCoatRoughness" data="0"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="false"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="trunk_low_1" id="3912474552">
+			<position x="31.6537" y="20.4971" z="-22"/>
+			<rotation qw="0.707107" qx="0" qy="0" qz="-0.707107"/>
+			<scale x="2" y="3" z="10"/>
+			<entity name="trunk_low_1" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0649813068"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="649813068"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/gnarly/texture__580154196"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.0625 0.01986 0.00317"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.21484 0.09248 0.02266"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_birchD.png"/>
+					<property type="7" name="NormalTextureName" data="bark_birchN.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Case1_0" id="1662965383">
+			<position x="28.877" y="19.9087" z="-25.0504"/>
+			<rotation qw="0.766045" qx="0" qy="-0.642788" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="Case1_0" meshFile="Case1.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="Material/SOLID/TEX/case1.png"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="672836115"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/case1.png"/>
+				</userData>
+			</item>
+		</node>
+		<node name="trunk_low_2" id="3912475857">
+			<position x="26.341" y="25.3739" z="-22"/>
+			<rotation qw="0.707107" qx="0" qy="0" qz="0.707107"/>
+			<scale x="2" y="2" z="10"/>
+			<entity name="trunk_low_2" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__0998581392"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="998581392"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/gnarly/texture__0580154196"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.0625 0.01986 0.00317"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.21484 0.09248 0.02266"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_birchD.png"/>
+					<property type="7" name="NormalTextureName" data="bark_birchN.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="false"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="trunk_low_3" id="3912475422">
+			<position x="30.8312" y="30.2764" z="-22"/>
+			<rotation qw="0.707107" qx="0" qy="0" qz="-0.707107"/>
+			<scale x="2" y="3" z="10"/>
+			<entity name="trunk_low_3" meshFile="trunk_low.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture__01405167903"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1405167903"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/gnarly/texture__0649813068"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="BlinnPhong"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.0625 0.01986 0.00317"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.21484 0.09248 0.02266"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="bark_birchD.png"/>
+					<property type="7" name="NormalTextureName" data="bark_birchN.dds"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="trunk_middle_0" id="436225020">
+			<position x="21.758" y="7.18135" z="-22"/>
+			<rotation qw="0.866025" qx="0" qy="0.5" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="trunk_middle_0" meshFile="trunk_middle.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/plants/trees/gnarly/texture"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3545323228"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/plants/trees/gnarly/texture"/>
+					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="Mass" data="10000"/>
+					<property type="12" name="Serialize" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Node_0" id="4215511250">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground__445003247"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="445003247"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="ComponentRect2DComponent" data="Rect2DComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="10" name="Border" data="0 0 2 2"/>
+					<property type="7" name="ComponentDatablockUnlitComponent" data="DatablockUnlitComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="12" name="UseColor" data="true"/>
+					<property type="10" name="BackgroundColor" data="1 0 0 1"/>
+					<property type="2" name="TextureCount" data="1"/>
+					<property type="7" name="DetailTextureName0" data="acornD.png"/>
+					<property type="7" name="BlendMode0" data="UNLIT_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="10" name="TextureSwizzle0" data="0 0 0 0"/>
+					<property type="12" name="UseAnimation0" data="false"/>
+					<property type="9" name="AnimationTranslation0" data="0 0 0"/>
+					<property type="9" name="AnimationScale0" data="0 0 0"/>
+					<property type="9" name="AnimationRotation0" data="0 0 0"/>
+				</userData>
+			</entity>
+		</node>
+	</nodes>
+</scene>
+

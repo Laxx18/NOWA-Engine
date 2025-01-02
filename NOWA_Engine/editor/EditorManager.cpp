@@ -570,7 +570,7 @@ namespace NOWA
 				else if (GameObject::CAMERA == this->type)
 				{
 					// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-					// But when a camera is loaded from world, it must not have an orientation, else there are ugly side effects
+					// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
 					CameraComponent::setJustCreated(true);
 					// Add the camera component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, CameraComponent::getStaticClassName());
@@ -2193,7 +2193,7 @@ namespace NOWA
 	void EditorManager::applyGroupTransform(void)
 	{
 		// If there is a group of game objects, move them with their internal offset
-		// This was hard: x-objects are loaded which had an position in the world, these object shall be placed to the place node position but keeping the relative position
+		// This was hard: x-objects are loaded which had an position in the scene, these object shall be placed to the place node position but keeping the relative position
 		// to each other. They should be placed so that the place node position is in the middle of all objects but y is zero, so that they can be placed at zero, no matter how
 		// high the objects are placed ot each other
 
@@ -2666,7 +2666,7 @@ namespace NOWA
 			center = cumulated / static_cast<Ogre::Real>(this->groupGameObjectIds.size());
 			center.y = lowestObjectY;
 
-			// Next get rid of each absolute position in the world, but get the relative position from each object to the center
+			// Next get rid of each absolute position in the scene, but get the relative position from each object to the center
 			for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
 			{
 				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));

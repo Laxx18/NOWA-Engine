@@ -402,7 +402,7 @@ namespace NOWA
 		/**
 		* @brief		Sets the default direction vector for this game object
 		* @param[in]	defaultDirection	The default direction to set
-		* @Note			When an GameObject is created, take a look, how it is orientated in the world, if e.g. the player does look to the camera,
+		* @Note			When an GameObject is created, take a look, how it is orientated in the scene, if e.g. the player does look to the camera,
 		*				its default direction is 0,0,1, if the camera does look at the back of the player, its default direction is 0,0,-1
 		*				A correct default direction is necessary, because other components will rely on that direction and work with it.
 		*/
@@ -530,7 +530,7 @@ namespace NOWA
 		 * @brief		Sets whether to clamp y coordinate of center bottom of the game object to the next below/above game object.
 		 * @param[in]	clampY	If set to true, the game object y coordinated will be clamped
 		 * @note		This is useful when game object is loaded, so that it will be automatically placed upon the next lower game object.
-		 *				Especially when the game object is a global one and will be loaded for different worlds, that start at a different height.
+		 *				Especially when the game object is a global one and will be loaded for different scenes, that start at a different height.
 		 *				If there is no game object below, the next game object above is searched. If this also does not exist, the current y coordinate is just used.
 		 */
 		void setClampY(bool clampY);
@@ -607,7 +607,7 @@ namespace NOWA
 		/**
 		 * Performs a ray cast and clamps the game object y coordinate
 		 * @note		This is useful when game object is loaded, so that it will be automatically placed upon the next lower game object.
-		 *				Especially when the game object is a global one and will be loaded for different worlds, that start at a different height.
+		 *				Especially when the game object is a global one and will be loaded for different scenes, that start at a different height.
 		 *				If there is no game object below, the next game object above is searched.If this also does not exist, the current y coordinate is just used.
 		 * @return	    success, clampedY If success is true the clamped y coordinate can be used
 		 */
@@ -973,6 +973,10 @@ namespace NOWA
 		void resetChanges();
 		void actualizeComponentsIndices(void);
 		bool connectPriority(void);
+
+		// Is necessary, because there is an event, which is sent to all listener, that this game object has been made global at runtime, in order to cut/paste potential resources to the corresponding folder
+		// This function is only called in actualizeValue and may not be called on other places! Please call the official @setGlobal(...) if desired.
+		void setInternalAttributeGlobal(bool isGlobal);
 	protected:
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;

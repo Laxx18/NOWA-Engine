@@ -106,7 +106,7 @@ namespace NOWA
 
 		this->useVisitation->setDescription("If activated, only minimap tiles are visible, which are marked as visited, via @setVisited(...) functionality.");
 
-		this->axis->setDescription("The axis for exit direction. For Jump'n'Run e.g. 'X,Y' is correct and for a casual 3D world 'X,Z'.");
+		this->axis->setDescription("The axis for exit direction. For Jump'n'Run e.g. 'X,Y' is correct and for a casual 3D scene 'X,Z'.");
 		this->trackableCount->setDescription("Sets the count of track able game objects. The track able id is used to specify the game object that should be tracked on minimap. "
 			"If the track able id is in another scene, the scene name must be specified. For example 'scene3:2341435213'"
 			"Will search in scene3 for the game object with the id 2341435213 and in conjunction with the image attribute, the image will be placed correctly on the minimap. "

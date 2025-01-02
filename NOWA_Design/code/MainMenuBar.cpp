@@ -536,7 +536,7 @@ void MainMenuBar::clearLuaErrors(void)
 	if (nullptr != this->simulationWindow)
 	{
 		this->simulationWindow->getCaptionWidget()->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getWorldName());
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
 	}
 }
 
@@ -570,7 +570,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		}
 		case SAVE_AS: // Save As
 		{
-			this->projectManager->showFileSaveDialog("SaveProject", "*.scene");
+			this->projectManager->showFileSaveDialog("SaveProject", "*.scene", NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
 			this->updateRecentFilesMenu();
 			break;
 		}
@@ -617,7 +617,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			{
 				boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-				this->projectManager->loadProject(item->getCaption());
+				this->projectManager->loadProject(item->getCaption(), index - 9);
 				RecentFilesManager::getInstance().setActiveFile(item->getCaption());
 				this->updateRecentFilesMenu();
 			}
@@ -1005,7 +1005,7 @@ void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 		// zurücksetzen der Farbe fehlt
 		// this->simulationWindow->setColour(MyGUI::Colour(0.6f, 0.1f, 0.1f));
 		this->simulationWindow->getCaptionWidget()->setTextColour(MyGUI::Colour::Red);
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getWorldName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
 	}
 }
 

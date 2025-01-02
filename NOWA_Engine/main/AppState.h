@@ -56,7 +56,7 @@ namespace NOWA
 		virtual ~AppState() {};
 
 		/**
-		 * @brief	Creates a new application state like (world1 or level1 state)
+		 * @brief	Creates a new application state like (scene1 or level1 state)
 		 * @note	Call the macro DECLARE_APPSTATE_CLASS in the header of the own application state. For example after the constructor: DECLARE_APPSTATE_CLASS(YourState)
 		 *			After that call YourState::create(...) when the state should be registered
 		 * @param	appStateManager The instance that manages all appstates and the gameloop
@@ -83,7 +83,7 @@ namespace NOWA
 		/**
 		 * @brief	Must be used to when a world has been loaded in order to use scene manager, camera, ogrenewt etc. to add custom functionality.
 		 * @param[in]		sceneParameter   The scene parameter to use to get information about the current project.
-		 * @note							 If no world has been loaded, there is no ogrenewt and user must create via @OgreNewtModule::createPhysics(...) its own physics instance.
+		 * @note							 If no scene has been loaded, there is no ogrenewt and user must create via @OgreNewtModule::createPhysics(...) its own physics instance.
 		 */
 		virtual void start(const NOWA::SceneParameter& sceneParameter) { };
 
@@ -218,7 +218,7 @@ namespace NOWA
 		*/
 		void render(Ogre::Real alpha);
 	private:
-		void handleWorldLoaded(NOWA::EventDataPtr eventData);
+		void handleSceneLoaded(NOWA::EventDataPtr eventData);
 	protected:
 		AppStateListener* appStateManager;
 		Ogre::String nextAppStateName;
@@ -230,7 +230,7 @@ namespace NOWA
 		OgreNewt::World* ogreNewt;
 		bool bQuit;
 		bool canUpdate;
-		Ogre::String currentWorldName;
+		Ogre::String currentSceneName;
 		GameObjectController* gameObjectController;
 		GameProgressModule* gameProgressModule;
 		RakNetModule* rakNetModule;

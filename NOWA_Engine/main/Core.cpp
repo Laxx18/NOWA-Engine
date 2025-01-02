@@ -487,7 +487,7 @@ namespace NOWA
 				return false;
 			}
 			this->projectName = coreConfiguration.startProjectName.substr(0, found);
-			this->worldName = coreConfiguration.startProjectName.substr(found + 1, coreConfiguration.startProjectName.size() - 1);
+			this->sceneName = coreConfiguration.startProjectName.substr(found + 1, coreConfiguration.startProjectName.size() - 1);
 		}
 
 		// Look if the application has been started with a custom .cfg file in the command line, if so, init root with that configfile
@@ -1529,21 +1529,20 @@ namespace NOWA
 		this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(sceneManager);
 	}
 
-	void Core::setCurrentWorldPath(const Ogre::String& currentWorldPath)
+	void Core::setCurrentScenePath(const Ogre::String& currentScenePath)
 	{
-		this->currentWorldPath = currentWorldPath;
-		size_t found = currentWorldPath.find_last_of("/\\");
+		this->currentScenePath = currentScenePath;
+		size_t found = currentScenePath.find_last_of("/\\");
 		if (Ogre::String::npos != found)
 		{
-			this->currentProjectPath = currentWorldPath.substr(0, currentWorldPath.find_last_of("/\\"));
-			this->worldName = this->currentWorldPath.substr(found + 1, this->currentWorldPath.size() - found - 7);
+			this->currentProjectPath = this->getProjectFilePathNameFromPath(currentScenePath);
+			this->sceneName = this->currentScenePath.substr(found + 1, this->currentScenePath.size() - found - 7);
 		}
-
 	}
 
-	Ogre::String Core::getCurrentWorldPath(void) const
+	Ogre::String Core::getCurrentScenePath(void) const
 	{
-		return this->currentWorldPath;
+		return this->currentScenePath;
 	}
 
 	Ogre::String Core::getCurrentProjectPath(void) const
@@ -1561,32 +1560,32 @@ namespace NOWA
 		return this->projectName;
 	}
 
-	Ogre::String Core::getWorldName(void) const
+	Ogre::String Core::getSceneName(void) const
 	{
-		return this->worldName;
+		return this->sceneName;
 	}
 
-	void Core::setCurrentWorldBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition)
+	void Core::setCurrentSceneBounds(const Ogre::Vector3& mostLeftNearPosition, const Ogre::Vector3& mostRightFarPosition)
 	{
 		this->mostLeftNearPosition = mostLeftNearPosition;
 		this->mostRightFarPosition = mostRightFarPosition;
 
-		// Send event and set bounds for current world
+		// Send event and set bounds for current scene
 		boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
 		AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
 	}
 
-	Ogre::Vector3 Core::getCurrentWorldBoundLeftNear(void)
+	Ogre::Vector3 Core::getCurrentSceneBoundLeftNear(void)
 	{
 		return this->mostLeftNearPosition;
 	}
 
-	Ogre::Vector3 Core::getCurrentWorldBoundRightFar(void)
+	Ogre::Vector3 Core::getCurrentSceneBoundRightFar(void)
 	{
 		return this->mostRightFarPosition;
 	}
 
-	bool Core::getIsWorldBeingDestroyed(void) const
+	bool Core::getIsSceneBeingDestroyed(void) const
 	{
 		return true == AppStateManager::getSingletonPtr()->getIsShutdown() || true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying();
 	}
@@ -2096,7 +2095,7 @@ namespace NOWA
 		{
 			if (SHCreateDirectoryEx(hWnd, saveGameDirectory, 0) != ERROR_SUCCESS)
 			{
-				return nullptr;
+				return "";
 			}
 		}
 
@@ -2229,33 +2228,98 @@ namespace NOWA
 		return resultPath;
 	}
 
+	void findSceneFilesRecursive(const Ogre::String& folderPath, std::vector<Ogre::String>& sceneFiles)
+	{
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile((folderPath + "/*").c_str(), &fd);
+
+		if (hFind == INVALID_HANDLE_VALUE)
+		{
+			return;
+		}
+
+		do
+		{
+			// Skip "." and ".."
+			if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
+			{
+				continue;
+			}
+
+			Ogre::String fullPath = folderPath + "/" + fd.cFileName;
+
+			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				// If it's a directory, recurse into it
+				findSceneFilesRecursive(fullPath, sceneFiles);
+			}
+			else
+			{
+				// Check if the file ends with ".scene"
+				if (fullPath.size() >= 6 && fullPath.substr(fullPath.size() - 6) == ".scene")
+				{
+					// Extract only the file name (remove folder path)
+					size_t lastSlash = fullPath.find_last_of("/\\");
+					if (lastSlash != Ogre::String::npos)
+					{
+						sceneFiles.push_back(fullPath.substr(lastSlash + 1));
+					}
+				}
+			}
+
+		} while (::FindNextFile(hFind, &fd));
+
+		::FindClose(hFind);
+	}
+
 	std::vector<Ogre::String> Core::getSceneFileNames(const Ogre::String& resourceGroupName, const Ogre::String& projectName)
 	{
 		std::vector<Ogre::String> sceneNames;
 
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(resourceGroupName)[0];
+		Ogre::String searchPath = projectPath + "/" + projectName;
 
-		// Project is always: "Projects/ProjectName/SceneName.scene"
-		// E.g.: "Projects/Plattformer/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
-		Ogre::String searchPath = projectPath + "/" + projectName + "/*.scene";
-
-		WIN32_FIND_DATA fd;
-		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
-		if (hFind != INVALID_HANDLE_VALUE)
-		{
-			do
-			{
-				// read all (real) files in current folder
-				// , delete '!' read other 2 default folder . and ..
-				if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-				{
-					sceneNames.push_back(fd.cFileName);
-				}
-			} while (::FindNextFile(hFind, &fd));
-			::FindClose(hFind);
-		}
+		findSceneFilesRecursive(searchPath, sceneNames);
 
 		return sceneNames;
+	}
+
+	void findFilesRecursive(const Ogre::String& folderPath, const Ogre::String& pattern, std::vector<Ogre::String>& fileNames)
+	{
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile((folderPath + "/*").c_str(), &fd);
+
+		if (hFind == INVALID_HANDLE_VALUE)
+			return;
+
+		do
+		{
+			// Skip "." and ".."
+			if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
+				continue;
+
+			Ogre::String fullPath = folderPath + "/" + fd.cFileName;
+
+			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				// If it's a directory, recurse into it
+				findFilesRecursive(fullPath, pattern, fileNames);
+			}
+			else
+			{
+				// Pattern matching (simple wildcard matching for "*.pattern")
+				if (pattern == "*" ||
+					(pattern.size() > 1 && pattern[0] == '*' &&
+						fullPath.size() >= pattern.size() - 1 &&
+						fullPath.substr(fullPath.size() - (pattern.size() - 1)) == pattern.substr(1)))
+				{
+					fileNames.push_back(fullPath);
+				}
+			}
+
+		} while (::FindNextFile(hFind, &fd));
+
+		::FindClose(hFind);
 	}
 
 	std::vector<Ogre::String> Core::getFilePathNamesInProject(const Ogre::String& projectName, const Ogre::String& pattern)
@@ -2263,29 +2327,13 @@ namespace NOWA
 		std::vector<Ogre::String> fileNames;
 
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath("Project")[0];
+		Ogre::String searchPath = projectPath + "/" + projectName;
 
-		// Project is always: "Projects/ProjectName/SceneName.scene"
-		// E.g.: "Projects/Plattformer/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
-		Ogre::String searchPath = projectPath + "/" + projectName + "/" + pattern;
-
-		WIN32_FIND_DATA fd;
-		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
-		if (hFind != INVALID_HANDLE_VALUE)
-		{
-			do
-			{
-				// read all (real) files in current folder
-				// , delete '!' read other 2 default folder . and ..
-				if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-				{
-					fileNames.push_back(projectPath + "/" + projectName + "/" + fd.cFileName);
-				}
-			} while (::FindNextFile(hFind, &fd));
-			::FindClose(hFind);
-		}
+		findFilesRecursive(searchPath, pattern, fileNames);
 
 		return fileNames;
 	}
+
 
 	std::vector<Ogre::String> Core::getSceneSnapshotsInProject(const Ogre::String& projectName)
 	{
@@ -2489,59 +2537,194 @@ namespace NOWA
 	{
 		// Project is always: "projects/projectName/sceneName.scene"
 		Ogre::String tempProjectName = filePath;
-		// Go back twice to get the project name
-		size_t found = tempProjectName.find_last_of("/\\");
-		
-		if (Ogre::String::npos == found)
-			return "";
 
-		size_t found2 = tempProjectName.find_last_of(".scene");
-		if (Ogre::String::npos != found2)
+		// Find the last slash (before Scene1.scene)
+		size_t lastSlash = tempProjectName.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
 		{
-			// Get rid of everything after the project name
-			tempProjectName.erase(found, Ogre::String::npos);
-			// Get rid of everything before the project name
-			found = tempProjectName.find_last_of("/\\");
-			tempProjectName = tempProjectName.substr(found + 1, tempProjectName.size());
-			return tempProjectName;
+			return ""; // Invalid path, return empty
 		}
-		else
+
+		// Remove the last segment (scene file name)
+		tempProjectName = tempProjectName.substr(0, lastSlash);
+
+		// Find the second-to-last slash (before Scene1 folder)
+		size_t secondLastSlash = tempProjectName.find_last_of("/\\");
+		if (secondLastSlash == Ogre::String::npos)
 		{
-			tempProjectName = tempProjectName.substr(found + 1, tempProjectName.size());
+			return ""; // Not enough path depth, return empty
 		}
-		
-		return tempProjectName;
+
+		// Find the third-to-last slash (before ProjectName folder)
+		size_t thirdLastSlash = tempProjectName.find_last_of("/\\", secondLastSlash - 1);
+		if (thirdLastSlash == Ogre::String::npos)
+		{
+			return tempProjectName.substr(0, secondLastSlash); // If no third slash, return root folder
+		}
+
+		// Extract the project name (between second and third slash)
+		return tempProjectName.substr(thirdLastSlash + 1, secondLastSlash - thirdLastSlash - 1);
 	}
 
-#if 0
-	Ogre::String Core::getProjectNameFromPath(const Ogre::String& filePath)
+	Ogre::String Core::getSceneNameFromPath(const Ogre::String& filePath)
 	{
-		// Project is always: "projects/projectName/sceneName/sceneName.scene"
-		Ogre::String tempProjectName = filePath;
-		// Go back twice to get the project name
-		size_t found = tempProjectName.find_last_of("/\\");
+		// Start with the provided file path
+		Ogre::String tempPath = filePath;
 
-		if (Ogre::String::npos == found)
-			return "";
+		// Step 1: Remove the file name (e.g., "scene1.scene")
+		size_t lastSlash = tempPath.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
+		{
+			return ""; // Invalid path, return empty
+		}
+		tempPath = tempPath.substr(0, lastSlash); // Remove the file name
 
-		// Get rid of everything after the project name
-		tempProjectName.erase(found, Ogre::String::npos);
-		found = tempProjectName.find_last_of("/\\");
+		// Step 2: Extract the last folder name (e.g., "scene1")
+		size_t secondLastSlash = tempPath.find_last_of("/\\");
+		if (secondLastSlash == Ogre::String::npos)
+		{
+			return ""; // Not enough path depth, return empty
+		}
 
-		// Just projectName/sceneName -> found it
-		if (Ogre::String::npos == found)
-			return tempProjectName;
-
-		tempProjectName = tempProjectName.substr(0, found);
-
-		// Get rid of everything before the project name
-		found = tempProjectName.find_last_of("/\\");
-		tempProjectName = tempProjectName.substr(found + 1, tempProjectName.size() - 1);
-
-		return tempProjectName;
+		return tempPath.substr(secondLastSlash + 1);
 	}
 
-#endif
+	Ogre::String Core::getProjectFilePathNameFromPath(const Ogre::String& filePath)
+	{
+		// Start with the provided file path
+		Ogre::String tempPath = filePath;
+
+		// Step 1: Remove the file name (e.g., "scene1.scene")
+		size_t lastSlash = tempPath.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
+		{
+			return ""; // Invalid path, return empty
+		}
+		tempPath = tempPath.substr(0, lastSlash); // Remove last segment
+
+		// Step 2: Remove the scene folder (e.g., "scene1")
+		size_t secondLastSlash = tempPath.find_last_of("/\\");
+		if (secondLastSlash == Ogre::String::npos)
+		{
+			return ""; // Not enough path depth, return empty
+		}
+		tempPath = tempPath.substr(0, secondLastSlash); // Remove second-to-last segment
+
+		return tempPath; // Remaining path is the project folder path
+	}
+
+	Ogre::String Core::getSceneFilePathNameFromPath(const Ogre::String& filePath)
+	{
+		// Start with the provided file path
+		Ogre::String tempPath = filePath;
+
+		// Step 1: Remove the file name (e.g., "scene1.scene")
+		size_t lastSlash = tempPath.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
+		{
+			return ""; // Invalid path, return empty
+		}
+		tempPath = tempPath.substr(0, lastSlash); // Remove the file name
+
+		return tempPath; // Remaining path is the scene folder path
+	}
+
+	std::vector<Ogre::String> Core::getSceneFoldersInProject(const Ogre::String& projectFilePathName)
+	{
+		std::vector<Ogre::String> sceneFolders;
+
+		Ogre::String projectName;
+		size_t lastSlash = projectFilePathName.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
+		{
+			return sceneFolders; // Invalid path, return empty
+		}
+		projectName = projectFilePathName.substr(lastSlash + 1);
+		
+		// Get the base project path
+		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath("Projects")[0];
+		Ogre::String searchPath = projectPath + "/" + projectName + "/*.*";
+
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
+
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do
+			{
+				// Check if it's a directory and not "." or ".."
+				if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+					Ogre::String(fd.cFileName) != "." &&
+					Ogre::String(fd.cFileName) != "..")
+				{
+					// Check if the directory contains a scene file
+					Ogre::String sceneFilePath = projectPath + "/" + projectName + "/" + fd.cFileName;
+					WIN32_FIND_DATA sceneFd;
+					HANDLE hScene = ::FindFirstFile(sceneFilePath.c_str(), &sceneFd);
+
+					if (hScene != INVALID_HANDLE_VALUE)
+					{
+						// Valid scene folder
+						sceneFolders.push_back(fd.cFileName);
+						::FindClose(hScene);
+					}
+				}
+			} while (::FindNextFile(hFind, &fd));
+
+			::FindClose(hFind);
+		}
+
+		return sceneFolders;
+	}
+
+	std::vector<Ogre::String> Core::getSceneFileNamesInProject(const Ogre::String& projectFilePathName)
+	{
+		std::vector<Ogre::String> sceneFileNames;
+
+		Ogre::String projectName;
+		size_t lastSlash = projectFilePathName.find_last_of("/\\");
+		if (lastSlash == Ogre::String::npos)
+		{
+			return sceneFileNames; // Invalid path, return empty
+		}
+		projectName = projectFilePathName.substr(lastSlash + 1);
+
+		// Get the base project path
+		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath("Project")[0];
+		Ogre::String searchPath = projectPath + "/" + projectName + "/*";
+
+		WIN32_FIND_DATA fd;
+		HANDLE hFind = ::FindFirstFile(searchPath.c_str(), &fd);
+
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			do
+			{
+				// Check if it's a directory and not "." or ".."
+				if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+					Ogre::String(fd.cFileName) != "." &&
+					Ogre::String(fd.cFileName) != "..")
+				{
+					// Build the full scene file path
+					Ogre::String sceneFilePath = projectPath + "/" + projectName + "/" + fd.cFileName + "/" + fd.cFileName + ".scene";
+
+					WIN32_FIND_DATA sceneFd;
+					HANDLE hScene = ::FindFirstFile(sceneFilePath.c_str(), &sceneFd);
+
+					if (hScene != INVALID_HANDLE_VALUE)
+					{
+						// Add the scene file name (e.g., SceneA.scene)
+						sceneFileNames.push_back(fd.cFileName + Ogre::String(".scene"));
+						::FindClose(hScene);
+					}
+				}
+			} while (::FindNextFile(hFind, &fd));
+
+			::FindClose(hFind);
+		}
+
+		return sceneFileNames;
+	}
 
 	Ogre::String Core::getAbsolutePath(const Ogre::String& relativePath)
 	{

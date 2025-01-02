@@ -253,7 +253,8 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				// Write all the game object data to stream														false -> recursive -> Do not store recursive, as the game objects are a the same level. Its not a usual scene save!
-				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
+				Ogre::String filePath = Core::getSingletonPtr()->getCurrentProjectPath();
+				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, filePath, false);
 			}
 		}
 		doc.append_node(nodesXML);
@@ -829,7 +830,7 @@ namespace NOWA
 	
 	void GameObjectController::undo(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -842,7 +843,7 @@ namespace NOWA
 		
 	void GameObjectController::undoAll(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -855,7 +856,7 @@ namespace NOWA
 	
 	void GameObjectController::redo(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -868,7 +869,7 @@ namespace NOWA
 	
 	void GameObjectController::redoAll(void)
 	{	
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isWorldLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));

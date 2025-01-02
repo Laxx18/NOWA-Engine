@@ -250,6 +250,8 @@ namespace Ogre
         texBox.copyFrom(image.getData(0));
         m_heightMapStagingTexture->stopMapRegion();
         m_heightMapStagingTexture->upload(texBox, m_heightMapTex, 0, 0, 0);
+
+        m_currentHeightMapImageName = m_prefix + "_heightMap.png";
     }
     //-----------------------------------------------------------------------------------
     void Terra::createHeightmap( Image2 &image, bool bMinimizeMemoryConsumption, bool bLowResShadow)
@@ -2098,7 +2100,8 @@ namespace Ogre
     {
         if (nullptr != m_heightMapTex)
         {
-            m_heightMapTex->writeContentsToFile(path + "/" + prefix + "_heightMap.png", 0, m_heightMapTex->getNumMipmaps());
+            m_currentHeightMapImageName = prefix + "_heightMap.png";
+            m_heightMapTex->writeContentsToFile(path + "/" + m_currentHeightMapImageName, 0, m_heightMapTex->getNumMipmaps());
         }
         if (nullptr != m_blendWeightTex)
         {
@@ -2150,6 +2153,16 @@ namespace Ogre
 
         *movAmount = (drawY * pitch) + drawX;
         *shouldMoveAmount = (pitch - (x + *boxWidth)) + drawX;
+    }
+
+    Ogre::String Terra::getHeightMapTextureName(void) const
+    {
+        return this->m_currentHeightMapImageName;
+    }
+
+    Ogre::String Terra::getBlendWeightTextureName(void) const
+    {
+        return this->m_currentBlendWeightImageName;
     }
 
     void Terra::setPrefix(const Ogre::String& prefix)

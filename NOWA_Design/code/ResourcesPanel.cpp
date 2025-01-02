@@ -1251,12 +1251,18 @@ void ResourcesPanelTextures::notifyTreeContextMenu(MyGUI::TreeControl* treeContr
 
 ResourcesPanelProject::ResourcesPanelProject()
 	: BasePanelViewItem("ResourcesPanelProject.layout"),
-	filesListBox(nullptr),
+	filesTreeControl(nullptr),
 	editorManager(nullptr),
 	projectManager(nullptr),
-	lastClickedIndex(MyGUI::ITEM_NONE)
+	lastClickedNode(nullptr),
+	hasSceneChanges(false)
 {
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+}
 
+ResourcesPanelProject::~ResourcesPanelProject()
+{
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
 }
 
 void ResourcesPanelProject::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1269,58 +1275,76 @@ void ResourcesPanelProject::setProjectManager(ProjectManager* projectManager)
 	this->projectManager = projectManager;
 }
 
-void ResourcesPanelProject::initialise()
+void ResourcesPanelProject::initialise(void)
 {
 	mPanelCell->setCaption("Project");
 	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
-	assignWidget(this->filesListBox, "filesListBox");
+	assignWidget(this->filesTreeControl, "Tree");
 	mWidgetClient->setSize(MyGUI::IntSize(mWidgetClient->getWidth(), 405));
 
-	this->filesListBox->setInheritsAlpha(false);
-
-	this->filesListBox->setColour(MyGUI::Colour(120.0f / 255.0f, 80.0f / 255.0f, 252.0f / 255.0f));
+	this->filesTreeControl->setInheritsAlpha(false);
 
 	// Event Handlers
-	this->filesListBox->eventListSelectAccept += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListSelectAccept);
-	this->filesListBox->eventListChangePosition += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListChangePosition);
-	this->filesListBox->eventKeyButtonPressed += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-	this->filesListBox->eventListMouseItemActivate += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListMouseItemActivate);
+	this->filesTreeControl->eventKeyButtonPressed += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+	this->filesTreeControl->eventTreeNodeSelected += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+	this->filesTreeControl->eventTreeNodeActivated += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+	// this->filesTreeControl->eventTreeNodeActivated
 
-	this->populateFilesList(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+	this->populateFilesTree(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
 
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 }
 
-void ResourcesPanelProject::shutdown()
+void ResourcesPanelProject::shutdown(void)
 {
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
-	this->filesListBox->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-	this->filesListBox->eventListSelectAccept -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListSelectAccept);
-	this->filesListBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListChangePosition);
-	this->filesListBox->eventListMouseItemActivate -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyListMouseItemActivate);
+	this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+	this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+	this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
 }
 
 void ResourcesPanelProject::clear(void)
 {
 	this->selectedText.clear();
-	this->filesListBox->removeAllItems();
+	MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
+	root->removeAll();
 }
 
-void ResourcesPanelProject::populateFilesList(const Ogre::String& folderPath)
+void ResourcesPanelProject::populateFilesTree(const Ogre::String& folderPath)
 {
 	this->clear();
 
+	MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
+
 	for (const auto& entry : std::filesystem::directory_iterator(folderPath))
 	{
-		if (entry.is_regular_file())
+		if (entry.is_directory())
 		{
-			this->filesListBox->addItem(entry.path().filename().string());
+			MyGUI::TreeControl::Node* folderNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+			folderNode->setExpanded(true);
+			root->add(folderNode);
+
+			for (const auto& subEntry : std::filesystem::directory_iterator(entry.path()))
+			{
+				if (subEntry.is_regular_file())
+				{
+					MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(subEntry.path().filename().string(), "Data");
+					folderNode->add(fileNode);
+				}
+			}
+		}
+		else if (entry.is_regular_file())
+		{
+			MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+			root->add(fileNode);
 		}
 	}
-	// this->sortListByFileExtension();
-	this->sortListByName();
+
+	this->sortTreeNodesByName(root);
 }
 
 void ResourcesPanelProject::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1334,20 +1358,51 @@ void ResourcesPanelProject::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI:
 	}
 }
 
-void ResourcesPanelProject::notifyListMouseItemActivate(MyGUI::ListBox* sender, size_t index)
+void ResourcesPanelProject::notifyTreeNodeClick(MyGUI::TreeControl* sender, MyGUI::TreeControl::Node* node)
 {
-	if (index != MyGUI::ITEM_NONE && index < sender->getItemCount())
-	{
-		// Get current time
-		auto now = std::chrono::steady_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastClickTime).count();
-	}
+	auto now = std::chrono::steady_clock::now();
+	this->lastClickTime = now;
+	this->lastClickedNode = node;
+
+	this->handleSingleClick(node);
 }
 
-void ResourcesPanelProject::handleSingleClick(size_t index)
+void ResourcesPanelProject::notifyTreeNodeDoubleClick(MyGUI::TreeControl* sender, MyGUI::TreeControl::Node* node)
 {
-	this->selectedText = this->filesListBox->getItemNameAt(index);
-	
+	this->handleDoubleClick(node);
+}
+
+void ResourcesPanelProject::notifyMessageBoxEndLoad(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
+{
+	if (result == MyGUI::MessageBoxStyle::Yes)
+	{
+		if (nullptr != this->projectManager)
+		{
+			this->projectManager->saveProject();
+		}
+	}
+
+	if (nullptr != this->projectManager)
+	{
+		Ogre::String sceneName = this->currentSceneName.substr(0, this->currentSceneName.size() - 6);
+
+		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+		this->projectManager->loadProject(NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + sceneName + "/" + this->currentSceneName);
+	}
+
+	this->hasSceneChanges = false;
+}
+
+void ResourcesPanelProject::handleSingleClick(MyGUI::TreeControl::Node* node)
+{
+	if (nullptr == node)
+	{
+		return;
+	}
+
+	this->selectedText = node->getText();
+
 	if (this->selectedText.size() >= 4 && this->selectedText.compare(this->selectedText.size() - 4, 4, ".lua") == 0)
 	{
 		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(NOWA::LuaScriptComponent::getStaticClassName());
@@ -1373,9 +1428,16 @@ void ResourcesPanelProject::handleSingleClick(size_t index)
 	}
 }
 
-void ResourcesPanelProject::handleDoubleClick(size_t index)
+void ResourcesPanelProject::handleDoubleClick(MyGUI::TreeControl::Node* node)
 {
-	Ogre::String itemName = this->filesListBox->getItemNameAt(index);
+	this->currentSceneName.clear();
+
+	if (nullptr == node)
+	{
+		return;
+	}
+
+	Ogre::String itemName = node->getText();
 
 	if (itemName.size() >= 4 && itemName.compare(itemName.size() - 4, 4, ".lua") == 0)
 	{
@@ -1391,7 +1453,7 @@ void ResourcesPanelProject::handleDoubleClick(size_t index)
 				{
 					if (luaCompPtr->getLuaScript()->getScriptName() == itemName)
 					{
-						NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + itemName);
+						NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "/" + itemName);
 					}
 				}
 			}
@@ -1401,135 +1463,67 @@ void ResourcesPanelProject::handleDoubleClick(size_t index)
 	{
 		if (itemName != "global.scene")
 		{
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-			this->projectManager->loadProject(NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + itemName);
+			Ogre::String sceneName = itemName.substr(0, itemName.size() - 6);
+
+			if (sceneName != NOWA::Core::getSingletonPtr()->getSceneName())
+			{
+				this->currentSceneName = itemName;
+
+				if (true == this->hasSceneChanges)
+				{
+					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+					messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyMessageBoxEndLoad);
+				}
+				else
+				{
+					boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+					this->projectManager->loadProject(NOWA::Core::getSingletonPtr()->getCurrentProjectPath() + "/" + sceneName + "/" + itemName);
+					this->hasSceneChanges = false;
+				}
+			}
 		}
 	}
 }
 
-void ResourcesPanelProject::sortListByFileExtension(void)
+void ResourcesPanelProject::sortTreeNodesByName(MyGUI::TreeControl::Node* parentNode)
 {
-	if (this->filesListBox == nullptr)
-		return;
+	MyGUI::TreeControl::Node* root = parentNode;
+	auto nodes = root->getChildren();
 
-	// Get the number of items in the ListBox
-	size_t itemCount = this->filesListBox->getItemCount();
+	std::sort(nodes.begin(), nodes.end(), [](const MyGUI::TreeControl::Node* a, const MyGUI::TreeControl::Node* b) {
+		return a->getText() < b->getText();
+	});
 
-	// Create a vector to hold the items and their indices
-	std::vector<std::pair<std::string, size_t>> items;
-
-	// Populate the vector with item names and their original indices
-	for (size_t i = 0; i < itemCount; ++i)
+	for (auto node : nodes)
 	{
-		std::string itemName = this->filesListBox->getItemNameAt(i);
-		items.push_back(std::make_pair(itemName, i));
-	}
-
-	// Sort the vector based on the file extension
-	std::sort(items.begin(), items.end(), [](const std::pair<std::string, size_t>& a, const std::pair<std::string, size_t>& b) {
-		// Get the file extensions by finding the last '.' in the string
-		size_t extA = a.first.rfind('.');
-		size_t extB = b.first.rfind('.');
-
-		// Compare extensions, if none found, compare by the full name
-		if (extA != std::string::npos && extB != std::string::npos)
-		{
-			return a.first.substr(extA) < b.first.substr(extB);
-		}
-		return a.first < b.first;
-		});
-
-	// Clear the ListBox
-	this->filesListBox->removeAllItems();
-
-	// Re-add the sorted items to the ListBox
-	for (const auto& item : items)
-	{
-		this->filesListBox->addItem(item.first);
-	}
-
-	// Optionally, select the first item after sorting
-	if (!items.empty())
-	{
-		this->filesListBox->setIndexSelected(0);
-	}
-}
-
-void ResourcesPanelProject::sortListByName(void)
-{
-	if (this->filesListBox == nullptr)
-		return;
-
-	// Get the number of items in the ListBox
-	size_t itemCount = this->filesListBox->getItemCount();
-
-	// Create a vector to hold the items and their indices
-	std::vector<std::pair<std::string, size_t>> items;
-
-	// Populate the vector with item names and their original indices
-	for (size_t i = 0; i < itemCount; ++i)
-	{
-		std::string itemName = this->filesListBox->getItemNameAt(i);
-		items.push_back(std::make_pair(itemName, i));
-	}
-
-	// Sort the vector based on the full file name
-	std::sort(items.begin(), items.end(), [](const std::pair<std::string, size_t>& a, const std::pair<std::string, size_t>& b) {
-		return a.first < b.first;  // Compare the full file names
-		});
-
-	// Clear the ListBox
-	this->filesListBox->removeAllItems();
-
-	// Re-add the sorted items to the ListBox
-	for (const auto& item : items)
-	{
-		this->filesListBox->addItem(item.first);
-	}
-
-	// Optionally, select the first item after sorting
-	if (!items.empty())
-	{
-		this->filesListBox->setIndexSelected(0);
+		this->sortTreeNodesByName(node);
 	}
 }
 
 void ResourcesPanelProject::handleEventDataResourceCreated(NOWA::EventDataPtr eventData)
 {
-	this->populateFilesList(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+	NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(2.0f));
+	// Shows for a specific amount of time
+	auto ptrFunction = [this]()
+		{
+			this->populateFilesTree(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+		};
+	NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+	delayProcess->attachChild(closureProcess);
+	NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+	
 }
 
-void ResourcesPanelProject::notifyListChangePosition(MyGUI::ListBox* sender, size_t index)
+void ResourcesPanelProject::handleSceneModified(NOWA::EventDataPtr eventData)
 {
-	if (index != MyGUI::ITEM_NONE && index < sender->getItemCount())
-	{
-		auto now = std::chrono::steady_clock::now();
-		this->lastClickTime = now;
-		this->lastClickedIndex = index;
-		this->handleSingleClick(index);
-	}
+	this->hasSceneChanges = true;
 }
 
-// Handle DOUBLE CLICK or ACTIVATION
-void ResourcesPanelProject::notifyListSelectAccept(MyGUI::ListBox* sender, size_t index)
+void ResourcesPanelProject::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData)
 {
-	if (index != MyGUI::ITEM_NONE && index < sender->getItemCount())
-    {
-        auto now = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->lastClickTime).count();
-
-        if (duration < 1000 && index == this->lastClickedIndex)
-        {
-            // Double click detected
-            handleDoubleClick(index);
-        }
-        else
-        {
-            // First click or long delay (reset timer)
-			this->lastClickTime = now;
-			this->lastClickedIndex = index;
-            // handleSingleClick(index);
-        }
-    }
+	this->hasSceneChanges = true;
+	this->populateFilesTree(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
 }

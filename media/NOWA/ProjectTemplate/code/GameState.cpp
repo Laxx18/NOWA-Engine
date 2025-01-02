@@ -9,7 +9,7 @@ GameState::GameState()
 
 void GameState::enter(void)
 {
-	this->currentWorldName = "ProjectTemplate/World1";
+	this->currentSceneName = "ProjectTemplate/Scene1/Scene1.scene";
 	
 	NOWA::AppState::enter();
 	
@@ -18,7 +18,7 @@ void GameState::enter(void)
 
 void GameState::start(const NOWA::SceneParameter& sceneParameter)
 {
-	// World loaded finished. Get scene manager, camera, ogrenewt etc. from scene parameter here for custom functionality
+	// Scene loaded finished. Get scene manager, camera, ogrenewt etc. from scene parameter here for custom functionality
 	
 	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
 }
@@ -112,6 +112,14 @@ bool GameState::keyReleased(const OIS::KeyEvent &keyEventRef)
 
 void GameState::processUnbufferedKeyInput(Ogre::Real dt)
 {
+	const auto& keyboard = NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard();
+	
+	if (keyboard->isKeyDown(OIS::KC_F4) && keyboard->isKeyDown(OIS::KC_LMENU))
+	{
+		bQuit = true;
+		return;
+	}
+	
 	if (NOWA::LuaConsole::getSingletonPtr() && NOWA::LuaConsole::getSingletonPtr()->isVisible())
 	{
 		return;

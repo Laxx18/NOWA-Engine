@@ -20,13 +20,13 @@ namespace NOWA
 		friend class MiniMapModule;
 
 		/**
-		* @class IWorldLoaderCallback
+		* @class IsceneLoaderCallback
 		* @brief This interface can be implemented to react each time a scenenode or entity will be loaded
 		*/
-		class EXPORTED IWorldLoaderCallback
+		class EXPORTED IsceneLoaderCallback
 		{
 		public:
-			virtual ~IWorldLoaderCallback()
+			virtual ~IsceneLoaderCallback()
 			{
 			}
 
@@ -74,17 +74,17 @@ namespace NOWA
 		* @param[in]	projectName			The project name
 		* @param[in]	sceneName			The scene name
 		* @param[in]	resourceGroupName	The group name which leads to the scene name. The group name must be declared in a resource cfg file.
-		*									FileSystem=../../media/Worlds/JumpNRun1
+		*									FileSystem=../../media/Projects/JumpNRun1
 		* @param[in]	sunLight			The outside configured sun light to use for terrain shading. If the sun light does not exist, when a terrain gets created a default configured sun light
 		*									will be used.
-		* @param[in]	worldLoaderCallback	The world loader callback that can be used to react when objects are loaded.
-		* @note								A newly created world loader callback heap pointer must be passed for the IWorldLoaderCallback. It will be deleted internally,
+		* @param[in]	sceneLoaderCallback	The scene loader callback that can be used to react when objects are loaded.
+		* @note								A newly created scene loader callback heap pointer must be passed for the IsceneLoaderCallback. It will be deleted internally,
 		*									if the object is not required anymore.
 		* @param[in]	showProgress		If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
 		* @return		success				True, if scene could be parsed, else false
 		*/
 		bool parseScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, Ogre::Light* sunLight = nullptr,
-			IWorldLoaderCallback* worldLoaderCallback = nullptr, bool showProgress = true);
+			IsceneLoaderCallback* sceneLoaderCallback = nullptr, bool showProgress = true);
 
 		/**
 		* @brief		Parses a scene XML to create the virtual environment for the game engine
@@ -114,18 +114,18 @@ namespace NOWA
 		bool parseGameObjects(unsigned int controlledByClientID);
 
 		/**
-		* @brief		Parses the bounds of the world
+		* @brief		Parses the bounds of the scene
 		* @return		mostLeftNearVector	The most left near position (3x Ogre::Math::POS_INFINITY if so far never calculated)
 		*				mostRightFarVector	The most right far position (3x Ogre::Math::NEG_INFINITY if so far never calculated)
 		*/
 		std::pair<Ogre::Vector3, Ogre::Vector3> parseBounds(void);
 
 		/**
-		 * @brief		Parses the exit directions for this world and the target scene to reach for that exit direction
-		 * @note		Each world can have seveal exit directions.
+		 * @brief		Parses the exit directions for this scene and the target scene to reach for that exit direction
+		 * @note		Each scene can have seveal exit directions.
 		 * @return		a list of vector2 for the exit direction and the target scene name to reach
 		 */
-		std::vector<std::pair<Ogre::Vector2, Ogre::String>> parseExitDirectionsNextWorlds(void);
+		std::vector<std::pair<Ogre::Vector2, Ogre::String>> parseExitDirectionsNextScenes(void);
 
 		std::pair<bool, Ogre::Vector3> parseGameObjectPosition(unsigned long id);
 
@@ -140,7 +140,7 @@ namespace NOWA
 		Ogre::Camera* getMainCamera(void) const;
 
 		/**
-		 * @brief		Gets the main sun light (if specified in world editor)
+		 * @brief		Gets the main sun light (if specified in scene editor)
 		 * @return		sunLight	The sun light to get
 		 * @Note		Attention: If no sun light has been specified, nullptr will be returned
 		 */
@@ -204,12 +204,12 @@ namespace NOWA
 		Ogre::SceneManager* sceneManager;
 		Ogre::Camera* mainCamera;
 		Ogre::String resourceGroupName;
-		IWorldLoaderCallback* worldLoaderCallback;
+		IsceneLoaderCallback* sceneLoaderCallback;
 
 		//Physics
 		OgreNewt::World* ogreNewt;
 
-		Ogre::String worldPath;
+		Ogre::String scenePath;
 		std::list<Ogre::Vector2> pages;
 		int	pagesCount;
 		bool needCollisionRebuild;

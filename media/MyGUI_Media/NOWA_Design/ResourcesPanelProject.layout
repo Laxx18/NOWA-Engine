@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout">
     <Widget type="Widget" skin="PanelEmpty" position="440 144 208 400" align="HStretch Top" layer="Main" name="_Main">
-        <Widget type="ListBox" skin="ListBox" position="2 28 204 372" align="Stretch" name="filesListBox" />
+        <Widget type="TreeControl" skin="Tree" position="2 28 200 375" align="Stretch" name="Tree"/>
     </Widget>
 </MyGUI>

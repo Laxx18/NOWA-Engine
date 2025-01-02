@@ -260,7 +260,15 @@ namespace NOWA
 					for (auto it = eventListeners.begin(); it != eventListeners.end(); ++it)
 					{
 						EventListenerDelegate listener = (*it);
-						listener(pEvent);
+						try
+						{
+							listener(pEvent);
+						}
+						catch (const std::exception& e)
+						{
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[EventManager] Error using listener for event: " + Ogre::String(pEvent->getName()) + " Message: " + e.what());
+						}
+						
 					}
 				}
 			}

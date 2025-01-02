@@ -1,0 +1,1211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.1.0" generator="NOWA-Engine">
+	<nodes>
+		<node name="CircleFadeGameObject_0" id="3492814653">
+			<position x="-0.448465" y="0.1615" z="3.41785"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="CircleFadeGameObject_0" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteLine__2231602614"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2231602614"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="ComponentCompositorEffectOldTvComponent" data="CompositorEffectOldTvComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="WorkspaceGameObjectId" data="1111111112"/>
+					<property type="6" name="DistortionFrequency" data="0"/>
+					<property type="6" name="DistortionScale" data="0"/>
+					<property type="6" name="DistortionRoll" data="0"/>
+					<property type="6" name="Interference" data="0"/>
+					<property type="6" name="FrameLimit" data="0"/>
+					<property type="6" name="FrameShape" data="0"/>
+					<property type="6" name="FrameSharpness" data="6"/>
+					<property type="2" name="Time" data="120"/>
+					<property type="2" name="SinusTime" data="120"/>
+					<property type="7" name="ComponentAttributeEffectComponent" data="AttributeEffectComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="AttributeName" data="Frame Shape"/>
+					<property type="7" name="XFunction" data="10000-t*t*t"/>
+					<property type="7" name="YFunction" data="0"/>
+					<property type="7" name="ZFunction" data="0"/>
+					<property type="7" name="MinLength" data="0"/>
+					<property type="7" name="MaxLength" data="100"/>
+					<property type="8" name="Speed" data="10"/>
+					<property type="12" name="DirectionChange" data="false"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="1"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="DefaultUncorrelated"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="1 1 1"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data=""/>
+					<property type="7" name="NormalTextureName" data=""/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data=""/>
+					<property type="7" name="MetallicTextureName" data=""/>
+					<property type="7" name="RoughnessTextureName" data=""/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="Transparent"/>
+					<property type="7" name="Transparency" data="0.9"/>
+					<property type="12" name="UseAlphaFromTextures" data="false"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="1"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="PrehistoricLax_0" id="244932335">
+			<position x="-11.5867" y="8.61295" z="-22"/>
+			<rotation qw="0.707107" qx="0" qy="0.707107" qz="0"/>
+			<scale x="0.01" y="0.01" z="0.01"/>
+			<entity name="PrehistoricLax_0" meshFile="PrehistoricLax.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="PrehistoricLaxClothes__929302007"/>
+				<subentity index="1" datablockName="PrehistoricLaxBody"/>
+				<subentity index="2" datablockName="PrehistoricLaxIntern"/>
+				<subentity index="3" datablockName="PrehistoricLaxEyes"/>
+				<subentity index="4" datablockName="PrehistoricLaxHair"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="929302007"/>
+					<property type="7" name="Category" data="Character"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="true"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="PrehistoricLaxClothes"/>
+					<property type="7" name="DataBlock1" data="PrehistoricLaxBody"/>
+					<property type="7" name="DataBlock2" data="PrehistoricLaxIntern"/>
+					<property type="7" name="DataBlock3" data="PrehistoricLaxEyes"/>
+					<property type="7" name="DataBlock4" data="PrehistoricLaxHair"/>
+					<property type="7" name="ComponentPhysicsRagDollComponent" data="PhysicsRagDollComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.3 1.9 0.3"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="70"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="8"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="12"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 1"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="BoneConfigFile" data="PrehistoricLaxPartial.rag"/>
+					<property type="7" name="State" data="PartialRagdolling"/>
+					<property type="7" name="ComponentCameraBehaviorFollow2DComponent" data="CameraBehaviorFollow2DComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="SmoothValue" data="0.95"/>
+					<property type="9" name="OffsetPosition" data="0 1 25"/>
+					<property type="9" name="BorderOffset" data="0 0 0"/>
+					<property type="7" name="ComponentPlayerControllerJumpNRunLuaComponent" data="PlayerControllerJumpNRunLuaComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="20"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="3"/>
+					<property type="6" name="Acceleration" data="2"/>
+					<property type="7" name="Categories" data="All-NoCollide-Character-PlayerWeapon"/>
+					<property type="7" name="StartStateName" data="WalkState"/>
+					<property type="7" name="ComponentReferenceComponent" data="ReferenceComponent"/>
+					<property type="7" name="Name" data="RightHandWeapon"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="6" name="TargetId" data="2771515178"/>
+					<property type="7" name="ComponentPickerComponent" data="PickerComponent"/>
+					<property type="7" name="Name" data="RightHandPicker"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="TargetId" data="2771515178"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="7" name="SpringStrength" data="40"/>
+					<property type="7" name="DragAffectDistance" data="5"/>
+					<property type="12" name="DrawLine" data="true"/>
+					<property type="7" name="MouseButtonPickId" data="LEFT_MOUSE_BUTTON"/>
+					<property type="7" name="JoystickButtonPickId" data="X"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Walk.wav"/>
+					<property type="6" name="Volume" data="15"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Jump1.wav"/>
+					<property type="6" name="Volume" data="50"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="TemplateName" data="smoke"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="6" name="PlayTime" data="50"/>
+					<property type="6" name="PlaySpeed" data="10"/>
+					<property type="9" name="OffsetPosition" data="0 -0.1 1"/>
+					<property type="10" name="OffsetOrientation" data="0 0 0"/>
+					<property type="9" name="Scale" data="0.05 0.05 0.05"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data="MainArea"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="ShortTimeActivation" data="false"/>
+					<property type="6" name="Radius" data="1"/>
+					<property type="7" name="Categories" data="Items"/>
+					<property type="7" name="ComponentAreaOfInterestComponent" data="AreaOfInterestComponent"/>
+					<property type="7" name="Name" data="MechanicsArea"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="ShortTimeActivation" data="true"/>
+					<property type="6" name="Radius" data="0.5"/>
+					<property type="7" name="Categories" data="Mechanics+Items"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.06"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_FAIL"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.55 0.48 0.1"/>
+					<property type="10" name="BackgroundColor" data="0.55 0.48 0.1 1"/>
+					<property type="9" name="SpecularColor" data="1 1 1"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="PrehistoricLaxClothesD.png"/>
+					<property type="7" name="NormalTextureName" data="PrehistoricLaxClothesN.png"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data="PrehistoricLaxClothesS.png"/>
+					<property type="7" name="MetallicTextureName" data="PrehistoricLaxClothesS.png"/>
+					<property type="7" name="RoughnessTextureName" data="PrehistoricLaxClothesR.png"/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="1"/>
+					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="0.1"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="3"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="false"/>
+					<property type="2" name="WaypointsCount" data="2"/>
+					<property type="2" name="Waypoint0" data="1206622722"/>
+					<property type="2" name="Waypoint1" data="515767029"/>
+					<property type="12" name="Repeat" data="false"/>
+					<property type="12" name="DirectionChange" data="false"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.3"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="PrehistoricLax_0.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="MainGameObject" id="1366663313">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1111111111"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Platform"/>
+					<property type="7" name="Category2" data="Character"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.25"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnCharacterPlatformContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data="CharacterSliderMaterial"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="Slider"/>
+					<property type="8" name="Friction" data="1 1"/>
+					<property type="6" name="Softness" data="0.25"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnCharacterSliderContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="Trampolin"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.8"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Enemy"/>
+					<property type="7" name="Category2" data="Enemy"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Enemy"/>
+					<property type="7" name="Category2" data="Default"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnEnemyDefaultContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="Default"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnCharacterDefaultContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="Enemy"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnCharacterEnemyContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="EnemyWeapon"/>
+					<property type="7" name="Category2" data="Character"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnEnemyWeaponCharacterContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Enemy"/>
+					<property type="7" name="Category2" data="EnemyWeapon"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Default"/>
+					<property type="7" name="Category2" data="NoCollide"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="PlayerWeapon"/>
+					<property type="7" name="Category2" data="Slider"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="PlayerWeapon"/>
+					<property type="7" name="Category2" data="Platform"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="false"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="PlayerWeapon"/>
+					<property type="7" name="Category2" data="Default"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="Character"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Character"/>
+					<property type="7" name="Category2" data="PlayerWeapon"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="0"/>
+					<property type="9" name="ContactDirection" data="0 0 0"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data=""/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="false"/>
+					<property type="7" name="Category1" data="Enemy"/>
+					<property type="7" name="Category2" data="PlayerWeapon"/>
+					<property type="8" name="Friction" data="0.8 0.4"/>
+					<property type="6" name="Softness" data="0.01"/>
+					<property type="6" name="Elasticity" data="0.01"/>
+					<property type="6" name="SurfaceThickness" data="0.125"/>
+					<property type="12" name="Collideable" data="true"/>
+					<property type="7" name="ContactBehavior" data="None"/>
+					<property type="6" name="ContactSpeed" data="10"/>
+					<property type="9" name="ContactDirection" data="0 0 -1"/>
+					<property type="7" name="OverlapFunctionName" data=""/>
+					<property type="7" name="ContactFunctionName" data="OnPlayerWeaponEnemyContact"/>
+					<property type="7" name="ContactOnceFunctionName" data=""/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Money.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data="ScoreSound"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="Money.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="false"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
+					<property type="7" name="Name" data="StatusWindow"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2257457579"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0 0.8"/>
+					<property type="8" name="Size" data="0.4 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.02927 0.22095 0.53516 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="Window"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data="Status"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="StrengthText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="466363035"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.05 0.1"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.36816 0.5216 0.90625 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2257457579"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="Strength: 1"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="Left"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="ScoreText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="466363035"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.05 0.4"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.36816 0.5216 0.90625 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2257457579"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="Score: 0"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="Left"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="SpeedText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1693073976"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.3 0.4"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.36816 0.5216 0.90625 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2257457579"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="Speed: 8"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="PlayerLevelText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3370420694"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.3 0.1"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.36816 0.5216 0.90625 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2257457579"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="Level: 1"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="KilledEnemiesText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="4155342143"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.55 0.1"/>
+					<property type="8" name="Size" data="0.25 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.36816 0.5216 0.90625 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="2257457579"/>
+					<property type="7" name="Skin" data="EditBox"/>
+					<property type="7" name="Caption" data="Killed Enemies: 0"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIProgressBarComponent" data="MyGUIProgressBarComponent"/>
+					<property type="7" name="Name" data="EnergyProgress"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="3713734559"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.01 0.01"/>
+					<property type="8" name="Size" data="0.1 0.02"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0 1 0 0.5"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="ProgressBar"/>
+					<property type="2" name="Value" data="100"/>
+					<property type="2" name="Range" data="100"/>
+					<property type="12" name="FlowDirection" data="LeftToRight"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="EnergyText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="504337810"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.01 0.01"/>
+					<property type="8" name="Size" data="0.07 0.021"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="1 1 1 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Energy: 100"/>
+					<property type="2" name="FontHeight" data="12"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentMyGUIProgressBarComponent" data="MyGUIProgressBarComponent"/>
+					<property type="7" name="Name" data="ExperienceProgress"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="712481507"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.01 0.04"/>
+					<property type="8" name="Size" data="0.1 0.02"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0 0.30182 0.67188 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="ProgressBar"/>
+					<property type="2" name="Value" data="0"/>
+					<property type="2" name="Range" data="100"/>
+					<property type="12" name="FlowDirection" data="LeftToRight"/>
+					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
+					<property type="7" name="Name" data="ExperienceText"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1419090753"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.01 0.04"/>
+					<property type="8" name="Size" data="0.07 0.021"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Middle"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="EditBoxEmpty"/>
+					<property type="7" name="Caption" data="Experience: 0"/>
+					<property type="2" name="FontHeight" data="12"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="12" name="ReadOnly" data="true"/>
+					<property type="12" name="MultiLine" data="false"/>
+					<property type="12" name="WordWrap" data="false"/>
+					<property type="7" name="ComponentAttributesComponent" data="AttributesComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="AttributesCount" data="7"/>
+					<property type="7" name="AttributeName0" data="Energy"/>
+					<property type="7" name="AttributeType0" data="Int"/>
+					<property type="7" name="AttributeValue0" data="100"/>
+					<property type="7" name="AttributeName1" data="Score"/>
+					<property type="7" name="AttributeType1" data="Int"/>
+					<property type="7" name="AttributeValue1" data="0"/>
+					<property type="7" name="AttributeName2" data="Strength"/>
+					<property type="7" name="AttributeType2" data="Int"/>
+					<property type="7" name="AttributeValue2" data="1"/>
+					<property type="7" name="AttributeName3" data="Experience"/>
+					<property type="7" name="AttributeType3" data="Int"/>
+					<property type="7" name="AttributeValue3" data="0"/>
+					<property type="7" name="AttributeName4" data="PlayerLevel"/>
+					<property type="7" name="AttributeType4" data="Int"/>
+					<property type="7" name="AttributeValue4" data="1"/>
+					<property type="7" name="AttributeName5" data="Speed"/>
+					<property type="7" name="AttributeType5" data="Int"/>
+					<property type="7" name="AttributeValue5" data="8"/>
+					<property type="7" name="AttributeName6" data="KilledEnemies"/>
+					<property type="7" name="AttributeType6" data="Int"/>
+					<property type="7" name="AttributeValue6" data="0"/>
+					<property type="7" name="ComponentMyGUIItemBoxComponent" data="MyGUIItemBoxComponent"/>
+					<property type="7" name="Name" data="Inventory"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1453912275"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.4 0.8"/>
+					<property type="8" name="Size" data="0.4 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 0.5"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data=""/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data="Inventory"/>
+					<property type="7" name="ResourceLocationName" data="InventoryItemsResources.xml"/>
+					<property type="12" name="UseToolTip" data="true"/>
+					<property type="12" name="AllowDragDrop" data="true"/>
+					<property type="2" name="ItemCount" data="16"/>
+					<property type="7" name="ResourceName0" data="EnergyItem"/>
+					<property type="7" name="Quantity0" data="0"/>
+					<property type="6" name="SellValue0" data="0"/>
+					<property type="6" name="BuyValue0" data="0"/>
+					<property type="7" name="ResourceName1" data="CoinItem"/>
+					<property type="7" name="Quantity1" data="0"/>
+					<property type="6" name="SellValue1" data="0"/>
+					<property type="6" name="BuyValue1" data="0"/>
+					<property type="7" name="ResourceName2" data=""/>
+					<property type="7" name="Quantity2" data="0"/>
+					<property type="6" name="SellValue2" data="0"/>
+					<property type="6" name="BuyValue2" data="0"/>
+					<property type="7" name="ResourceName3" data=""/>
+					<property type="7" name="Quantity3" data="0"/>
+					<property type="6" name="SellValue3" data="0"/>
+					<property type="6" name="BuyValue3" data="0"/>
+					<property type="7" name="ResourceName4" data=""/>
+					<property type="7" name="Quantity4" data="0"/>
+					<property type="6" name="SellValue4" data="0"/>
+					<property type="6" name="BuyValue4" data="0"/>
+					<property type="7" name="ResourceName5" data=""/>
+					<property type="7" name="Quantity5" data="0"/>
+					<property type="6" name="SellValue5" data="0"/>
+					<property type="6" name="BuyValue5" data="0"/>
+					<property type="7" name="ResourceName6" data=""/>
+					<property type="7" name="Quantity6" data="0"/>
+					<property type="6" name="SellValue6" data="0"/>
+					<property type="6" name="BuyValue6" data="0"/>
+					<property type="7" name="ResourceName7" data=""/>
+					<property type="7" name="Quantity7" data="0"/>
+					<property type="6" name="SellValue7" data="0"/>
+					<property type="6" name="BuyValue7" data="0"/>
+					<property type="7" name="ResourceName8" data=""/>
+					<property type="7" name="Quantity8" data="0"/>
+					<property type="6" name="SellValue8" data="0"/>
+					<property type="6" name="BuyValue8" data="0"/>
+					<property type="7" name="ResourceName9" data=""/>
+					<property type="7" name="Quantity9" data="0"/>
+					<property type="6" name="SellValue9" data="0"/>
+					<property type="6" name="BuyValue9" data="0"/>
+					<property type="7" name="ResourceName10" data=""/>
+					<property type="7" name="Quantity10" data="0"/>
+					<property type="6" name="SellValue10" data="0"/>
+					<property type="6" name="BuyValue10" data="0"/>
+					<property type="7" name="ResourceName11" data=""/>
+					<property type="7" name="Quantity11" data="0"/>
+					<property type="6" name="SellValue11" data="0"/>
+					<property type="6" name="BuyValue11" data="0"/>
+					<property type="7" name="ResourceName12" data=""/>
+					<property type="7" name="Quantity12" data="0"/>
+					<property type="6" name="SellValue12" data="0"/>
+					<property type="6" name="BuyValue12" data="0"/>
+					<property type="7" name="ResourceName13" data=""/>
+					<property type="7" name="Quantity13" data="0"/>
+					<property type="6" name="SellValue13" data="0"/>
+					<property type="6" name="BuyValue13" data="0"/>
+					<property type="7" name="ResourceName14" data=""/>
+					<property type="7" name="Quantity14" data="0"/>
+					<property type="6" name="SellValue14" data="0"/>
+					<property type="6" name="BuyValue14" data="0"/>
+					<property type="7" name="ResourceName15" data=""/>
+					<property type="7" name="Quantity15" data="0"/>
+					<property type="6" name="SellValue15" data="0"/>
+					<property type="6" name="BuyValue15" data="0"/>
+					<property type="7" name="ComponentMyGUIWindowComponent" data="MyGUIWindowComponent"/>
+					<property type="7" name="Name" data="ActionsWindow"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="667034376"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.8 0.8"/>
+					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="Window"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data="Actions"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="TakeButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="926464094"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.1 0.1"/>
+					<property type="8" name="Size" data="0.2 0.4"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="667034376"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="Take"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="UseButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1433878229"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.1 0.55"/>
+					<property type="8" name="Size" data="0.2 0.4"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="667034376"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="Use"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="TalkToButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1387264830"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.35 0.1"/>
+					<property type="8" name="Size" data="0.2 0.4"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="667034376"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="Talk to..."/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="ActionButton"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="2730764726"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="8" name="Position" data="0.35 0.55"/>
+					<property type="8" name="Size" data="0.2 0.4"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="667034376"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="Action"/>
+					<property type="2" name="FontHeight" data="16"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIMiniMapComponent" data="MyGUIMiniMapComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="1678157342"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0 0"/>
+					<property type="8" name="Size" data="1 1"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Popup"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="WindowCSX"/>
+					<property type="12" name="Movable" data="false"/>
+					<property type="7" name="WindowCaption" data=""/>
+					<property type="8" name="StartPosition" data="0.1 0.5"/>
+					<property type="6" name="ScaleFactor" data="1"/>
+					<property type="12" name="UseToolTip" data="true"/>
+					<property type="7" name="Axis" data="X,Y"/>
+					<property type="12" name="ShowNames" data="true"/>
+					<property type="2" name="MiniMapTilesCount" data="4"/>
+					<property type="7" name="SkinName0" data="PanelSkin"/>
+					<property type="7" name="MiniMapTileColor0" data="1 1 1"/>
+					<property type="7" name="ToolTipDescription0" data=""/>
+					<property type="7" name="Level3 Scene Visited" data="true"/>
+					<property type="7" name="SkinName1" data="PanelSkin"/>
+					<property type="7" name="MiniMapTileColor1" data="1 1 1"/>
+					<property type="7" name="ToolTipDescription1" data=""/>
+					<property type="7" name="Level4 Scene Visited" data="true"/>
+					<property type="7" name="SkinName2" data="PanelSkin"/>
+					<property type="7" name="MiniMapTileColor2" data="1 1 1"/>
+					<property type="7" name="ToolTipDescription2" data=""/>
+					<property type="7" name="Level6 Scene Visited" data="true"/>
+					<property type="7" name="SkinName3" data="PanelSkin"/>
+					<property type="7" name="MiniMapTileColor3" data="1 1 1"/>
+					<property type="7" name="ToolTipDescription3" data="Savepoint"/>
+					<property type="7" name="Level5 Scene Visited" data="true"/>
+					<property type="2" name="TrackableCount" data="1"/>
+					<property type="7" name="TrackableId0" data="929302007"/>
+					<property type="7" name="TrackableImage0" data="circleRed.png"/>
+					<property type="8" name="TrackableImageTileSize0" data="32 32"/>
+					<property type="6" name="TrackableImageAnimationSpeed" data="0.2"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="main.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="PlayerWeapon" id="3994693044">
+			<position x="-11.7678" y="8.68725" z="-21.6763"/>
+			<rotation qw="0.5" qx="0.5" qy="0.5" qz="0.5"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="PlayerWeapon" meshFile="short_sword.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="/dural/items/weapons/weapon_handle/texture"/>
+				<subentity index="1" datablockName="/dural/items/weapons/weapon_head/texture"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2771515178"/>
+					<property type="7" name="Category" data="PlayerWeapon"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="/dural/items/weapons/weapon_handle/texture"/>
+					<property type="7" name="DataBlock1" data="/dural/items/weapons/weapon_head/texture"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="1"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.01"/>
+					<property type="9" name="AngularDamping" data="0.01 0.01 0.01"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="true"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="ComponentJointHingeComponent" data="JointHingeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointHingeComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="3829366032"/>
+					<property type="2" name="JointPredecessorId" data="2952044310"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 1"/>
+					<property type="12" name="JointLimits" data="true"/>
+					<property type="6" name="JointTorgue" data="0"/>
+					<property type="6" name="JointMinAngleLimit" data="0"/>
+					<property type="6" name="JointMaxAngleLimit" data="0"/>
+					<property type="6" name="JointBreakForce" data="0"/>
+					<property type="6" name="JointBreakTorque" data="0"/>
+					<property type="12" name="JointAsSpringDamper" data="true"/>
+					<property type="12" name="JointMassIndependent" data="true"/>
+					<property type="6" name="JointKSpring" data="128"/>
+					<property type="6" name="JointDSpring" data="4"/>
+					<property type="6" name="JointSpringDamperRelaxation" data="0.6"/>
+					<property type="6" name="JointFriction" data="-1"/>
+				</userData>
+			</entity>
+		</node>
+	</nodes>
+</scene>
+

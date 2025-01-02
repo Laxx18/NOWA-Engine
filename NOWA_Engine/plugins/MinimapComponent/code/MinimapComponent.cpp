@@ -1023,7 +1023,7 @@ namespace NOWA
 
 	bool MinimapComponent::saveDiscoveryState(void)
 	{
-		Ogre::String existingMinimapDiscoveryFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getWorldName() + "_mData.bin";
+		Ogre::String existingMinimapDiscoveryFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + "_mData.bin";
 		std::ofstream outFile(existingMinimapDiscoveryFilePathName, std::ios::binary);
 		if (!outFile)
 		{
@@ -1051,7 +1051,7 @@ namespace NOWA
 
 	bool MinimapComponent::loadDiscoveryState(void)
 	{
-		Ogre::String existingMinimapDiscoveryFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getWorldName() + "_mData.bin";
+		Ogre::String existingMinimapDiscoveryFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + Core::getSingletonPtr()->getSceneName() + "_mData.bin";
 		std::ifstream inFile(existingMinimapDiscoveryFilePathName, std::ios::binary);
 		if (!inFile)
 		{

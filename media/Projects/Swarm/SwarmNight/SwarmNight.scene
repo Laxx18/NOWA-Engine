@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene formatVersion="1.0.0" generator="NOWA-Engine">
+	<environment>
+		<sceneManager name="ExampleSMInstance" id="1626930046" type="DefaultSceneManager"/>
+		<ambient>
+			<ambientLightUpperHemisphere r="0.0225" g="0.0375" b="0.0525"/>
+			<ambientLightLowerHemisphere r="0.02925" g="0.0219375" b="0.014625" a="0.04875"/>
+			<hemisphereDir x="-0" y="-0.882948" z="-0.469471"/>
+			<envmapScale x="1"/>
+		</ambient>
+		<shadows>
+			<shadowFarDistance distance="100"/>
+			<shadowDirectionalLightExtrusionDistance distance="100"/>
+			<shadowDirLightTextureOffset offset="0.6"/>
+			<shadowColor r="0.25" g="0.25" b="0.25"/>
+			<shadowQuality index="2"/>
+		</shadows>
+		<fog mode="none" start="0" end="0" density="0"/>
+	</environment>
+	<OgreNewt solverModel="1" multithreadSolverOnSingleIsland="0" threadCount="4" desiredFps="60" defaultLinearDamping="0.1">
+		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
+	</OgreNewt>
+	<nodes>
+		<node name="SunLight" id="2842600075">
+			<position x="0" y="37.2738" z="50"/>
+			<rotation qw="0.857167" qx="-0.515038" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1286388432"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="7" name="ComponentLightDirectional" data="LightDirectionalComponent"/>
+					<property type="9" name="Diffuse" data="0.1 0.1 0.1"/>
+					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
+					<property type="6" name="PowerScale" data="0.1"/>
+					<property type="9" name="Direction" data="0 -0.88295 -0.46947"/>
+					<property type="12" name="AffectParentNode" data="true"/>
+					<property type="12" name="CastShadows" data="true"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="MainCamera" id="3605377383">
+			<position x="-10.273" y="8.31179" z="-0.424583"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="159337146"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="7" name="ComponentCamera" data="CameraComponent"/>
+					<property type="12" name="Active" data="true"/>
+					<property type="7" name="SkyBoxName" data="blue_starfield.dds"/>
+					<property type="9" name="BackgroundColor" data="0.2 0.4 0.6"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Plane_0" id="2426123498">
+			<position x="0" y="0" z="0"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Plane_0mesh" meshFile="Plane_0" castShadows="true" visible="true">
+				<subentity index="0" datablockName="GroundDirtPlane2100072714"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2100072714"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
+					<property type="7" name="ComponentDatablockPbs" data="DatablockPbsComponent"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularAsFresnelWorkflow"/>
+					<property type="6" name="Metalness" data="0.1"/>
+					<property type="6" name="Roughness" data="0.3"/>
+					<property type="10" name="Fresnel" data="0.1 0.818 0.818 0"/>
+					<property type="7" name="Brdf" data="DefaultUncorrelated"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="3.14 3.14 3.14"/>
+					<property type="10" name="BackgroundColor" data="1 1 1 1"/>
+					<property type="9" name="SpecularColor" data="0.1 0.1 0.1"/>
+					<property type="7" name="DiffuseTextureName" data="ground_dirt_gardenD.png"/>
+					<property type="7" name="NormalTextureName" data="ground_dirt_gardenN.png"/>
+					<property type="7" name="SpecularTextureName" data="ground_dirt_gardenS.png"/>
+					<property type="7" name="MetallicTextureName" data="ground_dirt_gardenS.png"/>
+					<property type="7" name="RoughnessTextureName" data="ground_dirt_gardenR.png"/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="0"/>
+					<property type="7" name="ComponentPlane" data="PlaneComponent"/>
+					<property type="6" name="Distance" data="0"/>
+					<property type="6" name="Width" data="50"/>
+					<property type="6" name="Height" data="50"/>
+					<property type="2" name="XSegments" data="2"/>
+					<property type="2" name="YSegments" data="2"/>
+					<property type="2" name="NumTexCoordSets" data="1"/>
+					<property type="6" name="UTile" data="20"/>
+					<property type="6" name="VTile" data="20"/>
+					
+					<property type="9" name="Normal" data="0 1 0"/>
+					<property type="9" name="Up" data="0 0 1"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Monster01_0" id="3048589233">
+			<position x="-2.15906" y="0.0484964" z="-9.47281"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="Monster01"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3759163986"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="7" name="ComponentAnimation" data="AnimationComponent"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="walk-02"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="12" name="ShowSkeleton" data="false"/>
+					<property type="7" name="ComponentTagPoint" data="TagPointComponent"/>
+					<property type="7" name="TagPointName" data="Bip01 L Hand"/>
+					<property type="6" name="SourceId" data="181024561"/>
+					<property type="9" name="OffsetPosition" data="-0.05 -0.05 0.05"/>
+					<property type="9" name="OffsetOrientation" data="90 90 10"/>
+					<property type="7" name="ComponentPhysicsActive" data="PhysicsActiveComponent"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -12.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 1 0"/>
+					
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="7" name="ComponentTagPoint" data="TagPointComponent"/>
+					<property type="7" name="TagPointName" data="Bip01 L Finger0"/>
+					<property type="6" name="SourceId" data="4247252218"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetOrientation" data="-85 90 180"/>
+					<property type="7" name="ComponentAiWanderComponent" data="AiWanderComponent"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="0.5"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="WanderJitter" data="10"/>
+					<property type="6" name="WanderRadius" data="1.2"/>
+					<property type="6" name="WanderDistance" data="10"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="FlashLight_0" id="3540811324">
+			<position x="-1.70876" y="0.496298" z="-9.40592"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="FlashLight_0" meshFile="FlashLight.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="FlashLightGlass"/>
+				<subentity index="1" datablockName="FlashLightTorch"/>
+				<subentity index="2" datablockName="FlashLightButton"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="181024561"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="LightSpot_0" id="3816687384">
+			<position x="-1.72803" y="0.23208" z="-9.163"/>
+			<rotation qw="-1.62921e-07" qx="0" qy="1" qz="0"/>
+			<scale x="1.09191" y="1.09191" z="3"/>
+			<entity name="LightSpot_0" meshFile="LightSpot.mesh" castShadows="false" visible="true">
+				<subentity index="0" datablockName="WhiteLine"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="4247252218"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="7" name="ComponentLightSpot" data="LightSpotComponent"/>
+					<property type="9" name="Diffuse" data="1 1 1"/>
+					<property type="9" name="Specular" data="1 1 1"/>
+					<property type="6" name="PowerScale" data="500"/>
+					<property type="6" name="AttenuationRange" data="15"/>
+					<property type="6" name="AttenuationConstant" data="0.6"/>
+					<property type="6" name="AttenuationLinear" data="0"/>
+					<property type="6" name="AttenuationQuadratic" data="0.01"/>
+					<property type="12" name="CastShadows" data="true"/>
+				</userData>
+			</entity>
+		</node>
+	</nodes>
+</scene>
+

@@ -8,6 +8,8 @@
 #include <boost/make_shared.hpp>
 
 class GameObject;
+class GameObjectController;
+
 struct lua_state;
 
 namespace NOWA

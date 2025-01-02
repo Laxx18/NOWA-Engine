@@ -1,8 +1,8 @@
 #ifndef PHYSICS_TERRAIN_COMPONENT_H
 #define PHYSICS_TERRAIN_COMPONENT_H
 
-// There is no Ogre::Terrain anymore
 #include "PhysicsComponent.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -76,7 +76,10 @@ namespace NOWA
 		void changeCollisionFaceId(unsigned int id);
 	public:
 		static const Ogre::String AttrSerialize(void) { return "Serialize"; }
-	protected:
+	private:
+		void handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventData);
+		void handleTerraChanged(NOWA::EventDataPtr eventData);
+	private:
 		Variant* serialize;
 	};
 

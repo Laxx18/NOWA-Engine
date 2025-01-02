@@ -55,7 +55,7 @@ namespace NOWA
 	
 	void FollowCamera2D::handleUpdateBounds(NOWA::EventDataPtr eventData)
 	{
-		// When a new game object has been added to the world, update the bounds for follow camera 2D
+		// When a new game object has been added to the scene, update the bounds for follow camera 2D
 		boost::shared_ptr<NOWA::EventDataBoundsUpdated> castEventData = boost::static_pointer_cast<EventDataBoundsUpdated>(eventData);
 		this->setBounds(castEventData->getCalculatedBounds().first, castEventData->getCalculatedBounds().second);
 	}

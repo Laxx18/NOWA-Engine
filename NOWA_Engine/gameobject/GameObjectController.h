@@ -771,7 +771,7 @@ namespace NOWA
 
 		/**
 		 * @brief		Starts the simulation. Internally connects data between all game objects like joints, compounds etc.
-		 * @Note		This can be called at any time, e.g. after a world has been loaded, but @stop() should be called first, if already connected.
+		 * @Note		This can be called at any time, e.g. after a scene has been loaded, but @stop() should be called first, if already connected.
 		 */
 		void start(void);
 		
@@ -979,7 +979,7 @@ namespace NOWA
 	private:
 		Ogre::String appStateName;
 
-		// active objects are not coming from the world loader and are more in the hand of the developer
+		// active objects are not coming from the scene loader and are more in the hand of the developer
 		// and they are updated() corresponding their update() function whereas passive objects are not
 		GameObjects* gameObjects;
 
