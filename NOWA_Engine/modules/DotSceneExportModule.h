@@ -35,7 +35,7 @@ namespace NOWA
 
 		void saveSceneSnapshot(const Ogre::String& filePathName, bool crypted = false);
 
-		void copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName);
+		void copyScene(const Ogre::String& oldSeneName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName);
 
 		void exportGlobalScene(const Ogre::String& sceneResourceGroupName, const Ogre::String& projectName, bool crypted = false);
 

@@ -151,7 +151,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false, filePath);
+				this->exportSceneNodes(nodesXML, doc, false, filePathName);
 				sceneXML->append_node(nodesXML);
 			}
 			
@@ -291,12 +291,11 @@ namespace NOWA
 		file.close();
 	}
 
-	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newProjectName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)
+	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)
 	{
 		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 
 		// Project is always: "projects/projectName/sceneName/sceneName.scene"
-		Ogre::String filePath = projectPath + "/" + newProjectName;
 		Ogre::String filePathName = newSceneFilePathName;
 
 		Ogre::String tempFileNameWithoutEnding = newSceneFilePathName;
@@ -334,26 +333,21 @@ namespace NOWA
 			GameObjectPtr gameObjectPtr = it->second;
 			if (nullptr != gameObjectPtr)
 			{
+				// Sorry, no copy for global game objects, because they do not belong to a scene, but to the whole project
+				if (true == gameObjectPtr->getGlobal())
+				{
+					continue;
+				}
+
 				GameObjectComponents* components = gameObjectPtr->getComponents();
 				for (auto& it = components->begin(); it != components->end(); ++it)
 				{
 					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
 					if (nullptr != luaScriptCompPtr)
 					{
-						if (false == gameObjectPtr->getGlobal())
-						{
-							Ogre::String scriptFilePathName = filePath + "/" + luaScriptCompPtr->getScriptFile();
-							size_t found = luaScriptCompPtr->getScriptFile().find(oldSeneName);
-							if (Ogre::String::npos != found)
-							{
-								Ogre::String newName = replaceAll(luaScriptCompPtr->getScriptFile(), oldSeneName, tempFileNameWithoutEnding);
-								luaScriptCompPtr->setScriptFile(newName, LuaScriptComponent::WRITE_XML);
-
-								Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
-								Ogre::String targetFilePathName = tempFilePath + "/" + newName;
-								AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(sourceFilePathName, targetFilePathName, false, gameObjectPtr->getGlobal());
-							}
-						}
+						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
+						Ogre::String targetFilePathName = tempFilePath + "/" + luaScriptCompPtr->getScriptFile();
+						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 					}
 
 					// Copy any .col file
@@ -468,7 +462,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false, filePath);
+				this->exportSceneNodes(nodesXML, doc, false, tempFilePath + "/");
 				sceneXML->append_node(nodesXML);
 			}
 
