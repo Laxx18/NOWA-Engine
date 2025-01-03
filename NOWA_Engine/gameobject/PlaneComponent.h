@@ -15,7 +15,7 @@ namespace NOWA
 
 		virtual ~PlaneComponent();
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -55,7 +55,7 @@ namespace NOWA
 		 */
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		void setDistance(Ogre::Real distance);
 

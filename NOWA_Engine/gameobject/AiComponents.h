@@ -23,7 +23,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -88,7 +88,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		* @see		GameObjectComponent::setActivated
@@ -182,7 +182,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -256,7 +256,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		void setBehaviorType(const Ogre::String& behaviorType);
 		
@@ -289,7 +289,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -346,7 +346,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -374,7 +374,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -436,7 +436,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		* @see		GameObjectComponent::setActivated
@@ -509,7 +509,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -566,7 +566,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -614,7 +614,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -676,7 +676,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -760,7 +760,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -822,7 +822,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -907,7 +907,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -964,7 +964,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -1006,7 +1006,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -1068,7 +1068,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
@@ -1116,7 +1116,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent2D::postInit
@@ -1181,7 +1181,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent2D::getInfoText
@@ -1223,7 +1223,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent2D::postInit
@@ -1285,7 +1285,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		* @see		GameObjectComponent::setActivated
@@ -1358,7 +1358,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent2D::postInit
@@ -1415,7 +1415,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent2D::writeXML
 		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 		
 		/**
 		 * @see	GameObjectComponent2D::getInfoText

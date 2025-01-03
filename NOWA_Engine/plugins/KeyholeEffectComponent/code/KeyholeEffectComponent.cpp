@@ -59,9 +59,9 @@ namespace NOWA
 		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
-	bool KeyholeEffectComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool KeyholeEffectComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == KeyholeEffectComponent::AttrRadius())
 		{
@@ -233,7 +233,7 @@ namespace NOWA
 		}
 	}
 
-	void KeyholeEffectComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void KeyholeEffectComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -242,7 +242,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));

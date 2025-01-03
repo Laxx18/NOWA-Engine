@@ -167,9 +167,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveVehicleComponent] Destructor physics active vehicle component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool PhysicsActiveVehicleComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsActiveVehicleComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OnSteerAngleChangedFunctionName")
 		{
@@ -355,7 +355,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveVehicleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsActiveVehicleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		PhysicsActiveComponent::writeCommonProperties(propertiesXML, doc);
 

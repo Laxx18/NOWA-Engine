@@ -63,9 +63,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Destructor game object title component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool GameObjectTitleComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool GameObjectTitleComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FontName")
 		{
@@ -248,7 +248,7 @@ namespace NOWA
 		}
 	}
 
-	void GameObjectTitleComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void GameObjectTitleComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -257,7 +257,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(rapidxml::node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));

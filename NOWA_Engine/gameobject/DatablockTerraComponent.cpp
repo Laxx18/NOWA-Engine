@@ -94,9 +94,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DatablockTerraComponent] Destructor datablock terra component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool DatablockTerraComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool DatablockTerraComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		// Attention: Really important for terra! The following maps must be set! for all details. E.g. detail0: diffuse, roughness, metallic else painting is not possible
 
@@ -749,7 +749,7 @@ namespace NOWA
 		}
 	}
 
-	void DatablockTerraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void DatablockTerraComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -758,7 +758,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");

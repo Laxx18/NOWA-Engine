@@ -45,9 +45,9 @@ namespace NOWA
 		this->parts.clear();
 	}
 
-	bool PhysicsActiveDestructableComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsActiveDestructableComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MeshBreakForce")
 		{
@@ -783,7 +783,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveDestructableComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsActiveDestructableComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

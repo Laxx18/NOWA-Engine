@@ -41,7 +41,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -119,7 +119,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		bool createWorkspace(void);
 
@@ -392,7 +392,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -441,7 +441,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 	protected:
 		virtual void internalCreateCompositorNode(void) override;
 
@@ -464,7 +464,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -513,7 +513,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		void setSkyBoxName(const Ogre::String& skyBoxName);
 
@@ -548,7 +548,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -598,7 +598,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		void setHardwareGammaEnabled(bool hardwareGammaEnabled);
 
@@ -642,7 +642,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -691,7 +691,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		void setCustomWorkspaceName(const Ogre::String& customWorkspaceName);
 

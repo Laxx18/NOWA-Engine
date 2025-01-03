@@ -27,7 +27,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) = 0;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) = 0;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -110,7 +110,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) = 0;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) = 0;
 
 		/**
 		 * @brief		Sets the orientation for this game object

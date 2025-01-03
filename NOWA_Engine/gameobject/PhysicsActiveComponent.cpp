@@ -115,16 +115,16 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveComponent] Destructor physics active component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool PhysicsActiveComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsActiveComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		this->parseCommonProperties(propertyElement, filename);
+		this->parseCommonProperties(propertyElement);
 
 		return true;
 	}
 
-	void PhysicsActiveComponent::parseCommonProperties(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	void PhysicsActiveComponent::parseCommonProperties(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -1398,7 +1398,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsActiveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1412,7 +1412,7 @@ namespace NOWA
 
 	void PhysicsActiveComponent::writeCommonProperties(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		GameObjectComponent::writeXML(propertiesXML, doc, "");
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));

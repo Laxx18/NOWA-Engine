@@ -163,9 +163,8 @@ namespace NOWA
 		 * @brief		Writes the attributes to XML
 		 * @param[in]	propertiesXML		The properties XML node
 		 * @param[in]	doc					The XML document
-		 * @param[in]	filePath			The file path (file path til folder without slash at the end) at which the resources are exported
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
 
 		/**
 		 * @brief		Shows some debug data, if called a second time debug data will not be shown

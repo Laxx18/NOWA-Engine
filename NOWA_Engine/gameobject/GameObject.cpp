@@ -919,7 +919,7 @@ namespace NOWA
 		}
 	}
 
-	void GameObject::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void GameObject::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1041,7 +1041,7 @@ namespace NOWA
 		
 		for (const auto& component : this->gameObjectComponents)
 		{
-			std::get<COMPONENT>(component)->writeXML(propertiesXML, doc, filePath);
+			std::get<COMPONENT>(component)->writeXML(propertiesXML, doc);
 		}
 	}
 

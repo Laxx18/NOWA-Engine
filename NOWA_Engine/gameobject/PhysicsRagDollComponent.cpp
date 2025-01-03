@@ -62,9 +62,9 @@ namespace NOWA
 		}
 	}
 
-	bool PhysicsRagDollComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsRagDollComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -463,7 +463,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsRagDollComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsRagDollComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

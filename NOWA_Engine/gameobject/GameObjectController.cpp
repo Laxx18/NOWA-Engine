@@ -127,7 +127,7 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				// Write all the game object data to stream
-				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
+				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, false);
 				if (false == this->appStateName.empty())
 					AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->deleteGameObject(gameObjectPtr->getId());
 				else
@@ -254,7 +254,7 @@ namespace NOWA
 			{
 				// Write all the game object data to stream														false -> recursive -> Do not store recursive, as the game objects are a the same level. Its not a usual scene save!
 				Ogre::String filePath = Core::getSingletonPtr()->getCurrentProjectPath();
-				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, filePath, false);
+				this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, false);
 			}
 		}
 		doc.append_node(nodesXML);

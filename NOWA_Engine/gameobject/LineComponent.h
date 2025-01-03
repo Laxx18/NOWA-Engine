@@ -28,7 +28,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -90,7 +90,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -192,7 +192,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -264,7 +264,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		 * @brief Sets the start position id for the game object, the mesh should be attached to.
@@ -341,7 +341,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -403,7 +403,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		 * @brief Sets the offset position factor at which the source game object should be attached (e.g. 2 1 1 would attach each 2x multiplicated factor)

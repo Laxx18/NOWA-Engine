@@ -44,7 +44,7 @@ namespace NOWA
 
 		virtual ~PhysicsPlayerControllerComponent();
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -65,7 +65,7 @@ namespace NOWA
 			return true;
 		}
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{

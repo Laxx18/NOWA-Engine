@@ -70,9 +70,9 @@ namespace NOWA
 		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
-	bool KeyboardRemapComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool KeyboardRemapComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -206,7 +206,7 @@ namespace NOWA
 		}
 	}
 
-	void KeyboardRemapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void KeyboardRemapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -215,7 +215,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));

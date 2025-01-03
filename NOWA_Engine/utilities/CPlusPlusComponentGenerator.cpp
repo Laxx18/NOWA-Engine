@@ -665,7 +665,7 @@ namespace NOWA
 
 		// Insert init method code
 		Ogre::String initMethod = generateInitMethod(sourceContent, className, variants);
-		pos = sourceContent.find("bool " + className + "::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)");
+		pos = sourceContent.find("bool " + className + "::init(rapidxml::xml_node<>*& propertyElement)");
 		if (pos != Ogre::String::npos)
 		{
 			size_t initPos = sourceContent.find("return true;", pos);

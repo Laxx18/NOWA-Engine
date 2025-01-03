@@ -180,9 +180,9 @@ namespace NOWA
 		this->removeWorkspace();
 	}
 
-	bool WorkspaceBaseComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool WorkspaceBaseComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BackgroundColor")
 		{
@@ -939,7 +939,7 @@ namespace NOWA
 		}
 	}
 
-	void WorkspaceBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void WorkspaceBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -948,7 +948,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
@@ -2830,9 +2830,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspacePbsComponent] Destructor workspace pbs component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool WorkspacePbsComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool WorkspacePbsComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = WorkspaceBaseComponent::init(propertyElement, filename);
+		bool success = WorkspaceBaseComponent::init(propertyElement);
 
 		return success;
 	}
@@ -2852,7 +2852,7 @@ namespace NOWA
 
 	}
 
-	void WorkspacePbsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void WorkspacePbsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -2861,7 +2861,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		WorkspaceBaseComponent::writeXML(propertiesXML, doc, filePath);
+		WorkspaceBaseComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String WorkspacePbsComponent::getClassName(void) const
@@ -3394,9 +3394,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceSkyComponent] Destructor workspace sky component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool WorkspaceSkyComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool WorkspaceSkyComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = WorkspaceBaseComponent::init(propertyElement, filename);
+		bool success = WorkspaceBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SkyBoxName")
 		{
@@ -3426,7 +3426,7 @@ namespace NOWA
 		}
 	}
 
-	void WorkspaceSkyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void WorkspaceSkyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -3435,7 +3435,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		WorkspaceBaseComponent::writeXML(propertiesXML, doc, filePath);
+		WorkspaceBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -3933,9 +3933,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceBackgroundComponent] Destructor workspace sky component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool WorkspaceBackgroundComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool WorkspaceBackgroundComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = WorkspaceBaseComponent::init(propertyElement, filename);
+		bool success = WorkspaceBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "HardwareGammaEnabled")
 		{
@@ -3965,7 +3965,7 @@ namespace NOWA
 		}
 	}
 
-	void WorkspaceBackgroundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void WorkspaceBackgroundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -3974,7 +3974,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		WorkspaceBaseComponent::writeXML(propertiesXML, doc, filePath);
+		WorkspaceBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -4678,9 +4678,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[WorkspaceCustomComponent] Destructor workspace custom component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool WorkspaceCustomComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool WorkspaceCustomComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = WorkspaceBaseComponent::init(propertyElement, filename);
+		bool success = WorkspaceBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CustomWorkspaceName")
 		{
@@ -4710,7 +4710,7 @@ namespace NOWA
 		}
 	}
 
-	void WorkspaceCustomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void WorkspaceCustomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -4719,7 +4719,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		WorkspaceBaseComponent::writeXML(propertiesXML, doc, filePath);
+		WorkspaceBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));

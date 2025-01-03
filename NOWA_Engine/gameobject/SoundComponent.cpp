@@ -40,10 +40,10 @@ namespace NOWA
 		this->destroySound();
 	}
 
-	bool SoundComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool SoundComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		bool stream = false;
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -297,7 +297,7 @@ namespace NOWA
 		}
 	}
 
-	void SoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void SoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// Does not work correctly at the moment, because to less parameters are member functions, like stream etc.
 		// 2 = int
@@ -308,7 +308,7 @@ namespace NOWA
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
 
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));

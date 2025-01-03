@@ -746,7 +746,7 @@ namespace NOWA
 					auto& gameObjectCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponentByIndex(this->index));
 					if (nullptr != gameObjectCompPtr)
 					{
-						gameObjectCompPtr->writeXML(propertyXML, doc, "");
+						gameObjectCompPtr->writeXML(propertyXML, doc);
 						gameObjectPtr->deleteComponentByIndex(this->index);
 					}
 				}
@@ -854,7 +854,7 @@ namespace NOWA
 				if (nullptr != gameObjectPtr)
 				{
 					// Write all the game object data to stream
-					this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, "", false);
+					this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, false);
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
 				}
 				else

@@ -77,7 +77,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectComponent] Reseting gameobject smart pointer");
 	}
 
-	bool GameObjectComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& file)
+	bool GameObjectComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		// One propagation must always be done, else an recursion does occur (if there is a component, that has nothing to load, this default function is called)
 		propertyElement = propertyElement->next_sibling("property");
@@ -163,7 +163,7 @@ namespace NOWA
 		}
 	}
 
-	void GameObjectComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void GameObjectComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

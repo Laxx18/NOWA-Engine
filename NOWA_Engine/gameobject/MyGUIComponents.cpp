@@ -132,9 +132,9 @@ namespace NOWA
 		
 	}
 
-	bool MyGUIComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Id")
 		{
@@ -431,7 +431,7 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -440,7 +440,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -951,9 +951,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIWindowComponent] Destructor MyGUI window component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIWindowComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIWindowComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Movable")
 		{
@@ -1077,9 +1077,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIWindowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIWindowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -1164,9 +1164,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUITextComponent] Destructor MyGUI text component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUITextComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUITextComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Caption")
 		{
@@ -1364,9 +1364,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUITextComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUITextComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -1611,9 +1611,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIButtonComponent] Destructor MyGUI button component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIButtonComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIButtonComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Caption")
 		{
@@ -1770,9 +1770,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIButtonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIButtonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -1913,9 +1913,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUICheckBoxComponent] Destructor MyGUI checkbox component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUICheckBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUICheckBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Caption")
 		{
@@ -2075,9 +2075,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUICheckBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUICheckBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -2248,9 +2248,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIImageBoxComponent] Destructor MyGUI image box component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIImageBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIImageBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ImageFileName")
 		{
@@ -2497,9 +2497,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIImageBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIImageBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -2673,9 +2673,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIProgressBarComponent] Destructor MyGUI progress bar component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIProgressBarComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIProgressBarComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Value")
 		{
@@ -2802,9 +2802,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIProgressBarComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIProgressBarComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -2928,9 +2928,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIListBoxComponent] Destructor MyGUI list box component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIListBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIListBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ItemHeight")
 		{
@@ -3202,9 +3202,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIListBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIListBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -3547,9 +3547,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIComboBoxComponent] Destructor MyGUI combo box component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIComboBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIComboBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIComponent::init(propertyElement, filename);
+		bool success = MyGUIComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ItemHeight")
 		{
@@ -3814,9 +3814,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIComboBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIComboBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -4216,9 +4216,9 @@ namespace NOWA
 		}
 	}
 
-	bool MyGUIMessageBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIMessageBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = GameObjectComponent::init(propertyElement, filename);
+		bool success = GameObjectComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Title")
 		{
@@ -4341,9 +4341,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIMessageBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIMessageBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -4562,9 +4562,9 @@ namespace NOWA
 		
 	}
 
-	bool MyGUITrackComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUITrackComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -4775,7 +4775,7 @@ namespace NOWA
 		}
 	}
 
-	void MyGUITrackComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUITrackComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -4784,7 +4784,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));

@@ -42,9 +42,9 @@ namespace NOWA
 		// Thus its done in onRemoveComponent
 	}
 
-	bool AiComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -230,7 +230,7 @@ namespace NOWA
 		}
 	}
 
-	void AiComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -239,7 +239,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -515,9 +515,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiMoveComponent] Destructor ai move component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiMoveComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiMoveComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BehaviorType")
 		{
@@ -618,9 +618,9 @@ namespace NOWA
 		}
 	}
 
-	void AiMoveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiMoveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -678,9 +678,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiMoveRandomlyComponent] Destructor ai move randomly component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiMoveRandomlyComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiMoveRandomlyComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		return success;
 	}
@@ -731,9 +731,9 @@ namespace NOWA
 		AiComponent::actualizeValue(attribute);
 	}
 
-	void AiMoveRandomlyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiMoveRandomlyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String AiMoveRandomlyComponent::getClassName(void) const
@@ -769,9 +769,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiPathFollowComponent] Destructor ai path follow component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiPathFollowComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiPathFollowComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaypointsCount")
 		{
@@ -955,9 +955,9 @@ namespace NOWA
 		}
 	}
 
-	void AiPathFollowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiPathFollowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -1134,9 +1134,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiWanderComponent] Destructor ai wander component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiWanderComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiWanderComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WanderJitter")
 		{
@@ -1227,9 +1227,9 @@ namespace NOWA
 		}
 	}
 
-	void AiWanderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiWanderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -1326,9 +1326,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiFlockingComponent] Destructor ai flocking component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiFlockingComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiFlockingComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "NeighborDistance")
 		{
@@ -1520,9 +1520,9 @@ namespace NOWA
 		}
 	}
 
-	void AiFlockingComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiFlockingComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -1723,9 +1723,9 @@ namespace NOWA
 		this->targetGameObject = nullptr;
 	}
 
-	bool AiRecastPathNavigationComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiRecastPathNavigationComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Repeat")
 		{
@@ -1904,9 +1904,9 @@ namespace NOWA
 		}
 	}
 
-	void AiRecastPathNavigationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiRecastPathNavigationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2098,9 +2098,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiObstacleAvoidanceComponent] Destructor ai obstacle avoidance component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiObstacleAvoidanceComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiObstacleAvoidanceComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AvoidanceDistance")
 		{
@@ -2180,9 +2180,9 @@ namespace NOWA
 		}
 	}
 
-	void AiObstacleAvoidanceComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiObstacleAvoidanceComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2250,9 +2250,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiHideComponent] Destructor ai hide component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiHideComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiHideComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetId")
 		{
@@ -2358,9 +2358,9 @@ namespace NOWA
 		}
 	}
 
-	void AiHideComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiHideComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2443,9 +2443,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiMoveComponent2D] Destructor ai move component 2D for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiMoveComponent2D::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiMoveComponent2D::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "BehaviorType")
 		{
@@ -2546,9 +2546,9 @@ namespace NOWA
 		}
 	}
 
-	void AiMoveComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiMoveComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -2616,9 +2616,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiPathFollowComponent2D] Destructor ai path follow component 2D for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiPathFollowComponent2D::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiPathFollowComponent2D::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WaypointsCount")
 		{
@@ -2801,9 +2801,9 @@ namespace NOWA
 		}
 	}
 
-	void AiPathFollowComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiPathFollowComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2979,9 +2979,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiWanderComponent2D] Destructor ai wander component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool AiWanderComponent2D::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool AiWanderComponent2D::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = AiComponent::init(propertyElement, filename);
+		bool success = AiComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "WanderJitter")
 		{
@@ -3072,9 +3072,9 @@ namespace NOWA
 		}
 	}
 
-	void AiWanderComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void AiWanderComponent2D::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		AiComponent::writeXML(propertiesXML, doc, filePath);
+		AiComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real

@@ -155,9 +155,9 @@ namespace NOWA
 		this->deleteDebugData();
 	}
 
-	bool PlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -428,7 +428,7 @@ namespace NOWA
 		}
 	}
 
-	void PlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -437,7 +437,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -794,9 +794,9 @@ namespace NOWA
 		AppStateManager::getSingletonPtr()->getParticleUniverseModule()->removeParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
 	}
 
-	bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PlayerControllerJumpNRunComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = PlayerControllerComponent::init(propertyElement, filename);
+		bool success = PlayerControllerComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JumpForce")
 		{
@@ -1098,9 +1098,9 @@ namespace NOWA
 		}
 	}
 
-	void PlayerControllerJumpNRunComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PlayerControllerJumpNRunComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc, filePath);
+		PlayerControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -1289,9 +1289,9 @@ namespace NOWA
 		}
 	}
 
-	bool PlayerControllerJumpNRunLuaComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PlayerControllerJumpNRunLuaComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = PlayerControllerComponent::init(propertyElement, filename);
+		bool success = PlayerControllerComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartStateName")
 		{
@@ -1399,9 +1399,9 @@ namespace NOWA
 		}
 	}
 
-	void PlayerControllerJumpNRunLuaComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PlayerControllerJumpNRunLuaComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc, filePath);
+		PlayerControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -1475,9 +1475,9 @@ namespace NOWA
 		}*/
 	}
 
-	bool PlayerControllerClickToPointComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PlayerControllerClickToPointComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = PlayerControllerComponent::init(propertyElement, filename);
+		bool success = PlayerControllerComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Categories")
 		{
@@ -1748,9 +1748,9 @@ namespace NOWA
 		}
 	}
 
-	void PlayerControllerClickToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PlayerControllerClickToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		PlayerControllerComponent::writeXML(propertiesXML, doc, filePath);
+		PlayerControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));

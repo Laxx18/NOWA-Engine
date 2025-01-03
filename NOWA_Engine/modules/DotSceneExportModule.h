@@ -48,17 +48,17 @@ namespace NOWA
 		void exportOgreRecast(rapidxml::xml_node<>* xmlNode, rapidxml::xml_document<>& doc);
 		// void exportMainLight(rapidxml::xml_node<>* lightXML, rapidxml::xml_document<>& doc);
 		// void exportMainCamera(rapidxml::xml_node<>* cameraXML, rapidxml::xml_document<>& doc);
-		void exportSceneNodes(rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObjects, const Ogre::String& filePath);
+		void exportSceneNodes(rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObjects);
 
-		void exportNode(Ogre::Node* ogreNode, rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath, bool recursive = true);
+		void exportNode(Ogre::Node* ogreNode, rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObject, bool recursive = true);
 
-		void exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity,  rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		void exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity,  rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
-		void exportItem(GameObject* gameObject, Ogre::Item* item, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		void exportItem(GameObject* gameObject, Ogre::Item* item, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
-		void exportManualObject(GameObject* gameObject, Ogre::ManualObject* manualObject, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		void exportManualObject(GameObject* gameObject, Ogre::ManualObject* manualObject, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
-		void exportTerra(GameObject* gameObject, Ogre::Terra* terra, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		void exportTerra(GameObject* gameObject, Ogre::Terra* terra, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc);
 
 		void exportGroup(const std::vector<unsigned long>& gameObjectIds, const Ogre::String& fileName, const Ogre::String& resourceGroupName);
 

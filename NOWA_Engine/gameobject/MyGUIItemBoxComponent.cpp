@@ -506,13 +506,13 @@ namespace NOWA
 		}
 	}
 
-	bool MyGUIItemBoxComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIItemBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		// Tells the system, that this component shall be fully restored, because its to complex to restore just some attributes
 		// This is usually the case if there is a list of attributes involved
 		this->customDataString = GameObjectComponent::AttrCustomDataNewCreation();
 
-		bool success = MyGUIWindowComponent::init(propertyElement, filename);
+		bool success = MyGUIWindowComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ResourceLocationName")
 		{
@@ -808,9 +808,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIItemBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIItemBoxComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIWindowComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIWindowComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real

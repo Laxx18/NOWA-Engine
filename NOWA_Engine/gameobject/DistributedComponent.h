@@ -40,7 +40,7 @@ namespace NOWA
 
 		static DistributedComponent* replicateGameObject(Ogre::String& name, RakNet::ReplicaManager3* replicaManager3);
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
@@ -80,7 +80,7 @@ namespace NOWA
 		 */
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual void WriteAllocationID(RakNet::Connection_RM3* destinationConnection, RakNet::BitStream* allocationIdBitstream) const override;
 

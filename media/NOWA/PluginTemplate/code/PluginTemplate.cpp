@@ -41,7 +41,7 @@ namespace NOWA
 		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
-	bool PluginTemplate::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PluginTemplate::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement, filename);
 
@@ -146,7 +146,7 @@ namespace NOWA
 		}*/
 	}
 
-	void PluginTemplate::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PluginTemplate::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

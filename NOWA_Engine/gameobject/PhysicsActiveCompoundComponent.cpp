@@ -26,9 +26,9 @@ namespace NOWA
 		this->collisionDataList.clear();
 	}
 
-	bool PhysicsActiveCompoundComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsActiveCompoundComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		// either load parts from mesh compound config file, the parts will have its correct position and rotation offset
 		if (propertyElement)
@@ -246,7 +246,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveCompoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsActiveCompoundComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

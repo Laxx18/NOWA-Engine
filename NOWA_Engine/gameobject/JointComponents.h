@@ -27,7 +27,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::init
 		*/
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		* @see		GameObjectComponent::postInit
@@ -114,7 +114,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
 
 		virtual bool createJoint(const Ogre::Vector3& customJointPosition = Ogre::Vector3::ZERO);
 
@@ -275,7 +275,7 @@ namespace NOWA
 
 		virtual ~JointHingeComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -297,7 +297,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -407,7 +407,7 @@ namespace NOWA
 
 		virtual ~JointHingeActuatorComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -429,7 +429,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -551,7 +551,7 @@ namespace NOWA
 
 		virtual ~JointBallAndSocketComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -573,7 +573,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -662,7 +662,7 @@ namespace NOWA
 
 		virtual ~JointPointToPointComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -684,7 +684,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -739,7 +739,7 @@ namespace NOWA
 
 	//	virtual ~JointControlledBallAndSocketComponent() override;
 
-	//	virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+	//	virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 	//	virtual bool postInit(void) override;
 
@@ -759,7 +759,7 @@ namespace NOWA
 
 	//	virtual void actualizeValue(Variant* attribute) override;
 
-	//	virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+	//	virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 	//	static unsigned int getStaticClassId(void)
 	//	{
@@ -822,7 +822,7 @@ namespace NOWA
 
 	//	virtual ~RagDollMotorDofComponent() override;
 
-	//	virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+	//	virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 	//	virtual bool postInit(void) override;
 
@@ -842,7 +842,7 @@ namespace NOWA
 
 	//	virtual void actualizeValue(Variant* attribute) override;
 
-	//	virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+	//	virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 	//	static unsigned int getStaticClassId(void)
 	//	{
@@ -919,7 +919,7 @@ namespace NOWA
 
 		virtual ~JointPinComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -939,7 +939,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -984,7 +984,7 @@ namespace NOWA
 
 		virtual ~JointPlaneComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1004,7 +1004,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -1057,7 +1057,7 @@ namespace NOWA
 
 		virtual ~JointSpringComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1077,7 +1077,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 		
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1152,7 +1152,7 @@ namespace NOWA
 
 		virtual ~JointAttractorComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1172,7 +1172,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1230,7 +1230,7 @@ namespace NOWA
 
 		virtual ~JointCorkScrewComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1252,7 +1252,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -1333,7 +1333,7 @@ namespace NOWA
 
 		virtual ~JointPassiveSliderComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1353,7 +1353,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -1442,7 +1442,7 @@ namespace NOWA
 
 		virtual ~JointSliderActuatorComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1462,7 +1462,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -1574,7 +1574,7 @@ namespace NOWA
 
 		virtual ~JointSlidingContactComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1594,7 +1594,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -1694,7 +1694,7 @@ namespace NOWA
 
 		virtual ~JointActiveSliderComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1714,7 +1714,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual void setActivated(bool activated) override;
 
@@ -1805,7 +1805,7 @@ namespace NOWA
 
 		virtual ~JointMathSliderComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1825,7 +1825,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1923,7 +1923,7 @@ namespace NOWA
 
 		virtual ~JointKinematicComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -1943,7 +1943,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -2064,7 +2064,7 @@ namespace NOWA
 
 		virtual ~JointTargetTransformComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2084,7 +2084,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -2139,7 +2139,7 @@ namespace NOWA
 
 		virtual ~JointPathFollowComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2159,7 +2159,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -2254,7 +2254,7 @@ namespace NOWA
 
 		virtual ~JointDryRollingFrictionComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2274,7 +2274,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2325,7 +2325,7 @@ namespace NOWA
 
 		virtual ~JointGearComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2345,7 +2345,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2390,7 +2390,7 @@ namespace NOWA
 
 		virtual ~JointRackAndPinionComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2410,7 +2410,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2455,7 +2455,7 @@ namespace NOWA
 
 		virtual ~JointWormGearComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2475,7 +2475,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2526,7 +2526,7 @@ namespace NOWA
 
 		virtual ~JointPulleyComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2546,7 +2546,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -2591,7 +2591,7 @@ namespace NOWA
 
 		virtual ~JointUniversalComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2611,7 +2611,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -2750,7 +2750,7 @@ namespace NOWA
 
 		virtual ~JointUniversalActuatorComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2772,7 +2772,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -2910,7 +2910,7 @@ namespace NOWA
 
 		virtual ~Joint6DofComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -2930,7 +2930,7 @@ namespace NOWA
 		
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -3024,7 +3024,7 @@ namespace NOWA
 
 		virtual ~JointMotorComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -3046,7 +3046,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -3122,7 +3122,7 @@ namespace NOWA
 
 		virtual ~JointWheelComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -3144,7 +3144,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 
@@ -3212,7 +3212,7 @@ namespace NOWA
 
 		virtual ~JointFlexyPipeHandleComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -3232,7 +3232,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -3281,7 +3281,7 @@ namespace NOWA
 
 		virtual ~JointFlexyPipeSpinnerComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -3301,7 +3301,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -3340,7 +3340,7 @@ namespace NOWA
 
 		virtual ~JointVehicleTireComponent() override;
 
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		virtual bool postInit(void) override;
 
@@ -3367,7 +3367,7 @@ namespace NOWA
 
 		virtual void actualizeValue(Variant* attribute) override;
 
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual Ogre::Vector3 getUpdatedJointPosition(void) override;
 

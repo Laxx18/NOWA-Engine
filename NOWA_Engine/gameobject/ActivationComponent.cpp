@@ -59,7 +59,7 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
-	void ActivationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void ActivationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// Note string is parsed for Component*, hence ComponentAiLua, but the real class name is ActivationComponent
 		
@@ -70,7 +70,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 	}
 
 	void ActivationComponent::setActivated(bool activated)

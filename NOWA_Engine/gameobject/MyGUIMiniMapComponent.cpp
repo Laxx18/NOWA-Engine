@@ -128,9 +128,9 @@ namespace NOWA
 		}
 	}
 
-	bool MyGUIMiniMapComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIMiniMapComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIWindowComponent::init(propertyElement, filename);
+		bool success = MyGUIWindowComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartPosition")
 		{
@@ -770,9 +770,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIMiniMapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIMiniMapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIWindowComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIWindowComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real

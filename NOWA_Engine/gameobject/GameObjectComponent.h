@@ -23,10 +23,9 @@ namespace NOWA
 		 * @note		Only create new variants in init function, if they do not exist, do not create each time new variants here,
 		 *				because init is called x-times, if snapshot of game objects is created and values reset.
 		 * @param[in]	propertyElement	The property element to parse
-		 * @param[in]	file			The optional file, if specified
 		 * @return		success			true, if all the elements could be parsed, else false
 		 */
-		virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& file = Ogre::String());
+		virtual bool init(rapidxml::xml_node<>*& propertyElement);
 		
 		/**
 		 * @brief		Post initializes the component. At this time its game object owner is available. This is called when a game object component is loaded or newly created.
@@ -115,7 +114,7 @@ namespace NOWA
 		 * @param[in]	doc				The XML document
 		 * @param[in]	filePath		The file path (file path til folder without slash at the end) at which the resources are exported
 		 */
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath);
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc);
 
 		/**
 		 * @brief	Gets the component name

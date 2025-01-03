@@ -705,7 +705,7 @@ namespace NOWA
 			GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
 			if (nullptr != componentPtr)
 			{
-				if (false == componentPtr->init(propertyElement, filename))
+				if (false == componentPtr->init(propertyElement))
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Failed to initialize component: " + name);
 					return nullptr;
@@ -728,7 +728,7 @@ namespace NOWA
 		}
 		else
 		{
-			existingGameObjectCompPtr->init(propertyElement, filename);
+			existingGameObjectCompPtr->init(propertyElement);
 		}
 
 		return existingGameObjectCompPtr;

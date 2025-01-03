@@ -151,7 +151,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false, filePathName);
+				this->exportSceneNodes(nodesXML, doc, false);
 				sceneXML->append_node(nodesXML);
 			}
 			
@@ -263,7 +263,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (true)! Also global!
-				this->exportSceneNodes(nodesXML, doc, true, tempFilePathName);
+				this->exportSceneNodes(nodesXML, doc, true);
 				sceneXML->append_node(nodesXML);
 			}
 
@@ -462,7 +462,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false, tempFilePath + "/");
+				this->exportSceneNodes(nodesXML, doc, false);
 				sceneXML->append_node(nodesXML);
 			}
 
@@ -519,7 +519,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export global game objects (true)
-				this->exportSceneNodes(nodesXML, doc, true, filePath);
+				this->exportSceneNodes(nodesXML, doc, true);
 				sceneXML->append_node(nodesXML);
 			}
 		}
@@ -1069,13 +1069,13 @@ namespace NOWA
 	//	}
 	//}
 
-	void DotSceneExportModule::exportSceneNodes(xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObjects, const Ogre::String& filePath)
+	void DotSceneExportModule::exportSceneNodes(xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObjects)
 	{
 		// Recursive call
-		this->exportNode(this->sceneManager->getRootSceneNode(), nodesXML, doc, exportGlobalGameObjects, filePath);
+		this->exportNode(this->sceneManager->getRootSceneNode(), nodesXML, doc, exportGlobalGameObjects);
 	}
 
-	void DotSceneExportModule::exportNode(Ogre::Node* ogreNode, xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObject, const Ogre::String& filePath, bool recursive)
+	void DotSceneExportModule::exportNode(Ogre::Node* ogreNode, xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObject, bool recursive)
 	{
 // Attention: Check this! As ragdoll will store lots of nodes without name (bones)
 		Ogre::String nodeName = ogreNode->getName();
@@ -1110,7 +1110,7 @@ namespace NOWA
 					while (nodeIt.hasMoreElements())
 					{
 						//go through all objects recursive that are attached to the scenenodes
-						this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
+						this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, recursive);
 					}
 					return;
 				}
@@ -1122,7 +1122,7 @@ namespace NOWA
 				while (nodeIt.hasMoreElements())
 				{
 					//go through all objects recursive that are attached to the scenenodes
-					this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
+					this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, recursive);
 				}
 				return;
 			}
@@ -1209,13 +1209,13 @@ namespace NOWA
 				if (nullptr != entity)
 				{
 					foundType = true;
-					this->exportEntity(gameObject, entity, nodeXML, doc, filePath);
+					this->exportEntity(gameObject, entity, nodeXML, doc);
 				}
 				Ogre::Item* item = gameObject->getMovableObject<Ogre::Item>();
 				if (nullptr != item)
 				{
 					foundType = true;
-					this->exportItem(gameObject, item, nodeXML, doc, filePath);
+					this->exportItem(gameObject, item, nodeXML, doc);
 				}
 				if (false == foundType)
 				{
@@ -1223,7 +1223,7 @@ namespace NOWA
 					if (nullptr != manualObject)
 					{
 						foundType = true;
-						this->exportManualObject(gameObject, manualObject, nodeXML, doc, filePath);
+						this->exportManualObject(gameObject, manualObject, nodeXML, doc);
 					}
 				}
 				if (false == foundType)
@@ -1232,7 +1232,7 @@ namespace NOWA
 					if (nullptr != terra)
 					{
 						foundType = true;
-						this->exportTerra(gameObject, terra, nodeXML, doc, filePath);
+						this->exportTerra(gameObject, terra, nodeXML, doc);
 					}
 				}
 			}
@@ -1251,11 +1251,11 @@ namespace NOWA
 		while (nodeIt.hasMoreElements())
 		{
 			//go through all objects recursive that are attached to the scenenodes
-			this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, filePath, recursive);
+			this->exportNode(nodeIt.getNext(), nodesXML, doc, exportGlobalGameObject, recursive);
 		}
 	}
 
-	void DotSceneExportModule::exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void DotSceneExportModule::exportEntity(GameObject* gameObject, Ogre::v1::Entity* entity, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
 	{
 		// Entity
 		{
@@ -1294,13 +1294,13 @@ namespace NOWA
 			// UserData
 			{
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
-				gameObject->writeXML(userDataXML, doc, filePath);
+				gameObject->writeXML(userDataXML, doc);
 				entityXML->append_node(userDataXML);
 			}
 		}
 	}
 
-	void DotSceneExportModule::exportItem(GameObject* gameObject, Ogre::Item* item, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void DotSceneExportModule::exportItem(GameObject* gameObject, Ogre::Item* item, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
 	{
 		// Entity
 		{
@@ -1339,13 +1339,13 @@ namespace NOWA
 			// UserData
 			{
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
-				gameObject->writeXML(userDataXML, doc, filePath);
+				gameObject->writeXML(userDataXML, doc);
 				entityXML->append_node(userDataXML);
 			}
 		}
 	}
 
-	void DotSceneExportModule::exportManualObject(GameObject* gameObject, Ogre::ManualObject* manualObject, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void DotSceneExportModule::exportManualObject(GameObject* gameObject, Ogre::ManualObject* manualObject, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
 	{
 		// ManualObject
 		{
@@ -1362,13 +1362,13 @@ namespace NOWA
 			// UserData
 			{
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
-				gameObject->writeXML(userDataXML, doc, filePath);
+				gameObject->writeXML(userDataXML, doc);
 				manualObjectXML->append_node(userDataXML);
 			}
 		}
 	}
 
-	void DotSceneExportModule::exportTerra(GameObject* gameObject, Ogre::Terra* terra, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void DotSceneExportModule::exportTerra(GameObject* gameObject, Ogre::Terra* terra, rapidxml::xml_node<>* nodeXML, rapidxml::xml_document<>& doc)
 	{
 		// Terra
 		{
@@ -1382,7 +1382,7 @@ namespace NOWA
 			// UserData
 			{
 				xml_node<>* userDataXML = doc.allocate_node(node_element, "userData");
-				gameObject->writeXML(userDataXML, doc, filePath);
+				gameObject->writeXML(userDataXML, doc);
 				terraXML->append_node(userDataXML);
 			}
 		}
@@ -1522,7 +1522,7 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				// Write all the game object data to stream (may also be a global game object)
-				this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), filePath, false);
+				this->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, gameObjectPtr->getGlobal(), false);
 			}
 		}
 		doc.append_node(nodesXML);

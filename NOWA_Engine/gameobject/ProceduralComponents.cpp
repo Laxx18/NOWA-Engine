@@ -22,9 +22,9 @@ namespace NOWA
 
 	}
 
-	bool ProceduralComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool ProceduralComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		return true;
 	}
@@ -53,7 +53,7 @@ namespace NOWA
 		GameObjectComponent::actualizeValue(attribute);
 	}
 
-	void ProceduralComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void ProceduralComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -62,7 +62,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String ProceduralComponent::getClassName(void) const
@@ -163,9 +163,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralPrimitiveComponent] Destructor ai move component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool ProceduralPrimitiveComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool ProceduralPrimitiveComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = ProceduralComponent::init(propertyElement, filename);
+		bool success = ProceduralComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DataBlockName")
 		{
@@ -517,7 +517,7 @@ namespace NOWA
 		}
 	}
 
-	void ProceduralPrimitiveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void ProceduralPrimitiveComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -527,7 +527,7 @@ namespace NOWA
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
 
-		ProceduralComponent::writeXML(propertiesXML, doc, filePath);
+		ProceduralComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -1631,9 +1631,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProceduralBooleanComponent] Destructor ai move component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool ProceduralBooleanComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool ProceduralBooleanComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = ProceduralComponent::init(propertyElement, filename);
+		bool success = ProceduralComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetId1")
 		{
@@ -1726,7 +1726,7 @@ namespace NOWA
 		}
 	}
 
-	void ProceduralBooleanComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void ProceduralBooleanComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1736,7 +1736,7 @@ namespace NOWA
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
 
-		ProceduralComponent::writeXML(propertiesXML, doc, filePath);
+		ProceduralComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));

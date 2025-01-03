@@ -27,11 +27,11 @@ namespace NOWA
 
 	}
 
-	bool CompositorEffectBaseComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectBaseComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CompositorEffectBaseComponent::handleWorkspaceComponentDeleted), EventDataDeleteWorkspaceComponent::getStaticEventType());
 
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -95,7 +95,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -233,9 +233,9 @@ namespace NOWA
 		this->passes = { {nullptr, nullptr, nullptr, nullptr} };
 	}
 
-	bool CompositorEffectBloomComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectBloomComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ImageWeight")
 		{
@@ -342,7 +342,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectBloomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectBloomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -351,7 +351,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -422,9 +422,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectGlassComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectGlassComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GlassWeight")
 		{
@@ -488,7 +488,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectGlassComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectGlassComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -497,7 +497,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -555,9 +555,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectOldTvComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectOldTvComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "DistortionFrequency")
 		{
@@ -705,7 +705,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectOldTvComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectOldTvComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -714,7 +714,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -926,9 +926,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectBlackAndWhiteComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectBlackAndWhiteComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Color")
 		{
@@ -988,7 +988,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectBlackAndWhiteComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectBlackAndWhiteComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -997,7 +997,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
@@ -1048,9 +1048,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectColorComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectColorComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Color")
 		{
@@ -1110,7 +1110,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectColorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectColorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1119,7 +1119,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
@@ -1169,9 +1169,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectEmbossedComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectEmbossedComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Weight")
 		{
@@ -1231,7 +1231,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectEmbossedComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectEmbossedComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1240,7 +1240,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -1292,9 +1292,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectSharpenEdgesComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectSharpenEdgesComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Weight")
 		{
@@ -1354,7 +1354,7 @@ namespace NOWA
 		}
 	}
 
-	void CompositorEffectSharpenEdgesComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectSharpenEdgesComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1363,7 +1363,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -1412,9 +1412,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectDepthOfFieldComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectDepthOfFieldComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		return true;
 	}
@@ -1460,7 +1460,7 @@ namespace NOWA
 		CompositorEffectBaseComponent::actualizeValue(attribute);
 	}
 
-	void CompositorEffectDepthOfFieldComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectDepthOfFieldComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1469,7 +1469,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String CompositorEffectDepthOfFieldComponent::getClassName(void) const
@@ -1497,9 +1497,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectHeightFogComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectHeightFogComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		return true;
 	}
@@ -1545,7 +1545,7 @@ namespace NOWA
 		CompositorEffectBaseComponent::actualizeValue(attribute);
 	}
 
-	void CompositorEffectHeightFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectHeightFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1554,7 +1554,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String CompositorEffectHeightFogComponent::getClassName(void) const
@@ -1582,9 +1582,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectFogComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectFogComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		return true;
 	}
@@ -1630,7 +1630,7 @@ namespace NOWA
 		CompositorEffectBaseComponent::actualizeValue(attribute);
 	}
 
-	void CompositorEffectFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectFogComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1639,7 +1639,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String CompositorEffectFogComponent::getClassName(void) const
@@ -1667,9 +1667,9 @@ namespace NOWA
 		this->pass = nullptr;
 	}
 
-	bool CompositorEffectLightShaftsComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CompositorEffectLightShaftsComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CompositorEffectBaseComponent::init(propertyElement, filename);
+		bool success = CompositorEffectBaseComponent::init(propertyElement);
 
 		return true;
 	}
@@ -1715,7 +1715,7 @@ namespace NOWA
 		CompositorEffectBaseComponent::actualizeValue(attribute);
 	}
 
-	void CompositorEffectLightShaftsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CompositorEffectLightShaftsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -1724,7 +1724,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		CompositorEffectBaseComponent::writeXML(propertiesXML, doc, filePath);
+		CompositorEffectBaseComponent::writeXML(propertiesXML, doc);
 	}
 
 	Ogre::String CompositorEffectLightShaftsComponent::getClassName(void) const

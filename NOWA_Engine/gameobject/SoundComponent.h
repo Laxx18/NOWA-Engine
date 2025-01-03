@@ -20,7 +20,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::init
 		 */
-		/*EXPORTED*/ virtual bool init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename = Ogre::String()) override;
+		/*EXPORTED*/ virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
 		/**
 		 * @see		GameObjectComponent::postInit
@@ -88,7 +88,7 @@ namespace NOWA
 		/**
 		 * @see		GameObjectComponent::writeXML
 		 */
-		/*EXPORTED*/ virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath) override;
+		/*EXPORTED*/ virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		/**
 		 * @see		GameObjectComponent::setActivated

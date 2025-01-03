@@ -37,9 +37,9 @@ namespace NOWA
 			+ this->gameObjectPtr->getName());
 	}
 
-	bool PhysicsActiveKinematicComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsActiveKinematicComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
 
@@ -143,7 +143,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsActiveKinematicComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsActiveKinematicComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		PhysicsActiveComponent::writeCommonProperties(propertiesXML, doc);
 		

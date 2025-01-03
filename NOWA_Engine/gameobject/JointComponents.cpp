@@ -355,9 +355,9 @@ namespace NOWA
 		return "GameObjectComponent";
 	}
 
-	bool JointComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointComponent::init(xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointType")
 		{
@@ -435,7 +435,7 @@ namespace NOWA
 		}
 	}
 
-	void JointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -444,7 +444,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
@@ -903,9 +903,9 @@ namespace NOWA
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointHingeComponent] Destroyed");
 	}
 
-	bool JointHingeComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointHingeComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -1322,9 +1322,9 @@ namespace NOWA
 		}
 	}
 
-	void JointHingeComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointHingeComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -1811,9 +1811,9 @@ namespace NOWA
 		}
 	}
 
-	bool JointHingeActuatorComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointHingeActuatorComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -1889,9 +1889,9 @@ namespace NOWA
 		return true;
 	}
 
-	void JointHingeActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointHingeActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2413,9 +2413,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointBallAndSocketComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointBallAndSocketComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -2500,9 +2500,9 @@ namespace NOWA
 		return "JointComponent";
 	}
 
-	void JointBallAndSocketComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointBallAndSocketComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -2891,9 +2891,9 @@ namespace NOWA
 	//	return clonedJointCompPtr;
 	//}
 
-	//bool JointControlledBallAndSocketComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	//bool JointControlledBallAndSocketComponent::init(xml_node<>*& propertyElement)
 	//{
-	//	JointComponent::init(propertyElement, filename);
+	//	JointComponent::init(propertyElement);
 	//	
 	//	if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 	//	{
@@ -2962,9 +2962,9 @@ namespace NOWA
 
 	//}
 
-	//void JointControlledBallAndSocketComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	//void JointControlledBallAndSocketComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	//{
-	//	JointComponent::writeXML(propertiesXML, doc, filePath);
+	//	JointComponent::writeXML(propertiesXML, doc);
 
 	//	// 2 = int
 	//	// 6 = real
@@ -3203,9 +3203,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPointToPointComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPointToPointComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition1")
 		{
@@ -3265,9 +3265,9 @@ namespace NOWA
 
 	}
 
-	void JointPointToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPointToPointComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -3500,9 +3500,9 @@ namespace NOWA
 //		return clonedJointCompPtr;
 //	}
 //
-//	bool RagDollMotorDofComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+//	bool RagDollMotorDofComponent::init(xml_node<>*& propertyElement)
 //	{
-//		JointComponent::init(propertyElement, filename);
+//		JointComponent::init(propertyElement);
 //		
 //		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 //		{
@@ -3586,9 +3586,9 @@ namespace NOWA
 
 //	}
 //
-//	void RagDollMotorDofComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+//	void RagDollMotorDofComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 //	{
-//		JointComponent::writeXML(propertiesXML, doc, filePath);
+//		JointComponent::writeXML(propertiesXML, doc);
 //
 //		// 2 = int
 //		// 6 = real
@@ -3917,9 +3917,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPinComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPinComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointPin")
 		{
@@ -3968,9 +3968,9 @@ namespace NOWA
 
 	}
 
-	void JointPinComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPinComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -4085,9 +4085,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPlaneComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPlaneComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -4141,9 +4141,9 @@ namespace NOWA
 
 	}
 
-	void JointPlaneComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPlaneComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -4347,9 +4347,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointSpringComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointSpringComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointSpringStrength")
 		{
@@ -4432,9 +4432,9 @@ namespace NOWA
 		
 	}
 
-	void JointSpringComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointSpringComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 // Attention: There can be more spring joints, so the attribute name must remain unique!
 
 		// 2 = int
@@ -4672,9 +4672,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointAttractorComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointAttractorComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 
 		if (propertyElement)
 		{
@@ -4763,9 +4763,9 @@ namespace NOWA
 		
 	}
 
-	void JointAttractorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointAttractorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 		// Attention: There can be more spring joints, so the attribute name must remain unique!
 
 		// 2 = int
@@ -4926,9 +4926,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointCorkScrewComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointCorkScrewComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -5018,9 +5018,9 @@ namespace NOWA
 
 	}
 
-	void JointCorkScrewComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointCorkScrewComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -5374,9 +5374,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPassiveSliderComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPassiveSliderComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -5465,9 +5465,9 @@ namespace NOWA
 
 	}
 
-	void JointPassiveSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPassiveSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -5972,9 +5972,9 @@ namespace NOWA
 		return "JointComponent";
 	}
 
-	bool JointSliderActuatorComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointSliderActuatorComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -6030,9 +6030,9 @@ namespace NOWA
 		return true;
 	}
 
-	void JointSliderActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointSliderActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -6506,9 +6506,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointSlidingContactComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointSlidingContactComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -6612,9 +6612,9 @@ namespace NOWA
 
 	}
 
-	void JointSlidingContactComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointSlidingContactComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -7038,9 +7038,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointActiveSliderComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointActiveSliderComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -7124,9 +7124,9 @@ namespace NOWA
 
 	}
 
-	void JointActiveSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointActiveSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -7523,9 +7523,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointMathSliderComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointMathSliderComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		// no double properties here, so no matching, because it does not make sense to use two math slider joints at once
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointFunctionX")
@@ -7688,9 +7688,9 @@ namespace NOWA
 		}
 	}
 
-	void JointMathSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointMathSliderComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -8038,9 +8038,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointKinematicComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointKinematicComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -8367,9 +8367,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointKinematicComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointKinematicComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -8727,9 +8727,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointTargetTransformComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointTargetTransformComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -8931,9 +8931,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointTargetTransformComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointTargetTransformComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -9048,9 +9048,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPathFollowComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPathFollowComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -9139,9 +9139,9 @@ namespace NOWA
 		return success;
 	}
 
-	void JointPathFollowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPathFollowComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -9572,9 +9572,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointDryRollingFrictionComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointDryRollingFrictionComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointRadius")
 		{
@@ -9674,9 +9674,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointDryRollingFrictionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointDryRollingFrictionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -9759,9 +9759,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointGearComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointGearComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GearRatio")
 		{
@@ -9942,9 +9942,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointGearComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointGearComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -10013,9 +10013,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointRackAndPinionComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointRackAndPinionComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointGearRatio")
 		{
@@ -10193,9 +10193,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointRackAndPinionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointRackAndPinionComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -10266,9 +10266,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointWormGearComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointWormGearComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "GearRatio")
 		{
@@ -10426,9 +10426,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointWormGearComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointWormGearComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -10513,9 +10513,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointPulleyComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointPulleyComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointPulleyRatio")
 		{
@@ -10686,9 +10686,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointPulleyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointPulleyComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -10803,9 +10803,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointUniversalComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointUniversalComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -11129,9 +11129,9 @@ namespace NOWA
 		}
 	}
 	
-	void JointUniversalComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointUniversalComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -11739,9 +11739,9 @@ namespace NOWA
 		}
 	}
 
-	bool JointUniversalActuatorComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointUniversalActuatorComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -11821,9 +11821,9 @@ namespace NOWA
 		return true;
 	}
 
-	void JointUniversalActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointUniversalActuatorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -12402,9 +12402,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool Joint6DofComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool Joint6DofComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition0")
 		{
@@ -12626,9 +12626,9 @@ namespace NOWA
 		}
 	}
 	
-	void Joint6DofComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void Joint6DofComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -12858,9 +12858,9 @@ namespace NOWA
 	{
 	}
 
-	bool JointMotorComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointMotorComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Pin0")
 		{
@@ -13084,9 +13084,9 @@ namespace NOWA
 		}
 	}
 
-	void JointMotorComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void JointMotorComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -13236,9 +13236,9 @@ namespace NOWA
 	{
 	}
 
-	bool JointWheelComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointWheelComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "AnchorPosition")
 		{
@@ -13444,9 +13444,9 @@ namespace NOWA
 		}
 	}
 
-	void JointWheelComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc, const Ogre::String& filePath)
+	void JointWheelComponent::writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -13628,9 +13628,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointFlexyPipeHandleComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointFlexyPipeHandleComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointPin")
 		{
@@ -13679,9 +13679,9 @@ namespace NOWA
 
 	}
 
-	void JointFlexyPipeHandleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointFlexyPipeHandleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -13870,9 +13870,9 @@ namespace NOWA
 		return clonedJointCompPtr;
 	}
 
-	bool JointFlexyPipeSpinnerComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointFlexyPipeSpinnerComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 		
 		return true;
 	}
@@ -13916,9 +13916,9 @@ namespace NOWA
 
 	}
 
-	void JointFlexyPipeSpinnerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointFlexyPipeSpinnerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real
@@ -14059,9 +14059,9 @@ namespace NOWA
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[JointVehicleTireComponent] Destroyed");
 	}
 
-	bool JointVehicleTireComponent::init(xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool JointVehicleTireComponent::init(xml_node<>*& propertyElement)
 	{
-		JointComponent::init(propertyElement, filename);
+		JointComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "JointAnchorPosition")
 		{
@@ -14409,9 +14409,9 @@ namespace NOWA
 		}
 	}
 
-	void JointVehicleTireComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void JointVehicleTireComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		JointComponent::writeXML(propertiesXML, doc, filePath);
+		JointComponent::writeXML(propertiesXML, doc);
 
 		// 2 = int
 		// 6 = real

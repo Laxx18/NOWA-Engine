@@ -89,9 +89,9 @@ namespace NOWA
 		}
 	}
 
-	bool LuaScriptComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool LuaScriptComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -291,7 +291,7 @@ namespace NOWA
 		}
 	}
 
-	void LuaScriptComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void LuaScriptComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -300,7 +300,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -308,11 +308,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
 
+		Ogre::String filePathName = Core::getSingletonPtr()->getCurrentProjectPath();
+
 		// Copy script to location, if it does not exist in a group file path
-		size_t foundGroup = filePath.find("Groups");
+		size_t foundGroup = filePathName.find("Groups");
 		if (Ogre::String::npos != foundGroup)
 		{
-			std::ifstream scriptFileInGroup(filePath + "/" + Core::getSingletonPtr()->getProjectName() + "/" + this->scriptFile->getString(), std::ios::in);
+			std::ifstream scriptFileInGroup(filePathName + "/" + Core::getSingletonPtr()->getProjectName() + "/" + this->scriptFile->getString(), std::ios::in);
 			// If its a common script, overwrite an existing file
 			if (false == scriptFileInGroup.good()  || true == this->commonScript->getBool())
 			{
@@ -326,7 +328,7 @@ namespace NOWA
 					scriptSourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath()  + "/" + this->scriptFile->getString();
 				}
 
-				Ogre::String scriptDestFilePathName = filePath + "/" + this->scriptFile->getString();
+				Ogre::String scriptDestFilePathName = filePathName + "/" + this->scriptFile->getString();
 				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName, scriptDestFilePathName, false, this->gameObjectPtr->getGlobal());
 			}
 			else
@@ -342,7 +344,7 @@ namespace NOWA
 				}
 
 				Ogre::String tempScriptFileName = AppStateManager::getSingletonPtr()->getLuaScriptModule()->getValidatedLuaScriptName(this->scriptFile->getString(), this->gameObjectPtr->getGlobal());
-				Ogre::String scriptDestFilePathName = filePath + "/" + Core::getSingletonPtr()->getProjectName() + "/" + tempScriptFileName;
+				Ogre::String scriptDestFilePathName = filePathName + "/" + Core::getSingletonPtr()->getProjectName() + "/" + tempScriptFileName;
 				this->scriptFile->setValue(tempScriptFileName);
 				AppStateManager::getSingletonPtr()->getLuaScriptModule()->copyScriptAbsolutePath(scriptSourceFilePathName.c_str(), scriptDestFilePathName.c_str(), false, this->gameObjectPtr->getGlobal());
 			}

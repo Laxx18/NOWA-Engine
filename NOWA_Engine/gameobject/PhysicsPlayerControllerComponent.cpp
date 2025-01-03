@@ -164,9 +164,9 @@ namespace NOWA
 			+ this->gameObjectPtr->getName());
 	}
 
-	bool PhysicsPlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool PhysicsPlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		PhysicsActiveComponent::parseCommonProperties(propertyElement, filename);
+		PhysicsActiveComponent::parseCommonProperties(propertyElement);
 
 		// either load parts from mesh compound config file, the parts will have its correct position and rotation offset
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Radius")
@@ -429,7 +429,7 @@ namespace NOWA
 		}
 	}
 
-	void PhysicsPlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void PhysicsPlayerControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real

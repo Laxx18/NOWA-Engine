@@ -47,9 +47,9 @@ namespace NOWA
 		}
 	}
 
-	bool LineComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool LineComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TargetId")
 		{
@@ -174,7 +174,7 @@ namespace NOWA
 		}
 	}
 
-	void LineComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void LineComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -183,7 +183,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -355,9 +355,9 @@ namespace NOWA
 		}
 	}
 
-	bool LineMeshScaleComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool LineMeshScaleComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartPositionId")
 		{
@@ -536,7 +536,7 @@ namespace NOWA
 		}
 	}
 
-	void LineMeshScaleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void LineMeshScaleComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -545,7 +545,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -663,9 +663,9 @@ namespace NOWA
 		}
 	}
 
-	bool LineMeshComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool LineMeshComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = GameObjectComponent::init(propertyElement, filename);
+		bool success = GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OffsetPositionFactor")
 		{
@@ -994,9 +994,9 @@ namespace NOWA
 		}
 	}
 
-	void LineMeshComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void LineMeshComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 		
 		// 2 = int
 		// 6 = real

@@ -40,9 +40,9 @@ namespace NOWA
 		}
 	}
 
-	bool CameraBehaviorComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -87,7 +87,7 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -96,7 +96,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -186,9 +186,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorBaseComponent] Destructor camera behavior base component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool CameraBehaviorBaseComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorBaseComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CameraBehaviorComponent::init(propertyElement, filename);
+		bool success = CameraBehaviorComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MoveSpeed")
 		{
@@ -264,9 +264,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorBaseComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		CameraBehaviorComponent::writeXML(propertiesXML, doc, filePath);
+		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -357,9 +357,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorBaseComponent] Destructor camera behavior first person component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool CameraBehaviorFirstPersonComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorFirstPersonComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CameraBehaviorComponent::init(propertyElement, filename);
+		bool success = CameraBehaviorComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SmoothValue")
 		{
@@ -436,9 +436,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorFirstPersonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorFirstPersonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		CameraBehaviorComponent::writeXML(propertiesXML, doc, filePath);
+		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -532,9 +532,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorBaseComponent] Destructor camera behavior third person component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool CameraBehaviorThirdPersonComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorThirdPersonComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CameraBehaviorComponent::init(propertyElement, filename);
+		bool success = CameraBehaviorComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "YOffset")
 		{
@@ -631,9 +631,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorThirdPersonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorThirdPersonComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		CameraBehaviorComponent::writeXML(propertiesXML, doc, filePath);
+		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -753,9 +753,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorFollow2DComponent] Destructor camera behavior follow 2D component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool CameraBehaviorFollow2DComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorFollow2DComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CameraBehaviorComponent::init(propertyElement, filename);
+		bool success = CameraBehaviorComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SmoothValue")
 		{
@@ -832,9 +832,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorFollow2DComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorFollow2DComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		CameraBehaviorComponent::writeXML(propertiesXML, doc, filePath);
+		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -951,9 +951,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraBehaviorZoomComponent] Destructor camera behavior zoom component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool CameraBehaviorZoomComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool CameraBehaviorZoomComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = CameraBehaviorComponent::init(propertyElement, filename);
+		bool success = CameraBehaviorComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Category")
 		{
@@ -1028,9 +1028,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraBehaviorZoomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void CameraBehaviorZoomComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		CameraBehaviorComponent::writeXML(propertiesXML, doc, filePath);
+		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));

@@ -29,9 +29,9 @@ namespace NOWA
 		
 	}
 
-	bool MyGUIControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -146,7 +146,7 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -155,7 +155,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -255,9 +255,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIPositionControllerComponent] Destructor MyGUI position controller component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIPositionControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIPositionControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIControllerComponent::init(propertyElement, filename);
+		bool success = MyGUIControllerComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Coordinate")
 		{
@@ -394,9 +394,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIPositionControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIPositionControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIControllerComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
@@ -474,9 +474,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIFadeAlphaControllerComponent] Destructor MyGUI fade alpha controller component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIFadeAlphaControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIFadeAlphaControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIControllerComponent::init(propertyElement, filename);
+		bool success = MyGUIControllerComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Alpha")
 		{
@@ -589,9 +589,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIFadeAlphaControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIFadeAlphaControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIControllerComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -658,9 +658,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIScrollingMessageControllerComponent] Destructor MyGUI scrolling message controller component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIScrollingMessageControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIScrollingMessageControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIControllerComponent::init(propertyElement, filename);
+		bool success = MyGUIControllerComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MessageCount")
 		{
@@ -908,9 +908,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIScrollingMessageControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIScrollingMessageControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIControllerComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -1023,9 +1023,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIEdgeHideControllerComponent] Destructor MyGUI hide edge controller component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIEdgeHideControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIEdgeHideControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIControllerComponent::init(propertyElement, filename);
+		bool success = MyGUIControllerComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Time")
 		{
@@ -1127,9 +1127,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIEdgeHideControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIEdgeHideControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIControllerComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -1205,9 +1205,9 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIRepeatClickControllerComponent] Destructor MyGUI repeat click controller component for game object: " + this->gameObjectPtr->getName());
 	}
 
-	bool MyGUIRepeatClickControllerComponent::init(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename)
+	bool MyGUIRepeatClickControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		bool success = MyGUIControllerComponent::init(propertyElement, filename);
+		bool success = MyGUIControllerComponent::init(propertyElement);
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TimeLeft")
 		{
@@ -1298,9 +1298,9 @@ namespace NOWA
 		}
 	}
 
-	void MyGUIRepeatClickControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc, const Ogre::String& filePath)
+	void MyGUIRepeatClickControllerComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
-		MyGUIControllerComponent::writeXML(propertiesXML, doc, filePath);
+		MyGUIControllerComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
