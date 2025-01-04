@@ -72,10 +72,6 @@ namespace OgreNewt
 
 		setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
 		setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
-
-		NewtonDestroyCollision(collisionPtr->getNewtonCollision());
-
-		// setStandardForceCallback();
 	}
 
 	Body::Body(World* world, Ogre::SceneManager* sceneManager, NewtonBody* body, Ogre::SceneMemoryMgrTypes memoryType)
@@ -116,7 +112,6 @@ namespace OgreNewt
 			NewtonBodySetDestructorCallback(m_body, newtonDestructor);
 			setLinearDamping(m_world->getDefaultLinearDamping() * (60.0f / m_world->getUpdateFPS()));
 			setAngularDamping(m_world->getDefaultAngularDamping() * (60.0f / m_world->getUpdateFPS()));
-			// setStandardForceCallback();
 		}
 	}
 
@@ -619,7 +614,7 @@ namespace OgreNewt
 		NewtonBodyApplyImpulsePair(m_body, &linearImpulse[0], &angularImpulse[0], timestep);
 	}
 
-	void Body::showDebugCollision(bool isStatic, bool show)
+	void Body::showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color)
 	{
 		if (nullptr == m_node)
 			return;
@@ -703,18 +698,24 @@ namespace OgreNewt
 
 					// Draw the triangle edges
 					m_debugCollisionLines->position(vertexArray[index0] / scale.x, vertexArray[index0 + 1] / scale.y, vertexArray[index0 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 					m_debugCollisionLines->position(vertexArray[index1] / scale.x, vertexArray[index1 + 1] / scale.y, vertexArray[index1 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 
 					m_debugCollisionLines->position(vertexArray[index1] / scale.x, vertexArray[index1 + 1] / scale.y, vertexArray[index1 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 					m_debugCollisionLines->position(vertexArray[index2] / scale.x, vertexArray[index2 + 1] / scale.y, vertexArray[index2 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 
 					m_debugCollisionLines->position(vertexArray[index2] / scale.x, vertexArray[index2 + 1] / scale.y, vertexArray[index2 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 					m_debugCollisionLines->position(vertexArray[index0] / scale.x, vertexArray[index0 + 1] / scale.y, vertexArray[index0 + 2] / scale.z);
+					m_debugCollisionLines->colour(color);
 					m_debugCollisionLines->index(a++);
 				}
 

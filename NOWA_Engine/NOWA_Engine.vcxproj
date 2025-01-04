@@ -190,7 +190,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;OgreAtmosphere_d.lib;dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreNewt3_0_d.lib;RakNet_vc9_d.lib;LuaBind_d.lib;Lua_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;tinyxml.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;ParticleUniverse_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;terra_d.lib;GpuParticles_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;OgreAtmosphere_d.lib;dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreNewt3_0_d.lib;RakNet_vc9_d.lib;LuaBind_d.lib;Lua_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;tinyxml.lib;OgreOverlay_d.lib;MeshSplitter_d.lib;ParticleUniverse_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;FParser_d.lib;Rpcrt4.lib;terra_d.lib;GpuParticles_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
       <ImageHasSafeExceptionHandlers>

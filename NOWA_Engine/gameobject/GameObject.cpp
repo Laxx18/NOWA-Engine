@@ -1773,11 +1773,6 @@ namespace NOWA
 	void GameObject::setGlobal(bool global)
 	{
 		this->global->setValue(global);
-
-		if (nullptr != this->luaScript)
-		{
-			this->luaScript->setIsGlobal(global);
-		}
 	}
 
 	void GameObject::setInternalAttributeGlobal(bool isGlobal)

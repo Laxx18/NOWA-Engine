@@ -83,7 +83,9 @@ void RecentFilesManager::removeRecentFile(const MyGUI::UString& fileName)
 void RecentFilesManager::removeRecentFile(unsigned short index)
 {
 	if (index < this->recentFiles.size())
+	{
 		this->recentFiles.erase(this->recentFiles.begin() + index);
+	}
 
 	this->saveSettings();
 }

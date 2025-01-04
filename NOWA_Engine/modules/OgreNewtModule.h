@@ -81,6 +81,8 @@ namespace NOWA
 		*/
 		void showOgreNewtCollisionLines(bool enabled);
 
+		void setMaterialIdForDebugger(const OgreNewt::MaterialID* material, const Ogre::ColourValue& colour = Ogre::ColourValue::White);
+
 		void destroyContent(void);
 
 		void update(Ogre::Real dt);

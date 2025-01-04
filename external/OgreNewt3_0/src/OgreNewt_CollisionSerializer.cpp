@@ -31,8 +31,6 @@ namespace OgreNewt
 
 		mStream = Ogre::DataStreamPtr(new Ogre::FileStreamDataStream(file, true));
 		NewtonCollisionSerialize(collision->getWorld()->getNewtonWorld(), collision->m_col, &CollisionSerializer::_newtonSerializeCallback, this);
-
-		mStream->close();
 	}
 
 	CollisionPtr CollisionSerializer::importCollision(Ogre::DataStream& stream, OgreNewt::World* world)

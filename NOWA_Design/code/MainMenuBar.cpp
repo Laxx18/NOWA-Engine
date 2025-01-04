@@ -966,7 +966,26 @@ void MainMenuBar::updateRecentFilesMenu()
 void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 {
 	// Called after project has been opened successfully
-	this->updateRecentFilesMenu();
+	boost::shared_ptr<EventDataProjectManipulation> castEventData = boost::static_pointer_cast<EventDataProjectManipulation>(eventData);
+
+	ProjectManager::eProjectMode projectMode = static_cast<ProjectManager::eProjectMode>(castEventData->getMode());
+	// When not save scene
+	if (ProjectManager::eProjectMode::LOAD == projectMode)
+	{
+		this->updateRecentFilesMenu();
+
+		this->bTestSelectedGameObjects = false;
+		this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
+		this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
+
+		this->bDrawCollisionLines = false;
+		this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(this->bDrawCollisionLines);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(this->bDrawCollisionLines);
+
+		this->bDrawNavigationMesh = false;
+		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawNavigationMesh);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
+	}
 }
 
 void MainMenuBar::handleSceneValid(NOWA::EventDataPtr eventData)
@@ -1532,6 +1551,7 @@ void MainMenuBar::showAboutWindow(void)
 			"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_40) + "</color></p><br/>"
 			"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_41) + "</color></p><br/>"
 			"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_42) + "</color></p><br/>"
+			"<p><color value='#1D6EA7'>" + Ogre::String(NOWA_LICENSE_STR_43) + "</color></p><br/>"
 
 			"<p><color value='#FFFFFF'> - Ogre3D: MIT <url value='https://www.ogre3d.org/licensing'>https://www.ogre3d.org/licensing</url></color></p>"
 			"<p><color value='#FFFFFF'> - fparser: LGPL <url value='https://github.com/TheComet/ik/blob/master/LICENSE'>https://github.com/TheComet/ik/blob/master/LICENSE</url></color></p>"

@@ -138,6 +138,8 @@ namespace OgreNewt
 		*/
 		Ogre::Node* getOgreNode() const { return m_node; }
 
+		Ogre::ManualObject* getDebugCollisionLines() { return m_debugCollisionLines; }
+
 		//! get a pointer to the OgreNewt::World this body belongs to.
 		OgreNewt::World* getWorld() const { return m_world; }
 
@@ -514,7 +516,7 @@ namespace OgreNewt
 		//! Gets the spline for path follow constraint (only valid for that)
 		const dBezierSpline& getSpline() const { return m_spline; }
 
-		void showDebugCollision(bool isStatic, bool show);
+		void showDebugCollision(bool isStatic, bool show, const Ogre::ColourValue& color = Ogre::ColourValue::Green);
 
 		//! update the position of the node (if attached) and sets m_nodeupdateneeded to false
 		void updateNode(Ogre::Real interpolatParam);

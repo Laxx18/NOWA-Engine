@@ -1,5 +1,5 @@
 /***************************************************************************\
-|* Function Parser for C++ v4.5.1                                          *|
+|* Function Parser for C++ v4.5.2                                          *|
 |*-------------------------------------------------------------------------*|
 |* Copyright: Juha Nieminen, Joel Yliluoma                                 *|
 |*                                                                         *|
@@ -462,7 +462,7 @@ namespace
                                                     char** endptr)
     {
         using namespace std; // Just in case strtold() is not inside std::
-        return strtod(str, endptr);
+        return strtold(str, endptr);
     }
 #endif
 

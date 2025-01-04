@@ -1,5 +1,5 @@
 /***************************************************************************\
-|* Function Parser for C++ v4.5.1                                          *|
+|* Function Parser for C++ v4.5.2                                          *|
 |*-------------------------------------------------------------------------*|
 |* Copyright: Juha Nieminen, Joel Yliluoma                                 *|
 |*                                                                         *|
@@ -235,6 +235,11 @@ namespace FUNCTIONPARSERTYPES
     template<typename Value_t>
     inline Value_t fp_hypot(const Value_t& x, const Value_t& y)
     { return std::hypot(x,y); }
+
+    template<typename Value_t>
+    inline std::complex<Value_t> fp_hypot
+    (const std::complex<Value_t>& x, const std::complex<Value_t>& y)
+    { return fp_sqrt(x*x + y*y); }
 #else
     template<typename Value_t>
     inline Value_t fp_hypot(const Value_t& x, const Value_t& y)
@@ -247,7 +252,13 @@ namespace FUNCTIONPARSERTYPES
 
 #ifdef FP_SUPPORT_CPLUSPLUS11_MATH_FUNCS
     template<typename Value_t>
-    inline Value_t fp_log2(const Value_t& x) { return std::log(x); }
+    inline Value_t fp_log2(const Value_t& x) { return std::log2(x); }
+
+    template<typename Value_t>
+    inline std::complex<Value_t> fp_log2(const std::complex<Value_t>& x)
+    {
+        return fp_log(x) * fp_const_log2inv<Value_t>();
+    }
 #else
     template<typename Value_t>
     inline Value_t fp_log2(const Value_t& x)
@@ -466,14 +477,18 @@ namespace FUNCTIONPARSERTYPES
 #endif // FP_SUPPORT_GMP_INT_TYPE
 
 
-
-template<typename Value_t>
-inline Value_t fp_cbrt(const Value_t& x)
-{
-    return (x > Value_t() ?  fp_exp(fp_log( x) / Value_t(3)) :
-            x < Value_t() ? -fp_exp(fp_log(-x) / Value_t(3)) :
-            Value_t());
-}
+#ifdef FP_SUPPORT_CPLUSPLUS11_MATH_FUNCS
+    template<typename Value_t>
+    inline Value_t fp_cbrt(const Value_t& x) { return std::cbrt(x); }
+#else
+    template<typename Value_t>
+    inline Value_t fp_cbrt(const Value_t& x)
+    {
+        return (x > Value_t() ?  fp_exp(fp_log( x) / Value_t(3)) :
+                x < Value_t() ? -fp_exp(fp_log(-x) / Value_t(3)) :
+                Value_t());
+    }
+#endif
 
 // -------------------------------------------------------------------------
 // Synthetic functions and fallbacks for when an optimized

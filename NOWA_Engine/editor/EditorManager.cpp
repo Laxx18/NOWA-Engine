@@ -3270,17 +3270,6 @@ namespace NOWA
 				offset = newGridPos - oldGridPos;
 			}
 
-#if 0
-			Ogre::Vector3 distanceVec = this->hitPoint - this->oldHitPoint;
-			Ogre::Real distance = this->oldHitPoint.distance(this->hitPoint);
-			Ogre::Real dot = this->gizmo->getCurrentDirection().dotProduct(distanceVec);
-
-			Ogre::Real sign = 1.0f;
-			if (dot < 0.0f)
-			{
-				sign = -1.0f;
-			}
-#endif
 			Ogre::Vector3 scaleFactor = offset;
 			{
 				// vertices[i + subMeshOffset] = (orientation * (vec * scale)) + pos;
@@ -3288,11 +3277,21 @@ namespace NOWA
 				auto& phyicsComponent = makeStrongPtr(entry.second.gameObject->getComponent<PhysicsComponent>());
 				if (nullptr != phyicsComponent)
 				{
-					phyicsComponent->setScale(phyicsComponent->getScale() + scaleFactor);
+					Ogre::Vector3 currentScale = entry.second.gameObject->getSceneNode()->getScale();
+					Ogre::Vector3 newScale = currentScale + scaleFactor;
+					// Prevent scaling below zero
+					newScale.makeCeil(Ogre::Vector3(0.1f, 0.1f, 0.1f));
+
+					phyicsComponent->setScale(newScale);
 				}
 				else
 				{
-					entry.second.gameObject->getSceneNode()->scale(scaleFactor);
+					Ogre::Vector3 currentScale = entry.second.gameObject->getSceneNode()->getScale();
+					Ogre::Vector3 newScale = currentScale + scaleFactor;
+					// Prevent scaling below zero
+					newScale.makeCeil(Ogre::Vector3(0.1f, 0.1f, 0.1f));
+
+					entry.second.gameObject->getSceneNode()->setScale(newScale);
 				}
 			}
 		}
@@ -3309,28 +3308,13 @@ namespace NOWA
 
 	Ogre::Vector3 EditorManager::calculateUnitScaleFactor(const Ogre::Vector3& translateVector)
 	{
-		Ogre::Vector3 distanceVec = this->hitPoint - this->oldHitPoint;
-		Ogre::Real distance = this->oldHitPoint.distance(this->hitPoint);
-		Ogre::Real dot = this->gizmo->getCurrentDirection().dotProduct(distanceVec);
-		
-		Ogre::Vector3 unitScale;
+		// Calculate the mouse Y-axis movement
+		Ogre::Real deltaY = this->hitPoint.y - this->oldHitPoint.y;
 
-		if (dot < 0.0f)
-		{
-			//scale the object with the half length of the vector in the negative direction
-			unitScale.x = -translateVector.length() / 2.0f;
-			unitScale.y = -translateVector.length() / 2.0f;
-			unitScale.z = -translateVector.length() / 2.0f;
+		// Determine the scaling factor based on mouse movement direction
+		Ogre::Real scaleFactor = (deltaY > 0.0f ? 1.0f : -1.0f) * translateVector.length();
 
-		}
-		else
-		{
-			//scale the object with the half length of the vector
-			unitScale.x = translateVector.length() / 2.0f;
-			unitScale.y = translateVector.length() / 2.0f;
-			unitScale.z = translateVector.length() / 2.0f;
-		}
-		return std::move(unitScale);
+		return Ogre::Vector3(scaleFactor, scaleFactor, scaleFactor);
 	}
 
 	void EditorManager::update(Ogre::Real dt)

@@ -1,5 +1,5 @@
 /***************************************************************************\
-|* Function Parser for C++ v4.5.1                                          *|
+|* Function Parser for C++ v4.5.2                                          *|
 |*-------------------------------------------------------------------------*|
 |* Copyright: Juha Nieminen, Joel Yliluoma                                 *|
 |*                                                                         *|
@@ -7,6 +7,13 @@
 |* GNU Lesser General Public License version 3.                            *|
 |* (See lgpl.txt and gpl.txt for the license text.)                        *|
 \***************************************************************************/
+
+#ifdef FPARSER_EXPORTS
+#define FPARSER_API __declspec(dllexport)
+#else
+#define FPARSER_API __declspec(dllimport)
+#endif
+
 
 #ifndef ONCE_FPARSER_H_
 #define ONCE_FPARSER_H_
@@ -24,10 +31,10 @@
 #pragma warning(disable : 4661)
 #endif
 
-namespace FPoptimizer_CodeTree { template<typename Value_t> class CodeTree; }
+namespace FPoptimizer_CodeTree { template<typename Value_t> class FPARSER_API CodeTree; }
 
 template<typename Value_t>
-class FunctionParserBase
+class FPARSER_API FunctionParserBase
 {
  public:
     enum ParseErrorType
@@ -185,20 +192,20 @@ protected:
     static unsigned ParseIdentifier(const char*);
 };
 
-class FunctionParser: public FunctionParserBase<double> {};
-class FunctionParser_f: public FunctionParserBase<float> {};
-class FunctionParser_ld: public FunctionParserBase<long double> {};
-class FunctionParser_li: public FunctionParserBase<long> {};
+class FPARSER_API FunctionParser: public FunctionParserBase<double> {};
+class FPARSER_API  FunctionParser_f: public FunctionParserBase<float> {};
+class FPARSER_API  FunctionParser_ld: public FunctionParserBase<long double> {};
+class FPARSER_API  FunctionParser_li: public FunctionParserBase<long> {};
 
 #include <complex>
-class FunctionParser_cd: public FunctionParserBase<std::complex<double> > {};
-class FunctionParser_cf: public FunctionParserBase<std::complex<float> > {};
-class FunctionParser_cld: public FunctionParserBase<std::complex<long double> > {};
+class FPARSER_API  FunctionParser_cd: public FunctionParserBase<std::complex<double> > {};
+class FPARSER_API  FunctionParser_cf: public FunctionParserBase<std::complex<float> > {};
+class FPARSER_API  FunctionParser_cld: public FunctionParserBase<std::complex<long double> > {};
 
 
 
 template<typename Value_t>
-class FunctionParserBase<Value_t>::FunctionWrapper
+class FPARSER_API  FunctionParserBase<Value_t>::FunctionWrapper
 {
     unsigned mReferenceCount;
     friend class FunctionParserBase<Value_t>;

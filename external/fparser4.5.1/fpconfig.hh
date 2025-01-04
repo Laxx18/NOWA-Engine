@@ -1,5 +1,5 @@
 /***************************************************************************\
-|* Function Parser for C++ v4.5.1                                          *|
+|* Function Parser for C++ v4.5.2                                          *|
 |*-------------------------------------------------------------------------*|
 |* Copyright: Juha Nieminen                                                *|
 |*                                                                         *|
@@ -25,19 +25,19 @@
    and the resulting binary needlessly larger if they are not used in the
    program.)
 */
-//#define FP_SUPPORT_FLOAT_TYPE
-//#define FP_SUPPORT_LONG_DOUBLE_TYPE
-//#define FP_SUPPORT_LONG_INT_TYPE
-//#define FP_SUPPORT_MPFR_FLOAT_TYPE
-//#define FP_SUPPORT_GMP_INT_TYPE
-//#define FP_SUPPORT_COMPLEX_DOUBLE_TYPE
-//#define FP_SUPPORT_COMPLEX_FLOAT_TYPE
-//#define FP_SUPPORT_COMPLEX_LONG_DOUBLE_TYPE
+/* #undef FP_SUPPORT_FLOAT_TYPE */
+/* #undef FP_SUPPORT_LONG_DOUBLE_TYPE */
+/* #undef FP_SUPPORT_LONG_INT_TYPE */
+/* #undef FP_SUPPORT_MPFR_FLOAT_TYPE */
+/* #undef FP_SUPPORT_GMP_INT_TYPE */
+#define FP_SUPPORT_COMPLEX_DOUBLE_TYPE
+/* #undef FP_SUPPORT_COMPLEX_FLOAT_TYPE */
+/* #undef FP_SUPPORT_COMPLEX_LONG_DOUBLE_TYPE */
 
 /* If you are using FunctionParser_ld or FunctionParser_cld and your compiler
    supports the strtold() function, you should uncomment the following line.
  */
-//#define FP_USE_STRTOLD
+#define FP_USE_STRTOLD
 
 
 /* Uncomment this line or define it in your compiler settings if you want
@@ -46,17 +46,18 @@
    type is not used, then disabling it makes compiling faster and the
    resulting binary smaller.)
  */
-//#define FP_DISABLE_DOUBLE_TYPE
+/* #undef FP_DISABLE_DOUBLE_TYPE */
 
 /* Uncomment this line or define it in your compiler settings to make the
    parser use C++11 math functions. (Note that these may not be supported
    by all compilers.)
 */
-//#define FP_SUPPORT_CPLUSPLUS11_MATH_FUNCS
+#define FP_SUPPORT_CPLUSPLUS11_MATH_FUNCS
 
 /*
  Whether to use shortcut evaluation for the & and | operators:
 */
+/* #undef FP_DISABLE_SHORTCUT_LOGICAL_EVALUATION */
 #ifndef FP_DISABLE_SHORTCUT_LOGICAL_EVALUATION
 #define FP_ENABLE_SHORTCUT_LOGICAL_EVALUATION
 #endif
@@ -68,6 +69,7 @@
  If you are unsure, just leave it. It won't slow down the other parts of
  the library.
 */
+/* #undef FP_NO_SUPPORT_OPTIMIZER */
 #ifndef FP_NO_SUPPORT_OPTIMIZER
 #define FP_SUPPORT_OPTIMIZER
 #endif
@@ -84,5 +86,5 @@
  The second version requires that the compiler supports the alloca() function,
  which is not standard, but is faster.
  */
-//#define FP_USE_THREAD_SAFE_EVAL
-//#define FP_USE_THREAD_SAFE_EVAL_WITH_ALLOCA
+#define FP_USE_THREAD_SAFE_EVAL
+/* #undef FP_USE_THREAD_SAFE_EVAL_WITH_ALLOCA */

@@ -161,19 +161,27 @@ namespace NOWA
 		root->append_node(idNode);
 
 		// Allocate and append the <FilePath> node with the script file path from castEventData
-		std::string filePathStr = castEventData->getScriptFilePathName();
+		Ogre::String filePathStr = castEventData->getScriptFilePathName();
 		char* filePath = doc.allocate_string(filePathStr.c_str());
 		rapidxml::xml_node<>* pathNode = doc.allocate_node(rapidxml::node_element, "FilePath", filePath);
 		root->append_node(pathNode);
 
 		// Format the line and start/end attributes for the <error> node
 		int line = castEventData->getLine();
-		std::string lineStr = std::to_string(line);
+		Ogre::String lineStr = std::to_string(line);
 		char* lineAttr = doc.allocate_string(lineStr.c_str());
 
 		// Set the error message from castEventData
-		std::string errorMsg = castEventData->getErrorMessage();
+		Ogre::String errorMsg = castEventData->getErrorMessage();
 		char* errorMsgText = doc.allocate_string(errorMsg.c_str());
+
+		if (true == errorMsg.empty())
+		{
+			if (false == this->checkIfInstanceRunning())
+			{
+				return;
+			}
+		}
 
 		// Create and append the <error> node with line attribute and error message text
 		rapidxml::xml_node<>* errorNode = doc.allocate_node(rapidxml::node_element, "error", errorMsgText);
@@ -286,7 +294,7 @@ namespace NOWA
 			{
 				if (entry.is_regular_file() && entry.path().extension() == ".xml")
 				{
-					fs::remove(entry.path()); // Delete the file
+					DeleteFile(entry.path().string().c_str()); // Delete the file
 				}
 			}
 		}

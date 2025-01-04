@@ -47,7 +47,7 @@
   * Controls a crowd of agents that can steer to avoid each other and follow
   * individual paths.
   *
-  * This class __declspec( dllexport ) is largely based on the CrowdTool used in the original recastnavigation
+  * This class is largely based on the CrowdTool used in the original recastnavigation
   * demo.
   **/
 class __declspec( dllexport ) OgreDetourCrowd

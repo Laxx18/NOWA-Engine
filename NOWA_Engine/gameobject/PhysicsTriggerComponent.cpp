@@ -438,7 +438,10 @@ namespace NOWA
 		this->setCollidable(this->collidable->getBool());
 
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
-		this->physicsBody->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt));
+
+		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
+		this->physicsBody->setMaterialGroupID(materialId);
 
 		return true;
 	}

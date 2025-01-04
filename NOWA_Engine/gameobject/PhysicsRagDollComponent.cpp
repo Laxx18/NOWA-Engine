@@ -289,7 +289,10 @@ namespace NOWA
 
 		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
-		this->physicsBody->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt));
+
+		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
+		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
+		this->physicsBody->setMaterialGroupID(materialId);
 
 		return true;
 	}
@@ -2063,11 +2066,16 @@ namespace NOWA
 		if (false == category.empty())
 		{
 			categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->registerCategory(category);
-			this->body->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialIDFromCategory(category, this->physicsRagDollComponent->ogreNewt));
+
+			const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialIDFromCategory(category, this->physicsRagDollComponent->ogreNewt);
+			AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
+			this->body->setMaterialGroupID(materialId);
 		}
 		else
 		{
-			this->body->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsRagDollComponent->getOwner().get(), this->physicsRagDollComponent->ogreNewt));
+			const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsRagDollComponent->getOwner().get(), this->physicsRagDollComponent->ogreNewt);
+			AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
+			this->body->setMaterialGroupID(materialId);
 		}
 
 		this->body->setType(categoryId);

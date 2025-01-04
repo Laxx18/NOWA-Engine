@@ -650,9 +650,42 @@ namespace NOWA
 			else
 			{
 				Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
-				OgreNewt::CollisionSerializer loadWorldCollision;
-				// Import collision from file for faster loading
-				this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+				if (streamFile.size() <= 0)
+				{
+					// File is thrash, must be recreated
+					OgreNewt::CollisionSerializer saveWorldCollision;
+					Ogre::v1::Entity* entity = nullptr;
+					Ogre::Item* item = nullptr;
+
+					if (GameObject::ENTITY == this->gameObjectPtr->getType())
+					{
+						entity = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::v1::Entity>();
+						this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, categoryId));
+					}
+					else if (GameObject::ITEM == this->gameObjectPtr->getType())
+					{
+						item = this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>();
+						this->collisionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, categoryId));
+					}
+
+					if (nullptr == this->collisionPtr)
+					{
+						return OgreNewt::CollisionPtr();
+					}
+
+					Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
+					// Export collision file for faster loading
+					saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
+
+					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+				}
+				else
+				{
+					OgreNewt::CollisionSerializer loadWorldCollision;
+					// Import collision from file for faster loading
+					this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+				}
 
 				streamFile.close();
 				fclose(file);
@@ -703,16 +736,36 @@ namespace NOWA
 			file = fopen(serializeCollisionPath.c_str(), "rb");
 			if (nullptr == file)
 			{
-				Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Could not open the object tree collision file!");
-
 				this->collisionPtr = this->createHeightFieldCollision(terra);
 			}
 			else
 			{
 				Ogre::FileHandleDataStream streamFile(file, Ogre::DataStream::READ);
-				OgreNewt::CollisionSerializer loadWorldCollision;
-				// Import collision from file for faster loading
-				this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+				// File to small (thrash)
+				if (streamFile.size() <= 0)
+				{
+					this->collisionPtr = this->createHeightFieldCollision(terra);
+
+					if (nullptr == this->collisionPtr)
+					{
+						return OgreNewt::CollisionPtr();
+					}
+
+					Ogre::LogManager::getSingleton().logMessage("[PhysicsComponent] Writing collision for tree in file:" + serializeCollisionPath);
+					// Export collision file for faster loading
+
+					OgreNewt::CollisionSerializer saveWorldCollision;
+					saveWorldCollision.exportCollision(this->collisionPtr, serializeCollisionPath);
+
+					boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+				}
+				else
+				{
+					OgreNewt::CollisionSerializer loadWorldCollision;
+					// Import collision from file for faster loading
+					this->collisionPtr = loadWorldCollision.importCollision(streamFile, ogreNewt);
+				}
 
 				streamFile.close();
 				fclose(file);

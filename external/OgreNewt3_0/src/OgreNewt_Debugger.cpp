@@ -1,4 +1,4 @@
-#include "OgreNewt_Stdafx.h"
+﻿#include "OgreNewt_Stdafx.h"
 #include "OgreNewt_Debugger.h"
 #include "OgreNewt_World.h"
 #include "OgreNewt_Body.h"
@@ -7,6 +7,8 @@
 #include <dMatrix.h>
 
 #include <dCustomJoint.h>
+
+#include "OgreHlmsUnlitDatablock.h"
 
 #include <sstream>
 
@@ -68,22 +70,26 @@ namespace OgreNewt
 
 	void Debugger::deInit()
 	{
-		clearBodyDebugDataCache();
 		if (m_debugnode)
 		{
 			m_debugnode->setListener(nullptr);
 			m_debugnode->removeAndDestroyAllChildren();
-			m_debugnode->getParentSceneNode()->removeAndDestroyChild(m_debugnode);
+			if (m_debugnode && m_debugnode->getParentSceneNode())
+			{
+				m_debugnode->getParentSceneNode()->removeAndDestroyChild(m_debugnode);
+			}
 			m_debugnode = nullptr;
 		}
-
 
 		clearRaycastsRecorded();
 		if (m_raycastsnode)
 		{
 			m_raycastsnode->setListener(nullptr);
 			m_raycastsnode->removeAndDestroyAllChildren();
-			m_raycastsnode->getParentSceneNode()->removeAndDestroyChild(m_raycastsnode);
+			if (m_raycastsnode && m_raycastsnode->getParentSceneNode())
+			{
+				m_raycastsnode->getParentSceneNode()->removeAndDestroyChild(m_raycastsnode);
+			}
 			m_raycastsnode = nullptr;
 		}
 	}
@@ -93,13 +99,11 @@ namespace OgreNewt
 		if (node == m_debugnode)
 		{
 			m_debugnode = nullptr;
-			clearBodyDebugDataCache();
 		}
 
 		if (node == m_raycastsnode)
 		{
 			m_raycastsnode = nullptr;
-			clearRaycastsRecorded();
 		}
 	}
 
@@ -113,30 +117,32 @@ namespace OgreNewt
 
 		for (BodyDebugDataMap::iterator it = m_cachemap.begin(); it != m_cachemap.end(); it++)
 		{
-			//Ogre::ManualObject* mo = it->second.m_lines;
-			//if (mo)
-			//{
-			//	// delete mo;
-			//	m_sceneManager->destroyManualObject(mo);
-			//	mo = nullptr;
-			//}
-			/*OgreNewt::OgreAddons::MovableText *text = it->second.m_text;
-			if (text)
+			Ogre::ManualObject* mo = it->second.m_lines;
+			if (mo)
 			{
-				delete text;
-			}*/
+				// delete mo;
+				m_sceneManager->destroyManualObject(mo);
+				mo = nullptr;
+			}
 		}
 		m_cachemap.clear();
 	}
 
-
-
 	void Debugger::showDebugInformation()
 	{
 		if (!m_debugnode)
-			return;
+		{
+			m_debugnode = m_sceneManager->getRootSceneNode()->createChildSceneNode();
+			m_debugnode->setName("__OgreNewt__Debugger__Node__");
+			m_debugnode->setListener(this);
+		}
 
-		m_debugnode->removeAllChildren();
+		if (!m_raycastsnode)
+		{
+			m_raycastsnode = m_sceneManager->getRootSceneNode()->createChildSceneNode();
+			m_raycastsnode->setName("__OgreNewt__Raycasts_Debugger__Node__");
+			m_raycastsnode->setListener(this);
+		}
 
 		// make the new lines.
 		for (Body* body = m_world->getFirstBody(); body && body->getNewtonBody(); body = body->getNext())
@@ -165,9 +171,6 @@ namespace OgreNewt
 					m_sceneManager->destroyManualObject(mo);
 					mo = nullptr;
 				}
-				/* OgreNewt::OgreAddons::MovableText *text = it->second.m_text;
-				 if( text )
-					 delete text;*/
 			}
 		}
 		m_cachemap.swap(newbodymap);
@@ -175,6 +178,8 @@ namespace OgreNewt
 
 	void Debugger::hideDebugInformation()
 	{
+		clearBodyDebugDataCache();
+		deInit();
 		// erase any existing lines!
 		if (m_debugnode)
 			m_debugnode->removeAllChildren();
@@ -190,14 +195,12 @@ namespace OgreNewt
 		m_defaultcolor = col;
 	}
 
-
 	void _CDECL Debugger::newtonprocessJoints(const NewtonJoint* newtonJoint, void* userData)
 	{
 		Debugger* me = (Debugger*)userData;
 		dCustomJoint* customJoint = (dCustomJoint*)NewtonJointGetUserData(newtonJoint);
 		me->processJoint((Joint*)customJoint->GetUserData());
 	}
-
 
 	void Debugger::processJoint(Joint* joint)
 	{
@@ -207,176 +210,195 @@ namespace OgreNewt
 
 	void Debugger::buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, OgreNewt::Body* body, NewtonMesh* mesh) const
 	{
-		object->begin("BlueNoLighting", Ogre::OperationType::OT_LINE_LIST);
+		if (!object || !body || !mesh)
+			return;
 
-		// set color
-	//	if( it != m_materialcolors.end() )
-	//		object->colour(it->second);
-	//	else
-	//		object->colour(m_defaultcolor);
+		// Clear existing object content
+		object->clear();
 
-		object->colour(colour);
+		Ogre::HlmsUnlitDatablock* sourceDataBlock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock("RedNoLighting"));
+		if (nullptr != sourceDataBlock)
+		{
+			sourceDataBlock->setUseColour(true);
+			sourceDataBlock->setColour(colour);
+			// Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(this->originalDatablock->clone(originalDataBlockName
+			// 	+ "__" + Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+		}
 
+		object->begin("WhiteNoLighting", Ogre::OperationType::OT_LINE_LIST);
+
+		const NewtonBody* newtonBody = body->getNewtonBody();
+		const auto it = m_materialcolors.find(NewtonBodyGetMaterialGroupID(newtonBody));
+
+		// Triangulate the mesh for debugging
 		NewtonMeshTriangulate(mesh);
-		// NewtonMeshPolygonize(mesh);
 
-#if 1
+		// Get position, orientation, and scale of the body
 		Ogre::Vector3 pos, vel, omega;
 		Ogre::Quaternion ori;
-		// bod->getVisualPositionOrientation(pos, ori);
 		body->getPositionOrientation(pos, ori);
 
-		Ogre::Vector3 center = body->getAABB().getCenter();
-		Ogre::Vector3 offset(pos - center);
+		Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
 
-		Ogre::Vector3 min = body->getAABB().getMinimum();
-		Ogre::Vector3 max = body->getAABB().getMaximum();
-		Ogre::Vector3 diff = max - min;
-		Ogre::Vector3 half = (max - min) / 2.0f;
-
-		// Why the heck is there a debugging position offset??
-		// pos += (ori * (body->getAABB().getCenter()));
-		// ori = ori * Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X);
-
-		///*Ogre::AxisAlignedBox boundingBox = bod->getAABB();
-		//Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		//Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * bod->getOgreNode()->getScale();
-		//Ogre::Vector3 centerOffset = boundingBox.getMinimum() + padding + (size / 2.0f);*/
-		// pos = pos + bod->getAABB().getCenter();
-
-		// float matrix[16];
-		// Converters::QuatPosToMatrix(Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, &matrix[0]);
-
+		// Extract vertex data from the mesh
 		int vertexCount = NewtonMeshGetPointCount(mesh);
-		object->estimateVertexCount(vertexCount);
 		dFloat* vertexArray = new dFloat[3 * vertexCount];
 		memset(vertexArray, 0, 3 * vertexCount * sizeof(dFloat));
-
 		NewtonMeshGetVertexChannel(mesh, 3 * sizeof(dFloat), (dFloat*)vertexArray);
-		
-		// NewtonMeshGetNormalChannel(mesh, 3 * sizeof(dFloat), (dFloat*)m_normal);
-		// NewtonMeshGetUV0Channel(mesh, 2 * sizeof(dFloat), (dFloat*)m_uv);
 
-		/*dMatrix matrix;
-		matrix.m_posit = dVector(offset.x, offset.y, offset.z, 1.0f);
-		matrix.TransformTriplex(vertexArray, 3 * sizeof(dFloat), vertexArray, 3 * sizeof(dFloat), vertexCount);*/
-		// matrix.m_posit = dVector(0.0f, 0.0f, 0.0f, 1.0f);
-		
-		// matrix = (matrix.Inverse4x4()).Transpose();
-		// matrix.TransformTriplex(m_normal, 3 * sizeof(dFloat), m_normal, 3 * sizeof(dFloat), m_vertexCount);*/
-
-		// extract the materials index array for mesh
+		// Handle material indices and draw the lines
 		void* const geometryHandle = NewtonMeshBeginHandle(mesh);
 		for (int handle = NewtonMeshFirstMaterial(mesh, geometryHandle); handle != -1; handle = NewtonMeshNextMaterial(mesh, geometryHandle, handle))
 		{
 			int material = NewtonMeshMaterialGetMaterial(mesh, geometryHandle, handle);
 			int indexCount = NewtonMeshMaterialGetIndexCount(mesh, geometryHandle, handle);
 			object->estimateIndexCount(indexCount);
-			unsigned int* indexArray = new unsigned[indexCount];
 
+			unsigned int* indexArray = new unsigned[indexCount];
 			NewtonMeshMaterialGetIndexStream(mesh, geometryHandle, handle, (int*)indexArray);
 
-			// object->getUserObjectBindings().setUserAny(Ogre::Any(indexArray));
-
-			/*float matrix[16];
-			Converters::QuatPosToMatrix(Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, &matrix[0]);
-			NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, object);*/
-
-			
-
-			for (int vert = 0; vert < vertexCount; vert++)
+			unsigned int lineIndex = 0;
+			for (int i = 0; i < indexCount; i += 3)
 			{
-				object->position(vertexArray[(vert * 3) + 0], vertexArray[(vert * 3) + 1], vertexArray[(vert * 3) + 2]);
+				int idx0 = indexArray[i] * 3;
+				int idx1 = indexArray[i + 1] * 3;
+				int idx2 = indexArray[i + 2] * 3;
+
+				// Calculate vertex positions considering scale
+				Ogre::Vector3 v0(
+					vertexArray[idx0] / scale.x,
+					vertexArray[idx0 + 1] / scale.y,
+					vertexArray[idx0 + 2] / scale.z
+				);
+				Ogre::Vector3 v1(
+					vertexArray[idx1] / scale.x,
+					vertexArray[idx1 + 1] / scale.y,
+					vertexArray[idx1 + 2] / scale.z
+				);
+				Ogre::Vector3 v2(
+					vertexArray[idx2] / scale.x,
+					vertexArray[idx2 + 1] / scale.y,
+					vertexArray[idx2 + 2] / scale.z
+				);
+
+				Ogre::ColourValue colour;
+				// Set the material color
+				if (it != m_materialcolors.end())
+					colour = it->second;
+				else
+					colour = m_defaultcolor;
+
+				// Draw the edges of the triangles
+				object->position(v0);
+				object->colour(colour);
+				object->index(lineIndex++);
+				object->position(v1);
+				object->colour(colour);
+				object->index(lineIndex++);
+
+				object->position(v1);
+				object->colour(colour);
+				object->index(lineIndex++);
+				object->position(v2);
+				object->colour(colour);
+				object->index(lineIndex++);
+
+				object->position(v2);
+				object->colour(colour);
+				object->index(lineIndex++);
+				object->position(v0);
+				object->colour(colour);
+				object->index(lineIndex++);
 			}
-			for (int index = 0; index < indexCount; index++)
-			{
-				//could use object->line here but all that does is call index twice
-				object->index(indexArray[index]);
-			}
-
-			//int j = 0;
-			//for (int vert = 0; vert < vertexCount; vert++)
-			//{
-			//	//could use object->line here but all that does is call index twice
-			//	int index0 = indexArray[(vert * 3) + 0];
-			//	int index1 = indexArray[(vert * 3) + 1];
-			//	int index2 = indexArray[(vert * 3) + 2];
-			//	object->position(vertexArray[index0], vertexArray[index1], vertexArray[index2]);
-			//	// object->index(index);
-			//}
-			//for (int index = 0; index < indexCount; index++)
-			//{
-			//	//could use object->line here but all that does is call index twice
-			//	object->index(indexArray[index]);
-			// }
-
-
 
 			delete[] indexArray;
 		}
 
-		delete[] vertexArray;
-
-#endif
-
-#if 0
-		int vertexCount = NewtonMeshGetPointCount(mesh);
-		object->estimateVertexCount(vertexCount);
-		dFloat* vertexArray = new dFloat[3 * vertexCount];
-		memset(vertexArray, 0, 3 * vertexCount * sizeof(dFloat));
-
-		NewtonMeshGetVertexChannel(mesh, 3 * sizeof(dFloat), (dFloat*)vertexArray);
-
-		for (int i = 0; i < vertexCount; i++)
-		{
-			object->position(vertexArray[(i * 3) + 0], vertexArray[(i * 3) + 1], vertexArray[(i * 3) + 2]);
-		}
-
-		int j = 0;
-		// int indexCount = NewtonMeshGetTotalIndexCount(mesh);
-		// object->estimateIndexCount(indexCount);
-		for (void* faceNode = NewtonMeshGetFirstFace(mesh); faceNode; faceNode = NewtonMeshGetNextFace(mesh, faceNode))
-		{
-			if (!NewtonMeshIsFaceOpen(mesh, faceNode))
-			{
-				int indexArray[8];
-				int indexCount = NewtonMeshGetFaceIndexCount(mesh, faceNode);
-				NewtonMeshGetFaceIndices(mesh, faceNode, indexArray);
-				for (int i = 0; i < indexCount; i++)
-				{
-					object->index(j++);
-				}
-			}
-		}
-
-#endif
-
+		// Finalize the mesh handling
+		NewtonMeshEndHandle(mesh, geometryHandle);
 		NewtonMeshDestroy(mesh);
+
+		// Clean up vertex array
+		delete[] vertexArray;
 		object->end();
 	}
 
+	void _CDECL Debugger::newtonPerPoly(void* userData, int vertexCount, const dFloat* faceVertec, int id)
+	{
+		if (vertexCount < 3 || !userData)
+			return;
+
+		// Cast the user data back to a std::pair<ManualObject*, Ogre::ColourValue>
+		std::pair<Ogre::ManualObject*, Ogre::ColourValue>* data =
+			static_cast<std::pair<Ogre::ManualObject*, Ogre::ColourValue>*>(userData);
+
+		// Access ManualObject* and Ogre::ColourValue
+		Ogre::ManualObject* lines = data->first;
+		Ogre::ColourValue colour = data->second;
+
+		unsigned int index = 0;
+
+		// Fetch scale from parent scene node
+		Ogre::Vector3 scale = Ogre::Vector3::UNIT_SCALE;
+		if (lines->getParentSceneNode())
+		{
+			scale = lines->getParentSceneNode()->_getDerivedScaleUpdated();
+		}
+
+		// Iterate through each triangle and draw the edges
+		for (int i = 0; i < vertexCount; i += 3)
+		{
+			Ogre::Vector3 v0(
+				faceVertec[i * 3 + 0] / scale.x,
+				faceVertec[i * 3 + 1] / scale.y,
+				faceVertec[i * 3 + 2] / scale.z
+			);
+
+			Ogre::Vector3 v1(
+				faceVertec[(i + 1) * 3 + 0] / scale.x,
+				faceVertec[(i + 1) * 3 + 1] / scale.y,
+				faceVertec[(i + 1) * 3 + 2] / scale.z
+			);
+
+			Ogre::Vector3 v2(
+				faceVertec[(i + 2) * 3 + 0] / scale.x,
+				faceVertec[(i + 2) * 3 + 1] / scale.y,
+				faceVertec[(i + 2) * 3 + 2] / scale.z
+			);
+
+			// Draw edges
+			lines->position(v0);
+			lines->colour(colour);
+			lines->index(index++);
+			lines->position(v1);
+			lines->colour(colour);
+			lines->index(index++);
+
+			lines->position(v1);
+			lines->colour(colour);
+			lines->index(index++);
+			lines->position(v2);
+			lines->colour(colour);
+			lines->index(index++);
+
+			lines->position(v2);
+			lines->colour(colour);
+			lines->index(index++);
+			lines->position(v0);
+			lines->colour(colour);
+			lines->index(index++);
+		}
+	}
 
 	void Debugger::processBody(OgreNewt::Body* bod)
 	{
 		NewtonBody* newtonBody = bod->getNewtonBody();
 		MaterialIdColorMap::iterator it = m_materialcolors.find(NewtonBodyGetMaterialGroupID(newtonBody));
 
-
 		Ogre::Vector3 pos, vel, omega;
 		Ogre::Quaternion ori;
 		// bod->getVisualPositionOrientation(pos, ori);
 		bod->getPositionOrientation(pos, ori);
-
-		// Why the heck is there a debugging position offset??
-				// pos += (ori * (bod->getCollision()->getAABB().getCenter() + Ogre::Vector3(0.0f, 0.0f, -0.5f)));
-				// ori = ori * Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::NEGATIVE_UNIT_X);
-
-		/*Ogre::AxisAlignedBox boundingBox = bod->getAABB();
-		Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * bod->getOgreNode()->getScale();
-		Ogre::Vector3 centerOffset = boundingBox.getMinimum() + padding + (size / 2.0f);*/
-		// pos = pos + bod->getAABB().getCenter();
-
 
 		vel = bod->getVelocity();
 		omega = bod->getOmega();
@@ -412,11 +434,6 @@ namespace OgreNewt
 			data->m_node->setOrientation(ori);
 			data->m_updated = 1;
 			m_debugnode->addChild(data->m_node);
-			if (this->showText)
-			{
-				// data->m_text->setCaption(oss_info.str());
-				// data->m_text->setLocalTranslation(bod->getAABB().getSize().y * 1.1f * Ogre::Vector3::UNIT_Y);
-			}
 		}
 		else
 		{
@@ -452,40 +469,29 @@ namespace OgreNewt
 				data->m_lines->setName(oss.str());
 			}
 
-			if (this->showText)
-			{
-				/*if (data->m_text)
-				{
-					data->m_text->setCaption(oss_info.str());
-					data->m_text->setLocalTranslation(bod->getAABB().getMaximum().y * 1.1f * Ogre::Vector3::UNIT_Y);
-				}
-				else
-				{
-					data->m_text = new OgreNewt::OgreAddons::MovableText(oss_name.str(), oss_info.str(), "BlueHighway-10", 0.5);
-					Ogre::Vector3 max = bod->getAABB().getMaximum().y / 2.0f * Ogre::Vector3::UNIT_Y;
-					data->m_text->setLocalTranslation(max + Ogre::Vector3::UNIT_Y * 0.1f);
-					data->m_text->setTextAlignment(OgreNewt::OgreAddons::MovableText::H_LEFT, OgreNewt::OgreAddons::MovableText::V_ABOVE);
-				}
+			Ogre::ColourValue colour;
+			// set color
+			if (it != m_materialcolors.end())
+				colour = it->second;
+			else
+				colour = m_defaultcolor;
 
-				data->m_node->attachObject(data->m_text);*/
+			Ogre::HlmsUnlitDatablock* sourceDataBlock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock("RedNoLighting"));
+			if (nullptr != sourceDataBlock)
+			{
+				sourceDataBlock->setUseColour(true);
+				sourceDataBlock->setColour(Ogre::ColourValue::Blue);
 			}
 
-			/*
-					data->m_lines->begin("RedNoLighting", Ogre::v1::RenderOperation::OT_LINE_LIST );
+			data->m_lines->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
 
-					// set color
-					if( it != m_materialcolors.end() )
-						data->m_lines->colour(it->second);
-					else
-						data->m_lines->colour(m_defaultcolor);
+			float matrix[16];
+			Converters::QuatPosToMatrix(Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, &matrix[0]);
 
-					float matrix[16];
-					Converters::QuatPosToMatrix(Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, &matrix[0]);
-
-					NewtonCollisionForEachPolygonDo( NewtonBodyGetCollision(newtonBody), &matrix[0], newtonPerPoly, data->m_lines );
-					data->m_lines->end();
-			*/
-			buildDebugObjectFromCollision(data->m_lines, m_defaultcolor, bod, data->m_mesh);
+			NewtonCollisionForEachPolygonDo( NewtonBodyGetCollision(newtonBody), &matrix[0], newtonPerPoly, &std::make_pair(data->m_lines, colour));
+			data->m_lines->end();
+			
+			buildDebugObjectFromCollision(data->m_lines, Ogre::ColourValue::Blue, bod, data->m_mesh);
 			data->m_node->attachObject(data->m_lines);
 		}
 	}
@@ -509,20 +515,15 @@ namespace OgreNewt
 		line->setName(oss.str());
 
 		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		line->colour(m_prefilterdiscardedcol);
+		// line->colour(m_prefilterdiscardedcol);
 
 		body->getVisualPositionOrientation(pos, ori);
 		pos = body->getAABB().getCenter() - pos;
 		Converters::QuatPosToMatrix(ori, pos, &matrix[0]);
 
-		/*Ogre::AxisAlignedBox boundingBox = body->getAABB();
-		Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * body->getOgreNode()->getScale();
-		Ogre::Vector3 centerOffset = boundingBox.getMinimum() + padding + (size / 2.0f);
-		pos = centerOffset - pos;*/
 		Converters::QuatPosToMatrix(ori, pos, &matrix[0]);
 
-		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
+		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, &std::make_pair(line, m_prefilterdiscardedcol));
 
 		line->end();
 
@@ -556,18 +557,13 @@ namespace OgreNewt
 		line->setName(oss.str());
 
 		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		line->colour(m_hitbodycol);
+		// line->colour(m_hitbodycol);
 
 		body->getVisualPositionOrientation(pos, ori);
 
-		/*Ogre::AxisAlignedBox boundingBox = body->getAABB();
-		Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 size = ((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * body->getOgreNode()->getScale();
-		Ogre::Vector3 centerOffset = boundingBox.getMinimum() + padding + (size / 2.0f);
-		pos = centerOffset - pos;*/
 		Converters::QuatPosToMatrix(ori, pos, &matrix[0]);
 		
-		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
+		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, &std::make_pair(line, m_hitbodycol));
 
 		line->end();
 
@@ -579,222 +575,6 @@ namespace OgreNewt
 #ifndef WIN32
 		m_world->ogreCriticalSectionUnlock();
 #endif
-	}
-
-	void _CDECL Debugger::newtonPerPoly(void* userData, int vertexCount, const dFloat* faceVertec, int id)
-	{
-		/*Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		Ogre::Vector3 p0, p1;
-
-		if (vertexCount < 2)
-			return;
-
-		
-		int i = vertexCount - 1;
-		p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-
-		for (i = 0; i < vertexCount; i++)
-		{
-			p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-			lines->position(p0);
-			lines->position(p1);
-			if (i < vertexCount - 1)
-			{
-				lines->line(id, id + 1);
-			}
-
-			p0 = p1;
-		}*/
-
-		// lines->index(id);
-		
-		
-		//Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		//Ogre::Vector3 p0, p1;
-
-		//if (vertexCount < 2)
-		//	return;
-
-		//int i = vertexCount - 1;
-		//p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-
-		//for (i = 0; i < vertexCount; i++)
-		//{
-		//	p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-		//	lines->position(p0);
-		//	lines->position(p1);
-		//	/*if (i < vertexCount - 1)
-		//	{
-		//		lines->line(i, i + 1);
-		//	}*/
-
-		//	p0 = p1;
-		//}
-
-		//Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		//Ogre::Vector3 p0, p1;
-		//if (vertexCount < 2)
-		//	return;
-		//int idx1 = 0;
-		//int idx2 = 0;
-		//int i = vertexCount - 1;
-		//p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-		//// static int index = 0;
-		//for (i = 0; i < vertexCount; i++)
-		//{
-		//	p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-		//	idx1 = lines->getCurrentVertexCount();
-		//	if (i > 0)
-		//	{
-		//		idx1--;
-		//	}
-		//	lines->position(p0);
-		//	idx2 = lines->getCurrentVertexCount();
-		//	if (i == vertexCount - 1)
-		//	{
-		//		idx2--;
-		//	}
-		//	lines->position(p1);
-
-		//	lines->line(idx1, idx2);
-
-		//	// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "P" + Ogre::StringConverter::toString(index++) + ": " + Ogre::StringConverter::toString(p0));
-		//	// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "P" + Ogre::StringConverter::toString(index++) + ": " + Ogre::StringConverter::toString(p1));
-
-		//	// index++;
-		//	p0 = p1;
-		//	
-		//}
-		
-		/* short indices[] = { 0, 2, 1,
-                0, 3, 2,
-
-                1,2,6,
-                6,5,1,
-
-                4,5,6,
-                6,7,4,
-
-                2,3,6,
-                6,3,7,
-
-                0,7,3,
-                0,4,7,
-
-                0,1,5,
-                0,5,4
-                         };*/
-
-		
-		//static std::vector<short> indices = { 0, 1, 2, 0, 2, 3, //front
-		//	4, 5, 6, 4, 6, 7, //right
-		//	8, 9, 10, 8, 10, 11, //back
-		//	12, 13, 14, 12, 14, 15, //left
-		//	16, 17, 18, 16, 18, 19, //upper
-		//	20, 21, 22, 20, 22, 23 }; //bottom
-
-		//Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		//Ogre::Vector3 p0, p1;
-		//if (vertexCount < 2)
-		//	return;
-		//static int index = 0;
-		//int idx1 = 0;
-		//int idx2 = 0;
-		//int i = vertexCount - 1;
-		//p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-		//for (i = 0; i < vertexCount; i++)
-		//{
-		//	p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-		//	lines->position(p0);
-		//	lines->index(indices[index]);
-		//	index++;
-		//	lines->position(p1);
-		//	lines->index(indices[index]);
-		//	index++;
-
-
-		//	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "P0: " + Ogre::StringConverter::toString(p0) + " i0: " + Ogre::StringConverter::toString(index)
-		//		+ " P1: " + Ogre::StringConverter::toString(p1) + " i1: " + Ogre::StringConverter::toString(index+1));
-		//	p0 = p1;
-
-		//	
-
-		//}
-		static int j = 0;
-		
-		Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		unsigned int* indices = Ogre::any_cast<unsigned int*>((lines)->getUserObjectBindings().getUserAny());
-
-		Ogre::Vector3 p0, p1;
-
-		if (vertexCount < 2)
-			return;
-
-		int i = vertexCount - 1;
-		p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-
-		for (i = 0; i < vertexCount; i++)
-		{
-			p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-			lines->position(p0);
-			lines->position(p1);
-			lines->line(indices[j++], indices[j++]);
-			p0 = p1;
-		}
-
-		// Attention: indices are not deleted!
-		// sizeof(indeices) / sizeof(int), if j >= that, then delete
-
-
-		//Ogre::ManualObject* lines = (Ogre::ManualObject*)userData;
-		//Ogre::Vector3 p0, p1;
-		//if (vertexCount < 2)
-		//	return;
-
-		///*std::vector<int>* indices = Ogre::any_cast<std::vector<int>*>((lines)->getUserObjectBindings().getUserAny());
-		//static int j = 0;*/
-
-		///*if (j >= indices->size() - 1)
-		//{
-		//	j = 0;
-		//	delete indices;
-		//}*/
-
-		//int i = vertexCount - 1;
-		//p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-
-		//for (int i = 0; i < vertexCount; i++)
-		//{
-		//	p1 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-		//	lines->position(p1);
-
-		//	// int index = indices->at(j);
-		//	// lines->index(index);
-		//	// j++;
-		//}
-
-		/*int idx1 = 0;
-		int idx2 = 0;
-		for (int i = 0; i < vertexCount - 1; i += 2)
-		{
-			
-			p0 = Ogre::Vector3(faceVertec[(i * 3) + 0], faceVertec[(i * 3) + 1], faceVertec[(i * 3) + 2]);
-			p1 = Ogre::Vector3(faceVertec[((i + 1) * 3) + 0], faceVertec[((i + 1) * 3) + 1], faceVertec[((i + 1) * 3) + 2]);
-
-			idx1 = lines->getCurrentVertexCount();
-			lines->position(p0);
-			idx2 = lines->getCurrentVertexCount();
-			lines->position(p1);
-			lines->line(idx1, idx2);
-		}*/
 	}
 
 	// ----------------- raycast-debugging -----------------------
@@ -818,12 +598,6 @@ namespace OgreNewt
 	{
 		if (m_raycastsnode)
 		{
-			/*
-					while( m_raycastsnode->numAttachedObjects() > 0 )
-					{
-						delete m_raycastsnode->detachObject((unsigned short)0);
-					}
-			*/
 			m_raycastsnode->removeAndDestroyAllChildren();
 		}
 
@@ -864,7 +638,7 @@ namespace OgreNewt
 		line->setName(oss.str());
 
 		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		line->colour(m_raycol);
+		// line->colour(m_raycol);
 		line->position(startpt);
 		line->position(endpt);
 		line->line(0, 1);
@@ -896,47 +670,21 @@ namespace OgreNewt
 		line->setName(oss.str());
 
 		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		line->colour(m_convexcol);
-
-		/*
-		// aab1
-		Ogre::AxisAlignedBox aab1 = col->getAABB(colori, startpt);
-		const Ogre::Vector3* corners1 = aab1.getAllCorners();
-		Ogre::AxisAlignedBox aab2 = col->getAABB(colori, endpt);
-		const Ogre::Vector3* corners2 = aab2.getAllCorners();
-		for(int i = 0; i < 4; i++)
-		{
-			line->position(corners1[i]); line->position(corners1[(i+1)%4]);
-			line->position(corners1[i+4]); line->position(corners1[(i+1)%4+4]);
-			line->position(corners2[i]); line->position(corners2[(i+1)%4]);
-			line->position(corners2[i+4]); line->position(corners2[(i+1)%4+4]);
-			line->position(corners1[i]); line->position(corners2[i]);
-			line->position(corners1[i+4]); line->position(corners2[i+4]);
-		}
-		line->position(corners1[0]); line->position(corners1[6]);
-		line->position(corners1[1]); line->position(corners1[5]);
-		line->position(corners1[2]); line->position(corners1[4]);
-		line->position(corners1[3]); line->position(corners1[7]);
-		line->position(corners2[0]); line->position(corners2[6]);
-		line->position(corners2[1]); line->position(corners2[5]);
-		line->position(corners2[2]); line->position(corners2[4]);
-		line->position(corners2[3]); line->position(corners2[7]);
-		*/
+		// line->colour(m_convexcol);
 
 		// bodies
 		float matrix[16];
 		
 		Converters::QuatPosToMatrix(colori, startpt, &matrix[0]);
-		NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
+		NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, &std::make_pair(line, m_convexcol));
 
 		if (endpt != startpt)
 		{
 			Converters::QuatPosToMatrix(colori, endpt, &matrix[0]);
-			NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
+			NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, &std::make_pair(line, m_convexcol));
 		}
 
 		line->end();
-
 
 #ifndef WIN32
 		m_world->ogreCriticalSectionLock();
@@ -949,4 +697,3 @@ namespace OgreNewt
 	}
 
 }   // end namespace OgreNewt
-

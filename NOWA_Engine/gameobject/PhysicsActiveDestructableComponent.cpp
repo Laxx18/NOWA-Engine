@@ -1125,8 +1125,11 @@ namespace NOWA
 		// Important: Set the type and material group id for each piece the same as the root body for material pair functionality and collision callbacks
 		this->splitPartBody->setType(this->physicsActiveDestructableComponent->getOwner()->getCategoryId());
 		// this->splitPartBody->setMaterialGroupID(this->physicsActiveDestructableComponent->getBody()->getMaterialGroupID());
-		this->splitPartBody->setMaterialGroupID(AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsActiveDestructableComponent->gameObjectPtr.get(), 
-			this->physicsActiveDestructableComponent->getOgreNewt()));
+
+		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsActiveDestructableComponent->gameObjectPtr.get(),
+			this->physicsActiveDestructableComponent->getOgreNewt());
+		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
+		this->splitPartBody->setMaterialGroupID(materialId);
 
 		// OgreNewt::MaterialPair* materialPair = new OgreNewt::MaterialPair(this->physicsActiveDestructableComponent->getOgreNewt(), this->splitPartBody->getMaterialGroupID(), this->splitPartBody->getMaterialGroupID());
 		// set the data

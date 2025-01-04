@@ -2472,7 +2472,9 @@ namespace NOWA
 		{
 			if (nullptr != physicsCompPtr->getBody())
 			{
-				physicsCompPtr->getBody()->setMaterialGroupID(this->getMaterialID(gameObject, physicsCompPtr->getOgreNewt()));
+				const auto materialId = this->getMaterialID(gameObject, physicsCompPtr->getOgreNewt());
+				physicsCompPtr->getBody()->setMaterialGroupID(materialId);
+				AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 				physicsCompPtr->getBody()->setType(gameObject->getCategoryId());
 			}
 		}

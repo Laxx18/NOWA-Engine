@@ -1,0 +1,348 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C3349C81-674F-3303-8289-7EEFAD6963E3}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>FParser</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">obj/$(Configuration)/</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_d</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(NOWA)/bin/$(configuration)/libs/</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">obj/$(Configuration)/</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">fparser.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">fparser</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">fparser.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">fparser</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.dll</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) -std=c++11</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;FPARSER_EXPORTS;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;FPARSER_EXPORTS;CMAKE_INTDIR=\"Debug\";fparser_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
+      <ProgramDataBaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDataBaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) -std=c++11</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR=\"Release\";fparser_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
+      <ProgramDataBaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDataBaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) -std=c++11</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR="MinSizeRel";fparser_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR=\"MinSizeRel\";fparser_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>m.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/MinSizeRel/fparser.lib</ImportLibrary>
+      <ProgramDataBaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDataBaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) -std=c++11</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR="RelWithDebInfo";fparser_EXPORTS</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;FPARSER_EXPORTS;CMAKE_INTDIR=\"RelWithDebInfo\";fparser_EXPORTS</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Link>
+      <AdditionalDependencies>m.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/RelWithDebInfo/fparser.lib</ImportLibrary>
+      <ProgramDataBaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDataBaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fparser.cc" />
+    <ClCompile Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpoptimizer.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\ZERO_CHECK.vcxproj">
+      <Project>{2FFAF8F1-6C82-3D97-A6B7-A049E8BAC2F8}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\extrasrcbuilddir.vcxproj">
+      <Project>{BC6E8A4A-1857-3820-9E11-B93782F61284}</Project>
+      <Name>extrasrcbuilddir</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

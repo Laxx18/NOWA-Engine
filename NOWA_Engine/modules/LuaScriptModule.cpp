@@ -187,6 +187,12 @@ namespace NOWA
 			luaInFileContent = this->getScriptAdaptedContentAbsolute(sourceScriptFilePathName, targetModuleName, sourceModuleName);
 		}
 
+		// Empty content, do nothing
+		if (true == luaInFileContent.empty())
+		{
+			return;
+		}
+
 		// Write to target file
 		std::ofstream luaOutFile(targetScriptFilePathName);
 		if (true == luaOutFile.good())

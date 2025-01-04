@@ -1,5 +1,5 @@
 #include "GmpInt.hh"
-#include "gmp.h"
+#include <gmp.h>
 #include <deque>
 #include <vector>
 #include <cstring>

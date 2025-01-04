@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.577351" y="0.577351" z="0.57735"/>
+			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -138,7 +138,7 @@
 		</node>
 		<node name="U_ramp_2" id="1734590696">
 			<position x="11.7555" y="-0.0106409" z="-13.0473"/>
-			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="0.5" y="0.4" z="0.1"/>
 			<entity name="U_ramp_2" meshFile="U_ramp.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="[Default]__0765720893"/>
@@ -621,7 +621,7 @@
 		</node>
 		<node name="QuatTire_1" id="4239152596">
 			<position x="-2.66932" y="0.182782" z="-8.54938"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -849,7 +849,7 @@
 		</node>
 		<node name="QuatTire_4" id="4239151291">
 			<position x="-1.89988" y="0.182782" z="-8.54938"/>
-			<rotation qw="4.37114e-08" qx="0" qy="1" qz="0"/>
+			<rotation qw="-4.37114e-08" qx="0" qy="1" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="qbike_mat"/>
@@ -1191,7 +1191,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All-RightCamera"/>
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1324,7 +1324,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All-LeftCamera"/>
 					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1507,7 +1507,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1579,7 +1579,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -1686,6 +1686,7 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Serialize" data="true"/>
 				</userData>
 			</terra>
 		</node>
