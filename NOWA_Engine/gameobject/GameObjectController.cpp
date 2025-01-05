@@ -691,6 +691,8 @@ namespace NOWA
 		{
 			pMaterialID = new OgreNewt::MaterialID(ogreNewt);
 			this->materialIDMap.insert(std::make_pair(gameObject->getCategory(), pMaterialID));
+
+			AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(pMaterialID);
 		}
 		else
 		{
@@ -2474,7 +2476,6 @@ namespace NOWA
 			{
 				const auto materialId = this->getMaterialID(gameObject, physicsCompPtr->getOgreNewt());
 				physicsCompPtr->getBody()->setMaterialGroupID(materialId);
-				AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 				physicsCompPtr->getBody()->setType(gameObject->getCategoryId());
 			}
 		}

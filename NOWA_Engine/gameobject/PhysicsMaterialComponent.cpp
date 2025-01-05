@@ -22,14 +22,14 @@ namespace NOWA
 		this->category1 = new Variant(PhysicsMaterialComponent::AttrCategory1(), allCategories, this->attributes);
 		this->category2 = new Variant(PhysicsMaterialComponent::AttrCategory2(), allCategories, this->attributes);
 
-		friction = new Variant(PhysicsMaterialComponent::AttrFriction(), Ogre::Vector2(0.8f, 0.4f), this->attributes);
-		softness = new Variant(PhysicsMaterialComponent::AttrSoftness(), Ogre::Real(0.01f), this->attributes);
-		elasticity = new Variant(PhysicsMaterialComponent::AttrElasticity(), Ogre::Real(0.01f), this->attributes);
-		surfaceThickness = new Variant(PhysicsMaterialComponent::AttrSurfaceThickness(), Ogre::Real(0.125f), this->attributes);
-		collideable = new Variant(PhysicsMaterialComponent::AttrCollideable(), true, this->attributes);
-		contactBehavior = new Variant(PhysicsMaterialComponent::AttrContactBehavior(), { "None", "ConveyorPlayer", "ConveyorObject" }, this->attributes);
-		contactSpeed = new Variant(PhysicsMaterialComponent::AttrContactSpeed(), Ogre::Real(10.0f), this->attributes);
-		contactDirection = new Variant(PhysicsMaterialComponent::AttrContactDirection(), Ogre::Vector3::NEGATIVE_UNIT_Z, this->attributes);
+		this->friction = new Variant(PhysicsMaterialComponent::AttrFriction(), Ogre::Vector2(0.8f, 0.4f), this->attributes);
+		this->softness = new Variant(PhysicsMaterialComponent::AttrSoftness(), Ogre::Real(0.01f), this->attributes);
+		this->elasticity = new Variant(PhysicsMaterialComponent::AttrElasticity(), Ogre::Real(0.01f), this->attributes);
+		this->surfaceThickness = new Variant(PhysicsMaterialComponent::AttrSurfaceThickness(), Ogre::Real(0.125f), this->attributes);
+		this->collideable = new Variant(PhysicsMaterialComponent::AttrCollideable(), true, this->attributes);
+		this->contactBehavior = new Variant(PhysicsMaterialComponent::AttrContactBehavior(), { "None", "ConveyorPlayer", "ConveyorObject" }, this->attributes);
+		this->contactSpeed = new Variant(PhysicsMaterialComponent::AttrContactSpeed(), Ogre::Real(10.0f), this->attributes);
+		this->contactDirection = new Variant(PhysicsMaterialComponent::AttrContactDirection(), Ogre::Vector3::NEGATIVE_UNIT_Z, this->attributes);
 		this->overlapFunctionName = new Variant(PhysicsMaterialComponent::AttrOverlapFunctionName(), Ogre::String(""), this->attributes);
 		this->contactFunctionName = new Variant(PhysicsMaterialComponent::AttrContactFunctionName(), Ogre::String(""), this->attributes);
 		this->contactOnceFunctionName = new Variant(PhysicsMaterialComponent::AttrContactOnceFunctionName(), Ogre::String(""), this->attributes);
@@ -206,7 +206,10 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsMaterialComponent] Init physics material component for game object: " + this->gameObjectPtr->getName());
 
-		// this->createMaterialPair();
+		std::vector<Ogre::String> allCategories = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getAllCategoriesSoFar();
+		this->category1->setValue(allCategories);
+		this->category2->setValue(allCategories);
+
 		return true;
 	}
 

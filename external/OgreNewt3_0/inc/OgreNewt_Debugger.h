@@ -95,7 +95,7 @@ namespace OgreNewt
         void addHitBody(const OgreNewt::Body* body);
 
 		// utility function to build a visual wire from shape for a collision
-		void buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, OgreNewt::Body* body, NewtonMesh* mesh) const;
+		void buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, int index, OgreNewt::Body* body, NewtonMesh* mesh) const;
 
     protected:
         friend class OgreNewt::World;
@@ -115,6 +115,7 @@ namespace OgreNewt
         Ogre::ColourValue       m_raycol, m_convexcol, m_hitbodycol, m_prefilterdiscardedcol;
         bool                    m_markhitbodies;
 		bool					showText;
+        int                     index;
 
         struct BodyDebugData
         {
@@ -154,9 +155,13 @@ namespace OgreNewt
         //! this function is declared private, so nobody can use it!
         const Debugger& operator=(const Debugger& d) { return d; } // actually this implementation must *never* be used!
 
+        static void createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& color);
+
         static void _CDECL newtonPerPoly( void* userData, int vertexCount, const float* faceVertec, int id );
 
 		static void _CDECL newtonprocessJoints (const NewtonJoint* joint, void* userData);
+    private:
+        static std::vector<Ogre::String> unlitDatablockNames;
     };
 
 }   // end namespace OgreNewt

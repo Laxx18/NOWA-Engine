@@ -99,6 +99,7 @@ namespace MyGUI
 		mTexture = nullptr;
 	}
 
+	// Fix Start by Lax 05_01_2025: Wrong rgb projection from gradient to selected color
 	void ColourPanel::updateTexture(const MyGUI::Colour& _colour)
 	{
 		size_t size = 32;
@@ -106,19 +107,27 @@ namespace MyGUI
 		MyGUI::uint8* pDest = static_cast<MyGUI::uint8*>(mTexture->lock(MyGUI::TextureUsage::Write));
 
 		for (size_t j = 0; j < size; j++)
+		{
 			for (size_t i = 0; i < size; i++)
 			{
-				float x = (float)i / size;
-				float y = (float)j / size;
-				*pDest++ = MyGUI::uint8((1. - y) * (_colour.blue  * x + (1. - x)) * 255); // B
-				*pDest++ = MyGUI::uint8((1. - y) * (_colour.green * x + (1. - x)) * 255); // G
-				*pDest++ = MyGUI::uint8((1. - y) * (_colour.red   * x + (1. - x)) * 255); // R
-				*pDest++ = 255; // A
-			}
+				float x = static_cast<float>(i) / (size - 1); // Saturation
+				float y = 1.0f - static_cast<float>(j) / (size - 1); // Brightness
 
-		// Unlock the pixel buffer
+				// Correct RGB logic
+				float red = _colour.red * x * y + (1.0f - x) * y;
+				float green = _colour.green * x * y + (1.0f - x) * y;
+				float blue = _colour.blue * x * y + (1.0f - x) * y;
+
+				*pDest++ = MyGUI::uint8(red * 255);   // R
+				*pDest++ = MyGUI::uint8(green * 255); // G
+				*pDest++ = MyGUI::uint8(blue * 255);  // B
+				*pDest++ = 255;                       // A
+			}
+		}
+
 		mTexture->unlock();
 	}
+	// Fix End by Lax 05_01_2025: Wrong rgb projection from gradient to selected color
 
 	void ColourPanel::notifyMouseDrag(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
 	{

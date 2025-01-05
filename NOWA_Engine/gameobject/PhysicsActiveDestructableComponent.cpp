@@ -1128,7 +1128,6 @@ namespace NOWA
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->physicsActiveDestructableComponent->gameObjectPtr.get(),
 			this->physicsActiveDestructableComponent->getOgreNewt());
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 		this->splitPartBody->setMaterialGroupID(materialId);
 
 		// OgreNewt::MaterialPair* materialPair = new OgreNewt::MaterialPair(this->physicsActiveDestructableComponent->getOgreNewt(), this->splitPartBody->getMaterialGroupID(), this->splitPartBody->getMaterialGroupID());

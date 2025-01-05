@@ -498,7 +498,6 @@ namespace NOWA
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 		this->physicsBody->setMaterialGroupID(materialId);
 
 		return true;
@@ -573,7 +572,6 @@ namespace NOWA
 
 		this->physicsBody->setType(this->gameObjectPtr->getCategoryId());
 		this->physicsBody->setMaterialGroupID(materialId);
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 	}
 
 	void PhysicsActiveComponent::reCreateCollision(bool overwrite)
@@ -724,7 +722,6 @@ namespace NOWA
 		this->physicsBody->setType(gameObjectPtr->getCategoryId());
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 		this->physicsBody->setMaterialGroupID(materialId);
 
 		// If this root has a joint, set this new body

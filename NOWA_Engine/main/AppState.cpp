@@ -382,6 +382,9 @@ namespace NOWA
 		{
 			this->sceneManager->removeRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
 
+			// Internally destroys all datablocks and movable objects (lines)
+			this->ogreNewtModule->showOgreNewtCollisionLines(false);
+
 			this->gameObjectController->destroyContent();
 			delete this->gameObjectController;
 			this->gameObjectController = nullptr;

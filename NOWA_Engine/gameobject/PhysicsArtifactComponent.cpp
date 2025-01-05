@@ -89,7 +89,6 @@ namespace NOWA
 		this->physicsBody->setType(gameObjectPtr->getCategoryId());
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
-		AppStateManager::getSingletonPtr()->getOgreNewtModule()->setMaterialIdForDebugger(materialId);
 		this->physicsBody->setMaterialGroupID(materialId);
 
 		return success;

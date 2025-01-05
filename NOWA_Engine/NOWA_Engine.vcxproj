@@ -176,7 +176,7 @@
       </EnableParallelCodeGeneration>
       <FunctionLevelLinking>
       </FunctionLevelLinking>
-      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -302,7 +302,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100;26429;26400;26495;26440;26447</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <CompileAs>CompileAsCpp</CompileAs>

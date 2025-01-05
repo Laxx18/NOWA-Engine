@@ -185,8 +185,6 @@ namespace NOWA
 	{
 		if (this->ogreNewt)
 		{
-			OgreNewt::Debugger& debug = this->ogreNewt->getDebugger();
-			debug.deInit();
 			delete this->ogreNewt;
 			this->ogreNewt = 0;
 		}
@@ -222,7 +220,7 @@ namespace NOWA
 			if (Ogre::ColourValue::White == tempColour)
 			{
 				// Generate a small random offset for each RGB component
-				Ogre::Real randOffset = 0.05f; // You can adjust this value to control how much the color changes
+				Ogre::Real randOffset = 0.5f; // You can adjust this value to control how much the color changes
 				tempColour.r = Ogre::Math::Clamp(tempColour.r + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);
 				tempColour.g = Ogre::Math::Clamp(tempColour.g + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);
 				tempColour.b = Ogre::Math::Clamp(tempColour.b + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);

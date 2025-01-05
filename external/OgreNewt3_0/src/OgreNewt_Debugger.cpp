@@ -9,6 +9,7 @@
 #include <dCustomJoint.h>
 
 #include "OgreHlmsUnlitDatablock.h"
+#include "OgreHlmsUnlit.h"
 
 #include <sstream>
 
@@ -24,6 +25,7 @@
 
 namespace OgreNewt
 {
+	std::vector<Ogre::String> Debugger::unlitDatablockNames;
 
 	//////////////////////////////////////////////////////////
 	// DEUBBER FUNCTIONS
@@ -39,14 +41,15 @@ namespace OgreNewt
 		m_convexcol(Ogre::ColourValue::Blue),
 		m_hitbodycol(Ogre::ColourValue::Red),
 		m_prefilterdiscardedcol(Ogre::ColourValue::Black),
-		showText(true)
+		showText(true),
+		index(0)
 	{
 
 	}
 
 	Debugger::~Debugger()
 	{
-		deInit();
+		this->deInit();
 	}
 
 	void Debugger::init(Ogre::SceneManager* smgr, bool showText)
@@ -70,6 +73,10 @@ namespace OgreNewt
 
 	void Debugger::deInit()
 	{
+		this->index = 0;
+
+		this->clearBodyDebugDataCache();
+
 		if (m_debugnode)
 		{
 			m_debugnode->setListener(nullptr);
@@ -91,6 +98,27 @@ namespace OgreNewt
 				m_raycastsnode->getParentSceneNode()->removeAndDestroyChild(m_raycastsnode);
 			}
 			m_raycastsnode = nullptr;
+		}
+
+		Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+		Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+
+		for (size_t i = 0; i < Debugger::unlitDatablockNames.size(); i++)
+		{
+			auto datablock = hlms->getDatablock(Debugger::unlitDatablockNames[i]);
+			
+			// Check if datablock exists before attempting destruction
+			if (nullptr != datablock)
+			{
+				auto& linkedRenderabled = datablock->getLinkedRenderables();
+
+				// Only destroy if the datablock is not used else where
+				if (true == linkedRenderabled.empty())
+				{
+					datablock->getCreator()->destroyDatablock(datablock->getName());
+					datablock = nullptr;
+				}
+			}
 		}
 	}
 
@@ -178,7 +206,6 @@ namespace OgreNewt
 
 	void Debugger::hideDebugInformation()
 	{
-		clearBodyDebugDataCache();
 		deInit();
 		// erase any existing lines!
 		if (m_debugnode)
@@ -187,12 +214,48 @@ namespace OgreNewt
 
 	void Debugger::setMaterialColor(const MaterialID* mat, Ogre::ColourValue col)
 	{
+		if (nullptr == mat)
+		{
+			return;
+		}
 		m_materialcolors[mat->getID()] = col;
 	}
 
 	void Debugger::setDefaultColor(Ogre::ColourValue col)
 	{
 		m_defaultcolor = col;
+	}
+
+	void Debugger::createUnlitDatablock(const Ogre::String& datablockName, const Ogre::ColourValue& colour)
+	{
+		Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+		Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+
+		Ogre::HlmsBlendblock blendblock;
+		blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA); // Example: Transparent alpha blending
+
+		Ogre::HlmsMacroblock macroblock;
+		macroblock.mCullMode = Ogre::CULL_NONE; // Example: No culling
+		macroblock.mDepthCheck = true;
+		macroblock.mDepthWrite = true;
+
+		// Check if datablock already exists
+		Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
+
+		Debugger::unlitDatablockNames.emplace_back(datablockName);
+
+		if (false == existingDatablock)
+		{
+			Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+				hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
+
+			existingDatablock = datablock;
+		}
+		// Set color usage
+		static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setUseColour(true); // Enable manual colour
+
+		// Set a specific colour
+		static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setColour(colour);
 	}
 
 	void _CDECL Debugger::newtonprocessJoints(const NewtonJoint* newtonJoint, void* userData)
@@ -208,35 +271,25 @@ namespace OgreNewt
 		joint->showDebugData(m_sceneManager, m_debugnode);
 	}
 
-	void Debugger::buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, OgreNewt::Body* body, NewtonMesh* mesh) const
+	void Debugger::buildDebugObjectFromCollision(Ogre::ManualObject* object, Ogre::ColourValue colour, int index, OgreNewt::Body* body, NewtonMesh* mesh) const
 	{
-		if (!object || !body || !mesh)
+		if (nullptr == object || nullptr == body || nullptr == mesh)
+		{
 			return;
+		}
 
 		// Clear existing object content
 		object->clear();
 
-		Ogre::HlmsUnlitDatablock* sourceDataBlock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock("RedNoLighting"));
-		if (nullptr != sourceDataBlock)
-		{
-			sourceDataBlock->setUseColour(true);
-			sourceDataBlock->setColour(colour);
-			// Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(this->originalDatablock->clone(originalDataBlockName
-			// 	+ "__" + Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-		}
-
-		object->begin("WhiteNoLighting", Ogre::OperationType::OT_LINE_LIST);
+		const Ogre::String datablockName = "DebugObjectUnlitDatablock__" + Ogre::StringConverter::toString(index);
+		Debugger::createUnlitDatablock(datablockName, colour);
+		object->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
 		const NewtonBody* newtonBody = body->getNewtonBody();
 		const auto it = m_materialcolors.find(NewtonBodyGetMaterialGroupID(newtonBody));
 
 		// Triangulate the mesh for debugging
 		NewtonMeshTriangulate(mesh);
-
-		// Get position, orientation, and scale of the body
-		Ogre::Vector3 pos, vel, omega;
-		Ogre::Quaternion ori;
-		body->getPositionOrientation(pos, ori);
 
 		Ogre::Vector3 scale = body->getOgreNode()->_getDerivedScaleUpdated();
 
@@ -281,33 +334,20 @@ namespace OgreNewt
 					vertexArray[idx2 + 2] / scale.z
 				);
 
-				Ogre::ColourValue colour;
-				// Set the material color
-				if (it != m_materialcolors.end())
-					colour = it->second;
-				else
-					colour = m_defaultcolor;
-
 				// Draw the edges of the triangles
 				object->position(v0);
-				object->colour(colour);
 				object->index(lineIndex++);
 				object->position(v1);
-				object->colour(colour);
 				object->index(lineIndex++);
 
 				object->position(v1);
-				object->colour(colour);
 				object->index(lineIndex++);
 				object->position(v2);
-				object->colour(colour);
 				object->index(lineIndex++);
 
 				object->position(v2);
-				object->colour(colour);
 				object->index(lineIndex++);
 				object->position(v0);
-				object->colour(colour);
 				object->index(lineIndex++);
 			}
 
@@ -328,13 +368,8 @@ namespace OgreNewt
 		if (vertexCount < 3 || !userData)
 			return;
 
-		// Cast the user data back to a std::pair<ManualObject*, Ogre::ColourValue>
-		std::pair<Ogre::ManualObject*, Ogre::ColourValue>* data =
-			static_cast<std::pair<Ogre::ManualObject*, Ogre::ColourValue>*>(userData);
-
-		// Access ManualObject* and Ogre::ColourValue
-		Ogre::ManualObject* lines = data->first;
-		Ogre::ColourValue colour = data->second;
+		// Cast the user data back
+		Ogre::ManualObject* lines = static_cast<Ogre::ManualObject*>(userData);
 
 		unsigned int index = 0;
 
@@ -368,24 +403,18 @@ namespace OgreNewt
 
 			// Draw edges
 			lines->position(v0);
-			lines->colour(colour);
 			lines->index(index++);
 			lines->position(v1);
-			lines->colour(colour);
 			lines->index(index++);
 
 			lines->position(v1);
-			lines->colour(colour);
 			lines->index(index++);
 			lines->position(v2);
-			lines->colour(colour);
 			lines->index(index++);
 
 			lines->position(v2);
-			lines->colour(colour);
 			lines->index(index++);
 			lines->position(v0);
-			lines->colour(colour);
 			lines->index(index++);
 		}
 	}
@@ -470,52 +499,43 @@ namespace OgreNewt
 			}
 
 			Ogre::ColourValue colour;
-			// set color
 			if (it != m_materialcolors.end())
-				colour = it->second;
-			else
-				colour = m_defaultcolor;
-
-			Ogre::HlmsUnlitDatablock* sourceDataBlock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock("RedNoLighting"));
-			if (nullptr != sourceDataBlock)
 			{
-				sourceDataBlock->setUseColour(true);
-				sourceDataBlock->setColour(Ogre::ColourValue::Blue);
+				colour = it->second;
+				this->buildDebugObjectFromCollision(data->m_lines, colour, it->first, bod, data->m_mesh);
+			}
+			else
+			{
+				colour = m_defaultcolor;
+				this->buildDebugObjectFromCollision(data->m_lines, colour, 0, bod, data->m_mesh);
 			}
 
-			data->m_lines->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-
-			float matrix[16];
-			Converters::QuatPosToMatrix(Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO, &matrix[0]);
-
-			NewtonCollisionForEachPolygonDo( NewtonBodyGetCollision(newtonBody), &matrix[0], newtonPerPoly, &std::make_pair(data->m_lines, colour));
-			data->m_lines->end();
-			
-			buildDebugObjectFromCollision(data->m_lines, Ogre::ColourValue::Blue, bod, data->m_mesh);
 			data->m_node->attachObject(data->m_lines);
 		}
 	}
 
 	void Debugger::addDiscardedBody(const OgreNewt::Body* body)
 	{
-		if (!m_raycastsnode)
+		if (nullptr == m_raycastsnode || nullptr == body)
+		{
 			return;
+		}
 
-		static int i = 0;
 		float matrix[16];
 		Ogre::Vector3 pos;
 		Ogre::Quaternion ori;
 
 		std::ostringstream oss;
-		oss << "__OgreNewt__Raycast_Debugger__Lines__DiscardedBody__" << i++ << "__";
+		oss << "__OgreNewt__Raycast_Debugger__Lines__DiscardedBody__" << this->index++ << "__";
 		Ogre::ManualObject *line = m_sceneManager->createManualObject();
 		line->setRenderQueueGroup(10);
 		line->setCastShadows(false);
 		// Ogre::ManualObject *line = new Ogre::ManualObject(0, &m_sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), m_sceneManager);
 		line->setName(oss.str());
 
-		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		// line->colour(m_prefilterdiscardedcol);
+		const Ogre::String datablockName = "DiscardedBodyUnlitDatablock__" + Ogre::StringConverter::toString(this->index);
+		Debugger::createUnlitDatablock(datablockName, m_prefilterdiscardedcol);
+		line->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
 		body->getVisualPositionOrientation(pos, ori);
 		pos = body->getAABB().getCenter() - pos;
@@ -523,7 +543,7 @@ namespace OgreNewt
 
 		Converters::QuatPosToMatrix(ori, pos, &matrix[0]);
 
-		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, &std::make_pair(line, m_prefilterdiscardedcol));
+		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
 
 		line->end();
 
@@ -540,30 +560,32 @@ namespace OgreNewt
 
 	void Debugger::addHitBody(const OgreNewt::Body* body)
 	{
-		if (!m_raycastsnode)
+		if (nullptr == m_raycastsnode)
+		{
 			return;
+		}
 
-		static int i = 0;
 		float matrix[16];
 		Ogre::Vector3 pos;
 		Ogre::Quaternion ori;
 
 		std::ostringstream oss;
-		oss << "__OgreNewt__Raycast_Debugger__Lines__HitBody__" << i++ << "__";
+		oss << "__OgreNewt__Raycast_Debugger__Lines__HitBody__" << this->index++ << "__";
 		Ogre::ManualObject *line = m_sceneManager->createManualObject();
 		line->setRenderQueueGroup(10);
 		line->setCastShadows(false);
 		// Ogre::ManualObject *line = new Ogre::ManualObject(0, &m_sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), m_sceneManager);
 		line->setName(oss.str());
 
-		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		// line->colour(m_hitbodycol);
+		const Ogre::String datablockName = "HitBodyUnlitDatablock__" + Ogre::StringConverter::toString(this->index);
+		Debugger::createUnlitDatablock(datablockName, m_hitbodycol);
+		line->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
 		body->getVisualPositionOrientation(pos, ori);
 
 		Converters::QuatPosToMatrix(ori, pos, &matrix[0]);
 		
-		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, &std::make_pair(line, m_hitbodycol));
+		NewtonCollisionForEachPolygonDo(body->getNewtonCollision(), &matrix[0], newtonPerPoly, line);
 
 		line->end();
 
@@ -625,20 +647,23 @@ namespace OgreNewt
 
 	void Debugger::addRay(const Ogre::Vector3 &startpt, const Ogre::Vector3 &endpt)
 	{
-		if (!m_raycastsnode)
+		if (nullptr == m_raycastsnode)
+		{
 			return;
+		}
 
-		static int i = 0;
 		std::ostringstream oss;
-		oss << "__OgreNewt__Raycast_Debugger__Lines__Raycastline__" << i++ << "__";
+		oss << "__OgreNewt__Raycast_Debugger__Lines__Raycastline__" << this->index++ << "__";
 		Ogre::ManualObject *line = m_sceneManager->createManualObject();
 		line->setRenderQueueGroup(10);
 		line->setCastShadows(false);
 		// Ogre::ManualObject *line = new Ogre::ManualObject(0, &m_sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), m_sceneManager);
 		line->setName(oss.str());
 
-		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		// line->colour(m_raycol);
+		const Ogre::String datablockName = "RayUnlitDatablock__" + Ogre::StringConverter::toString(this->index);
+		Debugger::createUnlitDatablock(datablockName, m_raycol);
+		line->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
+
 		line->position(startpt);
 		line->position(endpt);
 		line->line(0, 1);
@@ -656,32 +681,34 @@ namespace OgreNewt
 
 	void Debugger::addConvexRay(const NewtonCollision* col, const Ogre::Vector3 &startpt, const Ogre::Quaternion &colori, const Ogre::Vector3 &endpt)
 	{
-		if (!m_raycastsnode)
+		if (nullptr == m_raycastsnode)
+		{
 			return;
+		}
 
-		static int i = 0;
 		// lines from aab
 		std::ostringstream oss;
-		oss << "__OgreNewt__Raycast_Debugger__Lines__Convexcastlines__" << i++ << "__";
+		oss << "__OgreNewt__Raycast_Debugger__Lines__Convexcastlines__" << this->index++ << "__";
 		Ogre::ManualObject *line = m_sceneManager->createManualObject();
 		line->setRenderQueueGroup(10);
 		line->setCastShadows(false);
 		// Ogre::ManualObject *line = new Ogre::ManualObject(0, &m_sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), m_sceneManager);
 		line->setName(oss.str());
 
-		line->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		// line->colour(m_convexcol);
+		const Ogre::String datablockName = "ConvexRayUnlitDatablock__" + Ogre::StringConverter::toString(this->index);
+		Debugger::createUnlitDatablock(datablockName, m_convexcol);
+		line->begin(datablockName, Ogre::OperationType::OT_LINE_LIST);
 
 		// bodies
 		float matrix[16];
 		
 		Converters::QuatPosToMatrix(colori, startpt, &matrix[0]);
-		NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, &std::make_pair(line, m_convexcol));
+		NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
 
 		if (endpt != startpt)
 		{
 			Converters::QuatPosToMatrix(colori, endpt, &matrix[0]);
-			NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, &std::make_pair(line, m_convexcol));
+			NewtonCollisionForEachPolygonDo(col, &matrix[0], newtonPerPoly, line);
 		}
 
 		line->end();
