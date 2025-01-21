@@ -141,6 +141,15 @@ namespace NOWA
 		{
 			this->succeed();
 
+			NOWA::SceneParameter sceneParameter;
+			// Set the data for a state
+			sceneParameter.appStateName = this->appStateName;
+			sceneParameter.sceneManager = this->dotSceneImportModule->getSceneManager();
+			sceneParameter.mainCamera = this->dotSceneImportModule->getMainCamera();
+			sceneParameter.sunLight = this->dotSceneImportModule->getSunLight();
+			sceneParameter.ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt();
+			sceneParameter.dotSceneImportModule = this->dotSceneImportModule;
+
 			if (true == this->sceneSnapshot)
 			{
 				Ogre::String openFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName, ".scene");
@@ -169,7 +178,7 @@ namespace NOWA
 					engineResourceListener->showLoadingBar();
 				}
 
-				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, openFilePathName, this->crypted, this->showProgress);
+				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, "Projects", openFilePathName, this->crypted, this->showProgress);
 				if (false == success)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->saveName + "' correctly!");
@@ -196,23 +205,9 @@ namespace NOWA
 				// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
 				// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
-				// Set the data for a state
-				NOWA::SceneParameter sceneParameter;
-				sceneParameter.appStateName = this->appStateName;
-				sceneParameter.sceneManager = this->dotSceneImportModule->getSceneManager();
-				sceneParameter.mainCamera = this->dotSceneImportModule->getMainCamera();
-				sceneParameter.sunLight = this->dotSceneImportModule->getSunLight();
-				sceneParameter.ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt();
-				sceneParameter.dotSceneImportModule = this->dotSceneImportModule;
-
 				// NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
 
 				// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextSceneName);
-
-				// Send event, that scene has been loaded. Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-				// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-				boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
 			}
 
 			bool success = AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->internalReadGlobalAttributes(globalAttributesStream);
@@ -221,9 +216,28 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not read global attributes for saved name: '" + this->saveName + "' correctly!");
 			}
 
+			// Send event, that scene has been loaded. Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
+			// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
+			// This will also call connect for all lua scripts, so that data is really actualized at runtime
+			boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
+
 			for (unsigned short i = 0; i < 2; i++)
 			{
 				Ogre::Root::getSingletonPtr()->renderOneFrame();
+			}
+
+			if (true == Core::getSingletonPtr()->getIsGame())
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
+
+				// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(snapshotProjectAndSceneName.second);
+
+				// NOWA::GameObjectPtr player = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromName(NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->getPlayerName());
+				// if (nullptr != player)
+				// {
+				// 	NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, player->getId(), true);
+				// }
 			}
 
 			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);

@@ -1,5 +1,10 @@
 return {
 
+	ALL_CATEGORIES_ID =
+	{
+		type = "singleton",
+		description = "All categories id."
+	},
 	AiComponent =
 	{
 		type = "class",
@@ -1991,10 +1996,14 @@ return {
 	},
 	AppStateManager =
 	{
-		type = "class",
+		type = "singleton",
 		description = "Some functions for NOWA game loop and applictation state management. That is, normally only one scene can be running at a time. But putting a scene into an own state. Its possible to push another scene at the top of the current scene. Like pushing 'MenuState', so that the user can configure something and when he is finished, he pops the 'MenuState', so that the 'GameState' will continue.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			setSlowMotion =
 			{
 				type = "method",
@@ -3604,7 +3613,7 @@ return {
 	CameraBehaviorZoomComponent =
 	{
 		type = "class",
-		description = "Zoom a camera for all game objects of the given category. Note: Camera position and orientation is important! Else World could be clipped away. A good orientation value for the camera is: -80 -60 0. Requirements: Camera must be in orthogonal mode.",
+		description = "Zoom a camera for all game objects of the given category. Note: Camera position and orientation is important! Else scene could be clipped away. A good orientation value for the camera is: -80 -60 0. Requirements: Camera must be in orthogonal mode.",
 		inherits = "CameraBehaviorComponent",
 		childs = 
 		{
@@ -4499,11 +4508,15 @@ return {
 	},
 	Core =
 	{
-		type = "class",
+		type = "singleton",
 		description = "Some functions for NOWA core functionality.",
 		childs = 
 		{
-			getCurrentWorldBoundLeftNear =
+			singleton =
+			{
+				type = "value"
+			},
+			getCurrentSceneBoundLeftNear =
 			{
 				type = "function",
 				description = "Gets left near bounding box of the currently loaded scene.",
@@ -4511,7 +4524,7 @@ return {
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
-			getCurrentWorldBoundRightFar =
+			getCurrentSceneBoundRightFar =
 			{
 				type = "function",
 				description = "Gets right far bounding box of the currently loaded scene.",
@@ -4575,10 +4588,10 @@ return {
 				returns = "(string)",
 				valuetype = "string"
 			},
-			getWorldName =
+			getSceneName =
 			{
 				type = "function",
-				description = "Gets the current world (scene) name.",
+				description = "Gets the current scene name.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -9462,6 +9475,30 @@ return {
 		description = "The game object controller manages all game objects.",
 		childs = 
 		{
+			undo =
+			{
+				type = "method",
+				description = "Does undo one step in the simulation.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			undoAll =
+			{
+				type = "method",
+				description = "Does undo all steps in the simulation. Note: This function is really important to get back a scene before e.g. in the NOWA-Design the play button has been clicked. Use in e.g. in the lua script of the MainGameObject.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			redo =
+			{
+				type = "method",
+				description = "Does redo one step in the simulation,.",
+				args = "()",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			deleteDelayedGameObject =
 			{
 				type = "method",
@@ -11015,10 +11052,10 @@ return {
 		description = "Class that is reponsible for the game progress specific topics like switching a scene at runtime or loading saving the game.",
 		childs = 
 		{
-			getCurrentWorldName =
+			getCurrentSceneName =
 			{
 				type = "function",
-				description = "Gets the current world name.",
+				description = "Gets the current scene name.",
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
@@ -11079,7 +11116,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalBoolValue =
 			{
 				type = "function",
 				description = "Sets the bool value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11087,7 +11124,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalNumberValue =
 			{
 				type = "function",
 				description = "Sets the number value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11095,7 +11132,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalStringValue =
 			{
 				type = "function",
 				description = "Sets the string value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11103,7 +11140,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalVector2Value =
 			{
 				type = "function",
 				description = "Sets the Vector2 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11111,7 +11148,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalVector3Value =
 			{
 				type = "function",
 				description = "Sets the Vector3 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11119,7 +11156,7 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			setGlobalValue =
+			setGlobalVector4Value =
 			{
 				type = "function",
 				description = "Sets the Vector4 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.",
@@ -11127,19 +11164,19 @@ return {
 				returns = "(Variant)",
 				valuetype = "Variant"
 			},
-			changeWorld =
+			changeScene =
 			{
 				type = "method",
-				description = "Changes the current world to the new given one.",
-				args = "(string worldName)",
+				description = "Changes the current scene to the new given one.",
+				args = "(string sceneName)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			changeWorldShowProgress =
+			changeSceneShowProgress =
 			{
 				type = "method",
-				description = "Changes the current world to the new given one. Also shows the loading progress.",
-				args = "(string worldName)",
+				description = "Changes the current scene to the new given one. Also shows the loading progress.",
+				args = "(string sceneName)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
@@ -11555,10 +11592,14 @@ return {
 	},
 	InputDeviceCore =
 	{
-		type = "class",
+		type = "singleton",
 		description = "Input device core functionality.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			getKeyboard =
 			{
 				type = "function",
@@ -11579,10 +11620,14 @@ return {
 	},
 	InputDeviceModule =
 	{
-		type = "class",
+		type = "singleton",
 		description = "InputDeviceModule singleton for managing inputs like mouse, keyboard, joystick and mapping keys.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			getMappedKey =
 			{
 				type = "function",
@@ -11736,6 +11781,21 @@ return {
 				valuetype = "Table[number][JoyStickButton]"
 			}
 		}
+	},
+	InputDeviceModule2 =
+	{
+		type = "singleton",
+		description = "InputDeviceModule singleton for second player managing inputs like mouse, keyboard, joystick and mapping keys."
+	},
+	InputDeviceModule3 =
+	{
+		type = "singleton",
+		description = "InputDeviceModule singleton for third player managing inputs like mouse, keyboard, joystick and mapping keys."
+	},
+	InputDeviceModule4 =
+	{
+		type = "singleton",
+		description = "InputDeviceModule singleton for forth player managing inputs like mouse, keyboard, joystick and mapping keys."
 	},
 	InputMapping =
 	{
@@ -12103,10 +12163,14 @@ return {
 	},
 	Interpolator =
 	{
-		type = "class",
+		type = "singleton",
 		description = "Interpolator for utilities functions for mathematical operations and ray casting.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			Interpolator =
 			{
 				type = "value"
@@ -17015,6 +17079,21 @@ return {
 			}
 		}
 	},
+	MAIN_CAMERA_ID =
+	{
+		type = "singleton",
+		description = "The main camera object id."
+	},
+	MAIN_GAMEOBJECT_ID =
+	{
+		type = "singleton",
+		description = "The main game object id."
+	},
+	MAIN_LIGHT_ID =
+	{
+		type = "singleton",
+		description = "The main light object id."
+	},
 	ManualObjectComponent =
 	{
 		type = "class",
@@ -17122,10 +17201,14 @@ return {
 	},
 	MathHelper =
 	{
-		type = "class",
+		type = "singleton",
 		description = "MathHelper for utilities functions for mathematical operations and ray casting.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			MathHelper =
 			{
 				type = "value"
@@ -18714,22 +18797,6 @@ return {
 				args = "(func closureFunction)",
 				returns = "(nil)",
 				valuetype = "nil"
-			},
-			reactOnMouseButtonClick =
-			{
-				type = "method",
-				description = "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.",
-				args = "(func closureFunction, string resourceName, number buttonId)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			reactOnMouseButtonClick =
-			{
-				type = "method",
-				description = "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.",
-				args = "(func closureFunction, number mapTileIndex)",
-				returns = "(nil)",
-				valuetype = "nil"
 			}
 		}
 	},
@@ -19085,6 +19152,14 @@ return {
 				type = "method",
 				description = "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end",
 				args = "(func closureFunction, DragDropData dragDropData)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnMouseButtonClick =
+			{
+				type = "method",
+				description = "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.",
+				args = "(func closureFunction, string resourceName, number buttonId)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
@@ -19464,6 +19539,14 @@ return {
 				type = "method",
 				description = "Sets whether the given level (scene) name has been visited and shall be visible on the minimap.",
 				args = "(string index, boolean visited)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnMouseButtonClick =
+			{
+				type = "method",
+				description = "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.",
+				args = "(func closureFunction, number mapTileIndex)",
 				returns = "(nil)",
 				valuetype = "nil"
 			}
@@ -19868,6 +19951,351 @@ return {
 			}
 		}
 	},
+	NOWA_A_ACTION =
+	{
+		type = "singleton",
+		description = "Mapped action like door open (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_ATTACK_1 =
+	{
+		type = "singleton",
+		description = "Mapped attack 1 action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_ATTACK_2 =
+	{
+		type = "singleton",
+		description = "Mapped attack 2 action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_BACKWARD =
+	{
+		type = "singleton",
+		description = "Mapped camera backward action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_DOWN =
+	{
+		type = "singleton",
+		description = "Mapped camera down action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_FORWARD =
+	{
+		type = "singleton",
+		description = "Mapped camera forward action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_LEFT =
+	{
+		type = "singleton",
+		description = "Mapped camera left action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_RIGHT =
+	{
+		type = "singleton",
+		description = "Mapped camera right action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CAMERA_UP =
+	{
+		type = "singleton",
+		description = "Mapped camera up action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_CONSOLE =
+	{
+		type = "singleton",
+		description = "Mapped console action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_COWER =
+	{
+		type = "singleton",
+		description = "Mapped cower action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_DOWN =
+	{
+		type = "singleton",
+		description = "Mapped down action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_DUCK =
+	{
+		type = "singleton",
+		description = "Mapped duck action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_FLASH_LIGHT =
+	{
+		type = "singleton",
+		description = "Mapped flash light action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_INVENTORY =
+	{
+		type = "singleton",
+		description = "Mapped inventory action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_JUMP =
+	{
+		type = "singleton",
+		description = "Mapped jump action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_LEFT =
+	{
+		type = "singleton",
+		description = "Mapped left action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_LOAD =
+	{
+		type = "singleton",
+		description = "Mapped load action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_MAP =
+	{
+		type = "singleton",
+		description = "Mapped map action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_MENU =
+	{
+		type = "singleton",
+		description = "Mapped menu action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_PAUSE =
+	{
+		type = "singleton",
+		description = "Mapped pause action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_RELOAD =
+	{
+		type = "singleton",
+		description = "Mapped reload action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_RIGHT =
+	{
+		type = "singleton",
+		description = "Mapped right action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_RUN =
+	{
+		type = "singleton",
+		description = "Mapped run action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_SAVE =
+	{
+		type = "singleton",
+		description = "Mapped save action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_SELECT =
+	{
+		type = "singleton",
+		description = "Mapped select action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_SNEAK =
+	{
+		type = "singleton",
+		description = "Mapped sneak action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_UP =
+	{
+		type = "singleton",
+		description = "Mapped up action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_WEAPON_CHANGE_BACKWARD =
+	{
+		type = "singleton",
+		description = "Mapped weapon change backward action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_A_WEAPON_CHANGE_FORWARD =
+	{
+		type = "singleton",
+		description = "Mapped weapon change forward action (does not matter if keyboard or joystick is used)."
+	},
+	NOWA_B_ACTION =
+	{
+		type = "singleton",
+		description = "Action like door open button."
+	},
+	NOWA_B_ATTACK_1 =
+	{
+		type = "singleton",
+		description = "Attack 1 button."
+	},
+	NOWA_B_FLASH_LIGHT =
+	{
+		type = "singleton",
+		description = "Flash light button."
+	},
+	NOWA_B_INVENTORY =
+	{
+		type = "singleton",
+		description = "Inventory button."
+	},
+	NOWA_B_JUMP =
+	{
+		type = "singleton",
+		description = "Jump button."
+	},
+	NOWA_B_MAP =
+	{
+		type = "singleton",
+		description = "Map button."
+	},
+	NOWA_B_MENU =
+	{
+		type = "singleton",
+		description = "Menu button."
+	},
+	NOWA_B_PAUSE =
+	{
+		type = "singleton",
+		description = "Pause button."
+	},
+	NOWA_B_RELOAD =
+	{
+		type = "singleton",
+		description = "Reload button."
+	},
+	NOWA_B_RUN =
+	{
+		type = "singleton",
+		description = "Run button."
+	},
+	NOWA_K_ACTION =
+	{
+		type = "singleton",
+		description = "Mapped action like open door key."
+	},
+	NOWA_K_ATTACK_1 =
+	{
+		type = "singleton",
+		description = "Mapped attack 1 key."
+	},
+	NOWA_K_ATTACK_2 =
+	{
+		type = "singleton",
+		description = "Mapped attack 2 key."
+	},
+	NOWA_K_CAMERA_BACKWARD =
+	{
+		type = "singleton",
+		description = "Mapped backward key."
+	},
+	NOWA_K_CAMERA_DOWN =
+	{
+		type = "singleton",
+		description = "Mapped camera down key."
+	},
+	NOWA_K_CAMERA_FORWARD =
+	{
+		type = "singleton",
+		description = "Mapped camera forward key."
+	},
+	NOWA_K_CAMERA_LEFT =
+	{
+		type = "singleton",
+		description = "Mapped camera left key."
+	},
+	NOWA_K_CAMERA_RIGHT =
+	{
+		type = "singleton",
+		description = "Mapped camera right key."
+	},
+	NOWA_K_CAMERA_UP =
+	{
+		type = "singleton",
+		description = "Mapped camera up key."
+	},
+	NOWA_K_CONSOLE =
+	{
+		type = "singleton",
+		description = "Mapped console key."
+	},
+	NOWA_K_DOWN =
+	{
+		type = "singleton",
+		description = "Mapped down key."
+	},
+	NOWA_K_DUCK =
+	{
+		type = "singleton",
+		description = "Mapped duck key."
+	},
+	NOWA_K_FLASH_LIGHT =
+	{
+		type = "singleton",
+		description = "Mapped flash light key."
+	},
+	NOWA_K_INVENTORY =
+	{
+		type = "singleton",
+		description = "Mapped inventory key."
+	},
+	NOWA_K_JUMP =
+	{
+		type = "singleton",
+		description = "Mapped jump key."
+	},
+	NOWA_K_LEFT =
+	{
+		type = "singleton",
+		description = "Mapped left key."
+	},
+	NOWA_K_LOAD =
+	{
+		type = "singleton",
+		description = "Mapped load key."
+	},
+	NOWA_K_MAP =
+	{
+		type = "singleton",
+		description = "Mapped map key."
+	},
+	NOWA_K_PAUSE =
+	{
+		type = "singleton",
+		description = "Mapped pause key."
+	},
+	NOWA_K_RELOAD =
+	{
+		type = "singleton",
+		description = "Mapped reload key."
+	},
+	NOWA_K_RIGHT =
+	{
+		type = "singleton",
+		description = "Mapped right key."
+	},
+	NOWA_K_RUN =
+	{
+		type = "singleton",
+		description = "Mapped run key."
+	},
+	NOWA_K_SAVE =
+	{
+		type = "singleton",
+		description = "Mapped save key."
+	},
+	NOWA_K_SELECT =
+	{
+		type = "singleton",
+		description = "Mapped select key."
+	},
+	NOWA_K_SNEAK =
+	{
+		type = "singleton",
+		description = "Mapped sneak key."
+	},
+	NOWA_K_START =
+	{
+		type = "singleton",
+		description = "Mapped start key."
+	},
+	NOWA_K_UP =
+	{
+		type = "singleton",
+		description = "Mapped up key."
+	},
+	NOWA_K_WEAPON_CHANGE_BACKWARD =
+	{
+		type = "singleton",
+		description = "Mapped weapon change backward key."
+	},
+	NOWA_K_WEAPON_CHANGE_FORWARD =
+	{
+		type = "singleton",
+		description = "Mapped weapon change forward key."
+	},
 	Node =
 	{
 		type = "class",
@@ -19980,10 +20408,14 @@ return {
 	},
 	OgreALModule =
 	{
-		type = "class",
+		type = "singleton",
 		description = "OgreALModule for some OgreAL utilities operations.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			setContinue =
 			{
 				type = "method",
@@ -22533,10 +22965,14 @@ return {
 	},
 	PointerManager =
 	{
-		type = "class",
+		type = "singleton",
 		description = "MyGUI pointer manager singleton class.",
 		childs = 
 		{
+			singleton =
+			{
+				type = "value"
+			},
 			showMouse =
 			{
 				type = "method",
@@ -24969,6 +25405,21 @@ return {
 		type = "class",
 		description = "Generates a procedural from svg file."
 	},
+	TS_LOCAL =
+	{
+		type = "singleton",
+		description = "Local transform space."
+	},
+	TS_PARENT =
+	{
+		type = "singleton",
+		description = "Parent transform space."
+	},
+	TS_WORLD =
+	{
+		type = "singleton",
+		description = "World transform space."
+	},
 	TagChildNodeComponent =
 	{
 		type = "class",
@@ -26792,5 +27243,14 @@ return {
 		returns = "(nil)",
 		valuetype = "nil"
 	}
-
+	log =
+	{
+		type = "singleton",
+		description = "Logs a string for Ogre log file."
+	},
+	toString =
+	{
+		type = "singleton",
+		description = "Converts any type to string."
+	}
 }

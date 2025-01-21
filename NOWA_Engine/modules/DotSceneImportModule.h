@@ -88,14 +88,15 @@ namespace NOWA
 
 		/**
 		* @brief		Parses a scene XML to create the virtual environment for the game engine
-		* @param[in]	projectName			The project name
-		* @param[in]	sceneName			The scene name
-		* @param[in]	filePathName		The whole file path name of the saved game location.
-		* @param[in]	crypted				If a saved game snapshot shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
-		* @param[in]	showProgress		If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
-		* @return		success				True, if scene could be parsed, else false
+		* @param[in]	projectName				The project name
+		* @param[in]	sceneName				The scene name
+		* @param[in]	savedGameFilePathName	The whole file path name of the saved game location.
+		* @param[in]	resourceGroupName		The group name which leads to the scene name. The group name must be declared in a resource cfg file.
+		* @param[in]	crypted					If a saved game snapshot shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
+		* @param[in]	showProgress			If set to true, the loading progress will be shown, else nothing will be shown which loads the virtual environment faster.
+		* @return		success					True, if scene could be parsed, else false
 		*/
-		bool parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& filePathName, bool crypted = false, bool showProgress = false);
+		bool parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted = false, bool showProgress = false);
 
 		std::vector<unsigned long> parseGroup(const Ogre::String& fileName, const Ogre::String& resourceGroupName);
 
@@ -210,6 +211,7 @@ namespace NOWA
 		OgreNewt::World* ogreNewt;
 
 		Ogre::String scenePath;
+		Ogre::String savedGameFilePathName;
 		std::list<Ogre::Vector2> pages;
 		int	pagesCount;
 		bool needCollisionRebuild;

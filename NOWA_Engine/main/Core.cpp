@@ -2036,8 +2036,6 @@ namespace NOWA
 
 		do
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "--------------->: " + Ogre::String(entry.szExeFile));
-
 			if (!_tcsicmp(entry.szExeFile, executableName))
 			{
 				CloseHandle(snapshot);
@@ -2114,7 +2112,7 @@ namespace NOWA
 		// Ogre::String applicationFilePathName = this->getApplicationFilePathName();
 		// Ogre::String applicationName = this->getFileNameFromPath(applicationFilePathName);
 
-		Ogre::String applicationName = this->projectName + "\\";
+		Ogre::String applicationName = this->projectName + "\\" + this->sceneName;
 
 		size_t dotPos = applicationName.find(".");
 		if (Ogre::String::npos != dotPos)

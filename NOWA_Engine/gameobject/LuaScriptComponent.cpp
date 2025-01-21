@@ -501,13 +501,14 @@ namespace NOWA
 				tempScriptVariable += "_";
 			}
 
-			this->luaScript->setInterfaceFunctionsTemplate("-- physicsActiveComponent = nil;\n" + tempScriptName + " = {}\n\n"
+			this->luaScript->setInterfaceFunctionsTemplate(
 				+ "-- Scene: " + Core::getSingletonPtr()->getSceneName() + "\n\n"
 				+ "require(""\"init""\");\n\n"
 				+ tempScriptVariable + " = nil\n\n"
+				"-- physicsActiveComponent = nil;\n\n" + tempScriptName + " = {}\n\n"
 				+ tempScriptName + "[""\"connect""\"] = function(gameObject)\n"
 				"\t--" + tempScriptVariable + " = AppStateManager:getGameObjectController():castGameObject(gameObject);\n"
-				"\t--physicsActiveComponent = gameObject:getPhysicsActiveComponent();\nend"
+				"\t--physicsActiveComponent = " + tempScriptVariable + ":getPhysicsActiveComponent();\nend"
 				"\n\n"
 				+ tempScriptName + "[""\"disconnect""\"] = function()\n\nend"
 				"\n\n"

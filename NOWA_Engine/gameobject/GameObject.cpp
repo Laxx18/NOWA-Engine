@@ -484,6 +484,12 @@ namespace NOWA
 		{
 			if (true == this->attributes[i].second->hasChanged())
 			{
+				// Special case: setGlobal is a huge operation, copies lua scripts, col files etc. Its not handleable at runtime and hence not undo able
+				if (GameObject::AttrGlobal() == this->attributes[i].first)
+				{
+					continue;
+				}
+
 				this->actualizeValue(this->attributes[i].second);
 			}
 			this->attributes[i].second->resetChange();
@@ -1596,10 +1602,18 @@ namespace NOWA
 			{
 				// Does automatically set all its movable objects to this state
 				this->sceneNode->setStatic(true);
+				if (nullptr != this->movableObject)
+				{
+					this->movableObject->setStatic(true);
+				}
 			}
 			else if (true == dynamic && true == this->sceneNode->isStatic())
 			{
 				this->sceneNode->setStatic(false);
+				if (nullptr != this->movableObject)
+				{
+					this->movableObject->setStatic(false);
+				}
 			}
 		}
 	}

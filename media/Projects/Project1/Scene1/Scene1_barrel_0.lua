@@ -11,8 +11,8 @@ Scene1_barrel_0["connect"] = function(gameObject)
     local nodeGameObjects = AppStateManager:getGameObjectController():getGameObjectsFromComponent("NodeComponent");
      local i = 0
     while i <= #nodeGameObjects do
-        local gameObject = nodeGameObjects[i]
-        gameObject
+        local gameObject = nodeGameObjects[i];
+       
         i = i + 1  -- Increment the counter
     end
     
@@ -20,14 +20,13 @@ Scene1_barrel_0["connect"] = function(gameObject)
          --local gameObject = nodeGameObjects[i];
             
      --end
-
+    AppStateManager:getGameObjectController():activatePlayerController(true, "id_" .. scene1_barrel_0:getName()
      scene1_barrel_0 = AppStateManager:getGameObjectController():castGameObject(gameObject);
      scene1_barrel_0:getPhysicsActiveComponent()
      scene1_barrel_0:getReferenceComponentFromIndex(1)
      physicsActiveComponent = scene1_barrel_0:getPhysicsActiveComponent();
-     physicsActiveComponent
      scene1_barrel_0:getCompositorEffectSharpenEdgesComponentFromName("blub")
-     scene1_barrel_0:
+     physicsActiveComponent:setDirection(Vector3.NEGATIVE_UNIT_X, Vector3.UNIT_Y);
      
     -- Note: getCollisionSize is Vector3, hence match that, so temp would be of type Vector3
     local temp=scene1_barrel_0:getPhysicsActiveComponent():getCollisionSize();
@@ -80,7 +79,6 @@ Scene1_barrel_0["onContactOnce"] = function(gameObject0, gameObject1, contact)
     
         local position = positionAndNormal[0];
         local normal = positionAndNormal[1];
-        position
 
         terraGameObject:getTerraComponent():modifyTerrainLoop(position, -1000, 5);
     end

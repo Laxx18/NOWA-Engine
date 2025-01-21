@@ -40,6 +40,8 @@ public:
 
 	void refreshLuaApi(const Ogre::String& filter);
 
+	void openAllLuaScripts(void);
+
 	void refreshMeshes(const Ogre::String& filter);
 
 	void showMeshToolWindow(void);

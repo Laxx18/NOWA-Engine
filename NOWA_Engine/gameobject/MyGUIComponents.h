@@ -248,6 +248,9 @@ namespace NOWA
 
 		void onWidgetSelected(MyGUI::Widget* sender);
 	private:
+		void baseMouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id);
+		void baseMouseButtonDoubleClick(MyGUI::Widget* sender);
+	private:
 		void handleWindowChangedDelegate(NOWA::EventDataPtr eventData);
 	
 	protected:

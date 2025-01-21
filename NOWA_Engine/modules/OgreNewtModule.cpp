@@ -216,15 +216,48 @@ namespace NOWA
 		{
 			OgreNewt::Debugger& debug = this->ogreNewt->getDebugger();
 
-			Ogre::ColourValue tempColour = colour;
-			if (Ogre::ColourValue::White == tempColour)
-			{
-				// Generate a small random offset for each RGB component
-				Ogre::Real randOffset = 0.5f; // You can adjust this value to control how much the color changes
-				tempColour.r = Ogre::Math::Clamp(tempColour.r + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);
-				tempColour.g = Ogre::Math::Clamp(tempColour.g + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);
-				tempColour.b = Ogre::Math::Clamp(tempColour.b + ((rand() % 100) / 100.0f - 0.5f) * randOffset, 0.0f, 1.0f);
-			}
+			// Predefined color palette with 31 distinct high-contrast colors
+			static const std::vector<Ogre::ColourValue> colorPalette = {
+				Ogre::ColourValue(1.0f, 0.0f, 0.0f), // 1 - Red
+				Ogre::ColourValue(0.0f, 1.0f, 0.0f), // 2 - Green
+				Ogre::ColourValue(0.0f, 0.0f, 1.0f), // 3 - Blue
+				Ogre::ColourValue(1.0f, 1.0f, 0.0f), // 4 - Yellow
+				Ogre::ColourValue(1.0f, 0.5f, 0.0f), // 5 - Orange
+				Ogre::ColourValue(0.5f, 0.0f, 0.5f), // 6 - Violet
+				Ogre::ColourValue(0.0f, 1.0f, 1.0f), // 7 - Cyan
+				Ogre::ColourValue(1.0f, 0.0f, 1.0f), // 8 - Magenta
+				Ogre::ColourValue(0.5f, 0.5f, 0.5f), // 9 - Grey
+				Ogre::ColourValue(0.3f, 0.3f, 0.3f), // 10 - Dark Grey
+				Ogre::ColourValue(0.8f, 0.3f, 0.1f), // 11 - Rust
+				Ogre::ColourValue(0.2f, 0.7f, 0.3f), // 12 - Leaf Green
+				Ogre::ColourValue(0.1f, 0.3f, 0.8f), // 13 - Deep Blue
+				Ogre::ColourValue(0.9f, 0.2f, 0.5f), // 14 - Pink
+				Ogre::ColourValue(0.6f, 0.4f, 0.2f), // 15 - Brown
+				Ogre::ColourValue(0.7f, 0.8f, 0.3f), // 16 - Lime
+				Ogre::ColourValue(0.3f, 0.6f, 0.9f), // 17 - Sky Blue
+				Ogre::ColourValue(0.6f, 0.2f, 0.8f), // 18 - Purple
+				Ogre::ColourValue(0.2f, 0.9f, 0.8f), // 19 - Turquoise
+				Ogre::ColourValue(0.9f, 0.8f, 0.2f), // 20 - Gold
+				Ogre::ColourValue(0.4f, 0.7f, 0.4f), // 21 - Forest Green
+				Ogre::ColourValue(0.7f, 0.2f, 0.4f), // 22 - Raspberry
+				Ogre::ColourValue(0.2f, 0.2f, 0.7f), // 23 - Navy
+				Ogre::ColourValue(0.7f, 0.7f, 0.9f), // 24 - Light Lavender
+				Ogre::ColourValue(0.9f, 0.6f, 0.2f), // 25 - Amber
+				Ogre::ColourValue(0.6f, 0.9f, 0.2f), // 26 - Spring Green
+				Ogre::ColourValue(0.2f, 0.9f, 0.6f), // 27 - Seafoam
+				Ogre::ColourValue(0.5f, 0.1f, 0.7f), // 28 - Indigo
+				Ogre::ColourValue(0.3f, 0.8f, 0.5f), // 29 - Mint
+				Ogre::ColourValue(0.9f, 0.3f, 0.7f), // 30 - Rose
+				Ogre::ColourValue(0.7f, 0.9f, 0.7f)  // 31 - Pale Green
+			};
+
+			// Static index to ensure unique color assignment
+			static size_t colorIndex = 0;
+
+			Ogre::ColourValue tempColour = colorPalette[colorIndex];
+
+			// Cycle through colors
+			colorIndex = (colorIndex + 1) % colorPalette.size();
 
 			debug.setMaterialColor(material, tempColour);
 		}

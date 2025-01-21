@@ -263,7 +263,7 @@ namespace NOWA
 			{
 				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
 				// Export local game objects (true)! Also global!
-				this->exportSceneNodes(nodesXML, doc, true);
+				this->exportSceneNodes(nodesXML, doc, true, false);
 				sceneXML->append_node(nodesXML);
 			}
 
@@ -1069,10 +1069,10 @@ namespace NOWA
 	//	}
 	//}
 
-	void DotSceneExportModule::exportSceneNodes(xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObjects)
+	void DotSceneExportModule::exportSceneNodes(xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObjects, bool recursive)
 	{
 		// Recursive call
-		this->exportNode(this->sceneManager->getRootSceneNode(), nodesXML, doc, exportGlobalGameObjects);
+		this->exportNode(this->sceneManager->getRootSceneNode(), nodesXML, doc, exportGlobalGameObjects, recursive);
 	}
 
 	void DotSceneExportModule::exportNode(Ogre::Node* ogreNode, xml_node<>* nodesXML, xml_document<>& doc, bool exportGlobalGameObject, bool recursive)
@@ -1136,7 +1136,6 @@ namespace NOWA
 			nodeXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, ogreNode->getName())));
 
 			nodeXML->append_attribute(doc.allocate_attribute("id", XMLConverter::ConvertString(doc, static_cast<unsigned int>(hash(ogreNode->getName())))));
-			nodesXML->append_node(nodeXML);
 
 			// Special case with camera, as the scene node does not move along with the camera, so the position/orientation would always be wrong
 			Ogre::Camera* mainCamera = nullptr;
@@ -1234,6 +1233,10 @@ namespace NOWA
 						foundType = true;
 						this->exportTerra(gameObject, terra, nodeXML, doc);
 					}
+				}
+				if (true == foundType)
+				{
+					nodesXML->append_node(nodeXML);
 				}
 			}
 		}

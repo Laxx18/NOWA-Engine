@@ -197,8 +197,9 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonPressed);
-			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonDoubleClick);
+			this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
+			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
 			this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
 			this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
 		}
@@ -221,28 +222,50 @@ namespace NOWA
 		return true;
 	}
 
+	void MyGUIComponent::baseMouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
+	{
+		if (false == this->isSimulating)
+		{
+			if (MyGUI::MouseButton::Left == _id)
+			{
+				this->onWidgetSelected(_sender);
+			}
+		}
+		else
+		{
+			this->mouseButtonPressed(_sender, _left, _top, _id);
+		}
+	}
+
+	void MyGUIComponent::baseMouseButtonDoubleClick(MyGUI::Widget* sender)
+	{
+		if (false == this->isSimulating)
+		{
+			// Recursively search for a widget to select (for demonstration)
+			MyGUI::Widget* selectedWidget = this->findWidgetAtPosition(sender, MyGUI::InputManager::getInstance().getMousePosition());
+
+			if (nullptr != selectedWidget)
+			{
+				// Highlight the selected widget
+				this->onWidgetSelected(selectedWidget);
+			}
+			else
+			{
+
+			}
+		}
+		else
+		{
+			this->mouseButtonDoubleClick(sender);
+		}
+	}
+
 	void MyGUIComponent::mouseButtonPressed(MyGUI::Widget* _sender, int _left, int _top, MyGUI::MouseButton _id)
 	{
-		if (MyGUI::MouseButton::Left == _id)
-		{
-			this->onWidgetSelected(_sender);
-		}
 	}
 
 	void MyGUIComponent::mouseButtonDoubleClick(MyGUI::Widget* sender)
 	{
-		// Recursively search for a widget to select (for demonstration)
-		MyGUI::Widget* selectedWidget = this->findWidgetAtPosition(sender, MyGUI::InputManager::getInstance().getMousePosition());
-
-		if (nullptr != selectedWidget)
-		{
-			// Highlight the selected widget
-			this->onWidgetSelected(selectedWidget);
-		}
-		else
-		{
-			
-		}
 	}
 
 	void MyGUIComponent::rootMouseChangeFocus(MyGUI::Widget* sender, bool focus)
@@ -338,6 +361,8 @@ namespace NOWA
 
 		this->setRealPosition(this->position->getVector2());
 		this->setRealSize(this->size->getVector2());
+
+		this->isSimulating = true;
 		
 		return true;
 	}
@@ -345,6 +370,8 @@ namespace NOWA
 	bool MyGUIComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		this->isSimulating = false;
 
 		// Causes wrong position if position was one time wrong
 #if 0

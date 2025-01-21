@@ -130,6 +130,7 @@
 	<Tag name="Utilities">Werkzeuge</Tag>
 	<Tag name="SceneAnalysis">Szenen Analyse</Tag>
 	<Tag name="Deploy">Bereistellen</Tag>
+	<Tag name="OpenAllLuaScripts">Alle Lua Scripte oeffnen</Tag>
 	<Tag name="EncryptFiles">Dateien verschluesseln</Tag>
 	<Tag name="DecryptFiles">Dateien entschluesseln</Tag>
 	<Tag name="DecryptKey">Entschluesselungsschluessel</Tag>

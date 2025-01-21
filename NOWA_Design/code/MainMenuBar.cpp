@@ -332,6 +332,11 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
+		menuItem = utilitiesMenuControl->addItem("openAllLuaScripts", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		menuItem->setCaptionWithReplacing("#{OpenAllLuaScripts}");
+		menuItem->hideItemChild();
+		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
 		menuItem = utilitiesMenuControl->addItem("meshToolMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		menuItem->setCaptionWithReplacing("Mesh Tool");
 		menuItem->hideItemChild();
@@ -479,10 +484,11 @@ void MainMenuBar::enableMenuEntries(bool enable)
 	this->utilitiesMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // deploy
 	this->utilitiesMenuItem->getItemChild()->getItemAt(2)->setEnabled(enable); // lua analysis
 	this->utilitiesMenuItem->getItemChild()->getItemAt(3)->setEnabled(enable); // lua api
-	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // mesh utils
-	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
-	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable); // Draw Collision Lines
-	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Optimize scene
+	this->utilitiesMenuItem->getItemChild()->getItemAt(4)->setEnabled(enable); // open all lua scripts
+	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setEnabled(enable); // mesh utils
+	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
+	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Draw Collision Lines
+	this->utilitiesMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // Optimize scene
 
 	this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
 	this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
@@ -776,29 +782,34 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->showLuaApiWindow();
 			break;
 		}
-		case 46: // Mesh Tool
+		case 46: // Open all lua scripts
+		{
+			this->openAllLuaScripts();
+			break;
+		}
+		case 47: // Mesh Tool
 		{
 			this->showMeshToolWindow();
 			break;
 		}
-		case 47: // Draw Navigation Mesh
+		case 48: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 48: // Draw Collision Lines
+		case 49: // Draw Collision Lines
 		{
 			this->bDrawCollisionLines = !this->bDrawCollisionLines;
 			this->drawCollisionLines(this->bDrawCollisionLines);
 			break;
 		}
-		case 49: // Optimize scene
+		case 50: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 50: // Control selected player
+		case 51: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -811,7 +822,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 51: // Test selected game objects
+		case 52: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -819,12 +830,12 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 52: // About
+		case 53: // About
 		{
 			this->showAboutWindow();
 			break;
 		}
-		case 53: // Scene description
+		case 54: // Scene description
 		{
 			this->showSceneDescriptionWindow();
 			break;
@@ -979,11 +990,11 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->projectManager->getEditorManager()->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
 
 		this->bDrawCollisionLines = false;
-		this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(this->bDrawCollisionLines);
+		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawCollisionLines);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(this->bDrawCollisionLines);
 
 		this->bDrawNavigationMesh = false;
-		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(this->bDrawNavigationMesh);
+		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
 	}
 }
@@ -1309,6 +1320,27 @@ void MainMenuBar::refreshLuaApi(const Ogre::String& filter)
 	}
 
 	root->setExpanded(true);
+}
+
+void MainMenuBar::openAllLuaScripts(void)
+{
+	auto luaScriptComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::LuaScriptComponent>();
+
+	if (false == luaScriptComponents.empty())
+	{
+		for (const auto luaScriptComponent : luaScriptComponents)
+		{
+			if (nullptr != luaScriptComponent->getLuaScript())
+			{
+				Ogre::String absoluteLuaScriptFilePathName = luaScriptComponent->getLuaScript()->getScriptFilePathName();
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+				auto ptrFunction = [this, absoluteLuaScriptFilePathName]() { NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName); };
+				NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+				delayProcess->attachChild(closureProcess);
+				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			}
+		}
+	}
 }
 
 void MainMenuBar::refreshMeshes(const Ogre::String& filter)
@@ -1761,13 +1793,13 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
-	this->utilitiesMenuItem->getItemChild()->getItemAt(5)->setStateCheck(bDraw);
+	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
 	NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
 }
 
 void MainMenuBar::drawCollisionLines(bool bDraw)
 {
-	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(bDraw);
 	NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
 }
 

@@ -207,6 +207,16 @@ namespace NOWA
 		return Ogre::StringConverter::toString(val);
 	}
 
+	Ogre::String toString(int val)
+	{
+		return Ogre::StringConverter::toString(val);
+	}
+
+	Ogre::String toString(bool val)
+	{
+		return Ogre::StringConverter::toString(val);
+	}
+
 	bool matches(const Ogre::String& name, const Ogre::String& pattern)
 	{
 		return Ogre::StringUtil::match(name, pattern, false);
@@ -271,11 +281,21 @@ namespace NOWA
 
 		luabind::module(lua)
 			[
+				luabind::def("toString", (Ogre::String(*)(int)) & toString)
+			];
+
+		luabind::module(lua)
+			[
+				luabind::def("toString", (Ogre::String(*)(bool)) & toString)
+			];
+
+		luabind::module(lua)
+			[
 				luabind::def("matches", &matches)
 			];
 
-		// Causes for lua json schmaddel
-		// AddClassToCollection("function", "toString([Vector2, Vector3, Vector4, Quaternion, number, ColorValue])", "Converts any type to string.");
+		AddClassToCollection("toString", "singleton", "Converts any type to string.");
+		AddClassToCollection("log", "singleton", "Logs a string for Ogre log file.");
 	}
 
 	void bindMatrix3(lua_State* lua)
@@ -1459,8 +1479,13 @@ namespace NOWA
 		object globalVars = globals(lua);
 		globalVars["InputDeviceModule"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0);
 		globalVars["InputDeviceModule2"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1);
+		globalVars["InputDeviceModule3"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(2);
+		globalVars["InputDeviceModule4"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(3);
 
-		AddClassToCollection("InputDeviceModule", "class", "InputDeviceModule singleton for managing inputs like mouse, keyboard, joystick and mapping keys.");
+		AddClassToCollection("InputDeviceModule", "singleton", "InputDeviceModule singleton for managing inputs like mouse, keyboard, joystick and mapping keys.");
+		AddClassToCollection("InputDeviceModule2", "singleton", "InputDeviceModule singleton for second player managing inputs like mouse, keyboard, joystick and mapping keys.");
+		AddClassToCollection("InputDeviceModule3", "singleton", "InputDeviceModule singleton for third player managing inputs like mouse, keyboard, joystick and mapping keys.");
+		AddClassToCollection("InputDeviceModule4", "singleton", "InputDeviceModule singleton for forth player managing inputs like mouse, keyboard, joystick and mapping keys.");
 		// AddClassToCollection("InputDeviceModule", "InputDeviceModule InputDeviceModule()", "Gets the input device instance.");
 		AddClassToCollection("InputDeviceModule", "KeyCode getMappedKey(Action action)", "Gets the OIS key that is mapped as action.");
 		AddClassToCollection("InputDeviceModule", "String getStringFromMappedKey(Action action)", "Gets the OIS key as string that is mapped as action.");
@@ -1577,76 +1602,146 @@ namespace NOWA
 		globalVars["NOWA_A_SELECT"] = InputDeviceModule::SELECT;
 
 		AddClassToCollection("InputMapping", "NOWA_K_UP", "Mapped up key.");
+		AddClassToCollection("NOWA_K_UP", "singleton", "Mapped up key.");
 		AddClassToCollection("InputMapping", "NOWA_K_DOWN", "Mapped down key.");
+		AddClassToCollection("NOWA_K_DOWN", "singleton", "Mapped down key.");
 		AddClassToCollection("InputMapping", "NOWA_K_LEFT", "Mapped left key.");
+		AddClassToCollection("NOWA_K_LEFT", "singleton", "Mapped left key.");
 		AddClassToCollection("InputMapping", "NOWA_K_RIGHT", "Mapped right key.");
+		AddClassToCollection("NOWA_K_RIGHT", "singleton", "Mapped right key.");
 		AddClassToCollection("InputMapping", "NOWA_K_JUMP", "Mapped jump key.");
+		AddClassToCollection("NOWA_K_JUMP", "singleton", "Mapped jump key.");
 		AddClassToCollection("InputMapping", "NOWA_K_RUN", "Mapped run key.");
+		AddClassToCollection("NOWA_K_RUN", "singleton", "Mapped run key.");
 		AddClassToCollection("InputMapping", "NOWA_K_DUCK", "Mapped duck key.");
+		AddClassToCollection("NOWA_K_DUCK", "singleton", "Mapped duck key.");
 		AddClassToCollection("InputMapping", "NOWA_K_SNEAK", "Mapped sneak key.");
+		AddClassToCollection("NOWA_K_SNEAK", "singleton", "Mapped sneak key.");
 		AddClassToCollection("InputMapping", "NOWA_K_ACTION", "Mapped action like open door key.");
+		AddClassToCollection("NOWA_K_ACTION", "singleton", "Mapped action like open door key.");
 		AddClassToCollection("InputMapping", "NOWA_K_ATTACK_1", "Mapped attack 1 key.");
+		AddClassToCollection("NOWA_K_ATTACK_1", "singleton", "Mapped attack 1 key.");
 		AddClassToCollection("InputMapping", "NOWA_K_ATTACK_2", "Mapped attack 2 key.");
+		AddClassToCollection("NOWA_K_ATTACK_2", "singleton", "Mapped attack 2 key.");
 		AddClassToCollection("InputMapping", "NOWA_K_RELOAD", "Mapped reload key.");
+		AddClassToCollection("NOWA_K_RELOAD", "singleton", "Mapped reload key.");
 		AddClassToCollection("InputMapping", "NOWA_K_INVENTORY", "Mapped inventory key.");
+		AddClassToCollection("NOWA_K_INVENTORY", "singleton", "Mapped inventory key.");
 		AddClassToCollection("InputMapping", "NOWA_K_SAVE", "Mapped save key.");
+		AddClassToCollection("NOWA_K_SAVE", "singleton", "Mapped save key.");
 		AddClassToCollection("InputMapping", "NOWA_K_LOAD", "Mapped load key.");
+		AddClassToCollection("NOWA_K_LOAD", "singleton", "Mapped load key.");
 		AddClassToCollection("InputMapping", "NOWA_K_PAUSE", "Mapped pause key.");
+		AddClassToCollection("NOWA_K_PAUSE", "singleton", "Mapped pause key.");
 		AddClassToCollection("InputMapping", "NOWA_K_START", "Mapped start key.");
+		AddClassToCollection("NOWA_K_START", "singleton", "Mapped start key.");
 		AddClassToCollection("InputMapping", "NOWA_K_MAP", "Mapped map key.");
+		AddClassToCollection("NOWA_K_MAP", "singleton", "Mapped map key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_FORWARD", "Mapped camera forward key.");
+		AddClassToCollection("NOWA_K_CAMERA_FORWARD", "singleton", "Mapped camera forward key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_BACKWARD", "Mapped backward key.");
+		AddClassToCollection("NOWA_K_CAMERA_BACKWARD", "singleton", "Mapped backward key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_RIGHT", "Mapped camera right key.");
+		AddClassToCollection("NOWA_K_CAMERA_RIGHT", "singleton", "Mapped camera right key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_UP", "Mapped camera up key.");
+		AddClassToCollection("NOWA_K_CAMERA_UP", "singleton", "Mapped camera up key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_DOWN", "Mapped camera down key.");
+		AddClassToCollection("NOWA_K_CAMERA_DOWN", "singleton", "Mapped camera down key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_LEFT", "Mapped camera left key.");
+		AddClassToCollection("NOWA_K_CAMERA_LEFT", "singleton", "Mapped camera left key.");
 		AddClassToCollection("InputMapping", "NOWA_K_CONSOLE", "Mapped console key.");
+		AddClassToCollection("NOWA_K_CONSOLE", "singleton", "Mapped console key.");
 		AddClassToCollection("InputMapping", "NOWA_K_WEAPON_CHANGE_FORWARD", "Mapped weapon change forward key.");
+		AddClassToCollection("NOWA_K_WEAPON_CHANGE_FORWARD", "singleton", "Mapped weapon change forward key.");
 		AddClassToCollection("InputMapping", "NOWA_K_WEAPON_CHANGE_BACKWARD", "Mapped weapon change backward key.");
+		AddClassToCollection("NOWA_K_WEAPON_CHANGE_BACKWARD", "singleton", "Mapped weapon change backward key.");
 		AddClassToCollection("InputMapping", "NOWA_K_FLASH_LIGHT", "Mapped flash light key.");
+		AddClassToCollection("NOWA_K_FLASH_LIGHT", "singleton", "Mapped flash light key.");
 		AddClassToCollection("InputMapping", "NOWA_K_SELECT", "Mapped select key.");
+		AddClassToCollection("NOWA_K_SELECT", "singleton", "Mapped select key.");
+
 
 		AddClassToCollection("InputMapping", "NOWA_B_JUMP", "Jump button.");
+		AddClassToCollection("NOWA_B_JUMP", "singleton", "Jump button.");
 		AddClassToCollection("InputMapping", "NOWA_B_RUN", "Run button.");
+		AddClassToCollection("NOWA_B_RUN", "singleton", "Run button.");
 		AddClassToCollection("InputMapping", "NOWA_B_ATTACK_1", "Attack 1 button.");
+		AddClassToCollection("NOWA_B_ATTACK_1", "singleton", "Attack 1 button.");
 		AddClassToCollection("InputMapping", "NOWA_B_ACTION", "Action like door open button.");
+		AddClassToCollection("NOWA_B_ACTION", "singleton", "Action like door open button.");
 		AddClassToCollection("InputMapping", "NOWA_B_RELOAD", "Reload button.");
+		AddClassToCollection("NOWA_B_RELOAD", "singleton", "Reload button.");
 		AddClassToCollection("InputMapping", "NOWA_B_INVENTORY", "Inventory button.");
+		AddClassToCollection("NOWA_B_INVENTORY", "singleton", "Inventory button.");
 		AddClassToCollection("InputMapping", "NOWA_B_MAP", "Map button.");
+		AddClassToCollection("NOWA_B_MAP", "singleton", "Map button.");
 		AddClassToCollection("InputMapping", "NOWA_B_PAUSE", "Pause button.");
+		AddClassToCollection("NOWA_B_PAUSE", "singleton", "Pause button.");
 		AddClassToCollection("InputMapping", "NOWA_B_MENU", "Menu button.");
+		AddClassToCollection("NOWA_B_MENU", "singleton", "Menu button.");
 		AddClassToCollection("InputMapping", "NOWA_B_FLASH_LIGHT", "Flash light button.");
+		AddClassToCollection("NOWA_B_FLASH_LIGHT", "singleton", "Flash light button.");
 
 		AddClassToCollection("InputMapping", "NOWA_A_UP", "Mapped up action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_UP", "singleton", "Mapped up action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_DOWN", "Mapped down action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_DOWN", "singleton", "Mapped down action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_LEFT", "Mapped left action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_LEFT", "singleton", "Mapped left action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_RIGHT", "Mapped right action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_RIGHT", "singleton", "Mapped right action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_JUMP", "Mapped jump action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_JUMP", "singleton", "Mapped jump action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_RUN", "Mapped run action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_RUN", "singleton", "Mapped run action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_COWER", "Mapped cower action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_COWER", "singleton", "Mapped cower action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_DUCK", "Mapped duck action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_DUCK", "singleton", "Mapped duck action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_SNEAK", "Mapped sneak action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_SNEAK", "singleton", "Mapped sneak action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_ACTION", "Mapped action like door open (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_ACTION", "singleton", "Mapped action like door open (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_ATTACK_1", "Mapped attack 1 action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_ATTACK_1", "singleton", "Mapped attack 1 action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_ATTACK_2", "Mapped attack 2 action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_ATTACK_2", "singleton", "Mapped attack 2 action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_RELOAD", "Mapped reload action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_RELOAD", "singleton", "Mapped reload action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_INVENTORY", "Mapped inventory action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_INVENTORY", "singleton", "Mapped inventory action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_SAVE", "Mapped save action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_SAVE", "singleton", "Mapped save action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_LOAD", "Mapped load action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_LOAD", "singleton", "Mapped load action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_PAUSE", "Mapped pause action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_PAUSE", "singleton", "Mapped pause action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_MENU", "Mapped menu action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_MENU", "singleton", "Mapped menu action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_MAP", "Mapped map action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_MAP", "singleton", "Mapped map action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_FORWARD", "Mapped camera forward action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_FORWARD", "singleton", "Mapped camera forward action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_BACKWARD", "Mapped camera backward action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_BACKWARD", "singleton", "Mapped camera backward action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_RIGHT", "Mapped camera right action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_RIGHT", "singleton", "Mapped camera right action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_UP", "Mapped camera up action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_UP", "singleton", "Mapped camera up action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_DOWN", "Mapped camera down action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_DOWN", "singleton", "Mapped camera down action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CAMERA_LEFT", "Mapped camera left action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CAMERA_LEFT", "singleton", "Mapped camera left action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_CONSOLE", "Mapped console action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_CONSOLE", "singleton", "Mapped console action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_WEAPON_CHANGE_FORWARD", "Mapped weapon change forward action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_WEAPON_CHANGE_FORWARD", "singleton", "Mapped weapon change forward action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_WEAPON_CHANGE_BACKWARD", "Mapped weapon change backward action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_WEAPON_CHANGE_BACKWARD", "singleton", "Mapped weapon change backward action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_FLASH_LIGHT", "Mapped flash light action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_FLASH_LIGHT", "singleton", "Mapped flash light action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("InputMapping", "NOWA_A_SELECT", "Mapped select action (does not matter if keyboard or joystick is used).");
+		AddClassToCollection("NOWA_A_SELECT", "singleton", "Mapped select action (does not matter if keyboard or joystick is used).");
 	}
 
 	void bindMovableObject(lua_State* lua)
@@ -1801,8 +1896,11 @@ namespace NOWA
 		globalVars["TS_WORLD"] = Ogre::Node::TS_WORLD;
 		AddClassToCollection("Node", "class", "Base class for SceneNodes.");
 		AddClassToCollection("TransformSpace", "TS_LOCAL", "Local transform space.");
+		AddClassToCollection("TS_LOCAL", "singleton", "Local transform space.");
 		AddClassToCollection("TransformSpace", "TS_PARENT", "Parent transform space.");
+		AddClassToCollection("TS_PARENT", "singleton", "Parent transform space.");
 		AddClassToCollection("TransformSpace", "TS_WORLD", "World transform space.");
+		AddClassToCollection("TS_WORLD", "singleton", "World transform space.");
 	}
 
 	//dummy function to wrap up Ogre::SceneManager::createEntity
@@ -4941,7 +5039,7 @@ namespace NOWA
 			.def("showMouse", &MyGUI::PointerManager::setVisible)
 			];
 
-		AddClassToCollection("PointerManager", "class", "MyGUI pointer manager singleton class.");
+		AddClassToCollection("PointerManager", "singleton", "MyGUI pointer manager singleton class.");
 		AddClassToCollection("PointerManager", "void showMouse(bool show)", "Show the MyGUI mouse cursor or hides the mouse cursor.");
 
 		// object globalVars = globals(lua);
@@ -5030,17 +5128,17 @@ namespace NOWA
 
 		AddClassToCollection("GameProgressModule", "Variant getGlobalValue(String attributeName)", "Gets the Variant global value from attribute name. Note: Global values are stored directly in GameProgressModule. Note: Global values are stored directly in GameProgressModule."
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, bool value)", "Sets the bool value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalBoolValue(String attributeName, bool value)", "Sets the bool value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, number value)", "Sets the number value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalNumberValue(String attributeName, number value)", "Sets the number value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, String value)", "Sets the string value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalStringValue(String attributeName, String value)", "Sets the string value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, Vector2 value)", "Sets the Vector2 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalVector2Value(String attributeName, Vector2 value)", "Sets the Vector2 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, Vector3 value)", "Sets the Vector3 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalVector3Value(String attributeName, Vector3 value)", "Sets the Vector3 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
-		AddClassToCollection("GameProgressModule", "Variant setGlobalValue(String attributeName, Vector4 value)", "Sets the Vector4 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
+		AddClassToCollection("GameProgressModule", "Variant setGlobalVector4Value(String attributeName, Vector4 value)", "Sets the Vector4 value for the given attribute name and returns the global Variant. Note: Global values are stored directly in GameProgressModule. "
 			"They can be used for the whole game logic, like which boss has been defeated etc.");
 		AddClassToCollection("GameProgressModule", "void changeScene(String sceneName)", "Changes the current scene to the new given one.");
 		AddClassToCollection("GameProgressModule", "void changeSceneShowProgress(String sceneName)", "Changes the current scene to the new given one. Also shows the loading progress.");
@@ -5293,6 +5391,13 @@ namespace NOWA
 		gameObjectController.def("castMyGUIMiniMapComponent", &GameObjectController::cast<MyGUIMiniMapComponent>);
 
 		AddClassToCollection("GameObjectController", "class", "The game object controller manages all game objects.");
+
+		AddClassToCollection("GameObjectController", "void undo()", "Does undo one step in the simulation.");
+		AddClassToCollection("GameObjectController", "void undoAll()", "Does undo all steps in the simulation. Note: This function is really important to get back a scene before e.g. in the NOWA-Design the play button has been clicked. "
+			"Use in e.g. in the lua script of the MainGameObject.");
+		AddClassToCollection("GameObjectController", "void redo()", "Does redo one step in the simulation,.");
+		AddClassToCollection("GameObjectController", "void undoAll()", "Does redo all steps in the simulation. Note: No idea, in which case to use this :).");
+
 		AddClassToCollection("GameObjectController", "void deleteDelayedGameObject(String gameObjectId, float delayMS)", "Deletes a game object by the given id after a delay of milliseconds.");
 		AddClassToCollection("GameObjectController", "void deleteDelayedGameObject(String gameObjectId)", "Deletes a game object by the given id after 1000 milliseconds.");
 		AddClassToCollection("GameObjectController", "void deleteGameObject(String gameObjectId)", "Deletes a game object by the given id immediately.");
@@ -5474,9 +5579,13 @@ namespace NOWA
 		globalVars["MAIN_LIGHT_ID"] = Ogre::StringConverter::toString(GameObjectController::MAIN_LIGHT_ID);
 
 		AddClassToCollection("GlobalId", "ALL_CATEGORIES_ID", "All categories id.");
+		AddClassToCollection("ALL_CATEGORIES_ID", "singleton", "All categories id.");
 		AddClassToCollection("GlobalId", "MAIN_GAMEOBJECT_ID", "The main game object id.");
+		AddClassToCollection("MAIN_GAMEOBJECT_ID", "singleton", "The main game object id.");
 		AddClassToCollection("GlobalId", "MAIN_CAMERA_ID", "The main camera object id.");
+		AddClassToCollection("MAIN_CAMERA_ID", "singleton", "The main camera object id.");
 		AddClassToCollection("GlobalId", "MAIN_LIGHT_ID", "The main light object id.");
+		AddClassToCollection("MAIN_LIGHT_ID", "singleton", "The main light object id.");
 	}
 
 	GameObject* getOwner(GameObjectComponent* instance)
@@ -12229,7 +12338,7 @@ namespace NOWA
 			"Sets whether to react if an item is requested to be drag and dropped to another inventory. A return value also can be set to prohibit the operation. E.g. getMyGUIItemBoxComponent():reactOnDropItemRequest(function(dragDropData) ... end");
 		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnDropItemAccepted(func closureFunction, DragDropData dragDropData)",
 							 "Sets whether to react if an item drop has been accepted to another inventory. E.g. getMyGUIItemBoxComponent():reactOnDropItemAccepted(function(dragDropData) ... end");
-		AddClassToCollection("MyGUIComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
+		AddClassToCollection("MyGUIItemBoxComponent", "void reactOnMouseButtonClick(func closureFunction, string resourceName, int buttonId)",
 														  "Sets whether to react if a mouse button has been clicked on the inventory. The clicked resource name will be received and the clicked mouse button id.");
 
 		module(lua)
@@ -12707,7 +12816,7 @@ namespace NOWA
 		AddClassToCollection("MyGUIMiniMapComponent", "void setSceneVisited(string index, bool visited)", "Sets whether the given level (scene) name has been visited and shall be visible on the minimap.");
 		AddClassToCollection("MyGUIMiniMapComponent", "bool getIsSceneVisited(int index)", "Gets whether the given level (scene) name has been visited and is visible on the minimap.");
 
-		AddClassToCollection("MyGUIComponent", "void reactOnMouseButtonClick(func closureFunction, int mapTileIndex)",
+		AddClassToCollection("MyGUIMiniMapComponent", "void reactOnMouseButtonClick(func closureFunction, int mapTileIndex)",
 														  "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.");
 	}
 
@@ -12888,7 +12997,7 @@ namespace NOWA
 			.def("setContinue", &OgreALModule::setContinue)
 		];
 
-		AddClassToCollection("OgreALModule", "class", "OgreALModule for some OgreAL utilities operations.");
+		AddClassToCollection("OgreALModule", "singleton", "OgreALModule for some OgreAL utilities operations.");
 		AddClassToCollection("OgreALModule", "void setContinue(bool bContinue)", "Sets whether the sound manager continues with the current scene manager. "
 			"Note: This can be used when sounds are used in an AppState, but another AppState is pushed on the top, yet still the sounds should continue "
 			"playing from the prior AppState. E.g. start music in MenuState and continue playing when pushing LoadMenuState and going back again to MenuState.");
@@ -13040,7 +13149,7 @@ namespace NOWA
 		object globalVars = globals(lua);
 		globalVars["Interpolator"] = Interpolator::getInstance();
 
-		AddClassToCollection("Interpolator", "class", "Interpolator for utilities functions for mathematical operations and ray casting.");
+		AddClassToCollection("Interpolator", "singleton", "Interpolator for utilities functions for mathematical operations and ray casting.");
 		AddClassToCollection("Interpolator", "Interpolator", "Gets the singleton instance of the Interpolator.");
 	
 		AddClassToCollection("Interpolator", "float value, float xLowBorder, float xHighBorder,float yLowBorder, float yHighBorder)", "Linear interpolation is a method useful for curve fitting using linear polynomials. "
@@ -13141,7 +13250,7 @@ namespace NOWA
 		object globalVars = globals(lua);
 		globalVars["MathHelper"] = MathHelper::getInstance();
 
-		AddClassToCollection("MathHelper", "class", "MathHelper for utilities functions for mathematical operations and ray casting.");
+		AddClassToCollection("MathHelper", "singleton", "MathHelper for utilities functions for mathematical operations and ray casting.");
 		AddClassToCollection("MathHelper", "MathHelper", "Gets the singleton instance of the MathHelper.");
 		AddClassToCollection("MathHelper", "Vector3 calibratedFromScreenSpaceToWorldSpace(SceneNode node, Camera camera, Vector2 mousePosition, float offset)", "Maps an 3D-object to the graphics scene from 2D-mouse coordinates.");
 		AddClassToCollection("MathHelper", "Vector4 getCalibratedWindowCoordinates(float x, float y, float width, float height, Viewport viewport)", "Gets the relative position to the window size. For example mapping an crosshair overlay object and conrolling it via mouse or Wii controller..");
@@ -13304,13 +13413,13 @@ namespace NOWA
 		object globalVars2 = globals(lua);
 		globalVars2["InputDeviceCore"] = InputDeviceCore::getSingletonPtr();
 
-		AddClassToCollection("InputDeviceCore", "class", "Input device core functionality.");
+		AddClassToCollection("InputDeviceCore", "singleton", "Input device core functionality.");
 		AddClassToCollection("InputDeviceCore", "KeyBoard getKeyboard()", "Gets the keyboard for direct manipulation.");
 		AddClassToCollection("InputDeviceCore", "Mouse getMouse()", "Gets the mouse for direct manipulation.");
 		AddClassToCollection("InputDeviceCore", "KeyBoard getKeyboard()", "Gets the keyboard for direct manipulation.");
 		AddClassToCollection("InputDeviceCore", "Mouse getMouse()", "Gets the mouse for direct manipulation.");
 
-		AddClassToCollection("Core", "class", "Some functions for NOWA core functionality.");
+		AddClassToCollection("Core", "singleton", "Some functions for NOWA core functionality.");
 		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundLeftNear()", "Gets left near bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundRightFar()", "Gets right far bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "bool getIsGame()", "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.");
@@ -13363,7 +13472,7 @@ namespace NOWA
 		object globalVars = globals(lua);
 		globalVars["AppStateManager"] = AppStateManager::getSingletonPtr();
 
-		AddClassToCollection("AppStateManager", "class", "Some functions for NOWA game loop and applictation state management. That is, normally only one scene can be running at a time. But putting a scene into an own state. "
+		AddClassToCollection("AppStateManager", "singleton", "Some functions for NOWA game loop and applictation state management. That is, normally only one scene can be running at a time. But putting a scene into an own state. "
 			"Its possible to push another scene at the top of the current scene. Like pushing 'MenuState', so that the user can configure something and when he is finished, he pops the 'MenuState', so that the 'GameState' will continue.");
 		AddClassToCollection("AppStateManager", "void setSlowMotion(bool slowMotion)", "Sets whether to use slow motion rendering.");
 		AddClassToCollection("AppStateManager", "void changeAppState(String stateName)", "Changes this application state to the new given one. Details: Calls 'exit' on the prior state and 'enter' on the new state.");
@@ -14124,15 +14233,31 @@ namespace NOWA
 			}
 			else
 			{
-				// class =
+				// class or singleton =
+
+				Ogre::String type = "class";
+
+				if (false == it->second.empty())
+				{
+					Ogre::String tempType = it->second.at(0).first;
+					if (tempType == "singleton")
+					{
+						type = tempType;
+					}
+				}
+
 				luaJsonApiContent += "\t" + it->first + " =\n";
 				luaJsonApiContent += "\t{\n";
-				luaJsonApiContent += "\t\ttype = \"class\",\n";
+				luaJsonApiContent += "\t\ttype = \"" + type + "\",\n";
 
 				Ogre::String baseClass;
 
-				size_t foundClass = it->second[0].first.find("class");
-				if (false == it->second.empty() && Ogre::String::npos != foundClass)
+				size_t foundClassOrSingleton = it->second[0].first.find("class");
+				if (Ogre::String::npos == foundClassOrSingleton)
+				{
+					foundClassOrSingleton = it->second[0].first.find("singleton");
+				}
+				if (false == it->second.empty() && Ogre::String::npos != foundClassOrSingleton)
 				{
 					// Check if its an class with 'inherits' identifier
 					Ogre::String toFind = "class inherits ";

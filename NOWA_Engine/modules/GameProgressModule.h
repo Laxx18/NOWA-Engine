@@ -111,6 +111,7 @@ namespace NOWA
 		* @param[in]	saveName The save name to set.
 		* @param[in]	crypted			Optionally crypts the content, so that it is not readable anymore.
 		* @param[in]	sceneSnapshot	Optionally whether to save also a snapshot of the current scene.
+		* @details		Note: The saved game is saved as scene and all global gameobjects are also packed in to the saved scene folder!
 		*/
 		void saveProgress(const Ogre::String& saveName, bool crypted, bool sceneSnapshot = false);
 		
@@ -136,6 +137,7 @@ namespace NOWA
 		* @param[in]	saveName The save name to set.
 		* @param[in]	sceneSnapshot	Optionally whether to load also a snapshot of the current scene.
 		* @return		success	 Whether the progress could be loaded (file does exist).
+		* @details		If AttributeComponents are used, those values are set after the scene snapshot has been loaded, so they have most priority.
 		*/
 		bool loadProgress(const Ogre::String& saveName, bool sceneSnapshot = false, bool showProgress = false);
 		

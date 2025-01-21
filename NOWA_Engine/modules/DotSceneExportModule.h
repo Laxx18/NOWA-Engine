@@ -48,7 +48,7 @@ namespace NOWA
 		void exportOgreRecast(rapidxml::xml_node<>* xmlNode, rapidxml::xml_document<>& doc);
 		// void exportMainLight(rapidxml::xml_node<>* lightXML, rapidxml::xml_document<>& doc);
 		// void exportMainCamera(rapidxml::xml_node<>* cameraXML, rapidxml::xml_document<>& doc);
-		void exportSceneNodes(rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObjects);
+		void exportSceneNodes(rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObjects, bool recursive = true);
 
 		void exportNode(Ogre::Node* ogreNode, rapidxml::xml_node<>* nodesXML, rapidxml::xml_document<>& doc, bool exportGlobalGameObject, bool recursive = true);
 

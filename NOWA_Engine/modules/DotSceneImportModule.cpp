@@ -160,7 +160,17 @@ namespace NOWA
 		
 		// Import global scene, if it does exist
 
-		Ogre::String globalSceneFilePathName = projectPath + "/" + this->projectParameter.projectName + "/global.scene";
+		Ogre::String globalSceneFilePathName;
+		
+		if (true == this->savedGameFilePathName.empty())
+		{
+			globalSceneFilePathName = projectPath + "/" + this->projectParameter.projectName + "/global.scene";
+		}
+		else
+		{
+			Ogre::String projectFilePathName = Core::getSingletonPtr()->getProjectFilePathNameFromPath(this->savedGameFilePathName);
+			globalSceneFilePathName = projectFilePathName + "/global.scene";
+		}
 		
 		// Project is always: "Projects/ProjectName/global.scene"
 		std::ifstream ifs(globalSceneFilePathName);
@@ -344,13 +354,16 @@ namespace NOWA
 
 		this->bSceneParsed = false;
 
+		// Clears the saved game file path name again, so that usual loading is done
+		this->savedGameFilePathName.clear();
+
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneParsed);
 
 		return true;
 	}
 
-	bool NOWA::DotSceneImportModule::parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& filePathName, bool crypted, bool showProgress)
+	bool NOWA::DotSceneImportModule::parseSceneSnapshot(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& resourceGroupName, const Ogre::String& savedGameFilePathName, bool crypted, bool showProgress)
 	{
 		// If a saved game shall be parsed, the user can say, whether everything is crypted and needs to be decoded.
 		bool success = true;
@@ -362,7 +375,7 @@ namespace NOWA
 
 		rapidxml::xml_document<> XMLDoc;
 
-		std::ifstream ifs(filePathName);
+		std::ifstream ifs(savedGameFilePathName);
 		if (false == ifs.good())
 		{
 			success = false;
@@ -371,8 +384,9 @@ namespace NOWA
 
 		this->projectParameter.projectName = projectName;
 		this->projectParameter.sceneName = sceneName;
-
 		this->resourceGroupName = resourceGroupName;
+		this->savedGameFilePathName = savedGameFilePathName;
+
 		this->sunLight = sunLight;
 		this->sceneLoaderCallback = sceneLoaderCallback;
 		this->showProgress = showProgress;
@@ -381,7 +395,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '"
 														+ this->projectParameter.projectName + "/" + this->projectParameter.sceneName + ".scene' for resource group: '" + resourceGroupName + "'");
 
-		return this->internalParseScene(filePathName, crypted);
+		return this->internalParseScene(savedGameFilePathName, crypted);
 	}
 
 	void DotSceneImportModule::postInitData()
@@ -1651,6 +1665,22 @@ namespace NOWA
 			item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
 			item->setName(name);
 			item->setCastShadows(castShadows);
+
+			rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+			if (pElement)
+			{
+				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+				bool dynamic = true;
+				if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+				{
+					dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+					propertyElement = propertyElement->next_sibling("property");
+				}
+
+				parent->setStatic(!dynamic);
+				item->setStatic(!dynamic);
+			}
+
 			parent->attachObject(item);
 			item->setVisible(visible);
 		}
@@ -1919,11 +1949,26 @@ namespace NOWA
 
 		if (false == justSetValues || missingGameObjectId != 0)
 		{
+			rapidxml::xml_node<>* pElement = xmlNode->first_node("userData");
+			bool dynamic = true;
+			if (pElement)
+			{
+				rapidxml::xml_node<>* propertyElement = pElement->first_node("property");
+				
+				if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+				{
+					dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+					propertyElement = propertyElement->next_sibling("property");
+				}
+			}
+
 			if (GameObject::ENTITY == type)
 			{
 				// Always create scene dynamic and later in game object change the type, to what has been configured
 				entity = this->sceneManager->createEntity(v1Mesh, Ogre::SCENE_STATIC);
 				entity->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+				parent->setStatic(!dynamic);
+				entity->setStatic(!dynamic);
 				parent->attachObject(entity);
 
 				entity->setName(name);
@@ -1935,6 +1980,9 @@ namespace NOWA
 			{
 				item = this->sceneManager->createItem(v2Mesh, Ogre::SCENE_STATIC);
 				item->setQueryFlags(Core::getSingletonPtr()->UNUSEDMASK);
+
+				parent->setStatic(!dynamic);
+				item->setStatic(!dynamic);
 				parent->attachObject(item);
 
 				item->setName(name);
@@ -2287,6 +2335,18 @@ namespace NOWA
 			if (nullptr != gameObjectPtr)
 			{
 				this->parsedGameObjectIds.emplace_back(gameObjectPtr->getId());
+
+				bool dynamic = true;
+				rapidxml::xml_node<>* propertyElement = element->first_node("property");
+
+				if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Static")
+				{
+					dynamic = !XMLConverter::getAttribBool(propertyElement, "data", false);
+					propertyElement = propertyElement->next_sibling("property");
+				}
+			
+				parent->setStatic(!dynamic);
+				item->setStatic(!dynamic);
 				parent->attachObject(item);
 			}
 		}
