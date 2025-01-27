@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Main-Configuration>
-<Core RAM="1024" VRAM="512" DiscSpace="1024" CPUSpeed="1300" Language="0" Border="none" UserData="Mg==" UseEntityType="true"/>
+<Core RAM="1024" VRAM="512" DiscSpace="1024" CPUSpeed="1300" Language="0" Border="none" UserData="Mg==" UseEntityType="false"/>
 <Graphics QualityLevel="1" LODBias="2" TextureFiltering="2" AnisotropyLevel="4" DesiredFramesUpdates="0" DesiredSimulationUpdates="144" RenderDistance="100"/>
 <Audio SoundVolume="70" MusicVolume="50"/>
 <Log Level="3"/>
 <Server StartAsServer="false" AreaOfInterest="0" PacketSendRate="5"/>
 <Client PlayerColor="0" InterpolationRate="33" PacketsPerSecond="16"/>
-<LuaScript Usage="true" Console="true" GroupName="Lua" LuaApiPath="C:/Program Files (x86)/ZeroBraneStudio/api/lua"/>
+<LuaScript Usage="true" Console="true" GroupName="Lua"/>
 <KeyMapping0>
 <Key value="200" />
 <Key value="208" />
@@ -56,53 +56,4 @@
 <Button value="5" />
 <Button value="8" />
 </ButtonMapping0>
-<KeyMapping1>
-<Key value="200" />
-<Key value="208" />
-<Key value="203" />
-<Key value="205" />
-<Key value="57" />
-<Key value="157" />
-<Key value="45" />
-<Key value="28" />
-<Key value="21" />
-<Key value="46" />
-<Key value="54" />
-<Key value="18" />
-<Key value="19" />
-<Key value="23" />
-<Key value="15" />
-<Key value="56" />
-<Key value="1" />
-<Key value="63" />
-<Key value="62" />
-<Key value="17" />
-<Key value="31" />
-<Key value="30" />
-<Key value="32" />
-<Key value="201" />
-<Key value="209" />
-<Key value="41" />
-<Key value="3" />
-<Key value="2" />
-<Key value="33" />
-<Key value="25" />
-<Key value="29" />
-</KeyMapping1>
-<ButtonMapping1>
-<Button value="12" />
-<Button value="13" />
-<Button value="14" />
-<Button value="15" />
-<Button value="0" />
-<Button value="1" />
-<Button value="50" />
-<Button value="2" />
-<Button value="50" />
-<Button value="50" />
-<Button value="50" />
-<Button value="3" />
-<Button value="5" />
-<Button value="8" />
-</ButtonMapping1>
 </Main-Configuration>

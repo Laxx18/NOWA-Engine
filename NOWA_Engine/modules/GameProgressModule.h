@@ -246,8 +246,6 @@ namespace NOWA
 
 		Ogre::String saveName;
 		Ogre::String userSaveName;
-		// For user defined attributes, without the need for a game objects attributes component
-		std::map<Ogre::String, Variant*> globalAttributesMap;
 
 		Ogre::String currentSceneName;
 

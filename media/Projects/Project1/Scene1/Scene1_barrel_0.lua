@@ -32,6 +32,7 @@ Scene1_barrel_0["connect"] = function(gameObject)
     local temp=scene1_barrel_0:getPhysicsActiveComponent():getCollisionSize();
    local temp3 = nil;
    local temp2 = temp; temp3=temp2;
+   temp
    
 end
 

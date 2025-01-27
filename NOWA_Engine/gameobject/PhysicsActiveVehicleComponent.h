@@ -158,6 +158,8 @@ namespace NOWA
 				" Use the Mesh Tool to rotate the mesh's origin axis properly.";
 		}
 
+		virtual void setActivated(bool activated) override;
+
 		/**
 		 * @brief Sets the lua function name, to react when the steering angle for the specific tires shall change.
 		 * @param[in]	onEnterFunctionName		The function name to set

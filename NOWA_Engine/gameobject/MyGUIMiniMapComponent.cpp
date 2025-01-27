@@ -573,7 +573,7 @@ namespace NOWA
 	{
 		// Does not work
 		// if (key == MyGUI::KeyCode::Escape)
-		if (NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_MAP))
+		if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_MAP))
 		{
 			this->showMiniMap(false);
 		}

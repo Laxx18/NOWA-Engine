@@ -157,8 +157,8 @@ namespace NOWA
 
 		for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 		{
-			auto keyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(static_cast<InputDeviceModule::Action>(i));
-			Ogre::String strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyCode);
+			auto keyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(static_cast<InputDeviceModule::Action>(i));
+			Ogre::String strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyCode);
 			this->oldKeyValue[i] = strKeyCode;
 			// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 			this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
@@ -432,7 +432,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyEventRef.key);
+				strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyEventRef.key);
 				this->textboxActive[i] = false;
 				this->keyConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -460,7 +460,7 @@ namespace NOWA
 		if (-1 != index && !alreadyExisting && !strKeyCode.empty())
 		{
 			this->keyConfigTextboxes[index]->setCaptionWithReplacing(strKeyCode);
-			NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->remapKey(static_cast<InputDeviceModule::Action>(index), keyEventRef.key);
+			NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapKey(static_cast<InputDeviceModule::Action>(index), keyEventRef.key);
 		}
 		return true;
 	}

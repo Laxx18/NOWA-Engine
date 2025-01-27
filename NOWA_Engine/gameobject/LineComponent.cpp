@@ -102,7 +102,9 @@ namespace NOWA
 	{
 		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId->getULong());
 		if (nullptr == targetGameObjectPtr)
+		{
 			return true;
+		}
 		
 		this->targetGameObject = targetGameObjectPtr.get();
 		

@@ -854,7 +854,7 @@ namespace NOWA
 
 	//	// https://sourceforge.net/p/luabind/mailman/message/6187131/
 	//	// Checks if the correct buttons are pressed, order is not relevant
-	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButtons();
+	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 	//	for (size_t i = 0; i < pressedButtons.size(); i++)
 	//	{
 	//		for (luabind::iterator it(buttons), end; it != end; ++it)
@@ -883,7 +883,7 @@ namespace NOWA
 
 	//	// https://sourceforge.net/p/luabind/mailman/message/6187131/
 	//	// Checks if the correct buttons are pressed, order is not relevant
-	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButtons();
+	//	const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 	//	for (size_t i = 0; i < pressedButtons.size(); i++)
 	//	{
 	//		for (luabind::iterator it(buttons), end; it != end; ++it)
@@ -913,7 +913,7 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButtons();
+		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button)
@@ -933,7 +933,7 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButtons();
+		const auto& pressedButtons = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
@@ -968,7 +968,8 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getPressedButtons();
+		// TODO: (1) is wrong
+		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button)
@@ -988,7 +989,8 @@ namespace NOWA
 
 		// https://sourceforge.net/p/luabind/mailman/message/6187131/
 		// Checks if the correct buttons are pressed, order is not relevant
-		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getPressedButtons();
+		// TODO: (1) is wrong
+		const auto& pressedButtons = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(1)->getPressedButtons();
 		for (size_t i = 0; i < pressedButtons.size(); i++)
 		{
 			if (pressedButtons[i] == button1 || pressedButtons[i] == button2)
@@ -1447,6 +1449,8 @@ namespace NOWA
 				value("BUTTON_RIGHT_STICK_RIGHT", InputDeviceModule::BUTTON_RIGHT_STICK_RIGHT),
 				value("BUTTON_NONE", InputDeviceModule::BUTTON_NONE)
 			]
+			.def("getDeviceName", &InputDeviceModule::getDeviceName)
+			.def("isKeyboardDevice", &InputDeviceModule::isKeyboardDevice)
 		    .def("getMappedKey", &InputDeviceModule::getMappedKey)
 			.def("getStringFromMappedKey", &InputDeviceModule::getStringFromMappedKey)
 			.def("getMappedKeyFromString", &InputDeviceModule::getMappedKeyFromString)
@@ -1477,16 +1481,9 @@ namespace NOWA
 		];
 
 		object globalVars = globals(lua);
-		globalVars["InputDeviceModule"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0);
-		globalVars["InputDeviceModule2"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1);
-		globalVars["InputDeviceModule3"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(2);
-		globalVars["InputDeviceModule4"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(3);
-
-		AddClassToCollection("InputDeviceModule", "singleton", "InputDeviceModule singleton for managing inputs like mouse, keyboard, joystick and mapping keys.");
-		AddClassToCollection("InputDeviceModule2", "singleton", "InputDeviceModule singleton for second player managing inputs like mouse, keyboard, joystick and mapping keys.");
-		AddClassToCollection("InputDeviceModule3", "singleton", "InputDeviceModule singleton for third player managing inputs like mouse, keyboard, joystick and mapping keys.");
-		AddClassToCollection("InputDeviceModule4", "singleton", "InputDeviceModule singleton for forth player managing inputs like mouse, keyboard, joystick and mapping keys.");
-		// AddClassToCollection("InputDeviceModule", "InputDeviceModule InputDeviceModule()", "Gets the input device instance.");
+		AddClassToCollection("InputDeviceModule", "class", "Class for controlling an input device like keyboard or joystick.");
+		AddClassToCollection("InputDeviceModule", "String getDeviceName()", "Gets the device name.");
+		AddClassToCollection("InputDeviceModule", "bool isKeyboardDevice()", "Gets Whether its a keyboard device. If false, its a joystick device.");
 		AddClassToCollection("InputDeviceModule", "KeyCode getMappedKey(Action action)", "Gets the OIS key that is mapped as action.");
 		AddClassToCollection("InputDeviceModule", "String getStringFromMappedKey(Action action)", "Gets the OIS key as string that is mapped as action.");
 		AddClassToCollection("InputDeviceModule", "KeyCode getMappedKeyFromString(String key)", "Gets the OIS key from string key.");
@@ -1512,62 +1509,6 @@ namespace NOWA
 		AddClassToCollection("InputDeviceModule", "bool areButtonsDown3(JoyStickButton button1, JoyStickButton button2, JoyStickButton button3, JoyStickButton button4)", "Gets whether four specific joystick buttons are down at the same time.");
 		AddClassToCollection("InputDeviceModule", "JoyStickButton getPressedButton()", "Gets the currently pressed joystick button.");
 		AddClassToCollection("InputDeviceModule", "Table[number][JoyStickButton] getPressedButtons()", "Gets the currently simultanously pressed joystick buttons.");
-
-		// For keyboard
-		globalVars["NOWA_K_UP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::UP);
-		globalVars["NOWA_K_DOWN"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::DOWN);
-		globalVars["NOWA_K_LEFT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::LEFT);
-		globalVars["NOWA_K_RIGHT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::RIGHT);
-		globalVars["NOWA_K_JUMP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::JUMP);
-		globalVars["NOWA_K_RUN"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::RUN);
-		globalVars["NOWA_K_COWER"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::COWER);
-		globalVars["NOWA_K_DUCK"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::DUCK);
-		globalVars["NOWA_K_SNEAK"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::SNEAK);
-		globalVars["NOWA_K_ACTION"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::ACTION);
-		globalVars["NOWA_K_ATTACK_1"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::ATTACK_1);
-		globalVars["NOWA_K_ATTACK_2"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::ATTACK_2);
-		globalVars["NOWA_K_RELOAD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::RELOAD);
-		globalVars["NOWA_K_INVENTORY"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::INVENTORY);
-		globalVars["NOWA_K_SAVE"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::SAVE);
-		globalVars["NOWA_K_LOAD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::LOAD);
-		globalVars["NOWA_K_PAUSE"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::PAUSE);
-		globalVars["NOWA_K_START"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::START);
-		globalVars["NOWA_K_MAP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::MAP);
-		globalVars["NOWA_K_CAMERA_FORWARD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_FORWARD);
-		globalVars["NOWA_K_CAMERA_BACKWARD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_BACKWARD);
-		globalVars["NOWA_K_CAMERA_RIGHT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_RIGHT);
-		globalVars["NOWA_K_CAMERA_UP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_UP);
-		globalVars["NOWA_K_CAMERA_DOWN"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_DOWN);
-		globalVars["NOWA_K_CAMERA_LEFT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CAMERA_LEFT);
-		globalVars["NOWA_K_CONSOLE"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::CONSOLE);
-		globalVars["NOWA_K_WEAPON_CHANGE_FORWARD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::WEAPON_CHANGE_FORWARD);
-		globalVars["NOWA_K_WEAPON_CHANGE_BACKWARD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::WEAPON_CHANGE_BACKWARD);
-		globalVars["NOWA_K_FLASH_LIGHT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::FLASH_LIGHT);
-		globalVars["NOWA_K_SELECT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(InputDeviceModule::SELECT);
-
-		// For joystick
-		globalVars["NOWA_B_JUMP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::JUMP);
-		globalVars["NOWA_B_RUN"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::RUN);
-		globalVars["NOWA_B_ATTACK_1"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::ATTACK_1);
-		globalVars["NOWA_B_ACTION"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::ACTION);
-		globalVars["NOWA_B_RELOAD"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::RELOAD);
-		globalVars["NOWA_B_INVENTORY"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::INVENTORY);
-		globalVars["NOWA_B_MAP"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::MAP);
-		globalVars["NOWA_B_PAUSE"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::PAUSE);
-		globalVars["NOWA_B_START"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::START);
-		globalVars["NOWA_B_FLASH_LIGHT"] = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(InputDeviceModule::FLASH_LIGHT);
-
-		// For second joystick
-		globalVars["NOWA_B_JUMP_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::JUMP);
-		globalVars["NOWA_B_RUN_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::RUN);
-		globalVars["NOWA_B_ATTACK_1_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::ATTACK_1);
-		globalVars["NOWA_B_ACTION_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::ACTION);
-		globalVars["NOWA_B_RELOAD_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::RELOAD);
-		globalVars["NOWA_B_INVENTORY_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::INVENTORY);
-		globalVars["NOWA_B_MAP_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::MAP);
-		globalVars["NOWA_B_PAUSE_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::PAUSE);
-		globalVars["NOWA_B_START_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::START);
-		globalVars["NOWA_B_FLASH_LIGHT_2"] = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(InputDeviceModule::FLASH_LIGHT);
 
 		// For both
 		globalVars["NOWA_A_UP"] = InputDeviceModule::UP;
@@ -1600,87 +1541,6 @@ namespace NOWA
 		globalVars["NOWA_A_WEAPON_CHANGE_BACKWARD"] = InputDeviceModule::WEAPON_CHANGE_BACKWARD;
 		globalVars["NOWA_A_FLASH_LIGHT"] = InputDeviceModule::FLASH_LIGHT;
 		globalVars["NOWA_A_SELECT"] = InputDeviceModule::SELECT;
-
-		AddClassToCollection("InputMapping", "NOWA_K_UP", "Mapped up key.");
-		AddClassToCollection("NOWA_K_UP", "singleton", "Mapped up key.");
-		AddClassToCollection("InputMapping", "NOWA_K_DOWN", "Mapped down key.");
-		AddClassToCollection("NOWA_K_DOWN", "singleton", "Mapped down key.");
-		AddClassToCollection("InputMapping", "NOWA_K_LEFT", "Mapped left key.");
-		AddClassToCollection("NOWA_K_LEFT", "singleton", "Mapped left key.");
-		AddClassToCollection("InputMapping", "NOWA_K_RIGHT", "Mapped right key.");
-		AddClassToCollection("NOWA_K_RIGHT", "singleton", "Mapped right key.");
-		AddClassToCollection("InputMapping", "NOWA_K_JUMP", "Mapped jump key.");
-		AddClassToCollection("NOWA_K_JUMP", "singleton", "Mapped jump key.");
-		AddClassToCollection("InputMapping", "NOWA_K_RUN", "Mapped run key.");
-		AddClassToCollection("NOWA_K_RUN", "singleton", "Mapped run key.");
-		AddClassToCollection("InputMapping", "NOWA_K_DUCK", "Mapped duck key.");
-		AddClassToCollection("NOWA_K_DUCK", "singleton", "Mapped duck key.");
-		AddClassToCollection("InputMapping", "NOWA_K_SNEAK", "Mapped sneak key.");
-		AddClassToCollection("NOWA_K_SNEAK", "singleton", "Mapped sneak key.");
-		AddClassToCollection("InputMapping", "NOWA_K_ACTION", "Mapped action like open door key.");
-		AddClassToCollection("NOWA_K_ACTION", "singleton", "Mapped action like open door key.");
-		AddClassToCollection("InputMapping", "NOWA_K_ATTACK_1", "Mapped attack 1 key.");
-		AddClassToCollection("NOWA_K_ATTACK_1", "singleton", "Mapped attack 1 key.");
-		AddClassToCollection("InputMapping", "NOWA_K_ATTACK_2", "Mapped attack 2 key.");
-		AddClassToCollection("NOWA_K_ATTACK_2", "singleton", "Mapped attack 2 key.");
-		AddClassToCollection("InputMapping", "NOWA_K_RELOAD", "Mapped reload key.");
-		AddClassToCollection("NOWA_K_RELOAD", "singleton", "Mapped reload key.");
-		AddClassToCollection("InputMapping", "NOWA_K_INVENTORY", "Mapped inventory key.");
-		AddClassToCollection("NOWA_K_INVENTORY", "singleton", "Mapped inventory key.");
-		AddClassToCollection("InputMapping", "NOWA_K_SAVE", "Mapped save key.");
-		AddClassToCollection("NOWA_K_SAVE", "singleton", "Mapped save key.");
-		AddClassToCollection("InputMapping", "NOWA_K_LOAD", "Mapped load key.");
-		AddClassToCollection("NOWA_K_LOAD", "singleton", "Mapped load key.");
-		AddClassToCollection("InputMapping", "NOWA_K_PAUSE", "Mapped pause key.");
-		AddClassToCollection("NOWA_K_PAUSE", "singleton", "Mapped pause key.");
-		AddClassToCollection("InputMapping", "NOWA_K_START", "Mapped start key.");
-		AddClassToCollection("NOWA_K_START", "singleton", "Mapped start key.");
-		AddClassToCollection("InputMapping", "NOWA_K_MAP", "Mapped map key.");
-		AddClassToCollection("NOWA_K_MAP", "singleton", "Mapped map key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_FORWARD", "Mapped camera forward key.");
-		AddClassToCollection("NOWA_K_CAMERA_FORWARD", "singleton", "Mapped camera forward key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_BACKWARD", "Mapped backward key.");
-		AddClassToCollection("NOWA_K_CAMERA_BACKWARD", "singleton", "Mapped backward key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_RIGHT", "Mapped camera right key.");
-		AddClassToCollection("NOWA_K_CAMERA_RIGHT", "singleton", "Mapped camera right key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_UP", "Mapped camera up key.");
-		AddClassToCollection("NOWA_K_CAMERA_UP", "singleton", "Mapped camera up key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_DOWN", "Mapped camera down key.");
-		AddClassToCollection("NOWA_K_CAMERA_DOWN", "singleton", "Mapped camera down key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CAMERA_LEFT", "Mapped camera left key.");
-		AddClassToCollection("NOWA_K_CAMERA_LEFT", "singleton", "Mapped camera left key.");
-		AddClassToCollection("InputMapping", "NOWA_K_CONSOLE", "Mapped console key.");
-		AddClassToCollection("NOWA_K_CONSOLE", "singleton", "Mapped console key.");
-		AddClassToCollection("InputMapping", "NOWA_K_WEAPON_CHANGE_FORWARD", "Mapped weapon change forward key.");
-		AddClassToCollection("NOWA_K_WEAPON_CHANGE_FORWARD", "singleton", "Mapped weapon change forward key.");
-		AddClassToCollection("InputMapping", "NOWA_K_WEAPON_CHANGE_BACKWARD", "Mapped weapon change backward key.");
-		AddClassToCollection("NOWA_K_WEAPON_CHANGE_BACKWARD", "singleton", "Mapped weapon change backward key.");
-		AddClassToCollection("InputMapping", "NOWA_K_FLASH_LIGHT", "Mapped flash light key.");
-		AddClassToCollection("NOWA_K_FLASH_LIGHT", "singleton", "Mapped flash light key.");
-		AddClassToCollection("InputMapping", "NOWA_K_SELECT", "Mapped select key.");
-		AddClassToCollection("NOWA_K_SELECT", "singleton", "Mapped select key.");
-
-
-		AddClassToCollection("InputMapping", "NOWA_B_JUMP", "Jump button.");
-		AddClassToCollection("NOWA_B_JUMP", "singleton", "Jump button.");
-		AddClassToCollection("InputMapping", "NOWA_B_RUN", "Run button.");
-		AddClassToCollection("NOWA_B_RUN", "singleton", "Run button.");
-		AddClassToCollection("InputMapping", "NOWA_B_ATTACK_1", "Attack 1 button.");
-		AddClassToCollection("NOWA_B_ATTACK_1", "singleton", "Attack 1 button.");
-		AddClassToCollection("InputMapping", "NOWA_B_ACTION", "Action like door open button.");
-		AddClassToCollection("NOWA_B_ACTION", "singleton", "Action like door open button.");
-		AddClassToCollection("InputMapping", "NOWA_B_RELOAD", "Reload button.");
-		AddClassToCollection("NOWA_B_RELOAD", "singleton", "Reload button.");
-		AddClassToCollection("InputMapping", "NOWA_B_INVENTORY", "Inventory button.");
-		AddClassToCollection("NOWA_B_INVENTORY", "singleton", "Inventory button.");
-		AddClassToCollection("InputMapping", "NOWA_B_MAP", "Map button.");
-		AddClassToCollection("NOWA_B_MAP", "singleton", "Map button.");
-		AddClassToCollection("InputMapping", "NOWA_B_PAUSE", "Pause button.");
-		AddClassToCollection("NOWA_B_PAUSE", "singleton", "Pause button.");
-		AddClassToCollection("InputMapping", "NOWA_B_MENU", "Menu button.");
-		AddClassToCollection("NOWA_B_MENU", "singleton", "Menu button.");
-		AddClassToCollection("InputMapping", "NOWA_B_FLASH_LIGHT", "Flash light button.");
-		AddClassToCollection("NOWA_B_FLASH_LIGHT", "singleton", "Flash light button.");
 
 		AddClassToCollection("InputMapping", "NOWA_A_UP", "Mapped up action (does not matter if keyboard or joystick is used).");
 		AddClassToCollection("NOWA_A_UP", "singleton", "Mapped up action (does not matter if keyboard or joystick is used).");
@@ -3623,6 +3483,7 @@ namespace NOWA
 		gameObject.def("getCategoryId", &getCategoryId);
 		gameObject.def("getRenderCategoryId", &getRenderCategoryId);
 		gameObject.def("getTagName", &GameObject::getTagName);
+		gameObject.def("setActivated", &GameObject::setActivated);
 		gameObject.def("changeCategory", (void (GameObject::*)(const Ogre::String&, const Ogre::String&)) & GameObject::changeCategory);
 		gameObject.def("changeCategory2", (void (GameObject::*)(const Ogre::String&)) & GameObject::changeCategory);
 
@@ -3965,6 +3826,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "string getCategory()", "Gets the category to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
 		AddClassToCollection("GameObject", "string getTagName()", "Gets the tag name of game object. Note: Tags are like sub-categories. E.g. several game objects may belong to the category 'Enemy', but one group may have a tag name 'Stone', the other 'Ship1', 'Ship2' etc. "
 			"This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories, to further distinquish, which tag has been hit in order to remove different energy amount.");
+		AddClassToCollection("GameObject", "setActivated(bool activated)", "If set to true, the game object will be activated. This can be used e.g. for all components that do something when activated.");
 		AddClassToCollection("GameObject", "string getCategoryId()", "Gets the category id to which this game object does belong. Note: This is useful when doing ray-casts on graphics base or physics base or creating physics materials between categories.");
 		AddClassToCollection("GameObject", "string getRenderCategory()", "Gets the render category to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");
 		AddClassToCollection("GameObject", "string getRenderCategoryId()", "Gets the render category id to which this game object does belong. Note: This is useful to specify which game objects shall be excluded from a camera's view rendering.");
@@ -6443,6 +6305,7 @@ namespace NOWA
 		];
 
 		AddClassToCollection("PhysicsTriggerComponent", "class inherits PhysicsComponent", PhysicsTriggerComponent::getStaticInfoText());
+		AddClassToCollection("PhysicsTriggerComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("PhysicsTriggerComponent", "void destroyTrigger()", "Destroys the trigger.");
 		AddClassToCollection("PhysicsTriggerComponent", "void reactOnEnter(func closure, visitorGameObject)",
 														  "Lua closure function gets called in order to react when a game object enters the trigger area.");
@@ -6549,6 +6412,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
+		AddClassToCollection("PlayerControllerComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("PlayerControllerComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// AddClassToCollection("PlayerControllerComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("PlayerControllerComponent", "number getClassId()", "Gets the class id of this component.");
@@ -6593,6 +6457,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunComponent::getStaticInfoText());
+		AddClassToCollection("PlayerControllerJumpNRunComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "void setJumpForce(float jumpForce)", "Sets the jump force for the player.");
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "float getJumpForce()", "Gets the jump force.");
 
@@ -6605,6 +6470,7 @@ namespace NOWA
 		];
 
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunLuaComponent::getStaticInfoText());
+		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "void setStartStateName(String startName)", "Sets start state name in lua script, that should be executed.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "String getStartStateName()", "Gets start state name in lua script, that should be executed.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "LuaStateMachine getStateMachine()", "Gets the state machine to switch between states etc. in lua script.");
@@ -6624,6 +6490,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerClickToPointComponent", "class inherits PlayerControllerComponent", PlayerControllerClickToPointComponent::getStaticInfoText());
+		AddClassToCollection("PlayerControllerClickToPointComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor a new click point can be placed via mouse.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "String getCategories()", "Gets categories a click point can be placed via mouse.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "number getCategoryIds()", "Gets category ids a click point can be placed via mouse.");
@@ -6665,6 +6532,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TagPointComponent", "class inherits GameObjectComponent", TagPointComponent::getStaticInfoText());
+		AddClassToCollection("TagPointComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("TagPointComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("TagPointComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// AddClassToCollection("TagPointComponent", "number getClassId()", "Gets the class id of this component.");
@@ -6688,6 +6556,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TimeTriggerComponent", "class inherits GameObjectComponent", TimeTriggerComponent::getStaticInfoText());
+		AddClassToCollection("TimeTriggerComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("TimeTriggerComponent", "void setActivated(bool activated)", "Sets whether time trigger can start or not.");
 		AddClassToCollection("TimeTriggerComponent", "bool isActivated()", "Gets whether this time trigger is activated or not.");
 	}
@@ -6705,6 +6574,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TimeLineComponent", "class inherits GameObjectComponent", TimeLineComponent::getStaticInfoText());
+		AddClassToCollection("TimeLineComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("TimeLineComponent", "void setActivated(bool activated)", "Sets whether time line can start or not.");
 		AddClassToCollection("TimeLineComponent", "bool isActivated()", "Gets whether this time line is activated or not.");
 		AddClassToCollection("TimeLineComponent", "bool setCurrentTimeSec(float timeSec)", "Sets the current time in seconds. Note: The next time point is determined, and the corresponding game object or lua function (if existing) called. Note: If the given time exceeds the overwhole time line duration, false is returned.");
@@ -6754,6 +6624,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TagChildNodeComponent", "class inherits GameObjectComponent", TagChildNodeComponent::getStaticInfoText());
+		AddClassToCollection("TagChildNodeComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("TagChildNodeComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("TagChildNodeComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// AddClassToCollection("TagChildNodeComponent", "number getClassId()", "Gets the class id of this component.");
@@ -6962,6 +6833,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("RectangleComponent", "class inherits GameObjectComponent", RectangleComponent::getStaticInfoText());
+		AddClassToCollection("RectangleComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("RectangleComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("RectangleComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// AddClassToCollection("RectangleComponent", "number getClassId()", "Gets the class id of this component.");
@@ -7016,6 +6888,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("ValueBarComponent", "class inherits GameObjectComponent", ValueBarComponent::getStaticInfoText());
+		AddClassToCollection("ValueBarComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("ValueBarComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("ValueBarComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// AddClassToCollection("ValueBarComponent", "number getClassId()", "Gets the class id of this component.");
@@ -9306,6 +9179,7 @@ namespace NOWA
 		// ATTENTION: This will not work that way, because, mouse down -> start, mouse up -> finish and undo redo missing
 
 		AddClassToCollection("TerraComponent", "class inherits GameObjectComponent", DatablockTerraComponent::getStaticInfoText());
+		AddClassToCollection("TerraComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("TerraComponent", "String getClassName()", "Gets the class name of this component as string.");
 		AddClassToCollection("TerraComponent", "void setBasePixelDimension(number index)", "Sets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
 		AddClassToCollection("TerraComponent", "number getBasePixelDimension()", "Gets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive..");
@@ -10894,7 +10768,10 @@ namespace NOWA
 
 		// Is now: setActivated
 		// AddClassToCollection("PhysicsActiveComponent", "void applySleep(bool sleep)", "Sets whether the physics body should sleep. It will be removed from the physics calculation for performance reasons. "
-		// 												"Note: The sleep state will be changed, when another physics body does touch this sleeping physics body.");
+		// 											"Note: The sleep state will be changed, when another physics body does touch this sleeping physics body.");
+
+		AddClassToCollection("PhysicsActiveComponent", "void setActivated(bool activated)", "Activates or deactivates the physics of this component");
+
 
 		AddClassToCollection("PhysicsActiveComponent", "void setContinuousCollision(bool continuousCollision)", "Sets whether to use continuous collision, if set to true, "
 			"the collision hull will be slightly resized, so that a fast moving physics body will still collide with other bodies. Note: This comes with a performance impact.");
@@ -11373,6 +11250,7 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlaneComponent", "class inherits GameObjectComponent", PlaneComponent::getStaticInfoText());
+		AddClassToCollection("PlaneComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("PlaneComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("PlaneComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PlaneComponent", "void setWidth(float width)", "Sets the width of the plane. Note: Plane will be reconstructed, if there is a @PhysicsArtifactComponent, the collision hull will also be re-generated.");
@@ -11477,6 +11355,7 @@ namespace NOWA
 			]
 		];
 		AddClassToCollection("PhysicsRagDollComponent", "class inherits PhysicsActiveComponent", PhysicsRagDollComponent::getStaticInfoText());
+		AddClassToCollection("PhysicsRagDollComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("PhysicsRagDollComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("PhysicsRagDollComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PhysicsRagDollComponent", "void setVelocity(Vector3 velocity)", "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");
@@ -11548,6 +11427,8 @@ namespace NOWA
 			.def("changeCollisionFaceId", &PhysicsArtifactComponent::changeCollisionFaceId)
 		];
 		AddClassToCollection("PhysicsTerrainComponent", "class inherits PhysicsComponent", "Derived class of PhysicsActiveComponent. " + PhysicsArtifactComponent::getStaticInfoText());
+		AddClassToCollection("PhysicsTerrainComponent", "GameObject getOwner()", "Gets the owner game object.");
+
 		AddClassToCollection("PhysicsTerrainComponent", "void setCollisionFaceId(number id)", "Changes the user defined collision attribute stored with faces of the collision mesh. "
 								"This function is used to obtain the user data stored in faces of the collision geometry. "
 								"The application can use this user data to achieve per polygon material behavior in large static collision meshes. "
@@ -11719,6 +11600,7 @@ namespace NOWA
 		];
 
 		AddClassToCollection("SpawnComponent", "class inherits GameObjectComponent", SpawnComponent::getStaticInfoText());
+		AddClassToCollection("SpawnComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("SpawnComponent", "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("SpawnComponent", "int getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("SpawnComponent", "void setActivated(bool activated)", "Activates the components behaviour, so that the spawning will begin.");
@@ -11747,33 +11629,10 @@ namespace NOWA
 			" at the position of this game object. E.g. a rotating case shall spawn coins, so the case has the spawn component and as spawn target the coin scene node name.");
 		AddClassToCollection("SpawnComponent", "String getSpawnTargetId()", "Gets the spawn target game object id.");
 		AddClassToCollection("SpawnComponent", "void setKeepAliveSpawnedGameObjects(bool keepAlive)", "Sets whether keep alive spawned game objects, when the component has ben de-activated and re-activated again.");
-		AddClassToCollection("MyGUIComponent", "void reactOnSpawn(func closure, spawnedGameObject, originGameObject)",
+		AddClassToCollection("SpawnComponent", "void reactOnSpawn(func closure, spawnedGameObject, originGameObject)",
 							 "Sets whether to react at the moment when a game object is spawned.");
-		AddClassToCollection("MyGUIComponent", "void reactOnVanish(func closure, spawnedGameObject, originGameObject)",
+		AddClassToCollection("SpawnComponent", "void reactOnVanish(func closure, spawnedGameObject, originGameObject)",
 							 "Sets whether to react at the moment when a game object is vanished.");
-	}
-
-	void bindVehicleComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<VehicleComponent, GameObjectComponent>("VehicleComponent")
-				// .def("getClassName", &VehicleComponent::getClassName)
-				// .def("clone", &VehicleComponent::clone)
-				// .def("getClassId", &VehicleComponent::getClassId)
-			.def("setThrottle", &VehicleComponent::setThrottle)
-			.def("setClutchPedal", &VehicleComponent::setClutchPedal)
-			.def("setSteeringValue", &VehicleComponent::setSteeringValue)
-			.def("setBrakePedal", &VehicleComponent::setBrakePedal)
-			.def("setIgnitionKey", &VehicleComponent::setIgnitionKey)
-			.def("setHandBrakeValue", &VehicleComponent::setHandBrakeValue)
-			.def("setGear", &VehicleComponent::setGear)
-			.def("setManualTransmission", &VehicleComponent::setManualTransmission)
-			.def("setLockDifferential", &VehicleComponent::setLockDifferential)
-			];
-
-		AddClassToCollection("VehicleComponent", "class inherits GameObjectComponent", VehicleComponent::getStaticInfoText());
-		// TODO: Unfinised
 	}
 
 	Ogre::Vector3 getCurrentWayPoint(KI::Path* instance)
@@ -12364,10 +12223,10 @@ namespace NOWA
 		AddClassToCollection("DragDropData", "bool getCanDrop()", "Gets whether the item can be dropped.");
 
 		module(lua)
-			[
-				class_<InventoryItemComponent, GameObjectComponent>("InventoryItemComponent")
-				// .def("getClassName", &InventoryItemComponent::getClassName)
-				// .def("getClassId", &InventoryItemComponent::getClassId)
+		[
+			class_<InventoryItemComponent, GameObjectComponent>("InventoryItemComponent")
+			// .def("getClassName", &InventoryItemComponent::getClassName)
+			// .def("getClassId", &InventoryItemComponent::getClassId)
 			.def("setResourceName", &InventoryItemComponent::setResourceName)
 			.def("getResourceName", &InventoryItemComponent::getResourceName)
 			// .def("setQuantity", &InventoryItemComponent::setQuantity)
@@ -12378,7 +12237,7 @@ namespace NOWA
 			.def("removeQuantityFromInventory", &removeQuantityFromInventory)
 			.def("addQuantityToInventory2", &addQuantityToInventory2)
 			.def("removeQuantityFromInventory2", &removeQuantityFromInventory2)
-			];
+		];
 
 		AddClassToCollection("InventoryItemComponent", "class inherits GameObjectComponent", InventoryItemComponent::getStaticInfoText());
 		AddClassToCollection("InventoryItemComponent", "void setResourceName(String resourceName)", "Sets the used resource name.");
@@ -12393,10 +12252,10 @@ namespace NOWA
 			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
 
 		module(lua)
-			[
-				class_<MyGUITextComponent, MyGUIComponent>("MyGUITextComponent")
-				// .def("getClassName", &MyGUITextComponent::getClassName)
-				// .def("getClassId", &MyGUITextComponent::getClassId)
+		[
+			class_<MyGUITextComponent, MyGUIComponent>("MyGUITextComponent")
+			// .def("getClassName", &MyGUITextComponent::getClassName)
+			// .def("getClassId", &MyGUITextComponent::getClassId)
 			.def("setCaption", &MyGUITextComponent::setCaption)
 			.def("getCaption", &MyGUITextComponent::getCaption)
 			.def("setFontHeight", &MyGUITextComponent::setFontHeight)
@@ -12407,7 +12266,7 @@ namespace NOWA
 			.def("getTextColor", &MyGUITextComponent::getTextColor)
 			.def("setReadOnly", &MyGUITextComponent::setReadOnly)
 			.def("getReadOnly", &MyGUITextComponent::getReadOnly)
-			];
+		];
 
 		AddClassToCollection("MyGUITextComponent", "class inherits MyGUIComponent", MyGUITextComponent::getStaticInfoText());
 		AddClassToCollection("MyGUITextComponent", "void setCaption(String caption)", "Sets the caption for this widget. Note: If multi line is enabled, backslash 'n' can be used for a line break.");
@@ -12422,10 +12281,10 @@ namespace NOWA
 		AddClassToCollection("MyGUITextComponent", "bool getReadOnly()", "Gets whether the widget is read only (Text cannot be manipulated).");
 
 		module(lua)
-			[
-				class_<MyGUIButtonComponent, MyGUIComponent>("MyGUIButtonComponent")
-				// .def("getClassName", &MyGUIButtonComponent::getClassName)
-				// .def("getClassId", &MyGUIButtonComponent::getClassId)
+		[
+			class_<MyGUIButtonComponent, MyGUIComponent>("MyGUIButtonComponent")
+			// .def("getClassName", &MyGUIButtonComponent::getClassName)
+			// .def("getClassId", &MyGUIButtonComponent::getClassId)
 			.def("setCaption", &MyGUIButtonComponent::setCaption)
 			.def("getCaption", &MyGUIButtonComponent::getCaption)
 			.def("setFontHeight", &MyGUIButtonComponent::setFontHeight)
@@ -12434,7 +12293,7 @@ namespace NOWA
 			.def("getTextAlign", &MyGUIButtonComponent::getTextAlign)
 			.def("setTextColor", &MyGUIButtonComponent::setTextColor)
 			.def("getTextColor", &MyGUIButtonComponent::getTextColor)
-			];
+		];
 
 		AddClassToCollection("MyGUIButtonComponent", "class inherits MyGUIComponent", MyGUIButtonComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIButtonComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
@@ -12447,10 +12306,10 @@ namespace NOWA
 		AddClassToCollection("MyGUIButtonComponent", "Vector4 getTextColor()", "Gets the widget's text color (r, g, b, a).");
 
 		module(lua)
-			[
-				class_<MyGUICheckBoxComponent, MyGUIComponent>("MyGUICheckBoxComponent")
-				// .def("getClassName", &MyGUICheckBoxComponent::getClassName)
-				// .def("getClassId", &MyGUICheckBoxComponent::getClassId)
+		[
+			class_<MyGUICheckBoxComponent, MyGUIComponent>("MyGUICheckBoxComponent")
+			// .def("getClassName", &MyGUICheckBoxComponent::getClassName)
+			// .def("getClassId", &MyGUICheckBoxComponent::getClassId)
 			.def("setCaption", &MyGUICheckBoxComponent::setCaption)
 			.def("getCaption", &MyGUICheckBoxComponent::getCaption)
 			.def("setFontHeight", &MyGUICheckBoxComponent::setFontHeight)
@@ -12459,7 +12318,7 @@ namespace NOWA
 			.def("getTextAlign", &MyGUICheckBoxComponent::getTextAlign)
 			.def("setTextColor", &MyGUICheckBoxComponent::setTextColor)
 			.def("getTextColor", &MyGUICheckBoxComponent::getTextColor)
-			];
+		];
 
 		AddClassToCollection("MyGUICheckBoxComponent", "class inherits MyGUIComponent", MyGUICheckBoxComponent::getStaticInfoText());
 		AddClassToCollection("MyGUICheckBoxComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
@@ -12472,10 +12331,10 @@ namespace NOWA
 		AddClassToCollection("MyGUICheckBoxComponent", "Vector4 getTextColor()", "Gets the widget's text color (r, g, b, a).");
 
 		module(lua)
-			[
-				class_<MyGUIImageBoxComponent, MyGUIComponent>("MyGUIImageBoxComponent")
-				// .def("getClassName", &MyGUIImageBoxComponent::getClassName)
-				// .def("getClassId", &MyGUIImageBoxComponent::getClassId)
+		[
+			class_<MyGUIImageBoxComponent, MyGUIComponent>("MyGUIImageBoxComponent")
+			// .def("getClassName", &MyGUIImageBoxComponent::getClassName)
+			// .def("getClassId", &MyGUIImageBoxComponent::getClassId)
 			.def("setImageFileName", &MyGUIImageBoxComponent::setImageFileName)
 			.def("getImageFileName", &MyGUIImageBoxComponent::getImageFileName)
 			.def("setCenter", &MyGUIImageBoxComponent::setCenter)
@@ -12484,7 +12343,7 @@ namespace NOWA
 			.def("getAngle", &MyGUIImageBoxComponent::getAngle)
 			.def("setRotationSpeed", &MyGUIImageBoxComponent::setRotationSpeed)
 			.def("getRotationSpeed", &MyGUIImageBoxComponent::getRotationSpeed)
-			];
+		];
 
 		AddClassToCollection("MyGUIImageBoxComponent", "class inherits MyGUIComponent", MyGUIImageBoxComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIImageBoxComponent", "void setImageFileName(String fileName)", "Sets the image file name. Note: Must exist in a resource group.");
@@ -12497,17 +12356,17 @@ namespace NOWA
 		AddClassToCollection("MyGUIImageBoxComponent", "float getRotationSpeed()", "Gets the image rotation speed.");
 
 		module(lua)
-			[
-				class_<MyGUIProgressBarComponent, MyGUIComponent>("MyGUIProgressBarComponent")
-				// .def("getClassName", &MyGUIProgressBarComponent::getClassName)
-				// .def("getClassId", &MyGUIProgressBarComponent::getClassId)
+		[
+			class_<MyGUIProgressBarComponent, MyGUIComponent>("MyGUIProgressBarComponent")
+			// .def("getClassName", &MyGUIProgressBarComponent::getClassName)
+			// .def("getClassId", &MyGUIProgressBarComponent::getClassId)
 			.def("setValue", &MyGUIProgressBarComponent::setValue)
 			.def("getValue", &MyGUIProgressBarComponent::getValue)
 			.def("setRange", &MyGUIProgressBarComponent::setRange)
 			.def("getRange", &MyGUIProgressBarComponent::getRange)
 			.def("setFlowDirection", &MyGUIProgressBarComponent::setFlowDirection)
 			.def("getFlowDirection", &MyGUIProgressBarComponent::getFlowDirection)
-			];
+		];
 
 		AddClassToCollection("MyGUIProgressBarComponent", "class inherits MyGUIComponent", MyGUIProgressBarComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIProgressBarComponent", "void setValue(int value)", "Sets the progress bar current value.");
@@ -12534,6 +12393,7 @@ namespace NOWA
 		];
 
 		AddClassToCollection("MyGUIListBoxComponent", "class inherits MyGUIComponent", MyGUIListBoxComponent::getStaticInfoText());
+		AddClassToCollection("MyGUIListBoxComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
 		AddClassToCollection("MyGUIListBoxComponent", "void setItemCount(unsigned int itemCount)", "Sets items count.");
 		AddClassToCollection("MyGUIListBoxComponent", "unsigned int getItemCount()", "Gets the items count.");
 		AddClassToCollection("MyGUIListBoxComponent", "void setItemText(unsigned int index, String itemText)", "Sets the item text at the given index.");
@@ -12550,18 +12410,23 @@ namespace NOWA
 		module(lua)
 			[
 				class_<MyGUIComboBoxComponent, MyGUIComponent>("MyGUIComboBoxComponent")
+				.def("setCaption", &MyGUIComboBoxComponent::setCaption)
 				.def("setItemCount", &MyGUIComboBoxComponent::setItemCount)
-			.def("getItemCount", &MyGUIComboBoxComponent::getItemCount)
-			.def("setItemText", &MyGUIComboBoxComponent::setItemText)
-			.def("getItemText", &MyGUIComboBoxComponent::getItemText)
-			.def("addItem", &MyGUIComboBoxComponent::addItem)
-			.def("insertItem", &MyGUIComboBoxComponent::insertItem)
-			.def("removeItem", &MyGUIComboBoxComponent::removeItem)
-			.def("getSelectedIndex", &MyGUIComboBoxComponent::getSelectedIndex)
-			.def("reactOnSelected", &MyGUIComboBoxComponent::reactOnSelected)
+				.def("getItemCount", &MyGUIComboBoxComponent::getItemCount)
+				.def("setItemText", &MyGUIComboBoxComponent::setItemText)
+				.def("getItemText", &MyGUIComboBoxComponent::getItemText)
+				.def("addItem", &MyGUIComboBoxComponent::addItem)
+				.def("insertItem", &MyGUIComboBoxComponent::insertItem)
+				.def("removeItem", &MyGUIComboBoxComponent::removeItem)
+				.def("getSelectedIndex", &MyGUIComboBoxComponent::getSelectedIndex)
+				.def("reactOnSelected", &MyGUIComboBoxComponent::reactOnSelected)
+				.def("setFlowDirection", &MyGUIComboBoxComponent::setFlowDirection)
+				.def("getFlowDirection", &MyGUIComboBoxComponent::getFlowDirection)
 			];
 
 		AddClassToCollection("MyGUIComboBoxComponent", "class inherits MyGUIComponent", MyGUIComboBoxComponent::getStaticInfoText());
+		AddClassToCollection("MyGUIComboBoxComponent", "GameObject getOwner()", "Gets the owner game object.");
+		AddClassToCollection("MyGUIComboBoxComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
 		AddClassToCollection("MyGUIComboBoxComponent", "void setItemCount(unsigned int itemCount)", "Sets items count.");
 		AddClassToCollection("MyGUIComboBoxComponent", "unsigned int getItemCount()", "Gets the items count.");
 		AddClassToCollection("MyGUIComboBoxComponent", "void setItemText(unsigned int index, String itemText)", "Sets the item text at the given index.");
@@ -12572,11 +12437,13 @@ namespace NOWA
 		AddClassToCollection("MyGUIComboBoxComponent", "int getSelectedIndex()", "Gets the selected index, or -1 if nothing is selected. Note: Always check against -1!");
 		AddClassToCollection("MyGUIComboBoxComponent", "void reactOnSelected(func closureFunction, int index)",
 							 "Sets whether to react if a list item has been selected. The clicked list item index will be received.");
+		AddClassToCollection("MyGUIComboBoxComponent", "void setFlowDirection(String flowDirection)", "Sets flow direction for the combo box.");
+		AddClassToCollection("MyGUIComboBoxComponent", "String getFlowDirection()", "Gets the flow direction for the combo box. Possible values are: 'LeftToRight', 'RightToLeft', 'TopToBottom', 'BottomToTop'");
 
 		module(lua)
-			[
-				class_<MyGUI::MessageBoxStyle>("MessageBoxStyle")
-				.enum_("Enum")
+		[
+			class_<MyGUI::MessageBoxStyle>("MessageBoxStyle")
+			.enum_("Enum")
 			[
 				value("Ok", MyGUI::MessageBoxStyle::Ok),
 				value("Yes", MyGUI::MessageBoxStyle::Yes),
@@ -12588,7 +12455,7 @@ namespace NOWA
 				value("Try", MyGUI::MessageBoxStyle::Try),
 				value("Continue", MyGUI::MessageBoxStyle::Continue)
 			]
-			];
+		];
 
 		AddClassToCollection("MessageBoxStyle", "class", "MessageBox style class for MyGUI Message box reaction, which button has been pressed.");
 		AddClassToCollection("MessageBoxStyle", "Yes", "Yes button.");
@@ -12601,9 +12468,9 @@ namespace NOWA
 		AddClassToCollection("MessageBoxStyle", "Continue", "Continue button.");
 
 		module(lua)
-			[
-				class_<MyGUIMessageBoxComponent, GameObjectComponent>("MyGUIMessageBoxComponent")
-				.def("setActivated", &MyGUIMessageBoxComponent::setActivated)
+		[
+			class_<MyGUIMessageBoxComponent, GameObjectComponent>("MyGUIMessageBoxComponent")
+			.def("setActivated", &MyGUIMessageBoxComponent::setActivated)
 			.def("isActivated", &MyGUIMessageBoxComponent::isActivated)
 			.def("setTitle", &MyGUIMessageBoxComponent::setTitle)
 			.def("getTitle", &MyGUIMessageBoxComponent::getTitle)
@@ -12613,7 +12480,7 @@ namespace NOWA
 			.def("getStylesCount", &MyGUIMessageBoxComponent::getStylesCount)
 			.def("setStyle", &MyGUIMessageBoxComponent::setStyle)
 			.def("getStyle", &MyGUIMessageBoxComponent::getStyle)
-			];
+		];
 
 		AddClassToCollection("MyGUIMessageBoxComponent", "class inherits MyGUIComponent", MyGUIComboBoxComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIMessageBoxComponent", "void setActivated(bool activated)", "Activates this component, so that the message box will be shown.");
@@ -12631,17 +12498,17 @@ namespace NOWA
 		////////////////////////////////////MyGUI Controller/////////////////////////////////////////////////
 
 		module(lua)
-			[
-				class_<MyGUIControllerComponent, GameObjectComponent>("MyGUIControllerComponent")
-				// .def("getClassName", &MyGUIControllerComponent::getClassName)
-				// .def("getClassId", &MyGUIControllerComponent::getClassId)
+		[
+			class_<MyGUIControllerComponent, GameObjectComponent>("MyGUIControllerComponent")
+			// .def("getClassName", &MyGUIControllerComponent::getClassName)
+			// .def("getClassId", &MyGUIControllerComponent::getClassId)
 			.def("setActivated", &MyGUIControllerComponent::setActivated)
 			.def("isActivated", &MyGUIControllerComponent::isActivated)
 			// .def("setSourceId", &MyGUIControllerComponent::setSourceId)
 			// .def("getSourceId", &MyGUIControllerComponent::getSourceId)
 			.def("setSourceId", &setSourceIdMyGUIController)
 			.def("getSourceId", &getSourceIdMyGUIController)
-			];
+		];
 
 		AddClassToCollection("MyGUIControllerComponent", "class inherits GameObjectComponent", MyGUIControllerComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIControllerComponent", "void setActivated(bool activated)", "Activates the controller for a target widget component.");
@@ -12650,17 +12517,17 @@ namespace NOWA
 		AddClassToCollection("MyGUIControllerComponent", "String getSourceId()", "Gets the source MyGUI UI widget component id, at which this controller is attached.");
 
 		module(lua)
-			[
-				class_<MyGUIPositionControllerComponent, MyGUIControllerComponent>("MyGUIPositionControllerComponent")
-				// .def("getClassName", &MyGUIPositionControllerComponent::getClassName)
-				// .def("getClassId", &MyGUIPositionControllerComponent::getClassId)
+		[
+			class_<MyGUIPositionControllerComponent, MyGUIControllerComponent>("MyGUIPositionControllerComponent")
+			// .def("getClassName", &MyGUIPositionControllerComponent::getClassName)
+			// .def("getClassId", &MyGUIPositionControllerComponent::getClassId)
 			.def("setCoordinate", &MyGUIPositionControllerComponent::setCoordinate)
 			.def("getCoordinate", &MyGUIPositionControllerComponent::getCoordinate)
 			.def("setFunction", &MyGUIPositionControllerComponent::setFunction)
 			.def("getFunction", &MyGUIPositionControllerComponent::getFunction)
 			.def("setDurationSec", &MyGUIPositionControllerComponent::setDurationSec)
 			.def("getDurationSec", &MyGUIPositionControllerComponent::getDurationSec)
-			];
+		];
 
 		AddClassToCollection("MyGUIPositionControllerComponent", "class inherits MyGUIControllerComponent", MyGUIPositionControllerComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIPositionControllerComponent", "void setCoordinate(Vector4 coordinate)", "Sets the target transform coordinate at which the widget will be moved and resized. Note: x,y is the new relative position and z,w is the new size. If z,w is set to 0, the widget will keep its current size.");
@@ -12671,15 +12538,15 @@ namespace NOWA
 		AddClassToCollection("MyGUIPositionControllerComponent", "float getDurationSec()", "Gets the duration in seconds.");
 
 		module(lua)
-			[
-				class_<MyGUIFadeAlphaControllerComponent, MyGUIControllerComponent>("MyGUIFadeAlphaControllerComponent")
-				// .def("getClassName", &MyGUIFadeAlphaControllerComponent::getClassName)
-				// .def("getClassId", &MyGUIFadeAlphaControllerComponent::getClassId)
+		[
+			class_<MyGUIFadeAlphaControllerComponent, MyGUIControllerComponent>("MyGUIFadeAlphaControllerComponent")
+			// .def("getClassName", &MyGUIFadeAlphaControllerComponent::getClassName)
+			// .def("getClassId", &MyGUIFadeAlphaControllerComponent::getClassId)
 			.def("setAlpha", &MyGUIFadeAlphaControllerComponent::setAlpha)
 			.def("getAlpha", &MyGUIFadeAlphaControllerComponent::getAlpha)
 			.def("setCoefficient", &MyGUIFadeAlphaControllerComponent::setCoefficient)
 			.def("getCoefficient", &MyGUIFadeAlphaControllerComponent::getCoefficient)
-			];
+		];
 
 		AddClassToCollection("MyGUIFadeAlphaControllerComponent", "class inherits MyGUIControllerComponent", MyGUIFadeAlphaControllerComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIFadeAlphaControllerComponent", "void setAlpha(float alpha)", "Sets the alpha that will be as result of changing.");
@@ -12688,17 +12555,17 @@ namespace NOWA
 		AddClassToCollection("MyGUIFadeAlphaControllerComponent", "float getCoefficient()", "Gets the coefficient of alpha changing speed.");
 
 		module(lua)
-			[
-				class_<MyGUIScrollingMessageControllerComponent, MyGUIControllerComponent>("MyGUIScrollingMessageControllerComponent")
-				// .def("getClassName", &MyGUIScrollingMessageControllerComponent::getClassName)
-				// .def("getClassId", &MyGUIScrollingMessageControllerComponent::getClassId)
+		[
+			class_<MyGUIScrollingMessageControllerComponent, MyGUIControllerComponent>("MyGUIScrollingMessageControllerComponent")
+			// .def("getClassName", &MyGUIScrollingMessageControllerComponent::getClassName)
+			// .def("getClassId", &MyGUIScrollingMessageControllerComponent::getClassId)
 			.def("setMessageCount", &MyGUIScrollingMessageControllerComponent::setMessageCount)
 			.def("getMessageCount", &MyGUIScrollingMessageControllerComponent::getMessageCount)
 			.def("setMessage", &MyGUIScrollingMessageControllerComponent::setMessage)
 			.def("getMessage", &MyGUIScrollingMessageControllerComponent::getMessage)
 			.def("setDurationSec", &MyGUIScrollingMessageControllerComponent::setDurationSec)
 			.def("getDurationSec", &MyGUIScrollingMessageControllerComponent::getDurationSec)
-			];
+		];
 
 		AddClassToCollection("MyGUIScrollingMessageControllerComponent", "class inherits MyGUIControllerComponent", MyGUIScrollingMessageControllerComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIScrollingMessageControllerComponent", "void setMessageCount(int count)", "Sets scrolling message line count. Note: Each message occupies one line.");
@@ -12748,9 +12615,9 @@ namespace NOWA
 
 		module(lua)
 		[
-				class_<MyGUIMiniMapComponent, MyGUIWindowComponent>("MyGUIMiniMapComponent")
-				// .def("getClassName", &MyGUIMiniMapComponent::getClassName)
-				// .def("getClassId", &MyGUIMiniMapComponent::getClassId)
+			class_<MyGUIMiniMapComponent, MyGUIWindowComponent>("MyGUIMiniMapComponent")
+			// .def("getClassName", &MyGUIMiniMapComponent::getClassName)
+			// .def("getClassId", &MyGUIMiniMapComponent::getClassId)
 			.def("showMiniMap", &MyGUIMiniMapComponent::showMiniMap)
 			.def("isMiniMapShown", &MyGUIMiniMapComponent::isMiniMapShown)
 			.def("setStartPosition", &MyGUIMiniMapComponent::setStartPosition)
@@ -13446,6 +13313,7 @@ namespace NOWA
 			.def("popAppState", &AppStateManager::popAppState)
 			.def("popAllAndPushAppState", (void (AppStateManager::*)(const Ogre::String&)) & AppStateManager::popAllAndPushAppState)
 			.def("hasAppStateStarted", &AppStateManager::hasAppStateStarted)
+			.def("isInAppstate", &AppStateManager::isInAppstate)
 			.def("exitGame", &AppStateManager::exitGame)
 			// .def("getWorkspaceModule", &AppStateManager::getWorkspaceModule)
 			.def("getCameraManager", (CameraManager * (AppStateManager::*)(void) const) & AppStateManager::getCameraManager)
@@ -13479,7 +13347,10 @@ namespace NOWA
 		AddClassToCollection("AppStateManager", "bool pushAppState(String stateName)", "Pushes a new application state at the top of this one and calls 'enter'.");
 		AddClassToCollection("AppStateManager", "bool popAppState()", "Pops the current state (calls 'exit'), and calls 'resume' on a prior state. If no state does exist anymore, the appliction will be shut down.");
 		AddClassToCollection("AppStateManager", "void popAllAndPushAppState(String stateName)", "Pops all actives application states (internally calls 'exit' for all active states and pushes a new one and calls 'enter'.");
-		AddClassToCollection("AppStateManager", "bool hasAppStateStarted(String stateName)", "Gets whether the given AppState has started. Note: This can be used to ask from another AppState like a MenuState, whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.");
+		AddClassToCollection("AppStateManager", "bool hasAppStateStarted(String stateName)", "Gets whether the given AppState has started. Note: This can be used to ask from another AppState like a MenuState, "
+			" whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.");
+		AddClassToCollection("AppStateManager", "bool isInAppstate(String stateName)", "Gets whether the simulation is in the given app state. Note: This can be used to ask if the simulation e.g. is in a MenuState, "
+			"in order to remove some behavior from global game objects. This could be necessary if global game objects need different behavior e.g. in a GameState as in a MenuState.");
 		AddClassToCollection("AppStateManager", "void exitGame()", "Exits the game and destroys all application states.");
 		// AddClassToCollection("AppStateManager", "WorkspaceModule getWorkspaceModule()", "Gets the module for the current AppState.");
 		AddClassToCollection("AppStateManager", "CameraManagerModule getCameraManager()", "Gets the module for the current AppState.");
@@ -13749,7 +13620,6 @@ namespace NOWA
 				bindSimpleSoundComponent(this->lua);
 				bindSoundComponent(this->lua);
 				bindSpawnComponent(this->lua);
-				bindVehicleComponent(this->lua);
 				bindPhysicsVehicle(this->lua);
 				bindPhysicsTire(this->lua);
 				bindGameProgressModule(this->lua);
@@ -14452,32 +14322,6 @@ namespace NOWA
 				outFile.close();
 			}
 		}
-		// Try to copy to zero brane studio installation set path
-		{
-			Ogre::String targetPath = Core::getSingletonPtr()->getOptionLuaApiFilePath() + "/NOWA_Api.lua";
-			std::ofstream outFile(targetPath);
-
-			if (true == outFile.good())
-			{
-				outFile << luaJsonApiContent;
-				outFile.close();
-			}
-			else
-			{
-				Ogre::String sourceFilePathName = Core::getSingletonPtr()->getAbsolutePath("NOWA_Api.lua");
-				BOOL success = CopyFile(sourceFilePathName.data(), targetPath.data(), FALSE);
-				if (false == success)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[LuaScriptApi] Could not create or copy 'NOWA_Api.lua' file to target folder, because its not writable. Please manually copy the file from: '" + sourceFilePathName + "' to '" + targetPath + "'.");
-				}
-			}
-		}
-
-		// Note:
-		// 1) Copy the NOWA_Api.lua into the folder: C:\Program Files (x86)\ZeroBraneStudio\api\lua
-		// 2) Restart Zerobrane Studio
-		// 3) Open Menu -> Edit -> Preferences -> Settings: User
-		// 4) Add: api = {'NOWA_Api'}
 
 		// Note: Prevent naming collision: like having 2x the class 'Path', this will cause serious issues and will look the followin way in json:
 		/*

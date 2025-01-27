@@ -142,11 +142,14 @@ namespace NOWA
 		this->mouseButtonPickId->setValue({"LEFT_MOUSE_BUTTON", "RIGHT_MOUSE_BUTTON", "MIDDLE_MOUSE_BUTTON"});
 
 		std::vector<Ogre::String> joystickButtons;
-		auto buttons = InputDeviceCore::getSingletonPtr()->getInputDeviceModule()->getAllButtonStrings();
+#if 0
+		// TODO: Fix: Get JoystickConfigurationComponent and its input device!
+		auto buttons = InputDeviceCore::getSingletonPtr()->getMainInputDeviceModule()->getAllButtonStrings();
 		for (const auto& button : buttons)
 		{
 			joystickButtons.emplace_back(button);
 		}
+#endif
 		this->joystickButtonPickId->setValue(joystickButtons);
 
 		this->picker = new GameObjectPicker();
@@ -480,8 +483,10 @@ namespace NOWA
 	void PickerComponent::setJoystickButtonPickId(const Ogre::String& joystickButtonPickId)
 	{
 		this->joystickButtonPickId->setListSelectedValue(joystickButtonPickId);
-
+#if 0
+		// TODO: Fix: Get JoystickConfigurationComponent and its input device!
 		this->joystickButtonId = InputDeviceCore::getSingletonPtr()->getInputDeviceModule()->getMappedButtonFromString(joystickButtonPickId);
+#endif
 	}
 
 	Ogre::String PickerComponent::getJoystickButtonPickId(void) const

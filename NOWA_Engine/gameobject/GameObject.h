@@ -775,7 +775,7 @@ namespace NOWA
 		}
 
 		/**
-		 * @brief		Gets the component type count
+		 * @brief		Gets the component type count.
 		 * @tparam		ComponentType				The concrete component type to calculate its count.
 		 * @return		The count or 0 if does not exist.
 		 */
@@ -796,6 +796,15 @@ namespace NOWA
 
 			return count;
 		}
+
+		/**
+		 * @brief		Gets the component type count from the given component name.
+		 * @param[in]	componentName				The name to count for
+		 * @param[in]	allowDerivatives			The optional flag to set if derivatives of the given class name are allowed. E.g. componentName = "PhysicsActiveComponent", 
+		 *											but actual component is "PhysicsRagDollComponent" which is a derivative and this will also be counted.
+		 * @return		The count or 0 if does not exist.
+		 */
+		unsigned short getComponentCount(const Ogre::String& componentName, bool allowDerivatives = false);
 
 		/**
 		 * @brief		Gets the component weak pointer from component name.

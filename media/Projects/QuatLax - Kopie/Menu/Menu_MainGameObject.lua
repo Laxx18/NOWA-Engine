@@ -14,25 +14,28 @@ Menu_MainGameObject["connect"] = function(gameObject)
     local twoPlayerButton = menu_MainGameObject:getMyGUIButtonComponentFromName("TwoPlayerButton");
     local startButton = menu_MainGameObject:getMyGUIButtonComponentFromName("StartButton");
     
-    onePlayerButton:reactOnMouseEnter(function() 
+    onePlayerButton:reactOnMouseButtonClick(function() 
        onePlayerButton:setEnabled(false);
        twoPlayerButton:setEnabled(true);
        
-        local eventData = {};
-        eventData["playerCount"] = 1;
-        AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerCountEvent, eventData);
+        --local eventData = {};
+        --eventData["playerCount"] = 1;
+        --AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerCountEvent, eventData);
+        AppStateManager:getGameProgressModule():setGlobalBoolValue("TwoPlayer", false);
     end);
     
-    twoPlayerButton:reactOnMouseEnter(function() 
+    twoPlayerButton:reactOnMouseButtonClick(function() 
        twoPlayerButton:setEnabled(false);
        onePlayerButton:setEnabled(true);
        
-       local eventData = {};
-       eventData["playerCount"] = 2;
-       AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerCountEvent, eventData);
+      -- local eventData = {};
+       --eventData["playerCount"] = 2;
+       --AppStateManager:getScriptEventManager():queueEvent(EventType.PlayerCountEvent, eventData);
+       
+       AppStateManager:getGameProgressModule():setGlobalBoolValue("TwoPlayer", true);
     end);
     
-    startButton:reactOnMouseEnter(function() 
+    startButton:reactOnMouseButtonClick(function() 
         if (Core:isGame() == true) then
             AppStateManager:changeAppState("GameState");
         end
@@ -50,7 +53,7 @@ end
  --end
 
 --Course1["onPlayerCountEvent"] = function(eventData)
---	local playerCount = eventData["playerCount"];
---	--log("###onRemoveLaser: " .. id);
+--    local playerCount = eventData["playerCount"];
+--    --log("###onRemoveLaser: " .. id);
 --    add split screen if playerCount > 1
 --end

@@ -567,16 +567,13 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 		if (this->index != -1)
 		{
 			this->gameObjects[0]->moveComponent(this->index + 1);
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 		}
 
 		this->parentPanel->setVisible(false);
 		this->clear();
 
 		// Sent when a component has been added, so that the properties panel can be refreshed with new values
-		/*boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);*/
+		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
 	}
 }

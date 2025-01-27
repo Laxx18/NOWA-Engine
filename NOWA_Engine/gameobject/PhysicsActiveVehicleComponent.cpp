@@ -50,8 +50,9 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			if (nullptr != this->luaScript && false == this->onSteerAngleChangedFunctionName.empty())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onSteerAngleChangedFunctionName.empty())
 			{
+				
 				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->steerAngle;
 			}
@@ -66,7 +67,7 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			if (nullptr != this->luaScript && false == this->onMotorForceChangedFunctionName.empty())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onMotorForceChangedFunctionName.empty())
 			{
 				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->motorForce;
@@ -82,7 +83,7 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			if (nullptr != this->luaScript && false == this->onHandBrakeChangedFunctionName.empty())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onHandBrakeChangedFunctionName.empty())
 			{
 				this->luaScript->callTableFunction(this->onHandBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->handBrake;
@@ -98,7 +99,7 @@ namespace NOWA
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
 		{
-			if (nullptr != this->luaScript && false == this->onBrakeChangedFunctionName.empty())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onBrakeChangedFunctionName.empty())
 			{
 				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
 				return this->vehicleDrivingManipulation->brake;
@@ -112,7 +113,7 @@ namespace NOWA
 		PhysicsComponent* hitPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(hitBody->getUserData());
 		if (nullptr != hitPhysicsComponent)
 		{
-			if (nullptr != this->luaScript && false == this->onTireContactFunctionName.empty())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onTireContactFunctionName.empty())
 			{
 				this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
 			}
@@ -398,6 +399,12 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	void PhysicsActiveVehicleComponent::setActivated(bool activated)
+	{
+		PhysicsActiveComponent::setActivated(activated);
+		this->setCanDrive(activated);
+	}
+
 	void PhysicsActiveVehicleComponent::setOnSteerAngleChangedFunctionName(const Ogre::String& onSteerAngleChangedFunctionName)
 	{
 		this->onSteerAngleChangedFunctionName->setValue(onSteerAngleChangedFunctionName);
@@ -480,7 +487,10 @@ namespace NOWA
 
 	void PhysicsActiveVehicleComponent::setCanDrive(bool canDrive)
 	{
-		static_cast<OgreNewt::Vehicle*>(this->physicsBody)->setCanDrive(canDrive);
+		if (nullptr != this->physicsBody)
+		{
+			static_cast<OgreNewt::Vehicle*>(this->physicsBody)->setCanDrive(canDrive);
+		}
 	}
 
 	void PhysicsActiveVehicleComponent::applyWheelie(Ogre::Real strength)

@@ -6,7 +6,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="code\KeyboardRemapComponent.cpp">
+    <ClCompile Include="code\KeyboardConfigurationComponent.cpp">
       <Filter>code</Filter>
     </ClCompile>
     <ClCompile Include="code\NOWAPrecompiled.cpp">
@@ -17,7 +17,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="code\KeyboardRemapComponent.h">
+    <ClInclude Include="code\KeyboardConfigurationComponent.h">
       <Filter>code</Filter>
     </ClInclude>
     <ClInclude Include="code\NOWAPrecompiled.h">

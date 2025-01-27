@@ -516,6 +516,7 @@ namespace NOWA
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("CrowdComponent", "class inherits GameObjectComponent", CrowdComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("CrowdComponent", "GameObject getOwner()", "Gets the owner game object.");
 		LuaScriptApi::getInstance()->addClassToCollection("CrowdComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("CrowdComponent", "bool isActivated()", "Gets whether this component is activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("CrowdComponent", "void setControlled(bool controlled)", "Set whether this character is controlled by an agent or whether it will position itself independently based on the requested velocity. "

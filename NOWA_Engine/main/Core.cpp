@@ -143,7 +143,6 @@ namespace NOWA
 		optionMusicVolume(50),
 		optionLogLevel(2),
 		optionLuaGroupName("Lua"),
-		optionLuaApiFilePath("C:/Program Files (x86)/ZeroBraneStudio/api/lua"),
 		bShutdown(false),
 		startAsServer(false),
 		optionAreaOfInterest(0),
@@ -187,7 +186,7 @@ namespace NOWA
 			this->baseListenerContainer = nullptr;
 		}
 
-		if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getInputDeviceModules().empty())
+		if (nullptr != InputDeviceCore::getSingletonPtr() && false == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().empty())
 		{
 			this->saveCustomConfiguration();
 		}
@@ -249,7 +248,14 @@ namespace NOWA
 			this->myGui->shutdown();
 			delete this->myGui;
 			this->myGui = nullptr;
-			this->myGuiOgrePlatform->shutdown();
+			try
+			{
+				this->myGuiOgrePlatform->shutdown();
+			}
+			catch (...)
+			{
+
+			}
 			delete this->myGuiOgrePlatform;
 			this->myGuiOgrePlatform = nullptr;
 		}
@@ -3222,10 +3228,6 @@ namespace NOWA
 					this->optionLuaGroupName = "Lua";
 				}
 			}
-			if (pSubElement->first_attribute("LuaApiPath"))
-			{
-				this->optionLuaApiFilePath = pSubElement->first_attribute("LuaApiPath")->value();
-			}
 		}
 
 		// Retrieve key mapping configuration 0
@@ -3242,7 +3244,7 @@ namespace NOWA
 					OIS::KeyCode keyCode = static_cast<OIS::KeyCode>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
 					if (OIS::KC_UNASSIGNED != keyCode)
 					{
-						InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->remapKey(static_cast<InputDeviceModule::Action>(i), keyCode);
+						InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapKey(static_cast<InputDeviceModule::Action>(i), keyCode);
 					}
 				}
 				i++;
@@ -3264,51 +3266,7 @@ namespace NOWA
 					InputDeviceModule::JoyStickButton button = static_cast<InputDeviceModule::JoyStickButton>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
 					if (InputDeviceModule::JoyStickButton::BUTTON_NONE != button)
 					{
-						InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->remapButton(static_cast<InputDeviceModule::Action>(i), button);
-					}
-				}
-				i++;
-				propertyElement = propertyElement->next_sibling("Button");
-			}
-		}
-
-		// Retrieve key mapping configuration 1
-		pSubElement = XMLRoot->first_node("KeyMapping1");
-		if (pSubElement)
-		{
-			// rapidxml::xml_node<>* propertyElement = propertyElement->next_sibling("property");
-			unsigned short i = 0;
-			rapidxml::xml_node<>* propertyElement = pSubElement->first_node("Key");
-			while (nullptr != propertyElement)
-			{
-				if (propertyElement->first_attribute("value"))
-				{
-					OIS::KeyCode keyCode = static_cast<OIS::KeyCode>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
-					if (OIS::KC_UNASSIGNED != keyCode)
-					{
-						InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->remapKey(static_cast<InputDeviceModule::Action>(i), keyCode);
-					}
-				}
-				i++;
-				propertyElement = propertyElement->next_sibling("Key");
-			}
-		}
-
-		// Retrieve button mapping configuration 1
-		pSubElement = XMLRoot->first_node("ButtonMapping1");
-		if (pSubElement)
-		{
-			// rapidxml::xml_node<>* propertyElement = propertyElement->next_sibling("property");
-			unsigned short i = 0;
-			rapidxml::xml_node<>* propertyElement = pSubElement->first_node("Button");
-			while (nullptr != propertyElement)
-			{
-				if (propertyElement->first_attribute("value"))
-				{
-					InputDeviceModule::JoyStickButton button = static_cast<InputDeviceModule::JoyStickButton>(Ogre::StringConverter::parseInt(propertyElement->first_attribute("value")->value()));
-					if (InputDeviceModule::JoyStickButton::BUTTON_NONE != button)
-					{
-						InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+						InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapButton(static_cast<InputDeviceModule::Action>(i), button);
 					}
 				}
 				i++;
@@ -3389,47 +3347,27 @@ namespace NOWA
 		outfile << "<LuaScript Usage=\"" << Ogre::StringConverter::toString(this->optionUseLuaScript).c_str() << "\""
 			<< " Console=\"" << Ogre::StringConverter::toString(this->optionUseLuaConsole).c_str() << "\""
 			<< " GroupName=\"" << this->optionLuaGroupName.c_str() << "\""
-			<< " LuaApiPath=\"" << this->optionLuaApiFilePath << "\""
 			<< "/>\n";
 
 		{
 			// KeyMapping-Configuration 0
 			outfile << "<KeyMapping0>\n";
 
-			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getKeyMappingCount(); i++)
+			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getKeyMappingCount(); i++)
 			{
-				outfile << "<Key value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
+				outfile << "<Key value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
 			}
 			outfile << "</KeyMapping0>\n";
 
 			// ButtonMapping-Configuration 0
 			outfile << "<ButtonMapping0>\n";
 
-			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getButtonMappingCount(); i++)
+			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getButtonMappingCount(); i++)
 			{
-				outfile << "<Button value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "--->button: " + NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedButtonAction(static_cast<InputDeviceModule::Action>(i)));
+				outfile << "<Button value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedButton(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "--->button: " + NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButtonAction(static_cast<InputDeviceModule::Action>(i)));
 			}
 			outfile << "</ButtonMapping0>\n";
-
-			// KeyMapping-Configuration 1
-			outfile << "<KeyMapping1>\n";
-
-			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getKeyMappingCount(); i++)
-			{
-				outfile << "<Key value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedKey(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
-			}
-			outfile << "</KeyMapping1>\n";
-
-			// ButtonMapping-Configuration 1
-			outfile << "<ButtonMapping1>\n";
-
-			for (unsigned short i = 0; i < InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getButtonMappingCount(); i++)
-			{
-				outfile << "<Button value=\"" << Ogre::StringConverter::toString(InputDeviceCore::getSingletonPtr()->getInputDeviceModule(1)->getMappedButton(static_cast<InputDeviceModule::Action>(i))) << "\" />\n";
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "--->button: " + NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedButtonAction(static_cast<InputDeviceModule::Action>(i)));
-			}
-			outfile << "</ButtonMapping1>\n";
 		}
 
 		outfile << "</Main-Configuration>\n";

@@ -76,9 +76,19 @@ namespace NOWA
 
 		std::vector<OIS::JoyStick*> getJoySticks(void) const;
 
-		InputDeviceModule* getInputDeviceModule(unsigned short index = 0) const;
+		InputDeviceModule* assignDevice(const Ogre::String& deviceName, unsigned long id);
 
-		std::vector<InputDeviceModule*> getInputDeviceModules(void) const;
+		void releaseDevice(unsigned long id);
+
+		InputDeviceModule* getMainKeyboardInputDeviceModule(void) const;
+
+		InputDeviceModule* getKeyboardInputDeviceModule(unsigned long id) const;
+
+		InputDeviceModule* getJoystickInputDeviceModule(unsigned long id) const;
+
+		std::vector<InputDeviceModule*> getKeyboardInputDeviceModules(void) const;
+
+		std::vector<InputDeviceModule*> getJoystickInputDeviceModules(void) const;
 
 		bool isSelectDown(void) const;
 	private:
@@ -109,7 +119,9 @@ namespace NOWA
 		std::map<Ogre::String, OIS::MouseListener*> mouseListeners;
 		std::map<Ogre::String, OIS::JoyStickListener*> joystickListeners;
 
-		std::vector<InputDeviceModule*> inputDeviceModules;
+		InputDeviceModule* mainInputDeviceModule;
+		std::vector<InputDeviceModule*> keyboardInputDeviceModules;
+		std::vector<InputDeviceModule*> joystickInputDeviceModules;
 
 		JoyStickConfig joyStickConfig;
 
@@ -117,6 +129,8 @@ namespace NOWA
 		bool listenerAboutToBeRemoved;
 
 		bool bSelectDown;
+
+		void addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject);
 	};
 
 }; //namespace end

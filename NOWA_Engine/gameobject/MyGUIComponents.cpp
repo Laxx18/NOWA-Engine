@@ -1883,7 +1883,7 @@ namespace NOWA
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextAlign(this->mapStringToAlign(align));
+			widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
 		}
 	}
 	
@@ -1897,7 +1897,7 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
 		}
 	}
 
@@ -1911,7 +1911,7 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
 		}
 	}
 	
@@ -2196,7 +2196,7 @@ namespace NOWA
 		if (nullptr == this->widget)
 			return;
 
-		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::Button>(false), fontHeight));
+		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::TextBox>(false), fontHeight));
 	}
 
 	unsigned int MyGUICheckBoxComponent::getFontHeight(void) const
@@ -2209,7 +2209,7 @@ namespace NOWA
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextAlign(this->mapStringToAlign(align));
+			widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
 			// this->widget->_setAlign(this->widget->getSize(), this->widget->getSize());
 		}
 	}
@@ -2224,7 +2224,7 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
 		}
 	}
 
@@ -2238,7 +2238,7 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
 		}
 	}
 	
@@ -3123,11 +3123,11 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
+					if (this->selectedClosureFunction.is_valid())
 					{
 						try
 						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction, index);
+							luabind::call_function<void>(this->selectedClosureFunction, index);
 						}
 						catch (luabind::error& error)
 						{
@@ -3154,11 +3154,11 @@ namespace NOWA
 				// Call also function in lua script, if it does exist in the lua script component
 				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
 				{
-					if (this->mouseButtonClickClosureFunction.is_valid())
+					if (this->acceptClosureFunction.is_valid())
 					{
 						try
 						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction, index);
+							luabind::call_function<void>(this->acceptClosureFunction, index);
 						}
 						catch (luabind::error& error)
 						{
@@ -3185,6 +3185,8 @@ namespace NOWA
 	bool MyGUIListBoxComponent::disconnect(void)
 	{
 		// this->setCaption(this->caption->getString());
+
+		this->setItemCount(0);
 
 		return MyGUIComponent::disconnect();
 	}
@@ -3691,7 +3693,7 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+			this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
 		}
 
 		for (size_t i = 0; i < this->itemCount->getUInt(); i++)
@@ -3717,7 +3719,7 @@ namespace NOWA
 	{
 		if (true == this->isSimulating)
 		{
-			MyGUI::Button* button = sender->castType<MyGUI::Button>();
+			MyGUI::Button* button = sender->castType<MyGUI::Button>(false);
 			if (nullptr != button)
 			{
 				// Call also function in lua script, if it does exist in the lua script component
@@ -3785,6 +3787,7 @@ namespace NOWA
 	bool MyGUIComboBoxComponent::disconnect(void)
 	{
 		// this->setCaption(this->caption->getString());
+		this->setItemCount(0);
 
 		return MyGUIComponent::disconnect();
 	}
@@ -3962,6 +3965,7 @@ namespace NOWA
 
 	void MyGUIComboBoxComponent::setFontHeight(unsigned int fontHeight)
 	{
+		unsigned int oldFontHeight = fontHeight;
 		this->fontHeight->setValue(fontHeight);
 
 		if (nullptr != this->widget)
@@ -3969,7 +3973,14 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>(), fontHeight);
+				try
+				{
+					fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>(false), fontHeight);
+				}
+				catch (...)
+				{
+					fontHeight = oldFontHeight;
+				}
 			}
 			this->fontHeight->setValue(fontHeight);
 		}
@@ -3988,7 +3999,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextAlign(this->mapStringToAlign(align));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
 			}
 		}
 	}
@@ -4006,7 +4017,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
 			}
 		}
 	}
@@ -4024,7 +4035,7 @@ namespace NOWA
 			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
 			for (size_t i = 0; i < this->items.size(); i++)
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
 			}
 		}
 	}
@@ -4039,7 +4050,7 @@ namespace NOWA
 		this->modeDrop->setValue(modeDrop);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->setComboModeDrop(modeDrop);
+			widget->castType<MyGUI::ComboBox>(false)->setComboModeDrop(modeDrop);
 		}
 	}
 
@@ -4053,7 +4064,7 @@ namespace NOWA
 		this->smooth->setValue(smooth);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->setSmoothShow(smooth);
+			widget->castType<MyGUI::ComboBox>(false)->setSmoothShow(smooth);
 		}
 	}
 
@@ -4081,6 +4092,11 @@ namespace NOWA
 	Ogre::String MyGUIComboBoxComponent::getFlowDirection(void) const
 	{
 		return this->flowDirection->getListSelectedValue();
+	}
+
+	void MyGUIComboBoxComponent::setCaption(const Ogre::String& caption)
+	{
+		this->widget->castType<MyGUI::ComboBox>()->setOnlyText(caption);
 	}
 
 	void MyGUIComboBoxComponent::setItemCount(unsigned int itemCount)

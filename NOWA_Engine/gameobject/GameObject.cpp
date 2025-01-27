@@ -69,6 +69,23 @@ namespace NOWA
 		{
 			this->id = new Variant(GameObject::AttrId(), id, this->attributes, true);
 		}
+		// No idea, if this should be used, but if its used: Check please, because luascriptcomponent is activated twice, hence connect is called twice! This causes much of trouble!
+		// Because in GameObjectController at last:
+		/*
+		    if (nullptr != mainGameObjectPtr)
+			{
+				mainGameObjectPtr->connect();
+			}
+
+			Is also called
+		*/
+#if 0
+		if (GameObjectController::MAIN_GAMEOBJECT_ID == this->id->getULong())
+		{
+			this->bConnectPriority = true;
+		}
+#endif
+
 		this->categoryId = new Variant(GameObject::AttrCategoryId(), static_cast<unsigned int>(0), this->attributes);
 		this->renderCategoryId = new Variant(GameObject::AttrRenderCategoryId(), static_cast<unsigned int>(GameObjectController::ALL_CATEGORIES_ID), this->attributes);
 		this->meshName = new Variant(GameObject::AttrMeshName(), Ogre::String(), this->attributes);
@@ -1533,6 +1550,47 @@ namespace NOWA
 		}
 
 		return found;
+	}
+
+	unsigned short GameObject::getComponentCount(const Ogre::String& componentName, bool allowDerivatives)
+	{
+		unsigned short count = 0;
+		if (true == componentName.empty())
+		{
+			return count;
+		}
+
+		for (const auto& component : this->gameObjectComponents)
+		{
+			if (false == allowDerivatives)
+			{
+				// Note: Name is a custom component name, which can be set by the designer, class name is the real component name
+				if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getClassName() == componentName)
+				{
+					GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
+
+					if (nullptr != baseCompPtr)
+					{
+						count++;
+					}
+				}
+			}
+			else
+			{
+				// Note: Name is a custom component name, which can be set by the designer, class name is the real component name
+				if (std::get<COMPONENT>(component)->getName() == componentName || std::get<COMPONENT>(component)->getClassName() == componentName
+					|| std::get<COMPONENT>(component)->getParentClassName() == componentName || std::get<COMPONENT>(component)->getParentParentClassName() == componentName)
+				{
+					GameObjectCompPtr baseCompPtr(std::get<COMPONENT>(component));
+					if (nullptr != baseCompPtr)
+					{
+						count++;
+					}
+				}
+			}
+		}
+		// Component not found, return empty component
+		return count;
 	}
 
 	void GameObject::setAttributePosition(const Ogre::Vector3& position)

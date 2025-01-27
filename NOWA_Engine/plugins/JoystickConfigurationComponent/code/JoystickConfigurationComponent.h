@@ -22,8 +22,8 @@ The entire risk as to the quality and performance of the Software is borne by yo
 You must determine whether the Software sufficiently meets your requirements. This disclaimer of warranty constitutes an essential part of this Agreement.
 */
 
-#ifndef JOYSTICKREMAPCOMPONENT_H
-#define JOYSTICKREMAPCOMPONENT_H
+#ifndef JOYSTICCONFIGURATIONCOMPONENT_H
+#define JOYSTICCONFIGURATIONCOMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
@@ -35,15 +35,15 @@ namespace NOWA
 	/**
 	  * @brief		This component can be used as building block in order to have joystick remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window.
 	  */
-	class EXPORTED JoystickRemapComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::JoyStickListener
+	class EXPORTED JoystickConfigurationComponent : public GameObjectComponent, public Ogre::Plugin, public OIS::JoyStickListener
 	{
 	public:
-		typedef boost::shared_ptr<JoystickRemapComponent> JoystickRemapComponentPtr;
+		typedef boost::shared_ptr<JoystickConfigurationComponent> JoystickConfigurationComponentPtr;
 	public:
 
-		JoystickRemapComponent();
+		JoystickConfigurationComponent();
 
-		virtual ~JoystickRemapComponent();
+		virtual ~JoystickConfigurationComponent();
 
 		/**
 		* @see		Ogre::Plugin::install
@@ -151,7 +151,7 @@ namespace NOWA
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("JoystickRemapComponent");
+			return NOWA::getIdFromName("JoystickConfigurationComponent");
 		}
 
 		/**
@@ -159,7 +159,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "JoystickRemapComponent";
+			return "JoystickConfigurationComponent";
 		}
 
 		/**
@@ -172,19 +172,15 @@ namespace NOWA
 			*/
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: This component can be used as building block in order to have joystick remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added under a MainGameObject.";
+			return "Usage: This component can be used as building block in order to have joystick remap functionality. "
+				"It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. " 
+				"Note: It can only be added a game object with already existing InputDeviceComponent.";
 		}
 
 		/**
 			* @see	GameObjectComponent::createStaticApiForLua
 			*/
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
-
-		/**
-		 * @brief		Gets the device name.
-		 * @return		The device name to get.
-		 */
-		Ogre::String getDeviceName(void) const;
 
 		/**
 		 * @brief		Sets the position of the remap config window (0 = top/left, 1 = bottom/right)
@@ -233,7 +229,6 @@ namespace NOWA
 		virtual bool vector3Moved(const OIS::JoyStickEvent& evt, int index) override;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
-		static const Ogre::String AttrDeviceName(void) { return "Device Name"; }
 		static const Ogre::String AttrRelativePosition(void) { return "Relative Position"; }
 		static const Ogre::String AttrParentId(void) { return "Parent Id"; }
 		static const Ogre::String AttrOkClickEventName(void) { return "Ok Click Event Name"; }
@@ -261,8 +256,10 @@ namespace NOWA
 		InputDeviceModule::JoyStickButton lastButton;
 		bool bIsInSimulation;
 
+		// Action, Keycode
+		std::map<unsigned short, int> keyCodes;
+
 		Variant* activated;
-		Variant* deviceName;
 		Variant* relativePosition;
 		Variant* parentId;
 		Variant* okClickEventName;

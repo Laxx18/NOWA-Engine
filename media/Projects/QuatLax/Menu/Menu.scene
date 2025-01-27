@@ -29,12 +29,12 @@
 			<maxLightDistance value="100"/>
 		</lightFoward>
 		<mainParameter>
-			<ignoreGlobalScene value="false"/>
+			<ignoreGlobalScene value="true"/>
 			<renderDistance distance="100"/>
 			<useV2Item value="true"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
-		<bounds mostLeftNearPosition="-0.1555 -0.1615 -0.153" mostRightFarPosition="0.4055 1.0115 0.153"/>
+		<bounds mostLeftNearPosition="-5.94608 -0.349471 -11.1204" mostRightFarPosition="0.4055 1.78919 0.153"/>
 	</environment>
 	<OgreNewt solverModel="4" multithreadSolverOnSingleIsland="0" broadPhaseAlgorithm="0" threadCount="1" desiredFps="120" defaultLinearDamping="0.1">
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
@@ -63,7 +63,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
@@ -79,7 +79,7 @@
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
-					<property type="12" name="ShowDummyEntity" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -108,7 +108,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115917"/>
+			<rotation qw="0.88088" qx="-0.362811" qy="0.280632" qz="-0.116896"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -128,7 +128,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
@@ -148,7 +148,7 @@
 			</entity>
 		</node>
 		<node name="MainGameObject" id="1366663313">
-			<position x="0" y="0" z="0"/>
+			<position x="0" y="-0.187971" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainGameObject" meshFile="Node.mesh" castShadows="true" visible="false">
@@ -169,7 +169,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
-					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodDistance" data="100"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentDescriptionComponent" data="DescriptionComponent"/>
@@ -183,7 +183,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Id" data="3750644494"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="8" name="Position" data="0.25 0.25"/>
+					<property type="8" name="Position" data="0.5 0"/>
 					<property type="8" name="Size" data="0.5 0.3"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
@@ -207,7 +207,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="SourceId" data="3750644494"/>
-					<property type="10" name="Coordinate" data="0.1 0.5 0 0"/>
+					<property type="10" name="Coordinate" data="0.1 0.25 0 0"/>
 					<property type="7" name="Function" data="Inertional"/>
 					<property type="7" name="Duration" data="0.5"/>
 					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
@@ -216,8 +216,8 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Id" data="4181807782"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="8" name="Position" data="0.28 0.25"/>
-					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="8" name="Position" data="0.14 0.15"/>
+					<property type="8" name="Size" data="0.15 0.15"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.01678 0.11463 0.39063 1"/>
@@ -229,14 +229,37 @@
 					<property type="7" name="TextAlign" data="HCenter"/>
 					<property type="8" name="TextOffset" data="0 0"/>
 					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIComboBoxComponent" data="MyGUIComboBoxComponent"/>
+					<property type="7" name="Name" data="OnePlayerCombo"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="440345121"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.14 0.35"/>
+					<property type="8" name="Size" data="0.15 0.15"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="3750644494"/>
+					<property type="7" name="Skin" data="ComboBox"/>
+					<property type="2" name="ItemHeight" data="21"/>
+					<property type="2" name="FontHeight" data="20"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="12" name="ModeDrop" data="true"/>
+					<property type="12" name="Smooth" data="true"/>
+					<property type="7" name="FlowDirection" data="TopToBottom"/>
+					<property type="2" name="ItemCount" data="0"/>
 					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
 					<property type="7" name="Name" data="TwoPlayerButton"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Id" data="4254996807"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="8" name="Position" data="0.56 0.25"/>
-					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="8" name="Position" data="0.7 0.15"/>
+					<property type="8" name="Size" data="0.15 0.15"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.01678 0.11463 0.39063 1"/>
@@ -248,6 +271,29 @@
 					<property type="7" name="TextAlign" data="HCenter"/>
 					<property type="8" name="TextOffset" data="0 0"/>
 					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIComboBoxComponent" data="MyGUIComboBoxComponent"/>
+					<property type="7" name="Name" data="TwoPlayerCombo"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="363851044"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.7 0.35"/>
+					<property type="8" name="Size" data="0.15 0.15"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="3750644494"/>
+					<property type="7" name="Skin" data="ComboBox"/>
+					<property type="2" name="ItemHeight" data="21"/>
+					<property type="2" name="FontHeight" data="20"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="12" name="ModeDrop" data="true"/>
+					<property type="12" name="Smooth" data="true"/>
+					<property type="7" name="FlowDirection" data="TopToBottom"/>
+					<property type="2" name="ItemCount" data="0"/>
 					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
 					<property type="7" name="Name" data="StartButton"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -255,7 +301,7 @@
 					<property type="2" name="Id" data="3853861285"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="8" name="Position" data="0.42 0.6"/>
-					<property type="8" name="Size" data="0.2 0.2"/>
+					<property type="8" name="Size" data="0.15 0.15"/>
 					<property type="7" name="Align" data="HCenter"/>
 					<property type="7" name="Layer" data="Back"/>
 					<property type="10" name="Color" data="0.01678 0.11463 0.39063 1"/>
@@ -267,6 +313,44 @@
 					<property type="7" name="TextAlign" data="HCenter"/>
 					<property type="8" name="TextOffset" data="0 0"/>
 					<property type="10" name="TextColor" data="1 1 1 1"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="OnePlayerColor"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="4218824875"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.2 0.75"/>
+					<property type="8" name="Size" data="0.025 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="&gt;"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
+					<property type="7" name="ComponentMyGUIButtonComponent" data="MyGUIButtonComponent"/>
+					<property type="7" name="Name" data="TwoPlayerColor"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="Id" data="4125907960"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="8" name="Position" data="0.48 0.75"/>
+					<property type="8" name="Size" data="0.025 0.05"/>
+					<property type="7" name="Align" data="HCenter"/>
+					<property type="7" name="Layer" data="Back"/>
+					<property type="10" name="Color" data="0.5 0.5 0.5 1"/>
+					<property type="12" name="Enabled" data="true"/>
+					<property type="2" name="ParentId" data="0"/>
+					<property type="7" name="Skin" data="Button"/>
+					<property type="7" name="Caption" data="&gt;"/>
+					<property type="2" name="FontHeight" data="22"/>
+					<property type="7" name="TextAlign" data="HCenter"/>
+					<property type="8" name="TextOffset" data="0 0"/>
+					<property type="10" name="TextColor" data="0 0 0 1"/>
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -277,6 +361,217 @@
 					<property type="12" name="HasCommonScript" data="false"/>
 				</userData>
 			</entity>
+		</node>
+		<node name="MenuCamera" id="1168417769">
+			<position x="-0.34322" y="3.02827" z="-3.93776"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="MenuCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2904886742"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="true"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Active" data="false"/>
+					<property type="9" name="CameraPosition" data="-0.34322 3.02827 -3.93776"/>
+					<property type="9" name="CameraOrientation" data="0 0 0"/>
+					<property type="6" name="NearClipDistance" data="0.1"/>
+					<property type="6" name="FarClipDistance" data="500"/>
+					<property type="6" name="Fovy" data="90"/>
+					<property type="12" name="Orthographic" data="false"/>
+					<property type="8" name="OrthoWindowSize" data="10 10"/>
+					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
+					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="9" name="BackgroundColor" data="0 0 0"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
+					<property type="6" name="SuperSampling" data="1"/>
+					<property type="12" name="UseHdr" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
+					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
+					<property type="12" name="UseTerra" data="false"/>
+					<property type="12" name="UseOcean" data="false"/>
+					<property type="6" name="ShadowGlobalBias" data="1"/>
+					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
+					<property type="6" name="ShadowPSSMLambda" data="0.95"/>
+					<property type="6" name="ShadowSplitBlend" data="0.125"/>
+					<property type="6" name="ShadowSplitFade" data="0.313"/>
+					<property type="6" name="ShadowSplitPadding" data="1"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuadBikeFull_0" id="1107682697">
+			<position x="-5.53324" y="0.412844" z="-10.5074"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="QuadBikeFull_0" meshFile="QuadBikeFull.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="racer_mat"/>
+				<subitem index="1" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="449055701"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="racer_mat"/>
+					<property type="7" name="DataBlock1" data="qbike_mat"/>
+					<property type="7" name="ComponentTransformEaseComponent" data="TransformEaseComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationDuration" data="5"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="true"/>
+					<property type="7" name="RotationEaseFunction" data="easeInBounce"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationDuration" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="7" name="TranslationEaseFunction" data="linear"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="1 1 1"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleDuration" data="2"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ScaleEaseFunction" data="linear"/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Choose Device"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="qaud_bike_milkshape.ms3d.act"/>
+					<property type="6" name="AnimationSpeed" data="0.5"/>
+					<property type="12" name="AnimationRepeat" data="false"/>
+				</userData>
+			</item>
+		</node>
+		<node name="QuadBikeFull_1" id="1107682262">
+			<position x="-0.448065" y="0.412844" z="-10.5074"/>
+			<rotation qw="1" qx="0" qy="0" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<item name="QuadBikeFull_1" meshFile="QuadBikeFull.mesh" castShadows="true" visible="true">
+				<subitem index="0" datablockName="racer_mat"/>
+				<subitem index="1" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1220359006"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="racer_mat"/>
+					<property type="7" name="DataBlock1" data="qbike_mat"/>
+					<property type="7" name="ComponentTransformEaseComponent" data="TransformEaseComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="RotationActivated" data="true"/>
+					<property type="9" name="RotationAxis" data="0 1 0"/>
+					<property type="6" name="RotationMin" data="0"/>
+					<property type="7" name="RotationMax" data="360"/>
+					<property type="6" name="RotationDuration" data="5"/>
+					<property type="12" name="RotationRepeat" data="true"/>
+					<property type="12" name="RotationDirectionChange" data="true"/>
+					<property type="7" name="RotationEaseFunction" data="easeInBounce"/>
+					<property type="12" name="TranslationActivated" data="false"/>
+					<property type="9" name="TranslationAxis" data="0 0 0"/>
+					<property type="6" name="TranslationMin" data="0"/>
+					<property type="7" name="TranslationMax" data="10"/>
+					<property type="6" name="TranslationDuration" data="1"/>
+					<property type="12" name="TranslationRepeat" data="true"/>
+					<property type="12" name="TranslationDirectionChange" data="true"/>
+					<property type="7" name="TranslationEaseFunction" data="linear"/>
+					<property type="12" name="ScaleActivated" data="false"/>
+					<property type="9" name="ScaleAxis" data="1 1 1"/>
+					<property type="6" name="ScaleMin" data="0.5"/>
+					<property type="7" name="ScaleMax" data="10"/>
+					<property type="6" name="ScaleDuration" data="2"/>
+					<property type="12" name="ScaleRepeat" data="true"/>
+					<property type="12" name="ScaleDirectionChange" data="true"/>
+					<property type="7" name="ScaleEaseFunction" data="linear"/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Choose Device"/>
+					<property type="7" name="ComponentAnimationComponentV2" data="AnimationComponentV2"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="qaud_bike_milkshape.ms3d.act"/>
+					<property type="6" name="AnimationSpeed" data="0.5"/>
+					<property type="12" name="AnimationRepeat" data="false"/>
+				</userData>
+			</item>
 		</node>
 	</nodes>
 </scene>

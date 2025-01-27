@@ -43,7 +43,7 @@ namespace NOWA
 
 	bool PluginTemplate::init(rapidxml::xml_node<>*& propertyElement)
 	{
-		GameObjectComponent::init(propertyElement, filename);
+		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
@@ -82,6 +82,8 @@ namespace NOWA
 
 	bool PluginTemplate::connect(void)
 	{
+		GameObjectComponent::connect();
+		
 		// Hello World test :)
 		auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
 		if (nullptr != physicsActiveCompPtr)
@@ -99,7 +101,7 @@ namespace NOWA
 
 	bool PluginTemplate::disconnect(void)
 	{
-		
+		GameObjectComponent::disconnect();
 		return true;
 	}
 
@@ -111,7 +113,7 @@ namespace NOWA
 
 	void PluginTemplate::onRemoveComponent(void)
 	{
-		
+		GameObjectComponent::onRemoveComponent();
 	}
 	
 	void PluginTemplate::onOtherComponentRemoved(unsigned int index)
@@ -155,7 +157,7 @@ namespace NOWA
 		// 9 = vector3
 		// 10 = vector4 -> also quaternion
 		// 12 = bool
-		GameObjectComponent::writeXML(propertiesXML, doc, filePath);
+		GameObjectComponent::writeXML(propertiesXML, doc);
 
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
@@ -219,13 +221,14 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("PluginTemplate", "class inherits GameObjectComponent", PluginTemplate::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("PluginTemplate", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("PluginTemplate", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("PluginTemplate", "GameObject getOwner()", "Gets the owner game object.");
 
 		gameObjectClass.def("getPluginTemplateFromName", &getPluginTemplateFromName);
 		gameObjectClass.def("getPluginTemplate", (PluginTemplate * (*)(GameObject*)) & getPluginTemplate);
 		// If its desired to create several of this components for one game object
-		gameObjectClass.def("getPluginTemplate2", (PluginTemplate * (*)(GameObject*, unsigned int)) & getPluginTemplate);
+		gameObjectClass.def("getPluginTemplateFromIndex", (PluginTemplate * (*)(GameObject*, unsigned int)) & getPluginTemplate);
 
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PluginTemplate getPluginTemplate2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PluginTemplate getPluginTemplateFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PluginTemplate getPluginTemplate()", "Gets the component. This can be used if the game object this component just once.");
 		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "PluginTemplate getPluginTemplateFromName(String name)", "Gets the component from name.");
 

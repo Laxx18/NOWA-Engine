@@ -142,7 +142,7 @@ namespace NOWA
 		this->soundSlider->eventScrollChangePosition += MyGUI::newDelegate(this, &MainConfigurationStateMyGui::sliderMoved);
 		this->musicSlider->eventScrollChangePosition += MyGUI::newDelegate(this, &MainConfigurationStateMyGui::sliderMoved);
 
-		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->hasActiveJoyStick())
+		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->hasActiveJoyStick())
 			this->textboxActive.resize(7 + 7, false);
 		else
 			this->textboxActive.resize(7, false);
@@ -161,8 +161,8 @@ namespace NOWA
 
 		for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 		{
-			auto keyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(static_cast<InputDeviceModule::Action>(i));
-			Ogre::String strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyCode);
+			auto keyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedKey(static_cast<InputDeviceModule::Action>(i));
+			Ogre::String strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyCode);
 			this->oldKeyValue[i] = strKeyCode;
 			// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 			this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
@@ -170,7 +170,7 @@ namespace NOWA
 			this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &MainConfigurationStateMyGui::notifyMouseSetFocus);
 		}
 
-		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->hasActiveJoyStick())
+		if (true == NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->hasActiveJoyStick())
 		{
 			// Button-configuration widgets
 			this->buttonConfigTextboxes.resize(7);
@@ -186,8 +186,8 @@ namespace NOWA
 
 			for (unsigned short i = 0; i < buttonConfigTextboxes.size(); i++)
 			{
-				auto button = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-				Ogre::String strButton = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedButton(button);
+				auto button = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getMappedButton(static_cast<InputDeviceModule::Action>(i));
+				Ogre::String strButton = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButton(button);
 				this->oldButtonValue[i] = strButton;
 				// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 				this->buttonConfigTextboxes[i]->setNeedMouseFocus(true);
@@ -500,7 +500,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyEventRef.key);
+				strKeyCode = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedKey(keyEventRef.key);
 				this->textboxActive[i] = false;
 				this->keyConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -516,7 +516,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->buttonConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strButton = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedButton(NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButton());
+				strButton = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getStringFromMappedButton(NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
 				this->textboxActive[i + this->buttonConfigTextboxes.size()] = false;
 				this->buttonConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -553,7 +553,7 @@ namespace NOWA
 		if (-1 != index && !alreadyExisting && !strButton.empty())
 		{
 			this->buttonConfigTextboxes[index]->setCaptionWithReplacing(strButton);
-			NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->remapButton(static_cast<InputDeviceModule::Action>(index), NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getPressedButton());
+			NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->remapButton(static_cast<InputDeviceModule::Action>(index), NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->getPressedButton());
 		}
 		return true;
 	}

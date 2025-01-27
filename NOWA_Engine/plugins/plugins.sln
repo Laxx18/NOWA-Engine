@@ -5,10 +5,6 @@ VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AreaOfInterestComponent", "AreaOfInterestComponent\AreaOfInterestComponent.vcxproj", "{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyboardRemapComponent", "KeyboardRemapComponent\KeyboardRemapComponent.vcxproj", "{42F31C93-38C2-40B0-AD33-EAD1E691952C}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JoystickRemapComponent", "JoystickRemapComponent\JoystickRemapComponent.vcxproj", "{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AtmosphereComponent", "AtmosphereComponent\AtmosphereComponent.vcxproj", "{AE55EBC8-552F-469C-B8D2-E9D78D9C30D3}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimationSequenceComponent", "AnimationSequenceComponent\AnimationSequenceComponent.vcxproj", "{8479A509-BAD2-4EED-A38E-EA4DAD2878B8}"
@@ -49,9 +45,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyholeEffectComponent", "K
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSpriteComponent", "MyGuiSpriteComponent\MyGuiSpriteComponent.vcxproj", "{B65A73D6-6690-4C1F-BD42-E0AC2466C139}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSplitScreenComponent", "MyGuiSplitScreenComponent\MyGuiSplitScreenComponent.vcxproj", "{4F46C542-442B-4599-9B9F-C0DD452C5C18}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SplitScreenComponent", "SplitScreenComponent\SplitScreenComponent.vcxproj", "{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InputDeviceComponent", "InputDeviceComponent\InputDeviceComponent.vcxproj", "{04110E31-7514-494A-AC05-5F2C9D3BA5D5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JoystickConfigurationComponent", "JoystickConfigurationComponent\JoystickRConfigurationComponent.vcxproj", "{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyboardConfigurationComponent", "KeyboardConfigurationComponent\KeyboardConfigurationComponent.vcxproj", "{42F31C93-38C2-40B0-AD33-EAD1E691952C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,14 +63,6 @@ Global
 		{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}.Debug|x64.Build.0 = Debug|x64
 		{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}.Release|x64.ActiveCfg = Release|x64
 		{B44A5D54-9FAE-4174-AA40-8CB0E70713FD}.Release|x64.Build.0 = Release|x64
-		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Debug|x64.ActiveCfg = Debug|x64
-		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Debug|x64.Build.0 = Debug|x64
-		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Release|x64.ActiveCfg = Release|x64
-		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Release|x64.Build.0 = Release|x64
-		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.ActiveCfg = Debug|x64
-		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.Build.0 = Debug|x64
-		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Release|x64.ActiveCfg = Release|x64
-		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Release|x64.Build.0 = Release|x64
 		{AE55EBC8-552F-469C-B8D2-E9D78D9C30D3}.Debug|x64.ActiveCfg = Debug|x64
 		{AE55EBC8-552F-469C-B8D2-E9D78D9C30D3}.Debug|x64.Build.0 = Debug|x64
 		{AE55EBC8-552F-469C-B8D2-E9D78D9C30D3}.Release|x64.ActiveCfg = Release|x64
@@ -151,14 +143,22 @@ Global
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Debug|x64.Build.0 = Debug|x64
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.ActiveCfg = Release|x64
 		{B65A73D6-6690-4C1F-BD42-E0AC2466C139}.Release|x64.Build.0 = Release|x64
-		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Debug|x64.ActiveCfg = Debug|x64
-		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Debug|x64.Build.0 = Debug|x64
-		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Release|x64.ActiveCfg = Release|x64
-		{4F46C542-442B-4599-9B9F-C0DD452C5C18}.Release|x64.Build.0 = Release|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Debug|x64.ActiveCfg = Debug|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Debug|x64.Build.0 = Debug|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Release|x64.ActiveCfg = Release|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Release|x64.Build.0 = Release|x64
+		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Debug|x64.ActiveCfg = Debug|x64
+		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Debug|x64.Build.0 = Debug|x64
+		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Release|x64.ActiveCfg = Release|x64
+		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Release|x64.Build.0 = Release|x64
+		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.ActiveCfg = Debug|x64
+		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.Build.0 = Debug|x64
+		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Release|x64.ActiveCfg = Release|x64
+		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Release|x64.Build.0 = Release|x64
+		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Debug|x64.ActiveCfg = Debug|x64
+		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Debug|x64.Build.0 = Debug|x64
+		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Release|x64.ActiveCfg = Release|x64
+		{42F31C93-38C2-40B0-AD33-EAD1E691952C}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

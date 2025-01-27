@@ -1997,7 +1997,7 @@ namespace NOWA
 		// Set omega by default directly to zero, else there is an ugly small rotation...
 		this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3::ZERO);
 
-		InputDeviceModule* inputDeviceModule = NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0);
+		InputDeviceModule* inputDeviceModule = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();
 
 		// if no key is pressed, go to idle state
 		if (!inputDeviceModule->isActionDown(NOWA_A_UP) && !inputDeviceModule->isActionDown(NOWA_A_DOWN)
@@ -2058,8 +2058,8 @@ namespace NOWA
 				this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
 			}
 		}
-		else if (NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_UP) || NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_DOWN)
-			|| NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_LEFT) || NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_RIGHT))
+		else if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP) || NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_DOWN)
+			|| NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_LEFT) || NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_RIGHT))
 		{
 			this->boringTimer = 0;
 
@@ -2091,14 +2091,14 @@ namespace NOWA
 			{
 				Ogre::Real yawAtSpeed = 0.0f;
 				// set the key direction, so that the player will always run on x-axis
-				if (NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_UP))
+				if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP))
 				{
 					tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
 					animId = AnimationBlender::ANIM_WALK_NORTH;
 					this->direction = Direction::UP;
 					this->keyDirection += this->playerController->getOrientation() * Ogre::Vector3::UNIT_Z;
 				}
-				else if (NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_DOWN))
+				else if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_DOWN))
 				{
 					tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
 					// Free from stuck when moving back
@@ -2230,7 +2230,7 @@ namespace NOWA
 			// Run or sneak (only possible when moving forward)
 			if (false == this->playerController->getIsFor2D())
 			{
-				if (inputDeviceModule->isActionDown(NOWA_A_RUN) /*&& NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->isActionDown(NOWA_A_UP)*/)
+				if (inputDeviceModule->isActionDown(NOWA_A_RUN) /*&& NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP)*/)
 				{
 					this->direction = Direction::UP;
 					tempSpeed = this->playerController->getPhysicsComponent()->getMaxSpeed() * this->playerController->getMoveWeight();
@@ -2466,18 +2466,18 @@ namespace NOWA
 			this->canDoubleJump = true;
 		}
 
-		//if (NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->isKeyDown(NOWA_K_ACTION_1) && !this->isAttacking)
+		//if (NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_ACTION_1) && !this->isAttacking)
 		//{
 		//	this->playerController->getStateMaschine()->setChildState(AttackingState2D::getName());
 		//	this->isAttacking = true;
 		//}
 
-		//if (!NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->isKeyDown(NOWA_K_ACTION_1))
+		//if (!NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_ACTION_1))
 		//{
 		//	this->isAttacking = false;
 		//}
 
-		//if (NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->isKeyDown(NOWA_K_UP) && !this->isOnRope)
+		//if (NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_UP) && !this->isOnRope)
 		//{
 		//	for (auto& getcontactDataFront : this->playerController->getcontactDataFront())
 		//	{
@@ -2487,7 +2487,7 @@ namespace NOWA
 		//		}
 		//	}
 		//}
-		//if (!NOWA::Core::getSingletonPtr()->getInputDeviceModule(0)->isKeyDown(NOWA_K_UP))
+		//if (!NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_UP))
 		//{
 		//	this->isOnRope = false;
 		//}

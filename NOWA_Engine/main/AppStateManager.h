@@ -15,6 +15,7 @@ namespace NOWA
 	{
 	public:
 		friend class ChangeAppStateProcess;
+		friend class GameProgressModule;
 
 		typedef struct
 		{
@@ -76,6 +77,14 @@ namespace NOWA
 		 * @note		This can be used to ask from another AppState like a MenuState, whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.
 		 */
 		bool hasAppStateStarted(const Ogre::String& stateName);
+
+		/**
+		 * @brief		Gets whether the simulation is in the given app state.
+		 * @param[in]	stateName	The application state name to check.
+		 * @return 		true, if the simulation is in the given app state, else false.
+		 * @note		This can be used to ask if the simulation e.g. is in a MenuState, in order to remove some behavior from global game objects. This could be necessary if global game objects need different behavior e.g. in a GameState as in a MenuState.
+		 */
+		bool isInAppstate(const Ogre::String& stateName);
 
 		Ogre::String getCurrentAppStateName(void) const;
 
@@ -181,6 +190,44 @@ namespace NOWA
 		void internalPopAppState(void);
 		void internalPopAllAndPushAppState(AppState* state);
 		void internalExitGame(void);
+
+		/**
+		* @brief		Gets the Variant global value from attribute name.
+		* @note			Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.
+		* @param[in]	attributeName The attribute name to set.
+		* @return		variant	 The variant containing the current value.
+		*/
+		Variant* getGlobalValue(const Ogre::String& attributeName);
+
+		/**
+		* @brief		Sets the bool value for the given attribute name and returns the global Variant.
+		* @note			Global values are stored directly in GameProgressModule. They can be used for the whole game logic, like which boss has been defeated etc.
+		* @param[in]	attributeName The attribute name to set.
+		* @return		variant	 The variant containing the current value.
+		*/
+		Variant* setGlobalBoolValue(const Ogre::String& attributeName, bool value);
+
+		Variant* setGlobalIntValue(const Ogre::String& attributeName, int value);
+
+		Variant* setGlobalUIntValue(const Ogre::String& attributeName, unsigned int value);
+
+		Variant* setGlobalULongValue(const Ogre::String& attributeName, unsigned long value);
+
+		Variant* setGlobalRealValue(const Ogre::String& attributeName, Ogre::Real value);
+
+		Variant* setGlobalStringValue(const Ogre::String& attributeName, Ogre::String value);
+
+		Variant* setGlobalVector2Value(const Ogre::String& attributeName, Ogre::Vector2 value);
+
+		Variant* setGlobalVector3Value(const Ogre::String& attributeName, Ogre::Vector3 value);
+
+		Variant* setGlobalVector4Value(const Ogre::String& attributeName, Ogre::Vector4 value);
+
+		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
+
+		void saveProgress(const Ogre::String& saveFilePathName, bool crypted, bool sceneSnapshot);
+
+
 	protected:
 		void linkInputWithCore(AppState* oldState, AppState* state);
 		std::vector<AppState*> activeStateStack;
@@ -197,6 +244,9 @@ namespace NOWA
 
 		bool bShutdown;
 		bool bStall;
+
+		// For user defined attributes, without the need for a game objects attributes component
+		std::map<Ogre::String, Variant*> globalAttributesMap;
 	};
 
 }; // namespace end

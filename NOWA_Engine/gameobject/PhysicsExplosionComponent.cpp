@@ -429,7 +429,7 @@ namespace NOWA
 
 		if (false == scriptFile.empty())
 		{
-			if (nullptr != this->luaScript && scriptFile != this->luaScript->getName())
+			if (nullptr != this->luaScript && this->luaScript->isCompiled() && scriptFile != this->luaScript->getName())
 			{
 				LuaScriptApi::getInstance()->copyScript(this->luaScript->getName(), scriptFile, true);
 				LuaScriptApi::getInstance()->destroyScript(this->luaScript);

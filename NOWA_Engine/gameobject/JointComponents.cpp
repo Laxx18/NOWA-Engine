@@ -13812,6 +13812,7 @@ namespace NOWA
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "class inherits JointComponent", JointFlexyPipeHandleComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "GameObject getOwner()", "Gets the owner game object.");
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "void setPin(Vector3 pin)", "Sets the pin (direction) of this joint.");
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "Vector3 getPin()", "Gets the pin (direction) of this component.");
 		LuaScriptApi::getInstance()->addClassToCollection("JointFlexyPipeHandleComponent", "void setVelocity(Vector3 velocity, float dt)", "Controls the motion of this joint by the given velocity vector and time step.");

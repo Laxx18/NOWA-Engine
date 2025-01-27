@@ -1523,7 +1523,7 @@ void DesignState::update(Ogre::Real dt)
 	this->processUnbufferedKeyInput(dt);
 	this->processUnbufferedMouseInput(dt);
 
-	NOWA::InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->update(dt);
+	NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
 	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())

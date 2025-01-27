@@ -55,7 +55,7 @@ namespace NOWA
 		~DeployResourceModule();
 	private:
 		// Function to send the file path to the running instance
-		void sendFilePathToRunningInstance(const Ogre::String& filePathName);
+		bool sendFilePathToRunningInstance(const Ogre::String& filePathName);
 
 		void deleteLuaRuntimeErrorXmlFiles(const Ogre::String& directoryPath);
 	private:

@@ -1,5 +1,5 @@
 #include "NOWAPrecompiled.h"
-#include "JoystickRemapComponent.h"
+#include "JoystickConfigurationComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
@@ -14,9 +14,9 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	JoystickRemapComponent::JoystickRemapComponent()
+	JoystickConfigurationComponent::JoystickConfigurationComponent()
 		: GameObjectComponent(),
-		name("JoystickRemapComponent"),
+		name("JoystickConfigurationComponent"),
 		hasParent(false),
 		widget(nullptr),
 		messageLabel(nullptr),
@@ -24,17 +24,16 @@ namespace NOWA
 		abordButton(nullptr),
 		lastButton(InputDeviceModule::BUTTON_NONE),
 		bIsInSimulation(false),
-		activated(new Variant(JoystickRemapComponent::AttrActivated(), true, this->attributes)),
-		deviceName(new Variant(JoystickRemapComponent::AttrDeviceName(), Ogre::String(""), this->attributes)),
-		relativePosition(new Variant(JoystickRemapComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
-		parentId(new Variant(JoystickRemapComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
-		okClickEventName(new Variant(JoystickRemapComponent::AttrOkClickEventName(), Ogre::String(""), this->attributes)),
-		abordClickEventName(new Variant(JoystickRemapComponent::AttrAbordClickEventName(), Ogre::String(""), this->attributes))
+		activated(new Variant(JoystickConfigurationComponent::AttrActivated(), true, this->attributes)),
+		relativePosition(new Variant(JoystickConfigurationComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
+		parentId(new Variant(JoystickConfigurationComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
+		okClickEventName(new Variant(JoystickConfigurationComponent::AttrOkClickEventName(), Ogre::String(""), this->attributes)),
+		abordClickEventName(new Variant(JoystickConfigurationComponent::AttrAbordClickEventName(), Ogre::String(""), this->attributes))
 	{
-		this->activated->setDescription("Shows the remap menu if activated.");
+		this->activated->setDescription("Shows the configuration menu if activated.");
 	}
 
-	JoystickRemapComponent::~JoystickRemapComponent(void)
+	JoystickConfigurationComponent::~JoystickConfigurationComponent(void)
 	{
 		if (nullptr != this->widget && false == this->hasParent)
 		{
@@ -45,37 +44,37 @@ namespace NOWA
 		// Core::getSingletonPtr()->getJoyStick()->setEventCallback(nullptr);
 	}
 
-	void JoystickRemapComponent::initialise()
+	void JoystickConfigurationComponent::initialise()
 	{
 
 	}
 
-	const Ogre::String& JoystickRemapComponent::getName() const
+	const Ogre::String& JoystickConfigurationComponent::getName() const
 	{
 		return this->name;
 	}
 
-	void JoystickRemapComponent::install(const Ogre::NameValuePairList* options)
+	void JoystickConfigurationComponent::install(const Ogre::NameValuePairList* options)
 	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<JoystickRemapComponent>(JoystickRemapComponent::getStaticClassId(), JoystickRemapComponent::getStaticClassName());
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<JoystickConfigurationComponent>(JoystickConfigurationComponent::getStaticClassId(), JoystickConfigurationComponent::getStaticClassName());
 	}
 
-	void JoystickRemapComponent::shutdown()
-	{
-
-	}
-
-	void JoystickRemapComponent::uninstall()
+	void JoystickConfigurationComponent::shutdown()
 	{
 
 	}
 
-	void JoystickRemapComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	void JoystickConfigurationComponent::uninstall()
+	{
+
+	}
+
+	void JoystickConfigurationComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
 	{
 		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
-	bool JoystickRemapComponent::init(rapidxml::xml_node<>*& propertyElement)
+	bool JoystickConfigurationComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
 
@@ -104,26 +103,38 @@ namespace NOWA
 			this->setAbordClickEventName(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+
+		unsigned char i = 0;
+		while (propertyElement)
+		{
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Button_" + Ogre::StringConverter::toString(i))
+			{
+				// Store the mappings in a temp container, because at this time the game object is not available yet
+				this->keyCodes.emplace(std::make_pair(i, Ogre::StringConverter::parseInt(propertyElement->first_attribute("data")->value())));
+			}
+			i++;
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		
 		return true;
 	}
 
-	GameObjectCompPtr JoystickRemapComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	GameObjectCompPtr JoystickConfigurationComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		// Cloning does not make sense
 		return nullptr;
 	}
 
-	bool JoystickRemapComponent::postInit(void)
+	bool JoystickConfigurationComponent::postInit(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JoystickRemapComponent] Init component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JoystickConfigurationComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
 		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [this]()
 		{
 			// Enables reaction on joy stick events
-			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, JoystickRemapComponent::getStaticClassName());
+			InputDeviceCore::getSingletonPtr()->addJoystickListener(this, JoystickConfigurationComponent::getStaticClassName());
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
@@ -131,112 +142,116 @@ namespace NOWA
 
 		this->setActivated(this->activated->getBool());
 
-		this->deviceName->setReadOnly(false);
-		Ogre::String tempDeviceName = InputDeviceCore::getSingletonPtr()->getJoystick(this->occurrenceIndex)->vendor();
-		this->deviceName->setValue(tempDeviceName);
-		this->deviceName->setUserData(GameObject::AttrActionNeedRefresh());
-		this->deviceName->setReadOnly(true);
+		const auto& inputDeviceModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+
+		if (nullptr != inputDeviceModule)
+		{
+			for (auto& it = this->keyCodes.cbegin(); it != this->keyCodes.cend(); ++it)
+			{
+				InputDeviceModule::JoyStickButton button = static_cast<InputDeviceModule::JoyStickButton>(it->second);
+				if (InputDeviceModule::JoyStickButton::BUTTON_NONE != button)
+				{
+					inputDeviceModule->remapButton(static_cast<InputDeviceModule::Action>(it->first), button);
+				}
+			}
+		}
 
 		return true;
 	}
 
-	bool JoystickRemapComponent::connect(void)
+	bool JoystickConfigurationComponent::connect(void)
 	{
 		GameObjectComponent::connect();
 
 		// Sets the event handler
 		if (nullptr != this->widget)
 		{
-			this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickRemapComponent::buttonHit);
-			this->abordButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickRemapComponent::buttonHit);
+			this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
+			this->abordButton->eventMouseButtonClick += MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
 			for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 			{
 // TODO: Attention: Later check if second joystick available and this is the second component, to configure the second joystick!
-				auto keyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-				Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getStringFromMappedButton(keyCode);
+				auto keyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButton(static_cast<InputDeviceModule::Action>(i));
+				Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(keyCode);
 				this->oldKeyValue[i] = strKeyCode;
 				this->newKeyValue[i] = strKeyCode;
 				// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 				this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
 				this->keyConfigTextboxes[i]->setCaptionWithReplacing(strKeyCode);
-				this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &JoystickRemapComponent::notifyMouseSetFocus);
+				this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &JoystickConfigurationComponent::notifyMouseSetFocus);
 			}
 		}
 		
 		return true;
 	}
 
-	bool JoystickRemapComponent::disconnect(void)
+	bool JoystickConfigurationComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
 
 		if (nullptr != this->okButton)
 		{
-			this->okButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &JoystickRemapComponent::buttonHit);
-			this->abordButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &JoystickRemapComponent::buttonHit);
+			this->okButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
+			this->abordButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &JoystickConfigurationComponent::buttonHit);
 		}
 
 		for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 		{
-			this->keyConfigTextboxes[i]->eventMouseSetFocus -= MyGUI::newDelegate(this, &JoystickRemapComponent::notifyMouseSetFocus);
+			this->keyConfigTextboxes[i]->eventMouseSetFocus -= MyGUI::newDelegate(this, &JoystickConfigurationComponent::notifyMouseSetFocus);
 		}
 		
 		return true;
 	}
 
-	bool JoystickRemapComponent::onCloned(void)
+	bool JoystickConfigurationComponent::onCloned(void)
 	{
 		
 		return true;
 	}
 
-	void JoystickRemapComponent::onRemoveComponent(void)
+	void JoystickConfigurationComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
 
-		InputDeviceCore::getSingletonPtr()->removeJoystickListener(JoystickRemapComponent::getStaticClassName());
+		InputDeviceCore::getSingletonPtr()->removeJoystickListener(JoystickConfigurationComponent::getStaticClassName());
 
-		if (nullptr != this->widget)
-		{
-			this->widget->detachFromWidget();
-		}
-		this->hasParent = false;
+		this->destroyMyGUIWidgets();
 	}
 
-	void JoystickRemapComponent::update(Ogre::Real dt, bool notSimulating)
+	void JoystickConfigurationComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		this->bIsInSimulation = !notSimulating;
 
-		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getPressedButton();
+		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
 	}
 
-	void JoystickRemapComponent::actualizeValue(Variant* attribute)
+	void JoystickConfigurationComponent::actualizeValue(Variant* attribute)
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (JoystickRemapComponent::AttrActivated() == attribute->getName())
+		if (JoystickConfigurationComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
 		}
-		else if (JoystickRemapComponent::AttrRelativePosition() == attribute->getName())
+		else if (JoystickConfigurationComponent::AttrRelativePosition() == attribute->getName())
 		{
 			this->setRelativePosition(attribute->getVector2());
 		}
-		else if (JoystickRemapComponent::AttrParentId() == attribute->getName())
+		else if (JoystickConfigurationComponent::AttrParentId() == attribute->getName())
 		{
 			this->setParentId(attribute->getULong());
 		}
-		else if (JoystickRemapComponent::AttrOkClickEventName() == attribute->getName())
+		else if (JoystickConfigurationComponent::AttrOkClickEventName() == attribute->getName())
 		{
 			this->setOkClickEventName(attribute->getString());
 		}
-		else if (JoystickRemapComponent::AttrAbordClickEventName() == attribute->getName())
+		else if (JoystickConfigurationComponent::AttrAbordClickEventName() == attribute->getName())
 		{
 			this->setAbordClickEventName(attribute->getString());
 		}
 	}
 
-	void JoystickRemapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+	void JoystickConfigurationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -251,7 +266,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);	
+		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
@@ -276,19 +291,36 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AbordClickEventName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->abordClickEventName->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		const auto& inputDeviceModule = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId());
+
+		if (nullptr != inputDeviceModule)
+		{
+			for (unsigned short i = 0; i < inputDeviceModule->getButtonMappingCount(); i++)
+			{
+				propertyXML = doc.allocate_node(node_element, "property");
+				propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Button_" + Ogre::StringConverter::toString(i))));
+
+				Ogre::String mappedButtonCode = Ogre::StringConverter::toString(inputDeviceModule->getMappedButton(static_cast<InputDeviceModule::Action>(i)));
+
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, mappedButtonCode)));
+				propertiesXML->append_node(propertyXML);
+			}
+		}
 	}
 
-	Ogre::String JoystickRemapComponent::getClassName(void) const
+	Ogre::String JoystickConfigurationComponent::getClassName(void) const
 	{
-		return "JoystickRemapComponent";
+		return "JoystickConfigurationComponent";
 	}
 
-	Ogre::String JoystickRemapComponent::getParentClassName(void) const
+	Ogre::String JoystickConfigurationComponent::getParentClassName(void) const
 	{
 		return "GameObjectComponent";
 	}
 
-	void JoystickRemapComponent::setActivated(bool activated)
+	void JoystickConfigurationComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
 
@@ -302,12 +334,12 @@ namespace NOWA
 		}
 	}
 
-	bool JoystickRemapComponent::isActivated(void) const
+	bool JoystickConfigurationComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
 	}
 
-	void JoystickRemapComponent::setRelativePosition(const Ogre::Vector2& relativePosition)
+	void JoystickConfigurationComponent::setRelativePosition(const Ogre::Vector2& relativePosition)
 	{
 		this->relativePosition->setValue(relativePosition);
 
@@ -318,12 +350,12 @@ namespace NOWA
 		}
 	}
 
-	Ogre::Vector2 JoystickRemapComponent::getRelativePosition(void) const
+	Ogre::Vector2 JoystickConfigurationComponent::getRelativePosition(void) const
 	{
 		return this->relativePosition->getVector2();
 	}
 
-	void JoystickRemapComponent::setParentId(unsigned long parentId)
+	void JoystickConfigurationComponent::setParentId(unsigned long parentId)
 	{
 		this->parentId->setValue(parentId);
 
@@ -365,39 +397,39 @@ namespace NOWA
 		}
 	}
 
-	unsigned long JoystickRemapComponent::getParentId(void) const
+	unsigned long JoystickConfigurationComponent::getParentId(void) const
 	{
 		return this->parentId->getULong();
 	}
 
-	void JoystickRemapComponent::setOkClickEventName(const Ogre::String& okClickEventName)
+	void JoystickConfigurationComponent::setOkClickEventName(const Ogre::String& okClickEventName)
 	{
 		this->okClickEventName->setValue(okClickEventName);
 		this->okClickEventName->addUserData(GameObject::AttrActionGenerateLuaFunction(), okClickEventName + "(thisComponent)=" + this->getClassName());
 	}
 
-	Ogre::String JoystickRemapComponent::getOkClickEventName(void) const
+	Ogre::String JoystickConfigurationComponent::getOkClickEventName(void) const
 	{
 		return this->okClickEventName->getString();
 	}
 
-	void JoystickRemapComponent::setAbordClickEventName(const Ogre::String& abordClickEventName)
+	void JoystickConfigurationComponent::setAbordClickEventName(const Ogre::String& abordClickEventName)
 	{
 		this->abordClickEventName->setValue(abordClickEventName);
 		this->abordClickEventName->addUserData(GameObject::AttrActionGenerateLuaFunction(), abordClickEventName + "(thisComponent)=" + this->getClassName());
 	}
 
-	Ogre::String JoystickRemapComponent::getAbordClickEventName(void) const
+	Ogre::String JoystickConfigurationComponent::getAbordClickEventName(void) const
 	{
 		return this->abordClickEventName->getString();
 	}
 
-	MyGUI::Window* JoystickRemapComponent::getWindow(void) const
+	MyGUI::Window* JoystickConfigurationComponent::getWindow(void) const
 	{
 		return this->widget;
 	}
 
-	bool JoystickRemapComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
+	bool JoystickConfigurationComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
 		if (false == this->bIsInSimulation)
 		{
@@ -409,8 +441,8 @@ namespace NOWA
 		bool keepMappingActive = false;
 		bool alreadyExisting = false;
 
-		InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->update(0.016f);
-		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getPressedButton();
+		InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->update(0.016f);
+		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
 
 		if (/*button == this->lastButton ||*/ button == InputDeviceModule::JoyStickButton::BUTTON_NONE)
 		{
@@ -428,7 +460,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getStringFromMappedButton(button);
+				strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(button);
 				this->textboxActive[i] = false;
 				this->keyConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -466,7 +498,7 @@ namespace NOWA
 		return true;
 	}
 
-	bool JoystickRemapComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
+	bool JoystickConfigurationComponent::buttonPressed(const OIS::JoyStickEvent& evt, int button)
 	{
 		const unsigned short count = 7;
 
@@ -488,7 +520,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getStringFromMappedButton(static_cast<InputDeviceModule::JoyStickButton>(button));
+				strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(static_cast<InputDeviceModule::JoyStickButton>(button));
 				this->textboxActive[i] = false;
 				this->keyConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -525,72 +557,27 @@ namespace NOWA
 		return true;
 	}
 
-	bool JoystickRemapComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
+	bool JoystickConfigurationComponent::buttonReleased(const OIS::JoyStickEvent& evt, int button)
 	{
 		return false;
 	}
 
-	bool JoystickRemapComponent::sliderMoved(const OIS::JoyStickEvent& evt, int index)
+	bool JoystickConfigurationComponent::sliderMoved(const OIS::JoyStickEvent& evt, int index)
 	{
 		return false;
 	}
 
-	bool JoystickRemapComponent::povMoved(const OIS::JoyStickEvent& evt, int pov)
+	bool JoystickConfigurationComponent::povMoved(const OIS::JoyStickEvent& evt, int pov)
 	{
 		return false;
 	}
 
-	bool JoystickRemapComponent::vector3Moved(const OIS::JoyStickEvent& evt, int index)
+	bool JoystickConfigurationComponent::vector3Moved(const OIS::JoyStickEvent& evt, int index)
 	{
 		return false;
 	}
 
-	// Lua registration part
-
-	JoystickRemapComponent* getJoystickRemapComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<JoystickRemapComponent>(gameObject->getComponentWithOccurrence<JoystickRemapComponent>(occurrenceIndex)).get();
-	}
-
-	JoystickRemapComponent* getJoystickRemapComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<JoystickRemapComponent>(gameObject->getComponent<JoystickRemapComponent>()).get();
-	}
-
-	JoystickRemapComponent* getJoystickRemapComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<JoystickRemapComponent>(gameObject->getComponentFromName<JoystickRemapComponent>(name)).get();
-	}
-
-	void JoystickRemapComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
-	{
-		module(lua)
-		[
-			class_<JoystickRemapComponent, GameObjectComponent>("JoystickRemapComponent")
-			.def("setActivated", &JoystickRemapComponent::setActivated)
-			.def("isActivated", &JoystickRemapComponent::isActivated)
-		];
-
-		LuaScriptApi::getInstance()->addClassToCollection("JoystickRemapComponent", "class inherits GameObjectComponent", JoystickRemapComponent::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("JoystickRemapComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
-		LuaScriptApi::getInstance()->addClassToCollection("JoystickRemapComponent", "bool isActivated()", "Gets whether this component is activated.");
-
-		gameObjectClass.def("getJoystickRemapComponentFromName", &getJoystickRemapComponentFromName);
-		gameObjectClass.def("getJoystickRemapComponent", (JoystickRemapComponent * (*)(GameObject*)) & getJoystickRemapComponent);
-
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JoystickRemapComponent getJoystickRemapComponent()", "Gets the component. This can be used if the game object this component just once.");
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JoystickRemapComponent getJoystickRemapComponentFromName(String name)", "Gets the component from name.");
-
-		gameObjectControllerClass.def("castJoystickRemapComponent", &GameObjectController::cast<JoystickRemapComponent>);
-		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "JoystickRemapComponent castJoystickRemapComponent(JoystickRemapComponent other)", "Casts an incoming type from function for lua auto completion.");
-	}
-
-	Ogre::String JoystickRemapComponent::getDeviceName(void) const
-	{
-		return this->deviceName->getString();
-	}
-
-	void JoystickRemapComponent::createMyGuiWidgets(void)
+	void JoystickConfigurationComponent::createMyGuiWidgets(void)
 	{
 		// Layers: "Wallpaper", "ToolTip", "Info", "FadeMiddle", "Popup", "Main", "Modal", "Middle", "Overlapped", "Back", "DragAndDrop", "FadeBusy", "Pointer", "Fade", "Statistic"
 		this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>("Window", this->relativePosition->getVector2().x, this->relativePosition->getVector2().y, 0.25f, 0.25f, MyGUI::Align::Center, "Popup");
@@ -618,17 +605,17 @@ namespace NOWA
 
 		for (unsigned short i = 0; i < count; i++)
 		{
-			this->keyConfigLabels[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX  + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
+			this->keyConfigLabels[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
 			this->keyConfigLabels[i]->attachToWidget(this->widget);
-			this->keyConfigLabels[i]->setRealPosition(posX  + marginX, posY + sizeY + marginY);
+			this->keyConfigLabels[i]->setRealPosition(posX + marginX, posY + sizeY + marginY);
 
 			this->keyConfigTextboxes[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBox", posX + sizeX + 2 * marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
 			this->keyConfigTextboxes[i]->attachToWidget(this->widget);
 			this->keyConfigTextboxes[i]->setRealPosition(posX + sizeX + 2 * marginX, posY + sizeY + marginY);
 			this->keyConfigTextboxes[i]->setEditReadOnly(true);
 
-			auto keyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getMappedButton(static_cast<InputDeviceModule::Action>(i));
-			Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->getStringFromMappedButton(keyCode);
+			auto keyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButton(static_cast<InputDeviceModule::Action>(i));
+			Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedButton(keyCode);
 			this->oldKeyValue[i] = strKeyCode;
 			this->newKeyValue[i] = strKeyCode;
 			this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
@@ -637,9 +624,9 @@ namespace NOWA
 			posY += marginY;
 		}
 
-		this->messageLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX  + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
+		this->messageLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("TextBox", posX + marginX, posY + sizeY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
 		this->messageLabel->attachToWidget(this->widget);
-		this->messageLabel->setRealPosition(posX  + marginX, posY + sizeY + marginY);
+		this->messageLabel->setRealPosition(posX + marginX, posY + sizeY + marginY);
 		this->messageLabel->setCaptionWithReplacing("#{Key_Existing}");
 		this->messageLabel->setTextColour(MyGUI::Colour::Red);
 		this->messageLabel->setVisible(false);
@@ -666,7 +653,7 @@ namespace NOWA
 		this->abordButton->setCaptionWithReplacing("#{Abord}");
 	}
 
-	void JoystickRemapComponent::destroyMyGUIWidgets(void)
+	void JoystickConfigurationComponent::destroyMyGUIWidgets(void)
 	{
 		if (true == this->hasParent)
 		{
@@ -682,7 +669,7 @@ namespace NOWA
 		this->newKeyValue.clear();
 	}
 
-	void JoystickRemapComponent::notifyMouseSetFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
+	void JoystickConfigurationComponent::notifyMouseSetFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
 	{
 		for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
 		{
@@ -696,22 +683,22 @@ namespace NOWA
 		}
 	}
 
-	void JoystickRemapComponent::buttonHit(MyGUI::Widget* sender)
+	void JoystickConfigurationComponent::buttonHit(MyGUI::Widget* sender)
 	{
 		if ("okButton" == sender->getName())
 		{
 			// Reset mappings, but not all, because else camera etc. cannot be moved anymore
-			InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->clearButtonMapping(this->keyConfigTextboxes.size());
+			InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->clearButtonMapping(this->keyConfigTextboxes.size());
 
 			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
 			{
 				this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				this->textboxActive[i] = false;
 
-				InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedButtonFromString(this->newKeyValue[i]);
-				InputDeviceCore::getSingletonPtr()->getInputDeviceModule(this->occurrenceIndex)->remapButton(static_cast<InputDeviceModule::Action>(i), button);
+				InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getMappedButtonFromString(this->newKeyValue[i]);
+				InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->remapButton(static_cast<InputDeviceModule::Action>(i), button);
 			}
-			
+
 
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
 			{
@@ -734,14 +721,58 @@ namespace NOWA
 		}
 	}
 
-	bool JoystickRemapComponent::canStaticAddComponent(GameObject* gameObject)
+	bool JoystickConfigurationComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// Constraints: Can only be placed under a main game object and no more than 2 of this component may exist
-		if (gameObject->getId() == GameObjectController::MAIN_GAMEOBJECT_ID && gameObject->getComponentCount<JoystickRemapComponent>() < 2)
+		if (nullptr == InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(gameObject->getId()))
+		{
+			return false;
+		}
+
+		if (1 == gameObject->getComponentCount("InputDeviceComponent") && gameObject->getComponentCount<JoystickConfigurationComponent>() < 2)
 		{
 			return true;
 		}
 		return false;
+	}
+
+	// Lua registration part
+
+	JoystickConfigurationComponent* getJoystickConfigurationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<JoystickConfigurationComponent>(gameObject->getComponentWithOccurrence<JoystickConfigurationComponent>(occurrenceIndex)).get();
+	}
+
+	JoystickConfigurationComponent* getJoystickConfigurationComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<JoystickConfigurationComponent>(gameObject->getComponent<JoystickConfigurationComponent>()).get();
+	}
+
+	JoystickConfigurationComponent* getJoystickConfigurationComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<JoystickConfigurationComponent>(gameObject->getComponentFromName<JoystickConfigurationComponent>(name)).get();
+	}
+
+	void JoystickConfigurationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<JoystickConfigurationComponent, GameObjectComponent>("JoystickConfigurationComponent")
+			.def("setActivated", &JoystickConfigurationComponent::setActivated)
+			.def("isActivated", &JoystickConfigurationComponent::isActivated)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("JoystickConfigurationComponent", "class inherits GameObjectComponent", JoystickConfigurationComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("JoystickConfigurationComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("JoystickConfigurationComponent", "bool isActivated()", "Gets whether this component is activated.");
+
+		gameObjectClass.def("getJoystickConfigurationComponentFromName", getJoystickConfigurationComponentFromName);
+		gameObjectClass.def("getJoystickConfigurationComponent", (JoystickConfigurationComponent * (*)(GameObject*)) & getJoystickConfigurationComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JoystickConfigurationComponent getJoystickConfigurationComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "JoystickConfigurationComponent getJoystickConfigurationComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castJoystickConfigurationComponent", &GameObjectController::cast<JoystickConfigurationComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "JoystickConfigurationComponent castJoystickConfigurationComponent(JoystickConfigurationComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 
 }; //namespace end

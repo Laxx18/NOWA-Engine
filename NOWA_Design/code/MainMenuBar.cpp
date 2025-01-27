@@ -1328,18 +1328,27 @@ void MainMenuBar::openAllLuaScripts(void)
 
 	if (false == luaScriptComponents.empty())
 	{
-		for (const auto luaScriptComponent : luaScriptComponents)
+		if (nullptr != luaScriptComponents[0]->getLuaScript())
 		{
-			if (nullptr != luaScriptComponent->getLuaScript())
-			{
-				Ogre::String absoluteLuaScriptFilePathName = luaScriptComponent->getLuaScript()->getScriptFilePathName();
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-				auto ptrFunction = [this, absoluteLuaScriptFilePathName]() { NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName); };
-				NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-				delayProcess->attachChild(closureProcess);
-				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-			}
+			Ogre::String absoluteLuaScriptFilePathName = luaScriptComponents[0]->getLuaScript()->getScriptFilePathName();
+			NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
 		}
+
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(3.0f));
+		auto ptrFunction = [this, luaScriptComponents]() {
+				for (size_t i = 1; i < luaScriptComponents.size(); i++)
+				{
+					if (nullptr != luaScriptComponents[i]->getLuaScript())
+					{
+						Ogre::String absoluteLuaScriptFilePathName = luaScriptComponents[i]->getLuaScript()->getScriptFilePathName();
+						NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
+					}
+				}
+			};
+
+		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+		delayProcess->attachChild(closureProcess);
+		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 	}
 }
 

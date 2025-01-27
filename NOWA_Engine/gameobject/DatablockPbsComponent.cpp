@@ -935,8 +935,8 @@ namespace NOWA
 		// Store also the original name
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
 
-		if ("Missing" == originalDataBlockName)
-			return false;
+		/*if ("Missing" == originalDataBlockName)
+			return false;*/
 
 		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
 		size_t found = originalDataBlockName.find("__");

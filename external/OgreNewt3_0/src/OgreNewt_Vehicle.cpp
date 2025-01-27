@@ -271,6 +271,11 @@ namespace OgreNewt
 
 	void RayCastTire::ProcessPreUpdate(Vehicle* vehicle, dFloat timestep, int threadID)
 	{
+		if (false == vehicle->m_canDrive)
+		{
+			return;
+		}
+
 		NewtonWorldConvexCastReturnInfo info;
 		//
 		// Initialized empty.
@@ -577,7 +582,7 @@ namespace OgreNewt
 		, m_debugtire(false)
 		, m_initMassDataDone(false)
 		, m_combackup(dVector(0.0f))
-		, m_canDrive(true)
+		, m_canDrive(false)
 	{
 		//dVector aAngularDamping(0.0f);
 		//NewtonBodySetLinearDamping(Body::m_body, 0);
@@ -1025,6 +1030,11 @@ namespace OgreNewt
 
 	void RayCastVehicleManager::UpdateDriverInput(Vehicle* const vehicle, RayCastTire* vhtire, dFloat timestep)
 	{
+		if (false == vehicle->m_canDrive)
+		{
+			return;
+		}
+
 		// vhtire->m_steerAngle = 0.0f;
 		vhtire->m_motorForce = 0.0f;
 		vhtire->m_brakeForce = 0.0f;

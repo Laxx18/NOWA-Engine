@@ -1154,5 +1154,5 @@ namespace ParticleUniverse
 			size_t mMaxNumAffectorParticles;
 			size_t mMaxNumSystemParticles;
 	};
-}
+};
 #endif

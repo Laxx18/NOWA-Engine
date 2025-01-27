@@ -1,5 +1,5 @@
 #include "NOWAPrecompiled.h"
-#include "KeyboardRemapComponent.h"
+#include "KeyboardConfigurationComponent.h"
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
@@ -14,24 +14,24 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	KeyboardRemapComponent::KeyboardRemapComponent()
+	KeyboardConfigurationComponent::KeyboardConfigurationComponent()
 		: GameObjectComponent(),
-		name("KeyboardRemapComponent"),
+		name("KeyboardConfigurationComponent"),
 		hasParent(false),
 		widget(nullptr),
 		messageLabel(nullptr),
 		okButton(nullptr),
 		abordButton(nullptr),
-		activated(new Variant(KeyboardRemapComponent::AttrActivated(), true, this->attributes)),
-		relativePosition(new Variant(KeyboardRemapComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
-		parentId(new Variant(KeyboardRemapComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
-		okClickEventName(new Variant(KeyboardRemapComponent::AttrOkClickEventName(), Ogre::String(""), this->attributes)),
-		abordClickEventName(new Variant(KeyboardRemapComponent::AttrAbordClickEventName(), Ogre::String(""), this->attributes))
+		activated(new Variant(KeyboardConfigurationComponent::AttrActivated(), true, this->attributes)),
+		relativePosition(new Variant(KeyboardConfigurationComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
+		parentId(new Variant(KeyboardConfigurationComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
+		okClickEventName(new Variant(KeyboardConfigurationComponent::AttrOkClickEventName(), Ogre::String(""), this->attributes)),
+		abordClickEventName(new Variant(KeyboardConfigurationComponent::AttrAbordClickEventName(), Ogre::String(""), this->attributes))
 	{
-		this->activated->setDescription("Shows the remap menu if activated.");
+		this->activated->setDescription("Shows the configuration menu if activated.");
 	}
 
-	KeyboardRemapComponent::~KeyboardRemapComponent(void)
+	KeyboardConfigurationComponent::~KeyboardConfigurationComponent(void)
 	{
 		if (nullptr != this->widget && false == this->hasParent)
 		{
@@ -40,37 +40,37 @@ namespace NOWA
 		}
 	}
 
-	void KeyboardRemapComponent::initialise()
+	void KeyboardConfigurationComponent::initialise()
 	{
 
 	}
 
-	const Ogre::String& KeyboardRemapComponent::getName() const
+	const Ogre::String& KeyboardConfigurationComponent::getName() const
 	{
 		return this->name;
 	}
 
-	void KeyboardRemapComponent::install(const Ogre::NameValuePairList* options)
+	void KeyboardConfigurationComponent::install(const Ogre::NameValuePairList* options)
 	{
-		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<KeyboardRemapComponent>(KeyboardRemapComponent::getStaticClassId(), KeyboardRemapComponent::getStaticClassName());
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<KeyboardConfigurationComponent>(KeyboardConfigurationComponent::getStaticClassId(), KeyboardConfigurationComponent::getStaticClassName());
 	}
 
-	void KeyboardRemapComponent::shutdown()
-	{
-
-	}
-
-	void KeyboardRemapComponent::uninstall()
+	void KeyboardConfigurationComponent::shutdown()
 	{
 
 	}
 
-	void KeyboardRemapComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	void KeyboardConfigurationComponent::uninstall()
+	{
+
+	}
+
+	void KeyboardConfigurationComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
 	{
 		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
-	bool KeyboardRemapComponent::init(rapidxml::xml_node<>*& propertyElement)
+	bool KeyboardConfigurationComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
 
@@ -99,114 +99,141 @@ namespace NOWA
 			this->setAbordClickEventName(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+
+		unsigned char i = 0;
+		while (propertyElement)
+		{
+			if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Key_" + Ogre::StringConverter::toString(i))
+			{
+				// Store the mappings in a temp container, because at this time the game object is not available yet
+				this->keyCodes.emplace(std::make_pair(i, Ogre::StringConverter::parseInt(propertyElement->first_attribute("data")->value())));
+			}
+			i++;
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		return true;
 	}
 
-	GameObjectCompPtr KeyboardRemapComponent::clone(GameObjectPtr clonedGameObjectPtr)
+	GameObjectCompPtr KeyboardConfigurationComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		// Cloning does not make sense
 		return nullptr;
 	}
 
-	bool KeyboardRemapComponent::postInit(void)
+	bool KeyboardConfigurationComponent::postInit(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[KeyboardRemapComponent] Init component for game object: " + this->gameObjectPtr->getName());
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[KeyboardConfigurationComponent] Init component for game object: " + this->gameObjectPtr->getName());
 
 		this->setActivated(this->activated->getBool());
+
+		const auto& inputDeviceModule = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId());
+
+		if (nullptr != inputDeviceModule)
+		{
+			for (auto& it = this->keyCodes.cbegin(); it != this->keyCodes.cend(); ++it)
+			{
+				OIS::KeyCode keyCode = static_cast<OIS::KeyCode>(it->second);
+				if (OIS::KC_UNASSIGNED != keyCode)
+				{
+					inputDeviceModule->remapKey(static_cast<InputDeviceModule::Action>(it->first), keyCode);
+				}
+			}
+		}
 
 		return true;
 	}
 
-	bool KeyboardRemapComponent::connect(void)
+	bool KeyboardConfigurationComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		// Sets the event handler
 		if (nullptr != this->widget)
 		{
-			this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &KeyboardRemapComponent::buttonHit);
-			this->abordButton->eventMouseButtonClick += MyGUI::newDelegate(this, &KeyboardRemapComponent::buttonHit);
+			this->okButton->eventMouseButtonClick += MyGUI::newDelegate(this, &KeyboardConfigurationComponent::buttonHit);
+			this->abordButton->eventMouseButtonClick += MyGUI::newDelegate(this, &KeyboardConfigurationComponent::buttonHit);
 			for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 			{
-				auto keyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(static_cast<InputDeviceModule::Action>(i));
-				Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyCode);
+				auto keyCode = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getMappedKey(static_cast<InputDeviceModule::Action>(i));
+				Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedKey(keyCode);
 				this->oldKeyValue[i] = strKeyCode;
 				this->newKeyValue[i] = strKeyCode;
 				// Ogre::String strKeyCode = NOWA::Core::getSingletonPtr()->getKeyboard()->getAsString(keyCode);
 				this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
 				this->keyConfigTextboxes[i]->setCaptionWithReplacing(strKeyCode);
-				this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &KeyboardRemapComponent::notifyMouseSetFocus);
-				this->keyConfigTextboxes[i]->eventKeyButtonPressed += MyGUI::newDelegate(this, &KeyboardRemapComponent::keyPressed);
+				this->keyConfigTextboxes[i]->eventMouseSetFocus += MyGUI::newDelegate(this, &KeyboardConfigurationComponent::notifyMouseSetFocus);
+				this->keyConfigTextboxes[i]->eventKeyButtonPressed += MyGUI::newDelegate(this, &KeyboardConfigurationComponent::keyPressed);
 			}
 		}
 		
 		return true;
 	}
 
-	bool KeyboardRemapComponent::disconnect(void)
+	bool KeyboardConfigurationComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		if (nullptr != this->okButton)
 		{
-			this->okButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &KeyboardRemapComponent::buttonHit);
-			this->abordButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &KeyboardRemapComponent::buttonHit);
+			this->okButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &KeyboardConfigurationComponent::buttonHit);
+			this->abordButton->eventMouseButtonClick -= MyGUI::newDelegate(this, &KeyboardConfigurationComponent::buttonHit);
 		}
 
 		for (unsigned short i = 0; i < keyConfigTextboxes.size(); i++)
 		{
-			this->keyConfigTextboxes[i]->eventMouseSetFocus -= MyGUI::newDelegate(this, &KeyboardRemapComponent::notifyMouseSetFocus);
-			this->keyConfigTextboxes[i]->eventKeyButtonPressed -= MyGUI::newDelegate(this, &KeyboardRemapComponent::keyPressed);
+			this->keyConfigTextboxes[i]->eventMouseSetFocus -= MyGUI::newDelegate(this, &KeyboardConfigurationComponent::notifyMouseSetFocus);
+			this->keyConfigTextboxes[i]->eventKeyButtonPressed -= MyGUI::newDelegate(this, &KeyboardConfigurationComponent::keyPressed);
 		}
 
 		return true;
 	}
 
-	bool KeyboardRemapComponent::onCloned(void)
+	bool KeyboardConfigurationComponent::onCloned(void)
 	{
 		
 		return true;
 	}
 
-	void KeyboardRemapComponent::onRemoveComponent(void)
+	void KeyboardConfigurationComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
 
-		if (nullptr != this->widget)
-		{
-			this->widget->detachFromWidget();
-		}
-		this->hasParent = false;
+		this->destroyMyGUIWidgets();
 	}
 
-	void KeyboardRemapComponent::update(Ogre::Real dt, bool notSimulating)
+	void KeyboardConfigurationComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 
 	}
 
-	void KeyboardRemapComponent::actualizeValue(Variant* attribute)
+	void KeyboardConfigurationComponent::actualizeValue(Variant* attribute)
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (KeyboardRemapComponent::AttrActivated() == attribute->getName())
+		if (KeyboardConfigurationComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
 		}
-		else if (KeyboardRemapComponent::AttrRelativePosition() == attribute->getName())
+		else if (KeyboardConfigurationComponent::AttrRelativePosition() == attribute->getName())
 		{
 			this->setRelativePosition(attribute->getVector2());
 		}
-		else if (KeyboardRemapComponent::AttrParentId() == attribute->getName())
+		else if (KeyboardConfigurationComponent::AttrParentId() == attribute->getName())
 		{
 			this->setParentId(attribute->getULong());
 		}
-		else if (KeyboardRemapComponent::AttrOkClickEventName() == attribute->getName())
+		else if (KeyboardConfigurationComponent::AttrOkClickEventName() == attribute->getName())
 		{
 			this->setOkClickEventName(attribute->getString());
 		}
-		else if (KeyboardRemapComponent::AttrAbordClickEventName() == attribute->getName())
+		else if (KeyboardConfigurationComponent::AttrAbordClickEventName() == attribute->getName())
 		{
 			this->setAbordClickEventName(attribute->getString());
 		}
 	}
 
-	void KeyboardRemapComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
+	void KeyboardConfigurationComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
 	{
 		// 2 = int
 		// 6 = real
@@ -221,7 +248,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
-		propertiesXML->append_node(propertyXML);	
+		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
@@ -246,19 +273,36 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AbordClickEventName"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->abordClickEventName->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		const auto& inputDeviceModule = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId());
+
+		if (nullptr != inputDeviceModule)
+		{
+			for (unsigned short i = 0; i < inputDeviceModule->getKeyMappingCount(); i++)
+			{
+				propertyXML = doc.allocate_node(node_element, "property");
+				propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
+				propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Key_" + Ogre::StringConverter::toString(i))));
+
+				Ogre::String mappedKeyCode = Ogre::StringConverter::toString(inputDeviceModule->getMappedKey(static_cast<InputDeviceModule::Action>(i)));
+
+				propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, mappedKeyCode)));
+				propertiesXML->append_node(propertyXML);
+			}
+		}
 	}
 
-	Ogre::String KeyboardRemapComponent::getClassName(void) const
+	Ogre::String KeyboardConfigurationComponent::getClassName(void) const
 	{
-		return "KeyboardRemapComponent";
+		return "KeyboardConfigurationComponent";
 	}
 
-	Ogre::String KeyboardRemapComponent::getParentClassName(void) const
+	Ogre::String KeyboardConfigurationComponent::getParentClassName(void) const
 	{
 		return "GameObjectComponent";
 	}
 
-	void KeyboardRemapComponent::setActivated(bool activated)
+	void KeyboardConfigurationComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
 
@@ -272,12 +316,12 @@ namespace NOWA
 		}
 	}
 
-	bool KeyboardRemapComponent::isActivated(void) const
+	bool KeyboardConfigurationComponent::isActivated(void) const
 	{
 		return this->activated->getBool();
 	}
 
-	void KeyboardRemapComponent::setRelativePosition(const Ogre::Vector2& relativePosition)
+	void KeyboardConfigurationComponent::setRelativePosition(const Ogre::Vector2& relativePosition)
 	{
 		this->relativePosition->setValue(relativePosition);
 
@@ -288,12 +332,12 @@ namespace NOWA
 		}
 	}
 
-	Ogre::Vector2 KeyboardRemapComponent::getRelativePosition(void) const
+	Ogre::Vector2 KeyboardConfigurationComponent::getRelativePosition(void) const
 	{
 		return this->relativePosition->getVector2();
 	}
 
-	void KeyboardRemapComponent::setParentId(unsigned long parentId)
+	void KeyboardConfigurationComponent::setParentId(unsigned long parentId)
 	{
 		this->parentId->setValue(parentId);
 
@@ -335,79 +379,39 @@ namespace NOWA
 		}
 	}
 
-	unsigned long KeyboardRemapComponent::getParentId(void) const
+	unsigned long KeyboardConfigurationComponent::getParentId(void) const
 	{
 		return this->parentId->getULong();
 	}
 
-	void KeyboardRemapComponent::setOkClickEventName(const Ogre::String& okClickEventName)
+	void KeyboardConfigurationComponent::setOkClickEventName(const Ogre::String& okClickEventName)
 	{
 		this->okClickEventName->setValue(okClickEventName);
 		this->okClickEventName->addUserData(GameObject::AttrActionGenerateLuaFunction(), okClickEventName + "(thisComponent)=" + this->getClassName());
 	}
 
-	Ogre::String KeyboardRemapComponent::getOkClickEventName(void) const
+	Ogre::String KeyboardConfigurationComponent::getOkClickEventName(void) const
 	{
 		return this->okClickEventName->getString();
 	}
 
-	void KeyboardRemapComponent::setAbordClickEventName(const Ogre::String& abordClickEventName)
+	void KeyboardConfigurationComponent::setAbordClickEventName(const Ogre::String& abordClickEventName)
 	{
 		this->abordClickEventName->setValue(abordClickEventName);
 		this->abordClickEventName->addUserData(GameObject::AttrActionGenerateLuaFunction(), abordClickEventName + "(thisComponent)=" + this->getClassName());
 	}
 
-	Ogre::String KeyboardRemapComponent::getAbordClickEventName(void) const
+	Ogre::String KeyboardConfigurationComponent::getAbordClickEventName(void) const
 	{
 		return this->abordClickEventName->getString();
 	}
 
-	MyGUI::Window* KeyboardRemapComponent::getWindow(void) const
+	MyGUI::Window* KeyboardConfigurationComponent::getWindow(void) const
 	{
 		return this->widget;
 	}
 
-	// Lua registration part
-
-	KeyboardRemapComponent* getKeyboardRemapComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<KeyboardRemapComponent>(gameObject->getComponentWithOccurrence<KeyboardRemapComponent>(occurrenceIndex)).get();
-	}
-
-	KeyboardRemapComponent* getKeyboardRemapComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<KeyboardRemapComponent>(gameObject->getComponent<KeyboardRemapComponent>()).get();
-	}
-
-	KeyboardRemapComponent* getKeyboardRemapComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<KeyboardRemapComponent>(gameObject->getComponentFromName<KeyboardRemapComponent>(name)).get();
-	}
-
-	void KeyboardRemapComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
-	{
-		module(lua)
-		[
-			class_<KeyboardRemapComponent, GameObjectComponent>("KeyboardRemapComponent")
-			.def("setActivated", &KeyboardRemapComponent::setActivated)
-			.def("isActivated", &KeyboardRemapComponent::isActivated)
-		];
-
-		LuaScriptApi::getInstance()->addClassToCollection("KeyboardRemapComponent", "class inherits GameObjectComponent", KeyboardRemapComponent::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("KeyboardRemapComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
-		LuaScriptApi::getInstance()->addClassToCollection("KeyboardRemapComponent", "bool isActivated()", "Gets whether this component is activated.");
-
-		gameObjectClass.def("getKeyboardRemapComponentFromName", &getKeyboardRemapComponentFromName);
-		gameObjectClass.def("getKeyboardRemapComponent", (KeyboardRemapComponent * (*)(GameObject*)) & getKeyboardRemapComponent);
-
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyboardRemapComponent getKeyboardRemapComponent()", "Gets the component. This can be used if the game object this component just once.");
-		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyboardRemapComponent getKeyboardRemapComponentFromName(String name)", "Gets the component from name.");
-
-		gameObjectControllerClass.def("castKeyboardRemapComponent", &GameObjectController::cast<KeyboardRemapComponent>);
-		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "KeyboardRemapComponent castKeyboardRemapComponent(KeyboardRemapComponent other)", "Casts an incoming type from function for lua auto completion.");
-	}
-
-	void KeyboardRemapComponent::createMyGuiWidgets(void)
+	void KeyboardConfigurationComponent::createMyGuiWidgets(void)
 	{
 		const unsigned short count = 31;
 
@@ -448,8 +452,8 @@ namespace NOWA
 			this->keyConfigTextboxes[i]->setEditReadOnly(true);
 			// this->keyConfigTextboxes[i]->attachToWidget(scrollView);
 
-			auto keyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKey(static_cast<InputDeviceModule::Action>(i));
-			Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(keyCode);
+			auto keyCode = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getMappedKey(static_cast<InputDeviceModule::Action>(i));
+			Ogre::String strKeyCode = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedKey(keyCode);
 			this->oldKeyValue[i] = strKeyCode;
 			this->newKeyValue[i] = strKeyCode;
 			this->keyConfigTextboxes[i]->setNeedMouseFocus(true);
@@ -462,7 +466,7 @@ namespace NOWA
 
 		// scrollView->setCanvasSize((posX + marginX + sizeX + editSizeX) * scrollView->getClientCoord().width, totalHeight * scrollView->getClientCoord().height);
 
-		this->messageLabel = scrollView->createWidgetReal<MyGUI::EditBox>("TextBox", posX  + marginX + marginX + sizeX + editSizeX, posY + marginY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
+		this->messageLabel = scrollView->createWidgetReal<MyGUI::EditBox>("TextBox", posX + marginX + marginX + sizeX + editSizeX, posY + marginY, sizeX, sizeY, MyGUI::Align::Left, "Popup");
 		this->messageLabel->setCaptionWithReplacing("#{Key_Existing}");
 		this->messageLabel->setTextColour(MyGUI::Colour::Red);
 		// this->messageLabel->attachToWidget(scrollView);
@@ -509,12 +513,12 @@ namespace NOWA
 
 		this->abordButton = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>("Button", 0.0f, 0.0f, 0.05f, 0.02f, MyGUI::Align::Left, "Popup", "abordButton");
 		this->abordButton->attachToWidget(this->widget);
-		this->abordButton->setRealPosition(0.5f + 0.21f , 0.91f);
+		this->abordButton->setRealPosition(0.5f + 0.21f, 0.91f);
 		this->abordButton->setAlign(MyGUI::Align::Left);
 		this->abordButton->setCaptionWithReplacing("#{Abord}");
 	}
 
-	void KeyboardRemapComponent::destroyMyGUIWidgets(void)
+	void KeyboardConfigurationComponent::destroyMyGUIWidgets(void)
 	{
 		if (true == this->hasParent)
 		{
@@ -530,7 +534,7 @@ namespace NOWA
 		this->newKeyValue.clear();
 	}
 
-	void KeyboardRemapComponent::notifyMouseSetFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
+	void KeyboardConfigurationComponent::notifyMouseSetFocus(MyGUI::Widget* sender, MyGUI::Widget* old)
 	{
 		for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
 		{
@@ -544,20 +548,20 @@ namespace NOWA
 		}
 	}
 
-	void KeyboardRemapComponent::buttonHit(MyGUI::Widget* sender)
+	void KeyboardConfigurationComponent::buttonHit(MyGUI::Widget* sender)
 	{
 		if ("okButton" == sender->getName())
 		{
 			// Reset mappings, but not all, because else camera etc. cannot be moved anymore
-			InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->clearKeyMapping(this->keyConfigTextboxes.size());
+			InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->clearKeyMapping(this->keyConfigTextboxes.size());
 
 			for (unsigned short i = 0; i < this->keyConfigTextboxes.size(); i++)
 			{
 				this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				this->textboxActive[i] = false;
 
-				OIS::KeyCode key = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getMappedKeyFromString(this->newKeyValue[i]);
-				InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->remapKey(static_cast<InputDeviceModule::Action>(i), key);
+				OIS::KeyCode key = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getMappedKeyFromString(this->newKeyValue[i]);
+				InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->remapKey(static_cast<InputDeviceModule::Action>(i), key);
 			}
 
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
@@ -581,7 +585,7 @@ namespace NOWA
 		}
 	}
 
-	void KeyboardRemapComponent::keyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
+	void KeyboardConfigurationComponent::keyPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
 	{
 		// Check if an editbox is active and set the pressed key to the edit box for key-mapping
 		bool keepMappingActive = false;
@@ -598,7 +602,7 @@ namespace NOWA
 				index = i;
 				// this->oldKeyValue[i] = this->keyConfigTextboxes[i]->getCaption();
 				// get key string and set the text
-				strKeyCode = InputDeviceCore::getSingletonPtr()->getInputDeviceModule(0)->getStringFromMappedKey(static_cast<OIS::KeyCode>(key.getValue()));
+				strKeyCode = InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(this->gameObjectPtr->getId())->getStringFromMappedKey(static_cast<OIS::KeyCode>(key.getValue()));
 				this->textboxActive[i] = false;
 				this->keyConfigTextboxes[i]->setTextShadow(false);
 				keepMappingActive = true;
@@ -617,7 +621,7 @@ namespace NOWA
 				break;
 			}
 		}
-		
+
 		// Set the new key
 		if (-1 != index /*&& !alreadyExisting*/ && !strKeyCode.empty())
 		{
@@ -625,7 +629,7 @@ namespace NOWA
 			this->keyConfigTextboxes[index]->setCaptionWithReplacing(strKeyCode);
 			this->newKeyValue[index] = this->keyConfigTextboxes[index]->getCaption();
 
-			
+
 			if (index < count - 1)
 			{
 				MyGUI::InputManager::getInstance().setKeyFocusWidget(this->keyConfigTextboxes[index + 1]);
@@ -634,14 +638,58 @@ namespace NOWA
 		}
 	}
 
-	bool KeyboardRemapComponent::canStaticAddComponent(GameObject* gameObject)
+	bool KeyboardConfigurationComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// Constraints: Can only be placed under a main game object
-		if (gameObject->getId() == GameObjectController::MAIN_GAMEOBJECT_ID)
+		if (nullptr == InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModule(gameObject->getId()))
+		{
+			return false;
+		}
+
+		if (1 == gameObject->getComponentCount("InputDeviceComponent") && gameObject->getComponentCount<KeyboardConfigurationComponent>() < 2)
 		{
 			return true;
 		}
 		return false;
+	}
+
+	// Lua registration part
+
+	KeyboardConfigurationComponent* getKeyboardConfigurationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<KeyboardConfigurationComponent>(gameObject->getComponentWithOccurrence<KeyboardConfigurationComponent>(occurrenceIndex)).get();
+	}
+
+	KeyboardConfigurationComponent* getKeyboardConfigurationComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<KeyboardConfigurationComponent>(gameObject->getComponent<KeyboardConfigurationComponent>()).get();
+	}
+
+	KeyboardConfigurationComponent* getKeyboardConfigurationComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<KeyboardConfigurationComponent>(gameObject->getComponentFromName<KeyboardConfigurationComponent>(name)).get();
+	}
+
+	void KeyboardConfigurationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<KeyboardConfigurationComponent, GameObjectComponent>("KeyboardConfigurationComponent")
+			.def("setActivated", &KeyboardConfigurationComponent::setActivated)
+			.def("isActivated", &KeyboardConfigurationComponent::isActivated)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("KeyboardConfigurationComponent", "class inherits GameObjectComponent", KeyboardConfigurationComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("KeyboardConfigurationComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("KeyboardConfigurationComponent", "bool isActivated()", "Gets whether this component is activated.");
+
+		gameObjectClass.def("getKeyboardConfigurationComponentFromName", &getKeyboardConfigurationComponentFromName);
+		gameObjectClass.def("getKeyboardConfigurationComponent", (KeyboardConfigurationComponent * (*)(GameObject*)) & getKeyboardConfigurationComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyboardConfigurationComponent getKeyboardConfigurationComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "KeyboardConfigurationComponent getKeyboardConfigurationComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castKeyboardConfigurationComponent", &GameObjectController::cast<KeyboardConfigurationComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "KeyboardConfigurationComponent castKeyboardConfigurationComponent(KeyboardConfigurationComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 
 }; //namespace end

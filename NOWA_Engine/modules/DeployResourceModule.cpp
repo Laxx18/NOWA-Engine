@@ -72,7 +72,7 @@ namespace NOWA
 		return false;
 	}
 
-	void DeployResourceModule::sendFilePathToRunningInstance(const Ogre::String& filePathName)
+	bool DeployResourceModule::sendFilePathToRunningInstance(const Ogre::String& filePathName)
 	{
 // #if defined(_WIN32)
 #if 0
@@ -92,11 +92,13 @@ namespace NOWA
 			cds.lpData = (void*)message.c_str();  // Pointer to the message
 
 			SendMessage(this->hwndNOWALuaScript, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
+			return true;
 		}
 		else
 		{
 			// If somehow mutex does exist, even it should not, release the mutex and create process again
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to find running instance of NOWALuaScript.");
+			return false;
 		}
 #else
 #if defined(_WIN32)
@@ -108,6 +110,7 @@ namespace NOWA
 		}
 #endif
 
+		bool success = false;
 		// Sends the file path name to the to be opened lua script file
 		// Create an XML document
 		rapidxml::xml_document<> doc;
@@ -133,14 +136,17 @@ namespace NOWA
 			outFile << doc; // Print the XML content to the file
 			outFile.close();
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: XML file created successfully at ../../external/NOWALuaScript/bin/lua_script_data.xml");
+			success = true;
 		}
 		else
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to write to ../../external/NOWALuaScript/bin/lua_script_data.xml");
+			success = false;
 		}
 
 		// Clear the document (optional)
 		doc.clear();
+		return success;
 #endif
 	}
 
@@ -218,8 +224,7 @@ namespace NOWA
 
 		if (instanceRunning)
 		{
-			this->sendFilePathToRunningInstance(filePathName);
-			return true;
+			return this->sendFilePathToRunningInstance(filePathName);
 		}
 
 #if defined(_WIN32)

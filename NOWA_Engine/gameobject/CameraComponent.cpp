@@ -259,7 +259,7 @@ namespace NOWA
 
 	bool CameraComponent::disconnect(void)
 	{
-		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
+		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 		{
 			this->gameObjectPtr->doNotTouchVisibleAttribute = true;
 			this->dummyEntity->setVisible(false);
@@ -437,7 +437,7 @@ namespace NOWA
 
 			// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
 			// So if its the main camera add the camera to the camera manager to have public available
-			if ("MainCamera" == this->camera->getName())
+			if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 			{
 				// Delete camera that existed, before a project was loaded
 				Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();

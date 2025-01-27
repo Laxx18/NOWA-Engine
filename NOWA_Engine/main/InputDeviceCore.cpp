@@ -11,6 +11,7 @@ namespace NOWA
 		: mouse(nullptr),
 		keyboard(nullptr),
 		inputSystem(nullptr),
+		mainInputDeviceModule(nullptr),
 		joystickIndex(0),
 		listenerAboutToBeRemoved(false),
 		bSelectDown(false)
@@ -38,12 +39,25 @@ namespace NOWA
 	{
 		if (nullptr != this->inputSystem)
 		{
-			for (size_t i = 0; i < this->inputDeviceModules.size(); i++)
+			if (nullptr != this->mainInputDeviceModule)
 			{
-				InputDeviceModule* inputDeviceModule = this->inputDeviceModules[i];
+				delete this->mainInputDeviceModule;
+				this->mainInputDeviceModule = nullptr;
+			}
+
+			for (size_t i = 0; i < this->keyboardInputDeviceModules.size(); i++)
+			{
+				InputDeviceModule* inputDeviceModule = this->keyboardInputDeviceModules[i];
 				delete inputDeviceModule;
 			}
-			this->inputDeviceModules.clear();
+			this->keyboardInputDeviceModules.clear();
+
+			for (size_t i = 0; i < this->joystickInputDeviceModules.size(); i++)
+			{
+				InputDeviceModule* inputDeviceModule = this->joystickInputDeviceModules[i];
+				delete inputDeviceModule;
+			}
+			this->joystickInputDeviceModules.clear();
 
 			if (this->mouse)
 			{
@@ -93,27 +107,54 @@ namespace NOWA
 
 			renderWindow->getCustomAttribute("WINDOW", &windowHnd);
 			windowHndStr << windowHnd;
-			paramList.insert(std::make_pair(std::string("WINDOW"), windowHndStr.str()));
+			paramList.insert({ "WINDOW", windowHndStr.str() });
+
 #if defined OIS_LINUX_PLATFORM
-			paramList.insert(std::make_pair(std::string("x11_mouse_grab"), std::string("false")));
-			paramList.insert(std::make_pair(std::string("x11_keyboard_grab"), std::string("false")));
+			paramList.insert({ "x11_mouse_grab", "false" });
+			paramList.insert({ "x11_keyboard_grab", "false" });
 #endif
 
-			// Create inputsystem
 			this->inputSystem = OIS::InputManager::createInputSystem(paramList);
 
-			// If possible create a buffered keyboard
-			// (note: if below line doesn't compile, try:  if (this->inputSystem->getNumberOfDevices(OIS::OISKeyboard) > 0) {
-			//if( this->inputSystem->numKeyboards() > 0 ) {
-			if (this->inputSystem->getNumberOfDevices(OIS::OISKeyboard) > 0)
+			try
 			{
-				this->keyboard = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
-				this->keyboard->setEventCallback(this);
+				int keyboardIndex = 0;
+				while (true)
+				{
+					if (0 == keyboardIndex)
+					{
+						this->keyboard = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
+						this->mainInputDeviceModule = new InputDeviceModule("MainKeyboard", true, this->keyboard);
+						this->keyboard->setEventCallback(this);
+
+						std::string deviceName = keyboard->vendor();
+						if (deviceName.empty())
+						{
+							deviceName = "Keyboard" + std::to_string(keyboardIndex);
+						}
+						this->addDevice(deviceName, true, keyboard);
+					}
+					else
+					{
+						OIS::Keyboard* keyboard = static_cast<OIS::Keyboard*>(this->inputSystem->createInputObject(OIS::OISKeyboard, true));
+						this->keyboard->setEventCallback(this);
+
+						// Use the joystick's vendor name as its unique identifier
+						std::string deviceName = keyboard->vendor();
+						if (deviceName.empty())
+						{
+							deviceName = "Keyboard" + std::to_string(keyboardIndex);
+						}
+						this->addDevice(deviceName, true, keyboard);
+					}
+					++keyboardIndex;
+				}
+			}
+			catch (...)
+			{
+				// No more keyboards available
 			}
 
-			// If possible create a buffered mouse
-			// (note: if below line doesn't compile, try:  if (this->inputSystem->getNumberOfDevices(OIS::OISMouse) > 0) {
-			//if( this->inputSystem->numMice() > 0 ) {
 			if (this->inputSystem->getNumberOfDevices(OIS::OISMouse) > 0)
 			{
 				this->mouse = static_cast<OIS::Mouse*>(this->inputSystem->createInputObject(OIS::OISMouse, true));
@@ -128,24 +169,24 @@ namespace NOWA
 				this->setWindowExtents(width, height);
 			}
 
-			// First one is default for keyboard, mouse, maybe joystick
-			InputDeviceModule* tempInputDeviceModule = new InputDeviceModule(0);
-			this->inputDeviceModules.emplace_back(tempInputDeviceModule);
-
-			// Second one is optional if there is a second joystick
-			tempInputDeviceModule = new InputDeviceModule(1);
-			this->inputDeviceModules.emplace_back(tempInputDeviceModule);
-
 			try
 			{
-				// Tries to create as many joysticks as possible
+				int joystickIndex = 0;
 				while (true)
 				{
-					// See https://forums.ogre3d.org/viewtopic.php?t=60609
-					OIS::JoyStick* tempJoystick = static_cast<OIS::JoyStick*>(this->inputSystem->createInputObject(OIS::OISJoyStick, true));
-					tempJoystick->setEventCallback(this);
+					OIS::JoyStick* joystick = static_cast<OIS::JoyStick*>(this->inputSystem->createInputObject(OIS::OISJoyStick, true));
+					this->joysticks.push_back(joystick);
 
-					this->joyStickConfig.max = tempJoystick->MAX_AXIS - 4000;
+					// Use the joystick's vendor name as its unique identifier
+					std::string deviceName = joystick->vendor();
+					if (deviceName.empty())
+					{
+						deviceName = "Joystick" + std::to_string(joystickIndex);
+					}
+
+					joystick->setEventCallback(this);
+
+					this->joyStickConfig.max = joystick->MAX_AXIS - 4000;
 					// Attention: static_cast is new, is it correct casted?
 					this->joyStickConfig.deadZone = static_cast<int>(this->joyStickConfig.max * 0.1f);
 
@@ -154,14 +195,16 @@ namespace NOWA
 
 					this->joyStickConfig.swivel = 0;
 
-					tempJoystick->setVector3Sensitivity(0.001f);
+					joystick->setVector3Sensitivity(0.001f);
 
-					this->joysticks.emplace_back(tempJoystick);
+					this->addDevice(deviceName, false, joystick);
+
+					++joystickIndex;
 				}
 			}
 			catch (...)
 			{
-
+				// No more joysticks available
 			}
 		}
 	}
@@ -187,7 +230,7 @@ namespace NOWA
 
 		for (size_t i = 0; i < this->getJoyStickCount(); i++)
 		{
-			this->inputDeviceModules[i]->update(static_cast<Ogre::Real>(dt));
+			this->joystickInputDeviceModules[i]->update(dt);
 		}
 
 		// ATTENTION: Capture called twice, see above
@@ -696,6 +739,18 @@ namespace NOWA
 		return true;
 	}
 
+	void InputDeviceCore::addDevice(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject)
+	{
+		if (true == isKeyboard)
+		{
+			this->keyboardInputDeviceModules.push_back(new InputDeviceModule(deviceName, isKeyboard, deviceObject));
+		}
+		else
+		{
+			this->joystickInputDeviceModules.push_back(new InputDeviceModule(deviceName, isKeyboard, deviceObject));
+		}
+	}
+
 	unsigned short InputDeviceCore::getJoyStickCount(void) const
 	{ 
 		return static_cast<unsigned short>(this->joysticks.size());
@@ -705,17 +760,85 @@ namespace NOWA
 	{
 		return this->joysticks;
 	}
-	InputDeviceModule* InputDeviceCore::getInputDeviceModule(unsigned short index) const
+
+	InputDeviceModule* InputDeviceCore::assignDevice(const Ogre::String& deviceName, unsigned long id)
 	{
-		if (index < this->inputDeviceModules.size())
+		for (auto& module : this->keyboardInputDeviceModules)
 		{
-			return this->inputDeviceModules[index];
+			if (module->getDeviceName() == deviceName && false == module->isOccupied())
+			{
+				module->setOccupiedId(id);
+				return module;
+			}
+		}
+		for (auto& module : this->joystickInputDeviceModules)
+		{
+			if (module->getDeviceName() == deviceName && false == module->isOccupied())
+			{
+				module->setOccupiedId(id);
+				return module;
+			}
 		}
 		return nullptr;
 	}
-	std::vector<InputDeviceModule*> InputDeviceCore::getInputDeviceModules(void) const
+
+	void InputDeviceCore::releaseDevice(unsigned long id)
 	{
-		return this->inputDeviceModules;
+		for (auto& module : this->keyboardInputDeviceModules)
+		{
+			if (module->getOccupiedId() == id && module->isOccupied())
+			{
+				module->releaseOccupation();
+				break;
+			}
+		}
+		for (auto& module : this->joystickInputDeviceModules)
+		{
+			if (module->getOccupiedId() == id && module->isOccupied())
+			{
+				module->releaseOccupation();
+				break;
+			}
+		}
+	}
+
+	InputDeviceModule* InputDeviceCore::getMainKeyboardInputDeviceModule(void) const
+	{
+		return this->mainInputDeviceModule;
+	}
+
+	InputDeviceModule* InputDeviceCore::getKeyboardInputDeviceModule(unsigned long id) const
+	{
+		for (auto& module : this->keyboardInputDeviceModules)
+		{
+			if (id == module->getOccupiedId())
+			{
+				return module;
+			}
+		}
+		return nullptr;
+	}
+
+	InputDeviceModule* InputDeviceCore::getJoystickInputDeviceModule(unsigned long id) const
+	{
+		for (auto& module : this->joystickInputDeviceModules)
+		{
+			if (id == module->getOccupiedId())
+			{
+				return module;
+			}
+		}
+		return nullptr;
+	}
+
+	std::vector<InputDeviceModule*> InputDeviceCore::getKeyboardInputDeviceModules(void) const
+	{
+		return this->keyboardInputDeviceModules;
+	}
+
+	std::vector<InputDeviceModule*> InputDeviceCore::getJoystickInputDeviceModules(void) const
+	{
+		return this->joystickInputDeviceModules;
 	}
 
 	bool InputDeviceCore::isSelectDown(void) const

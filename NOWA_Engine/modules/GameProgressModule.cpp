@@ -332,17 +332,6 @@ namespace NOWA
 		}
 		this->sceneMap.clear();
 		
-		// Delete all global attributes
-		auto& it = this->globalAttributesMap.begin();
-
-		while (it != this->globalAttributesMap.end())
-		{
-			Variant* globalAttribute = it->second;
-			delete globalAttribute;
-			globalAttribute = nullptr;
-			++it;
-		}
-		this->globalAttributesMap.clear();
 		this->bSceneLoading = false;
 	}
 
@@ -368,6 +357,8 @@ namespace NOWA
 	
 	void GameProgressModule::stop(void)
 	{
+		// TODO: Remove this lines, if it does work: Global attributes shall live through the whole application and all states!
+#if 0
 		// Delete all global defined attributes (when lua script has been disconnected and re-connected, this is required)
 		auto it = this->globalAttributesMap.begin();
 		while (it != this->globalAttributesMap.end())
@@ -378,6 +369,8 @@ namespace NOWA
 			++it;
 		}
 		this->globalAttributesMap.clear();
+
+#endif
 	}
 
 	void GameProgressModule::init(Ogre::SceneManager* sceneManager)
@@ -649,7 +642,7 @@ namespace NOWA
 	void GameProgressModule::saveProgress(const Ogre::String& saveName, bool crypted, bool sceneSnapshot)
 	{
 		this->saveName = saveName;
-		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(this->saveName);
+		Ogre::String saveFilePathName = Core::getSingletonPtr()->getSaveFilePathName(saveName);
 		if (false == saveFilePathName.empty())
 		{
 			if (nullptr != this->dotSceneExportModule)
@@ -663,105 +656,7 @@ namespace NOWA
 				this->dotSceneExportModule->saveSceneSnapshot(saveFilePathName + ".scene", crypted);
 			}
 
-			Ogre::String strStream;
-			std::ofstream outFile;
-			outFile.open(saveFilePathName.c_str());
-			if (!outFile)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not create file for path: "
-					+ saveFilePathName + "'");
-				return;
-			}
-
-			// Store whether the file should be crypted or not
-			outFile << crypted << "\n";
-
-			// Get the game object controller for this app state name
-			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjects();
-
-			std::ostringstream oStream;
-
-			for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
-			{
-				const auto& gameObjectPtr = it->second;
-
-				// https://thinkcpp.wordpress.com/2012/04/16/file-to-map-inputoutput/
-
-				// First save the game object id, if it does have an attributes component
-				boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-				if (nullptr != attributesCompPtr)
-				{
-					oStream << "[" << Ogre::StringConverter::toString(gameObjectPtr->getId()) << "]\n";
-					attributesCompPtr->internalSave(oStream);
-				}
-			}
-
-			// Store global defined attributes
-			oStream << "[GlobalAttributes]" << "\n";
-			for (auto& it = this->globalAttributesMap.cbegin(); it != this->globalAttributesMap.cend(); ++it)
-			{
-				Variant* globalAttribute = it->second;
-				int type = globalAttribute->getType();
-				Ogre::String name = globalAttribute->getName();
-				if (Variant::VAR_BOOL == type)
-				{
-					oStream << globalAttribute->getName() << "=Bool=" << globalAttribute->getBool() << "\n";
-				}
-				else if (Variant::VAR_INT == type)
-				{
-					oStream << globalAttribute->getName() << "=Int=" << globalAttribute->getInt() << "\n";
-				}
-				else if (Variant::VAR_UINT == type)
-				{
-					oStream << globalAttribute->getName() << "=UInt=" << globalAttribute->getUInt() << "\n";
-				}
-				else if (Variant::VAR_ULONG == type)
-				{
-					oStream << globalAttribute->getName() << "=ULong=" << globalAttribute->getULong() << "\n";
-				}
-				else if (Variant::VAR_REAL == type)
-				{
-					oStream << globalAttribute->getName() << "=Real=" << globalAttribute->getReal() << "\n";
-				}
-				else if (Variant::VAR_STRING == type)
-				{
-					oStream << globalAttribute->getName() << "=String=" << globalAttribute->getString() << "\n";
-				}
-				else if (Variant::VAR_VEC2 == type)
-				{
-					oStream << globalAttribute->getName() << "=Vector2=" << globalAttribute->getVector2() << "\n";
-				}
-				else if (Variant::VAR_VEC3 == type)
-				{
-					oStream << globalAttribute->getName() << "=Vector3=" << globalAttribute->getVector3() << "\n";
-				}
-				else if (Variant::VAR_VEC4 == type)
-				{
-					oStream << globalAttribute->getName() << "=Vector4=" << globalAttribute->getVector4() << "\n";
-				}
-				/*else if (VAR_LIST == type)
-				{
-					oStream << this->attributeNames[i]->getString() << "=StringList="<< this->attributeValues[i]->getVector4() << "\n";
-				}*/
-			}
-			
-			// If crypted then encode
-			if (true == crypted)
-			{
-				strStream = Core::getSingletonPtr()->encode64(oStream.str(), true);
-			}
-			else
-			{
-				strStream = oStream.str();
-			}
-
-			outFile << strStream;
-			outFile.close();
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule] ERROR: Could not get file path name for saving data: "
-				+ saveFilePathName + "'");
+			AppStateManager::getSingletonPtr()->saveProgress(saveFilePathName, crypted, sceneSnapshot);
 		}
 	}
 
@@ -798,118 +693,7 @@ namespace NOWA
 
 	bool GameProgressModule::internalReadGlobalAttributes(const Ogre::String& globalAttributesStream)
 	{
-		bool success = true;
-		std::istringstream inStream(globalAttributesStream);
-
-		Ogre::String line;
-
-		while (std::getline(inStream, line)) // This is used, because white spaces are also read
-		{
-			if (true == line.empty())
-				continue;
-
-			// Read till global attributes section
-			size_t foundGlobalAttributeSection = line.find("[GlobalAttributes]");
-			if (foundGlobalAttributeSection != Ogre::String::npos)
-			{
-				break;
-			}
-
-			// GameObject
-			Ogre::String gameObjectId = line.substr(1, line.size() - 2);
-			unsigned long id;
-			std::istringstream(gameObjectId) >> id;
-
-			// Get the game object controller for this app state name
-			auto& gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(id);
-			if (nullptr != gameObjectPtr)
-			{
-				boost::shared_ptr<AttributesComponent> attributesCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AttributesComponent>());
-				if (nullptr != attributesCompPtr)
-				{
-					// Read data and set for attributes component
-					success = attributesCompPtr->internalRead(inStream);
-				}
-			}
-		}
-
-		// Read possible global attributes
-		Ogre::StringVector data;
-
-		// parse til eof
-		while (std::getline(inStream, line)) // This is used, because white spaces are also read
-		{
-			// Parse til next game object
-			if (line.find("[") != Ogre::String::npos)
-				break;
-
-			data = Ogre::StringUtil::split(line, "=");
-			if (data.size() < 3)
-				continue;
-
-			Variant* globalAttribute = nullptr;
-			auto& it = this->globalAttributesMap.find(data[0]);
-			if (it != this->globalAttributesMap.cend())
-			{
-				globalAttribute = it->second;
-			}
-			else
-			{
-				globalAttribute = new Variant(data[0]);
-				globalAttribute->setValue(data[1]);
-				this->globalAttributesMap.emplace(data[0], globalAttribute);
-			}
-
-			if (nullptr != globalAttribute)
-			{
-				if ("Bool" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseBool(data[2]));
-					success = true;
-				}
-				else if ("Int" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseInt(data[2]));
-					success = true;
-				}
-				else if ("UInt" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseUnsignedInt(data[2]));
-					success = true;
-				}
-				else if ("ULong" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseUnsignedLong(data[2]));
-					success = true;
-				}
-				else if ("Real" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseReal(data[2]));
-					success = true;
-				}
-				else if ("String" == data[1])
-				{
-					globalAttribute->setValue(data[2]);
-					success = true;
-				}
-				else if ("Vector2" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseVector2(data[2]));
-					success = true;
-				}
-				else if ("Vector3" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseVector3(data[2]));
-					success = true;
-				}
-				else if ("Vector4" == data[1])
-				{
-					globalAttribute->setValue(Ogre::StringConverter::parseVector4(data[2]));
-					success = true;
-				}
-			}
-		}
-		return success;
+		return AppStateManager::getSingletonPtr()->internalReadGlobalAttributes(globalAttributesStream);
 	}
 
 	void GameProgressModule::setIsSceneLoading(bool bSceneLoading)
@@ -1293,175 +1077,52 @@ namespace NOWA
 
 	Variant* GameProgressModule::getGlobalValue(const Ogre::String& attributeName)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->getGlobalValue(attributeName);
 	}
 
 	Variant* GameProgressModule::setGlobalBoolValue(const Ogre::String& attributeName, bool value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalBoolValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalIntValue(const Ogre::String& attributeName, int value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalIntValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalUIntValue(const Ogre::String& attributeName, unsigned int value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalUIntValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalULongValue(const Ogre::String& attributeName, unsigned long value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalULongValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalRealValue(const Ogre::String& attributeName, Ogre::Real value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalRealValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalStringValue(const Ogre::String& attributeName, Ogre::String value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalStringValue(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalVector2Value(const Ogre::String& attributeName, Ogre::Vector2 value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalVector2Value(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalVector3Value(const Ogre::String& attributeName, Ogre::Vector3 value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalVector3Value(attributeName, value);
 	}
 
 	Variant* GameProgressModule::setGlobalVector4Value(const Ogre::String& attributeName, Ogre::Vector4 value)
 	{
-		Variant* globalAttribute = nullptr;
-		auto& it = this->globalAttributesMap.find(attributeName);
-		if (it != this->globalAttributesMap.cend())
-		{
-			globalAttribute = it->second;
-			globalAttribute->setValue(value);
-		}
-		else
-		{
-			globalAttribute = new Variant(attributeName);
-			globalAttribute->setValue(value);
-			this->globalAttributesMap.emplace(attributeName, globalAttribute);
-		}
-		return globalAttribute;
+		return AppStateManager::getSingletonPtr()->setGlobalVector4Value(attributeName, value);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

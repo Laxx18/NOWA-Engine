@@ -1299,6 +1299,8 @@ namespace NOWA
 		void setFlowDirection(const Ogre::String& flowDirection);
 		
 		Ogre::String getFlowDirection(void) const;
+
+		void setCaption(const Ogre::String& caption);
 		
 		void setItemCount(unsigned int itemCount);
 		

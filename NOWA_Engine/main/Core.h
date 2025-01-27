@@ -640,8 +640,6 @@ namespace NOWA
 
 		Ogre::String getOptionLuaGroupName(void) const { return this->optionLuaGroupName; }
 
-		Ogre::String getOptionLuaApiFilePath(void) const { return this->optionLuaApiFilePath; }
-
 		void setOptionLanguage(int optionLanguage) { this->optionLanguage = optionLanguage; }
 
 		int getOptionLanguage(void) const { return this->optionLanguage; }
@@ -881,7 +879,6 @@ namespace NOWA
 		bool optionUseLuaConsole;
 		bool optionUseLuaScript;
 		Ogre::String optionLuaGroupName;
-		Ogre::String optionLuaApiFilePath;
 		unsigned int optionAreaOfInterest;
 		unsigned int optionPacketSendRate;
 		unsigned int optionInterpolationRate;

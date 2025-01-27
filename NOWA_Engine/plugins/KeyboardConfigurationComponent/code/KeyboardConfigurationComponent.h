@@ -22,8 +22,8 @@ The entire risk as to the quality and performance of the Software is borne by yo
 You must determine whether the Software sufficiently meets your requirements. This disclaimer of warranty constitutes an essential part of this Agreement.
 */
 
-#ifndef KEYBOARDREMAPCOMPONENT_H
-#define KEYBOARDREMAPCOMPONENT_H
+#ifndef KEYBOARDCONFIGURATIONCOMPONENT_H
+#define KEYBOARDCONFIGURATIONCOMPONENT_H
 
 #include "gameobject/GameObjectComponent.h"
 #include "main/Events.h"
@@ -35,15 +35,15 @@ namespace NOWA
 	/**
 	  * @brief		This component can be used as building block in order to have keyboard remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window.
 	  */
-	class EXPORTED KeyboardRemapComponent : public GameObjectComponent, public Ogre::Plugin
+	class EXPORTED KeyboardConfigurationComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
-		typedef boost::shared_ptr<KeyboardRemapComponent> KeyboardRemapComponentPtr;
+		typedef boost::shared_ptr<KeyboardConfigurationComponent> KeyboardConfigurationComponentPtr;
 	public:
 
-		KeyboardRemapComponent();
+		KeyboardConfigurationComponent();
 
-		virtual ~KeyboardRemapComponent();
+		virtual ~KeyboardConfigurationComponent();
 
 		/**
 		* @see		Ogre::Plugin::install
@@ -184,7 +184,7 @@ namespace NOWA
 		*/
 		static unsigned int getStaticClassId(void)
 		{
-			return NOWA::getIdFromName("KeyboardRemapComponent");
+			return NOWA::getIdFromName("KeyboardConfigurationComponent");
 		}
 
 		/**
@@ -192,7 +192,7 @@ namespace NOWA
 		*/
 		static Ogre::String getStaticClassName(void)
 		{
-			return "KeyboardRemapComponent";
+			return "KeyboardConfigurationComponent";
 		}
 	
 		/**
@@ -205,7 +205,9 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: This component can be used as building block in order to have keyboard remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added under a MainGameObject.";
+			return "Usage: This component can be used as building block in order to have keyboard remap functionality. "
+				"It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. "
+				"Note: It can only be added a game object with already existing InputDeviceComponent.";
 		}
 		
 		/**
@@ -239,6 +241,9 @@ namespace NOWA
 		MyGUI::Button* okButton;
 		MyGUI::Button* abordButton;
 		bool hasParent;
+
+		// Action, Keycode
+		std::map<unsigned short, int> keyCodes;
 
 		Variant* activated;
 		Variant* relativePosition;

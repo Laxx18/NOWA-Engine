@@ -10,6 +10,7 @@ namespace NOWA
 	{
 	public:
 		typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
+		friend class AppStateManager;
 		friend class GameProgressModule;
 		
 	public:

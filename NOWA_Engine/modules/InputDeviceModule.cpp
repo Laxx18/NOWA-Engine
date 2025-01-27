@@ -3,8 +3,11 @@
 
 namespace NOWA
 {
-	InputDeviceModule::InputDeviceModule(unsigned short joystickIndex)
-		: joystickIndex(joystickIndex),
+	InputDeviceModule::InputDeviceModule(const Ogre::String& deviceName, bool isKeyboard, OIS::Object* deviceObject)
+		: deviceName(deviceName),
+		isKeyboard(isKeyboard),
+		deviceObject(deviceObject),
+		occuppiedId(0),
 		joyStickDeadZone(0.08f), // 0.05 was not enough for stick, so when user left the stick alone, it had a small move strengh remaining
 		rightStickMovement(Ogre::Vector2::ZERO),
 		leftStickMovement(Ogre::Vector2::ZERO),
@@ -398,6 +401,36 @@ namespace NOWA
 			return JoyStickButton::BUTTON_RIGHT_STICK_RIGHT;
 		else
 			return JoyStickButton::BUTTON_NONE;
+	}
+
+	const Ogre::String& InputDeviceModule::getDeviceName(void) const
+	{
+		return this->deviceName;
+	}
+
+	bool InputDeviceModule::isKeyboardDevice(void) const
+	{
+		return this->isKeyboard;
+	}
+
+	bool InputDeviceModule::isOccupied(void) const
+	{
+		return this->occuppiedId != 0;
+	}
+
+	unsigned long InputDeviceModule::getOccupiedId(void) const
+	{
+		return this->occuppiedId;
+	}
+
+	void InputDeviceModule::setOccupiedId(unsigned long id)
+	{
+		this->occuppiedId = id;
+	}
+
+	void InputDeviceModule::releaseOccupation(void)
+	{
+		this->occuppiedId = 0;
 	}
 
 	unsigned short InputDeviceModule::getKeyMappingCount(void) const
@@ -1085,10 +1118,17 @@ namespace NOWA
 	{
 		bool somethingDown = false;
 
+		// Keyboard can only be the first player, but what if there are 2 joysticks?
+		// TODO: Need DeviceInputComponent to control, which player has which device, with device name etc.
+		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
+		{
+			somethingDown |= InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(action));
+			return somethingDown;
+		}
+
 		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[InputDeviceModule]: down: " + Ogre::StringConverter::toString(action) 
 		// 	+ " mapped: " +  Ogre::StringConverter::toString(this->getMappedKey(action)));
 		
-		somethingDown |= InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(action));
 
 		// TODO: What about right stick??
 
@@ -1126,6 +1166,7 @@ namespace NOWA
 			if (JoyStickButton::BUTTON_NONE != this->pressedButton)
 				somethingDown |= this->pressedButton == this->getMappedButton(action);
 		}
+
 		return somethingDown;
 	}
 
@@ -1259,174 +1300,176 @@ namespace NOWA
 
 	void InputDeviceModule::update(Ogre::Real dt)
 	{
-		OIS::JoyStick* joyStick = NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(this->joystickIndex);
+		if (true == this->isKeyboard)
+		{
+			return;
+		}
+
+		OIS::JoyStick* joyStick = static_cast<OIS::JoyStick*>(this->deviceObject);
 
 		// Evaluate which buttons are pressed (maybe more at once) and add them to list
 		this->pressedButtons.clear();
 		JoyStickButton foundButton = JoyStickButton::BUTTON_NONE;
 
-		if (nullptr != joyStick)
+		const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
+
+		// Evaluate Steuerkreuz: Note two axes can be pushed simultanously like up and left, hence use array here from 0 to 1
+		this->pressedPov[0] = Action::NONE;
+		this->pressedPov[1] = Action::NONE;
+		this->pressedPov[2] = Action::NONE;
+		this->pressedPov[3] = Action::NONE;
+
+		if (joystickState.mPOV[0].direction & OIS::Pov::North)
 		{
-			const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
-
-			// Evaluate Steuerkreuz: Note two axes can be pushed simultanously like up and left, hence use array here from 0 to 1
-			this->pressedPov[0] = Action::NONE;
-			this->pressedPov[1] = Action::NONE;
-			this->pressedPov[2] = Action::NONE;
-			this->pressedPov[3] = Action::NONE;
-
-			if (joystickState.mPOV[0].direction & OIS::Pov::North)
-			{
-				this->pressedPov[0] = Action::UP;
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
-				foundButton = BUTTON_LEFT_STICK_UP;
-			}
-			else if (joystickState.mPOV[0].direction & OIS::Pov::South)
-			{
-				this->pressedPov[0] = Action::DOWN;
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
-				foundButton = BUTTON_LEFT_STICK_DOWN;
-			}
-
-			// Attention: is this correct with .mPOV[1]?, must it be 0?
-			if (joystickState.mPOV[1].direction & OIS::Pov::West)
-			{
-				this->pressedPov[1] = Action::LEFT;
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
-				foundButton = BUTTON_LEFT_STICK_LEFT;
-			}
-			else if (joystickState.mPOV[1].direction & OIS::Pov::East)
-			{
-				this->pressedPov[1] = Action::RIGHT;
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
-				foundButton = BUTTON_LEFT_STICK_RIGHT;
-			}
-
-			// Right stick
-			if (joystickState.mPOV[2].direction & OIS::Pov::North)
-			{
-				// What is the action here?
-				// this->pressedPov[2] = Action::UP;
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
-				foundButton = BUTTON_RIGHT_STICK_UP;
-			}
-			else if (joystickState.mPOV[2].direction & OIS::Pov::South)
-			{
-				// What is the action here?
-				// this->pressedPov[2] = Action::DOWN;
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
-				foundButton = BUTTON_RIGHT_STICK_DOWN;
-			}
-
-			if (joystickState.mPOV[3].direction & OIS::Pov::West)
-			{
-				// What is the action here?
-				// this->pressedPov[3] = Action::LEFT;
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
-				foundButton = BUTTON_RIGHT_STICK_LEFT;
-			}
-			else if (joystickState.mPOV[3].direction & OIS::Pov::East)
-			{
-				// What is the action here?
-				// this->pressedPov[3] = Action::RIGHT;
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
-				foundButton = BUTTON_RIGHT_STICK_RIGHT;
-			}
-
-			// Receive the full analog range of the axes, and so have to implement the
-			// own dead zone. This is an empirical value, since some joysticks have more
-			// jitter or creep around the center point than others. Only 8% of the
-			// range are used as the dead zone, but generally you would want to give the user the
-			// option to change this.
-
-			// -1.f for full down to +1.f for full up.
-			this->leftStickMovement.y = (Ogre::Real)joystickState.mAxes[0].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
-			if (Ogre::Math::Abs(this->leftStickMovement.y) < this->joyStickDeadZone)
-			{
-				this->leftStickMovement.y = 0.0f;
-			}
-			else if (this->leftStickMovement.y < 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
-				foundButton = BUTTON_LEFT_STICK_UP;
-			}
-			else if (this->leftStickMovement.y > 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
-				foundButton = BUTTON_LEFT_STICK_DOWN;
-			}
-
-			// Range is -1.f for full left to +1.f for full right
-			this->leftStickMovement.x = (Ogre::Real)joystickState.mAxes[1].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
-			if (Ogre::Math::Abs(this->leftStickMovement.x) < this->joyStickDeadZone)
-			{
-				this->leftStickMovement.x = 0.0f;
-			}
-			else if (this->leftStickMovement.x < 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
-				foundButton = BUTTON_LEFT_STICK_LEFT;
-			}
-			else if (this->leftStickMovement.x > 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
-				foundButton = BUTTON_LEFT_STICK_RIGHT;
-			}
-
-			// -1.f for full down to +1.f for full up.
-			this->rightStickMovement.y = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
-			if (Ogre::Math::Abs(this->rightStickMovement.y) < this->joyStickDeadZone)
-			{
-				this->rightStickMovement.y = 0.0f;
-			}
-			else if (this->rightStickMovement.y < 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
-				foundButton = BUTTON_RIGHT_STICK_UP;
-			}
-			else if (this->rightStickMovement.y > 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
-				foundButton = BUTTON_RIGHT_STICK_DOWN;
-			}
-
-			// Range is -1.f for full left to +1.f for full right
-			this->rightStickMovement.x = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
-			if (Ogre::Math::Abs(this->rightStickMovement.x) < this->joyStickDeadZone)
-			{
-				this->rightStickMovement.x = 0.0f;
-			}
-			else if (this->rightStickMovement.x < 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
-				foundButton = BUTTON_RIGHT_STICK_LEFT;
-			}
-			else if (this->rightStickMovement.x > 0.0f)
-			{
-				this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
-				foundButton = BUTTON_RIGHT_STICK_RIGHT;
-			}
-
-			unsigned short j = 0;
-			for (std::vector<bool>::const_iterator i = joyStick->getJoyStickState().mButtons.begin(), e = joyStick->getJoyStickState().mButtons.end(); i != e; ++i)
-			{
-				if (*i == true)
-				{
-					foundButton = static_cast<JoyStickButton>(j);
-					this->pressedButtons.emplace_back(foundButton);
-				}
-				j++;
-			}
-
-			// Note: Buttons have priority and will overwrite pov
-			this->pressedButton = foundButton;
-
-			// Here invent function: getPressedKey() in which a bitmask of keys is returned in a form of a vector to check which keys had been pressed at once
+			this->pressedPov[0] = Action::UP;
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
+			foundButton = BUTTON_LEFT_STICK_UP;
 		}
+		else if (joystickState.mPOV[0].direction & OIS::Pov::South)
+		{
+			this->pressedPov[0] = Action::DOWN;
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
+			foundButton = BUTTON_LEFT_STICK_DOWN;
+		}
+
+		// Attention: is this correct with .mPOV[1]?, must it be 0?
+		if (joystickState.mPOV[1].direction & OIS::Pov::West)
+		{
+			this->pressedPov[1] = Action::LEFT;
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
+			foundButton = BUTTON_LEFT_STICK_LEFT;
+		}
+		else if (joystickState.mPOV[1].direction & OIS::Pov::East)
+		{
+			this->pressedPov[1] = Action::RIGHT;
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
+			foundButton = BUTTON_LEFT_STICK_RIGHT;
+		}
+
+		// Right stick
+		if (joystickState.mPOV[2].direction & OIS::Pov::North)
+		{
+			// What is the action here?
+			// this->pressedPov[2] = Action::UP;
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
+			foundButton = BUTTON_RIGHT_STICK_UP;
+		}
+		else if (joystickState.mPOV[2].direction & OIS::Pov::South)
+		{
+			// What is the action here?
+			// this->pressedPov[2] = Action::DOWN;
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
+			foundButton = BUTTON_RIGHT_STICK_DOWN;
+		}
+
+		if (joystickState.mPOV[3].direction & OIS::Pov::West)
+		{
+			// What is the action here?
+			// this->pressedPov[3] = Action::LEFT;
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
+			foundButton = BUTTON_RIGHT_STICK_LEFT;
+		}
+		else if (joystickState.mPOV[3].direction & OIS::Pov::East)
+		{
+			// What is the action here?
+			// this->pressedPov[3] = Action::RIGHT;
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
+			foundButton = BUTTON_RIGHT_STICK_RIGHT;
+		}
+
+		// Receive the full analog range of the axes, and so have to implement the
+		// own dead zone. This is an empirical value, since some joysticks have more
+		// jitter or creep around the center point than others. Only 8% of the
+		// range are used as the dead zone, but generally you would want to give the user the
+		// option to change this.
+
+		// -1.f for full down to +1.f for full up.
+		this->leftStickMovement.y = (Ogre::Real)joystickState.mAxes[0].abs / 32767.0f;
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
+		if (Ogre::Math::Abs(this->leftStickMovement.y) < this->joyStickDeadZone)
+		{
+			this->leftStickMovement.y = 0.0f;
+		}
+		else if (this->leftStickMovement.y < 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_UP);
+			foundButton = BUTTON_LEFT_STICK_UP;
+		}
+		else if (this->leftStickMovement.y > 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_DOWN);
+			foundButton = BUTTON_LEFT_STICK_DOWN;
+		}
+
+		// Range is -1.f for full left to +1.f for full right
+		this->leftStickMovement.x = (Ogre::Real)joystickState.mAxes[1].abs / 32767.0f;
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
+		if (Ogre::Math::Abs(this->leftStickMovement.x) < this->joyStickDeadZone)
+		{
+			this->leftStickMovement.x = 0.0f;
+		}
+		else if (this->leftStickMovement.x < 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_LEFT);
+			foundButton = BUTTON_LEFT_STICK_LEFT;
+		}
+		else if (this->leftStickMovement.x > 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_LEFT_STICK_RIGHT);
+			foundButton = BUTTON_LEFT_STICK_RIGHT;
+		}
+
+		// -1.f for full down to +1.f for full up.
+		this->rightStickMovement.y = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
+		if (Ogre::Math::Abs(this->rightStickMovement.y) < this->joyStickDeadZone)
+		{
+			this->rightStickMovement.y = 0.0f;
+		}
+		else if (this->rightStickMovement.y < 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_UP);
+			foundButton = BUTTON_RIGHT_STICK_UP;
+		}
+		else if (this->rightStickMovement.y > 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_DOWN);
+			foundButton = BUTTON_RIGHT_STICK_DOWN;
+		}
+
+		// Range is -1.f for full left to +1.f for full right
+		this->rightStickMovement.x = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
+		if (Ogre::Math::Abs(this->rightStickMovement.x) < this->joyStickDeadZone)
+		{
+			this->rightStickMovement.x = 0.0f;
+		}
+		else if (this->rightStickMovement.x < 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_LEFT);
+			foundButton = BUTTON_RIGHT_STICK_LEFT;
+		}
+		else if (this->rightStickMovement.x > 0.0f)
+		{
+			this->pressedButtons.emplace_back(BUTTON_RIGHT_STICK_RIGHT);
+			foundButton = BUTTON_RIGHT_STICK_RIGHT;
+		}
+
+		unsigned short j = 0;
+		for (std::vector<bool>::const_iterator i = joyStick->getJoyStickState().mButtons.begin(), e = joyStick->getJoyStickState().mButtons.end(); i != e; ++i)
+		{
+			if (*i == true)
+			{
+				foundButton = static_cast<JoyStickButton>(j);
+				this->pressedButtons.emplace_back(foundButton);
+			}
+			j++;
+		}
+
+		// Note: Buttons have priority and will overwrite pov
+		this->pressedButton = foundButton;
+
+		// Here invent function: getPressedKey() in which a bitmask of keys is returned in a form of a vector to check which keys had been pressed at once
 	}
 
 } // namespace end
