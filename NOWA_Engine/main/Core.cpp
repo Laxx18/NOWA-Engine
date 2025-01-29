@@ -986,7 +986,9 @@ namespace NOWA
 			this->writeAccessFolder + "ProfilePerFrame", this->writeAccessFolder + "ProfileAccum");
 #endif
 #endif
-		
+		// Its not necessary it seems! Now particle universe also is working!!
+		// this->preLoadTextures();
+
 		return true;
 	}
 
@@ -3588,6 +3590,162 @@ namespace NOWA
 		}
 
 		return textureNames;
+	}
+
+	void Core::preLoadTextures(void)
+	{
+		std::vector<Ogre::String> filters = { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" };
+
+		std::set<Ogre::String> textureNames;
+
+		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+
+		for (auto& resourceGroupName : this->resourceGroupNames)
+		{
+			if ("ParticleUniverse" != resourceGroupName)
+			{
+				continue;
+			}
+
+			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
+			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
+			for (auto& filter : filters)
+			{
+				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter/**itExt*/);
+				for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
+				{
+					Ogre::String textureName = *itName;
+
+					Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
+					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+
+					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+					// it will be filled with correct data when setDataBlock is called
+					Ogre::TextureGpu* texture = textureManager->createOrRetrieveTexture(textureName,
+						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, Ogre::TextureTypes::Type2D,
+						resourceGroupName, filters, 0u);
+
+					// Check if its a valid texture
+					if (nullptr != texture)
+					{
+						try
+						{
+							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+								
+						}
+						catch (const Ogre::Exception& exception)
+						{
+
+						}
+					}
+				}
+			}
+		}
+
+		textureManager->waitForStreamingCompletion();
+	}
+
+	std::pair<bool, Ogre::String> Core::getMeshVersion(const Ogre::String& meshName)
+	{
+		std::pair<bool, Ogre::String> data;
+		try
+		{
+			// Checks the mesh serializer version, in order to consider whether to create an item (version >= 2.0 or entity < 2.0)
+			Ogre::String resourceFilePathName = this->getResourceFilePathName(meshName);
+			resourceFilePathName += "/" + meshName;
+			Ogre::String content = this->readContent(resourceFilePathName, 2, 40);
+			size_t serializerStartPos = content.find("[");
+			Ogre::String serializerVersion = "1.4";
+
+			if (serializerStartPos != Ogre::String::npos)
+			{
+				// Get the length of the modulename inside the file
+				size_t serializerEndPos = content.find("]", serializerStartPos);
+				if (serializerEndPos != Ogre::String::npos)
+				{
+					size_t length = serializerEndPos - serializerStartPos - 1;
+					if (length > 0)
+					{
+						Ogre::String serializerName = content.substr(serializerStartPos + 1, length);
+						size_t serializerVersionStartPos = serializerName.find("_v");
+						if (serializerVersionStartPos != Ogre::String::npos)
+						{
+							serializerVersion = serializerName.substr(serializerVersionStartPos + 2, serializerName.length() - serializerVersionStartPos - 2);
+						}
+					}
+				}
+			}
+
+			bool canBeV2Mesh = false;
+			if (serializerVersion == "1.100")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.8")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.7")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.4")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.41")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.3")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.2")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "1.1")
+			{
+				canBeV2Mesh = true;
+			}
+			else if (serializerVersion == "2.1 R0 LEGACYV1")
+			{
+				canBeV2Mesh = true;
+			}
+
+			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.
+			canBeV2Mesh &= !Core::getSingletonPtr()->getUseEntityType();
+
+			// Does crash if v2 on node.mesh
+			if (meshName == "Node.mesh")
+			{
+				canBeV2Mesh = false;
+			}
+
+			data.first = canBeV2Mesh;
+			data.second = serializerVersion;
+
+
+			// See OgreMesh.h
+			/*
+			friend class MeshSerializerImpl_v1_10;
+			friend class MeshSerializerImpl_v1_8;
+			friend class MeshSerializerImpl_v1_4;
+			friend class MeshSerializerImpl_v1_3;
+			friend class MeshSerializerImpl_v1_2;
+			friend class MeshSerializerImpl_v1_1;
+			*/
+			// More to follow
+
+			return data;
+		}
+		catch (...)
+		{
+
+		}
+
+		return std::make_pair(false, "");
 	}
 
 	Ogre::String Core::getResourceFilePathName(const Ogre::String& resourceName)

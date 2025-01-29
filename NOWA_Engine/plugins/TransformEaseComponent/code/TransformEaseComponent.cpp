@@ -359,6 +359,7 @@ namespace NOWA
 	{
 		if (false == notSimulating && true == this->activated->getBool())
 		{
+			bool someFunctionFinished = false;
 			///////////////////////////////////////////// Rotation ////////////////////////////////////////////////////////////////
 			if (true == this->rotationActivated->getBool())
 			{
@@ -390,6 +391,7 @@ namespace NOWA
 				// also take the progress into account, the translation started at zero and should stop at zero
 				if (this->rotationRound == 2 && this->rotationProgress >= 0.0f)
 				{
+					someFunctionFinished = true;
 					// if repeat is off, only change the direction one time, to get back to its origin and leave
 					if (false == this->rotationRepeat->getBool())
 					{
@@ -443,6 +445,7 @@ namespace NOWA
 				// also take the progress into account, the translation started at zero and should stop at zero
 				if (this->translationRound == 2 && this->translationProgress >= 0.0f)
 				{
+					someFunctionFinished = true;
 					// if repeat is of, only change the direction one time, to get back to its origin and leave
 					if (false == this->translationRepeat->getBool())
 					{
@@ -500,6 +503,7 @@ namespace NOWA
 				// also take the progress into account, the translation started at zero and should stop at zero
 				if (this->scaleRound == 2 && this->scaleProgress >= 0.0f)
 				{
+					someFunctionFinished = true;
 					// if repeat is of, only change the direction one time, to get back to its origin and leave
 					if (false == this->scaleRepeat->getBool())
 					{
@@ -520,6 +524,29 @@ namespace NOWA
 					else
 					{
 						this->physicsComponent->setScale(this->oldScaleResult + resultVec);
+					}
+				}
+			}
+
+			if (true == someFunctionFinished)
+			{
+				if (nullptr != this->gameObjectPtr->getLuaScript())
+				{
+					if (this->functionFinished.is_valid())
+					{
+						try
+						{
+							luabind::call_function<void>(this->functionFinished);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnFadeCompleted' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
 					}
 				}
 			}
@@ -1077,6 +1104,11 @@ namespace NOWA
 		return this->scaleEaseFunction->getListSelectedValue();
 	}
 
+	void TransformEaseComponent::reactOnFunctionFinished(luabind::object closureFunction)
+	{
+		this->functionFinished = closureFunction;
+	}
+
 	// Lua registration part
 
 	TransformEaseComponent* getTransformEaseComponent(GameObject* gameObject, unsigned int occurrenceIndex)
@@ -1101,11 +1133,13 @@ namespace NOWA
 			class_<TransformEaseComponent, GameObjectComponent>("TransformEaseComponent")
 			.def("setActivated", &TransformEaseComponent::setActivated)
 			.def("isActivated", &TransformEaseComponent::isActivated)
+			.def("reactOnFunctionFinished", &TransformEaseComponent::reactOnFunctionFinished)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("TransformEaseComponent", "class inherits GameObjectComponent", TransformEaseComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("TransformEaseComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("TransformEaseComponent", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("TransformEaseComponent", "void reactOnFunctionFinished(func closure)", "Sets whether to react at the moment when one of the functions (translate, rotate, scale) or all etc. have finished their round.");
 
 		gameObjectClass.def("getTransformEaseComponentFromName", &getTransformEaseComponentFromName);
 		gameObjectClass.def("getTransformEaseComponent", (TransformEaseComponent * (*)(GameObject*)) & getTransformEaseComponent);

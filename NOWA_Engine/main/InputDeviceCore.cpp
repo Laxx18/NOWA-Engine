@@ -145,6 +145,10 @@ namespace NOWA
 						{
 							deviceName = "Keyboard" + std::to_string(keyboardIndex);
 						}
+						else
+						{
+							deviceName += "_" + Ogre::StringConverter::toString(keyboardIndex);
+						}
 						this->addDevice(deviceName, true, keyboard);
 					}
 					++keyboardIndex;
@@ -182,6 +186,10 @@ namespace NOWA
 					if (deviceName.empty())
 					{
 						deviceName = "Joystick" + std::to_string(joystickIndex);
+					}
+					else
+					{
+						deviceName += "_" + Ogre::StringConverter::toString(joystickIndex);
 					}
 
 					joystick->setEventCallback(this);

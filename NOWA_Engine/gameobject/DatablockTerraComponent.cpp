@@ -1059,28 +1059,17 @@ namespace NOWA
 
 				if (nullptr != texture)
 				{
-					// Really important: GpuResidency must be set to 'OnSystemRam', else cloning a datablock does not work!
-					if (texture->getResidencyStatus() != Ogre::GpuResidency::Resident)
+					try
 					{
-						try
-						{
-							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-
-							bool canUseSynchronousUpload = texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident && texture->isDataReady();
-
-							if (false == canUseSynchronousUpload)
-							{
-								texture->waitForData();
-							}
-						}
-						catch (const Ogre::Exception& exception)
-						{
-							Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
-							Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
-							attribute->setValue(previousTextureName);
-							this->addAttributeFilePathData(attribute);
-							return;
-						}
+						texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+					}
+					catch (const Ogre::Exception& exception)
+					{
+						Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
+						Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+						attribute->setValue(previousTextureName);
+						this->addAttributeFilePathData(attribute);
+						return;
 					}
 
 					// Invalid texture skip

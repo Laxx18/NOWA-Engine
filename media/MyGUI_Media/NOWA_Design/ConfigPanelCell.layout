@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout">
-    <Widget type="Widget" skin="PanelSkin" position="0 256 430 168" align="HStretch Top" layer="Main" name="_Main">
+    <Widget type="Widget" skin="PanelSkin" position="0 256 430 168" align="HStretch Top" layer="Overlapped" name="_Main">
         <Widget type="TextBox" skin="TextBox" position="19 3 376 30" align="HStretch Top" name="text_Caption">
             <Property key="Caption" value="Caption"/>
             <Property key="TextAlign" value="Center"/>

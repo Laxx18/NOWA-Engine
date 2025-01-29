@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="WindowCX" position="400 88 400 544" layer="Popup" name="_Main">
+    <Widget type="Window" skin="WindowCX" position="400 88 400 544" layer="Overlapped" name="_Main">
         <Property key="Caption" value="#{Components}"/>
         <Property key="MinSize" value="200 150"/>
         <Widget type="ScrollView" skin="ScrollView" position="2 2 390 500" align="Stretch" name="componentsScrollView">

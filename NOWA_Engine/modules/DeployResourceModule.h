@@ -21,6 +21,10 @@ namespace NOWA
 
 		void deploy(const Ogre::String& applicationName, const Ogre::String& jsonFilePathName);
 
+		void saveTexturesCache(const Ogre::String& sceneFolderPathName);
+
+		void loadTexturesCache(const Ogre::String& sceneFolderPathName);
+
 		bool createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName);
 
 		bool createCPlusPlusComponentPluginProject(const Ogre::String& componentName);

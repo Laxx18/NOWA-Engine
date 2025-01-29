@@ -1121,8 +1121,14 @@ namespace NOWA
 		// Keyboard can only be the first player, but what if there are 2 joysticks?
 		// TODO: Need DeviceInputComponent to control, which player has which device, with device name etc.
 		if (InputDeviceCore::getSingletonPtr()->getKeyboardInputDeviceModules().front() == this)
+		// if (InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule() == this)
 		{
 			somethingDown |= InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(this->getMappedKey(action));
+			if (true == somethingDown)
+			{
+				int i = 0;
+				i = 1;
+			}
 			return somethingDown;
 		}
 
@@ -1165,6 +1171,12 @@ namespace NOWA
 			// Only evaluate, if some button actually has been pressed
 			if (JoyStickButton::BUTTON_NONE != this->pressedButton)
 				somethingDown |= this->pressedButton == this->getMappedButton(action);
+		}
+
+		if (true == somethingDown)
+		{
+			int i = 0;
+			i = 1;
 		}
 
 		return somethingDown;

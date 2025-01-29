@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="Window" position="295 270 420 350" layer="Main" name="analysisWindow">
+    <Widget type="Window" skin="Window" position="295 270 420 350" layer="Overlapped" name="analysisWindow">
         <Property key="Movable" value="true"/>
         <Property key="Caption" value="#{SceneAnalysis}"/>
         <Property key="Visible" value="false"/>

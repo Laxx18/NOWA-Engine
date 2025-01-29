@@ -42,7 +42,6 @@ namespace NOWA
 																	+ " details: " + msg.str());
 					}
 				}
-
 			}
 		}
 	private:

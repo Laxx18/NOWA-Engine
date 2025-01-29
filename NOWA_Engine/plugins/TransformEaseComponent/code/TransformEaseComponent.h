@@ -275,6 +275,8 @@ namespace NOWA
 		void setScaleEaseFunction(const Ogre::String& scaleEaseFunction);
 
 		Ogre::String getScaleEaseFunction(void) const;
+
+		void reactOnFunctionFinished(luabind::object closureFunction);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrRotationActivated(void) { return "Rotation Activated"; }
@@ -354,6 +356,7 @@ namespace NOWA
 		Ogre::Vector3 oldScaleResult;
 
 		PhysicsComponent* physicsComponent;
+		luabind::object functionFinished;
 	};
 
 }; // namespace end

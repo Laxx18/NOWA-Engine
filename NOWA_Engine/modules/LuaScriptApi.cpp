@@ -5473,8 +5473,8 @@ namespace NOWA
 				.def("getOwner", &getOwner)
 			// .def("init", &GameObjectComponent::init)
 			// .def("postInit", &GameObjectComponent::postInit)
-			.def("connect", &GameObjectComponent::connect)
-			.def("disconnect", &GameObjectComponent::disconnect)
+			// .def("connect", &GameObjectComponent::connect)
+			// .def("disconnect", &GameObjectComponent::disconnect)
 			// .def("onCloned", &GameObjectComponent::onCloned)
 			// .def("onRemoveComponent", &GameObjectComponent::onRemoveComponent)
 			// .def("onOtherComponentRemoved", &GameObjectComponent::onOtherComponentRemoved)
@@ -5500,8 +5500,8 @@ namespace NOWA
 
 		AddClassToCollection("GameObjectComponent", "class", "This is the base class for all components.");
 		AddClassToCollection("GameObjectComponent", "GameObject getOwner()", "Gets owner game object of this component.");
-		AddClassToCollection("GameObjectComponent", "bool connect()", "Connects this game object for simulation start. Normally there is no need to call this function.");
-		AddClassToCollection("GameObjectComponent", "bool disconnect()", "Disconnects this game object when simulation has ended. Normally there is no need to call this function.");
+		// AddClassToCollection("GameObjectComponent", "bool connect()", "Connects this game object for simulation start. Normally there is no need to call this function.");
+		// AddClassToCollection("GameObjectComponent", "bool disconnect()", "Disconnects this game object when simulation has ended. Normally there is no need to call this function.");
 		// AddClassToCollection("GameObjectComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
 		// // AddClassToCollection(("GameObjectComponent"), "String getClassName()", "Gets the class name of this component as string.");
 		// AddClassToCollection("GameObjectComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
@@ -6305,7 +6305,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("PhysicsTriggerComponent", "class inherits PhysicsComponent", PhysicsTriggerComponent::getStaticInfoText());
-		AddClassToCollection("PhysicsTriggerComponent", "GameObject getOwner()", "Gets the owner game object.");
 		// AddClassToCollection("PhysicsTriggerComponent", "void destroyTrigger()", "Destroys the trigger.");
 		AddClassToCollection("PhysicsTriggerComponent", "void reactOnEnter(func closure, visitorGameObject)",
 														  "Lua closure function gets called in order to react when a game object enters the trigger area.");
@@ -6412,10 +6411,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
-		AddClassToCollection("PlayerControllerComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("PlayerControllerComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("PlayerControllerComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("PlayerControllerComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
 		AddClassToCollection("PlayerControllerComponent", "AnimationBlender getAnimationBlender()", "Gets the used animation blender so that the animations may be manipulated manually.");
 		AddClassToCollection("PlayerControllerComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the rotation speed for the player. Valid values are: [5, 15]. Default is 10.");
@@ -6457,7 +6452,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunComponent::getStaticInfoText());
-		AddClassToCollection("PlayerControllerJumpNRunComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "void setJumpForce(float jumpForce)", "Sets the jump force for the player.");
 		AddClassToCollection("PlayerControllerJumpNRunComponent", "float getJumpForce()", "Gets the jump force.");
 
@@ -6470,7 +6464,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "class inherits PlayerControllerComponent", PlayerControllerJumpNRunLuaComponent::getStaticInfoText());
-		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "void setStartStateName(String startName)", "Sets start state name in lua script, that should be executed.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "String getStartStateName()", "Gets start state name in lua script, that should be executed.");
 		AddClassToCollection("PlayerControllerJumpNRunLuaComponent", "LuaStateMachine getStateMachine()", "Gets the state machine to switch between states etc. in lua script.");
@@ -6490,7 +6483,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlayerControllerClickToPointComponent", "class inherits PlayerControllerComponent", PlayerControllerClickToPointComponent::getStaticInfoText());
-		AddClassToCollection("PlayerControllerClickToPointComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "void setCategories(String categories)", "Sets categories (may be composed: e.g. ALL or ALL-House+Floor a new click point can be placed via mouse.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "String getCategories()", "Gets categories a click point can be placed via mouse.");
 		AddClassToCollection("PlayerControllerClickToPointComponent", "number getCategoryIds()", "Gets category ids a click point can be placed via mouse.");
@@ -6532,10 +6524,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TagPointComponent", "class inherits GameObjectComponent", TagPointComponent::getStaticInfoText());
-		AddClassToCollection("TagPointComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("TagPointComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("TagPointComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("TagPointComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("TagPointComponent", "void setTagPointName(String tagName)", "Sets the tag point name the source game object should be attached to.");
 		AddClassToCollection("TagPointComponent", "String getTagPointName()", "Gets the current active tag point name.");
 		AddClassToCollection("TagPointComponent", "void setSourceId(String sourceId)", "Sets source id for the game object that should be attached to this tag point.");
@@ -6556,7 +6544,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TimeTriggerComponent", "class inherits GameObjectComponent", TimeTriggerComponent::getStaticInfoText());
-		AddClassToCollection("TimeTriggerComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("TimeTriggerComponent", "void setActivated(bool activated)", "Sets whether time trigger can start or not.");
 		AddClassToCollection("TimeTriggerComponent", "bool isActivated()", "Gets whether this time trigger is activated or not.");
 	}
@@ -6574,7 +6561,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TimeLineComponent", "class inherits GameObjectComponent", TimeLineComponent::getStaticInfoText());
-		AddClassToCollection("TimeLineComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("TimeLineComponent", "void setActivated(bool activated)", "Sets whether time line can start or not.");
 		AddClassToCollection("TimeLineComponent", "bool isActivated()", "Gets whether this time line is activated or not.");
 		AddClassToCollection("TimeLineComponent", "bool setCurrentTimeSec(float timeSec)", "Sets the current time in seconds. Note: The next time point is determined, and the corresponding game object or lua function (if existing) called. Note: If the given time exceeds the overwhole time line duration, false is returned.");
@@ -6624,10 +6610,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("TagChildNodeComponent", "class inherits GameObjectComponent", TagChildNodeComponent::getStaticInfoText());
-		AddClassToCollection("TagChildNodeComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("TagChildNodeComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("TagChildNodeComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("TagChildNodeComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("TagChildNodeComponent", "void setSourceId(String sourceId)", "Sets source id for the game object that should be added as a child to this components game object.");
 		AddClassToCollection("TagChildNodeComponent", "String getSourceId()", "Gets the source id for the game object that has been added as a child of this components game object.");
 	}
@@ -6833,10 +6815,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("RectangleComponent", "class inherits GameObjectComponent", RectangleComponent::getStaticInfoText());
-		AddClassToCollection("RectangleComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("RectangleComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("RectangleComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("RectangleComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("RectangleComponent", "void setTwoSided(bool two sided)", "Sets whether to render the rectangle on two sides.");
 		AddClassToCollection("RectangleComponent", "bool getTwoSided()", "Gets whether the rectangle is rendered on two sides.");
 		AddClassToCollection("RectangleComponent", "void setRectanglesCount(unsigned int rectanglesCount)", "Sets the rectangles count.");
@@ -6888,10 +6866,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("ValueBarComponent", "class inherits GameObjectComponent", ValueBarComponent::getStaticInfoText());
-		AddClassToCollection("ValueBarComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("ValueBarComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("ValueBarComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("ValueBarComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("ValueBarComponent", "void setTwoSided(bool two sided)", "Sets whether to render the value bar on two sides.");
 		AddClassToCollection("ValueBarComponent", "bool getTwoSided()", "Gets whether the value bar is rendered on two sides.");
 		AddClassToCollection("ValueBarComponent", "void setInnerColor(Vector3 color)", "Sets the inner color for the value bar (r, g, b).");
@@ -9179,8 +9153,6 @@ namespace NOWA
 		// ATTENTION: This will not work that way, because, mouse down -> start, mouse up -> finish and undo redo missing
 
 		AddClassToCollection("TerraComponent", "class inherits GameObjectComponent", DatablockTerraComponent::getStaticInfoText());
-		AddClassToCollection("TerraComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("TerraComponent", "String getClassName()", "Gets the class name of this component as string.");
 		AddClassToCollection("TerraComponent", "void setBasePixelDimension(number index)", "Sets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive. Must be power of 2.");
 		AddClassToCollection("TerraComponent", "number getBasePixelDimension()", "Gets the base pixel dimension. That is: Lower values makes LOD very aggressive. Higher values less aggressive..");
 		AddClassToCollection("TerraComponent", "void setStrength(number strength)", "Sets the terrain modify strength. Also negative values are possible in order to lower the terrain. Range: [-500; 500].");
@@ -11250,9 +11222,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("PlaneComponent", "class inherits GameObjectComponent", PlaneComponent::getStaticInfoText());
-		AddClassToCollection("PlaneComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("PlaneComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("PlaneComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PlaneComponent", "void setWidth(float width)", "Sets the width of the plane. Note: Plane will be reconstructed, if there is a @PhysicsArtifactComponent, the collision hull will also be re-generated.");
 		AddClassToCollection("PlaneComponent", "float getWidth()", "Gets the width of the plane.");
 		AddClassToCollection("PlaneComponent", "void setHeight(float height)", "Sets the height of the plane. Note: Plane will be reconstructed, if there is a @PhysicsArtifactComponent, the collision hull will also be re-generated.");
@@ -11355,9 +11324,6 @@ namespace NOWA
 			]
 		];
 		AddClassToCollection("PhysicsRagDollComponent", "class inherits PhysicsActiveComponent", PhysicsRagDollComponent::getStaticInfoText());
-		AddClassToCollection("PhysicsRagDollComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("PhysicsRagDollComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("PhysicsRagDollComponent", "number getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("PhysicsRagDollComponent", "void setVelocity(Vector3 velocity)", "Sets the global linear velocity on the physics body. Note: This should only be used for initzialisation. Use @applyRequiredForceForVelocity in simualtion instead. Or it may be called if its a physics active kinematic body.");
 		AddClassToCollection("PhysicsRagDollComponent", "Vector3 getVelocity()", "Gets currently acting velocity on the body.");
 		AddClassToCollection("PhysicsRagDollComponent", "Vector3 getPosition()", "Gets the position of the physics component.");
@@ -11427,8 +11393,6 @@ namespace NOWA
 			.def("changeCollisionFaceId", &PhysicsArtifactComponent::changeCollisionFaceId)
 		];
 		AddClassToCollection("PhysicsTerrainComponent", "class inherits PhysicsComponent", "Derived class of PhysicsActiveComponent. " + PhysicsArtifactComponent::getStaticInfoText());
-		AddClassToCollection("PhysicsTerrainComponent", "GameObject getOwner()", "Gets the owner game object.");
-
 		AddClassToCollection("PhysicsTerrainComponent", "void setCollisionFaceId(number id)", "Changes the user defined collision attribute stored with faces of the collision mesh. "
 								"This function is used to obtain the user data stored in faces of the collision geometry. "
 								"The application can use this user data to achieve per polygon material behavior in large static collision meshes. "
@@ -11600,9 +11564,6 @@ namespace NOWA
 		];
 
 		AddClassToCollection("SpawnComponent", "class inherits GameObjectComponent", SpawnComponent::getStaticInfoText());
-		AddClassToCollection("SpawnComponent", "GameObject getOwner()", "Gets the owner game object.");
-		// AddClassToCollection("SpawnComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("SpawnComponent", "int getClassId()", "Gets the class id of this component.");
 		AddClassToCollection("SpawnComponent", "void setActivated(bool activated)", "Activates the components behaviour, so that the spawning will begin.");
 		AddClassToCollection("SpawnComponent", "bool isActivated()", "Gets whether the component behaviour is activated or not.");
 		AddClassToCollection("SpawnComponent", "void setIntervalMS(int intervalMS)", "Sets the spawn interval in milliseconds. Details: E.g. an interval of 10000 would spawn a game object each 10 seconds.");
@@ -12266,6 +12227,8 @@ namespace NOWA
 			.def("getTextColor", &MyGUITextComponent::getTextColor)
 			.def("setReadOnly", &MyGUITextComponent::setReadOnly)
 			.def("getReadOnly", &MyGUITextComponent::getReadOnly)
+			.def("reactOnEditTextChanged", &MyGUITextComponent::reactOnEditTextChanged)
+			.def("reactOnEditAccepted", &MyGUITextComponent::reactOnEditAccepted)
 		];
 
 		AddClassToCollection("MyGUITextComponent", "class inherits MyGUIComponent", MyGUITextComponent::getStaticInfoText());
@@ -12279,6 +12242,8 @@ namespace NOWA
 		AddClassToCollection("MyGUITextComponent", "Vector4 getTextColor()", "Gets the widget's text color (r, g, b, a).");
 		AddClassToCollection("MyGUITextComponent", "void setReadOnly(bool readonly)", "Sets whether the widget is read only (Text cannot be manipulated).");
 		AddClassToCollection("MyGUITextComponent", "bool getReadOnly()", "Gets whether the widget is read only (Text cannot be manipulated).");
+		AddClassToCollection("MyGUITextComponent", "void reactOnEditTextChanged(func closure)", "Reacts if a char has been entered, use the @MyGUITextComponent instance to get the current caption.");
+		AddClassToCollection("MyGUITextComponent", "void reactOnEditAccepted(func closure)", "Reacts if the text has been accepted by pressing enter etc., use the @MyGUITextComponent instance to get the current caption.");
 
 		module(lua)
 		[
@@ -12425,7 +12390,6 @@ namespace NOWA
 			];
 
 		AddClassToCollection("MyGUIComboBoxComponent", "class inherits MyGUIComponent", MyGUIComboBoxComponent::getStaticInfoText());
-		AddClassToCollection("MyGUIComboBoxComponent", "GameObject getOwner()", "Gets the owner game object.");
 		AddClassToCollection("MyGUIComboBoxComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
 		AddClassToCollection("MyGUIComboBoxComponent", "void setItemCount(unsigned int itemCount)", "Sets items count.");
 		AddClassToCollection("MyGUIComboBoxComponent", "unsigned int getItemCount()", "Gets the items count.");
@@ -13178,7 +13142,7 @@ namespace NOWA
 
 		AddClassToCollection("LuaScriptComponent", "class inherits GameObjectComponent", LuaScriptComponent::getStaticInfoText());
 		AddClassToCollection("LuaScriptComponent", "void callDelayedMethod(func closureFunction, Ogre::Real delaySec)", "Calls a lua closure function in lua script after a delay in seconds. Note: The game object is optional and may be nil.");
-		AddClassToCollection("LuaScriptComponent", "void connect(GameObject gameObject)", "Calls connect for the given game object.");
+		// AddClassToCollection("LuaScriptComponent", "void connect(GameObject gameObject)", "Calls connect for the given game object.");
 	}
 
 	void bindLuaScriptEventManager(lua_State* lua)

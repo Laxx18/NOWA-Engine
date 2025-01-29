@@ -498,6 +498,10 @@ namespace NOWA
 
 		bool getWordWrap(void) const;
 
+		void reactOnEditTextChanged(luabind::object closureFunction);
+
+		void reactOnEditAccepted(luabind::object closureFunction);
+
 	public:
 		static const Ogre::String AttrCaption(void) { return "Caption"; }
 		static const Ogre::String AttrFontHeight(void) { return "Font Height"; }
@@ -509,7 +513,12 @@ namespace NOWA
 		static const Ogre::String AttrWordWrap(void) { return "Word wrap"; }
 	protected:
 		virtual void mouseButtonClick(MyGUI::Widget* sender) override;
+
 		void onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c);
+
+		void onEditTextChanged(MyGUI::EditBox* sender);
+		
+		void onEditAccepted(MyGUI::EditBox* sender);
 	private:
 		void initTextAttributes(void);
 	protected:
@@ -521,6 +530,9 @@ namespace NOWA
 		Variant* readOnly;
 		Variant* multiLine;
 		Variant* wordWrap;
+
+		luabind::object editTextChangedClosureFunction;
+		luabind::object editAcceptedClosureFunction;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

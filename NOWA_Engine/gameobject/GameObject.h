@@ -951,6 +951,7 @@ namespace NOWA
 		static const Ogre::String AttrRenderQueueIndex(void) { return "Render Queue Index"; }
 		static const Ogre::String AttrRenderDistance(void) { return "Render Distance"; }
 		static const Ogre::String AttrLodDistance(void) { return "Lod Distance"; }
+		static const Ogre::String AttrLodLevels(void) { return "Lod Levels"; }
 		static const Ogre::String AttrShadowDistance(void) { return "Shadow Distance"; }
 
 		// Attribute actions
@@ -985,6 +986,8 @@ namespace NOWA
 		// Is necessary, because there is an event, which is sent to all listener, that this game object has been made global at runtime, in order to cut/paste potential resources to the corresponding folder
 		// This function is only called in actualizeValue and may not be called on other places! Please call the official @setGlobal(...) if desired.
 		void setInternalAttributeGlobal(bool isGlobal);
+
+		void setLodLevels(unsigned int lodLevels);
 	protected:
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;
@@ -1019,6 +1022,7 @@ namespace NOWA
 		Variant* renderQueueIndex;
 		Variant* renderDistance;
 		Variant* lodDistance;
+		Variant* lodLevels;
 		Variant* shadowRenderingDistance;
 
 		Ogre::WireAabb* boundingBoxDraw;

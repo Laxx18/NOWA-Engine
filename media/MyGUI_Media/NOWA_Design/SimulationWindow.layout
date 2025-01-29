@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="WindowC" position="500 260 300 70" align="Left Top" layer="Main" name="simulationWindow">
+    <Widget type="Window" skin="WindowC" position="500 260 300 70" align="Left Top" layer="Overlapped" name="simulationWindow">
         <Property key="Movable" value="false"/>
         <Property key="Caption" value="Simulation"/>
         <Property key="Visible" value="true"/>

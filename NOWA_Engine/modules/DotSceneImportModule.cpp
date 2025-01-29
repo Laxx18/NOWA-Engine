@@ -357,6 +357,9 @@ namespace NOWA
 		// Clears the saved game file path name again, so that usual loading is done
 		this->savedGameFilePathName.clear();
 
+		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+		textureManager->waitForStreamingCompletion();
+
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneParsed);
 

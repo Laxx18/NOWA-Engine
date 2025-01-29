@@ -2047,7 +2047,15 @@ return {
 			hasAppStateStarted =
 			{
 				type = "function",
-				description = "Gets whether the given AppState has started. Note: This can be used to ask from another AppState like a MenuState, whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.",
+				description = "Gets whether the given AppState has started. Note: This can be used to ask from another AppState like a MenuState,  whether a GameState has already started, so that e.g. a continue button can be shown in the Menu.",
+				args = "(string stateName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			isInAppstate =
+			{
+				type = "function",
+				description = "Gets whether the simulation is in the given app state. Note: This can be used to ask if the simulation e.g. is in a MenuState, in order to remove some behavior from global game objects. This could be necessary if global game objects need different behavior e.g. in a GameState as in a MenuState.",
 				args = "(string stateName)",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -9003,6 +9011,22 @@ return {
 				returns = "(GpuParticlesComponent)",
 				valuetype = "GpuParticlesComponent"
 			},
+			getInputDeviceComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(InputDeviceComponent)",
+				valuetype = "InputDeviceComponent"
+			},
+			getInputDeviceComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(InputDeviceComponent)",
+				valuetype = "InputDeviceComponent"
+			},
 			getJointFlexyPipeHandleComponent =
 			{
 				type = "function",
@@ -9019,37 +9043,37 @@ return {
 				returns = "(JointFlexyPipeHandleComponent)",
 				valuetype = "JointFlexyPipeHandleComponent"
 			},
-			getJoystickRemapComponent =
+			getJoystickConfigurationComponent =
 			{
 				type = "function",
 				description = "Gets the component. This can be used if the game object this component just once.",
 				args = "()",
-				returns = "(JoystickRemapComponent)",
-				valuetype = "JoystickRemapComponent"
+				returns = "(JoystickConfigurationComponent)",
+				valuetype = "JoystickConfigurationComponent"
 			},
-			getJoystickRemapComponentFromName =
+			getJoystickConfigurationComponentFromName =
 			{
 				type = "function",
 				description = "Gets the component from name.",
 				args = "(string name)",
-				returns = "(JoystickRemapComponent)",
-				valuetype = "JoystickRemapComponent"
+				returns = "(JoystickConfigurationComponent)",
+				valuetype = "JoystickConfigurationComponent"
 			},
-			getKeyboardRemapComponent =
+			getKeyboardConfigurationComponent =
 			{
 				type = "function",
 				description = "Gets the component. This can be used if the game object this component just once.",
 				args = "()",
-				returns = "(KeyboardRemapComponent)",
-				valuetype = "KeyboardRemapComponent"
+				returns = "(KeyboardConfigurationComponent)",
+				valuetype = "KeyboardConfigurationComponent"
 			},
-			getKeyboardRemapComponentFromName =
+			getKeyboardConfigurationComponentFromName =
 			{
 				type = "function",
 				description = "Gets the component from name.",
 				args = "(string name)",
-				returns = "(KeyboardRemapComponent)",
-				valuetype = "KeyboardRemapComponent"
+				returns = "(KeyboardConfigurationComponent)",
+				valuetype = "KeyboardConfigurationComponent"
 			},
 			getKeyholeEffectComponentFromIndex =
 			{
@@ -9418,22 +9442,6 @@ return {
 				args = "()",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
-			},
-			connect =
-			{
-				type = "function",
-				description = "Connects this game object for simulation start. Normally there is no need to call this function.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
-			},
-			disconnect =
-			{
-				type = "function",
-				description = "Disconnects this game object when simulation has ended. Normally there is no need to call this function.",
-				args = "()",
-				returns = "(boolean)",
-				valuetype = "boolean"
 			},
 			getPosition =
 			{
@@ -10811,6 +10819,14 @@ return {
 				returns = "(GpuParticlesComponent)",
 				valuetype = "GpuParticlesComponent"
 			},
+			castInputDeviceComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(InputDeviceComponent other)",
+				returns = "(InputDeviceComponent)",
+				valuetype = "InputDeviceComponent"
+			},
 			castJointFlexyPipeHandleComponent =
 			{
 				type = "function",
@@ -10819,21 +10835,21 @@ return {
 				returns = "(JointFlexyPipeHandleComponent)",
 				valuetype = "JointFlexyPipeHandleComponent"
 			},
-			castJoystickRemapComponent =
+			castJoystickConfigurationComponent =
 			{
 				type = "function",
 				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(JoystickRemapComponent other)",
-				returns = "(JoystickRemapComponent)",
-				valuetype = "JoystickRemapComponent"
+				args = "(JoystickConfigurationComponent other)",
+				returns = "(JoystickConfigurationComponent)",
+				valuetype = "JoystickConfigurationComponent"
 			},
-			castKeyboardRemapComponent =
+			castKeyboardConfigurationComponent =
 			{
 				type = "function",
 				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(KeyboardRemapComponent other)",
-				returns = "(KeyboardRemapComponent)",
-				valuetype = "KeyboardRemapComponent"
+				args = "(KeyboardConfigurationComponent other)",
+				returns = "(KeyboardConfigurationComponent)",
+				valuetype = "KeyboardConfigurationComponent"
 			},
 			castKeyholeEffectComponent =
 			{
@@ -11590,6 +11606,79 @@ return {
 			}
 		}
 	},
+	InputDeviceComponent =
+	{
+		type = "class",
+		description = "Usage: This component can be used in order to control a player with an available device like keyboard or a joystick. E.g. using Splitscreen scenario, each player has a player controller and then an InputDeviceComponent, in order to control the player.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Activates the device for this owner game object.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether the device is activated for this owner game object.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setDeviceName =
+			{
+				type = "method",
+				description = "Sets the given device name. Note: It should only be chosen delivered from the @getActualizedDeviceList().",
+				args = "(string deviceName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getDeviceName =
+			{
+				type = "function",
+				description = "Gets the selected device name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getActualizedDeviceList =
+			{
+				type = "function",
+				description = "Gets all available devices. If none available or all occupied, 'No Device Available' will be delivered. By default 'Choose Device' is set, which is an invalid item and should be checked if chosen. Use @checkDevice or @hasValidDevice to check if the given selected device is valid, instead of checking those strings.",
+				args = "()",
+				returns = "(Table[number][string])",
+				valuetype = "Table[number][string]"
+			},
+			getInputDeviceModule =
+			{
+				type = "function",
+				description = "Gets the assigned input device module instance.",
+				args = "()",
+				returns = "(InputDeviceModule)",
+				valuetype = "InputDeviceModule"
+			},
+			checkDevice =
+			{
+				type = "function",
+				description = "Gets for the given device name, whether its a valid device or not.",
+				args = "(string deviceName)",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			hasValidDevice =
+			{
+				type = "function",
+				description = "Gets after calling @setDeviceName, whether the set device is valid.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			}
+		}
+	},
 	InputDeviceCore =
 	{
 		type = "singleton",
@@ -11620,13 +11709,25 @@ return {
 	},
 	InputDeviceModule =
 	{
-		type = "singleton",
-		description = "InputDeviceModule singleton for managing inputs like mouse, keyboard, joystick and mapping keys.",
+		type = "class",
+		description = "Class for controlling an input device like keyboard or joystick.",
 		childs = 
 		{
-			singleton =
+			getDeviceName =
 			{
-				type = "value"
+				type = "function",
+				description = "Gets the device name.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			isKeyboardDevice =
+			{
+				type = "function",
+				description = "Gets Whether its a keyboard device. If false, its a joystick device.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			},
 			getMappedKey =
 			{
@@ -11782,183 +11883,12 @@ return {
 			}
 		}
 	},
-	InputDeviceModule2 =
-	{
-		type = "singleton",
-		description = "InputDeviceModule singleton for second player managing inputs like mouse, keyboard, joystick and mapping keys."
-	},
-	InputDeviceModule3 =
-	{
-		type = "singleton",
-		description = "InputDeviceModule singleton for third player managing inputs like mouse, keyboard, joystick and mapping keys."
-	},
-	InputDeviceModule4 =
-	{
-		type = "singleton",
-		description = "InputDeviceModule singleton for forth player managing inputs like mouse, keyboard, joystick and mapping keys."
-	},
 	InputMapping =
 	{
 		type = "class",
 		description = "InputMapping class",
 		childs = 
 		{
-			NOWA_K_UP =
-			{
-				type = "value"
-			},
-			NOWA_K_DOWN =
-			{
-				type = "value"
-			},
-			NOWA_K_LEFT =
-			{
-				type = "value"
-			},
-			NOWA_K_RIGHT =
-			{
-				type = "value"
-			},
-			NOWA_K_JUMP =
-			{
-				type = "value"
-			},
-			NOWA_K_RUN =
-			{
-				type = "value"
-			},
-			NOWA_K_DUCK =
-			{
-				type = "value"
-			},
-			NOWA_K_SNEAK =
-			{
-				type = "value"
-			},
-			NOWA_K_ACTION =
-			{
-				type = "value"
-			},
-			NOWA_K_ATTACK_1 =
-			{
-				type = "value"
-			},
-			NOWA_K_ATTACK_2 =
-			{
-				type = "value"
-			},
-			NOWA_K_RELOAD =
-			{
-				type = "value"
-			},
-			NOWA_K_INVENTORY =
-			{
-				type = "value"
-			},
-			NOWA_K_SAVE =
-			{
-				type = "value"
-			},
-			NOWA_K_LOAD =
-			{
-				type = "value"
-			},
-			NOWA_K_PAUSE =
-			{
-				type = "value"
-			},
-			NOWA_K_START =
-			{
-				type = "value"
-			},
-			NOWA_K_MAP =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_FORWARD =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_BACKWARD =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_RIGHT =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_UP =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_DOWN =
-			{
-				type = "value"
-			},
-			NOWA_K_CAMERA_LEFT =
-			{
-				type = "value"
-			},
-			NOWA_K_CONSOLE =
-			{
-				type = "value"
-			},
-			NOWA_K_WEAPON_CHANGE_FORWARD =
-			{
-				type = "value"
-			},
-			NOWA_K_WEAPON_CHANGE_BACKWARD =
-			{
-				type = "value"
-			},
-			NOWA_K_FLASH_LIGHT =
-			{
-				type = "value"
-			},
-			NOWA_K_SELECT =
-			{
-				type = "value"
-			},
-			NOWA_B_JUMP =
-			{
-				type = "value"
-			},
-			NOWA_B_RUN =
-			{
-				type = "value"
-			},
-			NOWA_B_ATTACK_1 =
-			{
-				type = "value"
-			},
-			NOWA_B_ACTION =
-			{
-				type = "value"
-			},
-			NOWA_B_RELOAD =
-			{
-				type = "value"
-			},
-			NOWA_B_INVENTORY =
-			{
-				type = "value"
-			},
-			NOWA_B_MAP =
-			{
-				type = "value"
-			},
-			NOWA_B_PAUSE =
-			{
-				type = "value"
-			},
-			NOWA_B_MENU =
-			{
-				type = "value"
-			},
-			NOWA_B_FLASH_LIGHT =
-			{
-				type = "value"
-			},
 			NOWA_A_UP =
 			{
 				type = "value"
@@ -15444,10 +15374,10 @@ return {
 			}
 		}
 	},
-	JoystickRemapComponent =
+	JoystickConfigurationComponent =
 	{
 		type = "class",
-		description = "Usage: This component can be used as building block in order to have joystick remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added under a MainGameObject.",
+		description = "Usage: This component can be used as building block in order to have joystick remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added a game object with already existing InputDeviceComponent.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -16073,10 +16003,10 @@ return {
 			}
 		}
 	},
-	KeyboardRemapComponent =
+	KeyboardConfigurationComponent =
 	{
 		type = "class",
-		description = "Usage: This component can be used as building block in order to have keyboard remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added under a MainGameObject.",
+		description = "Usage: This component can be used as building block in order to have keyboard remap functionality. It can be placed as root via the position or using a parent id to be placed as a child in a parent MyGUI window. Note: It can only be added a game object with already existing InputDeviceComponent.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -18550,6 +18480,14 @@ return {
 		inherits = "MyGUIComponent",
 		childs = 
 		{
+			setCaption =
+			{
+				type = "method",
+				description = "Sets the caption for this widget.",
+				args = "(string caption)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setItemCount =
 			{
 				type = "method",
@@ -18621,31 +18559,32 @@ return {
 				args = "(func closureFunction, number index)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			setFlowDirection =
+			{
+				type = "method",
+				description = "Sets flow direction for the combo box.",
+				args = "(string flowDirection)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFlowDirection =
+			{
+				type = "function",
+				description = "Gets the flow direction for the combo box. Possible values are: 'LeftToRight', 'RightToLeft', 'TopToBottom', 'BottomToTop'",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},
 	MyGUIComponent =
 	{
 		type = "class",
-		description = "MyGUIComponent class",
+		description = "Usage: A base MyGUI UI component. Note: Each MyGUI UI component can use the 'mouseClickEventName' in order to specify a function name for being executed in lua script, if the corresponding widget has been clicked.",
+		inherits = "GameObjectComponent",
 		childs = 
 		{
-			reactOnSpawn =
-			{
-				type = "method",
-				description = "Sets whether to react at the moment when a game object is spawned.",
-				args = "(func closure, spawnedGameObject, originGameObject)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			reactOnVanish =
-			{
-				type = "method",
-				description = "Sets whether to react at the moment when a game object is vanished.",
-				args = "(func closure, spawnedGameObject, originGameObject)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
 			setActivated =
 			{
 				type = "method",
@@ -19172,6 +19111,14 @@ return {
 		inherits = "MyGUIComponent",
 		childs = 
 		{
+			setCaption =
+			{
+				type = "method",
+				description = "Sets the caption for this widget.",
+				args = "(string caption)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setItemCount =
 			{
 				type = "method",
@@ -20100,201 +20047,6 @@ return {
 	{
 		type = "singleton",
 		description = "Mapped weapon change forward action (does not matter if keyboard or joystick is used)."
-	},
-	NOWA_B_ACTION =
-	{
-		type = "singleton",
-		description = "Action like door open button."
-	},
-	NOWA_B_ATTACK_1 =
-	{
-		type = "singleton",
-		description = "Attack 1 button."
-	},
-	NOWA_B_FLASH_LIGHT =
-	{
-		type = "singleton",
-		description = "Flash light button."
-	},
-	NOWA_B_INVENTORY =
-	{
-		type = "singleton",
-		description = "Inventory button."
-	},
-	NOWA_B_JUMP =
-	{
-		type = "singleton",
-		description = "Jump button."
-	},
-	NOWA_B_MAP =
-	{
-		type = "singleton",
-		description = "Map button."
-	},
-	NOWA_B_MENU =
-	{
-		type = "singleton",
-		description = "Menu button."
-	},
-	NOWA_B_PAUSE =
-	{
-		type = "singleton",
-		description = "Pause button."
-	},
-	NOWA_B_RELOAD =
-	{
-		type = "singleton",
-		description = "Reload button."
-	},
-	NOWA_B_RUN =
-	{
-		type = "singleton",
-		description = "Run button."
-	},
-	NOWA_K_ACTION =
-	{
-		type = "singleton",
-		description = "Mapped action like open door key."
-	},
-	NOWA_K_ATTACK_1 =
-	{
-		type = "singleton",
-		description = "Mapped attack 1 key."
-	},
-	NOWA_K_ATTACK_2 =
-	{
-		type = "singleton",
-		description = "Mapped attack 2 key."
-	},
-	NOWA_K_CAMERA_BACKWARD =
-	{
-		type = "singleton",
-		description = "Mapped backward key."
-	},
-	NOWA_K_CAMERA_DOWN =
-	{
-		type = "singleton",
-		description = "Mapped camera down key."
-	},
-	NOWA_K_CAMERA_FORWARD =
-	{
-		type = "singleton",
-		description = "Mapped camera forward key."
-	},
-	NOWA_K_CAMERA_LEFT =
-	{
-		type = "singleton",
-		description = "Mapped camera left key."
-	},
-	NOWA_K_CAMERA_RIGHT =
-	{
-		type = "singleton",
-		description = "Mapped camera right key."
-	},
-	NOWA_K_CAMERA_UP =
-	{
-		type = "singleton",
-		description = "Mapped camera up key."
-	},
-	NOWA_K_CONSOLE =
-	{
-		type = "singleton",
-		description = "Mapped console key."
-	},
-	NOWA_K_DOWN =
-	{
-		type = "singleton",
-		description = "Mapped down key."
-	},
-	NOWA_K_DUCK =
-	{
-		type = "singleton",
-		description = "Mapped duck key."
-	},
-	NOWA_K_FLASH_LIGHT =
-	{
-		type = "singleton",
-		description = "Mapped flash light key."
-	},
-	NOWA_K_INVENTORY =
-	{
-		type = "singleton",
-		description = "Mapped inventory key."
-	},
-	NOWA_K_JUMP =
-	{
-		type = "singleton",
-		description = "Mapped jump key."
-	},
-	NOWA_K_LEFT =
-	{
-		type = "singleton",
-		description = "Mapped left key."
-	},
-	NOWA_K_LOAD =
-	{
-		type = "singleton",
-		description = "Mapped load key."
-	},
-	NOWA_K_MAP =
-	{
-		type = "singleton",
-		description = "Mapped map key."
-	},
-	NOWA_K_PAUSE =
-	{
-		type = "singleton",
-		description = "Mapped pause key."
-	},
-	NOWA_K_RELOAD =
-	{
-		type = "singleton",
-		description = "Mapped reload key."
-	},
-	NOWA_K_RIGHT =
-	{
-		type = "singleton",
-		description = "Mapped right key."
-	},
-	NOWA_K_RUN =
-	{
-		type = "singleton",
-		description = "Mapped run key."
-	},
-	NOWA_K_SAVE =
-	{
-		type = "singleton",
-		description = "Mapped save key."
-	},
-	NOWA_K_SELECT =
-	{
-		type = "singleton",
-		description = "Mapped select key."
-	},
-	NOWA_K_SNEAK =
-	{
-		type = "singleton",
-		description = "Mapped sneak key."
-	},
-	NOWA_K_START =
-	{
-		type = "singleton",
-		description = "Mapped start key."
-	},
-	NOWA_K_UP =
-	{
-		type = "singleton",
-		description = "Mapped up key."
-	},
-	NOWA_K_WEAPON_CHANGE_BACKWARD =
-	{
-		type = "singleton",
-		description = "Mapped weapon change backward key."
-	},
-	NOWA_K_WEAPON_CHANGE_FORWARD =
-	{
-		type = "singleton",
-		description = "Mapped weapon change forward key."
 	},
 	Node =
 	{
@@ -21287,6 +21039,14 @@ return {
 				args = "()",
 				returns = "(string)",
 				valuetype = "string"
+			},
+			setActivated =
+			{
+				type = "method",
+				description = "Activates or deactivates the physics of this component",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			setContinuousCollision =
 			{
@@ -24907,6 +24667,22 @@ return {
 				args = "(boolean keepAlive)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			reactOnSpawn =
+			{
+				type = "method",
+				description = "Sets whether to react at the moment when a game object is spawned.",
+				args = "(func closure, spawnedGameObject, originGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnVanish =
+			{
+				type = "method",
+				description = "Sets whether to react at the moment when a game object is vanished.",
+				args = "(func closure, spawnedGameObject, originGameObject)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -26867,12 +26643,6 @@ return {
 				type = "value"
 			}
 		}
-	},
-	VehicleComponent =
-	{
-		type = "class",
-		description = "Usage: With this component, a physically vehicle is created.",
-		inherits = "GameObjectComponent"
 	},
 	VehicleDrivingManipulation =
 	{

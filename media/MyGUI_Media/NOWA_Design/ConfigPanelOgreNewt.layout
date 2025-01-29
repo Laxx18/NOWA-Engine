@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Widget" skin="PanelEmpty" position="450 145 490 380" align="HStretch Top" layer="Main" name="_Main">
+    <Widget type="Widget" skin="PanelEmpty" position="450 145 490 380" align="HStretch Top" layer="Overlapped" name="_Main">
 	
         <Widget type="TextBox" skin="TextBox" position="10 20 260 20" name="updateRateText">
             <Property key="Caption" value="#{UpdateRate}:"/>

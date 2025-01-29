@@ -89,6 +89,8 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		InputDeviceCore::getSingletonPtr()->releaseDevice(this->gameObjectPtr->getId());
+
 		return true;
 	}
 

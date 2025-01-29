@@ -432,11 +432,20 @@ namespace NOWA
 		}
 
 		Ogre::String directory;
-		const size_t lastSlashIndex = filename.rfind('\\');
+		size_t lastSlashIndex = filename.rfind('\\');
 		if (std::string::npos != lastSlashIndex)
 		{
 			directory = filename.substr(0, lastSlashIndex);
 		}
+		else
+		{
+			lastSlashIndex = filename.rfind('/');
+			if (std::string::npos != lastSlashIndex)
+			{
+				directory = filename.substr(0, lastSlashIndex);
+			}
+		}
+
 
 		// 1. First save all data blocks to have at least all sampler, macro and blend blocks gathered
 		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
@@ -511,6 +520,69 @@ namespace NOWA
 									Ogre::String marker = "-->";
 									content.insert(foundDataBlock, marker);
 									existingDataBlocks.emplace(*dataBlockName);
+								}
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					for (size_t i = 0; i < item->getNumSubItems(); i++)
+					{
+						auto dataBlock = item->getSubItem(i)->getDatablock();
+						if (nullptr != dataBlock)
+						{
+							Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
+							if (false == resourcePath.empty())
+							{
+								Ogre::set<Ogre::String>::type savedTextures;
+								// Save all textures, that are used (textures are copied to the given folder)
+								dataBlock->saveTextures(directory, savedTextures, false, true, nullptr);
+
+								// Copy all mesh and skeleton files to the given folder
+								Ogre::String destination = directory + "\\" + item->getMesh()->getName();
+								CopyFile(resourcePath.data(), destination.data(), TRUE);
+
+								if (true == item->getMesh()->hasSkeleton())
+								{
+									Ogre::String destinationSkeletonFilePathName = directory + "\\" + item->getMesh()->getSkeletonName();
+									Ogre::String destinationRagFilePathName = directory + "\\"
+										+ item->getMesh()->getSkeletonName().substr(0, item->getMesh()->getSkeletonName().find(".skeleton")) + ".rag";
+									Ogre::String sourceSkeletonPath;
+									Ogre::String sourceRagPath;
+									size_t meshIndex = resourcePath.find(".mesh");
+									if (Ogre::String::npos != materialIndex)
+									{
+										sourceSkeletonPath = resourcePath.substr(0, meshIndex) + ".skeleton";
+										sourceRagPath = resourcePath.substr(0, meshIndex) + ".rag";
+										if (false == sourceSkeletonPath.empty())
+										{
+											CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
+											CopyFile(sourceRagPath.data(), destinationRagFilePathName.data(), TRUE);
+										}
+									}
+								}
+							}
+
+							// 2. Mark all data blocks, that are really used in the scene (created game objects)
+							const Ogre::String* dataBlockName = dataBlock->getNameStr();
+							auto it = existingDataBlocks.find(*dataBlockName);
+							if (it == existingDataBlocks.cend())
+							{
+								if (nullptr != dataBlockName)
+								{
+									// Mark only the first occurence
+									size_t foundDataBlock = content.find(*dataBlockName);
+									if (Ogre::String::npos != foundDataBlock)
+									{
+										Ogre::String marker = "-->";
+										content.insert(foundDataBlock, marker);
+										existingDataBlocks.emplace(*dataBlockName);
+									}
 								}
 							}
 						}
@@ -594,6 +666,103 @@ namespace NOWA
 		std::ofstream ofs(filename);
 		ofs << content;
 		ofs.close();
+	}
+
+	void DeployResourceModule::saveTexturesCache(const Ogre::String& sceneFolderPathName)
+	{
+		std::ifstream ifs(sceneFolderPathName + "/cachedTextures.cache");
+		Ogre::set<Ogre::String>::type savedTextures;
+
+		auto gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
+
+		for (auto& it = gameObjects->cbegin(); it != gameObjects->cend(); ++it)
+		{
+			Ogre::set<Ogre::String>::type tempTextures;
+			Ogre::v1::Entity* entity = it->second->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+				{
+					auto dataBlock = entity->getSubEntity(i)->getDatablock();
+					if (nullptr != dataBlock)
+					{
+						Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(entity->getMesh()->getName());
+						if (!resourcePath.empty())
+						{
+							dataBlock->saveTextures(sceneFolderPathName, tempTextures, false, true, nullptr);
+							savedTextures.insert(tempTextures.begin(), tempTextures.end());
+						}
+					}
+				}
+			}
+			else
+			{
+				Ogre::Item* item = it->second->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					for (size_t i = 0; i < item->getNumSubItems(); i++)
+					{
+						auto dataBlock = item->getSubItem(i)->getDatablock();
+						if (nullptr != dataBlock)
+						{
+							Ogre::String resourcePath = NOWA::DeployResourceModule::getInstance()->getResourcePath(item->getMesh()->getName());
+							if (!resourcePath.empty())
+							{
+								dataBlock->saveTextures(sceneFolderPathName, tempTextures, false, true, nullptr);
+								savedTextures.insert(tempTextures.begin(), tempTextures.end());
+							}
+						}
+					}
+				}
+			}
+		}
+
+		ifs.close();
+
+		// Save JSON-like file manually
+		std::ofstream ofs(sceneFolderPathName + "/cachedTextures.cache");
+		ofs << "{\n";
+		bool first = true;
+		for (const auto& texture : savedTextures)
+		{
+			if (!first) ofs << ",\n";
+			first = false;
+			ofs << "  \"" << texture << "\": \"" << NOWA::DeployResourceModule::getInstance()->getResourcePath(texture) << "\"";
+		}
+		ofs << "\n}";
+		ofs.close();
+	}
+
+	void DeployResourceModule::loadTexturesCache(const Ogre::String& sceneFolderPathName)
+	{
+#if 0
+		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+
+		Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
+		Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+
+		// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+		// it will be filled with correct data when setDataBlock is called
+		Ogre::TextureGpu* texture = textureManager->createOrRetrieveTexture(textureName,
+			Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, Ogre::TextureTypes::Type2D,
+			resourceGroupName, filters, 0u);
+
+		// Check if its a valid texture
+		if (nullptr != texture)
+		{
+			try
+			{
+				texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+
+			}
+			catch (const Ogre::Exception& exception)
+			{
+
+			}
+		}
+
+		textureManager->waitForStreamingCompletion();
+#endif
 	}
 
 	bool DeployResourceModule::createCPlusPlusProject(const Ogre::String& projectName, const Ogre::String& sceneName)

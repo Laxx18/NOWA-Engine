@@ -616,7 +616,7 @@ namespace NOWA
 				if (nullptr != gameObjectCompPtr)
 				{
 					auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-					if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() != this->id->getULong())
+					if (nullptr != myGuiCompPtr && true == myGuiCompPtr->hasParent && myGuiCompPtr->getId() != this->id->getULong())
 					{
 						if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
 						{
@@ -1280,6 +1280,9 @@ namespace NOWA
 
 		// this->widget->eventKeyButtonPressed += MyGUI::newDelegate(this, &MyGUITextComponent::onKeyButtonPressed);
 
+		this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+		this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+
 		this->initTextAttributes();
 
 		return MyGUIComponent::postInit();
@@ -1478,6 +1481,70 @@ namespace NOWA
 			}
 		}
 	}
+
+	void MyGUITextComponent::onEditTextChanged(MyGUI::EditBox* sender)
+	{
+		if (true == this->isSimulating)
+		{
+			// Note: Does only work, if user clicked the border of the text box
+			MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
+			if (nullptr != editBox)
+			{
+				// Call also function in lua script, if it does exist in the lua script component
+				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+				{
+					if (this->editTextChangedClosureFunction.is_valid())
+					{
+						try
+						{
+							luabind::call_function<void>(this->editTextChangedClosureFunction);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
+					}
+				}
+			}
+		}
+	}
+
+	void MyGUITextComponent::onEditAccepted(MyGUI::EditBox* sender)
+	{
+		if (true == this->isSimulating)
+		{
+			// Note: Does only work, if user clicked the border of the text box
+			MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>();
+			if (nullptr != editBox)
+			{
+				// Call also function in lua script, if it does exist in the lua script component
+				if (nullptr != this->gameObjectPtr->getLuaScript() && true == this->enabled->getBool())
+				{
+					if (this->editAcceptedClosureFunction.is_valid())
+					{
+						try
+						{
+							luabind::call_function<void>(this->editAcceptedClosureFunction);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
+
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
+					}
+				}
+			}
+		}
+	}
 	
 	void MyGUITextComponent::setCaption(const Ogre::String& caption)
 	{
@@ -1616,6 +1683,16 @@ namespace NOWA
 	bool MyGUITextComponent::getWordWrap(void) const
 	{
 		return this->wordWrap->getBool();
+	}
+
+	void MyGUITextComponent::reactOnEditTextChanged(luabind::object closureFunction)
+	{
+		this->editTextChangedClosureFunction = closureFunction;
+	}
+
+	void MyGUITextComponent::reactOnEditAccepted(luabind::object closureFunction)
+	{
+		this->editAcceptedClosureFunction = closureFunction;
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

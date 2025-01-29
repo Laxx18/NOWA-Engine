@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="Window" position="260 195 560 585" layer="Main" name="meshToolWindow">
+    <Widget type="Window" skin="Window" position="260 195 560 585" layer="Overlapped" name="meshToolWindow">
         <Property key="Caption" value="Mesh Tool"/>
         <Widget type="EditBox" skin="EditBox" position="20 20 190 30" name="meshNameLabel">
             <Property key="Caption" value="Mesh Name:"/>

@@ -2254,85 +2254,9 @@ namespace NOWA
 				throw Ogre::Exception(Ogre::Exception::ERR_RT_ASSERTION_FAILED, "", "");
 			}
 
-			// Checks the mesh serializer version, in order to consider whether to create an item (version >= 2.0 or entity < 2.0)
-			Ogre::String resourceFilePathName = Core::getSingletonPtr()->getResourceFilePathName(meshName);
-			resourceFilePathName += "/" + meshName;
-			Ogre::String content = Core::getSingletonPtr()->readContent(resourceFilePathName, 2, 40);
-			size_t serializerStartPos = content.find("[");
-			Ogre::String serializerVersion = "1.4";
-
-			if (serializerStartPos != Ogre::String::npos)
-			{
-				// Get the length of the modulename inside the file
-				size_t serializerEndPos = content.find("]", serializerStartPos);
-				if (serializerEndPos != Ogre::String::npos)
-				{
-					size_t length = serializerEndPos - serializerStartPos - 1;
-					if (length > 0)
-					{
-						Ogre::String serializerName = content.substr(serializerStartPos + 1, length);
-						size_t serializerVersionStartPos = serializerName.find("_v");
-						if (serializerVersionStartPos != Ogre::String::npos)
-						{
-							serializerVersion = serializerName.substr(serializerVersionStartPos + 2, serializerName.length() - serializerVersionStartPos - 2);
-						}
-					}
-				}
-			}
-
-			bool canBeV2Mesh = false;
-			if (serializerVersion == "1.100")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.8")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.4")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.41")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.3")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.2")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "1.1")
-			{
-				canBeV2Mesh = true;
-			}
-			else if (serializerVersion == "2.1 R0 LEGACYV1")
-			{
-				canBeV2Mesh = true;
-			}
-
-			// It must also be checked, if this kind of mesh shall be used. Because no ragdolling is possible, but pose weighting etc. is possible and its more efficient for rendering etc.
-			canBeV2Mesh &= !Core::getSingletonPtr()->getUseEntityType();
-
-			// Does crash if v2 on node.mesh
-			if (meshName == "Node.mesh")
-			{
-				canBeV2Mesh = false;
-			}
-
-			// See OgreMesh.h
-			/*
-			friend class MeshSerializerImpl_v1_10;
-			friend class MeshSerializerImpl_v1_8;
-			friend class MeshSerializerImpl_v1_4;
-			friend class MeshSerializerImpl_v1_3;
-			friend class MeshSerializerImpl_v1_2;
-			friend class MeshSerializerImpl_v1_1;
-			*/
-			// More to follow
+			const auto versionData = Core::getSingletonPtr()->getMeshVersion(meshName);
+			bool canBeV2Mesh = versionData.first;
+			Ogre::String version = versionData.second;
 		
 			
 			if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)

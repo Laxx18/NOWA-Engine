@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <MyGUI type="Layout" version="3.2.0">
-    <Widget type="Window" skin="WindowC" position="5 360 1000 75" layer="Main" name="manipulationWindow">
+    <Widget type="Window" skin="WindowC" position="5 360 1000 75" layer="Overlapped" name="manipulationWindow">
         <Property key="Movable" value="false"/>
         <Property key="Visible" value="true"/>
         <Widget type="Button" skin="ButtonImage" position="5 5 29 26" name="gridButton">

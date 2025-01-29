@@ -47,6 +47,7 @@ namespace NOWA
 		this->canUpdate = true;
 
 		this->initializeModules(true, true);
+
 		// Note: All listener must be added after the modules are initialized
 		// React when scene has been loaded to get data
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());

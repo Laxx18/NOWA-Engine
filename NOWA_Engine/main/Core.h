@@ -662,6 +662,13 @@ namespace NOWA
 		std::set<Ogre::String> getAllAvailableTextureNames(std::vector<Ogre::String>& filters = std::vector<Ogre::String>());
 
 		/**
+		 * @brief		Gets the mesh version of the given mesh name.
+		 * @param[in]	meshName			The mesh name to set.
+		 * @return		First param true if it can be converted to v2 mesh, else not and second parameter is the delivered version.
+		 */
+		std::pair<bool, Ogre::String> getMeshVersion(const Ogre::String& meshName);
+
+		/**
 		 * @brief		Gets the resource file path name.
 		 * @param[in]	resourceName		The resource name with file ending to set. E.g. arrow.png.
 		 * @return		Resource file location, or empty if cannot be determined.
@@ -773,6 +780,7 @@ namespace NOWA
 		*/
 		bool processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters);
 		
+		void preLoadTextures(void);
 	public:
 
 		enum PhysicsType

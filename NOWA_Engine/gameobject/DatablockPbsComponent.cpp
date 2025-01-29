@@ -1713,7 +1713,7 @@ namespace NOWA
 				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
 				if (Ogre::PBSM_REFLECTION == pbsTextureType)
 				{
-					textureFlags &= ~Ogre::TextureFlags::AutomaticBatching;
+					textureFlags |= ~Ogre::TextureFlags::AutomaticBatching;
 					textureFlags |= Ogre::TextureFlags::RenderToTexture;
 					textureFlags |= Ogre::TextureFlags::AllowAutomipmaps;
 					internalTextureType = Ogre::TextureTypes::TypeCube;
@@ -1738,19 +1738,12 @@ namespace NOWA
 						texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
 					}
 
-					// Really important: GpuResidency must be set to 'OnSystemRam', else cloning a datablock does not work!
-					if (texture->getResidencyStatus() != Ogre::GpuResidency::OnSystemRam)
+					if (nullptr != texture)
 					{
 						try
 						{
 							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
 
-							bool canUseSynchronousUpload = texture->getNextResidencyStatus() == Ogre::GpuResidency::Resident && texture->isDataReady();
-
-							if (false == canUseSynchronousUpload)
-							{
-								texture->waitForData();
-							}
 						}
 						catch (const Ogre::Exception& exception)
 						{
@@ -1770,7 +1763,6 @@ namespace NOWA
 						this->addAttributeFilePathData(attribute);
 						return;
 					}
-
 					// If texture has been removed, set null texture, so that it will be removed from data block
 					if (true == tempTextureName.empty())
 					{

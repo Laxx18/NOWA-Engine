@@ -559,7 +559,6 @@ namespace NOWA
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "class inherits GameObjectComponent", AnimationComponentV2::getStaticInfoText());
-		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "GameObject getOwner()", "Gets the owner game object.");
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "bool isActivated()", "Gets whether this component is activated.");
 		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponentV2", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",

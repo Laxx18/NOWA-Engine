@@ -323,6 +323,7 @@ namespace NOWA
 		bool renderQueueIndexSet = false;
 		unsigned int renderDistance = 0;
 		Ogre::Real lodDistance = 0.0f;
+		unsigned int lodLevels = 0;
 		unsigned int shadowRenderingDistance = 0;
 		bool renderDistanceSet = false;
 		bool shadowRenderingDistanceSet = false;
@@ -409,7 +410,12 @@ namespace NOWA
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodDistance")
 		{
-			lodDistance = XMLConverter::getAttribReal(propertyElement, "data", 300.0f);
+			lodDistance = XMLConverter::getAttribUnsignedInt(propertyElement, "data", 0);
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LodLevels")
+		{
+			lodLevels = XMLConverter::getAttribReal(propertyElement, "data", 0.0f);
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ShadowRenderingDistance")
@@ -535,6 +541,7 @@ namespace NOWA
 					gameObjectPtr->setShadowRenderingDistance(shadowRenderingDistance);
 				}
 				// Do not set via setter, because else the lod distance is re-calculated, but its just required to re-calculate if the user sets a different distance.
+				gameObjectPtr->lodLevels->setValue(lodLevels);
 				gameObjectPtr->lodDistance->setValue(lodDistance);
 				gameObjectPtr->setDataBlocks(dataBlocks);
 			}

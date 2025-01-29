@@ -310,8 +310,6 @@ namespace NOWA
 		{
 			if (nullptr != this->sourceWidget)
 			{
-				// this->sourceMyGUIComponent->refreshTransform();
-
 				// Remove any existing controllers
 				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
 

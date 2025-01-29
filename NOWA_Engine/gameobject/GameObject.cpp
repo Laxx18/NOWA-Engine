@@ -235,7 +235,9 @@ namespace NOWA
 			this->renderQueueIndex = new Variant(GameObject::AttrRenderQueueIndex(), static_cast<unsigned int>(NOWA::RENDER_QUEUE_V1_MESH), this->attributes, false);
 		}
 		this->renderDistance = new Variant(GameObject::AttrRenderDistance(), static_cast<unsigned int>(1000), this->attributes, false);
-		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 300.0f, this->attributes, false);
+		this->lodDistance = new Variant(GameObject::AttrLodDistance(), 0, this->attributes, false);
+		this->lodLevels = new Variant(GameObject::AttrLodDistance(), 0.0f, this->attributes, false);
+		this->lodLevels->setReadOnly(true);
 		this->shadowRenderingDistance = new Variant(GameObject::AttrShadowDistance(), static_cast<unsigned int>(300), this->attributes, false);
 
 		if (nullptr != this->sceneNode)
@@ -259,8 +261,10 @@ namespace NOWA
 			"RenderQueue ID range [0; 100) & [200; 225) default to FAST (i.e. for v2 objects, like Items); RenderQueue ID range[100; 200)& [225; 256) default to V1_FAST(i.e. for v1 objects, like v1::Entity)");
 		this->renderDistance->setDescription("Sets the render distance in meters til which the game object will be rendered. Default value is 1000.");
 		this->shadowRenderingDistance->setDescription("Sets the shadow rendering distance in meters til which the game object's shadow will be rendered. Default set to 300 meters, which means the game object's shadow will be rendered up to 300 meters.");
-		this->lodDistance->setDescription("Sets the lod distance in meters til which the game object vertex count will be reduced. Default set to 300, which means that for this game object no lod levels will be generated and the mesh never reduced. "
-			"There are always 4 levels of reduction, beginning at the given lod distance and increasing based on the bounding radius of the mesh of the game object. The mesh with the lod levels is also stored on the file disc.");
+		this->lodDistance->setDescription("Sets the lod distance in meters til which the game object vertex count will be reduced. Default set to 0, which means that for this game object no lod levels will be generated and the mesh never reduced. "
+			"There are always 4 levels of reduction, beginning at the given lod distance and increasing based on the bounding radius of the mesh of the game object. The mesh with the lod levels is also stored on the file disc."
+			"Note: Its also a performance thing, setting LOD will do it if game object is loaded.");
+		this->lodLevels->setDescription("The current generated lod (level of detail) levels for this mesh.");
 		this->defaultDirection->setDescription("The default local direction of the loaded mesh. Note: Its important: If the created mesh e.g. points to x-axis, its default direction should be set to (1 0 0)."
 			" If it points to z-direction, its default direction should be set to (0 0 1) etc..");
 	}
@@ -507,7 +511,13 @@ namespace NOWA
 					continue;
 				}
 
-				this->actualizeValue(this->attributes[i].second);
+				Ogre::String attributeName = this->attributes[i].second->getName();
+
+				if (attributeName != GameObject::AttrLodDistance()
+					&& attributeName != GameObject::AttrLodLevels())
+				{
+					this->actualizeValue(this->attributes[i].second);
+				}
 			}
 			this->attributes[i].second->resetChange();
 		}
@@ -1046,6 +1056,13 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "LodDistance"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lodDistance->getReal())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "LodLevels"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lodLevels->getUInt())));
+		propertiesXML->append_node(propertyXML);
+		
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
@@ -1859,6 +1876,13 @@ namespace NOWA
 		boost::shared_ptr<EventDataGameObjectMadeGlobal> eventDataGameObjectMadeGlobal(new EventDataGameObjectMadeGlobal(this->id->getULong(), isGlobal));
 		AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectMadeGlobal);
 	}
+
+	void GameObject::setLodLevels(unsigned int lodLevels)
+	{
+		this->lodLevels->setReadOnly(false);
+		this->lodLevels->setValue(lodLevels);
+		this->lodLevels->setReadOnly(true);
+	}
 	
 	bool GameObject::getGlobal(void) const
 	{
@@ -1976,7 +2000,7 @@ namespace NOWA
 	{
 		if (lodDistance < 0.0f)
 		{
-			lodDistance = 5.0f;
+			lodDistance = 0.0f;
 		}
 
 		if (0 != this->renderDistance->getUInt())
@@ -2016,6 +2040,18 @@ namespace NOWA
 
 					Ogre::MeshLodGenerator lodGenerator;
 					lodGenerator.getAutoconfig(v1Mesh, lodConfig);
+
+					if (lodConfig.levels.size() != this->lodLevels->getUInt())
+					{
+						this->lodLevels->setReadOnly(false);
+						this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
+						this->lodLevels->setReadOnly(true);
+					}
+					else
+					{
+						// Lod levels are the same skip generation
+						return;
+					}
 
 					lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
@@ -2066,8 +2102,6 @@ namespace NOWA
 
 					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
 
-					
-
 					Ogre::ConfigFile cf;
 					cf.load(Core::getSingletonPtr()->getResourcesName());
 
@@ -2117,6 +2151,18 @@ namespace NOWA
 
 					Ogre::MeshLodGenerator lodGenerator;
 					lodGenerator.getAutoconfig(v1Mesh, lodConfig);
+
+					if (lodConfig.levels.size() != this->lodLevels->getUInt())
+					{
+						this->lodLevels->setReadOnly(false);
+						this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
+						this->lodLevels->setReadOnly(true);
+					}
+					else
+					{
+						// Lod levels are the same skip generation
+						return;
+					}
 
 					lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
@@ -2177,8 +2223,51 @@ namespace NOWA
 
 					if (false == filePathName.empty())
 					{
+						const auto versionData = Core::getSingletonPtr()->getMeshVersion(v1Mesh->getName());
+						bool canBeV2Mesh = versionData.first;
+						Ogre::String version = versionData.second;
+
+						Ogre::v1::MeshVersion meshVersion = Ogre::v1::MeshVersion::MESH_VERSION_LATEST;
+
+						if (version == "1.100")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_10;
+						}
+						else if (version == "1.7")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_7;
+						}
+						else if (version == "1.8")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_8;
+						}
+						else if (version == "1.4")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_4;
+						}
+						else if (version == "1.41")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_4;
+						}
+						else if (version == "1.3")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_4;
+						}
+						else if (version == "1.2")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_4;
+						}
+						else if (version == "1.1")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_1_4;
+						}
+						else if (version == "2.1 R0 LEGACYV1")
+						{
+							meshVersion = Ogre::v1::MESH_VERSION_2_1;
+						}
+
 						// Exports the mesh
-						serializer.exportMesh(v1Mesh.get(), filePathName);
+						serializer.exportMesh(v1Mesh.get(), filePathName, meshVersion);
 					}
 				}
 			}
