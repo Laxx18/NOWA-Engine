@@ -80,7 +80,7 @@ namespace NOWA
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue
@@ -254,7 +254,7 @@ namespace NOWA
 				"If this is not the case use a converter tool like OgreMeshMagick. Example: OgreMeshMagick.exe transform -yalign=bottom myMesh.mesh";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue
@@ -393,7 +393,7 @@ namespace NOWA
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

@@ -126,7 +126,7 @@ namespace NOWA
 			return "Usage: Manipulates any game object or component's attribute by the given mathematical functions. Important: It always just works for the next prior component! So place it beyond the the be manipulated component!";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

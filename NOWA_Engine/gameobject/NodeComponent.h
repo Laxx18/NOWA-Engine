@@ -74,7 +74,7 @@ namespace NOWA
 			return "Usage: This Component is used as waypoint for several cases, e.g. AI-Pathfollow, Camera tracking etc.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue

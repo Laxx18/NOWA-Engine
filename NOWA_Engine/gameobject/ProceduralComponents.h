@@ -167,7 +167,7 @@ namespace NOWA
 			return "Usage: With this component a procedural primitive mesh is created at runtime.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue
@@ -515,7 +515,7 @@ namespace NOWA
 			return "Usage: With this component boolean operation (like add, intersect, subtract, etc.) is done between two procedurally created geometry.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue

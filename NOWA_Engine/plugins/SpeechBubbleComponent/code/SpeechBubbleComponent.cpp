@@ -60,14 +60,14 @@ namespace NOWA
 		activated(new Variant(SpeechBubbleComponent::AttrActivated(), true, this->attributes)),
 		caption(new Variant(SpeechBubbleComponent::AttrCaption(), "MyCaption", this->attributes)),
 		runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
-		runSpeed(new Variant(SpeechBubbleComponent::AttrRunSpeed(), 0.1f, this->attributes, true)),
 		speechDuration(new Variant(SpeechBubbleComponent::AttrSpeechDuration(), 10.0f, this->attributes)),
-		runSpeechSound(new Variant(SpeechBubbleComponent::AttrRunSpeechSound(), false, this->attributes))
+		runSpeechSound(new Variant(SpeechBubbleComponent::AttrRunSpeechSound(), false, this->attributes)),
+		keepCaption(new Variant(SpeechBubbleComponent::AttrKeepCaption(), false, this->attributes))
 	{
-		this->runSpeech->setDescription("Sets whether the speech text shall appear char by char running.");
-		this->runSpeed->setDescription("Sets the speed of the speech run.");
+		this->runSpeech->setDescription("Sets whether the caption should remain after the speech run.");
 		this->speechDuration->setDescription("Sets the speed duration. That is how long the bubble shall remain in seconds.");
 		this->runSpeechSound->setDescription("Sets whether to use a sound if the speech is running char by char.");
+		this->keepCaption->setDescription("Sets whether to use a sound if the speech is running char by char.");
 	}
 
 	SpeechBubbleComponent::~SpeechBubbleComponent(void)
@@ -124,11 +124,6 @@ namespace NOWA
 			this->runSpeech->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeed")
-		{
-			this->runSpeed->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpeechDuration")
 		{
 			this->speechDuration->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
@@ -137,6 +132,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "RunSpeechSound")
 		{
 			this->runSpeechSound->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "KeepCaption")
+		{
+			this->keepCaption->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 
@@ -149,9 +149,9 @@ namespace NOWA
 
 		clonedCompPtr->setCaption(this->caption->getString());
 		clonedCompPtr->setRunSpeech(this->runSpeech->getBool());
-		clonedCompPtr->setRunSpeed(this->runSpeed->getReal());
 		clonedCompPtr->setSpeechDuration(this->speechDuration->getReal());
 		clonedCompPtr->setRunSpeechSound(this->runSpeechSound->getBool());
+		clonedCompPtr->setKeepCaption(this->keepCaption->getBool());
 
 		clonedCompPtr->setActivated(this->activated->getBool());
 
@@ -194,7 +194,6 @@ namespace NOWA
 		if (nullptr != gameObjectTitleCompPtr)
 		{
 			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-			this->gameObjectTitleComponent->setLookAtCamera(false);
 			this->gameObjectTitleComponent->getMovableText()->setVisible(true);
 		}
 		else
@@ -215,9 +214,6 @@ namespace NOWA
 		this->timeSinceLastChar = 0.0f;
 		this->timeSinceLastRun = 0.0f;
 		this->speechDone = false;
-
-		// Starts with run speed value, to print at least one char, else ogre will complain about rendering an empty manual object
-		this->timeSinceLastChar = this->runSpeed->getReal();
 
 		this->lineNode->setVisible(true);
 
@@ -250,7 +246,7 @@ namespace NOWA
 	{
 		this->bIsInSimulation = !notSimulating;
 
-		if (false == notSimulating)
+		if (false == notSimulating && true == this->activated->getBool())
 		{
 			if (nullptr == this->manualObject)
 			{
@@ -304,10 +300,6 @@ namespace NOWA
 		{
 			this->setRunSpeech(attribute->getBool());
 		}
-		else if (SpeechBubbleComponent::AttrRunSpeed() == attribute->getName())
-		{
-			this->setRunSpeed(attribute->getReal());
-		}
 		else if (SpeechBubbleComponent::AttrSpeechDuration() == attribute->getName())
 		{
 			this->setSpeechDuration(attribute->getReal());
@@ -315,6 +307,10 @@ namespace NOWA
 		else if (SpeechBubbleComponent::AttrRunSpeechSound() == attribute->getName())
 		{
 			this->setRunSpeechSound(attribute->getBool());
+		}
+		else if (SpeechBubbleComponent::AttrKeepCaption() == attribute->getName())
+		{
+			this->setKeepCaption(attribute->getBool());
 		}
 	}
 
@@ -349,12 +345,6 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeed"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeed->getReal())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "SpeechDuration"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->speechDuration->getReal())));
 		propertiesXML->append_node(propertyXML);
@@ -363,6 +353,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "RunSpeechSound"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->runSpeechSound->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "KeepCaption"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->keepCaption->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -435,7 +431,7 @@ namespace NOWA
 			this->currentCharIndex = 0;
 			this->timeSinceLastRun = 0.0f;
 
-			this->currentCaptionWidth = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().x * 0.5f + 0.05f;
+			this->currentCaptionWidth = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().x * 0.5f + 0.1f;
 			this->currentCaptionHeight = this->gameObjectTitleComponent->getMovableText()->getLocalAabb().getMaximum().y * 0.5f;
 
 			// Only set directly the whole caption to be rendered, if run speech is set to false. Else set caption char by char
@@ -443,7 +439,6 @@ namespace NOWA
 			{
 				this->gameObjectTitleComponent->setCaption("");
 			}
-
 		}
 
 		if (nullptr != this->lineNode)
@@ -465,26 +460,6 @@ namespace NOWA
 	bool SpeechBubbleComponent::getRunSpeech(void) const
 	{
 		return this->runSpeech->getBool();
-	}
-
-	void SpeechBubbleComponent::setRunSpeed(Ogre::Real runSpeed)
-	{
-		if (runSpeed < 0.1f)
-		{
-			runSpeed = 0.1f;
-		}
-		else if (runSpeed > 5.0f)
-		{
-			runSpeed = 5.0f;
-		}
-		this->runSpeed->setValue(runSpeed);
-		// Starts with run speed value, to print at least one char, else ogre will complain about rendering an empty manual object
-		this->timeSinceLastChar = runSpeed;
-	}
-
-	Ogre::Real SpeechBubbleComponent::getRunSpeed(void) const
-	{
-		return this->runSpeed->getReal();
 	}
 
 	void SpeechBubbleComponent::setSpeechDuration(Ogre::Real speechDurationSec)
@@ -520,6 +495,15 @@ namespace NOWA
 		return this->runSpeechSound->getBool();
 	}
 
+	void SpeechBubbleComponent::setKeepCaption(bool keepCaption)
+	{
+	}
+
+	bool SpeechBubbleComponent::getKeepCaption(void) const
+	{
+		return false;
+	}
+
 	void SpeechBubbleComponent::reactOnSpeechDone(luabind::object closureFunction)
 	{
 		this->closureFunction = closureFunction;
@@ -527,75 +511,58 @@ namespace NOWA
 
 	void SpeechBubbleComponent::drawSpeechBubble(Ogre::Real dt)
 	{
-		// Outer Rectangle
-		//	//    lto-------rto
-		//	//    |			  |
-		//	//    |           | height
-		//	//    |           |
-		//	//    lbo---x---rbo
-		//           width
-		// x = game object position
-
 		this->couldDraw = false;
 
 		if (nullptr != this->gameObjectTitleComponent)
 		{
-			if (true == this->caption->getString().empty())
+			if (this->caption->getString().empty() || this->currentCaptionWidth == 0.0f)
 			{
 				return;
 			}
 
-			if (0.0f == this->currentCaptionWidth)
-			{
-				return;
-			}
-
-			// If run speech is set to false. Else set caption char by char
 			if (true == this->runSpeech->getBool())
 			{
-				this->timeSinceLastChar += dt;
-				this->timeSinceLastRun += dt;
-				if (this->timeSinceLastChar >= this->runSpeed->getReal() && this->currentCharIndex <= this->caption->getString().length())
+				size_t totalCharacters = this->caption->getString().length();
+				if (totalCharacters > 0)
 				{
-					this->timeSinceLastChar = 0.0f;
-					this->currentCharIndex += 1;
-					Ogre::String captionSoFar = mid(this->caption->getString(), 0, this->currentCharIndex);
-					this->gameObjectTitleComponent->setCaption(captionSoFar);
+					Ogre::Real timePerCharacter = this->speechDuration->getReal() / static_cast<Ogre::Real>(totalCharacters);
 
-					if (true == this->runSpeechSound->getBool())
+					if (this->timeSinceLastChar >= timePerCharacter && this->currentCharIndex < totalCharacters)
 					{
-						if (nullptr != this->simpleSoundComponent)
+						this->timeSinceLastChar = 0.0f;
+						this->currentCharIndex++;
+
+						Ogre::String captionSoFar = mid(this->caption->getString(), 0, this->currentCharIndex);
+						this->gameObjectTitleComponent->setCaption(captionSoFar);
+
+						if (this->runSpeechSound->getBool() && this->simpleSoundComponent)
 						{
 							Ogre::Real rndPitch = static_cast<Ogre::Real>(MathHelper::getInstance()->getRandomNumber(3, 10)) * 0.1f;
 							this->simpleSoundComponent->setPitch(rndPitch);
 							this->simpleSoundComponent->setActivated(true);
 						}
 					}
-
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Caption: " + captionSoFar);
-
-					if (this->currentCharIndex >= this->caption->getString().length())
-					{
-						this->currentCharIndex -= 1;
-					}
 				}
 
-				// Hide not to early, the whole text must be printed at least!
-				if (this->gameObjectTitleComponent->getCaption() == this->caption->getString())
+				if (this->gameObjectTitleComponent->getCaption() == this->caption->getString() &&
+					this->timeSinceLastRun >= this->speechDuration->getReal() + 0.2f)
 				{
 					this->speechDone = true;
-					if (nullptr != this->simpleSoundComponent)
+					if (this->simpleSoundComponent)
 					{
 						this->simpleSoundComponent->setActivated(false);
 					}
 				}
 
-				if (this->timeSinceLastRun >= this->speechDuration->getReal() + 0.2f && true == this->speechDone)
+				if (this->speechDone)
 				{
 					this->timeSinceLastChar = 0.0f;
 					this->timeSinceLastRun = 0.0f;
-					this->gameObjectTitleComponent->getMovableText()->setVisible(false);
-					this->lineNode->setVisible(false);
+					if (false == this->keepCaption->getBool())
+					{
+						this->gameObjectTitleComponent->getMovableText()->setVisible(false);
+						this->lineNode->setVisible(false);
+					}
 					this->speechDone = false;
 
 					if (this->closureFunction.is_valid())
@@ -610,26 +577,29 @@ namespace NOWA
 							std::stringstream msg;
 							msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what())
-								+ " details: " + msg.str());
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnSpeechDone' Error: "
+								+ Ogre::String(error.what()) + " details: " + msg.str());
 						}
 					}
 				}
+
+				this->timeSinceLastChar += dt;
+				this->timeSinceLastRun += dt;
 			}
 
-			if (true == this->gameObjectTitleComponent->getCaption().empty())
+			if (this->gameObjectTitleComponent->getCaption().empty())
 			{
 				return;
 			}
 
-			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
-			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+			// Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + (Ogre::Vector3(0.0f, this->currentCaptionHeight, 0.0f) * 0.5f);
+			Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
+			Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
 			Ogre::Vector3 sp = Ogre::Vector3::ZERO;
 			Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
 
-			p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() * Ogre::Vector3(this->gameObjectTitleComponent->getAlignment().x, this->gameObjectTitleComponent->getAlignment().y, 1.0f)
-				- Ogre::Vector3(0.0f, this->currentCaptionHeight * 0.5f, 0.0f);
-			o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
+			// Ogre::Vector3  p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() * Ogre::Vector3(this->gameObjectTitleComponent->getAlignment().x, this->gameObjectTitleComponent->getAlignment().y, 1.0f);
+			 // 	- Ogre::Vector3(0.0f, this->currentCaptionHeight * 0.5f, 0.0f);
 
 
 			// https://stackoverflow.com/questions/3477988/how-can-a-programmatically-draw-a-scalable-aethetically-pleasing-curved-comic
@@ -730,14 +700,14 @@ namespace NOWA
 			.def("isActivated", &SpeechBubbleComponent::isActivated)
 			.def("setRunSpeech", &SpeechBubbleComponent::setRunSpeech)
 			.def("getRunSpeech", &SpeechBubbleComponent::getRunSpeech)
-			.def("setRunSpeed", &SpeechBubbleComponent::setRunSpeed)
-			.def("getRunSpeed", &SpeechBubbleComponent::getRunSpeed)
 			.def("setCaption", &SpeechBubbleComponent::setCaption)
 			.def("getCaption", &SpeechBubbleComponent::getCaption)
 			.def("setSpeechDuration", &SpeechBubbleComponent::setSpeechDuration)
 			.def("getSpeechDuration", &SpeechBubbleComponent::getSpeechDuration)
 			.def("setRunSpeechSound", &SpeechBubbleComponent::setRunSpeechSound)
 			.def("getRunSpeechSound", &SpeechBubbleComponent::getRunSpeechSound)
+			.def("setKeepCaption", &SpeechBubbleComponent::setKeepCaption)
+			.def("getKeepCaption", &SpeechBubbleComponent::getKeepCaption)
 			.def("reactOnSpeechDone", &SpeechBubbleComponent::reactOnSpeechDone)
 		];
 
@@ -748,16 +718,15 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "Vector3 getTextColor()", "Gets the text color.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeech(bool runSpeech)", "Sets whether the speech text shall appear char by char running.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeech()", "Gets whether the speech text shall appear char by char running.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeed(float runSpeed)", "Sets the speed of the speech run.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getRunSpeed()", "Gets the speed of the speech run.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setCaption(string caption)", "Sets the caption text to be displayed.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "string getCaption()", "Gets the caption text.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setSpeechDuration(float speechDuration)", "Sets the speed duration. That is how long the bubble shall remain in seconds.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getSpeechDuration()", "Gets the speed duration. That is how long the bubble shall remain in seconds.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether to use a sound if the speech is running char by char.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether to use a sound if the speech is running char by char.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)",
-			"Sets whether to react if a speech is done.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets whether to use a sound if the speech is running char by char.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether to use a sound if the speech is running char by char.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether the caption should remain after the speech run.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether the caption is remained after the speech run.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)", "Sets whether to react if a speech is done.");
 
 
 		gameObjectClass.def("getSpeechBubbleComponentFromName", &getSpeechBubbleComponentFromName);
@@ -772,7 +741,18 @@ namespace NOWA
 
 	bool SpeechBubbleComponent::canStaticAddComponent(GameObject* gameObject)
 	{
-		// No constraints so far, just add
+		// Can only be added once
+		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<GameObjectTitleComponent>());
+		if (nullptr == gameObjectTitleCompPtr)
+		{
+			return false;
+		}
+
+		if (gameObject->getComponentCount<SpeechBubbleComponent>() < 2)
+		{
+			return true;
+		}
+
 		return true;
 	}
 

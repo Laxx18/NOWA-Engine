@@ -65,11 +65,12 @@ namespace NOWA
 		if (true == cameraControlLocked)
 			return;
 
-		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 		if (nullptr != widget)
 		{
+			this->reset();
 			return;
-		}*/
+		}
 		
 		Ogre::Vector3 moveValue = Ogre::Vector3::ZERO;
 
@@ -166,7 +167,7 @@ namespace NOWA
 				this->camera->setOrthoWindowHeight(1.0f);
 			}
 		}
-		if (this->firstTimeMoveValueSet)
+		if (true == this->firstTimeMoveValueSet)
 		{
 			this->lastMoveValue = moveValue;
 			this->firstTimeMoveValueSet = false;

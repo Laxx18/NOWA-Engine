@@ -182,7 +182,7 @@ namespace NOWA
 		if (nullptr != gameObjectTitleCompPtr)
 		{
 			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
-			this->gameObjectTitleComponent->setLookAtCamera(false);
+			this->gameObjectTitleComponent->setOrientationTargetId(0);
 		}
 
 		this->createValueBar();
@@ -559,8 +559,9 @@ namespace NOWA
 		if (nullptr != this->gameObjectTitleComponent)
 		{
 			this->gameObjectTitleComponent->getMovableText()->setTextYOffset(-1.0f);
-			this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
+			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
 			this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_setDerivedOrientation(so);
+			this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 		}
 
 		Ogre::Real bs = this->borderSize->getReal();

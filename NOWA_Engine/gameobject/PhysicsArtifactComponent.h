@@ -54,7 +54,7 @@ namespace NOWA
 			return "Usage: This Component is used for a non movable maybe complex collision hull, like an whole world, or terra.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override { };
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override { };
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

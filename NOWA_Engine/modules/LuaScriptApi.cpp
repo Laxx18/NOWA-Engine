@@ -450,9 +450,9 @@ namespace NOWA
 	void bindVector3(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<Vector3>("Vector3")
-				.def_readwrite("x", &Vector3::x)
+		[
+			class_<Vector3>("Vector3")
+			.def_readwrite("x", &Vector3::x)
 			.def_readwrite("y", &Vector3::y)
 			.def_readwrite("z", &Vector3::z)
 			.def(constructor<>())
@@ -494,10 +494,11 @@ namespace NOWA
 			.def("makeAbs", &Vector3::makeAbs)
 			.def("directionEquals", &Vector3::directionEquals)
 			.def("primaryAxis", &Vector3::primaryAxis)
-			];
+		];
 
 		AddClassToCollection("Vector3", "class", "Vector3 class.");
 		AddClassToCollection("Vector3", "Vector3(float x, float y, float z)", "Constructor.");
+		AddClassToCollection("Vector3", "Vector3(Vector3 other)", "Constructor.");
 		AddClassToCollection("Vector3", "x", "type");
 		AddClassToCollection("Vector3", "y", "type");
 		AddClassToCollection("Vector3", "z", "type");
@@ -552,9 +553,9 @@ namespace NOWA
 	void bindVector4(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<Vector4>("Vector4")
-				.def_readwrite("x", &Vector4::x)
+		[
+			class_<Vector4>("Vector4")
+			.def_readwrite("x", &Vector4::x)
 			.def_readwrite("y", &Vector4::y)
 			.def_readwrite("z", &Vector4::z)
 			.def_readwrite("z", &Vector4::w)
@@ -575,10 +576,11 @@ namespace NOWA
 			// Methods
 			.def("dotProduct", &Vector4::dotProduct)
 			.def("isNaN", &Vector4::isNaN)
-			];
+		];
 
 		AddClassToCollection("Vector4", "class", "Vector4 class.");
 		AddClassToCollection("Vector4", "Vector4(float x, float y, float z, float w)", "Constructor.");
+		AddClassToCollection("Vector4", "Vector4(Vector4 other)", "Constructor.");
 		AddClassToCollection("Vector4", "x", "type");
 		AddClassToCollection("Vector4", "y", "type");
 		AddClassToCollection("Vector4", "z", "type");
@@ -645,9 +647,9 @@ namespace NOWA
 	void bindQuaternion(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<Ogre::Quaternion>("Quaternion")
-				.def_readwrite("x", &Quaternion::x)
+		[
+			class_<Ogre::Quaternion>("Quaternion")
+			.def_readwrite("x", &Quaternion::x)
 			.def_readwrite("y", &Quaternion::y)
 			.def_readwrite("z", &Quaternion::z)
 			.def_readwrite("w", &Quaternion::w)
@@ -693,10 +695,14 @@ namespace NOWA
 			.def("squad", &Quaternion::Squad)
 			.def("nlerp", &Quaternion::nlerp)
 			.def("isNaN", &Quaternion::isNaN)
-			];
+		];
 
 		AddClassToCollection("Quaternion", "class", "Quaternion class.");
+		AddClassToCollection("Quaternion", "Quaternion(number x, number y, number z, number w)", "Constructor.");
 		AddClassToCollection("Quaternion", "Quaternion(Degree angle, Vector3 axis)", "Constructor.");
+		AddClassToCollection("Quaternion", "Quaternion(Radian angle, Vector3 axis)", "Constructor.");
+		AddClassToCollection("Quaternion", "Quaternion(Vector3 xAxis, Vector3 yAxis, Vector3 zAxis)", "Constructor.");
+		AddClassToCollection("Quaternion", "Quaternion(Quaternion other)", "Constructor.");
 		AddClassToCollection("Quaternion", "x", "type");
 		AddClassToCollection("Quaternion", "y", "type");
 		AddClassToCollection("Quaternion", "z", "type");
@@ -6189,41 +6195,29 @@ namespace NOWA
 	void bindDistributedComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<DistributedComponent, GameObjectComponent>("DistributedComponent")
-				// .def("getClassName", &DistributedComponent::getClassName)
+		[
+			class_<DistributedComponent, GameObjectComponent>("DistributedComponent")
 			.def("getParentClassName", &DistributedComponent::getParentClassName)
-			// .def("clone", &DistributedComponent::clone)
-			// .def("getClassId", &DistributedComponent::getClassId)
-			// .def("getParentClassId", &DistributedComponent::getParentClassId)
 			.def("getAttributeValue", &DistributedComponent::getAttributeValue)
 			.def("addAttribute", &DistributedComponent::addAttribute)
 			.def("changeValue", (void (DistributedComponent::*)(const Ogre::String&, const Ogre::String&, Variant::Types)) & DistributedComponent::changeValue)
 			.def("changeValue", (void (DistributedComponent::*)(const Ogre::String&)) & DistributedComponent::changeValue)
 			.def("removeAttribute", &DistributedComponent::removeAttribute)
 			.def("getAttributes", &getAttributes)
-			];
+		];
 
 		AddClassToCollection("DistributedComponent", "class inherits GameObjectComponent", DistributedComponent::getStaticInfoText());
-		// AddClassToCollection("DistributedComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("DistributedComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
-		// AddClassToCollection("DistributedComponent", "number getClassId()", "Gets the class id of this component.");
-		// AddClassToCollection("DistributedComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
 		//TODO: Component not finished!
 	}
 
 	void bindGameObjectTitleComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<GameObjectTitleComponent, GameObjectComponent>("GameObjectTitleComponent")
-				// .def("getClassName", &GameObjectTitleComponent::getClassName)
+		[
+			class_<GameObjectTitleComponent, GameObjectComponent>("GameObjectTitleComponent")
 			.def("getParentClassName", &GameObjectTitleComponent::getParentClassName)
-			// .def("clone", &GameObjectTitleComponent::clone)
-			// .def("getClassId", &GameObjectTitleComponent::getClassId)
-			// .def("getParentClassId", &GameObjectTitleComponent::getParentClassId)
-			// .def("setFontName", &GameObjectTitleComponent::setFontName)
 			.def("setCaption", &GameObjectTitleComponent::setCaption)
+			.def("getCaption", &GameObjectTitleComponent::getCaption)
 			.def("setAlwaysPresent", &GameObjectTitleComponent::setAlwaysPresent)
 			.def("setCharHeight", &GameObjectTitleComponent::setCharHeight)
 			.def("setColor", &GameObjectTitleComponent::setColor)
@@ -6232,17 +6226,14 @@ namespace NOWA
 			.def("setOffsetOrientation", &GameObjectTitleComponent::setOffsetOrientation)
 			.def("getOffsetPosition", &GameObjectTitleComponent::getOffsetPosition)
 			.def("getOffsetOrientation", &GameObjectTitleComponent::getOffsetOrientation)
-			.def("setLookAtCamera", &GameObjectTitleComponent::setLookAtCamera)
-			];
+			.def("setOrientationTargetId", &GameObjectTitleComponent::setOrientationTargetId)
+			.def("getOrientationTargetId", &GameObjectTitleComponent::getOrientationTargetId)
+			.def("getTargetIdOrientation", &GameObjectTitleComponent::getTargetIdOrientation)
+		];
 
 		AddClassToCollection("GameObjectTitleComponent", "class inherits GameObjectComponent", GameObjectTitleComponent::getStaticInfoText());
-		// AddClassToCollection("GameObjectTitleComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("GameObjectTitleComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("GameObjectTitleComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
-		// AddClassToCollection("GameObjectTitleComponent", "number getClassId()", "Gets the class id of this component.");
-		// AddClassToCollection("GameObjectTitleComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
-		// AddClassToCollection("GameObjectTitleComponent", "void setFontName(string fontName)", "Sets font name.");
 		AddClassToCollection("GameObjectTitleComponent", "void setCaption(string caption)", "Sets the caption text to be displayed.");
+		AddClassToCollection("GameObjectTitleComponent", "string getCaption()", "Gets the caption text.");
 		AddClassToCollection("GameObjectTitleComponent", "void setAlwaysPresent(bool alwaysPresent)", "Sets whether the object title text should always be visible, even if the game object is hidden behind another one.");
 		AddClassToCollection("GameObjectTitleComponent", "void setCharHeight(float charHeight)", "Sets the height of the characters (default value is 0.2).");
 		AddClassToCollection("GameObjectTitleComponent", "void setColor(Vector4 color)", "Sets the color (with alpha) for the title.");
@@ -6251,7 +6242,9 @@ namespace NOWA
 		AddClassToCollection("GameObjectTitleComponent", "Vector3 getOffsetPosition()", "Gets the offset position of the title.");
 		AddClassToCollection("GameObjectTitleComponent", "void setOffsetOrientation(Vector3 offsetOrientation)", "Sets the offset orientation vector in degrees for the title. Note: Orientation is set in the form: (degreeX, degreeY, degreeZ).");
 		AddClassToCollection("GameObjectTitleComponent", "Vector3 getOffsetOrientation()", "Gets the offset orientation vector in degrees of the title. Orientation is in the form: (degreeX, degreeY, degreeZ)");
-		AddClassToCollection("GameObjectTitleComponent", "void setLookAtCamera(bool lookAtCamera)", "Sets whether to orientate the text always at the camera.");
+		AddClassToCollection("GameObjectTitleComponent", "void setOrientationTargetId(string targetId)", "Sets the orientation target id, at which this enery bar should be automatically orientated.");
+		AddClassToCollection("GameObjectTitleComponent", "string getOrientationTargetId()", "Gets border size of the outer border of the value bar.");
+		AddClassToCollection("GameObjectTitleComponent", "Quaternion getTargetIdOrientation()", "Gets the orientation of target id. If not existing, the orientation of the game object is delivered.");
 	}
 
 	void bindBuoyancyComponent(lua_State* lua)
@@ -6846,8 +6839,8 @@ namespace NOWA
 			.def("getOuterColor", &ValueBarComponent::getOuterColor)
 			.def("setBorderSize", &ValueBarComponent::setBorderSize)
 			.def("getBorderSize", &ValueBarComponent::getBorderSize)
-			// .def("setOrientationTargetId", &ValueBarComponent::setOrientationTargetId)
-			// .def("getOrientationTargetId", &ValueBarComponent::getOrientationTargetId)
+			.def("setOrientationTargetId", &ValueBarComponent::setOrientationTargetId)
+			.def("getOrientationTargetId", &ValueBarComponent::getOrientationTargetId)
 
 			// .def("setShowCurrentValue", &ValueBarComponent::setShowCurrentValue)
 			// .def("getShowCurrentValue", &ValueBarComponent::getShowCurrentValue)
@@ -6874,8 +6867,8 @@ namespace NOWA
 		AddClassToCollection("ValueBarComponent", "Vector3 getOuterColor()", "Gets the outer color for the value bar (r, g, b).");
 		AddClassToCollection("ValueBarComponent", "void setBorderSize(number borderSize)", "Sets border size of the outer rectangle of the value bar.");
 		AddClassToCollection("ValueBarComponent", "number getBorderSize()", "Gets border size of the outer rectangle of the value bar.");
-		// AddClassToCollection("ValueBarComponent", "void setOrientationTargetId(string targetId)", "Sets the orientation target id, at which this enery bar should be automatically orientated.");
-		// AddClassToCollection("ValueBarComponent", "string getOrientationTargetId()", "Gets border size of the outer border of the value bar.");
+		AddClassToCollection("ValueBarComponent", "void setOrientationTargetId(string targetId)", "Sets the orientation target id, at which this enery bar should be automatically orientated.");
+		AddClassToCollection("ValueBarComponent", "string getOrientationTargetId()", "Gets border size of the outer border of the value bar.");
 		// AddClassToCollection("ValueBarComponent", "void setShowCurrentValue(bool showCurrentValue, Vector3 textColor, number textSize, string currentValueText)", "Sets whether to show the current value as text in the middle of the value bar.");
 		// AddClassToCollection("ValueBarComponent", "bool getShowCurrentValue()", "Gets whether to show the current value as text in the middle of the value bar.");
 		AddClassToCollection("ValueBarComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the offset position for the value bar. Note: Normally the value bar is placed at the same position as its carrying game object. Hence setting an offset is necessary.");

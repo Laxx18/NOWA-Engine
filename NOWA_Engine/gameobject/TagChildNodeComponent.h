@@ -94,7 +94,7 @@ namespace NOWA
 				   "Example: Adding a light as a child to ball. When the ball is moved and rotated the light will also rotateand move relative to the parents transform.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

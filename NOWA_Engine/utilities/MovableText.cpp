@@ -685,7 +685,7 @@ namespace NOWA
 	{
 		if (this->isVisible() && mpCam)
 		{
-			getParentSceneNode()->_setDerivedOrientation(mpCam->getDerivedOrientation());
+			// getParentSceneNode()->_setDerivedOrientation(mpCam->getDerivedOrientation());
 			// getParentSceneNode()->lookAt(mpCam->_getCachedDerivedPosition(), Ogre::Node::TransformSpace::TS_PARENT);
 		}
 	}

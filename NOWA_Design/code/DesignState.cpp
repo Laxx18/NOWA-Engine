@@ -1897,7 +1897,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 		}
 	}
 
-	if (false == handled && nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget() && true == validScene)
+	if (false == handled /*&& nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget()*/ && true == validScene)
 	{
 		switch (keyEventRef.key)
 		{

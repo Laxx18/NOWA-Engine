@@ -146,6 +146,7 @@ Menu_MainGameObject["connect"] = function(gameObject)
        twoPlayerPositionController:setActivated(false);
        twoPlayerColorButton:setActivated(false);
        twoPlayerName:setActivated(false);
+       player2:getSpeechBubbleComponent():setActivated(false);
        
         AppStateManager:getGameProgressModule():setGlobalBoolValue("TwoPlayer", false);
     end);
@@ -158,6 +159,7 @@ Menu_MainGameObject["connect"] = function(gameObject)
        twoPlayerPositionController:setActivated(true);
        twoPlayerColorButton:setActivated(true);
        twoPlayerName:setActivated(true);
+       player2:getSpeechBubbleComponent():setActivated(true);
 
        AppStateManager:getGameProgressModule():setGlobalBoolValue("TwoPlayer", true);
     end);
@@ -171,11 +173,11 @@ Menu_MainGameObject["connect"] = function(gameObject)
     end);
     
     onePlayerName:reactOnEditTextChanged(function()
-        player1:getGameObjectTitleComponent():setCaption(onePlayerName:getCaption());
+        player1:getSpeechBubbleComponent():setCaption(onePlayerName:getCaption());
     end);
     
     twoPlayerName:reactOnEditTextChanged(function()
-        player2:getGameObjectTitleComponent():setCaption(twoPlayerName:getCaption());
+        player2:getSpeechBubbleComponent():setCaption(twoPlayerName:getCaption());
     end);
     
     onePlayerColorButton:reactOnMouseButtonClick(function() 

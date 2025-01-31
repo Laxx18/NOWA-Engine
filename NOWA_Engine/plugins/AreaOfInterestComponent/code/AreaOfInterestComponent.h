@@ -150,7 +150,7 @@ namespace NOWA
 			return "AreaOfInterestComponent";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue

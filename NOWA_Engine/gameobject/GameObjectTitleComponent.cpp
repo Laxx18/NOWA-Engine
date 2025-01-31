@@ -2,6 +2,7 @@
 #include "GameObjectTitleComponent.h"
 #include "utilities/XMLConverter.h"
 #include "utilities/MathHelper.h"
+#include "main/AppStateManager.h"
 
 namespace
 {
@@ -35,15 +36,16 @@ namespace NOWA
 		: GameObjectComponent(),
 		movableText(nullptr),
 		textNode(nullptr),
+		orientationTargetGameObject(nullptr),
 		fontName(new Variant(GameObjectTitleComponent::AttrFontName(), "BlueHighway", this->attributes)),
 		caption(new Variant(GameObjectTitleComponent::AttrCaption(), "MyCaption", this->attributes)),
 		charHeight(new Variant(GameObjectTitleComponent::AttrCharHeight(), 0.5f, this->attributes)),
 		alwaysPresent(new Variant(GameObjectTitleComponent::AttrAlwaysPresent(), false, this->attributes)),
 		offsetPosition(new Variant(GameObjectTitleComponent::AttrOffsetPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		offsetOrientation(new Variant(GameObjectTitleComponent::AttrOffsetOrientation(), Ogre::Vector3::ZERO, this->attributes)),
+		orientationTargetId(new Variant(GameObjectTitleComponent::AttrOrientationTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
 		color(new Variant(GameObjectTitleComponent::AttrColor(), Ogre::Vector4(1.0f, 1.0f, 1.0f, 1.0f), this->attributes)),
-		alignment(new Variant(GameObjectTitleComponent::AttrAlignment(), Ogre::Vector2(1.0f, 2.0f), this->attributes)),
-		lookAtCamera(new Variant(GameObjectTitleComponent::AttrLookAtCamera(), false, this->attributes))
+		alignment(new Variant(GameObjectTitleComponent::AttrAlignment(), Ogre::Vector2(1.0f, 2.0f), this->attributes))
 	{
 		this->color->addUserData(GameObject::AttrActionColorDialog());
 		this->alignment->setDescription("First value: 0 = Horizontal Left, 1 = Horizontal Center. Second value: 0 = Vertical Below, 1 = Vertical Above, 2 = Vertical Center");
@@ -102,6 +104,11 @@ namespace NOWA
 			this->offsetOrientation->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OrientationTargetId")
+		{
+			this->orientationTargetId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Color")
 		{
 			this->color->setValue(XMLConverter::getAttribVector4(propertyElement, "data"));
@@ -112,11 +119,6 @@ namespace NOWA
 			this->alignment->setValue(XMLConverter::getAttribVector2(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookAtCamera")
-		{
-			this->lookAtCamera->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
-			propertyElement = propertyElement->next_sibling("property");
-		}
 		return true;
 	}
 
@@ -125,7 +127,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Init game object title component for game object: " + this->gameObjectPtr->getName());
 
 		Ogre::NameValuePairList params;
-		params["name"] = this->gameObjectPtr->getName() + "_MovableText";
+		params["name"] = Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_MovableText";
 		params["Caption"] = this->caption->getString();
 		params["fontName"] = this->fontName->getString();
 
@@ -161,9 +163,39 @@ namespace NOWA
 		Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 		this->movableText->setTextYOffset(0.0f);
-		this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
+		
+		// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
 		this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
+		this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 
+		return true;
+	}
+
+	bool GameObjectTitleComponent::connect(void)
+	{
+		bool success = GameObjectComponent::connect();
+		if (false == success)
+		{
+			return success;
+		}
+
+		if (0 != this->orientationTargetId->getULong())
+		{
+			auto gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->orientationTargetId->getULong());
+			if (nullptr != gameObjectPtr)
+			{
+				this->orientationTargetGameObject = gameObjectPtr.get();
+			}
+		}
+		return success;
+	}
+
+	bool GameObjectTitleComponent::disconnect(void)
+	{
+		GameObjectComponent::disconnect();
+
+		this->textNode->_setDerivedOrientation(this->gameObjectPtr->getOrientation());
+		this->orientationTargetGameObject = nullptr;
 		return true;
 	}
 
@@ -189,7 +221,7 @@ namespace NOWA
 		clonedCompPtr->setAlignment(this->alignment->getVector2());
 		clonedCompPtr->setOffsetPosition(this->offsetPosition->getVector3());
 		clonedCompPtr->setOffsetOrientation(this->offsetOrientation->getVector3());
-		clonedCompPtr->setLookAtCamera(this->lookAtCamera->getBool());
+		clonedCompPtr->setOrientationTargetId(this->orientationTargetId->getULong());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -198,11 +230,58 @@ namespace NOWA
 		return clonedCompPtr;
 	}
 
+	bool GameObjectTitleComponent::onCloned(void)
+	{
+		// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
+		// Attention: How about parent id etc. because when a widget is cloned, its internal id will be re-generated, so the parent id from another widget that should point to this widget is no more valid!
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->orientationTargetId->getULong());
+		if (nullptr != gameObjectPtr)
+		{
+			this->orientationTargetId->setValue(gameObjectPtr->getId());
+		}
+		else
+		{
+			this->orientationTargetId->setValue(static_cast<unsigned long>(0));
+		}
+
+		// Since connect is called during cloning process, it does not make sense to process furher here, but only when simulation started!
+		return true;
+	}
+
 	void GameObjectTitleComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (this->movableText && true == this->lookAtCamera->getBool())
+		if (false == notSimulating)
 		{
-			this->movableText->update(dt);
+			if (nullptr != this->orientationTargetGameObject)
+			{
+#if 0
+				Ogre::Vector3 p = this->gameObjectPtr->getPosition();
+				Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+
+				Ogre::Vector3 sp = this->offsetPosition->getVector3();
+				Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
+
+				if (nullptr != this->orientationTargetGameObject)
+				{
+					Ogre::Vector3 direction = this->gameObjectPtr->getPosition() - this->orientationTargetGameObject->getPosition();
+
+					so = MathHelper::getInstance()->lookAt(direction) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+					// Remove orientation of game object, so that the value bar will always face the target, no matter how the game object is orientated
+					o = Ogre::Quaternion::IDENTITY;
+				}
+				else
+				{
+					so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+				}
+
+				// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
+				this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
+				this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
+#else
+
+				this->textNode->_setDerivedOrientation(this->orientationTargetGameObject->getOrientation());
+#endif
+			}
 		}
 	}
 
@@ -234,6 +313,10 @@ namespace NOWA
 		{
 			this->setOffsetOrientation(attribute->getVector3());
 		}
+		else if (GameObjectTitleComponent::AttrOrientationTargetId() == attribute->getName())
+		{
+			this->setOrientationTargetId(attribute->getULong());
+		}
 		else if (GameObjectTitleComponent::AttrColor() == attribute->getName())
 		{
 			this->setColor(attribute->getVector4());
@@ -241,10 +324,6 @@ namespace NOWA
 		else if (GameObjectTitleComponent::AttrAlignment() == attribute->getName())
 		{
 			this->setAlignment(attribute->getVector2());
-		}
-		else if (GameObjectTitleComponent::AttrLookAtCamera() == attribute->getName())
-		{
-			this->setLookAtCamera(attribute->getBool());
 		}
 	}
 
@@ -295,6 +374,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetOrientation->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OrientationTargetId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orientationTargetId->getULong())));
+		propertiesXML->append_node(propertyXML);
+
 		propertyXML = doc.allocate_node(rapidxml::node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "10"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Color"));
@@ -305,12 +390,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Alignment"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->alignment->getVector2())));
-		propertiesXML->append_node(propertyXML);
-
-		propertyXML = doc.allocate_node(rapidxml::node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "LookAtCamera"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->lookAtCamera->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -421,6 +500,33 @@ namespace NOWA
 		return this->offsetOrientation->getVector3();
 	}
 
+	void GameObjectTitleComponent::setOrientationTargetId(unsigned long targetId)
+	{
+		this->orientationTargetId->setValue(targetId);
+		if (0 == targetId)
+		{
+			this->orientationTargetGameObject = nullptr;
+		}
+	}
+
+	unsigned long GameObjectTitleComponent::getOrientationTargetId(unsigned int id) const
+	{
+		return this->orientationTargetId->getULong();
+	}
+
+	Ogre::Quaternion GameObjectTitleComponent::getTargetIdOrientation(void)
+	{
+		if (nullptr != this->orientationTargetGameObject)
+		{
+			return this->orientationTargetGameObject->getOrientation();
+		}
+		if (nullptr != this->gameObjectPtr)
+		{
+			return this->gameObjectPtr->getOrientation();
+		}
+		return Ogre::Quaternion::IDENTITY;
+	}
+
 	void GameObjectTitleComponent::setColor(const Ogre::Vector4& color)
 	{
 		this->color->setValue(color);
@@ -449,16 +555,6 @@ namespace NOWA
 	Ogre::Vector2 GameObjectTitleComponent::getAlignment(void) const
 	{
 		return this->alignment->getVector2();
-	}
-
-	void GameObjectTitleComponent::setLookAtCamera(bool lookAtCamera)
-	{
-		this->lookAtCamera->setValue(lookAtCamera);
-	}
-
-	bool GameObjectTitleComponent::getLookAtCamera(void) const
-	{
-		return this->lookAtCamera->getBool();
 	}
 
 	MovableText* GameObjectTitleComponent::getMovableText(void) const

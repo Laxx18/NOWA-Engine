@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.57735" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -666,14 +666,24 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="FontName" data="BlueHighway"/>
-					<property type="7" name="Caption" data="Push a key on device."/>
-					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="7" name="Caption" data="Your Name"/>
+					<property type="6" name="CharHeight" data="0.3"/>
 					<property type="12" name="AlwaysPresent" data="false"/>
-					<property type="9" name="OffsetPosition" data="0 1 0"/>
+					<property type="9" name="OffsetPosition" data="0.5 1 0"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
-					<property type="10" name="Color" data="1 1 1 1"/>
+					<property type="2" name="OrientationTargetId" data="2904886742"/>
+					<property type="10" name="Color" data="1 0 0 1"/>
 					<property type="8" name="Alignment" data="1 2"/>
-					<property type="12" name="LookAtCamera" data="true"/>
+					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Caption" data="Your Name"/>
+					<property type="12" name="RunSpeech" data="true"/>
+					<property type="6" name="SpeechDuration" data="3"/>
+					<property type="12" name="RunSpeechSound" data="false"/>
+					<property type="12" name="KeepCaption" data="true"/>
 				</userData>
 			</entity>
 		</node>
@@ -806,14 +816,24 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="FontName" data="BlueHighway"/>
-					<property type="7" name="Caption" data="Your Name"/>
-					<property type="6" name="CharHeight" data="0.5"/>
+					<property type="7" name="Caption" data=""/>
+					<property type="6" name="CharHeight" data="0.3"/>
 					<property type="12" name="AlwaysPresent" data="false"/>
-					<property type="9" name="OffsetPosition" data="0 1 0"/>
+					<property type="9" name="OffsetPosition" data="0.5 1 0"/>
 					<property type="9" name="OffsetOrientation" data="0 0 0"/>
-					<property type="10" name="Color" data="1 1 1 1"/>
+					<property type="2" name="OrientationTargetId" data="2904886742"/>
+					<property type="10" name="Color" data="1 0 0 1"/>
 					<property type="8" name="Alignment" data="1 2"/>
-					<property type="12" name="LookAtCamera" data="true"/>
+					<property type="7" name="ComponentSpeechBubbleComponent" data="SpeechBubbleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="Caption" data="Your Name"/>
+					<property type="12" name="RunSpeech" data="true"/>
+					<property type="6" name="SpeechDuration" data="3"/>
+					<property type="12" name="RunSpeechSound" data="false"/>
+					<property type="12" name="KeepCaption" data="true"/>
 				</userData>
 			</entity>
 		</node>

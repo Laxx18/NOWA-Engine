@@ -108,7 +108,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::update
 		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -840,7 +840,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::update
 		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -1440,7 +1440,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::update
 		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue
@@ -1567,7 +1567,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::update
 		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		static unsigned int getStaticClassId(void)
 		{

@@ -28,6 +28,16 @@ namespace NOWA
 		virtual bool postInit(void) override;
 
 		/**
+		 * @see		GameObjectComponent::connect
+		 */
+		virtual bool connect(void) override;
+
+		/**
+		 * @see		GameObjectComponent::disconnect
+		 */
+		virtual bool disconnect(void) override;
+
+		/**
 		 * @see		GameObjectComponent::getClassName
 		 */
 		virtual Ogre::String getClassName(void) const override;
@@ -41,6 +51,11 @@ namespace NOWA
 		 * @see		GameObjectComponent::getParentClassName
 		 */
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+		/**
+		 * @see		GameObjectComponent::onCloned
+		 */
+		virtual bool onCloned(void) override;
 
 		static unsigned int getStaticClassId(void)
 		{
@@ -129,6 +144,24 @@ namespace NOWA
 		 */
 		Ogre::Vector3 getOffsetOrientation(void) const;
 
+		/**
+		 * @brief Sets the orientation target id, at which the title should be automatically orientated
+		 * @param[in] targetId The optional target id to set
+		 */
+		void setOrientationTargetId(unsigned long targetId);
+
+		/**
+		 * @brief Gets the orientation target id, at which the title is orientated
+		 * @return targetId The target id to get
+		 */
+		unsigned long getOrientationTargetId(unsigned int id) const;
+
+		/**
+		 * @brief Gets the orientation of target id
+		 * @return orientationOfTargetId The orientation of target id to get. If not existing, the orientation of the game object is delivered.
+		 */
+		Ogre::Quaternion getTargetIdOrientation(void);
+
 		void setColor(const Ogre::Vector4& colour);
 
 		Ogre::Vector4 getColor(void) const;
@@ -136,10 +169,6 @@ namespace NOWA
 		void setAlignment(const Ogre::Vector2& alignment);
 
 		Ogre::Vector2 getAlignment(void) const;
-
-		void setLookAtCamera(bool lookAtCamera);
-
-		bool getLookAtCamera(void) const;
 
 		MovableText* getMovableText(void) const;
 	public:
@@ -149,9 +178,9 @@ namespace NOWA
 		static const Ogre::String AttrCharHeight(void) { return "Char Height"; }
 		static const Ogre::String AttrOffsetPosition(void) { return "Offset Position"; }
 		static const Ogre::String AttrOffsetOrientation(void) { return "Offset Orientation"; }
+		static const Ogre::String AttrOrientationTargetId(void) { return "Orientation Target Id"; }
 		static const Ogre::String AttrColor(void) { return "Color (r, g, b, a)"; }
 		static const Ogre::String AttrAlignment(void) { return "Alignment"; }
-		static const Ogre::String AttrLookAtCamera(void) { return "Look At Camera"; }
 	private:
 		Variant* fontName;
 		Variant* caption;
@@ -159,11 +188,13 @@ namespace NOWA
 		Variant* charHeight;
 		Variant* offsetPosition;
 		Variant* offsetOrientation;
+		Variant* orientationTargetId;
 		Variant* alignment;
 		Variant* color;
-		Variant* lookAtCamera;
+
 		MovableText* movableText;
 		Ogre::SceneNode* textNode;
+		GameObject* orientationTargetGameObject;
 	};
 
 }; //namespace end

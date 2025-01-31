@@ -69,7 +69,7 @@ namespace NOWA
 					"The two last constellations do not work, because no force is taking place, use PhysicsTriggerComponent, in order to detect collisions of this ones!";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override { };
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override { };
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

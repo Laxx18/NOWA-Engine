@@ -102,7 +102,7 @@ namespace NOWA
 				"Note: Functions behave different when using a kind of PhysicsActiveComponent, because not the absolute position can be taken, but the relative velocity or omega force must be used.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue

@@ -122,7 +122,7 @@ namespace NOWA
 		/**
 		* @see		GameObjectComponent::update
 		*/
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue
@@ -208,18 +208,6 @@ namespace NOWA
 		bool getRunSpeech(void) const;
 
 		/**
-		 * @brief Sets the speed of the speech run.
-		 * @param[in] runSpeed The run speed to set.
-		 */
-		void setRunSpeed(Ogre::Real runSpeed);
-
-		/**
-		 * @brief Gets the speed of the speech run.
-		 * @return runSpeed
-		 */
-		Ogre::Real getRunSpeed(void) const;
-
-		/**
 		 * @brief Sets the speed duration. That is how long the bubble shall remain in seconds.
 		 * @param[in] speedDurationSec The speech duration to set.
 		 */
@@ -244,6 +232,18 @@ namespace NOWA
 		bool getRunSpeechSound(void) const;
 
 		/**
+		 * @brief Sets whether the caption should remain after the speech run.
+		 * @param[in] keepCaption The flag set.
+		 */
+		void setKeepCaption(bool keepCaption);
+
+		/**
+		 * @brief Gets whether the caption should is remained after the speech run.
+		 * @return keepCaption
+		 */
+		bool getKeepCaption(void) const;
+
+		/**
 		 * @brief Lua closure function gets called if the speech is done.
 		 * @param[in] closureFunction The closure function set.
 		 */
@@ -252,9 +252,9 @@ namespace NOWA
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrCaption(void) { return "Caption"; }
 		static const Ogre::String AttrRunSpeech(void) { return "Run Speech"; }
-		static const Ogre::String AttrRunSpeed(void) { return "Run Speed"; }
 		static const Ogre::String AttrSpeechDuration(void) { return "Speech Duration"; }
 		static const Ogre::String AttrRunSpeechSound(void) { return "Run Speech Sound"; }
+		static const Ogre::String AttrKeepCaption(void) { return "Keep Caption"; }
 	protected:
 		virtual void drawSpeechBubble(Ogre::Real dt);
 
@@ -282,9 +282,9 @@ namespace NOWA
 		Variant* activated;
 		Variant* caption;
 		Variant* runSpeech;
-		Variant* runSpeed;
 		Variant* speechDuration;
 		Variant* runSpeechSound;
+		Variant* keepCaption;
 	};
 
 }; // namespace end

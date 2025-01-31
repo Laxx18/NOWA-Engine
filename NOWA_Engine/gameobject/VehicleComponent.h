@@ -82,7 +82,7 @@ namespace NOWA
 			return "Usage: With this component, a physically vehicle is created.";
 		}
 
-		virtual void update(Ogre::Real dt, bool notSimulating) override;
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
 		* @see		GameObjectComponent::actualizeValue
