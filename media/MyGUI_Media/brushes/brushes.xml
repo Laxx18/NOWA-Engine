@@ -28,6 +28,14 @@
 		</Group>
 	</Resource>
 	
+	<Resource type="ResourceImageSet" name="Incline.png">
+		<Group name="States" texture="Incline.png" size="64 64">
+			<Index name="Normal">
+				<Frame point="0 0"/>
+			</Index>
+		</Group>
+	</Resource>
+	
 	<Resource type="ResourceImageSet" name="Circular.png">
 		<Group name="States" texture="Circular.png" size="64 64">
 			<Index name="Normal">

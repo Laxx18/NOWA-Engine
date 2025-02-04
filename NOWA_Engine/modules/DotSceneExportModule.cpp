@@ -1289,7 +1289,8 @@ namespace NOWA
 					Ogre::v1::SubEntity* subEntity = entity->getSubEntity(i);
 					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subentity");
 					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
-					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, *subEntity->getDatablock()->getNameStr())));
+					// Write the original datablock names from game object, not the currently applied one, because it has "__id.." at the end
+					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, gameObject->getDatablockNames()[i])));
 					entityXML->append_node(subEntityXML);
 				}
 			}
@@ -1334,7 +1335,8 @@ namespace NOWA
 					Ogre::SubItem* subItem = item->getSubItem(i);
 					xml_node<>* subEntityXML = doc.allocate_node(node_element, "subitem");
 					subEntityXML->append_attribute(doc.allocate_attribute("index", XMLConverter::ConvertString(doc, i)));
-					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, *subItem->getDatablock()->getNameStr())));
+					// Write the original datablock names from game object, not the currently applied one, because it has "__id.." at the end
+					subEntityXML->append_attribute(doc.allocate_attribute("datablockName", XMLConverter::ConvertString(doc, gameObject->getDatablockNames()[i])));
 					entityXML->append_node(subEntityXML);
 				}
 			}

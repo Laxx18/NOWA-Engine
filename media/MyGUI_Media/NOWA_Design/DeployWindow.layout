@@ -20,7 +20,10 @@
             <Property key="Caption" value="#{DecryptKey}:"/>
             <Property key="TextAlign" value="Left VCenter"/>
         </Widget>
-		<Widget type="Button" skin="Button" position="130 130 120 30" name="deployCloseButton">
+		<Widget type="Button" skin="Button" position="15 130 150 30" name="deployOkButton">
+            <Property key="Caption" value="#{SaveDatablocks}"/>
+        </Widget>
+		<Widget type="Button" skin="Button" position="205 130 150 30" name="deployCloseButton">
             <Property key="Caption" value="#{Close}"/>
         </Widget>
     </Widget>

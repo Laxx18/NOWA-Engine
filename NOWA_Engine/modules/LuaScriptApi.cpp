@@ -13712,6 +13712,10 @@ namespace NOWA
 		if (this->lua)
 		{
 			Ogre::String projectPackagePath = Core::getSingletonPtr()->getAbsolutePath(Core::getSingletonPtr()->getCurrentProjectPath());
+			if (true == projectPackagePath.empty())
+			{
+				return;
+			}
 			LuaScriptApi::getInstance()->appendLuaFilePathToPackage(projectPackagePath);
 
 			Ogre::String luaScriptFilePathName = projectPackagePath + "/" + scriptName;

@@ -10988,6 +10988,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			getCaption =
+			{
+				type = "function",
+				description = "Gets the caption text.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
 			setAlwaysPresent =
 			{
 				type = "method",
@@ -11052,13 +11060,29 @@ return {
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
-			setLookAtCamera =
+			setOrientationTargetId =
 			{
 				type = "method",
-				description = "Sets whether to orientate the text always at the camera.",
-				args = "(boolean lookAtCamera)",
+				description = "Sets the orientation target id, at which this enery bar should be automatically orientated.",
+				args = "(string targetId)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getOrientationTargetId =
+			{
+				type = "function",
+				description = "Gets border size of the outer border of the value bar.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			getTargetIdOrientation =
+			{
+				type = "function",
+				description = "Gets the orientation of target id. If not existing, the orientation of the game object is delivered.",
+				args = "()",
+				returns = "(Quaternion)",
+				valuetype = "Quaternion"
 			}
 		}
 	},
@@ -16998,14 +17022,6 @@ return {
 				args = "(func closureFunction, Ogre::Real delaySec)",
 				returns = "(nil)",
 				valuetype = "nil"
-			},
-			connect =
-			{
-				type = "method",
-				description = "Calls connect for the given game object.",
-				args = "(GameObject gameObject)",
-				returns = "(nil)",
-				valuetype = "nil"
 			}
 		}
 	},
@@ -19781,6 +19797,22 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			reactOnEditTextChanged =
+			{
+				type = "method",
+				description = "Reacts if a char has been entered, use the @MyGUITextComponent instance to get the current caption.",
+				args = "(func closure)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			reactOnEditAccepted =
+			{
+				type = "method",
+				description = "Reacts if the text has been accepted by pressing enter etc., use the @MyGUITextComponent instance to get the current caption.",
+				args = "(func closure)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -24809,22 +24841,6 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
-			setRunSpeed =
-			{
-				type = "method",
-				description = "Sets the speed of the speech run.",
-				args = "(number runSpeed)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			getRunSpeed =
-			{
-				type = "function",
-				description = "Gets the speed of the speech run.",
-				args = "()",
-				returns = "(number)",
-				valuetype = "number"
-			},
 			setCaption =
 			{
 				type = "method",
@@ -24857,10 +24873,26 @@ return {
 				returns = "(number)",
 				valuetype = "number"
 			},
-			setRunSpeechSound =
+			setKeepCaption =
 			{
 				type = "method",
 				description = "Sets whether to use a sound if the speech is running char by char.",
+				args = "(boolean keepCaption)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getKeepCaption =
+			{
+				type = "function",
+				description = "Gets whether to use a sound if the speech is running char by char.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setRunSpeechSound =
+			{
+				type = "method",
+				description = "Sets whether the caption should remain after the speech run.",
 				args = "(boolean runSpeechSound)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -24868,7 +24900,7 @@ return {
 			getRunSpeechSound =
 			{
 				type = "function",
-				description = "Gets whether to use a sound if the speech is running char by char.",
+				description = "Gets whether the caption is remained after the speech run.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
@@ -25638,6 +25670,14 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			reactOnFunctionFinished =
+			{
+				type = "method",
+				description = "Sets whether to react at the moment when one of the functions (translate, rotate, scale) or all etc. have finished their round.",
+				args = "(func closure)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},
@@ -25885,6 +25925,22 @@ return {
 				args = "()",
 				returns = "(number)",
 				valuetype = "number"
+			},
+			setOrientationTargetId =
+			{
+				type = "method",
+				description = "Sets the orientation target id, at which this enery bar should be automatically orientated.",
+				args = "(string targetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOrientationTargetId =
+			{
+				type = "function",
+				description = "Gets border size of the outer border of the value bar.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			},
 			setOffsetPosition =
 			{

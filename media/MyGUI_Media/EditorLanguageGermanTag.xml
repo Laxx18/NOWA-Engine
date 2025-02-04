@@ -160,7 +160,7 @@
 	<Tag name="SaveGroup">Gruppe Speichern</Tag>
 	<Tag name="LoadGroup">Gruppe Laden</Tag>
 	<Tag name="AddMeshResources">Mesh Ressourcen Hinzufuegen</Tag>
-	<Tag name="SaveDatablocks">Resourcen Exportieren</Tag>
+	<Tag name="SaveDatablocks">Anwendung deployen</Tag>
 	
 	<Tag name="Copy">Kopieren</Tag>
 	<Tag name="Paste">Einfuegen</Tag>

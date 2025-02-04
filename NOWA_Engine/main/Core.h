@@ -448,6 +448,14 @@ namespace NOWA
 
 		Ogre::String getApplicationFilePathName(void);
 
+	
+
+		/**
+		 * @brief		Gets the resources file path name. E.g. 'C:\users\***\Documents\NOWA - Engine\bin\resources'
+		 * @return		text	The text to copy
+		 */
+		Ogre::String getResourcesFilePathName(void);
+
 		Ogre::String getDirectoryNameFromFilePathName(const Ogre::String& filePathName);
 
 		Ogre::String getRootFolderName(void);
@@ -780,7 +788,11 @@ namespace NOWA
 		*/
 		bool processMeshMagick(const Ogre::String& meshName, const Ogre::String& parameters);
 		
-		void preLoadTextures(void);
+		/**
+		* @brief		Preloads textures for the given resource group name.
+		* @param[in]	resourceGroupName	The resource group name to preload the textures for.
+		*/
+		void preLoadTextures(const Ogre::String& resourceGroupName);
 	public:
 
 		enum PhysicsType

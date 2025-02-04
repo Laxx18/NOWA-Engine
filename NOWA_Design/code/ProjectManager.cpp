@@ -776,15 +776,6 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 			boost::shared_ptr<EventDataRefreshMeshResources> eventDataRefreshMeshResources(new EventDataRefreshMeshResources());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshMeshResources);
 		}
-		else if (this->openSaveFileDialog->getMode() == "SaveDatablocks")
-		{
-			Ogre::String fileName = this->openSaveFileDialog->getCurrentFolder() + "\\" + this->openSaveFileDialog->getFileName();
-
-			NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getApplicationName(), fileName);
-
-			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-		}
 		else if (this->openSaveFileDialog->getMode() == "CopyScene")
 		{
 			Ogre::String tempFileName = this->openSaveFileDialog->getCurrentFolder();

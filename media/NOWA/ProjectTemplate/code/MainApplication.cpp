@@ -39,6 +39,8 @@ void MainApplication::startSimulation(const Ogre::String& graphicsConfigName)
 	else
 		coreConfiguration.graphicsConfigName = graphicsConfigName;  // transmitted via args in main, since may variate when used network scenario
 	coreConfiguration.wndTitle = "ProjectTemplate";
+	// NOWADesign -> Edit -> Deploy, then use this line:
+	// coreConfiguration.resourcesName = "ProjectTemplateDeployed.cfg";
 	coreConfiguration.resourcesName = "ProjectTemplate.cfg";
 	coreConfiguration.customConfigName = "ProjectTemplateConfig.xml";
 	// Initialize ogre

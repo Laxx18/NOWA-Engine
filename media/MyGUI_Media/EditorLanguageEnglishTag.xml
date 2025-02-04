@@ -159,7 +159,7 @@
 	<Tag name="SaveGroup">Save Group</Tag>
 	<Tag name="LoadGroup">Load Group</Tag>
 	<Tag name="AddMeshResources">Add Mesh Resources</Tag>
-	<Tag name="SaveDatablocks">Export Resources</Tag>
+	<Tag name="SaveDatablocks">Deploy application</Tag>
 	<Tag name="Copy">Copy</Tag>
 	<Tag name="Paste">Paste</Tag>
 	<Tag name="Stack">Stack</Tag>

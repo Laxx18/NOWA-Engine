@@ -205,11 +205,6 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 
-		menuItem = editMenuControl->addItem("saveDatablocksMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
-		menuItem->setCaptionWithReplacing("#{SaveDatablocks}");
-		menuItem->hideItemChild();
-		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
-
 		menuItem = editMenuControl->addItem("openProjectFolderMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
 		menuItem->setCaptionWithReplacing("#{OpenProjectFolder}");
 		menuItem->hideItemChild();
@@ -462,7 +457,6 @@ void MainMenuBar::enableMenuEntries(bool enable)
 	this->editMenuItem->getItemChild()->getItemAt(SAVE_GROUP)->setEnabled(enable); // save group
 	this->editMenuItem->getItemChild()->getItemAt(LOAD_GROUP)->setEnabled(enable); // load group
 	this->editMenuItem->getItemChild()->getItemAt(LOAD_MESH_RESOURCE)->setEnabled(enable); // load mesh resource
-	this->editMenuItem->getItemChild()->getItemAt(SAVE_DATABLOCKS)->setEnabled(enable); // save datablocks
 	this->editMenuItem->getItemChild()->getItemAt(OPEN_PROJECT_FOLDER)->setEnabled(enable); // open project folder
 	this->editMenuItem->getItemChild()->getItemAt(START_GAME)->setEnabled(enable); // start game
 
@@ -651,11 +645,6 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->projectManager->showFileOpenDialog("AddMeshResources", "");
 			break;
 		}
-		case SAVE_DATABLOCKS + START_INDEX: // Save datablocks
-		{
-			this->projectManager->showFileSaveDialog("SaveDatablocks", "*.json");
-			break;
-		}
 		case OPEN_PROJECT_FOLDER + START_INDEX: // Open project folder
 		{
 			NOWA::Core::getSingletonPtr()->openFolder(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
@@ -706,110 +695,110 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->projectManager->getEditorManager()->getSelectionManager()->selectionRedo();
 			break;
 		}
-		case 31: // Front View
+		case 30: // Front View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_FRONT);
 			break;
 		}
-		case 32: // TOP View
+		case 31: // TOP View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_TOP);
 			break;
 		}
-		case 33: // Back View
+		case 32: // Back View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BACK);
 			break;
 		}
-		case 34: // Bottom View
+		case 33: // Bottom View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BOTTOM);
 			break;
 		}
-		case 35: // Left View
+		case 34: // Left View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_LEFT);
 			break;
 		}
-		case 36: // Right View
+		case 35: // Right View
 		{
 			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_RIGHT);
 			break;
 		}
-		case 37: // Camera Undo
+		case 36: // Camera Undo
 		{
 			this->projectManager->getEditorManager()->cameraUndo();
 			break;
 		}
-		case 38: // Camera Redo
+		case 37: // Camera Redo
 		{
 			this->projectManager->getEditorManager()->cameraRedo();
 			break;
 		}
-		case 39: // Render Solid
+		case 38: // Render Solid
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(3);
 			break;
 		}
-		case 40: // Render Wireframe
+		case 39: // Render Wireframe
 		{
 			NOWA::Core::getSingletonPtr()->setPolygonMode(2);
 			break;
 		}
-		case 41: // Render Points
+		case 40: // Render Points
 		{
 			// Does not work, do not know why
 			NOWA::Core::getSingletonPtr()->setPolygonMode(1);
 			break;
 		}
-		case 42: // Scene analysis
+		case 41: // Scene analysis
 		{
 			this->showAnalysisWindow();
 			break;
 		}
-		case 43: // Deploy
+		case 42: // Deploy
 		{
 			this->showDeployWindow();
 			break;
 		}
-		case 44: // Lua Analysis
+		case 43: // Lua Analysis
 		{
 			this->showLuaAnalysisWindow();
 			break;
 		}
-		case 45: // Lua Api
+		case 44: // Lua Api
 		{
 			this->showLuaApiWindow();
 			break;
 		}
-		case 46: // Open all lua scripts
+		case 45: // Open all lua scripts
 		{
 			this->openAllLuaScripts();
 			break;
 		}
-		case 47: // Mesh Tool
+		case 46: // Mesh Tool
 		{
 			this->showMeshToolWindow();
 			break;
 		}
-		case 48: // Draw Navigation Mesh
+		case 47: // Draw Navigation Mesh
 		{
 			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
 			this->drawNavigationMap(this->bDrawNavigationMesh);
 			break;
 		}
-		case 49: // Draw Collision Lines
+		case 48: // Draw Collision Lines
 		{
 			this->bDrawCollisionLines = !this->bDrawCollisionLines;
 			this->drawCollisionLines(this->bDrawCollisionLines);
 			break;
 		}
-		case 50: // Optimize scene
+		case 49: // Optimize scene
 		{
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 51: // Control selected player
+		case 50: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -822,7 +811,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 52: // Test selected game objects
+		case 51: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -830,12 +819,12 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 53: // About
+		case 52: // About
 		{
 			this->showAboutWindow();
 			break;
 		}
-		case 54: // Scene description
+		case 53: // Scene description
 		{
 			this->showSceneDescriptionWindow();
 			break;
@@ -914,6 +903,14 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 			this->resultLabel->setCaptionWithReplacing("#{WrongKey}");
 			this->resultLabel->setTextColour(MyGUI::Colour::Red);
 		}
+	}
+	else if ("deployOkButton" == sender->getName())
+	{
+		Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
+		NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getSceneName(), projectFilePathName);
+
+		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
 	}
 	else if (this->fileMenuItem == sender)
 	{
@@ -1118,6 +1115,14 @@ void MainMenuBar::showDeployWindow(void)
 		
 		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("encryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("decryptButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton")->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+		MyGUI::Button* button = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("deployOkButton");
+		button->setNeedToolTip(true);
+		button->setUserString("tooltip", "Deploys all meshes, skeleton files, textures and all materials in one json file at the given [Project] resource folder. "
+			"E.g. ../media/Projects/ApplicationName/media. "
+			" Creates in applicationName/bin/resources an applicationNameDeployed.cfg file. "
+			" Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.");
+		button->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 	}
 
 	MyGUI::FloatPoint windowPosition;

@@ -534,11 +534,11 @@ namespace NOWA
 		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
 
 		// Do not react on input if there is any interaction with a mygui widget
-		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 		if (nullptr != widget)
 		{
 			return false;
-		}
+		}*/
 
 		auto& itKeyListener = this->keyListeners.begin();
 		auto& itKeyListenerEnd = this->keyListeners.end();

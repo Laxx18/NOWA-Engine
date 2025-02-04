@@ -128,11 +128,14 @@ namespace Ogre
         Camera const*           m_camera;
         std::vector<float>      m_brushData;
         uint8                   m_brushSize;
+        bool                    m_dynamicBrushMode;
+        bool                    m_hasPrevPosition;
         uint8                   m_blendLayer;
         Ogre::String            m_prefix;
         Ogre::String            m_currentBlendWeightImageName;
         Ogre::String            m_currentHeightMapImageName;
         Ogre::Image2            m_blendWeightImage;
+        Ogre::Vector3           m_prevPosition;
 
         /// Creates the Ogre texture based on the image data.
         /// Called by @see createHeightmap
@@ -323,6 +326,8 @@ namespace Ogre
         void applySmoothDiff(const Ogre::Vector3& position, const std::vector<float>& data, int boxSize, float strength);
 
         void applyBlendDiff(const Ogre::Vector3& position, const std::vector<float>& brushData, int boxSize, float intensity, int blendLayer);
+
+        void generateBrushData(std::vector<float>& m_brushData, const Ogre::Vector3& direction);
 
         void saveTextures(const Ogre::String& path, const Ogre::String& prefix);
 

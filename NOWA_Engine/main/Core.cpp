@@ -807,6 +807,11 @@ namespace NOWA
 			}
 		}
 
+		// Note: If via DeployResourceModule deploy has been called for an external app, in the project folder a media folder has been created and all at the deploy timepoint created resources (meshes, json, textures) have been copied there.
+		// Also a appDeployed.cfg has been created with a resource group name called "Project", which points to that place, so if the app is started, all those textures in that folder will be preloaded at app start
+		// So scene loading times will be improved.
+		this->preLoadTextures("Project");
+
 		// Count the resource objects for progress visualisation
 		// loadableObjectsCount = (jsonMaterialsCount - resourceGroupNames.size()) * 2;
 		loadableObjectsCount = static_cast<unsigned int>(this->resourceGroupNames.size());
@@ -986,8 +991,6 @@ namespace NOWA
 			this->writeAccessFolder + "ProfilePerFrame", this->writeAccessFolder + "ProfileAccum");
 #endif
 #endif
-		// Its not necessary it seems! Now particle universe also is working!!
-		// this->preLoadTextures();
 
 		return true;
 	}
@@ -2191,6 +2194,32 @@ namespace NOWA
 		::GetModuleFileName(handleInstance, &temp[0], sizeof(temp) / sizeof(unsigned short) - 1);
 		result = &temp[0];
 		return result;
+	}
+
+	Ogre::String Core::getResourcesFilePathName(void)
+	{
+		Ogre::String applicationFilePathName = this->getApplicationFilePathName();
+		if (true == applicationFilePathName.empty())
+		{
+			return "";
+		}
+
+		// Replaces backslashes with forward slashes
+		std::replace(applicationFilePathName.begin(), applicationFilePathName.end(), '\\', '/');
+
+		// Removes the last two folder levels
+		for (int i = 0; i < 2; i++)
+		{
+			size_t lastSlash = applicationFilePathName.find_last_of('/');
+			if (lastSlash != Ogre::String::npos)
+			{
+				applicationFilePathName = applicationFilePathName.substr(0, lastSlash);
+			}
+		}
+
+		Ogre::String resourcesFolder = applicationFilePathName + "/resources";
+
+		return resourcesFolder;
 	}
 
 	Ogre::String Core::getDirectoryNameFromFilePathName(const Ogre::String& filePathName)
@@ -3592,7 +3621,7 @@ namespace NOWA
 		return textureNames;
 	}
 
-	void Core::preLoadTextures(void)
+	void Core::preLoadTextures(const Ogre::String& resourceGroupName)
 	{
 		std::vector<Ogre::String> filters = { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" };
 
@@ -3600,18 +3629,22 @@ namespace NOWA
 
 		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
 
-		for (auto& resourceGroupName : this->resourceGroupNames)
+		bool resourceGroupExisting = false;
+
+		for (auto& currentResourceGroupName : this->resourceGroupNames)
 		{
-			if ("ParticleUniverse" != resourceGroupName)
+			if (currentResourceGroupName != resourceGroupName)
 			{
 				continue;
 			}
+
+			resourceGroupExisting = true;
 
 			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
 			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
 			for (auto& filter : filters)
 			{
-				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter/**itExt*/);
+				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(currentResourceGroupName, "*." + filter/**itExt*/);
 				for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
 				{
 					Ogre::String textureName = *itName;
@@ -3623,7 +3656,7 @@ namespace NOWA
 					// it will be filled with correct data when setDataBlock is called
 					Ogre::TextureGpu* texture = textureManager->createOrRetrieveTexture(textureName,
 						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, Ogre::TextureTypes::Type2D,
-						resourceGroupName, filters, 0u);
+						currentResourceGroupName, filters, 0u);
 
 					// Check if its a valid texture
 					if (nullptr != texture)
@@ -3642,7 +3675,10 @@ namespace NOWA
 			}
 		}
 
-		textureManager->waitForStreamingCompletion();
+		if (true == resourceGroupExisting)
+		{
+			textureManager->waitForStreamingCompletion();
+		}
 	}
 
 	std::pair<bool, Ogre::String> Core::getMeshVersion(const Ogre::String& meshName)

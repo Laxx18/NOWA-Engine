@@ -19,7 +19,13 @@ namespace NOWA
 
 		Ogre::String getResourcePath(const Ogre::String& name) const;
 
-		void deploy(const Ogre::String& applicationName, const Ogre::String& jsonFilePathName);
+		void createConfigFile(const Ogre::String& configurationFilePathName, const Ogre::String& applicationName);
+
+		void deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName);
+
+		Ogre::String removeDuplicateMaterials(const Ogre::String& json);
+
+		void appendToExistingJson(const Ogre::String& filename, const Ogre::String& tempFilename);
 
 		void saveTexturesCache(const Ogre::String& sceneFolderPathName);
 

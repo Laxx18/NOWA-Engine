@@ -6,7 +6,11 @@
 #include "utilities/rapidxml.hpp"
 
 #include <filesystem>
-#include <thread>
+#include <regex>
+
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/prettywriter.h>
 
 namespace
 {
@@ -401,7 +405,130 @@ namespace NOWA
 		return Ogre::String();
 	}
 
-	void DeployResourceModule::deploy(const Ogre::String& applicationName, const Ogre::String& jsonFilePathName)
+	void DeployResourceModule::createConfigFile(const Ogre::String& configurationFilePathName, const Ogre::String& applicationName)
+	{
+		// Create and open the configuration file
+		std::ofstream configFile(configurationFilePathName.c_str());
+
+		if (configFile.is_open())
+		{
+			// Write the content to the file
+			configFile << "# Resources required by the sample browser and most samples.\n\n";
+			configFile << "[Essential]\n";
+			configFile << "FileSystem=../../media/MyGUI_Media\n";
+			configFile << "FileSystem=../../media/MyGUI_Media/images\n\n";
+
+			configFile << "[General]\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common/Any\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common/GLSL\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common/GLSLES\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common/HLSL\n";
+			configFile << "FileSystem=../../media/2.0/scripts/materials/Common/Metal\n";
+			configFile << "FileSystem=../../media/Hlms/Common/Any\n";
+			configFile << "FileSystem=../../media/Hlms/Common/GLSL\n";
+			configFile << "FileSystem=../../media/Hlms/Common/HLSL\n";
+			configFile << "FileSystem=../../media/Hlms/Common/Metal\n";
+			configFile << "FileSystem=../../media/Hlms/Compute\n";
+			configFile << "FileSystem=../../media/Compute/Algorithms/IBL\n";
+			configFile << "FileSystem=../../media/Compute/Tools/Any\n";
+			configFile << "FileSystem=../../media/NOWA/PriorScripts\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts\n";
+			configFile << "# Custom scripts for compositor effects etc.\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/Postprocessing\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/Postprocessing/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/Postprocessing/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/terra\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/terra/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/terra/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/terra/Metal\n";
+			configFile << "#FileSystem=../../media/NOWA/Scripts/ocean/textures\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SMAA/Metal\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SSAO\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SSAO/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SSAO/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/SSAO/Metal\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/Distortion\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/HDR\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/GLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/HDR/Metal\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles/HLSL\n";
+			configFile << "FileSystem=../../media/NOWA/Scripts/GpuParticles/GLSL\n";
+			configFile << "FileSystem=../../media/materials/textures\n\n";
+
+			configFile << "[NOWA_Design]\n";
+			configFile << "FileSystem=../../media/MyGUI_Media/NOWA_Design\n\n";
+
+			configFile << "[Brushes]\n";
+			configFile << "FileSystem=../../media/MyGUI_Media/brushes\n\n";
+
+			configFile << "[Audio]\n";
+			configFile << "FileSystem=../../media/Audio\n";
+			configFile << "FileSystem=../../media/Audio/machinery\n";
+			configFile << "FileSystem=../../media/Audio/music\n";
+			configFile << "FileSystem=../../media/Audio/heavy_object\n";
+			configFile << "FileSystem=../../media/Audio/rumble\n\n";
+
+			configFile << "[Models]\n";
+			configFile << "FileSystem=../../media/models\n";
+			configFile << "[Backgrounds]\n";
+			configFile << "FileSystem=../../media/Backgrounds\n\n";
+
+			configFile << "[Projects]\n";
+			configFile << "FileSystem=../../media/projects\n\n";
+
+			// Insert the application name in the Project section
+			configFile << "[Project]\n";
+			configFile << "FileSystem=../../media/Projects/" << applicationName << "\n";
+			configFile << "FileSystem=../../media/Projects/" << applicationName << "/media" << "\n\n";
+
+			configFile << "[TerrainTextures]\n";
+			configFile << "FileSystem=../../media/TerrainTextures\n";
+			configFile << "[Skies]\n";
+			configFile << "FileSystem=../../media/Skies\n\n";
+
+			configFile << "[NOWA]\n";
+			configFile << "FileSystem=../../media/fonts\n";
+			configFile << "FileSystem=../../media/NOWA\n\n";
+
+			configFile << "[Lua]\n";
+			configFile << "FileSystem=../../media/lua\n\n";
+
+			configFile << "[ParticleUniverse]\n";
+			configFile << "FileSystem=../../media/ParticleUniverse/core\n";
+			configFile << "FileSystem=../../media/ParticleUniverse/examples/materials\n";
+			configFile << "FileSystem=../../media/ParticleUniverse/examples/models\n";
+			configFile << "FileSystem=../../media/ParticleUniverse/examples/scripts\n";
+			configFile << "FileSystem=../../media/ParticleUniverse/examples/textures\n\n";
+
+			configFile << "[GpuParticles]\n";
+			configFile << "FileSystem=../../media/ParticleSystems\n\n";
+
+			configFile << "[Unlit]\n";
+			configFile << "FileSystem=../../media/materials/unlit\n\n";
+
+			configFile << "# Do not load this as a resource. It's here merely to tell the code where\n";
+			configFile << "# the Hlms templates are located\n";
+			configFile << "[Hlms]\n";
+			configFile << "DoNotUseAsResource=../../media\n";
+
+			// Close the file
+			configFile.close();
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Configuration file created at: " + configurationFilePathName);
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to create the configuration file.");
+		}
+	}
+
+	void DeployResourceModule::deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName)
 	{
 		// Go or create path + "applicationName/media" folder
 		// Create resourceFolder if necessary
@@ -409,26 +536,57 @@ namespace NOWA
 		// Either get the location from resourcePtr or from the resourcePath String
 		// If its a mesh or plane, read also the location of the datablock
 		// Zip everything
-		// Copy all mandatory resources to "applicationName/media/..." folder
-		// Create in "applicationName/bin" an applicationName.cfg file an add the zip resource + all mandatory Ogre resources
+		// Copy all mandatory resources to "[Project]" resource folder, e.g.:
+		// [Project]
+		// FileSystem = ../../media/Projects/QuatLax
+		// FileSystem = ../../media/Projects/QuatLax/media
+		// Creates in "applicationName/bin/resources" an applicationNameDeployed.cfg file and adds the zip resource + all mandatory Ogre resources
+		// Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.
+		// TODO: Copy all necessary dll files etc. to a given folder also, so that the application is closed and separated
+
+		Ogre::String mediaFolderFilePathName = projectFilePathName + "/media";
+		Core::getSingletonPtr()->createFolder(mediaFolderFilePathName);
+
+		Ogre::String resoucesFilePathName = Core::getSingletonPtr()->getResourcesFilePathName();
+
+		Ogre::String configurationFilePathName = resoucesFilePathName + "/" + applicationName + "Deployed.cfg";
+
+		this->createConfigFile(configurationFilePathName, applicationName);
+
+		// TODO: For preLoad, listen if there is a media folder inside the projectFilePathName and load the textures from there at application start
+		// Read out during resources nowa engine start if there is a [Project] 
 
 		// jsonFilePathName must be in the form: name.material.json, often .material is missing, so check that
 
-		Ogre::String filename = jsonFilePathName;
+		Ogre::String filename = mediaFolderFilePathName;
+		Ogre::String mainFileName = mediaFolderFilePathName;
 
-		size_t materialIndex = jsonFilePathName.find(".material.json");
+		size_t materialIndex = mediaFolderFilePathName.find(".material.json");
 		if (Ogre::String::npos == materialIndex)
 		{
 			Ogre::String json;
-			const size_t jsonIndex = jsonFilePathName.rfind(".json");
+			const size_t jsonIndex = mediaFolderFilePathName.rfind(".json");
 			if (std::string::npos != jsonIndex)
 			{
-				filename = jsonFilePathName.substr(0, jsonIndex) + ".material.json";
+				filename = mediaFolderFilePathName.substr(0, jsonIndex) + ".material.json";
 			}
 			else
 			{
-				filename += ".material.json";
+				filename += "/" + sceneName + ".material.json";
 			}
+		}
+
+		bool jsonAlreadyExisting = false;
+		mainFileName += "/" + applicationName + ".material.json";
+		std::ifstream ifsMain(mainFileName);
+		if (false == ifsMain.good())
+		{
+			filename = mainFileName;
+		}
+		else
+		{
+			jsonAlreadyExisting = true;
+			ifsMain.close();
 		}
 
 		Ogre::String directory;
@@ -446,8 +604,7 @@ namespace NOWA
 			}
 		}
 
-
-		// 1. First save all data blocks to have at least all sampler, macro and blend blocks gathered
+		// Save materials to the temporary file (this prevents overwriting the actual target file)
 		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 		hlmsManager->saveMaterials(Ogre::HLMS_PBS, filename, nullptr, "");
 
@@ -662,14 +819,191 @@ namespace NOWA
 		// maybe some marker are still there, remove them
 		content = replaceAll(content, marker, "");
 
-		// Write new content
+		std::regex materialRegex(R"("([a-zA-Z0-9_/]+)__\d+")");
+
+		// Replace matches with only the material name (without __digits)
+		content = std::regex_replace(content, materialRegex, R"("$1")");
+
+		content = this->removeDuplicateMaterials(content);
+
+		// Write the cleaned content back to the file
 		std::ofstream ofs(filename);
 		ofs << content;
 		ofs.close();
+
+
+		if (true == jsonAlreadyExisting)
+		{
+			// Check if the target file already exists and append new unique materials
+			this->appendToExistingJson(mainFileName, filename);
+
+			// Now, remove the temporary file (clean up)
+			DeleteFile(filename.c_str());
+		}
+	}
+
+	Ogre::String DeployResourceModule::removeDuplicateMaterials(const Ogre::String& json)
+	{
+		// Parse the input JSON using RapidJSON
+		rapidjson::Document document;
+		document.Parse(json.c_str());
+
+		// Check for parsing errors
+		if (document.HasParseError())
+		{
+			std::cerr << "Error parsing JSON" << std::endl;
+			return json;  // Return the original json if parsing fails
+		}
+
+		std::unordered_set<std::string> unique_names;  // To track unique second-level names
+
+		// Check if the document is an object and remove duplicates at second level
+		if (document.IsObject())
+		{
+			for (auto it = document.MemberBegin(); it != document.MemberEnd();)
+			{
+				if (it->value.IsObject())  // If value is an object at the second level
+				{
+					std::unordered_set<std::string> second_level_names;
+
+					// Iterate through the second-level object and remove duplicates
+					rapidjson::Value& second_level_object = it->value;
+					for (auto sub_it = second_level_object.MemberBegin(); sub_it != second_level_object.MemberEnd();)
+					{
+						std::string sub_name = sub_it->name.GetString();
+
+						if (second_level_names.find(sub_name) != second_level_names.end())
+						{
+							// If the name is a duplicate, erase the entry
+							sub_it = second_level_object.EraseMember(sub_it);
+						}
+						else
+						{
+							// Otherwise, add the name to the set and move to the next item
+							second_level_names.insert(sub_name);
+							++sub_it;
+						}
+					}
+				}
+
+				++it;  // Move to the next member
+			}
+		}
+
+		// Convert the modified document back to a prettified string
+		rapidjson::StringBuffer buffer;
+		rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+		document.Accept(writer);  // Accept the writer to pretty-print the document
+
+		return buffer.GetString();  // Return the prettified and modified JSON as a string
+	}
+
+	void DeployResourceModule::appendToExistingJson(const Ogre::String& filename, const Ogre::String& tempFilename)
+	{
+		// Gets the main json (filename) and appends the tempFileName (currently exported scene resources json members) materials and checks for uniqueness
+		// Load the original JSON from the file
+		std::ifstream file(filename.c_str());
+		if (!file.is_open())
+		{
+			std::cerr << "Failed to open file: " << filename << std::endl;
+			return;
+		}
+
+		std::string fileContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		file.close();
+
+		// Load the temporary JSON from the temp file
+		std::ifstream tempFile(tempFilename.c_str());
+		if (!tempFile.is_open())
+		{
+			std::cerr << "Failed to open file: " << tempFilename << std::endl;
+			return;
+		}
+
+		std::string tempFileContent((std::istreambuf_iterator<char>(tempFile)), std::istreambuf_iterator<char>());
+		tempFile.close();
+
+		// Parse both JSON documents using RapidJSON
+		rapidjson::Document originalDoc;
+		originalDoc.Parse(fileContent.c_str());
+
+		rapidjson::Document tempDoc;
+		tempDoc.Parse(tempFileContent.c_str());
+
+		// Check for parse errors
+		if (originalDoc.HasParseError() || tempDoc.HasParseError())
+		{
+			std::cerr << "Error parsing JSON files" << std::endl;
+			return;
+		}
+
+		// Set to keep track of second-level names to ensure uniqueness
+		std::unordered_set<std::string> secondLevelNames;
+
+		// Add second-level names from the original document to the set
+		if (originalDoc.IsObject())
+		{
+			for (auto it = originalDoc.MemberBegin(); it != originalDoc.MemberEnd(); ++it)
+			{
+				if (it->value.IsObject())  // Check if the value is an object at second level
+				{
+					for (auto sub_it = it->value.MemberBegin(); sub_it != it->value.MemberEnd(); ++sub_it)
+					{
+						secondLevelNames.insert(sub_it->name.GetString());
+					}
+				}
+			}
+		}
+
+		// Iterate through the temp document and only add second-level members if they don't already exist
+		if (tempDoc.IsObject())
+		{
+			for (auto it = tempDoc.MemberBegin(); it != tempDoc.MemberEnd(); ++it)
+			{
+				if (it->value.IsObject())  // Only process objects at the second level
+				{
+					rapidjson::Value& tempObject = it->value;
+
+					// Iterate through the second-level members of tempObject
+					for (auto sub_it = tempObject.MemberBegin(); sub_it != tempObject.MemberEnd(); ++sub_it)
+					{
+						std::string subName = sub_it->name.GetString();
+
+						// Only add the second-level member if it doesn't already exist in the set
+						if (secondLevelNames.find(subName) == secondLevelNames.end())
+						{
+							secondLevelNames.insert(subName);
+							// Add the second-level member to the original document
+							originalDoc.AddMember(sub_it->name, sub_it->value, originalDoc.GetAllocator());
+						}
+					}
+				}
+			}
+		}
+
+		// Convert the modified original document back to a string with pretty printing
+		rapidjson::StringBuffer buffer;
+		rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+		originalDoc.Accept(writer);
+
+		// Write the final JSON to the file
+		std::ofstream outputFile(filename.c_str());
+		if (outputFile.is_open())
+		{
+			outputFile << buffer.GetString();
+			outputFile.close();
+		}
+		else
+		{
+			std::cerr << "Failed to write to file: " << filename << std::endl;
+		}
 	}
 
 	void DeployResourceModule::saveTexturesCache(const Ogre::String& sceneFolderPathName)
 	{
+		// Note: Will not be used, because it will not work this way: If there would be a cache for for a project, the project must be loaded in any case, so 
+		// Then the textures would be preLoaded. But I need it during starting the Engine! But at this time the user has not yet determined which scene to load.
+		// So the only possible scenario is using deploy function, in which all resources are copied to a folder for a game. If the game is started this folder is used to preLoad the textures at game start not at scene load stage!
 		std::ifstream ifs(sceneFolderPathName + "/cachedTextures.cache");
 		Ogre::set<Ogre::String>::type savedTextures;
 
