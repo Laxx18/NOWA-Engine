@@ -21,9 +21,11 @@ namespace NOWA
 
 		void createConfigFile(const Ogre::String& configurationFilePathName, const Ogre::String& applicationName);
 
-		void deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName);
+		void deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName, bool isLastScene);
 
 		Ogre::String removeDuplicateMaterials(const Ogre::String& json);
+
+		void processJsonFiles(const std::string& folderPath);
 
 		void appendToExistingJson(const Ogre::String& filename, const Ogre::String& tempFilename);
 

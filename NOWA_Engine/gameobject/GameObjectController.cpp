@@ -846,7 +846,8 @@ namespace NOWA
 	void GameObjectController::undoAll(void)
 	{
 		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
-			&& false == this->bIsDestroying)
+			&& false == this->bIsDestroying 
+			&& false == Core::getSingletonPtr()->getIsGame())
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 			auto ptrFunction = [this]() { this->commandModule.undoAll(); };

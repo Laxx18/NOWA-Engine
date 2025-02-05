@@ -807,11 +807,6 @@ namespace NOWA
 			}
 		}
 
-		// Note: If via DeployResourceModule deploy has been called for an external app, in the project folder a media folder has been created and all at the deploy timepoint created resources (meshes, json, textures) have been copied there.
-		// Also a appDeployed.cfg has been created with a resource group name called "Project", which points to that place, so if the app is started, all those textures in that folder will be preloaded at app start
-		// So scene loading times will be improved.
-		this->preLoadTextures("Project");
-
 		// Count the resource objects for progress visualisation
 		// loadableObjectsCount = (jsonMaterialsCount - resourceGroupNames.size()) * 2;
 		loadableObjectsCount = static_cast<unsigned int>(this->resourceGroupNames.size());
@@ -864,27 +859,11 @@ namespace NOWA
 		this->defaultEngineResourceListener = new EngineResourceRotateListener(this->renderWindow);
 		this->defaultEngineResourceListener->showLoadingBar(1, 1, 1.0f / static_cast<Ogre::Real>(loadableObjectsCount));
 
-		// Evil, as no sky boxes will work anymore!
-#if 0
-		std::vector<Ogre::String> filters = { "png", "jpg", "bmp", "tga", "gif", "tif", "dds" };
 
-		for (auto& resourceGroupName : resourceGroupNames)
-		{
-			if ("Skies" == resourceGroupName)
-				continue;
-			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
-			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
-			for (auto& filter : filters)
-			{
-				Ogre::StringVectorPtr names = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames(resourceGroupName, "*." + filter/**itExt*/);
-				for (Ogre::StringVector::iterator itName = names->begin(); itName != names->end(); ++itName)
-				{
-					Ogre::ResourceGroupManager::getSingleton().declareResource(*itName, "Texture", resourceGroupName);
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Declared resource texture: " + *itName + " from group: " + resourceGroupName);
-				}
-			}
-		}
-#endif
+		// Note: If via DeployResourceModule deploy has been called for an external app, in the project folder a media folder has been created and all at the deploy timepoint created resources (meshes, json, textures) have been copied there.
+		// Also a appDeployed.cfg has been created with a resource group name called "Project", which points to that place, so if the app is started, all those textures in that folder will be preloaded at app start
+		// So scene loading times will be improved.
+		this->preLoadTextures("Project");
 
 		try
 		{
@@ -2725,7 +2704,19 @@ namespace NOWA
 		projectName = projectFilePathName.substr(lastSlash + 1);
 
 		// Get the base project path
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath("Project")[0];
+		auto& fileNames = Core::getSingletonPtr()->getSectionPath("Project");
+
+		if (true == fileNames.empty())
+		{
+			fileNames = Core::getSingletonPtr()->getSectionPath("Projects");
+		}
+
+		if (true == fileNames.empty())
+		{
+			return sceneFileNames;
+		}
+
+		Ogre::String projectPath = fileNames[0];
 		Ogre::String searchPath = projectPath + "/" + projectName + "/*";
 
 		WIN32_FIND_DATA fd;
@@ -3631,6 +3622,8 @@ namespace NOWA
 
 		bool resourceGroupExisting = false;
 
+		bool skip = false;
+
 		for (auto& currentResourceGroupName : this->resourceGroupNames)
 		{
 			if (currentResourceGroupName != resourceGroupName)
@@ -3639,6 +3632,8 @@ namespace NOWA
 			}
 
 			resourceGroupExisting = true;
+
+			this->getEngineResourceListener()->scriptParseStarted("Textures", skip);
 
 			// Ogre::StringVector extensions = Ogre::Codec::getExtensions();
 			// for (Ogre::StringVector::iterator itExt = extensions.begin(); itExt != extensions.end(); ++itExt)
@@ -3678,6 +3673,8 @@ namespace NOWA
 		if (true == resourceGroupExisting)
 		{
 			textureManager->waitForStreamingCompletion();
+
+			this->getEngineResourceListener()->scriptParseEnded("Textures ended", skip);
 		}
 	}
 

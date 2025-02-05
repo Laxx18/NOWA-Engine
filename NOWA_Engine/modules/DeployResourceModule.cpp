@@ -12,6 +12,11 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 
+#include <filesystem>
+#include <unordered_set>
+
+namespace fs = std::filesystem;
+
 namespace
 {
 	Ogre::String replaceAll(Ogre::String str, const Ogre::String& from, const Ogre::String& to)
@@ -478,6 +483,8 @@ namespace NOWA
 			configFile << "FileSystem=../../media/models\n";
 			configFile << "[Backgrounds]\n";
 			configFile << "FileSystem=../../media/Backgrounds\n\n";
+			configFile << "[Effects]\n";
+			configFile << "FileSystem=../../media/models/Effects\n\n";
 
 			configFile << "[Projects]\n";
 			configFile << "FileSystem=../../media/projects\n\n";
@@ -528,7 +535,7 @@ namespace NOWA
 		}
 	}
 
-	void DeployResourceModule::deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName)
+	void DeployResourceModule::deploy(const Ogre::String& applicationName, const Ogre::String& sceneName, const Ogre::String& projectFilePathName, bool isLastScene)
 	{
 		// Go or create path + "applicationName/media" folder
 		// Create resourceFolder if necessary
@@ -544,6 +551,10 @@ namespace NOWA
 		// Now if application is started, in Core preLoadTextures is called for [Project] resource folder, which pre loads all textures at application start.
 		// TODO: Copy all necessary dll files etc. to a given folder also, so that the application is closed and separated
 
+
+		// TODO: Muss anpassen: Nicht mehr mergen zu einer json, sondern x-viele lassen also pro scene. Dann aber durchgehen und die namen sammeln, wenn dann der name in einer
+		// weiteren json vorkommt, dann entfernen!
+
 		Ogre::String mediaFolderFilePathName = projectFilePathName + "/media";
 		Core::getSingletonPtr()->createFolder(mediaFolderFilePathName);
 
@@ -551,7 +562,10 @@ namespace NOWA
 
 		Ogre::String configurationFilePathName = resoucesFilePathName + "/" + applicationName + "Deployed.cfg";
 
-		this->createConfigFile(configurationFilePathName, applicationName);
+		if (true == isLastScene)
+		{
+			this->createConfigFile(configurationFilePathName, applicationName);
+		}
 
 		// TODO: For preLoad, listen if there is a media folder inside the projectFilePathName and load the textures from there at application start
 		// Read out during resources nowa engine start if there is a [Project] 
@@ -559,7 +573,6 @@ namespace NOWA
 		// jsonFilePathName must be in the form: name.material.json, often .material is missing, so check that
 
 		Ogre::String filename = mediaFolderFilePathName;
-		Ogre::String mainFileName = mediaFolderFilePathName;
 
 		size_t materialIndex = mediaFolderFilePathName.find(".material.json");
 		if (Ogre::String::npos == materialIndex)
@@ -574,19 +587,6 @@ namespace NOWA
 			{
 				filename += "/" + sceneName + ".material.json";
 			}
-		}
-
-		bool jsonAlreadyExisting = false;
-		mainFileName += "/" + applicationName + ".material.json";
-		std::ifstream ifsMain(mainFileName);
-		if (false == ifsMain.good())
-		{
-			filename = mainFileName;
-		}
-		else
-		{
-			jsonAlreadyExisting = true;
-			ifsMain.close();
 		}
 
 		Ogre::String directory;
@@ -610,10 +610,6 @@ namespace NOWA
 
 		// Get the content
 		std::ifstream ifs(filename);
-		if (false == ifs.good())
-		{
-			return;
-		}
 		Ogre::String content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
 		std::set<Ogre::String> existingDataBlocks;
@@ -639,21 +635,31 @@ namespace NOWA
 							dataBlock->saveTextures(directory, savedTextures, false, true, nullptr);
 
 							// Copy all mesh and skeleton files to the given folder
-							Ogre::String destination = directory + "\\" + entity->getMesh()->getName();
+							Ogre::String destination = directory + "/" + entity->getMesh()->getName();
 							CopyFile(resourcePath.data(), destination.data(), TRUE);
 
 							if (true == entity->getMesh()->hasSkeleton())
 							{
-								Ogre::String destinationSkeletonFilePathName = directory + "\\" + entity->getMesh()->getSkeletonName();
-								Ogre::String destinationRagFilePathName = directory + "\\" 
-									+ entity->getMesh()->getSkeletonName().substr(0, entity->getMesh()->getSkeletonName().find(".skeleton")) + ".rag";
+								Ogre::String destinationSkeletonFilePathName = directory + "/" + entity->getMesh()->getSkeletonName();
+
+								Ogre::String ragName;
+								size_t upToSkeleton = entity->getMesh()->getSkeletonName().find(".skeleton");
+
+								if (upToSkeleton != Ogre::String::npos)
+								{
+									ragName = entity->getMesh()->getSkeletonName().substr(0, upToSkeleton);
+								}
+
+								Ogre::String destinationRagFilePathName = directory + "/" + ragName + ".rag";
 								Ogre::String sourceSkeletonPath;
 								Ogre::String sourceRagPath;
-								size_t meshIndex = resourcePath.find(".mesh");
-								if (Ogre::String::npos != materialIndex)
+
+								size_t lastSlash = resourcePath.find_last_of("/\\");
+
+								if (lastSlash != Ogre::String::npos)
 								{
-									sourceSkeletonPath = resourcePath.substr(0, meshIndex) + ".skeleton";
-									sourceRagPath = resourcePath.substr(0, meshIndex) + ".rag";
+									sourceSkeletonPath = resourcePath.substr(0, lastSlash) + "/" + entity->getMesh()->getSkeletonName();
+									sourceRagPath = sourceSkeletonPath + "/" + ragName + ".rag";
 									if (false == sourceSkeletonPath.empty())
 									{
 										CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
@@ -706,16 +712,26 @@ namespace NOWA
 
 								if (true == item->getMesh()->hasSkeleton())
 								{
-									Ogre::String destinationSkeletonFilePathName = directory + "\\" + item->getMesh()->getSkeletonName();
-									Ogre::String destinationRagFilePathName = directory + "\\"
-										+ item->getMesh()->getSkeletonName().substr(0, item->getMesh()->getSkeletonName().find(".skeleton")) + ".rag";
+									Ogre::String destinationSkeletonFilePathName = directory + "/" + item->getMesh()->getSkeletonName();
+
+									Ogre::String ragName;
+									size_t upToSkeleton = item->getMesh()->getSkeletonName().find(".skeleton");
+
+									if (upToSkeleton != Ogre::String::npos)
+									{
+										ragName = item->getMesh()->getSkeletonName().substr(0, upToSkeleton);
+									}
+
+									Ogre::String destinationRagFilePathName = directory + "/" + ragName + ".rag";
 									Ogre::String sourceSkeletonPath;
 									Ogre::String sourceRagPath;
-									size_t meshIndex = resourcePath.find(".mesh");
-									if (Ogre::String::npos != materialIndex)
+
+									size_t lastSlash = resourcePath.find_last_of("/\\");
+
+									if (lastSlash != Ogre::String::npos)
 									{
-										sourceSkeletonPath = resourcePath.substr(0, meshIndex) + ".skeleton";
-										sourceRagPath = resourcePath.substr(0, meshIndex) + ".rag";
+										sourceSkeletonPath = resourcePath.substr(0, lastSlash) + "/" + item->getMesh()->getSkeletonName();
+										sourceRagPath = sourceSkeletonPath + "/" + ragName + ".rag";
 										if (false == sourceSkeletonPath.empty())
 										{
 											CopyFile(sourceSkeletonPath.data(), destinationSkeletonFilePathName.data(), TRUE);
@@ -831,14 +847,9 @@ namespace NOWA
 		ofs << content;
 		ofs.close();
 
-
-		if (true == jsonAlreadyExisting)
+		if (true == isLastScene)
 		{
-			// Check if the target file already exists and append new unique materials
-			this->appendToExistingJson(mainFileName, filename);
-
-			// Now, remove the temporary file (clean up)
-			DeleteFile(filename.c_str());
+			this->processJsonFiles(mediaFolderFilePathName);
 		}
 	}
 
@@ -898,6 +909,94 @@ namespace NOWA
 		return buffer.GetString();  // Return the prettified and modified JSON as a string
 	}
 
+	void DeployResourceModule::processJsonFiles(const std::string& folderPath)
+	{
+		std::unordered_set<std::string> globalNames; // Track unique second-level names across all files
+
+		for (const auto& entry : fs::directory_iterator(folderPath))
+		{
+			if (entry.path().extension() == ".json")
+			{
+				std::string filePath = entry.path().string();
+				std::ifstream file(filePath);
+
+				if (!file.is_open())
+				{
+					std::cerr << "Failed to open file: " << filePath << std::endl;
+					continue;
+				}
+
+				std::string jsonContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+				file.close();
+
+				rapidjson::Document document;
+				document.Parse(jsonContent.c_str());
+
+				if (document.HasParseError())
+				{
+					std::cerr << "Error parsing JSON: " << filePath << std::endl;
+					continue;
+				}
+
+				bool hasSecondLevelChildren = false; // Track if JSON has any second-level children
+
+				// Remove duplicate second-level members based on globalNames set
+				if (document.IsObject())
+				{
+					for (auto it = document.MemberBegin(); it != document.MemberEnd(); ++it)
+					{
+						if (it->value.IsObject())
+						{
+							rapidjson::Value& secondLevelObject = it->value;
+							for (auto sub_it = secondLevelObject.MemberBegin(); sub_it != secondLevelObject.MemberEnd();)
+							{
+								std::string subName = sub_it->name.GetString();
+
+								if (globalNames.find(subName) != globalNames.end())
+								{
+									sub_it = secondLevelObject.EraseMember(sub_it); // Remove duplicate
+								}
+								else
+								{
+									globalNames.insert(subName); // Register new unique name
+									++sub_it;
+									hasSecondLevelChildren = true; // Found valid second-level members
+								}
+							}
+						}
+					}
+				}
+
+				// Check if the document is now "almost empty" (i.e., no second-level members)
+				if (false == hasSecondLevelChildren)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Deleting empty file: " + filePath);
+					fs::remove(filePath); // Delete the file
+					continue;
+				}
+
+				// Convert modified JSON back to a string
+				rapidjson::StringBuffer buffer;
+				rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+				document.Accept(writer);
+
+				// Write back the cleaned JSON
+				std::ofstream outputFile(filePath);
+				if (outputFile.is_open())
+				{
+					outputFile << buffer.GetString();
+					outputFile.close();
+					std::cout << "Processed and updated: " << filePath << std::endl;
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Processed and updated: " + filePath);
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule]: Failed to write to file : " + filePath);
+				}
+			}
+		}
+	}
+
 	void DeployResourceModule::appendToExistingJson(const Ogre::String& filename, const Ogre::String& tempFilename)
 	{
 		// Gets the main json (filename) and appends the tempFileName (currently exported scene resources json members) materials and checks for uniqueness
@@ -945,7 +1044,8 @@ namespace NOWA
 		{
 			for (auto it = originalDoc.MemberBegin(); it != originalDoc.MemberEnd(); ++it)
 			{
-				if (it->value.IsObject())  // Check if the value is an object at second level
+				// Check if the value is an object at second level, only pbs section is relevant
+				if (it->value.IsObject() && it->name != "samplers" && it->name != "macroblocks" && it->name != "blendblocks")
 				{
 					for (auto sub_it = it->value.MemberBegin(); sub_it != it->value.MemberEnd(); ++sub_it)
 					{

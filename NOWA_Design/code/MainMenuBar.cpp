@@ -907,10 +907,40 @@ void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 	else if ("deployOkButton" == sender->getName())
 	{
 		Ogre::String projectFilePathName = NOWA::Core::getSingletonPtr()->getCurrentProjectPath();
-		NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), NOWA::Core::getSingletonPtr()->getSceneName(), projectFilePathName);
+		const auto& sceneNames = NOWA::Core::getSingletonPtr()->getSceneFileNamesInProject(projectFilePathName);
+		if (sceneNames.empty())
+		{
+			return;
+		}
 
-		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
+		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+
+		// First save resources for this scene
+		Ogre::String currentSceneName = NOWA::Core::getSingletonPtr()->getSceneName();
+
+		// After that for all other
+		for (const Ogre::String& sceneName : sceneNames)
+		{
+			Ogre::String tempSceneName;
+			size_t found = sceneName.find(".scene");
+			if (found != std::wstring::npos)
+			{
+				tempSceneName = sceneName.substr(0, sceneName.size() - 6);
+			}
+			if (tempSceneName != NOWA::Core::getSingletonPtr()->getSceneName())
+			{
+				this->projectManager->loadProject(projectFilePathName + "/" + tempSceneName + "/" + tempSceneName + ".scene");
+				NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), tempSceneName, projectFilePathName, false);
+			}
+		}
+
+		// Loads back this scene
+		this->projectManager->loadProject(projectFilePathName + "/" + currentSceneName + "/" + currentSceneName + ".scene");
+		NOWA::DeployResourceModule::getInstance()->deploy(NOWA::Core::getSingletonPtr()->getProjectName(), currentSceneName, projectFilePathName, true);
+
+		boost::shared_ptr<EventDataSceneValid> eventDataSceneValid2(new EventDataSceneValid(true));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid2);
 	}
 	else if (this->fileMenuItem == sender)
 	{
