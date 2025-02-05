@@ -1,5 +1,986 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scene formatVersion="1.1.0" generator="NOWA-Engine">
-	<nodes/>
+	<nodes>
+		<node name="QuatTire_10" id="1490416236">
+			<position x="-0.461975" y="0.163527" z="-9.83907"/>
+			<rotation qw="-0.766044" qx="0" qy="0.642788" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_10" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1861047237"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="18"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2432844126"/>
+					<property type="2" name="JointPredecessorId" data="3081140091"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 -1"/>
+					<property type="7" name="TireSide" data="Tire Side Right"/>
+					<property type="7" name="TireSteer" data="No Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="Accel"/>
+					<property type="7" name="BrakeMode" data="Brake"/>
+					<property type="6" name="LateralFriction" data="2"/>
+					<property type="6" name="LongitudinalFriction" data="4"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_11" id="1490416671">
+			<position x="-1.45271" y="0.196496" z="-10.4456"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_11" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1887312462"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="14"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2834845628"/>
+					<property type="2" name="JointPredecessorId" data="3081140091"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 1"/>
+					<property type="7" name="TireSide" data="Tire Side Left"/>
+					<property type="7" name="TireSteer" data="Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="No Accel"/>
+					<property type="7" name="BrakeMode" data="No Brake"/>
+					<property type="6" name="LateralFriction" data="0.9"/>
+					<property type="6" name="LongitudinalFriction" data="2.65"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_8" id="4239149551">
+			<position x="-0.59558" y="0.170097" z="-10.5968"/>
+			<rotation qw="-0.766044" qx="0" qy="0.642788" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_8" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="381190006"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="14"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="3050551169"/>
+					<property type="2" name="JointPredecessorId" data="3081140091"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 -1"/>
+					<property type="7" name="TireSide" data="Tire Side Right"/>
+					<property type="7" name="TireSteer" data="Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="No Accel"/>
+					<property type="7" name="BrakeMode" data="No Brake"/>
+					<property type="6" name="LateralFriction" data="0.9"/>
+					<property type="6" name="LongitudinalFriction" data="2.65"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_9" id="4239149116">
+			<position x="-1.3191" y="0.189916" z="-9.68793"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_9" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="986632718"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="18"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="1051137967"/>
+					<property type="2" name="JointPredecessorId" data="3081140091"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 1"/>
+					<property type="7" name="TireSide" data="Tire Side Left"/>
+					<property type="7" name="TireSteer" data="No Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="Accel"/>
+					<property type="7" name="BrakeMode" data="Brake"/>
+					<property type="6" name="LateralFriction" data="2"/>
+					<property type="6" name="LongitudinalFriction" data="4"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatBike_0" id="1872127996">
+			<position x="-4.38849" y="0.0270466" z="-10.5668"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatBike_0" meshFile="QuatBike.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="racer_mat"/>
+				<subentity index="1" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1026796640"/>
+					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="1 0 0"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="racer_mat"/>
+					<property type="7" name="DataBlock1" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.4 0.3 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.4 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="1200"/>
+					<property type="9" name="MassOrigin" data="0.025 -0.15 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="OnSteerAngleChangedFunctionName" data="onSteeringAngleChanged"/>
+					<property type="7" name="OnMotorForceChangedFunctionName" data="onMotorForceChanged"/>
+					<property type="7" name="OnHandBrakeChangedFunctionName" data="onHandBrakeChanged"/>
+					<property type="7" name="OnBrakeChangedFunctionName" data="onBrakeChanged"/>
+					<property type="7" name="OnTireContactFunctionName" data="onTireContact"/>
+					<property type="7" name="ComponentJointComponent" data="JointComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2494090438"/>
+					<property type="2" name="JointPredecessorId" data="0"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="0"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="YOffset" data="2"/>
+					<property type="9" name="LookAtOffset" data="0 0 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
+					<property type="6" name="Friction" data="0.5"/>
+					<property type="6" name="SpringLength" data="6"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="engineering_vehicle_22khz_16bit_mono_golgotha.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="tire_skid.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Choose Device"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.06"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0.075"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.55 0.48 0.1"/>
+					<property type="10" name="BackgroundColor" data="0.55 0.48 0.1 1"/>
+					<property type="9" name="SpecularColor" data="1 1 1"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="racer_01D.png"/>
+					<property type="7" name="NormalTextureName" data="racer_01N.png"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data="racer_01S.png"/>
+					<property type="7" name="MetallicTextureName" data="racer_01S.png"/>
+					<property type="7" name="RoughnessTextureName" data="racer_01R.png"/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_4" id="4239151291">
+			<position x="-4.87941" y="0.196496" z="-10.8784"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_4" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="896427913"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="14"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2969011641"/>
+					<property type="2" name="JointPredecessorId" data="2494090438"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 1"/>
+					<property type="7" name="TireSide" data="Tire Side Left"/>
+					<property type="7" name="TireSteer" data="Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="No Accel"/>
+					<property type="7" name="BrakeMode" data="No Brake"/>
+					<property type="6" name="LateralFriction" data="0.9"/>
+					<property type="6" name="LongitudinalFriction" data="2.65"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_1" id="4239152596">
+			<position x="-4.02228" y="0.170097" z="-11.0295"/>
+			<rotation qw="-0.766044" qx="0" qy="0.642788" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_1" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2890387877"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="14"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2986697122"/>
+					<property type="2" name="JointPredecessorId" data="2494090438"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 -1"/>
+					<property type="7" name="TireSide" data="Tire Side Right"/>
+					<property type="7" name="TireSteer" data="Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="No Accel"/>
+					<property type="7" name="BrakeMode" data="No Brake"/>
+					<property type="6" name="LateralFriction" data="0.9"/>
+					<property type="6" name="LongitudinalFriction" data="2.65"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_3" id="4239153466">
+			<position x="-3.88868" y="0.163527" z="-10.2718"/>
+			<rotation qw="-0.766044" qx="0" qy="0.642788" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_3" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="1375332890"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="18"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2275920999"/>
+					<property type="2" name="JointPredecessorId" data="2494090438"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 -1"/>
+					<property type="7" name="TireSide" data="Tire Side Right"/>
+					<property type="7" name="TireSteer" data="No Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="Accel"/>
+					<property type="7" name="BrakeMode" data="Brake"/>
+					<property type="6" name="LateralFriction" data="2"/>
+					<property type="6" name="LongitudinalFriction" data="4"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatTire_2" id="4239153901">
+			<position x="-4.74581" y="0.189916" z="-10.1206"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatTire_2" meshFile="QuatTire.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2788353532"/>
+					<property type="7" name="Category" data="QuatTire"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="18"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentJointVehicleTireComponent" data="JointVehicleTireComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointVehicleTireComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="2417760554"/>
+					<property type="2" name="JointPredecessorId" data="2494090438"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="9" name="JointAnchorPosition" data="0 0 0"/>
+					<property type="9" name="JointPin" data="0 0 1"/>
+					<property type="7" name="TireSide" data="Tire Side Left"/>
+					<property type="7" name="TireSteer" data="No Steer"/>
+					<property type="7" name="SteerSide" data="Steer Side Left"/>
+					<property type="7" name="TireAccel" data="Accel"/>
+					<property type="7" name="BrakeMode" data="Brake"/>
+					<property type="6" name="LateralFriction" data="2"/>
+					<property type="6" name="LongitudinalFriction" data="4"/>
+					<property type="6" name="SpringLength" data="0.25"/>
+					<property type="6" name="SpringConst" data="200"/>
+					<property type="6" name="SpringDamp" data="20"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="QuatBike_2" id="1872128866">
+			<position x="-0.961783" y="0.0270466" z="-10.1341"/>
+			<rotation qw="0.642788" qx="0" qy="0.766044" qz="0"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="QuatBike_2" meshFile="QuatBike.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="racer_mat"/>
+				<subentity index="1" datablockName="qbike_mat"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2474775319"/>
+					<property type="7" name="Category" data="Quat"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="1 0 0"/>
+					<property type="12" name="Global" data="true"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="100"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="racer_mat"/>
+					<property type="7" name="DataBlock1" data="qbike_mat"/>
+					<property type="7" name="ComponentPhysicsActiveVehicleComponent" data="PhysicsActiveVehicleComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.4 0.3 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.4 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="1200"/>
+					<property type="9" name="MassOrigin" data="0.025 -0.15 0"/>
+					<property type="6" name="LinearDamping" data="0"/>
+					<property type="9" name="AngularDamping" data="0 0 0"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="Capsule"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="OnSteerAngleChangedFunctionName" data="onSteeringAngleChanged"/>
+					<property type="7" name="OnMotorForceChangedFunctionName" data="onMotorForceChanged"/>
+					<property type="7" name="OnHandBrakeChangedFunctionName" data="onHandBrakeChanged"/>
+					<property type="7" name="OnBrakeChangedFunctionName" data="onBrakeChanged"/>
+					<property type="7" name="OnTireContactFunctionName" data="onTireContact"/>
+					<property type="7" name="ComponentJointComponent" data="JointComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="7" name="JointType" data="JointComponent"/>
+					<property type="12" name="JointActivate" data="true"/>
+					<property type="2" name="JointId" data="3081140091"/>
+					<property type="2" name="JointPredecessorId" data="0"/>
+					<property type="2" name="JointTargetId" data="0"/>
+					<property type="12" name="JointRecursiveCollision" data="false"/>
+					<property type="6" name="Stiffness" data="0.9"/>
+					<property type="8" name="BodyMassScale" data="1 1"/>
+					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
+					<property type="12" name="CloneScript" data="false"/>
+					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="0"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="YOffset" data="2"/>
+					<property type="9" name="LookAtOffset" data="0 0 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
+					<property type="6" name="Friction" data="0.5"/>
+					<property type="6" name="SpringLength" data="6"/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="SoundName" data="engineering_vehicle_22khz_16bit_mono_golgotha.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="true"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="7" name="SoundName" data="tire_skid.wav"/>
+					<property type="6" name="Volume" data="100"/>
+					<property type="12" name="Loop" data="false"/>
+					<property type="12" name="Stream" data="false"/>
+					<property type="12" name="RelativeToListener" data="true"/>
+					<property type="12" name="PlayWhenInMotion" data="false"/>
+					<property type="7" name="OnSpectrumAnalysisFunctionName" data=""/>
+					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="DeviceName" data="Choose Device"/>
+					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="2" name="SubEntityIndex" data="0"/>
+					<property type="7" name="Workflow" data="SpecularWorkflow"/>
+					<property type="6" name="Metalness" data="0.01"/>
+					<property type="6" name="Roughness" data="0.06"/>
+					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0.075"/>
+					<property type="7" name="Brdf" data="Default"/>
+					<property type="12" name="TwoSidedLighting" data="false"/>
+					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
+					<property type="7" name="AlphaTest" data="CMPF_ALWAYS_PASS"/>
+					<property type="6" name="AlphaTestThreshold" data="0.5"/>
+					<property type="12" name="ReceiveShadows" data="true"/>
+					<property type="9" name="DiffuseColor" data="0.55 0.48 0.1"/>
+					<property type="10" name="BackgroundColor" data="0.55 0.48 0.1 1"/>
+					<property type="9" name="SpecularColor" data="1 1 1"/>
+					<property type="9" name="EmissiveColor" data="0 0 0"/>
+					<property type="7" name="DiffuseTextureName" data="racer_01D.png"/>
+					<property type="7" name="NormalTextureName" data="racer_01N.png"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
+					<property type="7" name="SpecularTextureName" data="racer_01S.png"/>
+					<property type="7" name="MetallicTextureName" data="racer_01S.png"/>
+					<property type="7" name="RoughnessTextureName" data="racer_01R.png"/>
+					<property type="7" name="DetailWeightTextureName" data=""/>
+					<property type="7" name="Detail0TextureName" data=""/>
+					<property type="7" name="BlendMode0" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail1TextureName" data=""/>
+					<property type="7" name="BlendMode1" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail2TextureName" data=""/>
+					<property type="7" name="BlendMode2" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail3TextureName" data=""/>
+					<property type="7" name="BlendMode3" data="PBSM_BLEND_NORMAL_NON_PREMUL"/>
+					<property type="7" name="Detail0NMTextureName" data=""/>
+					<property type="7" name="Detail1NMTextureName" data=""/>
+					<property type="7" name="Detail2NMTextureName" data=""/>
+					<property type="7" name="Detail3NMTextureName" data=""/>
+					<property type="7" name="ReflectionTextureName" data=""/>
+					<property type="7" name="EmissiveTextureName" data=""/>
+					<property type="7" name="TransparencyMode" data="None"/>
+					<property type="7" name="Transparency" data="1"/>
+					<property type="12" name="UseAlphaFromTextures" data="true"/>
+					<property type="2" name="UVScale" data="1"/>
+					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
+					<property type="7" name="ShadowConstBias" data="0.001"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
+				</userData>
+			</entity>
+		</node>
+	</nodes>
 </scene>
 

@@ -167,6 +167,12 @@ Menu_MainGameObject["connect"] = function(gameObject)
     startButton:reactOnMouseButtonClick(function() 
         if (Core:isGame() == true) then
             if (onePlayerName:getCaption() ~= "Your Name") then
+                local selectedColorPlayer1 = player1:getDatablockPbsComponent():getDiffuseTextureName();
+                AppStateManager:getGameProgressModule():setGlobalStringValue("PlayerOneColor", selectedColorPlayer1);
+                
+                local selectedColorPlayer2 = player2:getDatablockPbsComponent():getDiffuseTextureName();
+                AppStateManager:getGameProgressModule():setGlobalStringValue("PlayerTwoColor", selectedColorPlayer2);
+                
                 AppStateManager:changeAppState("GameState");
             end
         end
@@ -196,9 +202,6 @@ end
 Menu_MainGameObject["update"] = function(dt)
     if (player1Input:hasValidDevice()) then
         if (player1Input:getInputDeviceModule():isActionDown(NOWA_A_ATTACK_1) == true) then
-            --player1Transform:reactOnFunctionFinished(function()
-            --    player1:getAnimationComponent():setAnimationName("jump_up");
-            --end);
             player1Transform:setActivated(false);
             player1:getAnimationComponent():setAnimationName("jump_up");
         end
@@ -206,9 +209,6 @@ Menu_MainGameObject["update"] = function(dt)
     
     if (player2Input:hasValidDevice()) then
         if (player2Input:getInputDeviceModule():isActionDown(NOWA_A_ATTACK_1) == true) then
-             --player2Transform:reactOnFunctionFinished(function()
-            --    player2:getAnimationComponent():setAnimationName("jump_up");
-            --end);
             player2Transform:setActivated(false);
             player2:getAnimationComponent():setAnimationName("jump_up");
         end
@@ -219,14 +219,14 @@ end
 function actualizeDevices1()
     local devices1 = player1Input:getActualizedDeviceList();
     onePlayerCombo:setItemCount(0);
-    local i = 0
-    while i <= #devices1 do
-        local deviceName = devices1[i];
-        if (i == 0) then
+    local j = 0
+    while j <= #devices1 do
+       local deviceName = devices1[j];
+        if (j == 0) then
             onePlayerCombo:setCaption(deviceName);
         end
-        onePlayerCombo:addItem(deviceName);
-        i = i + 1;
+       onePlayerCombo:addItem(deviceName);
+       j = j + 1;
     end
 end
 
@@ -247,33 +247,33 @@ end
 -- Function to get the next image
 function nextColorPlayer1()
     -- Increment the index
-    currentIndexPlayer1 = currentIndexPlayer1 + 1
+    currentIndexPlayer1 = currentIndexPlayer1 + 1;
     
     -- Reset index if it exceeds the number of images
     if currentIndexPlayer1 > #images then
-        currentIndexPlayer1 = 1
+        currentIndexPlayer1 = 1;
     end
     
     -- Get the selected image
-    local selectedImage = images[currentIndexPlayer1]
+    local selectedImage = images[currentIndexPlayer1];
     
     -- Return the selected image
-    return selectedImage
+    return selectedImage;
 end
 
 -- Function to get the next image
 function nextColorPlayer2()
     -- Increment the index
-    currentIndexPlayer2 = currentIndexPlayer2 + 1
+    currentIndexPlayer2 = currentIndexPlayer2 + 1;
     
     -- Reset index if it exceeds the number of images
     if currentIndexPlayer2 > #images then
-        currentIndexPlayer2 = 1
+        currentIndexPlayer2 = 1;
     end
     
     -- Get the selected image
-    local selectedImage = images[currentIndexPlayer2]
+    local selectedImage = images[currentIndexPlayer2];
     
     -- Return the selected image
-    return selectedImage
+    return selectedImage;
 end

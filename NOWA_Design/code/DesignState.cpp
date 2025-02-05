@@ -1897,7 +1897,30 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 		}
 	}
 
-	if (false == handled /*&& nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget()*/ && true == validScene)
+	// Show components should work from anywhere on the screen, but clone objects etc. not if mouse is over a widget, because copy text would clone also a game object else...
+	if (false == handled && true == validScene)
+	{
+		switch (keyEventRef.key)
+		{
+			case OIS::KC_C:
+			{
+				if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(VK_LSHIFT))
+				{
+					if (nullptr != this->componentsPanel)
+					{
+						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
+						{
+							this->componentsPanel->showComponents(-1);
+						}
+					}
+					return true;
+				}
+				break;
+			}
+		}
+	}
+
+	if (false == handled && nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget() && true == validScene)
 	{
 		switch (keyEventRef.key)
 		{
@@ -1917,18 +1940,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			}
 			case OIS::KC_C:
 			{
-				if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(VK_LSHIFT))
-				{
-					if (nullptr != this->componentsPanel)
-					{
-						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
-						{
-							this->componentsPanel->showComponents(-1);
-						}
-					}
-					return true;
-				}
-				else if (GetAsyncKeyState(VK_LCONTROL))
+				if (GetAsyncKeyState(VK_LCONTROL))
 				{
 					// Only clone if the mouse is in the scene and not in a property, that may be also copied
 					this->cloneGameObjects();

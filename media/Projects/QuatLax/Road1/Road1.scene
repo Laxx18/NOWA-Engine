@@ -64,6 +64,7 @@
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
@@ -129,6 +130,7 @@
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
@@ -170,6 +172,7 @@
 					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentDescriptionComponent" data="DescriptionComponent"/>
@@ -210,6 +213,7 @@
 					<property type="2" name="RenderQueueIndex" data="11"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="300"/>
+					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="ComponentTerraComponent" data="TerraComponent"/>
 					<property type="7" name="Name" data=""/>

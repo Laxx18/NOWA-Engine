@@ -13246,7 +13246,7 @@ namespace NOWA
 		AddClassToCollection("Core", "singleton", "Some functions for NOWA core functionality.");
 		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundLeftNear()", "Gets left near bounding box of the currently loaded scene.");
 		AddClassToCollection("Core", "Vector3 getCurrentSceneBoundRightFar()", "Gets right far bounding box of the currently loaded scene.");
-		AddClassToCollection("Core", "bool getIsGame()", "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.");
+		AddClassToCollection("Core", "bool isGame()", "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.");
 		AddClassToCollection("Core", "String getCurrentDateAndTime()", "Gets the current date and time. The default format is in the form Year_Month_Day_Hour_Minutes_Seconds.");
 		AddClassToCollection("Core", "String getCurrentDateAndTime2(String format)", "Gets the current date and time. E.g. format = '%Y_%m_%d_%X' which formats the value as Year_Month_Day_Hour_Minutes_Seconds.");
 		AddClassToCollection("Core", "void setCurrentSaveGameName(String saveGameName)", "Sets the current global save game name, which can be used for loading a game in an application state.");

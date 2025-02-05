@@ -6,7 +6,7 @@ QuatBike_Player = {}
 
 require("init");
 
-scene1_QuatBike_Player = nil
+player = nil
 steerAmount = 0;
 physicsActiveVehicleComponent = nil;
 raceGoalComponent = nil;
@@ -25,11 +25,13 @@ height = 0;
 inputDeviceModule = nil;
 
 QuatBike_Player["connect"] = function(gameObject)
-    scene1_QuatBike_Player = AppStateManager:getGameObjectController():castGameObject(gameObject);
-    AppStateManager:getGameObjectController():activatePlayerController(true, scene1_QuatBike_Player:getId(), true);
-    physicsActiveVehicleComponent = scene1_QuatBike_Player:getPhysicsActiveVehicleComponent();
-    raceGoalComponent = scene1_QuatBike_Player:getRaceGoalComponent();
-    inputDeviceModule = scene1_QuatBike_Player:getInputDeviceComponent():getInputDeviceModule();
+    player = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    AppStateManager:getGameObjectController():activatePlayerController(true, player:getId(), true);
+    physicsActiveVehicleComponent = player:getPhysicsActiveVehicleComponent();
+    raceGoalComponent = player:getRaceGoalComponent();
+    
+    
+    inputDeviceModule = player:getInputDeviceComponent():getInputDeviceModule();
     
     --local mainGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
     --speedText = mainGameObject:getMyGUITextComponentFromName("SpeedText");
@@ -42,12 +44,12 @@ QuatBike_Player["connect"] = function(gameObject)
     --countdownText = mainGameObject:getMyGUITextComponentFromName("CountdownText");
     --countdownText:setActivated(true);
     
-    rollSound = scene1_QuatBike_Player:getSimpleSoundComponentFromIndex(0);
+    rollSound = player:getSimpleSoundComponentFromIndex(0);
     rollSound:setVolume(200);
     
-    skidSound = scene1_QuatBike_Player:getSimpleSoundComponentFromIndex(1);
+    skidSound = player:getSimpleSoundComponentFromIndex(1);
     
-    playerController = scene1_QuatBike_Player:getPlayerControllerComponent();
+    playerController = player:getPlayerControllerComponent();
     animationBlender = playerController:getAnimationBlender();
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_1, "idle_01");
     animationBlender:registerAnimation(AnimationBlender.ANIM_IDLE_2, "idle_02");
