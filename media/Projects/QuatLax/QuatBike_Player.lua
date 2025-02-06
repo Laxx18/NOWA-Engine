@@ -32,6 +32,7 @@ QuatBike_Player["connect"] = function(gameObject)
     
     
     inputDeviceModule = player:getInputDeviceComponent():getInputDeviceModule();
+    log("---->Player: " .. player:getName());
     
     --local mainGameObject = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID);
     --speedText = mainGameObject:getMyGUITextComponentFromName("SpeedText");

@@ -55,6 +55,7 @@ namespace NOWA
 	LuaScriptComponent::LuaScriptComponent()
 		: GameObjectComponent(),
 		luaScript(nullptr),
+		hasEarlyConnectFunction(false),
 		hasUpdateFunction(false),
 		hasLateUpdateFunction(false),
 		componentCloned(false),
@@ -378,6 +379,39 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	bool LuaScriptComponent::checkHasEarlyConnectFunction(void)
+	{
+		if (nullptr == this->luaScript)
+		{
+			return false;
+		}
+
+		if (true == this->activated->getBool())
+		{
+			this->hasEarlyConnectFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "earlyConnect");
+			if (false == this->hasEarlyConnectFunction)
+			{
+				return false;
+			}
+
+			Ogre::String scriptTableName = this->scriptFile->getString();
+			scriptTableName.erase(scriptTableName.find_last_of("."), Ogre::String::npos);
+
+			if (true == this->luaScript->createLuaEnvironmentForTable(scriptTableName))
+			{
+				return true;
+			}
+		}
+	}
+
+	void LuaScriptComponent::earlyConnect(void)
+	{
+		if (nullptr != this->luaScript)
+		{
+			this->luaScript->callTableFunction("earlyConnect", this->gameObjectPtr.get());
+		}
+	}
+
 	void LuaScriptComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
@@ -404,6 +438,10 @@ namespace NOWA
 				}
 
 				this->luaScript->callTableFunction("connect", this->gameObjectPtr.get());
+
+				// Sends event, that lua script has been connected, so that in a state machine the first state can be entered after that
+				boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->gameObjectPtr->getId()));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
 			}
 		}
 	}

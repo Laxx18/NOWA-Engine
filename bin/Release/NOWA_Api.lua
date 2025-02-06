@@ -4540,7 +4540,7 @@ return {
 				returns = "(Vector3)",
 				valuetype = "Vector3"
 			},
-			getIsGame =
+			isGame =
 			{
 				type = "function",
 				description = "Gets whether the engine is used in a game and not in an editor. Note: Can be used, e.g. if set to false (editor mode) to each time reset game save data etc.",

@@ -50,6 +50,12 @@ namespace NOWA
 		 * @see		GameObjectComponent::postInit
 		 */
 		virtual bool postInit(void) override;
+
+		/**
+		 * @brief	This function shall be used e.g. for lua to be called before any connect is called to set some data, which could be required for other scripts.
+		 *			E.g. the MainGameObject with a lua component, could use this function to set some data for players.
+		 */
+		void earlyConnect(void);
 		
 		/**
 		* @see		GameObjectComponent::connect
@@ -195,6 +201,12 @@ namespace NOWA
 		 */
 		void setComponentCloned(bool componentCloned);
 
+		/**
+		 * @brief Checks whether this lua script component has an early connect function, which shall be called before any connect functions of other scripts, to e.g. set initial data for other game objects at early stage.
+		 * @return	True, if this lua script component has an early connect function, else false.
+		 */
+		bool checkHasEarlyConnectFunction(void);
+
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrScriptFile(void) { return "Lua Script Name"; }
@@ -210,6 +222,7 @@ namespace NOWA
 		Variant* cloneScript;
 		Variant* commonScript;
 		LuaScript* luaScript;
+		bool hasEarlyConnectFunction;
 		bool hasUpdateFunction;
 		bool hasLateUpdateFunction;
 		bool componentCloned;

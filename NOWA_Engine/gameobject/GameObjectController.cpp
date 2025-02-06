@@ -1518,6 +1518,15 @@ namespace NOWA
 			const auto& gameObjectPtr = it->second;
 			if (nullptr != gameObjectPtr)
 			{
+				gameObjectPtr->earlyConnect();
+			}
+		}
+
+		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		{
+			const auto& gameObjectPtr = it->second;
+			if (nullptr != gameObjectPtr)
+			{
 				gameObjectPtr->connectPriority();
 			}
 		}

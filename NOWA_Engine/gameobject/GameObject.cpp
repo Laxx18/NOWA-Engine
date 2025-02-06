@@ -537,6 +537,32 @@ namespace NOWA
 		}
 	}
 
+	void GameObject::earlyConnect(void)
+	{
+		for (const auto& component : this->gameObjectComponents)
+		{
+			const GameObjectCompPtr gameObjectCompPtr = std::get<COMPONENT>(component);
+
+			// Get a possible lua script from corresponding component
+			bool luaScriptNoCompileErrors = true;
+			// Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
+
+			auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr);
+			if (nullptr != luaScriptCompPtr)
+			{
+				// If its a lua script component, compile it before all other components, because the lua script must be compiled and is maybe invalid, so that other components can react on that
+				luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
+				if (true == luaScriptNoCompileErrors)
+				{
+					if (true == luaScriptCompPtr->checkHasEarlyConnectFunction())
+					{
+						luaScriptCompPtr->earlyConnect();
+					}
+				}
+			}
+		}
+	}
+
 	bool GameObject::connectPriority(void)
 	{
 		// Connects all components prior, because this whole game object has the flag set
@@ -549,11 +575,10 @@ namespace NOWA
 				gameObjectCompPtr->bConnectPriority = true;
 
 				// Get a possible lua script from corresponding component
-				boost::shared_ptr<LuaScriptComponent> luaScriptCompPtr;
 				bool luaScriptNoCompileErrors = true;
 				// Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
 
-				luaScriptCompPtr = NOWA::makeStrongPtr(this->getComponent<LuaScriptComponent>());
+				auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(gameObjectCompPtr);
 				if (nullptr != luaScriptCompPtr)
 				{
 					// If its a lua script component, compile it before all other components, because the lua script must be compiled and is maybe invalid, so that other components can react on that
@@ -614,12 +639,9 @@ namespace NOWA
 		// Connect after all other components, so that all other game objects and components are available for the lua script
 		if (true == luaScriptNoCompileErrors)
 		{
-			if (nullptr != luaScriptCompPtr)
+			if (nullptr != luaScriptCompPtr && false == this->bConnectPriority)
 			{
 				luaScriptCompPtr->connect();
-				// Send event, that lua script has been connected, so that in a state machine the first state can be entered after that
-				boost::shared_ptr<EventDataLuaScriptConnected> eventDataLuaScriptConnected(new EventDataLuaScriptConnected(this->id->getULong()));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptConnected);
 			}
 			// If there is an ai lua component, it must be connected after the lua script! Because it may be, that it is using variables from lua script (connect) function in its state
 			if (nullptr != aiLuaCompPtr)

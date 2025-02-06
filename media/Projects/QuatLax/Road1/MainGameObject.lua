@@ -10,7 +10,7 @@ player2 = nil;
 
 MainGameObject = {}
 
-MainGameObject["connect"] = function(gameObject)
+MainGameObject["earlyConnect"] = function(gameObject)
     mainGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
     
     if (Core:isGame() == true) then
@@ -25,10 +25,14 @@ MainGameObject["connect"] = function(gameObject)
             
              local colorPlayer1 = AppStateManager:getGameProgressModule():getGlobalValue("PlayerOneColor");
              player1:getDatablockPbsComponent():setDiffuseTextureName(colorPlayer1);
+             local colorPlayer2 = AppStateManager:getGameProgressModule():getGlobalValue("PlayerTwoColor");
+             player2:getDatablockPbsComponent():setDiffuseTextureName(colorPlayer2);
         else
             player1 = AppStateManager:getGameObjectController():getGameObjectFromId("1026796640");
             local deviceName1 = AppStateManager:getGameProgressModule():getGlobalValue("PlayerOneDeviceName");
             player1:getInputDeviceComponent():setDeviceName(deviceName1);
+            local colorPlayer1 = AppStateManager:getGameProgressModule():getGlobalValue("PlayerOneColor");
+            player1:getDatablockPbsComponent():setDiffuseTextureName(colorPlayer1);
         end
     else
         -- For debug simulation
@@ -38,7 +42,13 @@ MainGameObject["connect"] = function(gameObject)
         player2 = AppStateManager:getGameObjectController():getGameObjectFromId("2474775319");
         local deviceName2 = "USB Gamepad_0";
         player2:getInputDeviceComponent():setDeviceName(deviceName2);
+        
+         log("---->Menu set devices");
     end
+end
+
+MainGameObject["connect"] = function(gameObject)
+
 end
 
 MainGameObject["disconnect"] = function()
