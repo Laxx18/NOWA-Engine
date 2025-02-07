@@ -17,6 +17,7 @@
 #include "PhysicsCompoundConnectionComponent.h"
 #include "CameraBehaviorComponents.h"
 #include "LuaScriptComponent.h"
+#include "AiLuaComponent.h"
 #include "main/AppStateManager.h"
 
 #include <algorithm>    // std::set_difference, std::sort
@@ -741,6 +742,8 @@ namespace NOWA
 			this->materialIDMap.erase(this->materialIDMap.begin(), this->materialIDMap.end());
 			this->materialIDMap.clear();
 
+			this->managedLuaScripts.clear();
+
 			AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
 
 			// do not delete with iterator since the iterator changes then during the loop
@@ -1162,7 +1165,7 @@ namespace NOWA
 		}
 	}
 
-	void GameObjectController::activatePlayerController(bool active, const unsigned long id, bool onlyOneActive)
+	void GameObjectController::activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId, bool onlyOneActive)
 	{
 		if (true == onlyOneActive)
 		{
@@ -1178,13 +1181,17 @@ namespace NOWA
 				}
 			}
 		}
-		auto& existingPlayerControllerIt = this->playerControllerComponentMap.find(id);
+		auto& existingPlayerControllerIt = this->playerControllerComponentMap.find(gameObjectId);
 		if (existingPlayerControllerIt != this->playerControllerComponentMap.cend())
 		{
 			existingPlayerControllerIt->second->getOwner()->selected = active;
 			existingPlayerControllerIt->second->setActivated(active);
 			if (nullptr != existingPlayerControllerIt->second->getCameraBehaviorComponent())
 			{
+				if (0 != cameraGameObjectId)
+				{
+					existingPlayerControllerIt->second->getCameraBehaviorComponent()->setCameraGameObjectId(cameraGameObjectId);
+				}
 				existingPlayerControllerIt->second->getCameraBehaviorComponent()->setActivated(active);
 			}
 		}
@@ -1518,15 +1525,6 @@ namespace NOWA
 			const auto& gameObjectPtr = it->second;
 			if (nullptr != gameObjectPtr)
 			{
-				gameObjectPtr->earlyConnect();
-			}
-		}
-
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			const auto& gameObjectPtr = it->second;
-			if (nullptr != gameObjectPtr)
-			{
 				gameObjectPtr->connectPriority();
 			}
 		}
@@ -1546,6 +1544,25 @@ namespace NOWA
 				// 1111111111L = MainGameObject, do connect when everything has been handled because in the MainGameObject may have components, that are relied on other game objects
 				// which must be already connected!
 				mainGameObjectPtr = gameObjectPtr;
+			}
+		}
+
+		//// LuaScript order execution
+		// Ensures order is correct before execution
+		this->updateLuaScriptExecutionOrder();
+
+		for (const auto& pair : this->managedLuaScripts)
+		{
+			const auto luaScriptCompPtr = NOWA::makeStrongPtr(pair.second);
+			if (nullptr != luaScriptCompPtr)
+			{
+				luaScriptCompPtr->connect();
+
+				boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(luaScriptCompPtr->getOwner()->getComponent<AiLuaComponent>());
+				if (nullptr != aiLuaCompPtr)
+				{
+					aiLuaCompPtr->connect();
+				}
 			}
 		}
 
@@ -3110,6 +3127,174 @@ namespace NOWA
 	bool GameObjectController::getIsDestroying(void) const
 	{
 		return this->bIsDestroying;
+	}
+
+	void GameObjectController::addLuaScript(LuaScriptCompPtr luaScript)
+	{
+		if (nullptr == luaScript)
+		{
+			return;
+		}
+
+		int orderIndex = luaScript->getOrderIndex();
+
+		// If the orderIndex is -1 (not set), we assign a new orderIndex at the end
+		if (orderIndex == -1)
+		{
+			orderIndex = static_cast<int>(this->managedLuaScripts.size()) + 1;
+		}
+
+		// Add the script to the list
+		this->managedLuaScripts.emplace_back(orderIndex, luaScript);
+
+		// Sort by orderIndex, placing orderIndex == -1 at the end
+		std::sort(this->managedLuaScripts.begin(), this->managedLuaScripts.end(), [](const auto& a, const auto& b)
+			{
+				if (a.first == -1) return false; // Keep -1 order scripts at the end
+				if (b.first == -1) return true;
+				return a.first < b.first;
+			});
+
+		// Reassign sequential order indices, while keeping -1 at the end
+		for (size_t i = 0; i < this->managedLuaScripts.size(); ++i)
+		{
+			auto& scriptPair = this->managedLuaScripts[i];
+			scriptPair.first = static_cast<int>(i + 1); // Reassign order index
+
+			auto luaScriptCompPtr = NOWA::makeStrongPtr(scriptPair.second);
+			if (nullptr != luaScriptCompPtr)
+			{
+				// Only update if the orderIndex was -1 previously
+				if (luaScriptCompPtr->getOrderIndex() == -1)
+				{
+					luaScriptCompPtr->setOrderIndex(static_cast<int>(i + 1));
+				}
+			}
+		}
+	}
+
+
+	void GameObjectController::moveScriptUp(LuaScriptCompPtr luaScript)
+	{
+		if (nullptr == luaScript)
+		{
+			return;
+		}
+
+		int index = -1;
+
+		// Find the script's index in the list
+		for (size_t i = 0; i < this->managedLuaScripts.size(); ++i)
+		{
+			if (NOWA::makeStrongPtr(this->managedLuaScripts[i].second) == luaScript)
+			{
+				index = static_cast<int>(i);
+				break;
+			}
+		}
+
+		// If script is found and not already at the first position
+		if (index != -1 && index > 0)
+		{
+			// Swap with the previous script
+			std::swap(this->managedLuaScripts[index], this->managedLuaScripts[index - 1]);
+
+			// Update order indices
+			this->managedLuaScripts[index].first = index;
+			this->managedLuaScripts[index - 1].first = index - 1;
+
+			// Update LuaScriptComponent order indices
+			{
+				auto luaScriptCompPtr = NOWA::makeStrongPtr(this->managedLuaScripts[index].second);
+				if (nullptr != luaScriptCompPtr)
+				{
+					luaScriptCompPtr->setOrderIndex(index);
+				}
+			}
+			{
+				auto luaScriptCompPtr = NOWA::makeStrongPtr(this->managedLuaScripts[index - 1].second);
+				if (nullptr != luaScriptCompPtr)
+				{
+					luaScriptCompPtr->setOrderIndex(index - 1);
+				}
+			}
+		}
+	}
+
+	void GameObjectController::moveScriptDown(LuaScriptCompPtr luaScript)
+	{
+		if (nullptr == luaScript)
+		{
+			return;
+		}
+
+		int index = -1;
+		// Find the script's index in the list
+		for (size_t i = 0; i < this->managedLuaScripts.size(); ++i)
+		{
+			if (NOWA::makeStrongPtr(this->managedLuaScripts[i].second) == luaScript)
+			{
+				index = static_cast<int>(i);
+				break;
+			}
+		}
+
+		// If script is found and not already at the last position
+		if (index != -1 && index < static_cast<int>(this->managedLuaScripts.size()) - 1)
+		{
+			// Swap with the next script
+			std::swap(this->managedLuaScripts[index], this->managedLuaScripts[index + 1]);
+
+			// Update order indices
+			this->managedLuaScripts[index].first = index;
+			this->managedLuaScripts[index + 1].first = index + 1;
+
+			// Update LuaScriptComponent order indices
+			if (auto luaScriptCompPtr = NOWA::makeStrongPtr(this->managedLuaScripts[index].second))
+			{
+				luaScriptCompPtr->setOrderIndex(index);
+			}
+			if (auto luaScriptCompPtr = NOWA::makeStrongPtr(this->managedLuaScripts[index + 1].second))
+			{
+				luaScriptCompPtr->setOrderIndex(index + 1);
+			}
+		}
+	}
+
+	std::vector<boost::weak_ptr<LuaScriptComponent>> GameObjectController::getManagedLuaScripts() const
+	{
+		std::vector<boost::weak_ptr<LuaScriptComponent>> scripts;
+
+		// Reserve space for efficiency
+		scripts.reserve(this->managedLuaScripts.size());
+
+		// Extract only the weak_ptr<LuaScriptComponent> while maintaining order
+		for (const auto& pair : this->managedLuaScripts)
+		{
+			scripts.push_back(pair.second);
+		}
+
+		return scripts;
+	}
+
+	void GameObjectController::updateLuaScriptExecutionOrder(void)
+	{
+		// Sort by order index
+		std::sort(this->managedLuaScripts.begin(), this->managedLuaScripts.end(), [](const auto& a, const auto& b)
+			{
+				return a.first < b.first;
+			});
+
+		// Reassign sequential indices to avoid gaps
+		for (size_t i = 0; i < this->managedLuaScripts.size(); ++i)
+		{
+			this->managedLuaScripts[i].first = static_cast<unsigned int>(i);
+			auto script = NOWA::makeStrongPtr(this->managedLuaScripts[i].second);
+			if (nullptr != script)
+			{
+				script->setOrderIndex(static_cast<int>(i));
+			}
+		}
 	}
 
 	GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* camera, Ogre::RaySceneQuery* raySceneQuery, bool raycastFromPoint)

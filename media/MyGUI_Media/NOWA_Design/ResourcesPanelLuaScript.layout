@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <!-- Main container widget -->
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 270 400" align="HStretch Top" layer="Overlapped" name="_Main">
+        
+        <!-- Label for the title -->
+        <Widget type="TextBox" skin="TextBox" position="10 10 280 28" align="Left Top" name="Label" readonly="true">
+            <Property key="Caption" value="#{LuaScriptExecutionOrder}"/>
+        </Widget>
+
+        <!-- ListBox with correct custom background color -->
+        <Widget type="ListBox" skin="ListBox" position="10 38 280 350" align="Left Top" name="ListBox" layer="Main">
+            <Property key="Colour" value="0 0 0.7 1"/>
+        </Widget>
+
+        <!-- Up Button -->
+        <Widget type="Button" skin="Button" position="200 60 30 30" align="Right Top" name="UpButton">
+            <Property key="Caption" value="^"/>
+        </Widget>
+
+        <!-- Down Button -->
+        <Widget type="Button" skin="Button" position="200 130 30 30" align="Right Top" name="DownButton">
+            <Property key="Caption" value="v"/>
+        </Widget>
+
+    </Widget>
+</MyGUI>

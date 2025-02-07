@@ -252,7 +252,7 @@ namespace NOWA
 		}
 	}
 
-	void CameraManager::addSplitCamera(Ogre::Camera* camera)
+	void CameraManager::addSplitCamera(BaseCamera* baseCamera, Ogre::Camera* camera)
 	{
 		this->cameras.emplace(camera, true);
 		Ogre::String cameraName = camera->getName();
@@ -263,12 +263,10 @@ namespace NOWA
 		}
 		// Set active camera
 		this->camera = camera;
-		auto activeBehavior = this->getActiveCameraBehavior();
-		if (nullptr != activeBehavior)
+		if (nullptr != baseCamera)
 		{
-			activeBehavior->postInitialize(this->camera);
+			baseCamera->postInitialize(this->camera);
 		}
-		
 	}
 
 	void CameraManager::removeCamera(Ogre::Camera* camera)

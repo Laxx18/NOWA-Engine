@@ -982,8 +982,6 @@ namespace NOWA
 		void resetChanges();
 		void actualizeComponentsIndices(void);
 
-		void earlyConnect(void);
-
 		bool connectPriority(void);
 
 		// Is necessary, because there is an event, which is sent to all listener, that this game object has been made global at runtime, in order to cut/paste potential resources to the corresponding folder

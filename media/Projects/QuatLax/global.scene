@@ -386,6 +386,7 @@
 					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="2" name="OrderIndex" data="0"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -876,6 +877,7 @@
 					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
+					<property type="2" name="OrderIndex" data="1"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

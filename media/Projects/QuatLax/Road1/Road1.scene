@@ -188,6 +188,7 @@
 					<property type="7" name="ScriptFile" data="MainGameObject.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="2"/>
 				</userData>
 			</entity>
 		</node>
@@ -270,7 +271,7 @@
 			</terra>
 		</node>
 		<node name="CameraPlayer2" id="2797673919">
-			<position x="-0.721203" y="0.281331" z="-4.86877"/>
+			<position x="-0.7212" y="0.28133" z="-4.86877"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="CameraPlayer2" meshFile="Camera.mesh" castShadows="false" visible="true">
@@ -293,7 +294,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
@@ -343,7 +344,7 @@
 			</entity>
 		</node>
 		<node name="CameraPlayerOne" id="3998889493">
-			<position x="-3.61898" y="0.281331" z="-5.35261"/>
+			<position x="-3.61898" y="0.28133" z="-5.35261"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="CameraPlayerOne" meshFile="Camera.mesh" castShadows="false" visible="true">
@@ -366,7 +367,7 @@
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
-					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>

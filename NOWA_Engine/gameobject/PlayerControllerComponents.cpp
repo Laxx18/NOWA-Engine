@@ -653,7 +653,9 @@ namespace NOWA
 	void PlayerControllerComponent::setAnimationSpeed(Ogre::Real animationSpeed)
 	{
 		if (animationSpeed < 0.0f)
+		{
 			animationSpeed = 1.0f;
+		}
 		this->animationSpeed->setValue(animationSpeed);
 	}
 
@@ -665,7 +667,9 @@ namespace NOWA
 	void PlayerControllerComponent::setAcceleration(Ogre::Real acceleration)
 	{
 		if (acceleration < 0.0f)
+		{
 			acceleration = 0.0f;
+		}
 		this->acceleration->setValue(acceleration);
 	}
 
@@ -688,14 +692,18 @@ namespace NOWA
 	void PlayerControllerComponent::setAnimationName(const Ogre::String& name, unsigned int index)
 	{
 		if (index > this->animations.size())
+		{
 			return;
+		}
 		this->animations[index]->setListSelectedValue(name);
 	}
 
 	Ogre::String PlayerControllerComponent::getAnimationName(unsigned int index)
 	{
 		if (index > this->animations.size())
-			return 0;
+		{
+			return "";
+		}
 		return this->animations[index]->getListSelectedValue();
 	}
 

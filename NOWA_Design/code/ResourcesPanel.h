@@ -72,6 +72,7 @@ class ResourcesPanelMeshPreview;
 class ResourcesPanelDataBlocks;
 class ResourcesPanelTextures;
 class ResourcesPanelProject;
+class ResourcesPanelLuaScript;
 
 class ResourcesPanel : public wraps::BaseLayout
 {
@@ -99,6 +100,7 @@ private:
 	ResourcesPanelDataBlocks* resourcesPanelDataBlocks;
 	ResourcesPanelTextures* resourcesPanelTextures;
 	ResourcesPanelProject* resourcesPanelProject;
+	ResourcesPanelLuaScript* resourcesPanelLuaScript;
 #if 0
 	ResourcesPanelMeshPreview* resourcesPanelMeshPreview;
 #endif
@@ -295,6 +297,36 @@ private:
 	MyGUI::TreeControl::Node* lastClickedNode;
 	bool hasSceneChanges;
 	Ogre::String currentSceneName;
+};
+
+///////////////////////////////////////////////////////////////////////
+
+class ResourcesPanelLuaScript : public wraps::BasePanelViewItem
+{
+public:
+	ResourcesPanelLuaScript();
+	virtual ~ResourcesPanelLuaScript();
+
+	void setEditorManager(NOWA::EditorManager* editorManager);
+	void setProjectManager(ProjectManager* projectManager);
+
+	void initialise(void) override;
+	void shutdown(void) override;
+	void clear(void);
+
+	void populateListBox(void);
+private:
+	void buttonHit(MyGUI::Widget* sender);
+
+	void handleLuaScriptModified(NOWA::EventDataPtr eventData);
+private:
+	MyGUI::ListBox* listBox;
+	MyGUI::Button* upButton;
+	MyGUI::Button* downButton;
+	NOWA::EditorManager* editorManager;
+	ProjectManager* projectManager;
+
+	std::string selectedText;
 };
 
 #endif

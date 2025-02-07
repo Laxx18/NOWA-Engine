@@ -1828,6 +1828,68 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataLuaScriptModfied - This event is sent out the lua script has been modified (added, removed, renamed etc.)
+	//---------------------------------------------------------------------------------------------------------------------
+	class EXPORTED EventDataLuaScriptModfied : public BaseEventData
+	{
+	public:
+
+		EventDataLuaScriptModfied(void) :
+			id(0)
+		{
+		}
+
+		explicit EventDataLuaScriptModfied(const unsigned long id, const Ogre::String& luaScriptName)
+			: id(id),
+			luaScriptName(luaScriptName)
+		{
+		}
+
+		static EventType getStaticEventType(void)
+		{
+			return 0xe80c7d48;
+		}
+
+		virtual const EventType getEventType(void) const
+		{
+			return 0xe80c7d48;
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+			
+		}
+
+		virtual EventDataPtr copy(void) const
+		{
+			return EventDataPtr(new EventDataLuaScriptModfied(this->id, this->luaScriptName));
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+			
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataLuaScriptModfied";
+		}
+
+		const unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
+		Ogre::String getLuaScriptName(void) const
+		{
+			return this->luaScriptName;
+		}
+	private:
+		unsigned long id;
+		Ogre::String luaScriptName;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataCountdownActive - This event is sent out if a race countdown is active or not.
 	//---------------------------------------------------------------------------------------------------------------------
 	class EXPORTED EventDataCountdownActive : public BaseEventData

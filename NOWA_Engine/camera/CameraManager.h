@@ -57,7 +57,7 @@ namespace NOWA
 
 		void addCamera(Ogre::Camera* camera, bool activate);
 
-		void addSplitCamera(Ogre::Camera* camera);
+		void addSplitCamera(BaseCamera* baseCamera, Ogre::Camera* camera);
 
 		void removeCamera(Ogre::Camera* camera);
 

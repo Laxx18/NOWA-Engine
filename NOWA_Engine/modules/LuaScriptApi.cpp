@@ -5060,9 +5060,14 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getRenderCategoryId(renderCategory));
 	}
 
-	void activatePlayerController(GameObjectController* instance, bool active, const Ogre::String& id, bool onlyOneActive)
+	void activatePlayerController(GameObjectController* instance, bool active, const Ogre::String& gameObjectId, bool onlyOneActive)
 	{
-		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(id), onlyOneActive);
+		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), onlyOneActive);
+	}
+
+	void activatePlayerControllerForCamera(GameObjectController* instance, bool active, const Ogre::String& gameObjectId, const Ogre::String& cameraGameObjectId, bool onlyOneActive)
+	{
+		instance->activatePlayerController(active, Ogre::StringConverter::parseUnsignedLong(gameObjectId), Ogre::StringConverter::parseUnsignedLong(cameraGameObjectId), onlyOneActive);
 	}
 
 	void bindGameObjectController(lua_State* lua, class_<GameObjectController>& gameObjectController)
@@ -5106,8 +5111,8 @@ namespace NOWA
 		// gameObjectController.def("getNextGameObjectId", &GameObjectController::getNextGameObjectId) Does not work, because the internal algorithm is here not usable -> must be somehow re-implemented here
 		// gameObjectController.def("getMaterialID", &GameObjectController::getMaterialID);
 		gameObjectController.def("getMaterialIDFromCategory", &GameObjectController::getMaterialID);
-		// gameObjectController.def("activatePlayerController", &GameObjectController::activatePlayerController);
 		gameObjectController.def("activatePlayerController", &activatePlayerController);
+		gameObjectController.def("activatePlayerControllerForCamera", &activatePlayerControllerForCamera);
 		gameObjectController.def("getNextGameObject", (GameObject* (GameObjectController::*)(unsigned int))&GameObjectController::getNextGameObject);
 		gameObjectController.def("getNextGameObject", (GameObject* (GameObjectController::*)(const Ogre::String&))&GameObjectController::getNextGameObject);
 
@@ -5295,8 +5300,11 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "number getCategoryId(string categoryName)", "Gets id of the given category name.");
 		AddClassToCollection("GameObjectController", "number getRenderCategoryId(string renderCategoryName)", "Gets id of the given renderCategory name.");
 		AddClassToCollection("GameObjectController", "number getMaterialIDFromCategory(string categoryName)", "Gets physics material id of the given category name. In order to connect physics components together for collision detection etc.");
-		AddClassToCollection("GameObjectController", "void activatePlayerController(bool active, String id, bool onlyOneActive)", "Activates the given player component from the given game object id. "
+		AddClassToCollection("GameObjectController", "void activatePlayerController(bool active, string gameObjectId, bool onlyOneActive)", "Activates the given player component from the given game object id. "
 			"If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.");
+		AddClassToCollection("GameObjectController", "void activatePlayerControllerForCamera(bool active, string gameObjectId, string cameraGameObjectId, bool onlyOneActive)", "Activates the given player component from the given game object id and the given camera game object id. "
+			"If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected."
+			" So if camera game object id is set, this player controller will work e.g. in a split screen scenario for the given camera, not the main active camera.");
 		AddClassToCollection("GameObjectController", "GameObject getNextGameObject(int categoryIds)", "Gets the next game object from the given group id. "
 			"The category ids for filtering. Using ALL_CATEGORIES_ID, everything is selectable.");
 		AddClassToCollection("GameObjectController", "GameObject getNextGameObject(int categoryIds)", "Gets the next game object from the given group id as string. E.g. 'Player+Enemy'. "

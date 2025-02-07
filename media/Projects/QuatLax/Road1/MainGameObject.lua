@@ -10,7 +10,7 @@ player2 = nil;
 
 MainGameObject = {}
 
-MainGameObject["earlyConnect"] = function(gameObject)
+MainGameObject["connect"] = function(gameObject)
     mainGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
     
     if (Core:isGame() == true) then
@@ -45,10 +45,6 @@ MainGameObject["earlyConnect"] = function(gameObject)
         
          log("---->Menu set devices");
     end
-end
-
-MainGameObject["connect"] = function(gameObject)
-
 end
 
 MainGameObject["disconnect"] = function()

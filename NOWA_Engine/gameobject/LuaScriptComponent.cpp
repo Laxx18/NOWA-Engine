@@ -55,14 +55,14 @@ namespace NOWA
 	LuaScriptComponent::LuaScriptComponent()
 		: GameObjectComponent(),
 		luaScript(nullptr),
-		hasEarlyConnectFunction(false),
 		hasUpdateFunction(false),
 		hasLateUpdateFunction(false),
 		componentCloned(false),
 		activated(new Variant(LuaScriptComponent::AttrActivated(), true, this->attributes)),
 		scriptFile(new Variant(LuaScriptComponent::AttrScriptFile(), Ogre::String(""), this->attributes)),
 		cloneScript(new Variant(LuaScriptComponent::AttrCloneScript(), false, this->attributes)),
-		commonScript(new Variant(LuaScriptComponent::AttrHasCommonScript(), false, this->attributes))
+		commonScript(new Variant(LuaScriptComponent::AttrHasCommonScript(), false, this->attributes)),
+		orderIndex(new Variant(LuaScriptComponent::AttrOrderIndex(), static_cast<int>(-1), this->attributes))
 	{
 		this->scriptFile->setDescription("Name of the script file, e.g. 'Explosion.lua'.");
 		this->scriptFile->addUserData(GameObject::AttrActionNeedRefresh());
@@ -73,6 +73,8 @@ namespace NOWA
 			"Attention: Cloning a lua script may be dangerous, because its content of this original component will also be cloned and executed.");
 		this->commonScript->setDescription("Several game object may use the same script, if the script name for the lua script components is the same. This is useful if they should behave the same. This also increases the performance."
 			"Also for example when the game object is cloned, the lua script component is cloned too, but referencing the original lua script file.");
+		this->orderIndex->setDescription("The order index, at which this lua script is executed at.");
+		this->orderIndex->setReadOnly(true);
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &LuaScriptComponent::handleGroupLoaded), EventDataGroupLoaded::getStaticEventType());
 	}
@@ -114,6 +116,11 @@ namespace NOWA
 			this->setHasCommonScript(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "OrderIndex")
+		{
+			this->setOrderIndex(XMLConverter::getAttribUnsignedInt(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -151,6 +158,18 @@ namespace NOWA
 		}
 	}
 
+	void LuaScriptComponent::setOrderIndex(int orderIndex)
+	{
+		this->orderIndex->setReadOnly(false);
+		this->orderIndex->setValue(orderIndex);
+		this->orderIndex->setReadOnly(true);
+	}
+
+	int LuaScriptComponent::getOrderIndex(void) const
+	{
+		return this->orderIndex->getUInt();
+	}
+
 	GameObjectCompPtr LuaScriptComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		if (false == this->cloneScript->getBool() && false == this->commonScript->getBool())
@@ -166,6 +185,7 @@ namespace NOWA
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setCloneScript(this->cloneScript->getBool());
 		clonedCompPtr->setHasCommonScript(this->commonScript->getBool());
+		clonedCompPtr->setOrderIndex(this->orderIndex->getUInt());
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
@@ -212,6 +232,12 @@ namespace NOWA
 			this->setScriptFile(this->scriptFile->getString(), eScriptAction::LOAD);
 		}
 		return true;
+	}
+
+	void LuaScriptComponent::onRemoveComponent(void)
+	{
+		boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), ""));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 	}
 	
 	bool LuaScriptComponent::connect(void)
@@ -289,6 +315,10 @@ namespace NOWA
 		else if (LuaScriptComponent::AttrHasCommonScript() == attribute->getName())
 		{
 			this->setHasCommonScript(attribute->getBool());
+		}
+		else if (LuaScriptComponent::AttrOrderIndex() == attribute->getName())
+		{
+			this->setOrderIndex(attribute->getUInt());
 		}
 	}
 
@@ -377,39 +407,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "HasCommonScript"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->commonScript->getBool())));
 		propertiesXML->append_node(propertyXML);
-	}
 
-	bool LuaScriptComponent::checkHasEarlyConnectFunction(void)
-	{
-		if (nullptr == this->luaScript)
-		{
-			return false;
-		}
-
-		if (true == this->activated->getBool())
-		{
-			this->hasEarlyConnectFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "earlyConnect");
-			if (false == this->hasEarlyConnectFunction)
-			{
-				return false;
-			}
-
-			Ogre::String scriptTableName = this->scriptFile->getString();
-			scriptTableName.erase(scriptTableName.find_last_of("."), Ogre::String::npos);
-
-			if (true == this->luaScript->createLuaEnvironmentForTable(scriptTableName))
-			{
-				return true;
-			}
-		}
-	}
-
-	void LuaScriptComponent::earlyConnect(void)
-	{
-		if (nullptr != this->luaScript)
-		{
-			this->luaScript->callTableFunction("earlyConnect", this->gameObjectPtr.get());
-		}
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "OrderIndex"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orderIndex->getUInt())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	void LuaScriptComponent::setActivated(bool activated)
@@ -490,6 +493,9 @@ namespace NOWA
 
 			boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+
+			boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), newScriptName));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 		}
 
 		size_t found = tempScriptFileName.find(".lua");
@@ -515,6 +521,9 @@ namespace NOWA
 
 				boost::shared_ptr<NOWA::EventDataResourceCreated> eventDataResourceCreated(new NOWA::EventDataResourceCreated());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataResourceCreated);
+
+				boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), tempScriptFileName));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 			}
 		}
 
@@ -585,6 +594,9 @@ namespace NOWA
 						{
 							AppStateManager::getSingletonPtr()->getLuaScriptModule()->destroyScript(luaScriptComponent->getLuaScript());
 							luaScriptComponent->setScriptFile(tempScriptFileName, eScriptAction::SET);
+
+							boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), tempScriptFileName));
+							NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 						}
 					}
 				}
@@ -605,6 +617,8 @@ namespace NOWA
 		this->luaScript->setScriptFile(tempScriptFileName);
 		this->luaScript->setScriptFilePathName(luaScriptFilePathName);
 		this->scriptFile->addUserData(GameObject::AttrActionLuaScript(), luaScriptFilePathName);
+
+		AppStateManager::getSingletonPtr()->getGameObjectController()->addLuaScript(boost::dynamic_pointer_cast<LuaScriptComponent>(shared_from_this()));
 	}
 
 	void LuaScriptComponent::handleGroupLoaded(NOWA::EventDataPtr eventData)

@@ -13,6 +13,7 @@
 #include "camera/ZoomCamera.h"
 #include "main/AppStateManager.h"
 #include "modules/WorkspaceModule.h"
+#include "gameobject/CameraComponent.h"
 
 #include "main/Core.h"
 
@@ -24,6 +25,7 @@ namespace NOWA
 	CameraBehaviorComponent::CameraBehaviorComponent()
 		: GameObjectComponent(),
 		baseCamera(nullptr),
+		cameraGameObjectId(0),
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
 		activated(new Variant(CameraBehaviorComponent::AttrActivated(), false, this->attributes))
@@ -139,6 +141,7 @@ namespace NOWA
 
 					AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
 
+					this->cameraGameObjectId = 0;
 					this->baseCamera = nullptr;
 				}
 			}
@@ -168,6 +171,23 @@ namespace NOWA
 	bool CameraBehaviorComponent::getCameraControlLocked(void) const
 	{
 		return this->baseCamera->getCameraControlLocked();
+	}
+
+	void CameraBehaviorComponent::setCameraGameObjectId(const unsigned long cameraGameObjectId)
+	{
+		if (0 != cameraGameObjectId)
+		{
+			this->cameraGameObjectId = cameraGameObjectId;
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(cameraGameObjectId);
+			if (nullptr == gameObjectPtr)
+			{
+				const auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+				if (nullptr != cameraCompPtr)
+				{
+					AppStateManager::getSingletonPtr()->getCameraManager()->addSplitCamera(this->baseCamera, cameraCompPtr->getCamera());
+				}
+			}
+		}
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

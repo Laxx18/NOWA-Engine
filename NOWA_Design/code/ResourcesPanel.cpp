@@ -22,7 +22,8 @@ ResourcesPanel::ResourcesPanel(const MyGUI::FloatCoord& coords)
 	resourcesPanelGameObjects(nullptr),
 	resourcesPanelDataBlocks(nullptr),
 	resourcesPanelTextures(nullptr),
-	resourcesPanelProject(nullptr)
+	resourcesPanelProject(nullptr),
+	resourcesPanelLuaScript(nullptr)
 {
 	// Strategy as follows:
 	// - In ResourcesPanelView.layout, there are two tab items, each one with a named scrollviewer
@@ -55,6 +56,9 @@ ResourcesPanel::ResourcesPanel(const MyGUI::FloatCoord& coords)
 	assignBase(this->resourcesPanelView3, "resources3ScrollView");
 	this->resourcesPanelProject = new ResourcesPanelProject();
 	this->resourcesPanelView3->addItem(this->resourcesPanelProject);
+
+	this->resourcesPanelLuaScript = new ResourcesPanelLuaScript();
+	this->resourcesPanelView3->addItem(this->resourcesPanelLuaScript);
 }
 
 void ResourcesPanel::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1526,4 +1530,124 @@ void ResourcesPanelProject::handleEventDataGameObjectMadeGlobal(NOWA::EventDataP
 {
 	this->hasSceneChanges = true;
 	this->populateFilesTree(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+ResourcesPanelLuaScript::ResourcesPanelLuaScript()
+	: BasePanelViewItem("ResourcesPanelLuaScript.layout"),
+	listBox(nullptr),
+	upButton(nullptr),
+	downButton(nullptr),
+	editorManager(nullptr),
+	projectManager(nullptr)
+{
+	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+}
+
+ResourcesPanelLuaScript::~ResourcesPanelLuaScript()
+{
+	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+}
+
+void ResourcesPanelLuaScript::setEditorManager(NOWA::EditorManager* editorManager)
+{
+	this->editorManager = editorManager;
+}
+
+void ResourcesPanelLuaScript::setProjectManager(ProjectManager* projectManager)
+{
+	this->projectManager = projectManager;
+}
+
+void ResourcesPanelLuaScript::initialise(void)
+{
+	mPanelCell->setCaption("LuaScript Management");
+	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+
+	assignWidget(this->listBox, "ListBox");
+	assignWidget(this->upButton, "UpButton");
+	assignWidget(this->downButton, "DownButton");
+	mWidgetClient->setSize(MyGUI::IntSize(mWidgetClient->getWidth(), 405));
+
+	this->listBox->setInheritsAlpha(false);
+
+	this->upButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelLuaScript::buttonHit);
+	this->downButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ResourcesPanelLuaScript::buttonHit);
+
+	this->populateListBox();
+
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
+}
+
+void ResourcesPanelLuaScript::shutdown(void)
+{
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
+}
+
+void ResourcesPanelLuaScript::clear(void)
+{
+	this->selectedText.clear();
+	this->listBox->removeAllItems();
+}
+
+void ResourcesPanelLuaScript::populateListBox(void)
+{
+	this->clear();
+
+	auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
+
+	for (const auto& weakScript : luaScripts)
+	{
+		if (auto luaScriptComponent = NOWA::makeStrongPtr(weakScript))
+		{
+			Ogre::String identifier = "Id: " + Ogre::StringConverter::toString(luaScriptComponent->getOwner()->getId()) + " - " + luaScriptComponent->getScriptFile();
+			this->listBox->addItem(identifier);
+		}
+	}
+}
+
+void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
+{
+	if (sender == this->upButton)
+	{
+		auto selectedIndex = this->listBox->getIndexSelected();
+		if (selectedIndex > 0)
+		{
+			auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
+			if (nullptr != luaScriptComponent)
+			{
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptUp(luaScriptComponent);
+				this->populateListBox();
+
+				// After updating the list, set the selected index back
+				// If the script moved up, the selected index should decrease by 1
+				this->listBox->setItemSelect(selectedIndex - 1);
+			}
+		}
+	}
+	else if (sender == this->downButton)
+	{
+		auto selectedIndex = this->listBox->getIndexSelected();
+		auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
+
+		if (selectedIndex >= 0 && selectedIndex < scripts.size() - 1)
+		{
+			auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
+			if (nullptr != luaScriptComponent)
+			{
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptDown(luaScriptComponent);
+				this->populateListBox();
+
+				// After updating the list, set the selected index back
+				// If the script moved down, the selected index should increase by 1
+				this->listBox->setItemSelect(selectedIndex + 1);
+			}
+		}
+	}
+}
+
+void ResourcesPanelLuaScript::handleLuaScriptModified(NOWA::EventDataPtr eventData)
+{
+	this->populateListBox();
 }

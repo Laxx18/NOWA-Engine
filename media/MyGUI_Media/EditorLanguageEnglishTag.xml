@@ -130,6 +130,7 @@
 	<Tag name="Utilities">Utitlities</Tag>
 	<Tag name="SceneAnalysis">Scene Analysis</Tag>
 	<Tag name="Deploy">Deploy</Tag>
+	<Tag name="LuaScriptExecutionOrder">Current Lua script execution order</Tag>
 	<Tag name="OpenAllLuaScripts">Open all Lua scripts</Tag>
 	<Tag name="EncryptFiles">Encrypt files</Tag>
 	<Tag name="DecryptFiles">Decrypt files</Tag>

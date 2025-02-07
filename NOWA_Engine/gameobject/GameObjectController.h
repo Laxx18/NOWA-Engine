@@ -16,6 +16,7 @@ namespace NOWA
 	class JointComponent;
 	class PlayerControllerComponent;
 	class PhysicsCompoundConnectionComponent;
+	class LuaScriptComponent;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,6 +81,7 @@ namespace NOWA
 		typedef boost::shared_ptr<JointComponent> JointCompPtr;
 		typedef boost::shared_ptr<PlayerControllerComponent> PlayerControllerCompPtr;
 		typedef boost::shared_ptr<PhysicsCompoundConnectionComponent> PhysicsCompoundConnectionCompPtr;
+		typedef boost::shared_ptr<LuaScriptComponent> LuaScriptCompPtr;
 
 		typedef std::map<unsigned long, GameObjectPtr> GameObjects;
 	public:
@@ -711,9 +713,10 @@ namespace NOWA
 		 * @brief		Activates the given player component from the given game object id.
 		 * @param[in]	active	If set to true, the given player component will be activated, else deactivated
 		 * @param[in]	gameObjectId	The game object id to get the player component from for activation
-		 * @param[in]	onlyOneActive	Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.
+		 * @param[in]	gameObjectId	Optionally the camera game object id can be set (for e.g. split screen).
+		 * @param[in]	onlyOneActive	Optionally sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.
 		 */
-		void activatePlayerController(bool active, const unsigned long id, bool onlyOneActive = true);
+		void activatePlayerController(bool active, const unsigned long gameObjectId, const unsigned long cameraGameObjectId = 0, bool onlyOneActive = true);
 
 		/**
 		 * @brief		Deactivates all player components.
@@ -951,6 +954,33 @@ namespace NOWA
 		{
 			return static_cast<Type*>(other);
 		}
+
+		/**
+		 * @brief Adds a Lua script to the managed list and updates the execution order.
+		 * @param script The LuaScriptComponent to be added.
+		 */
+		void addLuaScript(LuaScriptCompPtr luaScript);
+
+		/**
+		 * @brief Moves a Lua script up in the execution order.
+		 * If the script is already at the top, the function does nothing.
+		 * @param script The LuaScriptComponent to move up.
+		 */
+		void moveScriptUp(LuaScriptCompPtr luaScript);
+
+		/**
+		 * @brief Moves a Lua script down in the execution order.
+		 * If the script is already at the bottom, the function does nothing.
+		 * @param script The LuaScriptComponent to move down.
+		 */
+		void moveScriptDown(LuaScriptCompPtr luaScript);
+
+		/**
+		 * @brief Retrieves the list of managed Lua scripts in their current execution order.
+		 * @return A vector of weak pointers to LuaScriptComponent objects.
+		 */
+		std::vector<boost::weak_ptr<LuaScriptComponent>> getManagedLuaScripts() const;
+
 	public:
 		static const unsigned int ALL_CATEGORIES_ID = 0xFFFFFFFF;
 
@@ -976,6 +1006,8 @@ namespace NOWA
 		~GameObjectController();
 
 		void deleteJointDelegate(EventDataPtr eventData);
+
+		void updateLuaScriptExecutionOrder(void);
 	private:
 		Ogre::String appStateName;
 
@@ -1020,6 +1052,8 @@ namespace NOWA
 
 		bool bIsDestroying;
 		bool bAddListenerFirstTime;
+
+		std::vector<std::pair<int, boost::weak_ptr<LuaScriptComponent>>> managedLuaScripts;
 	};
 
 }; //namespace end NOWA

@@ -107,6 +107,8 @@ namespace NOWA
 		void setCameraControlLocked(bool cameraControlLocked);
 
 		bool getCameraControlLocked(void) const;
+
+		void setCameraGameObjectId(const unsigned long cameraGameObjectId);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 	protected:
@@ -114,6 +116,7 @@ namespace NOWA
 		BaseCamera* baseCamera;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
+		unsigned long cameraGameObjectId;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
