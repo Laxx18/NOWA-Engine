@@ -1,10 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "CameraManager.h"
-#include "gameobject/GameObjectComponent.h"
-#include "gameobject/GameObjectController.h"
-#include "main/Core.h"
-#include "modules/WorkspaceModule.h"
-#include "modules/GameProgressModule.h"
+#include "main/AppStateManager.h"
 
 #include "NullCamera.h"
 
@@ -17,7 +13,6 @@ namespace NOWA
 {
 	CameraManager::CameraManager(const Ogre::String& appStateName)
 		: appStateName(appStateName),
-		camera(nullptr),
 		moveSpeed(0.0f),
 		rotateSpeed(0.0f),
 		cameraBehaviorId(0)
@@ -28,13 +23,9 @@ namespace NOWA
 	void CameraManager::init(const Ogre::String& name, Ogre::Camera* camera, Ogre::Real moveSpeed, Ogre::Real rotateSpeed)
 	{
 		this->name = name;
-		this->camera = camera;
-		this->camera->setQueryFlags(0);
-		moveSpeed = moveSpeed;
-		rotateSpeed = rotateSpeed;
-		bool activate = true;
-		this->cameras.emplace(camera, activate);
-		this->addCameraBehavior(new NullCamera(this->cameraBehaviorId++));
+		this->moveSpeed = moveSpeed;
+		this->rotateSpeed = rotateSpeed;
+		this->addCameraBehavior(camera, new NullCamera(this->cameraBehaviorId++));
 	}
 
 	CameraManager::~CameraManager()
@@ -44,309 +35,414 @@ namespace NOWA
 
 	void CameraManager::destroyContent(void)
 	{
-		this->cameraBehaviorKey.clear();
-		this->oldBehaviorKey.clear();
-
-		for (auto& it : this->cameraStrategies)
+		for (auto& entry : this->cameraDataMap)
 		{
-			BaseCamera* baseCamera = it.second;
-			delete baseCamera;
-			baseCamera = nullptr;
+			for (auto& behavior : entry.second.behaviorData)
+			{
+				if (nullptr != behavior.cameraBehavior)
+				{
+					delete behavior.cameraBehavior;
+					behavior.cameraBehavior = nullptr;
+				}
+			}
 		}
-		this->cameraStrategies.erase(this->cameraStrategies.begin(), this->cameraStrategies.end());
-		this->cameraStrategies.clear();
-		this->cameras.clear();
-		this->camera = nullptr;
-		/*while (this->cameraStrategies.size() > 0) {
-		BaseCamera* baseCamera = this->cameraStrategies.
-		delete baseCamera;
-		this->cameraStrategies.pop_back();
-		}*/
+		this->cameraDataMap.clear();
 	}
 
-	//bool CameraManager::attachToSceneNode(Ogre::SceneNode* sceneNode)
-	//{
-	//	this->sceneNode = sceneNode;
-	//	if (nullptr == this->sceneNode)
-	//	{
-	//		// throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[CameraManager] The to be attached game object component is null.\n", "NOWA");
-	//		return false;
-	//	}
-	//	std::map<Ogre::String, BaseCamera*>::iterator it;
-	//	for (it = this->cameraStrategies.begin(); it != this->cameraStrategies.end(); it++) {
-	//		it->second->setSceneNode(this->sceneNode);
-	//	}
-	//	return true;
-	//}
+	void CameraManager::setMoveSpeed(Ogre::Real moveSpeed)
+	{
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			cameraPair.second.behaviorData[0].cameraBehavior->setMoveSpeed(moveSpeed);
+		}
+	}
+
+	void CameraManager::setRotationSpeed(Ogre::Real rotateSpeed)
+	{
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			cameraPair.second.behaviorData[0].cameraBehavior->setRotationSpeed(rotateSpeed);
+		}
+	}
+
+	void CameraManager::setSmoothValue(Ogre::Real smoothValue)
+	{
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			cameraPair.second.behaviorData[0].cameraBehavior->setSmoothValue(smoothValue);
+		}
+	}
 
 	unsigned int CameraManager::getCountCameras(void) const
 	{
-		return this->cameras.size();
+		return this->cameraDataMap.size();
 	}
 
-	void CameraManager::addCameraBehavior(BaseCamera* baseCamera)
-	{
-		if (this->cameraBehaviorKey != baseCamera->getBehaviorType())
-		{
-			this->oldBehaviorKey = this->cameraBehaviorKey;
-		}
-		this->cameraBehaviorKey = baseCamera->getBehaviorType();
-		baseCamera->postInitialize(this->camera);
-		// Uses unique key, because just camera behavior is not enough, e.g. two behaviors can be called THIRD_PERSON_BEHAVIOR!, hence also an unique id
-		this->cameraStrategies.insert(std::make_pair(this->cameraBehaviorKey, baseCamera));
-	}
-
-	void CameraManager::removeCameraBehavior(const Ogre::String& cameraBehaviorType, bool destroy)
+	void CameraManager::removeCameraBehavior(const Ogre::String& cameraBehaviorType)
 	{
 		size_t found = cameraBehaviorType.find(NullCamera::BehaviorType());
 		if (found != Ogre::String::npos)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Default camera type can not be removed.");
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Default camera type cannot be removed.");
 			return;
 		}
-		std::map<Ogre::String, BaseCamera*>::iterator it = this->cameraStrategies.find(cameraBehaviorType);
-		if (it != this->cameraStrategies.end())
+
+		// Iterate through the cameraDataMap to find and remove the camera behavior
+		for (auto& entry : this->cameraDataMap)
 		{
-			it->second->onClearData();
+			CameraData& cameraData = entry.second;
 
-			BaseCamera* baseCamera = it->second;
-			if (true == destroy)
+			for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
 			{
-				delete baseCamera;
-				baseCamera = nullptr;
-			}
-			this->cameraStrategies.erase(it);
-
-			// If old camera type is the onw, which has been deleted, go one back to get one
-			if (cameraBehaviorType == this->oldBehaviorKey)
-			{
-				Ogre::String defaultBehaviorKey;
-				for (auto innerIt = this->cameraStrategies.begin(); innerIt != this->cameraStrategies.end(); ++innerIt)
+				if (it->cameraBehaviorKey == cameraBehaviorType)
 				{
-					Ogre::String tempName = innerIt->second->getBehaviorType();
-					if (Ogre::StringUtil::match(tempName, BaseCamera::BehaviorType() + "*", false))
+					auto cameraBehavior = it->cameraBehavior;
+					// Clear the behavior data
+					cameraBehavior->onClearData();
+
+					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(entry.first));
+					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+
+					delete cameraBehavior;
+
+					// Clear the camera behavior key
+					it->cameraBehaviorKey.clear();
+					entry.second.behaviorData.erase(it);
+
+					// If the removed behavior was the current active one, attempt to restore another behavior
+					if (true == cameraData.isActive)
 					{
-						defaultBehaviorKey = innerIt->second->getBehaviorType();
-						break;
+						if (false == entry.second.behaviorData.empty())
+						{
+							auto otherBehavior = entry.second.behaviorData.begin();
+							// Use setActiveCameraBehavior to set the new behavior
+							this->setActiveCameraBehavior(entry.first, entry.second.behaviorData.begin()->cameraBehaviorKey);
+						}
 					}
-				}
-
-				if (false == defaultBehaviorKey.empty())
-				{
-					this->oldBehaviorKey = defaultBehaviorKey;
-				}
-				else
-				{
-					this->oldBehaviorKey = "invalid";
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[CameraManager] Could not find any valid camera behavior type. Illegal state.");
-					throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[CameraManager] Could not find any valid camera behavior type. Illegal state.\n", "NOWA");
+					
+					break;
 				}
 			}
-
-			// Sets the old behavior
-			this->setActiveCameraBehavior(this->oldBehaviorKey);
-
-			this->cameraBehaviorKey = this->oldBehaviorKey;
 		}
 	}
 
-	void CameraManager::setActiveCameraBehavior(const Ogre::String& cameraBehaviorType)
+	void CameraManager::setActiveCameraBehavior(Ogre::Camera* camera, const Ogre::String& cameraBehaviorType)
 	{
-		if (this->cameraBehaviorKey != cameraBehaviorType)
-		{
-			this->oldBehaviorKey = cameraBehaviorType;
-		}
-		this->cameraBehaviorKey = cameraBehaviorType;
+		Ogre::String cameraName = camera->getName();
+		auto& cameraData = this->cameraDataMap[camera];
 
-		std::map<Ogre::String, BaseCamera*>::iterator it;
-
-		it = this->cameraStrategies.find(this->oldBehaviorKey);
-		if (it != this->cameraStrategies.end())
+		// Clear data for the old behavior
+		for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
 		{
-			it->second->onClearData();
+			if (it->cameraBehaviorKey != cameraBehaviorType)
+			{
+				it->cameraBehavior->onClearData();
+				break;
+			}
 		}
 
-		it = this->cameraStrategies.find(cameraBehaviorType);
-		if (it != this->cameraStrategies.end())
+		// Find the new behavior in the list and move it to the front
+		for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
 		{
-			it->second->onSetData();
+			if (it->cameraBehaviorKey == cameraBehaviorType)
+			{
+				if (it != cameraData.behaviorData.begin())
+				{
+					std::swap(*it, cameraData.behaviorData.front());
+				}
+				cameraData.behaviorData.begin()->cameraBehavior = cameraData.behaviorData.front().cameraBehavior;
+				cameraData.behaviorData.begin()->cameraBehavior->onSetData();
+				cameraData.isActive = true;
+				break;
+			}
 		}
-		else
+
+		// If the new behavior was not found in the list, log an error
+		if (cameraData.behaviorData.begin()->cameraBehavior->getBehaviorType() != cameraBehaviorType)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraManager] Camera with moving behavior type: "
-				+ cameraBehaviorType + " does not exist. Add the camera behavior");
+			cameraData.behaviorData.begin()->cameraBehaviorKey = cameraBehaviorType;
+			cameraData.behaviorData.begin()->cameraBehavior->onSetData();
+			cameraData.isActive = true;
 		}
 	}
 
-	BaseCamera* CameraManager::getActiveCameraBehavior(void) const
+	BaseCamera* CameraManager::getActiveCameraBehavior(Ogre::Camera* camera) const
 	{
-		auto& it = this->cameraStrategies.find(this->cameraBehaviorKey);
-		if (it != this->cameraStrategies.end())
+		Ogre::String cameraName = camera->getName();
+		auto it = this->cameraDataMap.find(camera);
+		if (it != this->cameraDataMap.end())
 		{
-			return it->second;
+			if (false == it->second.behaviorData.empty())
+			{
+				return it->second.behaviorData.begin()->cameraBehavior;
+			}
 		}
 		return nullptr;
 	}
 
-	void CameraManager::addCamera(Ogre::Camera* camera, bool activate)
+	void CameraManager::addCamera(Ogre::Camera* camera, bool activate, bool forSplitScreen)
 	{
 		bool foundActiveOne = false;
+
 		Ogre::String cameraName = camera->getName();
+		// Retrieve the camera data for the given camera from the map
+		CameraData& cameraData = this->cameraDataMap[camera];
+		cameraData.isActive = activate;
+		cameraData.forSplitScreen = forSplitScreen;
+		
+		// If activating, we need to deactivate all other cameras first
 		if (true == activate)
 		{
-			// First deactivate all, besides the new one
-			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+			// Deactivate all cameras except for the one being activated
+			for (auto& entry : this->cameraDataMap)
 			{
-				if (camera == it->first)
+				if (entry.first != camera && false == entry.second.forSplitScreen)
 				{
-					it->second = activate;
-					it->first->setVisible(activate);
-				}
-				else
-				{
-					it->second = false;
-					it->first->setVisible(false);
-				}
-				// When active, choose another for setting active
-				if (true == it->second)
-				{
-					foundActiveOne = true;
+					entry.second.isActive = false;
+					entry.first->setVisible(false);
+
+					for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
+					{
+						it->cameraBehavior->onClearData();
+					}
 				}
 			}
-			// Set active camera
-			this->camera = camera;
-			auto activeBehavior = this->getActiveCameraBehavior();
+
+			auto activeBehavior = this->getActiveCameraBehavior(camera);
 			if (nullptr != activeBehavior)
 			{
-				activeBehavior->postInitialize(this->camera);
+				// Ensure the active behavior is at the front of the list
+				for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
+				{
+					if (it != cameraData.behaviorData.begin())
+					{
+						std::swap(*it, cameraData.behaviorData.front());
+					}
+					break;
+				}
+
+				// Now set this camera as active
+				camera->setVisible(true);
+				cameraData.behaviorData.begin()->cameraBehavior->postInitialize(camera);
+				cameraData.behaviorData.begin()->cameraBehavior->onSetData();
 			}
 		}
-		this->cameras.emplace(camera, activate);
-
-		if (false == activate)
+		else
 		{
-			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
-			{
-				if (camera == it->first)
-				{
-					it->second = activate;
-					it->first->setVisible(activate);
-				}
-			}
+			// If deactivating, just hide the camera and clear its data
+			camera->setVisible(false);
+			cameraData.behaviorData.begin()->cameraBehavior->onClearData();
 		}
 
-		if (true == foundActiveOne && false == activate)
+		// Add the camera to the map (this ensures the camera is part of the map, even if inactive)
+		this->cameraDataMap[camera] = cameraData;
+
+		// If we're deactivating and there was another active camera, find the next one to activate
+		if (!activate)
 		{
-			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+			for (auto& entry : this->cameraDataMap)
 			{
-				// Set the first one to come active
-				it->second = true;
-				it->first->setVisible(true);
-				auto activeBehavior = this->getActiveCameraBehavior();
-				if (nullptr != activeBehavior)
+				if (true == entry.second.isActive)
 				{
-					activeBehavior->postInitialize(this->camera);
+					foundActiveOne = true;
+					break;
 				}
-				break;
+			}
+
+			// If no active camera was found, activate the first camera in the map
+			if (false == foundActiveOne && false == this->cameraDataMap.empty())
+			{
+				auto firstCamera = this->cameraDataMap.begin()->first;
+				CameraData& firstCameraData = this->cameraDataMap[firstCamera];
+				firstCameraData.isActive = true;
+				firstCamera->setVisible(true);
+				firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
+				firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
 			}
 		}
 	}
 
-	void CameraManager::addSplitCamera(BaseCamera* baseCamera, Ogre::Camera* camera)
+	void CameraManager::addCameraBehavior(Ogre::Camera* camera, BaseCamera* baseCamera)
 	{
-		this->cameras.emplace(camera, true);
 		Ogre::String cameraName = camera->getName();
-		for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+		auto& cameraData = this->cameraDataMap[camera];
+		bool behaviorExists = false;
+
+		// Check if the behavior already exists and move it to the beginning if found
+		for (auto it = cameraData.behaviorData.begin(); it != cameraData.behaviorData.end(); ++it)
 		{
-			it->second = true;
-			it->first->setVisible(true);
+			if (it->cameraBehaviorKey == baseCamera->getBehaviorType())
+			{
+				behaviorExists = true;
+				if (it != cameraData.behaviorData.begin())
+				{
+					std::swap(*it, cameraData.behaviorData.front());
+				}
+				break;
+			}
 		}
-		// Set active camera
-		this->camera = camera;
-		if (nullptr != baseCamera)
+
+		// If the behavior does not exist, add it to the front
+		if (false == behaviorExists)
 		{
-			baseCamera->postInitialize(this->camera);
+			BehaviorData newBehavior;
+			newBehavior.cameraBehaviorKey = baseCamera->getBehaviorType();
+			newBehavior.cameraBehavior = baseCamera;
+			cameraData.behaviorData.insert(cameraData.behaviorData.begin(), newBehavior);
 		}
+
+		// Set the camera behavior to the first item in the list and initialize it
+		auto& firstBehavior = cameraData.behaviorData.front();
+		cameraData.behaviorData.begin()->cameraBehaviorKey = firstBehavior.cameraBehaviorKey;
+		cameraData.behaviorData.begin()->cameraBehavior = firstBehavior.cameraBehavior;
+		firstBehavior.cameraBehavior->postInitialize(camera);
 	}
 
 	void CameraManager::removeCamera(Ogre::Camera* camera)
 	{
-		bool foundActiveOne = false;
 		Ogre::String cameraName = camera->getName();
-		auto it = this->cameras.find(camera);
-		if (this->cameras.end() != it)
+		auto it = this->cameraDataMap.find(camera);
+		if (it != this->cameraDataMap.end())
 		{
-			// When active, choose another for setting active
-			if (true == it->second)
-			{
-				foundActiveOne = true;
-			}
-			this->cameras.erase(camera);
-			camera->setVisible(false);
-		}
+			// Get the camera's data
+			CameraData& cameraData = it->second;
 
-		if (true == foundActiveOne)
-		{
-			for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+			// If the camera to be removed is currently active, find another one to activate
+			if (true == cameraData.isActive)
 			{
-				// Set the first one to come active
-				it->second = true;
-				it->first->setVisible(true);
-				auto activeBehavior = this->getActiveCameraBehavior();
-				if (nullptr != activeBehavior)
+				bool foundActiveOne = false;
+
+				// Deactivate the current camera and remove it from the map
+				for (auto& behavior : cameraData.behaviorData)
 				{
-					activeBehavior->postInitialize(this->camera);
+					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(it->first));
+					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+
+					behavior.cameraBehavior->onClearData();
+					delete behavior.cameraBehavior;
 				}
-				break;
+				cameraData.behaviorData.clear();
+
+				this->cameraDataMap.erase(it);
+				camera->setVisible(false);
+
+				// Check if there is another active camera in the map
+				for (auto& entry : this->cameraDataMap)
+				{
+					if (true == entry.second.isActive)
+					{
+						foundActiveOne = true;
+						break;
+					}
+				}
+
+				// If no active camera exists, activate the first camera in the map
+				if (!foundActiveOne && !this->cameraDataMap.empty())
+				{
+					auto firstCamera = this->cameraDataMap.begin()->first;
+					CameraData& firstCameraData = this->cameraDataMap[firstCamera];
+					firstCameraData.isActive = true;
+					firstCamera->setVisible(true);
+					firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
+					firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
+				}
+			}
+			else
+			{
+				// If the camera to be removed is not active, just remove it
+				for (auto& behavior : cameraData.behaviorData)
+				{
+					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(it->first));
+					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+
+					behavior.cameraBehavior->onClearData();
+					delete behavior.cameraBehavior;
+				}
+				cameraData.behaviorData.clear();
+
+				this->cameraDataMap.erase(it);
+				camera->setVisible(false);
 			}
 		}
 	}
 
 	void CameraManager::activateCamera(Ogre::Camera* camera)
 	{
-		auto it = this->cameras.find(camera);
-		if (this->cameras.end() != it)
+		auto it = this->cameraDataMap.find(camera);
+		if (it != this->cameraDataMap.end())
 		{
-			// First deactivate all
-			for (auto subIt = this->cameras.begin(); subIt != this->cameras.end(); ++subIt)
+			// Deactivate all cameras first
+			for (auto& entry : this->cameraDataMap)
 			{
-				subIt->second = false;
-				subIt->first->setVisible(false);
+				if (false == entry.second.forSplitScreen)
+				{
+					// Set all cameras as inactive
+					entry.second.isActive = false;
+					entry.first->setVisible(false);
+
+					entry.second.behaviorData.begin()->cameraBehavior->onClearData();
+				}
 			}
-	
-			// Set active
-			it->second = true;
-			this->camera = it->first;
-			this->camera->setVisible(true);
-			auto activeBehavior = this->getActiveCameraBehavior();
-			if (nullptr != activeBehavior)
+
+			// Now activate the specified camera
+			CameraData& cameraData = it->second;
+			cameraData.isActive = true;
+			camera->setVisible(true);
+
+			// Ensure the first behavior is set and initialized
+			if (!cameraData.behaviorData.empty())
 			{
-				activeBehavior->postInitialize(this->camera);
+				auto& firstBehavior = cameraData.behaviorData.front();
+				cameraData.behaviorData.begin()->cameraBehaviorKey = firstBehavior.cameraBehaviorKey;
+				cameraData.behaviorData.begin()->cameraBehavior = firstBehavior.cameraBehavior;
+				firstBehavior.cameraBehavior->postInitialize(camera);
+				firstBehavior.cameraBehavior->onSetData();
 			}
 		}
 	}
 
 	Ogre::Camera* CameraManager::getActiveCamera(void) const
 	{
-		for (auto it = this->cameras.begin(); it != this->cameras.end(); ++it)
+		// Iterate through all cameras in the cameraDataMap
+		for (const auto& entry : this->cameraDataMap)
 		{
-			Ogre::String cameraName = it->first->getName();
-			if (true == it->second)
+			Ogre::String cameraName = entry.first->getName();
+			// Check if the camera is active
+			if (true == entry.second.isActive && false == entry.second.forSplitScreen)
 			{
-				return it->first;
+				return entry.first;
 			}
 		}
 		return nullptr;
 	}
 
+	Ogre::String CameraManager::getName(void) const
+	{
+		return this->name;
+	}
+
 	void CameraManager::setMoveCameraWeight(Ogre::Real moveCameraWeight)
 	{
-		this->cameraStrategies[this->cameraBehaviorKey]->moveCameraWeight = moveCameraWeight;
+		// Set moveCameraWeight for all active cameras
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				cameraPair.second.behaviorData.begin()->cameraBehavior->moveCameraWeight = moveCameraWeight;
+			}
+		}
 	}
 
 	void CameraManager::setRotateCameraWeight(Ogre::Real rotateCameraWeight)
 	{
-		this->cameraStrategies[this->cameraBehaviorKey]->rotateCameraWeight = rotateCameraWeight;
+		// Set rotateCameraWeight for all active cameras
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCameraWeight = rotateCameraWeight;
+			}
+		}
 	}
 
 	unsigned int CameraManager::getCameraBehaviorId(void)
@@ -356,31 +452,62 @@ namespace NOWA
 
 	void CameraManager::moveCamera(Ogre::Real dt)
 	{
-		if (nullptr != this->camera)
+		// Move all active cameras using their camera behaviors
+		for (auto& cameraPair : this->cameraDataMap)
 		{
-			Ogre::Vector3 cameraPosition = this->camera->getPosition();
-			this->cameraStrategies[this->cameraBehaviorKey]->moveCamera(dt);
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				// You can access the position if needed
+				Ogre::Vector3 cameraPosition = cameraPair.first->getPosition();
+
+				// Move the camera using its behavior
+				cameraPair.second.behaviorData.begin()->cameraBehavior->moveCamera(dt);
+			}
 		}
 	}
 
 	void CameraManager::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{
-		if (nullptr != this->camera)
+		// Rotate all active cameras using their camera behaviors
+		for (auto& cameraPair : this->cameraDataMap)
 		{
-			Ogre::Vector3 cameraPosition = this->camera->getPosition();
-			Ogre::Quaternion cameraOrientation = this->camera->getOrientation();
-			this->cameraStrategies[this->cameraBehaviorKey]->rotateCamera(dt, forJoyStick);
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				// You can access the position and orientation if needed
+				Ogre::Vector3 cameraPosition = cameraPair.first->getPosition();
+				Ogre::Quaternion cameraOrientation = cameraPair.first->getOrientation();
+
+				// Rotate the camera using its behavior
+				cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCamera(dt, forJoyStick);
+			}
 		}
 	}
 
 	Ogre::Vector3 CameraManager::getPosition(void)
 	{
-		return this->cameraStrategies[this->cameraBehaviorKey]->getPosition();
+		// Return the position of the first active camera (if any)
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				return cameraPair.second.behaviorData.begin()->cameraBehavior->getPosition();
+			}
+		}
+		return Ogre::Vector3::ZERO; // Default return value if no active camera is found
 	}
 
 	Ogre::Quaternion CameraManager::getOrientation(void)
 	{
-		return this->cameraStrategies[this->cameraBehaviorKey]->getOrientation();
+		// Return the orientation of the first active camera (if any)
+		for (auto& cameraPair : this->cameraDataMap)
+		{
+			if (true == cameraPair.second.isActive) // Check if the camera is active
+			{
+				return cameraPair.second.behaviorData.begin()->cameraBehavior->getOrientation();
+			}
+		}
+		return Ogre::Quaternion::IDENTITY; // Default return value if no active camera is found
 	}
+
 
 }; //namespace end

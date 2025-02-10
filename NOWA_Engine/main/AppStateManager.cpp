@@ -355,9 +355,9 @@ namespace NOWA
 		// this keeps track of time (seconds to keep it easy)
 		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
 
-		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+		this->getCameraManager()->setMoveSpeed(20.0f);
+		this->getCameraManager()->setRotationSpeed(30.0f);
+		this->getCameraManager()->setSmoothValue(0.05f);
 
 		while (false == this->bShutdown)
 		{
@@ -415,9 +415,9 @@ namespace NOWA
 		int frameCount = 0;
 		int tickCount = 0;
 
-		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+		this->getCameraManager()->setMoveSpeed(20.0f);
+		this->getCameraManager()->setRotationSpeed(30.0f);
+		this->getCameraManager()->setSmoothValue(0.05f);
 
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
@@ -569,9 +569,9 @@ namespace NOWA
 
 	void AppStateManager::interpolatedRendering(void)
 	{
-		this->getCameraManager()->getActiveCameraBehavior()->setMoveSpeed(20.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setRotationSpeed(30.0f);
-		this->getCameraManager()->getActiveCameraBehavior()->setSmoothValue(0.05f);
+		this->getCameraManager()->setMoveSpeed(20.0f);
+		this->getCameraManager()->setRotationSpeed(30.0f);
+		this->getCameraManager()->setSmoothValue(0.05f);
 
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();

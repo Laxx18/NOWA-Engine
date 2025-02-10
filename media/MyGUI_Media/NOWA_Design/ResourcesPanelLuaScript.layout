@@ -5,12 +5,12 @@
         
         <!-- Label for the title -->
         <Widget type="TextBox" skin="TextBox" position="10 10 280 28" align="Left Top" name="Label" readonly="true">
-            <Property key="Caption" value="#{LuaScriptExecutionOrder}"/>
+            <Property key="Caption" value="#{LuaScriptExecutionOrder}:"/>
         </Widget>
 
         <!-- ListBox with correct custom background color -->
-        <Widget type="ListBox" skin="ListBox" position="10 38 280 350" align="Left Top" name="ListBox" layer="Main">
-            <Property key="Colour" value="0 0 0.7 1"/>
+        <Widget type="ListBox" skin="ListBox" position="10 38 310 350" align="Left Top" name="ListBox" layer="Main">
+            <Property key="Colour" value="0.3 0.7 1 0.5"/>
         </Widget>
 
         <!-- Up Button -->

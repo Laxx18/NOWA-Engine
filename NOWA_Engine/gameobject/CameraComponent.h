@@ -2,6 +2,7 @@
 #define CAMERA_COMPONENT_H
 
 #include "GameObjectComponent.h"
+#include "camera/BaseCamera.h"
 #include "main/Events.h"
 
 namespace NOWA
@@ -177,11 +178,13 @@ namespace NOWA
 		void createCamera(void);
 		void handleSwitchCamera(NOWA::EventDataPtr eventData);
 		void handleRemoveCamera(NOWA::EventDataPtr eventData);
+		void handleRemoveCameraBehavior(NOWA::EventDataPtr eventData);
 	private:
 		static bool justCreated;
 	private:
 		Ogre::Camera* camera;
 		Ogre::v1::Entity* dummyEntity;
+		BaseCamera* baseCamera;
 		Variant* active;
 		Variant* position;
 		Variant* orientation;

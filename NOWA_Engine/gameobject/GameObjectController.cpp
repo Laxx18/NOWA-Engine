@@ -1174,8 +1174,8 @@ namespace NOWA
 				it->second->getOwner()->selected = false;
 				// Do not deactivate if once active, else its no more possible to select one player which shall advance to its goal and select another one to advance to a different goal and animate each
 				// player, because the state machine is not updated if not active
-				// it->second->setActivated(false);
-				if (nullptr != it->second->getCameraBehaviorComponent())
+				// Just deactivate all other camera behaviors for the same camera game object id (splitscreen), or if no cameraGameObjectId set
+				if (nullptr != it->second->getCameraBehaviorComponent() && 0 == cameraGameObjectId)
 				{
 					it->second->getCameraBehaviorComponent()->setActivated(false);
 				}
@@ -1556,6 +1556,10 @@ namespace NOWA
 			const auto luaScriptCompPtr = NOWA::makeStrongPtr(pair.second);
 			if (nullptr != luaScriptCompPtr)
 			{
+				if (false == luaScriptCompPtr->getLuaScript()->isCompiled())
+				{
+					luaScriptCompPtr->compileScript();
+				}
 				luaScriptCompPtr->connect();
 
 				boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(luaScriptCompPtr->getOwner()->getComponent<AiLuaComponent>());

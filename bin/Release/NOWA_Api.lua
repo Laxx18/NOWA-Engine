@@ -9719,7 +9719,15 @@ return {
 			{
 				type = "method",
 				description = "Activates the given player component from the given game object id. If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected.",
-				args = "(boolean active, string id, boolean onlyOneActive)",
+				args = "(boolean active, string gameObjectId, boolean onlyOneActive)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			activatePlayerControllerForCamera =
+			{
+				type = "method",
+				description = "Activates the given player component from the given game object id and the given camera game object id. If set to true, the given player component will be activated, else deactivated. Sets whether only one player instance can be controller. If set to false more player can be controlled, that is each player, that is currently selected. So if camera game object id is set, this player controller will work e.g. in a split screen scenario for the given camera, not the main active camera.",
+				args = "(boolean active, string gameObjectId, string cameraGameObjectId, boolean onlyOneActive)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},

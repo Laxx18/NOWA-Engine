@@ -665,6 +665,57 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataRemoveCameraBehavior - Sent when a camera behavior by the CameraManager is removed 
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataRemoveCameraBehavior : public NOWA::BaseEventData
+	{
+	public:
+
+		EventDataRemoveCameraBehavior(Ogre::Camera* camera)
+			: camera(camera)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe86c7e49;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe86c7e49;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+		
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+	
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataRemoveCameraBehavior(this->camera));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataRemoveCameraBehavior";
+		}
+
+		Ogre::Camera* getCamera(void) const
+		{
+			return this->camera;
+		}
+	private:
+		Ogre::Camera* camera;
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataSceneModified - Sent when something has been modified in the scene
 	//---------------------------------------------------------------------------------------------------------------------
 	class EventDataSceneModified : public NOWA::BaseEventData

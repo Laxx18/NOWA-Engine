@@ -596,7 +596,10 @@ namespace NOWA
 		if (nullptr != luaScriptCompPtr)
 		{
 			// If its a lua script component, compile it before all other components, because the lua script must be compiled and is maybe invalid, so that other components can react on that
-			luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
+			if (false == luaScriptCompPtr->getLuaScript()->isCompiled())
+			{
+				luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
+			}
 		}
 
 

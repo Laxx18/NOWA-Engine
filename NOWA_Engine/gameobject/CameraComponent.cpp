@@ -20,6 +20,7 @@ namespace NOWA
 		: GameObjectComponent(),
 		camera(nullptr),
 		dummyEntity(nullptr),
+		baseCamera(nullptr),
 		timeSinceLastUpdate(5.0f),
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
@@ -61,6 +62,7 @@ namespace NOWA
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
 	}
 
 	CameraComponent::~CameraComponent()
@@ -69,13 +71,7 @@ namespace NOWA
 
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
-
-		// If it was an active one, send event
-		if (true == this->active->getBool())
-		{
-			boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(this->active->getBool(), this->camera));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
-		}
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
 
 		if (nullptr != this->camera)
 		{
@@ -88,9 +84,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraComponent::handleSwitchCamera(NOWA::EventDataPtr eventData)
+	void CameraComponent::handleSwitchCamera(EventDataPtr eventData)
 	{
-		boost::shared_ptr<NOWA::EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
+		boost::shared_ptr<EventDataSwitchCamera> castEventData = boost::static_pointer_cast<EventDataSwitchCamera>(eventData);
 		unsigned long id = std::get<0>(castEventData->getCameraGameObjectData());
 		unsigned int index = std::get<1>(castEventData->getCameraGameObjectData());
 		bool active = std::get<2>(castEventData->getCameraGameObjectData());
@@ -115,9 +111,9 @@ namespace NOWA
 		}
 	}
 
-	void CameraComponent::handleRemoveCamera(NOWA::EventDataPtr eventData)
+	void CameraComponent::handleRemoveCamera(EventDataPtr eventData)
 	{
-		boost::shared_ptr<NOWA::EventDataRemoveCamera> castEventData = boost::static_pointer_cast<EventDataRemoveCamera>(eventData);
+		boost::shared_ptr<EventDataRemoveCamera> castEventData = boost::static_pointer_cast<EventDataRemoveCamera>(eventData);
 		bool cameraWasActive = castEventData->getCameraWasActive();
 		
 		if (true == cameraWasActive)
@@ -136,6 +132,17 @@ namespace NOWA
 					break;
 				}
 			}
+		}
+	}
+
+	void CameraComponent::handleRemoveCameraBehavior(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataRemoveCameraBehavior> castEventData = boost::static_pointer_cast<EventDataRemoveCameraBehavior>(eventData);
+
+		// If camera has been removed by the CameraManager, then its behavior is also have been deleted, so reset the pointer
+		if (this->camera == castEventData->getCamera())
+		{
+			this->baseCamera = nullptr;
 		}
 	}
 
@@ -281,6 +288,13 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrOrientation())->setVisible(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(true);
 
+		// If it was an active one, send event
+		if (true == this->active->getBool())
+		{
+			boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(this->active->getBool(), this->camera));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+		}
+
 #if 0
 		bool foundAnyOtherCamera = false;
 		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
@@ -310,10 +324,13 @@ namespace NOWA
 			camera->setQueryFlags(0 << 0);
 			camera->setPosition(this->camera->getPosition());
 
-			AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-			auto baseCamera = new BaseCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(baseCamera);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(cameraType->getBehaviorType());
+			// AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
+			if (nullptr == this->baseCamera)
+			{
+				this->baseCamera = new BaseCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+			}
+			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
+			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, cameraType->getBehaviorType());
 			// Create dummy workspace
 
 			if (false == WorkspaceModule::getInstance()->getUseSplitScreen())
@@ -450,11 +467,13 @@ namespace NOWA
 
 				this->dummyEntity->setVisible(false);
 
+				if (nullptr == this->baseCamera)
+				{
+					this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+				}
+				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
 				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
 			}
-
-			// AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, this->active->getBool());
-
 			
 			// Call activation, because e.g. new workspace must be set
 			this->setActivated(this->active->getBool());
@@ -609,27 +628,14 @@ namespace NOWA
 				{
 					// if ("MainCamera" == this->camera->getName())
 					{
+						if (nullptr == this->baseCamera)
+						{
+							this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+						}
+						AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
 						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-#if 1
+
 						WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-#else
-						if (false == WorkspaceModule::getInstance()->getUseSplitScreen())
-						{
-							WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-						}
-						else
-						{
-							auto primaryWorkSpaceComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-							if (workspaceBaseCompPtr.get() == primaryWorkSpaceComponent)
-							{
-								WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-							}
-							else
-							{
-								WorkspaceModule::getInstance()->addNthWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
-							}
-						}
-#endif
 					}
 
 					// Create and switch workspace

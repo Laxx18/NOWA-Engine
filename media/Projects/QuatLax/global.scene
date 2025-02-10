@@ -386,7 +386,7 @@
 					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
-					<property type="2" name="OrderIndex" data="0"/>
+					<property type="2" name="OrderIndex" data="1"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -402,6 +402,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="2083676694"/>
 					<property type="6" name="YOffset" data="2"/>
 					<property type="9" name="LookAtOffset" data="0 0 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
@@ -877,7 +878,7 @@
 					<property type="7" name="ScriptFile" data="QuatBike_Player.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="true"/>
-					<property type="2" name="OrderIndex" data="1"/>
+					<property type="2" name="OrderIndex" data="2"/>
 					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -893,6 +894,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="252923812"/>
 					<property type="6" name="YOffset" data="2"/>
 					<property type="9" name="LookAtOffset" data="0 0 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>

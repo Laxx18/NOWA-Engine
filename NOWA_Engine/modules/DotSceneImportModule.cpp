@@ -357,7 +357,8 @@ namespace NOWA
 		// Clears the saved game file path name again, so that usual loading is done
 		this->savedGameFilePathName.clear();
 
-		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingleton().getRenderSystem()->getTextureGpuManager();
+		// Important call: If all scene relevant textures have been loaded, call this command, so that Ogre internally creates fully all textures
+		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 		textureManager->waitForStreamingCompletion();
 
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());

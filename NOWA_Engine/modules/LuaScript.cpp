@@ -338,6 +338,8 @@ namespace NOWA
 		// lua_gc(lua, LUA_GCCOLLECT, 0); // Performance issues: https://github.com/urho3d/Urho3D/issues/2135
 		lua_gc(lua, LUA_GCSTEP, 0);
 
+		this->compiled = false;
+
 		/*lua_State* lua = LuaScriptApi::getInstance()->getLua();
 		if (this->scriptReference != -1)
 		{

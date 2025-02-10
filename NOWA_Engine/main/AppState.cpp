@@ -280,9 +280,9 @@ namespace NOWA
 			// this->cameraManager->destroyContent();
 			this->cameraManager->init("CameraManager1", this->camera);
 			auto baseCamera = new BaseCamera(this->cameraManager->getCameraBehaviorId());
-			this->cameraManager->addCameraBehavior(baseCamera);
+			this->cameraManager->addCameraBehavior(this->camera, baseCamera);
 
-			this->cameraManager->setActiveCameraBehavior(baseCamera->getBehaviorType());
+			this->cameraManager->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
 		}
 
 		if (nullptr == this->sceneManager)

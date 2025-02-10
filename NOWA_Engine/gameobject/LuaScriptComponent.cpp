@@ -250,7 +250,7 @@ namespace NOWA
 	{
 		if (nullptr != this->luaScript)
 		{
-			if (this->activated->getBool())
+			if (true == this->activated->getBool())
 			{
 
 				// this->luaScript->callFunction("disconnect");

@@ -9,6 +9,7 @@
 
 #include "gameobject/CameraComponent.h"
 #include "gameobject/WorkspaceComponents.h"
+#include "gameobject/CameraBehaviorComponents.h"
 
 #include "OgreAbiUtils.h"
 
@@ -31,9 +32,11 @@ namespace NOWA
 		componentBeingLoaded(false),
 		tempCamera(nullptr),
 		finalCombinedWorkspace(nullptr),
+		bIsInSimulation(false),
 		activated(new Variant(SplitScreenComponent::AttrActivated(), true, this->attributes)),
 		textureSize(new Variant(SplitScreenComponent::AttrTextureSize(), Ogre::Vector2(640.0f, 480.0f), this->attributes)),
-		geometry(new Variant(SplitScreenComponent::AttrGeometry(), Ogre::Vector4(0.5f, 0.0f, 0.5f, 1.0f), this->attributes))
+		geometry(new Variant(SplitScreenComponent::AttrGeometry(), Ogre::Vector4(0.5f, 0.0f, 0.5f, 1.0f), this->attributes)),
+		cameraBehaviorGameObjectId(new Variant(SplitScreenComponent::AttrCameraBehaviorGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->activated->setDescription("If activated the scene from a prior workspace component will be rendered into a texture.");
 		this->textureSize->setDescription("Sets the split screen texture size in pixels. Note: The texture is quadratic. Also note: The higher the texture size, the less performant the application will run.");
@@ -43,6 +46,8 @@ namespace NOWA
 			"Example: 3 player vertical split: geometry1 0 0 0.3333 1 geometry2 0.3333 0 0.3333 1 geometry3 0.6666 0 0.3333 1\n"
 			"Example: 4 player vertical/horizontal split: geometry1 0 0.5 0.5 0.5 geometry2 0.5 0.5 0.5 0.5 geometry3 0 0 0.5 0.5  geometry4 0.5 0 0.5 0.5\n"
 		);
+		this->cameraBehaviorGameObjectId->setDescription("Sets camera behavior game object id in order if the camera behavior shall be used for an this splitscreen camera. "
+			" If 0 (not set), the currently active camera is used.");
 	}
 
 	SplitScreenComponent::~SplitScreenComponent(void)
@@ -87,6 +92,11 @@ namespace NOWA
 			this->geometry->setValue(XMLConverter::getAttribVector4(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraBehaviorGameObjectId")
+		{
+			this->cameraBehaviorGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 
 		this->componentBeingLoaded = true;
 
@@ -119,12 +129,16 @@ namespace NOWA
 
 	bool SplitScreenComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+		this->bIsInSimulation = true;
 		this->setActivated(this->activated->getBool());
 		return true;
 	}
 
 	bool SplitScreenComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+		this->bIsInSimulation = false;
 		this->cleanupSplitScreen();
 		return true;
 	}
@@ -174,6 +188,10 @@ namespace NOWA
 		{
 			this->setGeometry(attribute->getVector4());
 		}
+		else if (SplitScreenComponent::AttrCameraBehaviorGameObjectId() == attribute->getName())
+		{
+			this->setCameraBehaviorGameObjectId(attribute->getULong());
+		}
 	}
 
 	void SplitScreenComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -204,6 +222,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Geometry"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->geometry->getVector4())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraBehaviorGameObjectId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraBehaviorGameObjectId->getULong())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String SplitScreenComponent::getClassName(void) const
@@ -219,6 +243,11 @@ namespace NOWA
 	void SplitScreenComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+
+		if (false == this->bIsInSimulation)
+		{
+			return;
+		}
 
 		if (true == activated)
 		{
@@ -253,6 +282,16 @@ namespace NOWA
 	Ogre::Vector4 SplitScreenComponent::getGeometry(void) const
 	{
 		return this->geometry->getVector4();
+	}
+
+	void SplitScreenComponent::setCameraBehaviorGameObjectId(const unsigned long cameraBehaviorGameObjectId)
+	{
+		this->cameraBehaviorGameObjectId->setValue(cameraBehaviorGameObjectId);
+	}
+
+	unsigned long SplitScreenComponent::getCameraBehaviorGameObjectId(void) const
+	{
+		return this->cameraBehaviorGameObjectId->getULong();
 	}
 
 	Ogre::TextureGpu* SplitScreenComponent::getSplitScreenTexture(void) const
@@ -480,7 +519,16 @@ namespace NOWA
 			this->tempCamera->setQueryFlags(0 << 0);
 			this->tempCamera->setPosition(this->tempCamera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 1.0f, -2.0f)));
 
-			AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->tempCamera, false);
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
+			if (nullptr != gameObjectPtr)
+			{
+				const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
+				if (nullptr != cameraBehaviorCompPtr)
+				{
+					cameraBehaviorCompPtr->setActivated(true);
+					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(cameraCompPtr->getCamera(), true, true);
+				}
+			}
 
 			this->finalCombinedWorkspace = compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), finalExternalChannels, this->tempCamera, finalWorkspaceName, true, -1);
 
@@ -498,7 +546,22 @@ namespace NOWA
 
 		if (nullptr != this->tempCamera)
 		{
-			AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->tempCamera);
+			const auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+			if (nullptr == cameraCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, because the game object: " + this->gameObjectPtr->getName() + " is the main camera. Choose a different camera!");
+				return;
+			}
+
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
+			if (nullptr != gameObjectPtr)
+			{
+				const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
+				if (nullptr != cameraBehaviorCompPtr)
+				{
+					AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(cameraCompPtr->getCamera());
+				}
+			}
 
 			if (nullptr != this->finalCombinedWorkspace)
 			{
@@ -560,6 +623,16 @@ namespace NOWA
 		return makeStrongPtr<SplitScreenComponent>(gameObject->getComponentFromName<SplitScreenComponent>(name)).get();
 	}
 
+	void setCameraBehaviorGameObjectId(SplitScreenComponent* instance, const Ogre::String& cameraBehaviorGameObjectId)
+	{
+		instance->setCameraBehaviorGameObjectId(Ogre::StringConverter::parseUnsignedLong(cameraBehaviorGameObjectId));
+	}
+
+	Ogre::String getCameraBehaviorGameObjectId(SplitScreenComponent* instance)
+	{
+		return Ogre::StringConverter::toString(instance->getCameraBehaviorGameObjectId());
+	}
+
 	void SplitScreenComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
@@ -567,11 +640,17 @@ namespace NOWA
 				class_<SplitScreenComponent, GameObjectComponent>("SplitScreenComponent")
 					.def("setActivated", &SplitScreenComponent::setActivated)
 					.def("isActivated", &SplitScreenComponent::isActivated)
+					.def("setCameraBehaviorGameObjectId", &setCameraBehaviorGameObjectId)
+					.def("getCameraBehaviorGameObjectId", &getCameraBehaviorGameObjectId)
 			];
 
 		LuaScriptApi::getInstance()->addClassToCollection("SplitScreenComponent", "class inherits GameObjectComponent", SplitScreenComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("SplitScreenComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not.");
 		LuaScriptApi::getInstance()->addClassToCollection("SplitScreenComponent", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("SplitScreenComponent", "void setCameraBehaviorGameObjectId(string cameraBehaviorGameObjectId)", "Sets camera behavior game object id in order if the camera behavior shall be used for an this splitscreen camera. "
+			" If 0 (not set), the currently active camera is used.");
+		LuaScriptApi::getInstance()->addClassToCollection("SplitScreenComponent", "string getCameraBehaviorGameObjectId()", "Sets the camera behavior game object id in order if the camera behavior shall be used for an this splitscreen camera. "
+			" If 0 (not set), the currently active camera is used.");
 
 		gameObjectClass.def("getSplitScreenComponentFromName", &getSplitScreenComponentFromName);
 		gameObjectClass.def("getSplitScreenComponent", (SplitScreenComponent * (*)(GameObject*)) & getSplitScreenComponent);

@@ -25,12 +25,16 @@ namespace NOWA
 	CameraBehaviorComponent::CameraBehaviorComponent()
 		: GameObjectComponent(),
 		baseCamera(nullptr),
-		cameraGameObjectId(0),
+		activeCamera(nullptr),
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
-		activated(new Variant(CameraBehaviorComponent::AttrActivated(), false, this->attributes))
+		activated(new Variant(CameraBehaviorComponent::AttrActivated(), false, this->attributes)),
+		cameraGameObjectId(new Variant(CameraBehaviorComponent::AttrCameraGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
 		this->activated->setVisible(false);
+
+		this->cameraGameObjectId->setDescription("Sets the camera game object id in order if this camera behavior shall be used for an other camera, e.g. Splitscreen. "
+			" If 0 (not set), the currently active camera is used.");
 	}
 
 	CameraBehaviorComponent::~CameraBehaviorComponent()
@@ -49,6 +53,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
 			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "CameraGameObjectId")
+		{
+			this->cameraGameObjectId->setValue(XMLConverter::getAttribUnsignedLong(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		return true;
@@ -75,7 +84,19 @@ namespace NOWA
 		{
 			AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
 			this->baseCamera = nullptr;
+			this->activeCamera = nullptr;
 		}
+		return true;
+	}
+
+	bool CameraBehaviorComponent::onCloned(void)
+	{
+		// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
+		GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->cameraGameObjectId->getULong());
+		if (nullptr != sourceGameObjectPtr)
+			this->setCameraGameObjectId(sourceGameObjectPtr->getId());
+		else
+			this->setCameraGameObjectId(0);
 		return true;
 	}
 
@@ -86,6 +107,10 @@ namespace NOWA
 		if (CameraBehaviorComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
+		}
+		else if (CameraBehaviorComponent::AttrCameraGameObjectId() == attribute->getName())
+		{
+			this->setCameraGameObjectId(attribute->getULong());
 		}
 	}
 
@@ -104,6 +129,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraGameObjectId"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->cameraGameObjectId->getULong())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -124,13 +155,12 @@ namespace NOWA
 		{
 			if (true == activated)
 			{
-				
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->baseCamera);
+				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->activeCamera, this->baseCamera);
 
 				this->oldPosition = this->baseCamera->getCamera()->getParentSceneNode()->convertLocalToWorldPosition(this->baseCamera->getCamera()->getPosition());
 				this->oldOrientation = this->baseCamera->getCamera()->getParentSceneNode()->convertLocalToWorldOrientation(this->baseCamera->getCamera()->getOrientation());
 
-				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(this->baseCamera->getBehaviorType());
+				AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(this->activeCamera, this->baseCamera->getBehaviorType());
 			}
 			else
 			{
@@ -141,7 +171,6 @@ namespace NOWA
 
 					AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
 
-					this->cameraGameObjectId = 0;
 					this->baseCamera = nullptr;
 				}
 			}
@@ -175,18 +204,28 @@ namespace NOWA
 
 	void CameraBehaviorComponent::setCameraGameObjectId(const unsigned long cameraGameObjectId)
 	{
-		if (0 != cameraGameObjectId)
+		this->cameraGameObjectId->setValue(cameraGameObjectId);
+	}
+
+	unsigned long CameraBehaviorComponent::getCameraGameObjectId(void) const
+	{
+		return this->cameraGameObjectId->getULong();
+	}
+
+	void CameraBehaviorComponent::acquireActiveCamera(void)
+	{
+		GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraGameObjectId->getULong());
+		if (nullptr != gameObjectPtr)
 		{
-			this->cameraGameObjectId = cameraGameObjectId;
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(cameraGameObjectId);
-			if (nullptr == gameObjectPtr)
+			const auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+			if (nullptr != cameraCompPtr)
 			{
-				const auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-				if (nullptr != cameraCompPtr)
-				{
-					AppStateManager::getSingletonPtr()->getCameraManager()->addSplitCamera(this->baseCamera, cameraCompPtr->getCamera());
-				}
+				this->activeCamera = cameraCompPtr->getCamera();
 			}
+		}
+		else
+		{
+			this->activeCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
 		}
 	}
 	
@@ -242,6 +281,8 @@ namespace NOWA
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -311,14 +352,21 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
+			this->acquireActiveCamera();
+			this->baseCamera = new BaseCamera(this->moveSpeed->getReal(), this->rotationSpeed->getReal());
+		}
+
+		CameraBehaviorComponent::setActivated(activated);
+
+		if (true == activated)
+		{
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{
-				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->activeCamera)->getSmoothValue();
 			}
-			this->baseCamera = new BaseCamera(this->moveSpeed->getReal(), this->rotationSpeed->getReal(), smoothValue);
+			this->baseCamera->setSmoothValue(smoothValue);
 		}
-		CameraBehaviorComponent::setActivated(activated);
 	}
 
 	Ogre::String CameraBehaviorBaseComponent::getClassName(void) const
@@ -415,6 +463,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
+
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
@@ -483,15 +533,23 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
+			this->acquireActiveCamera();
+			this->baseCamera = new FirstPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), 
+				this->gameObjectPtr->getDefaultDirection(), this->smoothValue->getReal(),
+				this->rotationSpeed->getReal(), this->offsetPosition->getVector3());
+		}
+
+		CameraBehaviorComponent::setActivated(activated);
+
+		if (true == activated)
+		{
 			Ogre::Real smoothValue = this->smoothValue->getReal();
 			if (0.0f == smoothValue)
 			{
-				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->activeCamera)->getSmoothValue();
 			}
-			this->baseCamera = new FirstPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(), smoothValue,
-				this->rotationSpeed->getReal(), this->offsetPosition->getVector3());
+			this->baseCamera->setSmoothValue(smoothValue);
 		}
-		CameraBehaviorComponent::setActivated(activated);
 	}
 
 	Ogre::String CameraBehaviorFirstPersonComponent::getClassName(void) const
@@ -602,6 +660,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
+
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
@@ -690,9 +750,10 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
+			this->acquireActiveCamera();
+
 			this->baseCamera = new ThirdPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
 				this->yOffset->getReal(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
-			this->baseCamera->setSmoothValue(AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue());
 		}
 		CameraBehaviorComponent::setActivated(activated);
 	}
@@ -811,6 +872,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
+
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
@@ -879,18 +942,27 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
-			Ogre::Real smoothValue = this->smoothValue->getReal();
-			if (0.0f == smoothValue)
-			{
-				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior()->getSmoothValue();
-			}
-			this->baseCamera = new FollowCamera2D(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), smoothValue);
+			this->acquireActiveCamera();
+
+			this->baseCamera = new FollowCamera2D(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->offsetPosition->getVector3(), this->smoothValue->getReal());
 		}
+
 		CameraBehaviorComponent::setActivated(activated);
+
 		if (nullptr != this->baseCamera)
 		{
 			static_cast<FollowCamera2D*>(this->baseCamera)->setBorderOffset(this->borderOffset->getVector3());
 			static_cast<FollowCamera2D*>(this->baseCamera)->setBounds(Core::getSingletonPtr()->getCurrentSceneBoundLeftNear(), Core::getSingletonPtr()->getCurrentSceneBoundRightFar());
+		}
+
+		if (true == activated)
+		{
+			Ogre::Real smoothValue = this->smoothValue->getReal();
+			if (0.0f == smoothValue)
+			{
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->activeCamera)->getSmoothValue();
+			}
+			this->baseCamera->setSmoothValue(smoothValue);
 		}
 	}
 
@@ -1007,6 +1079,8 @@ namespace NOWA
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
 
+		clonedCompPtr->setCameraGameObjectId(this->cameraGameObjectId->getULong());
+
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
 	}
@@ -1075,13 +1149,26 @@ namespace NOWA
 	{
 		if (true == activated && nullptr == this->baseCamera)
 		{
+			this->acquireActiveCamera();
+
 			this->baseCamera = new ZoomCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), Ogre::Vector3::ZERO, this->smoothValue->getReal());
 		}
 		CameraBehaviorComponent::setActivated(activated);
+
 		if (nullptr != this->baseCamera)
 		{
 			static_cast<ZoomCamera*>(this->baseCamera)->setCategory(this->category->getString());
 			static_cast<ZoomCamera*>(this->baseCamera)->setGrowMultiplicator(this->growMultiplicator->getReal());
+		}
+
+		if (true == activated)
+		{
+			Ogre::Real smoothValue = this->smoothValue->getReal();
+			if (0.0f == smoothValue)
+			{
+				smoothValue = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->activeCamera)->getSmoothValue();
+			}
+			this->baseCamera->setSmoothValue(smoothValue);
 		}
 	}
 

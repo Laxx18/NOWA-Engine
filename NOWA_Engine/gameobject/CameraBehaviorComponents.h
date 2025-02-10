@@ -38,6 +38,11 @@ namespace NOWA
 		virtual bool disconnect(void) override;
 
 		/**
+		 * @see		GameObjectComponent::onCloned
+		 */
+		virtual bool onCloned(void) override;
+
+		/**
 		* @see		GameObjectComponent::update
 		*/
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override
@@ -108,15 +113,30 @@ namespace NOWA
 
 		bool getCameraControlLocked(void) const;
 
+		/**
+		 * @brief Sets the camera game object id in order if this camera bevhavior shall be used for an other camera, e.g. Splitscreen.
+		 * @param[in] cameraGameObjectId The cameraGameObjectId to set.
+		 * @note: If 0 (not set), the currently active camera is used.
+		 */
 		void setCameraGameObjectId(const unsigned long cameraGameObjectId);
+
+		/**
+		 * @brief Gets the camera game object id in order if this camera bevhavior shall be used for an other camera, e.g. Splitscreen.
+		 * @return cameraGameObjectId The cameraGameObjectId to get
+		 */
+		unsigned long getCameraGameObjectId(void) const;
+	protected:
+		void acquireActiveCamera(void);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrCameraGameObjectId(void) { return "Camera GameObject Id"; }
 	protected:
 		Variant* activated;
+		Variant* cameraGameObjectId;
 		BaseCamera* baseCamera;
+		Ogre::Camera* activeCamera;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
-		unsigned long cameraGameObjectId;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

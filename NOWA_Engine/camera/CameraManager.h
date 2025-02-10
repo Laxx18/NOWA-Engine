@@ -28,6 +28,12 @@ namespace NOWA
 
 		void destroyContent(void);
 
+		void setMoveSpeed(Ogre::Real moveSpeed);
+
+		void setRotationSpeed(Ogre::Real rotateSpeed);
+
+		void setSmoothValue(Ogre::Real smoothValue);
+
 		void moveCamera(Ogre::Real dt);
 
 		void rotateCamera(Ogre::Real dt, bool forJoyStick = false);
@@ -36,28 +42,28 @@ namespace NOWA
 
 		Ogre::Quaternion getOrientation(void);
 
-		// bool attachToSceneNode(Ogre::SceneNode* sceneNode);
-
 		unsigned int getCountCameras(void) const;
 
-		void addCameraBehavior(BaseCamera* baseCamera);
+		/**
+		* @brief		Adds the given camera behavior to the Ogre camera.
+		* @param[in]	camera			The camera to set.
+		* @param[in]	cameraBehavior	The camera behavior to set for the camera.					
+		* @note			This function should be called before @addCamera(...).
+		*				The cameraBehavior shall be created on the outside on heap via new and will be deleted if @removeCamera is called.
+		*/
+		void addCameraBehavior(Ogre::Camera* camera, BaseCamera* cameraBehavior);
 
 		/**
 		* @brief		Removes the camera behavior from the given key string
 		* @param[in]	cameraBehaviorKey	The camera behavior key to remove
-		* @param[in]	destroy				If set to true the behavior will also be destroyed
-		* @note			Internally the behavior will be deleted!
 		*/
+		void removeCameraBehavior(const Ogre::String& cameraBehaviorKey);
 
-		void removeCameraBehavior(const Ogre::String& cameraBehaviorKey, bool destroy = true);
+		void setActiveCameraBehavior(Ogre::Camera* camera, const Ogre::String& behaviorType);
 
-		void setActiveCameraBehavior(const Ogre::String& cameraBehaviorKey);
+		BaseCamera* getActiveCameraBehavior(Ogre::Camera* camera) const;
 
-		BaseCamera* getActiveCameraBehavior(void) const;
-
-		void addCamera(Ogre::Camera* camera, bool activate);
-
-		void addSplitCamera(BaseCamera* baseCamera, Ogre::Camera* camera);
+		void addCamera(Ogre::Camera* camera, bool activate, bool forSplitScreen = false);
 
 		void removeCamera(Ogre::Camera* camera);
 
@@ -65,7 +71,7 @@ namespace NOWA
 
 		Ogre::Camera* getActiveCamera(void) const;
 
-		Ogre::String getName(void) const { return this->name; }
+		Ogre::String getName(void) const;
 
 		void setMoveCameraWeight(Ogre::Real moveCameraWeight);
 
@@ -78,17 +84,38 @@ namespace NOWA
 		~CameraManager();
 	private:
 		Ogre::String appStateName;
-		Ogre::Camera* camera;
 		Ogre::String name;
 
 		Ogre::Real moveSpeed;
 		Ogre::Real rotateSpeed;
 
-		std::map<Ogre::String, BaseCamera*> cameraStrategies;
-		Ogre::String cameraBehaviorKey;
-		Ogre::String oldBehaviorKey;
-		// camera, active
-		std::map<Ogre::Camera*, bool> cameras;
+		struct BehaviorData
+		{
+			BehaviorData()
+				: cameraBehavior(nullptr)
+			{
+
+			}
+
+			Ogre::String cameraBehaviorKey;
+			BaseCamera* cameraBehavior;
+		};
+
+		struct CameraData
+		{
+			std::vector<BehaviorData> behaviorData;
+			bool isActive;
+			bool forSplitScreen;
+
+			CameraData()
+				: isActive(false),
+				forSplitScreen(false)
+			{
+
+			}
+		};
+
+		std::map<Ogre::Camera*, CameraData> cameraDataMap;
 		unsigned int cameraBehaviorId;
 	};
 

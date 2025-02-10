@@ -150,6 +150,19 @@ namespace NOWA
 
 		Ogre::Vector4 getGeometry(void) const;
 
+		/**
+		 * @brief Sets the camera behavior game object id in order if this camera bevhavior shall be used for an other camera, e.g. Splitscreen.
+		 * @param[in] cameraBehaviorGameObjectId The cameraBehaviorGameObjectId to set.
+		 * @note: If 0 (not set), the currently active camera is used.
+		 */
+		void setCameraBehaviorGameObjectId(const unsigned long cameraBehaviorGameObjectId);
+
+		/**
+		 * @brief Gets the camera behavior game object id in order if this camera bevhavior shall be used for an other camera, e.g. Splitscreen.
+		 * @return cameraBehaviorGameObjectId The cameraBehaviorGameObjectId to get
+		 */
+		unsigned long getCameraBehaviorGameObjectId(void) const;
+
 		Ogre::TextureGpu* getSplitScreenTexture(void) const;
 
 	public:
@@ -194,6 +207,7 @@ namespace NOWA
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrTextureSize(void) { return "Texture Size (w, h)"; }
 		static const Ogre::String AttrGeometry(void) { return "Geometry"; }
+		static const Ogre::String AttrCameraBehaviorGameObjectId(void) { return "Camera Behavior GameObject Id"; }
 		
 	private:
 		Ogre::TextureGpu* createSplitScreenTexture(const Ogre::String& name);
@@ -211,10 +225,12 @@ namespace NOWA
 		bool componentBeingLoaded;
 		Ogre::Camera* tempCamera;
 		Ogre::CompositorWorkspace* finalCombinedWorkspace;
+		bool bIsInSimulation;
 
 		Variant* activated;
 		Variant* textureSize;
 		Variant* geometry;
+		Variant* cameraBehaviorGameObjectId;
 	};
 
 }; // namespace end

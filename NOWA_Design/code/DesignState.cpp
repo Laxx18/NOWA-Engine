@@ -272,8 +272,8 @@ void DesignState::createScene(void)
 
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", this->camera);
 	auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(baseCamera);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(baseCamera->getBehaviorType());
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, baseCamera);
+	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(this->camera, baseCamera->getBehaviorType());
 
 	this->projectManager = new ProjectManager(this->sceneManager);
 
@@ -1263,7 +1263,7 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		}
 		this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
 		this->cameraMoveSpeed = 10.0f;
-		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 		if (nullptr != cameraBehavior)
 		{
 			cameraBehavior->reset();
@@ -1591,7 +1591,7 @@ void DesignState::lateUpdate(Ogre::Real dt)
 			if (this->cameraMoveSpeed > 50.0f)
 				this->cameraMoveSpeed = 50.0f;
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 			if (nullptr != cameraBehavior)
 			{
 				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
@@ -1797,7 +1797,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			this->cameraMoveSpeed += 2.0f;
 			if (this->cameraMoveSpeed > 50.0f)
 				this->cameraMoveSpeed = 50.0f;
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 			if (nullptr != cameraBehavior)
 			{
 				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
@@ -1808,7 +1808,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 			this->cameraMoveSpeed -= 2.0f;
 			if (this->cameraMoveSpeed < 2.0f)
 				this->cameraMoveSpeed = 2.0f;
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior();
+			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 			if (nullptr != cameraBehavior)
 			{
 				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);

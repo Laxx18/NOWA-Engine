@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "MainApplication.h"
 #include <string>
+#include <exception>
 
 // #define MEMORY_LEAK_DETECTION
 
@@ -13,7 +14,41 @@
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #define WIN32_LEAN_AND_MEAN
-#include "windows.h"
+#pragma comment(lib, "dbghelp.lib")
+#include <dbghelp.h>
+
+#include <windows.h>
+#include <dbghelp.h>
+#include <iostream>
+#include <sstream>
+
+
+void printStackTrace(const Ogre::String& errorMessage, const Ogre::String& title)
+{
+	const int max_frames = 128;
+	void* stack[max_frames];
+	HANDLE process = GetCurrentProcess();
+	SymInitialize(process, NULL, TRUE);
+
+	USHORT frames = CaptureStackBackTrace(0, max_frames, stack, NULL);
+	SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+	symbol->MaxNameLen = 255;
+	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+	std::ostringstream oss;
+	oss << "Error: " << errorMessage << "\nStacktrace:\n";
+	for (USHORT i = 0; i < frames; ++i)
+	{
+		SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+		oss << symbol->Name << " - 0x" << symbol->Address << std::endl;
+	}
+
+	free(symbol);
+	SymCleanup(process);
+
+	Ogre::String message = oss.str();
+	MessageBoxA(0, message.c_str(), title.c_str(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
+}
 
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 {
@@ -46,7 +81,8 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 		{
 		}
 		ShowCursor(true);
-		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+
+		printStackTrace(e.getFullDescription(), "An Ogre exception has occured!");
 	}
 	catch (MyGUI::Exception& e)
 	{
@@ -58,7 +94,21 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 		{
 		}
 		ShowCursor(true);
-		MessageBoxA(0, e.getFullDescription().c_str(), "An Ogre exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+
+		printStackTrace(e.getFullDescription(), "An MyGUI exception has occured!");
+	}
+	catch (const std::exception& e)
+	{
+		try
+		{
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+		}
+		catch (...)
+		{
+		}
+		ShowCursor(true);
+
+		printStackTrace(e.what(), "An std exception has occured!");
 	}
 	catch (...)
 	{
@@ -70,7 +120,9 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR strCmdLine, INT )
 		catch (...)
 		{
 		}
-		MessageBoxEx(0, "An unknown exception has occured!", "Unknown exception", MB_OK, MB_OK | MB_ICONERROR | MB_TASKMODAL);
+		ShowCursor(true);
+
+		printStackTrace("Unknown", "An unknown exception has occured!");
 	}
 
 #ifdef MEMORY_LEAK_DETECTION
@@ -104,11 +156,35 @@ int main(int argc, char **argv)
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
         std::cerr << "An Ogre exception has occured: " << e.getFullDescription();
     }
+	catch (MyGUI::Exception& e)
+	{
+		try
+		{
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+		}
+		catch (...)
+		{
+		}
+		ShowCursor(true);
+		std::cerr << e.getFullDescription().c_str() << "An Ogre exception has occured!";
+	}
+	catch (std::exception& e)
+	{
+		try
+		{
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
+		}
+		catch (...)
+		{
+		}
+		ShowCursor(true);
+		std::cerr << e.getFullDescription().c_str() << "An std exception has occured!";
+	}
 	catch (...)
 	{
 		// Destroys ogrenewt and newton before throwing, as else it will cause trouble in a thread deep inside newton.
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->destroyContent();
-		std::cerr << "An unknown exception has occured.");
+		std::cerr << "An unknown exception has occured.";
 	}
 
     return 0;

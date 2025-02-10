@@ -26,7 +26,7 @@ inputDeviceModule = nil;
 
 QuatBike_Player["connect"] = function(gameObject)
     player = AppStateManager:getGameObjectController():castGameObject(gameObject);
-    AppStateManager:getGameObjectController():activatePlayerController(true, player:getId(), true);
+    
     physicsActiveVehicleComponent = player:getPhysicsActiveVehicleComponent();
     raceGoalComponent = player:getRaceGoalComponent();
     
