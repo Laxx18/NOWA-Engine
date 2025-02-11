@@ -277,7 +277,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 	this->clear();
 
 	// Add all registered comopnents to the search
-	for (auto componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredNames())
+	for (auto componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 	{
 		this->autoCompleteSearch.addSearchText(componentInfo.first);
 	}

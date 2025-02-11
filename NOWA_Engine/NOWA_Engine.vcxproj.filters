@@ -135,9 +135,6 @@
     <ClInclude Include="gameobject\Tire.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\Vehicle.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="ki\Edge.h">
       <Filter>ki</Filter>
     </ClInclude>
@@ -447,9 +444,6 @@
     <ClInclude Include="gameobject\LuaScriptComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\VehicleComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\PhysicsPlayerControllerComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -549,9 +543,6 @@
     <ClInclude Include="gameobject\TimeLineComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\AttributeEffectComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="camera\ZoomCamera.h">
       <Filter>camera</Filter>
     </ClInclude>
@@ -565,9 +556,6 @@
       <Filter>modules</Filter>
     </ClInclude>
     <ClInclude Include="gameobject\CompositorEffectComponents.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
-    <ClInclude Include="gameobject\ActivationComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
     <ClInclude Include="gameobject\MyGUIMiniMapComponent.h">
@@ -779,9 +767,6 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\Tire.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\Vehicle.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="editor\EditorManager.cpp">
@@ -1028,9 +1013,6 @@
     <ClCompile Include="gameobject\LuaScriptComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\VehicleComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="gameobject\PhysicsPlayerControllerComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
@@ -1127,9 +1109,6 @@
     <ClCompile Include="gameobject\TimeLineComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="gameobject\AttributeEffectComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
     <ClCompile Include="camera\ZoomCamera.cpp">
       <Filter>camera</Filter>
     </ClCompile>
@@ -1143,9 +1122,6 @@
       <Filter>modules</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\CompositorEffectComponents.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\ActivationComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\MyGUIMiniMapComponent.cpp">

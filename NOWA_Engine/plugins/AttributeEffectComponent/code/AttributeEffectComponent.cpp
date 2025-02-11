@@ -1,11 +1,11 @@
 #include "NOWAPrecompiled.h"
 #include "AttributeEffectComponent.h"
-#include "physicsActiveComponent.h"
-#include "GameObjectController.h"
-#include "LuaScriptComponent.h"
+#include "gameobject/physicsActiveComponent.h"
+#include "gameobject/GameObjectController.h"
+#include "gameobject/GameObjectFactory.h"
 #include "utilities/XMLConverter.h"
-#include "MyGUI.h"
-#include "MyGUI_Ogre2Platform.h"
+
+#include "OgreAbiUtils.h"
 
 namespace NOWA
 {
@@ -17,7 +17,7 @@ namespace NOWA
 		closureFunction(closureFunction),
 		oneTime(oneTime)
 	{
-		
+
 	}
 
 	AttributeEffectComponent::AttributeEffectObserver::~AttributeEffectObserver()
@@ -54,6 +54,7 @@ namespace NOWA
 
 	AttributeEffectComponent::AttributeEffectComponent()
 		: GameObjectComponent(),
+		name("AttributeEffectComponent"),
 		oppositeDir(1.0f),
 		progress(0.0f),
 		round(0),
@@ -79,18 +80,37 @@ namespace NOWA
 
 	AttributeEffectComponent::~AttributeEffectComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributeEffectComponent] Destructor attribute effect component for game object: " + this->gameObjectPtr->getName());
-		
-		if (nullptr != this->oldAttributeEffect)
-		{
-			delete this->oldAttributeEffect;
-			this->oldAttributeEffect = nullptr;
-		}
-		if (nullptr != this->attributeEffectObserver)
-		{
-			delete this->attributeEffectObserver;
-			this->attributeEffectObserver = nullptr;
-		}
+
+	}
+
+	void AttributeEffectComponent::initialise()
+	{
+
+	}
+
+	const Ogre::String& AttributeEffectComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void AttributeEffectComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<AttributeEffectComponent>(AttributeEffectComponent::getStaticClassId(), AttributeEffectComponent::getStaticClassName());
+	}
+
+	void AttributeEffectComponent::shutdown()
+	{
+		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+	}
+
+	void AttributeEffectComponent::uninstall()
+	{
+		// Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+	}
+
+	void AttributeEffectComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool AttributeEffectComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -154,7 +174,7 @@ namespace NOWA
 	{
 		AttributeEffectCompPtr clonedCompPtr(boost::make_shared<AttributeEffectComponent>());
 
-		
+
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setAttributeName(this->attributeName->getString());
 		clonedCompPtr->setXFunction(this->xFunction->getString());
@@ -182,16 +202,16 @@ namespace NOWA
 
 		return true;
 	}
-	
+
 	bool AttributeEffectComponent::connect(void)
 	{
 		this->parseMathematicalFunction();
-		
+
 		this->progress = 0.0f;
 		this->internalDirectionChange = this->directionChange->getBool();
 		this->round = 0;
 		oppositeDir = 1.0f;
-		
+
 		for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 		{
 			// Working here with shared_ptrs is evil, because of bidirectional referencing
@@ -237,10 +257,10 @@ namespace NOWA
 
 		if (nullptr == this->targetComponent)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "AttributeEffectComponent: Could not add effect, because no prior component has the attribute name: '" 
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "AttributeEffectComponent: Could not add effect, because no prior component has the attribute name: '"
 				+ this->attributeName->getString() + "'. Important: It always just works for the next prior component! So place it beyond the the be manipulated component!");
 		}
-		
+
 		return true;
 	}
 
@@ -265,11 +285,27 @@ namespace NOWA
 		}
 		return true;
 	}
-	
+
+	void AttributeEffectComponent::onRemoveComponent(void)
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributeEffectComponent] Destructor attribute effect component for game object: " + this->gameObjectPtr->getName());
+
+		if (nullptr != this->oldAttributeEffect)
+		{
+			delete this->oldAttributeEffect;
+			this->oldAttributeEffect = nullptr;
+		}
+		if (nullptr != this->attributeEffectObserver)
+		{
+			delete this->attributeEffectObserver;
+			this->attributeEffectObserver = nullptr;
+		}
+	}
+
 	void AttributeEffectComponent::onOtherComponentRemoved(unsigned int index)
 	{
 		GameObjectComponent::onOtherComponentRemoved(index);
-		
+
 		int thisIndex = this->gameObjectPtr->getIndexFromComponent(this);
 		// Check if the prior component has been removed
 		if (index == thisIndex - 1)
@@ -288,8 +324,6 @@ namespace NOWA
 				return;
 			}
 
-			// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("Progress: " + Ogre::StringConverter::toString(this->progress));
-			
 			if (Ogre::Math::RealEqual(this->oppositeDir, 1.0f))
 			{
 				this->progress += this->speed->getReal() * dt;
@@ -364,11 +398,11 @@ namespace NOWA
 				if (true == this->bShowDebugData)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "AttributeEffectComponent: Debug: x,y,z = " + Ogre::StringConverter::toString(this->progress) +
-																						" f(x) = " + Ogre::StringConverter::toString(mathFunction.x) +
-																						", f(y) = " + Ogre::StringConverter::toString(mathFunction.y) +
-																						", f(z) = " + Ogre::StringConverter::toString(mathFunction.z));
+						" f(x) = " + Ogre::StringConverter::toString(mathFunction.x) +
+						", f(y) = " + Ogre::StringConverter::toString(mathFunction.y) +
+						", f(z) = " + Ogre::StringConverter::toString(mathFunction.z));
 				}
-				 
+
 				if (nullptr != this->attributeEffect)
 				{
 					bool compatibleType = false;
@@ -494,7 +528,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
-		
+
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "AttributeName"));
@@ -518,7 +552,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "ZFunction"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->zFunction->getString())));
 		propertiesXML->append_node(propertyXML);
-		
+
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "7"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MinLength"));
@@ -530,7 +564,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxLength"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxLength->getString())));
 		propertiesXML->append_node(propertyXML);
-		
+
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "8"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Speed"));
@@ -577,17 +611,17 @@ namespace NOWA
 	{
 		return this->activated->getBool();
 	}
-	
+
 	void AttributeEffectComponent::setAttributeName(const Ogre::String& attributeName)
 	{
 		this->attributeName->setValue(attributeName);
 	}
-	
+
 	Ogre::String AttributeEffectComponent::getAttributeName(void) const
 	{
 		return this->attributeName->getString();
 	}
-	
+
 	void AttributeEffectComponent::parseMathematicalFunction(void)
 	{
 		// add the pi constant
@@ -602,33 +636,33 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for x: "
 				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
-// Attention: X is used, test this
+		// Attention: X is used, test this
 		int resY = this->functionParser[1].Parse(this->yFunction->getString(), "t");
 		if (resY > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for y: "
-															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
+				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resZ = this->functionParser[2].Parse(this->zFunction->getString(), "t");
 		if (resZ > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for z: "
-															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
+				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resMinLength = this->functionParser[3].Parse(this->minLength->getString(), "t");
 		if (resMinLength > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for min length: "
-															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
+				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 
 		int resMaxLength = this->functionParser[4].Parse(this->maxLength->getString(), "t");
 		if (resMaxLength > 0)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttributeEffectComponent] Mathematical function parse error for max length: "
-															+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
+				+ Ogre::String(this->functionParser[0].ErrorMsg()) + " Note: Variable 't' must be used, for game object: " + this->gameObjectPtr->getName());
 		}
 	}
 
@@ -646,7 +680,7 @@ namespace NOWA
 	void AttributeEffectComponent::setYFunction(const Ogre::String& yFunction)
 	{
 		this->yFunction->setValue(yFunction);
-// Attention: X is used, test this
+		// Attention: X is used, test this
 		int resY = this->functionParser[1].Parse(yFunction, "t");
 		if (resY > 0)
 		{
@@ -658,7 +692,7 @@ namespace NOWA
 	void AttributeEffectComponent::setZFunction(const Ogre::String& zFunction)
 	{
 		this->zFunction->setValue(zFunction);
-// Attention: X is used, test this
+		// Attention: X is used, test this
 		int resZ = this->functionParser[2].Parse(zFunction, "t");
 		if (resZ > 0)
 		{
@@ -681,12 +715,12 @@ namespace NOWA
 	{
 		return this->zFunction->getString();
 	}
-	
+
 	void AttributeEffectComponent::setMinLength(const Ogre::String& minLength)
 	{
 		this->minLength->setValue(minLength);
 	}
-	
+
 	Ogre::String AttributeEffectComponent::getMinLength(void) const
 	{
 		return this->minLength->getString();
@@ -701,17 +735,17 @@ namespace NOWA
 	{
 		return this->maxLength->getString();
 	}
-	
+
 	void AttributeEffectComponent::setSpeed(Ogre::Real speed)
 	{
 		this->speed->setValue(speed);
 	}
-	
+
 	Ogre::Real AttributeEffectComponent::getSpeed(void) const
 	{
 		return this->speed->getReal();
 	}
-	
+
 	void AttributeEffectComponent::setDirectionChange(bool directionChange)
 	{
 		this->directionChange->setValue(directionChange);
@@ -760,6 +794,54 @@ namespace NOWA
 	void AttributeEffectComponent::reactOnEndOfEffect(luabind::object closureFunction, bool oneTime)
 	{
 		this->reactOnEndOfEffect(closureFunction, 0.0f, oneTime);
+	}
+
+	// Lua registration part
+
+	AttributeEffectComponent* getAttributeEffectComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponent<AttributeEffectComponent>()).get();
+	}
+
+	AttributeEffectComponent* getAttributeEffectComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponentFromName<AttributeEffectComponent>(name)).get();
+	}
+
+	void AttributeEffectComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<AttributeEffectComponent, GameObjectComponent>("AttributeEffectComponent")
+			.def("setActivated", &AttributeEffectComponent::setActivated)
+			.def("isActivated", &AttributeEffectComponent::isActivated)
+			// .def("getMaxLength", &AttributeEffectComponent::getMaxLength)
+			.def("reactOnEndOfEffect", (void (AttributeEffectComponent::*)(luabind::object, Ogre::Real, bool)) & AttributeEffectComponent::reactOnEndOfEffect)
+			.def("reactOnEndOfEffect", (void (AttributeEffectComponent::*)(luabind::object, bool)) & AttributeEffectComponent::reactOnEndOfEffect)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "class inherits GameObjectComponent", AttributeEffectComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not (Start math function calculation).");
+		LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "bool isActivated()", "Gets whether this component is activated.");
+		// LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "float getMaxLength()", "Gets max length, at which the function is at the end.");
+		LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "void reactOnEndOfEffect(func closureFunction, float notificationValue, bool oneTime)",
+			"Sets whether the target game object should be notified at the end of the attribute effect. One time means, that the nofication is done only once.");
+		LuaScriptApi::getInstance()->addClassToCollection("AttributeEffectComponent", "void reactOnEndOfEffect(func closureFunction, bool oneTime)",
+			"Sets whether the target game object should be notified at the end of the attribute effect. One time means, that the nofication is done only once.");
+
+		gameObjectClass.def("getAttributeEffectComponentFromName", &getAttributeEffectComponentFromName);
+		gameObjectClass.def("getAttributeEffectComponent", (AttributeEffectComponent * (*)(GameObject*)) & getAttributeEffectComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AttributeEffectComponent getAttributeEffectComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AttributeEffectComponent getAttributeEffectComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castAttributeEffectComponent", &GameObjectController::cast<AttributeEffectComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "AttributeEffectComponent castAttributeEffectComponent(AttributeEffectComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool AttributeEffectComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		return true;
 	}
 
 }; // namespace end

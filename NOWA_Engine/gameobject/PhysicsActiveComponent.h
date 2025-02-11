@@ -2,7 +2,6 @@
 #define PHYSICS_ACTIVE_COMPONENT_H
 
 #include "PhysicsComponent.h"
-#include "Vehicle.h"
 #include "main/Events.h"
 #include <unordered_map>
 

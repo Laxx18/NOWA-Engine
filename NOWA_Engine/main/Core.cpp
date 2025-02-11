@@ -45,6 +45,8 @@
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <filesystem>
+
 #ifdef WIN32
 #include <WindowsIncludes.h>
 #include <tlhelp32.h>
@@ -495,6 +497,9 @@ namespace NOWA
 			this->projectName = coreConfiguration.startProjectName.substr(0, found);
 			this->sceneName = coreConfiguration.startProjectName.substr(found + 1, coreConfiguration.startProjectName.size() - 1);
 		}
+
+		this->cleanPluginsCfg(true);
+		this->cleanPluginsCfg(false);
 
 		// Look if the application has been started with a custom .cfg file in the command line, if so, init root with that configfile
 		try
@@ -972,6 +977,133 @@ namespace NOWA
 #endif
 
 		return true;
+	}
+
+	void Core::cleanPluginsCfg(bool isDebug)
+	{
+		Ogre::String pluginsCfgPath = isDebug ? "../Debug/plugins.cfg" : "../Release/plugins.cfg";
+		std::unordered_set<std::string> availableDlls;
+		Ogre::String scanFolder = isDebug ? "../Debug/plugins" : "../Release/plugins";
+		Ogre::String debugSuffix = isDebug ? "_d" : "";
+
+		// Scan the appropriate folder for DLL files
+		for (const auto& entry : std::filesystem::directory_iterator(scanFolder.c_str()))
+		{
+			if (entry.path().extension() == ".dll")
+			{
+				availableDlls.insert(entry.path().filename().string());
+			}
+		}
+
+		// Read plugins.cfg
+		std::ifstream inputFile(pluginsCfgPath.c_str());
+		if (!inputFile.is_open())
+		{
+			return;
+		}
+
+		std::vector<Ogre::String> lines;
+		Ogre::String line;
+
+		// Read the configuration file and keep lines with existing plugins
+		while (std::getline(inputFile, line))
+		{
+			if (line.rfind("Plugin=plugins/", 0) == 0) // Check if line starts with "Plugin=plugins/"
+			{
+				Ogre::String pluginName = line.substr(15); // Extract plugin name
+				Ogre::String dllName = pluginName + ".dll";
+
+				if (availableDlls.find(dllName.c_str()) == availableDlls.end())
+				{
+					continue; // Skip adding this line to output (plugin is not in the plugins folder)
+				}
+			}
+			lines.push_back(line);
+		}
+		inputFile.close();
+
+		// Add missing DLLs from the plugins folder
+		for (const auto& dll : availableDlls)
+		{
+			Ogre::String pluginName = dll.substr(0, dll.size() - 4); // Remove the ".dll" extension
+			Ogre::String pluginEntry = "Plugin=plugins/" + pluginName;
+
+			bool found = false;
+			for (const auto& l : lines)
+			{
+				if (l.rfind(pluginEntry, 0) == 0) // Check if the plugin is already in the config
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				lines.push_back(pluginEntry); // Add the missing plugin entry to the list
+			}
+		}
+
+		// Write back the filtered content with added plugins
+		std::ofstream outputFile(pluginsCfgPath.c_str(), std::ios::trunc);
+		if (!outputFile.is_open())
+		{
+			return;
+		}
+
+		for (const auto& l : lines)
+		{
+			outputFile << l.c_str() << '\n';
+		}
+		outputFile.close();
+	}
+
+	std::vector<Ogre::String> Core::getAllPluginNames(void)
+	{
+		Ogre::String allPluginsCfgPath = "../resources/AllPlugins.cfg";
+		std::vector<Ogre::String> pluginNames;
+
+		std::ifstream inputFile(allPluginsCfgPath);
+		if (!inputFile.is_open())
+		{
+			return pluginNames;
+		}
+
+		Ogre::String line;
+		while (std::getline(inputFile, line))
+		{
+			if (line.rfind("Plugin=plugins/", 0) == 0) // Check if line starts with "Plugin=plugins/"
+			{
+				pluginNames.push_back(line.substr(15)); // Extract plugin name
+			}
+		}
+
+		inputFile.close();
+		return pluginNames;
+	}
+
+	std::vector<Ogre::String> Core::getAvailablePluginNames(void)
+	{
+		Ogre::String allPluginsCfgPath = "../Release/plugins.cfg";
+		std::vector<Ogre::String> pluginNames;
+
+		std::ifstream inputFile(allPluginsCfgPath);
+		if (!inputFile.is_open())
+		{
+			return pluginNames;
+		}
+
+		Ogre::String line;
+		while (std::getline(inputFile, line))
+		{
+			if (line.rfind("Plugin=plugins/", 0) == 0) // Check if line starts with "Plugin=plugins/"
+			{
+				pluginNames.push_back(line.substr(15)); // Extract plugin name
+			}
+		}
+
+		inputFile.close();
+		return pluginNames;
 	}
 
 	void Core::registerHlms(void)

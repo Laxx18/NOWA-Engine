@@ -1998,16 +1998,6 @@ namespace NOWA
 		return makeStrongPtr<AttributesComponent>(gameObject->getComponent<AttributesComponent>()).get();
 	}
 
-	AttributeEffectComponent* getAttributeEffectComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponentWithOccurrence<AttributeEffectComponent>(occurrenceIndex)).get();
-	}
-
-	AttributeEffectComponent* getAttributeEffectComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponent<AttributeEffectComponent>()).get();
-	}
-
 	PhysicsBuoyancyComponent* getPhysicsBuoyancyComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<PhysicsBuoyancyComponent>(gameObject->getComponent<PhysicsBuoyancyComponent>()).get();
@@ -2166,11 +2156,6 @@ namespace NOWA
 	SpawnComponent* getSpawnComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<SpawnComponent>(gameObject->getComponent<SpawnComponent>()).get();
-	}
-
-	VehicleComponent* getVehicleComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<VehicleComponent>(gameObject->getComponent<VehicleComponent>()).get();
 	}
 
 	AiLuaComponent* getAiLuaComponent(GameObject* gameObject)
@@ -2753,11 +2738,6 @@ namespace NOWA
 		return makeStrongPtr<AttributesComponent>(gameObject->getComponentFromName<AttributesComponent>(name)).get();
 	}
 
-	AttributeEffectComponent* getAttributeEffectComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<AttributeEffectComponent>(gameObject->getComponentFromName<AttributeEffectComponent>(name)).get();
-	}
-
 	PhysicsBuoyancyComponent* getPhysicsBuoyancyComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<PhysicsBuoyancyComponent>(gameObject->getComponentFromName<PhysicsBuoyancyComponent>(name)).get();
@@ -2886,11 +2866,6 @@ namespace NOWA
 	SpawnComponent* getSpawnComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<SpawnComponent>(gameObject->getComponentFromName<SpawnComponent>(name)).get();
-	}
-
-	VehicleComponent* getVehicleComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<VehicleComponent>(gameObject->getComponentFromName<VehicleComponent>(name)).get();
 	}
 
 	AiLuaComponent* getAiLuaComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3534,8 +3509,6 @@ namespace NOWA
 		gameObject.def("getAnimationComponent", (AnimationComponent * (*)(GameObject*)) & getAnimationComponent);
 		gameObject.def("getAnimationComponentFromIndex", (AnimationComponent * (*)(GameObject*, unsigned int)) & getAnimationComponent);
 		gameObject.def("getAttributesComponent", &getAttributesComponent);
-		gameObject.def("getAttributeEffectComponent", (AttributeEffectComponent * (*)(GameObject*)) & getAttributeEffectComponent);
-		gameObject.def("getAttributeEffectComponentFromIndex", (AttributeEffectComponent * (*)(GameObject*, unsigned int)) & getAttributeEffectComponent);
 
 		gameObject.def("getPhysicsBuoyancyComponent", &getPhysicsBuoyancyComponent);
 		gameObject.def("getPhysicsTriggerComponent", &getPhysicsTriggerComponent);
@@ -3638,7 +3611,6 @@ namespace NOWA
 
 		gameObject.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*))& getSpawnComponent);
 		gameObject.def("getSpawnComponent", (SpawnComponent* (*)(GameObject*, unsigned int))& getSpawnComponent);
-		gameObject.def("getVehicleComponent", &getVehicleComponent);
 		gameObject.def("getAiLuaComponent", &getAiLuaComponent);
 		gameObject.def("getPhysicsExplosionComponent", &getPhysicsExplosionComponent);
 		gameObject.def("getMeshDecalComponent", &getMeshDecalComponent);
@@ -3695,7 +3667,6 @@ namespace NOWA
 
 		gameObject.def("getAnimationComponentFromName", &getAnimationComponentFromName);
 		gameObject.def("getAttributesComponentFromName", &getAttributesComponentFromName);
-		gameObject.def("getAttributeEffectComponentFromName", &getAttributeEffectComponentFromName);
 		gameObject.def("getPhysicsBuoyancyComponentFromName", &getPhysicsBuoyancyComponentFromName);
 		gameObject.def("getPhysicsTriggerComponentFromName", &getPhysicsTriggerComponentFromName);
 		gameObject.def("getDistributedComponentFromName", &getDistributedComponentFromName);
@@ -3784,7 +3755,6 @@ namespace NOWA
 		gameObject.def("getSimpleSoundComponentFromName", &getSimpleSoundComponentFromName);
 		gameObject.def("getSoundComponentFromName", &getSoundComponentFromName);
 		gameObject.def("getSpawnComponentFromName", &getSpawnComponentFromName);
-		gameObject.def("getVehicleComponentFromName", &getVehicleComponentFromName);
 		gameObject.def("getAiLuaComponentFromName", &getAiLuaComponentFromName);
 		gameObject.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
 		gameObject.def("getMeshDecalComponentFromName", &getMeshDecalComponentFromName);
@@ -3870,8 +3840,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponentFromIndex(unsigned int occurrenceIndex)", "Gets the animation component by the given occurence index, since a game object may have besides other components several animation components.");
 		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponent()", "Gets the animation component. This can be used if the game object just has one animation component.");
 		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponent()", "Gets the attributes component.");
-		AddClassToCollection("GameObject", "AttributeEffectComponent getAttributeEffectComponentComponentFromIndex(unsigned int occurrenceIndex)", "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.");
-		AddClassToCollection("GameObject", "AttributeEffectComponent getAttributeEffectComponentComponent()", "Gets the attribute effect component. This can be used if the game object just has one attribute effect component.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponent()", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponent()", "Gets the distributed component. Usage in a network scenario.");
 		AddClassToCollection("GameObject", "ExitComponent getExitComponent()", "Gets the exit component.");
@@ -3960,7 +3928,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SoundComponent getSoundComponentFromIndex(unsigned int occurrenceIndex)", "Gets the sound component by the given occurence index, since a game object may have besides other components several sound components.");
 		AddClassToCollection("GameObject", "SoundComponent getSoundComponent()", "Gets the sound component. This can be used if the game object just has one sound component.");
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponent()", "Gets the spawn component.");
-		AddClassToCollection("GameObject", "VehicleComponent getVehicleComponent()", "Gets the physics vehicle component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponent()", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponent()", "Gets the physics explosion component.");
 		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponent()", "Gets the mesh decal component.");
@@ -4016,7 +3983,6 @@ namespace NOWA
 
 		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponentFromName(String name)", "Gets the animation component.");
 		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponentFromName(String name)", "Gets the attributes component.");
-		AddClassToCollection("GameObject", "AttributeEffectComponent getAttributeEffectComponentComponentFromName(String name, unsigned int occurrenceIndex)", "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponentFromName(String name)", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponentFromName(String name)", "Gets the distributed component. Usage in a network scenario.");
 		AddClassToCollection("GameObject", "ExitComponent getExitComponentFromName(String name)", "Gets the exit component.");
@@ -4101,7 +4067,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "SimpleSoundComponent getSimpleSoundComponentFromName(String name)", "Gets the simple sound component.");
 		AddClassToCollection("GameObject", "SoundComponent getSoundComponentFromName(String name)", "Gets the sound component.");
 		AddClassToCollection("GameObject", "SpawnComponent getSpawnComponentFromName(String name)", "Gets the spawn component.");
-		AddClassToCollection("GameObject", "VehicleComponent getVehicleComponentFromName(String name)", "Gets the physics vehicle component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiLuaComponent getAiLuaComponentFromName(String name)", "Gets the ai lua script component. Requirements: A physics active component and a lua script component.");
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromName(String name)", "Gets the physics explosion component.");
 		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponentFromName(String name)", "Gets the mesh decal component.");
@@ -5137,7 +5102,6 @@ namespace NOWA
 		gameObjectController.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
 		gameObjectController.def("castAnimationComponent", &GameObjectController::cast<AnimationComponent>);
 		gameObjectController.def("castAttributesComponent", &GameObjectController::cast<AttributesComponent>);
-		gameObjectController.def("castAttributeEffectComponent", &GameObjectController::cast<AttributeEffectComponent>);
 		gameObjectController.def("castPhysicsBuoyancyComponent", &GameObjectController::cast<PhysicsBuoyancyComponent>);
 		gameObjectController.def("castPhysicsTriggerComponent", &GameObjectController::cast<PhysicsTriggerComponent>);
 		gameObjectController.def("castDistributedComponent", &GameObjectController::cast<DistributedComponent>);
@@ -5227,7 +5191,6 @@ namespace NOWA
 		gameObjectController.def("castSimpleSoundComponent", &GameObjectController::cast<SimpleSoundComponent>);
 		gameObjectController.def("castSoundComponent", &GameObjectController::cast<SoundComponent>);
 		gameObjectController.def("castSpawnComponent", &GameObjectController::cast<SpawnComponent>);
-		gameObjectController.def("castVehicleComponent", &GameObjectController::cast<VehicleComponent>);
 		gameObjectController.def("castAiLuaComponent", &GameObjectController::cast<AiLuaComponent>);
 		gameObjectController.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
 		gameObjectController.def("castMeshDecalComponent", &GameObjectController::cast<MeshDecalComponent>);
@@ -5313,7 +5276,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "GameObject castGameObject(GameObject other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AnimationComponent castAnimationComponent(AnimationComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AttributesComponent castAttributesComponent(AttributesComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "AttributeEffectComponent castAttributeEffectComponent(AttributeEffectComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsBuoyancyComponent castPhysicsBuoyancyComponent(PhysicsBuoyancyComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsTriggerComponent castPhysicsTriggerComponent(PhysicsTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "DistributedComponent castDistributedComponent(DistributedComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5403,7 +5365,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "SimpleSoundComponent castSimpleSoundComponent(SimpleSoundComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "SoundComponent castSoundComponent(SoundComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "SpawnComponent castSpawnComponent(SpawnComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "VehicleComponent castVehicleComponent(VehicleComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AiLuaComponent castAiLuaComponent(AiLuaComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsExplosionComponent castPhysicsExplosionComponent(PhysicsExplosionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MeshDecalComponent castMeshDecalComponent(MeshDecalComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -6160,28 +6121,6 @@ namespace NOWA
 		AddClassToCollection("AttributesComponent", "bool loadValues(String saveName)", "Loads all values for this component.");
 		AddClassToCollection("AttributesComponent", "bool loadValue(String saveName, unsigned int index)", "Loads the value by the given index.");
 		AddClassToCollection("AttributesComponent", "bool loadValue2(String saveName, String name)", "Loads the value by the given name.");
-	}
-
-	void bindAttributeEffectComponent(lua_State* lua)
-	{
-		module(lua)
-		[
-			class_<AttributeEffectComponent, GameObjectComponent>("AttributeEffectComponent")
-			.def("setActivated", &AttributeEffectComponent::setActivated)
-			.def("isActivated", &AttributeEffectComponent::isActivated)
-			// .def("getMaxLength", &AttributeEffectComponent::getMaxLength)
-			.def("reactOnEndOfEffect", (void (AttributeEffectComponent::*)(luabind::object, Ogre::Real, bool)) & AttributeEffectComponent::reactOnEndOfEffect)
-			.def("reactOnEndOfEffect", (void (AttributeEffectComponent::*)(luabind::object, bool)) & AttributeEffectComponent::reactOnEndOfEffect)
-		];
-
-		AddClassToCollection("AttributeEffectComponent", "class inherits GameObjectComponent", AttributeEffectComponent::getStaticInfoText());
-		AddClassToCollection("AttributeEffectComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not (Start math function calculation).");
-		AddClassToCollection("AttributeEffectComponent", "bool isActivated()", "Gets whether this component is activated.");
-		// AddClassToCollection("AttributeEffectComponent", "float getMaxLength()", "Gets max length, at which the function is at the end.");
-		AddClassToCollection("AttributeEffectComponent", "void reactOnEndOfEffect(func closureFunction, float notificationValue, bool oneTime)",
-			"Sets whether the target game object should be notified at the end of the attribute effect. One time means, that the nofication is done only once.");
-		AddClassToCollection("AttributeEffectComponent", "void reactOnEndOfEffect(func closureFunction, bool oneTime)",
-			"Sets whether the target game object should be notified at the end of the attribute effect. One time means, that the nofication is done only once.");
 	}
 
 	// TODO: No documentation and no inner type declared for luabind
@@ -13542,7 +13481,6 @@ namespace NOWA
 				bindAiComponents(this->lua);
 				bindAnimationComponent(this->lua);
 				bindAttributesComponent(this->lua);
-				bindAttributeEffectComponent(this->lua);
 				bindDistributedComponent(this->lua);
 				bindCameraBehaviorComponents(this->lua);
 				bindCameraComponent(this->lua);
@@ -13613,7 +13551,7 @@ namespace NOWA
 				bindLuaScriptEventManager(this->lua);
 
 				// Add dynamic component lua api registrations (if existing)
-				for (auto componentInfo : GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredNames())
+				for (auto componentInfo : GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 				{
 					GameObjectFactory::getInstance()->getComponentFactory()->createForLuaApi(NOWA::getIdFromName(componentInfo.first), this->lua, gameObjectClass, gameObjectControllerClass);
 				}

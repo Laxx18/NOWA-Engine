@@ -793,6 +793,10 @@ namespace NOWA
 		* @param[in]	resourceGroupName	The resource group name to preload the textures for.
 		*/
 		void preLoadTextures(const Ogre::String& resourceGroupName);
+
+		std::vector<Ogre::String> getAllPluginNames(void);
+
+		std::vector<Ogre::String> getAvailablePluginNames(void);
 	public:
 
 		enum PhysicsType
@@ -827,6 +831,7 @@ namespace NOWA
 	private:
 		void update(Ogre::Real dt);
 		void updateFrameStats(Ogre::Real dt);
+		void cleanPluginsCfg(bool isDebug);
 		void registerHlms(void);
 		void initMyGui(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, const Ogre::String& logName);
 		void setCurrentScenePath(const Ogre::String& currentScenePath);

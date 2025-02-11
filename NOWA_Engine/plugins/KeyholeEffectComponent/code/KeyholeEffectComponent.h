@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2024 Lukas Kalinowski
+Copyright (c) 2025 Lukas Kalinowski
 
 GPL v3
 */

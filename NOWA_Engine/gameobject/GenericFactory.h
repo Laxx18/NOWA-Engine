@@ -42,10 +42,19 @@ namespace NOWA
 		typedef void (*CreateForLuaApiFunction)(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
 	public:
 
+		struct ComponentProperties
+		{
+			Ogre::String infoText;
+			bool isPlugin = false;
+		};
+	public:
 		template <class SubClass>
 		bool registerClass(IdType id, const Ogre::String& name)
 		{
-			this->registeredNames.emplace(name, SubClass::getStaticInfoText());
+			GenericObjectFactory::ComponentProperties componentProperties;
+			componentProperties.isPlugin = false;
+			componentProperties.infoText = SubClass::getStaticInfoText();
+			this->registeredComponentNames.emplace(name, componentProperties);
 			auto findIt = this->creationFunctions.find(id);
 			if (findIt == this->creationFunctions.end())
 			{
@@ -61,7 +70,11 @@ namespace NOWA
 		template <class SubClass>
 		bool registerPluginComponentClass(IdType id, const Ogre::String& name)
 		{
-			this->registeredNames.emplace(name, SubClass::getStaticInfoText());
+			GenericObjectFactory::ComponentProperties componentProperties;
+			componentProperties.isPlugin = true;
+			componentProperties.infoText = SubClass::getStaticInfoText();
+
+			this->registeredComponentNames.emplace(name, componentProperties);
 			auto findIt = this->creationFunctions.find(id);
 			if (findIt == this->creationFunctions.end())
 			{
@@ -76,8 +89,8 @@ namespace NOWA
 
 		bool hasComponent(const Ogre::String& componentName)
 		{
-			auto it = this->registeredNames.find(componentName);
-			if (it != this->registeredNames.cend())
+			auto it = this->registeredComponentNames.find(componentName);
+			if (it != this->registeredComponentNames.cend())
 			{
 				return true;
 			}
@@ -86,13 +99,24 @@ namespace NOWA
 
 		Ogre::String getComponentInfoText(const Ogre::String& name)
 		{
-			auto it = this->registeredNames.find(name);
-			if (it != this->registeredNames.cend())
+			auto it = this->registeredComponentNames.find(name);
+			if (it != this->registeredComponentNames.cend())
 			{
-				return it->second;
+				return it->second.infoText;
 			}
 
 			return "";
+		}
+
+		bool getComponentIsPlugin(const Ogre::String& name)
+		{
+			auto it = this->registeredComponentNames.find(name);
+			if (it != this->registeredComponentNames.cend())
+			{
+				return it->second.isPlugin;
+			}
+
+			return false;
 		}
 
 		BaseClass* create(IdType id)
@@ -142,16 +166,17 @@ namespace NOWA
 			}
 		}
 
-		const std::map<Ogre::String, Ogre::String>& getRegisteredNames(void) const
+		const std::map<Ogre::String, GenericObjectFactory::ComponentProperties>& getRegisteredComponentNames(void) const
 		{
-			return this->registeredNames;
+			return this->registeredComponentNames;
 		}
 	private:
 		std::map<IdType, ObjectCreationFunction> creationFunctions;
 		std::map<IdType, CanAddFunction> canAddFunctions;
 		std::map<IdType, CreateForLuaApiFunction> createApiForLuaFunctions;
 		std::map<IdType, BaseClass*> pluginComponents;
-		std::map<Ogre::String, Ogre::String> registeredNames;
+
+		std::map<Ogre::String, GenericObjectFactory::ComponentProperties> registeredComponentNames;
 	};
 
 }; //Namespace end

@@ -21,7 +21,6 @@
 #include "GameObjectTitleComponent.h"
 #include "SpawnComponent.h"
 #include "ExitComponent.h"
-#include "ActivationComponent.h"
 #include "AnimationComponent.h"
 #include "AnimationComponentV2.h"
 #include "ParticleUniverseComponent.h"
@@ -72,14 +71,12 @@
 #include "LookAfterComponent.h"
 #include "ProceduralComponents.h"
 #include "LuaScriptComponent.h"
-#include "VehicleComponent.h"
 #include "OceanComponent.h"
 #include "TerraComponent.h"
 #include "MeshDecalComponent.h"
 #include "DecalComponent.h"
 #include "PlanarReflectionComponent.h"
 #include "MoveMathFunctionComponent.h"
-#include "AttributeEffectComponent.h"
 #include "TransformComponent.h"
 #include "LensFlareComponent.h"
 #include "MyGUIComponents.h"
@@ -110,7 +107,6 @@ namespace NOWA
 		this->componentFactory.registerClass<GameObjectTitleComponent>(GameObjectTitleComponent::getStaticClassId(), GameObjectTitleComponent::getStaticClassName());
 		this->componentFactory.registerClass<SpawnComponent>(SpawnComponent::getStaticClassId(), SpawnComponent::getStaticClassName());
 		this->componentFactory.registerClass<ExitComponent>(ExitComponent::getStaticClassId(), ExitComponent::getStaticClassName());
-		this->componentFactory.registerClass<ActivationComponent>(ActivationComponent::getStaticClassId(), ActivationComponent::getStaticClassName());
 		this->componentFactory.registerClass<AnimationComponent>(AnimationComponent::getStaticClassId(), AnimationComponent::getStaticClassName());
 		this->componentFactory.registerClass<AnimationComponentV2>(AnimationComponentV2::getStaticClassId(), AnimationComponentV2::getStaticClassName());
 		this->componentFactory.registerClass<ParticleUniverseComponent>(ParticleUniverseComponent::getStaticClassId(), ParticleUniverseComponent::getStaticClassName());
@@ -171,7 +167,6 @@ namespace NOWA
 		this->componentFactory.registerClass<DecalComponent>(DecalComponent::getStaticClassId(), DecalComponent::getStaticClassName());
 		this->componentFactory.registerClass<PlanarReflectionComponent>(PlanarReflectionComponent::getStaticClassId(), PlanarReflectionComponent::getStaticClassName());
 		this->componentFactory.registerClass<MoveMathFunctionComponent>(MoveMathFunctionComponent::getStaticClassId(), MoveMathFunctionComponent::getStaticClassName());
-		this->componentFactory.registerClass<AttributeEffectComponent>(AttributeEffectComponent::getStaticClassId(), AttributeEffectComponent::getStaticClassName());
 		this->componentFactory.registerClass<TransformComponent>(TransformComponent::getStaticClassId(), TransformComponent::getStaticClassName());
 		this->componentFactory.registerClass<LensFlareComponent>(LensFlareComponent::getStaticClassId(), LensFlareComponent::getStaticClassName());
 		
@@ -194,7 +189,6 @@ namespace NOWA
 		this->componentFactory.registerClass<PhysicsExplosionComponent>(PhysicsExplosionComponent::getStaticClassId(), PhysicsExplosionComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsMaterialComponent>(PhysicsMaterialComponent::getStaticClassId(), PhysicsMaterialComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsCompoundConnectionComponent>(PhysicsCompoundConnectionComponent::getStaticClassId(), PhysicsCompoundConnectionComponent::getStaticClassName());
-		this->componentFactory.registerClass<VehicleComponent>(VehicleComponent::getStaticClassId(), VehicleComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsPlayerControllerComponent>(PhysicsPlayerControllerComponent::getStaticClassId(), PhysicsPlayerControllerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsTriggerComponent>(PhysicsTriggerComponent::getStaticClassId(), PhysicsTriggerComponent::getStaticClassName());
 		this->componentFactory.registerClass<PhysicsActiveKinematicComponent>(PhysicsActiveKinematicComponent::getStaticClassId(), PhysicsActiveKinematicComponent::getStaticClassName());

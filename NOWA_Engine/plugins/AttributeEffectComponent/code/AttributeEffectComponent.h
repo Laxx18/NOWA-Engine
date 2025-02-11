@@ -1,14 +1,19 @@
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
+
 #ifndef ATTRIBUTE_EFFECT_COMPONENT_H
 #define ATTRIBUTE_EFFECT_COMPONENT_H
 
-#include "GameObjectComponent.h"
+#include "OgrePlugin.h"
+#include "gameobject/GameObjectComponent.h"
 #include <fparser.hh>
 
 namespace NOWA
 {
-	class LuaScript;
-
-	class EXPORTED AttributeEffectComponent : public GameObjectComponent
+	class EXPORTED AttributeEffectComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
 
@@ -64,6 +69,36 @@ namespace NOWA
 		virtual ~AttributeEffectComponent();
 
 		/**
+		* @see		Ogre::Plugin::install
+		*/
+		virtual void install(const Ogre::NameValuePairList* options) override;
+
+		/**
+		* @see		Ogre::Plugin::initialise
+		*/
+		virtual void initialise() override;
+
+		/**
+		* @see		Ogre::Plugin::shutdown
+		*/
+		virtual void shutdown() override;
+
+		/**
+		* @see		Ogre::Plugin::uninstall
+		*/
+		virtual void uninstall() override;
+
+		/**
+		* @see		Ogre::Plugin::getName
+		*/
+		virtual const Ogre::String& getName() const override;
+
+		/**
+		* @see		Ogre::Plugin::getAbiCookie
+		*/
+		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
+
+		/**
 		 * @see		GameObjectComponent::init
 		 */
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
@@ -72,16 +107,21 @@ namespace NOWA
 		 * @see		GameObjectComponent::postInit
 		 */
 		virtual bool postInit(void) override;
-		
+
 		/**
 		 * @see		GameObjectComponent::connect
 		 */
 		virtual bool connect(void) override;
-		
+
 		/**
 		 * @see		GameObjectComponent::disconnect
 		 */
 		virtual bool disconnect(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
 
 		/**
 		 * @see		GameObjectComponent::onOtherComponentRemoved
@@ -103,29 +143,6 @@ namespace NOWA
 		 */
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("AttributeEffectComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "AttributeEffectComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
-
-		/**
-		 * @see	GameObjectComponent::getStaticInfoText
-		 */
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: Manipulates any game object or component's attribute by the given mathematical functions. Important: It always just works for the next prior component! So place it beyond the the be manipulated component!";
-		}
-
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
 		/**
@@ -144,7 +161,7 @@ namespace NOWA
 		virtual void setActivated(bool activated) override;
 
 		virtual bool isActivated(void) const override;
-		
+
 		void setAttributeName(const Ogre::String& attributeName);
 
 		Ogre::String getAttributeName(void) const;
@@ -167,19 +184,19 @@ namespace NOWA
 		void setZFunction(const Ogre::String& zFunction);
 
 		Ogre::String getZFunction(void) const;
-		
+
 		void setSpeed(Ogre::Real speed);
-		
+
 		Ogre::Real getSpeed(void) const;
-		
+
 		void setMinLength(const Ogre::String& minLength);
-		
+
 		Ogre::String getMinLength(void) const;
 
 		void setMaxLength(const Ogre::String& maxLength);
 
 		Ogre::String getMaxLength(void) const;
-		
+
 		void setDirectionChange(bool directionChange);
 
 		bool getDirectionChange(void) const;
@@ -193,6 +210,40 @@ namespace NOWA
 
 		void reactOnEndOfEffect(luabind::object closureFunction, bool oneTime);
 	public:
+		/**
+		* @see		GameObjectComponent::getStaticClassId
+		*/
+		static unsigned int getStaticClassId(void)
+		{
+			return NOWA::getIdFromName("AttributeEffectComponent");
+		}
+
+		/**
+		* @see		GameObjectComponent::getStaticClassName
+		*/
+		static Ogre::String getStaticClassName(void)
+		{
+			return "AttributeEffectComponent";
+		}
+
+		/**
+		 * @see	GameObjectComponent::getStaticInfoText
+		 */
+		static Ogre::String getStaticInfoText(void)
+		{
+			return "Usage: Manipulates any game object or component's attribute by the given mathematical functions. Important: It always just works for the next prior component! So place it beyond the the be manipulated component!";
+		}
+
+		/**
+		 * @see		GameObjectComponent::canStaticAddComponent
+		 */
+		static bool canStaticAddComponent(GameObject* gameObject);
+
+		/**
+		 * @see	GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrAttributeName(void) { return "Attribute Name"; }
 		static const Ogre::String AttrXFunction(void) { return "X-Function"; }
@@ -201,11 +252,12 @@ namespace NOWA
 		static const Ogre::String AttrMinLength(void) { return "Min Length"; }
 		static const Ogre::String AttrMaxLength(void) { return "Max Length"; }
 		static const Ogre::String AttrSpeed(void) { return "Speed"; }
-		static const Ogre::String AttrDirectionChange(void) {return "Direction Change"; }
+		static const Ogre::String AttrDirectionChange(void) { return "Direction Change"; }
 		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
 	private:
 		void parseMathematicalFunction(void);
 	private:
+		Ogre::String name;
 		Variant* activated;
 		Variant* attributeName;
 		Variant* xFunction;

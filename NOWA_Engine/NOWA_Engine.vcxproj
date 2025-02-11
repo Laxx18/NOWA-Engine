@@ -361,13 +361,11 @@
     <ClInclude Include="editor\SelectionManager.h" />
     <ClInclude Include="editor\SelectionRectangle.h" />
     <ClInclude Include="editor\ViewportGrid.h" />
-    <ClInclude Include="gameobject\ActivationComponent.h" />
     <ClInclude Include="gameobject\AiComponents.h" />
     <ClInclude Include="gameobject\AiLuaComponent.h" />
     <ClInclude Include="gameobject\AiLuaGoalComponent.h" />
     <ClInclude Include="gameobject\AnimationComponent.h" />
     <ClInclude Include="gameobject\AnimationComponentV2.h" />
-    <ClInclude Include="gameobject\AttributeEffectComponent.h" />
     <ClInclude Include="gameobject\BackgroundScrollComponent.h" />
     <ClInclude Include="gameobject\BillboardComponent.h" />
     <ClInclude Include="gameobject\CameraBehaviorComponents.h" />
@@ -448,8 +446,6 @@
     <ClInclude Include="gameobject\TimeTriggerComponent.h" />
     <ClInclude Include="gameobject\Tire.h" />
     <ClInclude Include="gameobject\TransformComponent.h" />
-    <ClInclude Include="gameobject\Vehicle.h" />
-    <ClInclude Include="gameobject\VehicleComponent.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
     <ClInclude Include="ki\Edge.h" />
     <ClInclude Include="ki\Goal.h" />
@@ -582,13 +578,11 @@
     <ClCompile Include="editor\SelectionManager.cpp" />
     <ClCompile Include="editor\SelectionRectangle.cpp" />
     <ClCompile Include="editor\ViewportGrid.cpp" />
-    <ClCompile Include="gameobject\ActivationComponent.cpp" />
     <ClCompile Include="gameobject\AiComponents.cpp" />
     <ClCompile Include="gameobject\AiLuaComponent.cpp" />
     <ClCompile Include="gameobject\AiLuaGoalComponent.cpp" />
     <ClCompile Include="gameobject\AnimationComponent.cpp" />
     <ClCompile Include="gameobject\AnimationComponentV2.cpp" />
-    <ClCompile Include="gameobject\AttributeEffectComponent.cpp" />
     <ClCompile Include="gameobject\AttributesComponent.cpp" />
     <ClCompile Include="gameobject\BackgroundScrollComponent.cpp" />
     <ClCompile Include="gameobject\BillboardComponent.cpp" />
@@ -668,8 +662,6 @@
     <ClCompile Include="gameobject\TimeTriggerComponent.cpp" />
     <ClCompile Include="gameobject\Tire.cpp" />
     <ClCompile Include="gameobject\TransformComponent.cpp" />
-    <ClCompile Include="gameobject\Vehicle.cpp" />
-    <ClCompile Include="gameobject\VehicleComponent.cpp" />
     <ClCompile Include="gameobject\WorkspaceComponents.cpp" />
     <ClCompile Include="ki\Edge.cpp" />
     <ClCompile Include="ki\MovingBehavior.cpp" />

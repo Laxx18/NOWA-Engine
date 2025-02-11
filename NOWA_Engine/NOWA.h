@@ -90,7 +90,6 @@ extern "C"
 #include "gameobject/GameObjectTitleComponent.h"
 #include "gameobject/SpawnComponent.h"
 #include "gameobject/ExitComponent.h"
-#include "gameobject/ActivationComponent.h"
 #include "gameobject/AnimationComponent.h"
 #include "gameobject/AnimationComponentV2.h"
 #include "gameobject/ParticleUniverseComponent.h"
@@ -141,15 +140,12 @@ extern "C"
 #include "gameObject/LookAfterComponent.h"
 #include "gameObject/ProceduralComponents.h"
 #include "gameObject/LuaScriptComponent.h"
-#include "gameObject/VehicleComponent.h"
-// #include "gameObject/AreaOfInterestComponent.h"
 #include "gameObject/OceanComponent.h"
 #include "gameObject/TerraComponent.h"
 #include "gameObject/MeshDecalComponent.h"
 #include "gameObject/DecalComponent.h"
 #include "gameObject/PlanarReflectionComponent.h"
 #include "gameObject/MoveMathFunctionComponent.h"
-#include "gameObject/AttributeEffectComponent.h"
 #include "gameObject/TransformComponent.h"
 #include "gameObject/MyGUIComponents.h"
 #include "gameObject/MyGUIItemBoxComponent.h"
@@ -170,7 +166,6 @@ namespace NOWA
 	typedef boost::shared_ptr<PhysicsBuoyancyComponent> PhysicsBuoyancyCompPtr;
 	typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
 	typedef boost::shared_ptr<PhysicsRagDollComponent> PhysicsRagDollCompPtr;
-	typedef boost::shared_ptr<VehicleComponent> VehicleCompPtr;
 	typedef boost::shared_ptr<DistributedComponent> DistributedCompPtr;
 	typedef boost::shared_ptr<NavMeshComponent> NavMeshComponentCompPtr;
 	typedef boost::shared_ptr<NavMeshTerraComponent> NavMeshTerraComponentCompPtr;
@@ -287,7 +282,6 @@ namespace NOWA
 	typedef boost::shared_ptr<PlanarReflectionComponent> PlanarReflectionCompPtr;
 	
 	typedef boost::shared_ptr<MoveMathFunctionComponent> MoveMathFunctionCompPtr;
-	typedef boost::shared_ptr<AttributeEffectComponent> AttributeEffectCompPtr;
 	typedef boost::shared_ptr<TransformComponent> TransformCompPtr;
 	typedef boost::shared_ptr<LensFlareComponent> LensFlareCompPtr;
 

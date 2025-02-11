@@ -73,6 +73,7 @@ class ResourcesPanelDataBlocks;
 class ResourcesPanelTextures;
 class ResourcesPanelProject;
 class ResourcesPanelLuaScript;
+class ResourcesPanelPlugins;
 
 class ResourcesPanel : public wraps::BaseLayout
 {
@@ -95,12 +96,14 @@ private:
 	ResourcesPanelView* resourcesPanelView1;
 	ResourcesPanelView* resourcesPanelView2;
 	ResourcesPanelView* resourcesPanelView3;
+	ResourcesPanelView* resourcesPanelView4;
 	ResourcesPanelMeshes* resourcesPanelMeshes;
 	ResourcesPanelGameObjects* resourcesPanelGameObjects;
 	ResourcesPanelDataBlocks* resourcesPanelDataBlocks;
 	ResourcesPanelTextures* resourcesPanelTextures;
 	ResourcesPanelProject* resourcesPanelProject;
 	ResourcesPanelLuaScript* resourcesPanelLuaScript;
+	ResourcesPanelPlugins* resourcesPanelPlugins;
 #if 0
 	ResourcesPanelMeshPreview* resourcesPanelMeshPreview;
 #endif
@@ -326,7 +329,35 @@ private:
 	NOWA::EditorManager* editorManager;
 	ProjectManager* projectManager;
 
-	std::string selectedText;
+	Ogre::String selectedText;
+};
+
+///////////////////////////////////////////////////////////////////////
+
+class ResourcesPanelPlugins : public wraps::BasePanelViewItem
+{
+public:
+	ResourcesPanelPlugins();
+	virtual ~ResourcesPanelPlugins();
+
+	void setEditorManager(NOWA::EditorManager* editorManager);
+	void setProjectManager(ProjectManager* projectManager);
+
+	void initialise(void) override;
+	void shutdown(void) override;
+	void clear(void);
+
+	void populateListBox(void);
+private:
+	void onListBoxItemSelected(MyGUI::ListBox* sender, size_t index);
+private:
+	MyGUI::ListBox* listBox;
+	MyGUI::EditBox* infoTextBox;
+	MyGUI::Button* buyButton;
+	NOWA::EditorManager* editorManager;
+	ProjectManager* projectManager;
+
+	Ogre::String selectedText;
 };
 
 #endif

@@ -15,6 +15,7 @@ ResourcesPanel::ResourcesPanel(const MyGUI::FloatCoord& coords)
 	resourcesPanelView1(nullptr),
 	resourcesPanelView2(nullptr),
 	resourcesPanelView3(nullptr),
+	resourcesPanelView4(nullptr),
 	resourcesPanelMeshes(nullptr),
 #if 0
 	resourcesPanelMeshPreview(nullptr),
@@ -23,7 +24,8 @@ ResourcesPanel::ResourcesPanel(const MyGUI::FloatCoord& coords)
 	resourcesPanelDataBlocks(nullptr),
 	resourcesPanelTextures(nullptr),
 	resourcesPanelProject(nullptr),
-	resourcesPanelLuaScript(nullptr)
+	resourcesPanelLuaScript(nullptr),
+	resourcesPanelPlugins(nullptr)
 {
 	// Strategy as follows:
 	// - In ResourcesPanelView.layout, there are two tab items, each one with a named scrollviewer
@@ -59,6 +61,10 @@ ResourcesPanel::ResourcesPanel(const MyGUI::FloatCoord& coords)
 
 	this->resourcesPanelLuaScript = new ResourcesPanelLuaScript();
 	this->resourcesPanelView3->addItem(this->resourcesPanelLuaScript);
+
+	assignBase(this->resourcesPanelView4, "resources4ScrollView");
+	this->resourcesPanelPlugins = new ResourcesPanelPlugins();
+	this->resourcesPanelView4->addItem(this->resourcesPanelPlugins);
 }
 
 void ResourcesPanel::setEditorManager(NOWA::EditorManager* editorManager)
@@ -72,11 +78,15 @@ void ResourcesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 	this->resourcesPanelDataBlocks->setEditorManager(this->editorManager);
 	this->resourcesPanelTextures->setEditorManager(this->editorManager);
 	this->resourcesPanelProject->setEditorManager(this->editorManager);
+	this->resourcesPanelLuaScript->setEditorManager(this->editorManager);
+	this->resourcesPanelPlugins->setEditorManager(this->editorManager);
 }
 
 void ResourcesPanel::setProjectManager(ProjectManager* projectManager)
 {
 	this->resourcesPanelProject->setProjectManager(projectManager);
+	this->resourcesPanelLuaScript->setProjectManager(projectManager);
+	this->resourcesPanelPlugins->setProjectManager(projectManager);
 }
 
 void ResourcesPanel::destroyContent(void)
@@ -120,6 +130,20 @@ void ResourcesPanel::destroyContent(void)
 	{
 		delete this->resourcesPanelProject;
 		this->resourcesPanelProject = nullptr;
+	}
+
+	if (this->resourcesPanelLuaScript)
+	{
+		delete this->resourcesPanelLuaScript;
+		this->resourcesPanelLuaScript = nullptr;
+	}
+
+	this->resourcesPanelView4->removeAllItems();
+
+	if (this->resourcesPanelPlugins)
+	{
+		delete this->resourcesPanelPlugins;
+		this->resourcesPanelPlugins = nullptr;
 	}
 }
 
@@ -1542,12 +1566,12 @@ ResourcesPanelLuaScript::ResourcesPanelLuaScript()
 	editorManager(nullptr),
 	projectManager(nullptr)
 {
-	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+
 }
 
 ResourcesPanelLuaScript::~ResourcesPanelLuaScript()
 {
-	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+
 }
 
 void ResourcesPanelLuaScript::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1650,4 +1674,128 @@ void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 void ResourcesPanelLuaScript::handleLuaScriptModified(NOWA::EventDataPtr eventData)
 {
 	this->populateListBox();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+ResourcesPanelPlugins::ResourcesPanelPlugins()
+	: BasePanelViewItem("ResourcesPanelPlugins.layout"),
+	listBox(nullptr),
+	infoTextBox(nullptr),
+	buyButton(nullptr),
+	editorManager(nullptr),
+	projectManager(nullptr)
+{
+
+}
+
+ResourcesPanelPlugins::~ResourcesPanelPlugins()
+{
+
+}
+
+void ResourcesPanelPlugins::setEditorManager(NOWA::EditorManager* editorManager)
+{
+	this->editorManager = editorManager;
+}
+
+void ResourcesPanelPlugins::setProjectManager(ProjectManager* projectManager)
+{
+	this->projectManager = projectManager;
+}
+
+void ResourcesPanelPlugins::initialise(void)
+{
+	mPanelCell->setCaption("Plugins Management");
+	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+
+	assignWidget(this->listBox, "ListBox");
+	assignWidget(this->infoTextBox, "InfoLabel");
+	assignWidget(this->buyButton, "BuyButton");
+
+	this->infoTextBox->setEditMultiLine(true);
+	this->infoTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+	this->infoTextBox->setEditWordWrap(true);
+	this->infoTextBox->setEditStatic(true);
+	this->infoTextBox->setEditReadOnly(true);
+	this->infoTextBox->showVScroll(true);
+	this->infoTextBox->showHScroll(true);
+	this->buyButton->setEnabled(false);
+	
+	mWidgetClient->setSize(MyGUI::IntSize(mWidgetClient->getWidth(), 805));
+
+	this->listBox->setInheritsAlpha(false);
+
+	this->listBox->eventListChangePosition += MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+
+	this->populateListBox();
+}
+
+void ResourcesPanelPlugins::shutdown(void)
+{
+	this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+}
+
+void ResourcesPanelPlugins::clear(void)
+{
+	this->selectedText.clear();
+	this->listBox->removeAllItems();
+}
+
+void ResourcesPanelPlugins::populateListBox(void)
+{
+	this->clear();
+
+	// Get all available plugin names
+	std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
+	std::vector<Ogre::String> availablePlugins = NOWA::Core::getSingletonPtr()->getAvailablePluginNames();
+
+	// Iterate through registered components
+	for (const auto& componentName : allPlugins)
+	{
+		bool isPluginAvailable = std::find(availablePlugins.begin(), availablePlugins.end(), componentName) != availablePlugins.end();
+
+		// Add item to the list box
+		this->listBox->addItem(componentName);
+
+		// Get the index of the last added item
+		size_t itemIndex = this->listBox->getItemCount() - 1;
+
+		// If the plugin is not available, change the text color to red
+		if (false == isPluginAvailable)
+		{
+			Ogre::String text = this->listBox->getItem(itemIndex) + " - (Not Available)";
+			this->listBox->setItemNameAt(itemIndex, text);
+		}
+	}
+}
+
+void ResourcesPanelPlugins::onListBoxItemSelected(MyGUI::ListBox* sender, size_t index)
+{
+	if (index == MyGUI::ITEM_NONE)
+	{
+		this->selectedText.clear();
+		this->infoTextBox->setCaption("");
+		return;
+	}
+
+	Ogre::String fullText = this->listBox->getItemNameAt(index);
+	size_t spacePos = fullText.find(" -");
+
+	// Extract substring up to the first space
+	if (spacePos != Ogre::String::npos)
+	{
+		// Since space found, the component is not available , see: " - (Not Available)");
+		this->selectedText = fullText.substr(0, spacePos);
+		this->buyButton->setEnabled(true);
+	}
+	else
+	{
+		this->selectedText = fullText; // No space found, use full text
+		this->buyButton->setEnabled(false);
+	}
+
+	// Update infoTextBox
+	Ogre::String infoText = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(this->selectedText);
+	this->infoTextBox->setCaption(infoText);
 }

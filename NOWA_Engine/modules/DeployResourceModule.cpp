@@ -1623,8 +1623,6 @@ namespace NOWA
 		// Add to plugins list (Release)
 		destinationFilePathName = "../Release/plugins.cfg";
 
-
-
 		{
 			// Get the content
 			std::ifstream ifs(destinationFilePathName);
@@ -1636,6 +1634,35 @@ namespace NOWA
 
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule] Create CPlusPlus project failed, because in the file: " + destinationFilePathName + " the XML Element " + marker + " cannot be found.");
 		
+			Ogre::String content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+			ifs.close();
+
+			size_t foundComponentName = content.find(componentName);
+			if (Ogre::String::npos == foundComponentName)
+			{
+				content += "\nPlugin=plugins/" + componentName;
+			}
+
+			// Write new content
+			std::ofstream ofs(destinationFilePathName);
+			ofs << content;
+			ofs.close();
+		}
+
+		// Add to all plugins list
+		destinationFilePathName = "../resources/AllPlugins.cfg";
+
+		{
+			// Get the content
+			std::ifstream ifs(destinationFilePathName);
+			if (false == ifs.good())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule] Create CPlusPlus component plugin project failed, because the file: " + destinationFilePathName + " cannot be opened.");
+				return false;
+			}
+
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DeployResourceModule] Create CPlusPlus project failed, because in the file: " + destinationFilePathName + " the XML Element " + marker + " cannot be found.");
+
 			Ogre::String content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 			ifs.close();
 

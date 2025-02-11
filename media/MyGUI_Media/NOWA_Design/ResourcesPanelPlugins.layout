@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MyGUI type="Layout">
+    <!-- Main container widget -->
+    <Widget type="Widget" skin="PanelEmpty" position="440 144 270 800" align="HStretch Top" layer="Overlapped" name="_Main">
+
+        <!-- ListBox with correct custom background color -->
+        <Widget type="ListBox" skin="ListBox" position="10 38 400 350" align="Left Top" name="ListBox" layer="Main">
+            <Property key="Colour" value="0.3 0.7 1 0.5"/>
+        </Widget>
+		
+        <!-- TextBox for InfoLabel with background and text for visibility -->
+        <Widget type="EditBox" skin="EditBox" position="10 400 400 250" align="Left Top" name="InfoLabel" readonly="true">
+            <Property key="Colour" value="0.8 0.8 0.8 0.7"/> <!-- Light grey background -->
+			<Property key="TextColour" value="1 1 1 1"/> <!-- White text color -->
+            <Property key="Border" value="1 1 1 1"/> <!-- Border for visibility -->
+        </Widget>
+		
+		<!-- Button positioned above the bottom of the container -->
+		<Widget type="Button" skin="Button" position="10 650 70 30" align="Left Top" name="BuyButton">
+            <Property key="Caption" value="Buy"/>
+        </Widget>
+
+    </Widget>
+</MyGUI>

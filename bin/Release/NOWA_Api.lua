@@ -6739,22 +6739,6 @@ return {
 				returns = "(AttributesComponent)",
 				valuetype = "AttributesComponent"
 			},
-			getAttributeEffectComponentComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.",
-				args = "(number occurrenceIndex)",
-				returns = "(AttributeEffectComponent)",
-				valuetype = "AttributeEffectComponent"
-			},
-			getAttributeEffectComponentComponent =
-			{
-				type = "function",
-				description = "Gets the attribute effect component. This can be used if the game object just has one attribute effect component.",
-				args = "()",
-				returns = "(AttributeEffectComponent)",
-				valuetype = "AttributeEffectComponent"
-			},
 			getBuoyancyComponent =
 			{
 				type = "function",
@@ -7459,14 +7443,6 @@ return {
 				returns = "(SpawnComponent)",
 				valuetype = "SpawnComponent"
 			},
-			getVehicleComponent =
-			{
-				type = "function",
-				description = "Gets the physics vehicle component. Requirements: A physics active component.",
-				args = "()",
-				returns = "(VehicleComponent)",
-				valuetype = "VehicleComponent"
-			},
 			getAiLuaComponent =
 			{
 				type = "function",
@@ -7898,14 +7874,6 @@ return {
 				args = "(string name)",
 				returns = "(AttributesComponent)",
 				valuetype = "AttributesComponent"
-			},
-			getAttributeEffectComponentComponentFromName =
-			{
-				type = "function",
-				description = "Gets the attribute effect component by the given occurence index, since a game object may have besides other components several animation components.",
-				args = "(string name, number occurrenceIndex)",
-				returns = "(AttributeEffectComponent)",
-				valuetype = "AttributeEffectComponent"
 			},
 			getBuoyancyComponentFromName =
 			{
@@ -8555,14 +8523,6 @@ return {
 				returns = "(SpawnComponent)",
 				valuetype = "SpawnComponent"
 			},
-			getVehicleComponentFromName =
-			{
-				type = "function",
-				description = "Gets the physics vehicle component. Requirements: A physics active component.",
-				args = "(string name)",
-				returns = "(VehicleComponent)",
-				valuetype = "VehicleComponent"
-			},
 			getAiLuaComponentFromName =
 			{
 				type = "function",
@@ -8938,6 +8898,22 @@ return {
 				args = "(string name)",
 				returns = "(AtmosphereComponent)",
 				valuetype = "AtmosphereComponent"
+			},
+			getAttributeEffectComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(AttributeEffectComponent)",
+				valuetype = "AttributeEffectComponent"
+			},
+			getAttributeEffectComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(AttributeEffectComponent)",
+				valuetype = "AttributeEffectComponent"
 			},
 			getCrowdComponentFromIndex =
 			{
@@ -9763,14 +9739,6 @@ return {
 				returns = "(AttributesComponent)",
 				valuetype = "AttributesComponent"
 			},
-			castAttributeEffectComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(AttributeEffectComponent other)",
-				returns = "(AttributeEffectComponent)",
-				valuetype = "AttributeEffectComponent"
-			},
 			castPhysicsBuoyancyComponent =
 			{
 				type = "function",
@@ -10483,14 +10451,6 @@ return {
 				returns = "(SpawnComponent)",
 				valuetype = "SpawnComponent"
 			},
-			castVehicleComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(VehicleComponent other)",
-				returns = "(VehicleComponent)",
-				valuetype = "VehicleComponent"
-			},
 			castAiLuaComponent =
 			{
 				type = "function",
@@ -10802,6 +10762,14 @@ return {
 				args = "(AtmosphereComponent other)",
 				returns = "(AtmosphereComponent)",
 				valuetype = "AtmosphereComponent"
+			},
+			castAttributeEffectComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(AttributeEffectComponent other)",
+				returns = "(AttributeEffectComponent)",
+				valuetype = "AttributeEffectComponent"
 			},
 			castCrowdComponent =
 			{
@@ -24960,6 +24928,22 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			setCameraBehaviorGameObjectId =
+			{
+				type = "method",
+				description = "Sets camera behavior game object id in order if the camera behavior shall be used for an this splitscreen camera.  If 0 (not set), the currently active camera is used.",
+				args = "(string cameraBehaviorGameObjectId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getCameraBehaviorGameObjectId =
+			{
+				type = "function",
+				description = "Sets the camera behavior game object id in order if the camera behavior shall be used for an this splitscreen camera.  If 0 (not set), the currently active camera is used.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
 			}
 		}
 	},

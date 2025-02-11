@@ -1,7 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "AreaOfInterestComponent.h"
 #include "utilities/XMLConverter.h"
-#include "gameobject/ActivationComponent.h"
+#include "plugins/ActivationComponent/code/ActivationComponent.cpp"
 #include "modules/LuaScriptApi.h"
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
