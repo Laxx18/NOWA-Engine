@@ -1039,7 +1039,6 @@ namespace NOWA
 		bool bShowDebugData;
 		LuaScript* luaScript;
 		bool bConnectPriority;
-		bool doNotTouchVisibleAttribute;
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
 	};

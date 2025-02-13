@@ -477,7 +477,6 @@ namespace NOWA
 		// For fixed Update: Does not work, called to often
 		// this->physicsBody->setNodeUpdateNotify<PhysicsActiveComponent>(&PhysicsActiveComponent::updateCallback, this);
 
-		this->setActivated(this->activated->getBool());
 		this->setContinuousCollision(this->continuousCollision->getBool());
 		this->setGyroscopicTorqueEnabled(this->gyroscopicTorque->getBool());
 
@@ -499,6 +498,8 @@ namespace NOWA
 
 		const auto materialId = AppStateManager::getSingletonPtr()->getGameObjectController()->getMaterialID(this->gameObjectPtr.get(), this->ogreNewt);
 		this->physicsBody->setMaterialGroupID(materialId);
+
+		this->setActivated(this->activated->getBool());
 
 		return true;
 	}
@@ -784,6 +785,7 @@ namespace NOWA
 		{
 			if (nullptr != this->physicsBody)
 			{
+				this->physicsBody->unFreeze();
 				this->physicsBody->freeze();
 				// this->physicsBody->setAutoSleep(1);
 			}
@@ -792,7 +794,7 @@ namespace NOWA
 		{
 			if (nullptr != this->physicsBody)
 			{
-				physicsBody->unFreeze();
+				this->physicsBody->unFreeze();
 				// this->physicsBody->setAutoSleep(0);
 				//physicsBody->setVelocity(Ogre::Vector3(0.0f, 0.1f, 0.0f));
 			}

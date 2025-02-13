@@ -14,15 +14,17 @@ namespace NOWA
 		startCounting(false),
 		firstTimeActivated(true),
 		activated(new Variant(TimeTriggerComponent::AttrActivated(), true, this->attributes)),
+		activateOne(new Variant(TimeTriggerComponent::AttrActivateOne(), true, this->attributes)),
 		startTime(new Variant(TimeTriggerComponent::AttrStartTime(), 10.0f, this->attributes)),
 		duration(new Variant(TimeTriggerComponent::AttrDuration(), 10.0f, this->attributes)),
 		repeat(new Variant(TimeTriggerComponent::AttrRepeat(), false, this->attributes)),
 		deactivateAfterwards(new Variant(TimeTriggerComponent::AttrDeactivateAfterwards(), true, this->attributes))
 	{
-		startTime->setDescription("Sets the start time in Seconds, at which the component immediately above should be activated.");
-		duration->setDescription("Sets the duration in Seconds, for which the component immediately above should remain activated.");
-		repeat->setDescription("Sets whether time triggering the component immediately above should be repeated.");
-		deactivateAfterwards->setDescription("Sets whether to deactivate the component above after the time is over or let the component remain activated.");
+		this->activateOne->setDescription("Sets whether to activate just the one prior (predecessor) component, which is one above this component, or activate all components for this game object.");
+		this->startTime->setDescription("Sets the start time in Seconds, at which the component immediately above should be activated.");
+		this->duration->setDescription("Sets the duration in Seconds, for which the component immediately above should remain activated.");
+		this->repeat->setDescription("Sets whether time triggering the component immediately above should be repeated.");
+		this->deactivateAfterwards->setDescription("Sets whether to deactivate the component above after the time is over or let the component remain activated.");
 	}
 
 	TimeTriggerComponent::~TimeTriggerComponent()
@@ -37,6 +39,11 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
 		{
 			this->activated->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ActivateOne")
+		{
+			this->activateOne->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "StartTime")
@@ -69,6 +76,7 @@ namespace NOWA
 
 		
 		clonedCompPtr->setActivated(this->activated->getBool());
+		clonedCompPtr->setActivateOne(this->activateOne->getBool());
 		clonedCompPtr->setStartTime(this->startTime->getReal());
 		clonedCompPtr->setDuration(this->duration->getReal());
 		clonedCompPtr->setRepeat(this->repeat->getBool());
@@ -132,13 +140,25 @@ namespace NOWA
 			// Working here with shared_ptrs is evil, because of bidirectional referecing
 			auto component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i)).get();
 			// Seek for this component and go to the previous one to process
-			if (component == this)
+			if (true == this->activateOne->getBool())
 			{
-				if (i > 0)
+				if (component == this)
 				{
-					component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i - 1)).get();
+					if (i > 0)
+					{
+						component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i - 1)).get();
+						component->setActivated(bActivate);
+						break;
+					}
+				}
+			}
+			else
+			{
+				// Activate all components at once
+				component = std::get<COMPONENT>(this->gameObjectPtr->getComponents()->at(i)).get();
+				if (component != this)
+				{
 					component->setActivated(bActivate);
-					break;
 				}
 			}
 		}
@@ -151,6 +171,10 @@ namespace NOWA
 		if (TimeTriggerComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
+		}
+		else if (TimeTriggerComponent::AttrActivateOne() == attribute->getName())
+		{
+			this->setActivateOne(attribute->getBool());
 		}
 		else if (TimeTriggerComponent::AttrStartTime() == attribute->getName())
 		{
@@ -185,6 +209,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ActivateOne"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activateOne->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -232,6 +262,16 @@ namespace NOWA
 			this->activateComponent(true);
 		}
 		return true;
+	}
+
+	void TimeTriggerComponent::setActivateOne(bool activateOne)
+	{
+		this->activateOne->setValue(activateOne);
+	}
+
+	bool TimeTriggerComponent::getActivateOne(void) const
+	{
+		return this->activateOne->getBool();
 	}
 
 	Ogre::String TimeTriggerComponent::getClassName(void) const

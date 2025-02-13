@@ -57,8 +57,7 @@ namespace NOWA
 		doNotDestroyMovableObject(false),
 		bShowDebugData(false),
 		luaScript(nullptr),
-		bConnectPriority(false),
-		doNotTouchVisibleAttribute(false)
+		bConnectPriority(false)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -514,7 +513,8 @@ namespace NOWA
 				Ogre::String attributeName = this->attributes[i].second->getName();
 
 				if (attributeName != GameObject::AttrLodDistance()
-					&& attributeName != GameObject::AttrLodLevels())
+					&& attributeName != GameObject::AttrLodLevels()
+					&& attributeName != GameObject::AttrVisible())
 				{
 					this->actualizeValue(this->attributes[i].second);
 				}
@@ -1742,8 +1742,7 @@ namespace NOWA
 		if (isVisible != visible)
 		{
 			this->visible->setValue(visible);
-			// Because of e.g. active camera, so that if reset is made (undo), the movable camera object is not visible for the active camera!
-			if (nullptr != this->movableObject && false == this->doNotTouchVisibleAttribute)
+			if (nullptr != this->movableObject)
 			{
 				this->sceneNode->setVisible(visible);
 				this->movableObject->setVisible(visible);

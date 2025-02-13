@@ -48,6 +48,8 @@ namespace NOWA
 
 	bool CameraBehaviorComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &CameraBehaviorComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
+
 		GameObjectComponent::init(propertyElement);
 
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Activated")
@@ -74,7 +76,6 @@ namespace NOWA
 
 	bool CameraBehaviorComponent::connect(void)
 	{
-		
 		return true;
 	}
 
@@ -87,6 +88,22 @@ namespace NOWA
 			this->activeCamera = nullptr;
 		}
 		return true;
+	}
+
+	void CameraBehaviorComponent::onRemoveComponent(void)
+	{
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraBehaviorComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
+	}
+
+	void CameraBehaviorComponent::handleRemoveCameraBehavior(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataRemoveCameraBehavior> castEventData = boost::static_pointer_cast<EventDataRemoveCameraBehavior>(eventData);
+
+		// If camera has been removed by the CameraManager, then its behavior is also have been deleted, so reset the pointer
+		if (nullptr != this->baseCamera && this->baseCamera->getCamera() == castEventData->getCamera())
+		{
+			this->baseCamera = nullptr;
+		}
 	}
 
 	bool CameraBehaviorComponent::onCloned(void)
@@ -235,7 +252,7 @@ namespace NOWA
 		: CameraBehaviorComponent(),
 		moveSpeed(new Variant(CameraBehaviorBaseComponent::AttrMoveSpeed(), 20.0f, this->attributes)),
 		rotationSpeed(new Variant(CameraBehaviorBaseComponent::AttrRotationSpeed(), 20.0f, this->attributes)),
-		smoothValue(new Variant(CameraBehaviorBaseComponent::AttrSmoothValue(), 0.1f, this->attributes))
+		smoothValue(new Variant(CameraBehaviorBaseComponent::AttrSmoothValue(), 0.6f, this->attributes))
 	{
 		
 	}
@@ -413,7 +430,7 @@ namespace NOWA
 
 	CameraBehaviorFirstPersonComponent::CameraBehaviorFirstPersonComponent()
 		: CameraBehaviorComponent(),
-		smoothValue(new Variant(CameraBehaviorFirstPersonComponent::AttrSmoothValue(), 0.3f, this->attributes)),
+		smoothValue(new Variant(CameraBehaviorFirstPersonComponent::AttrSmoothValue(), 0.6f, this->attributes)),
 		rotationSpeed(new Variant(CameraBehaviorFirstPersonComponent::AttrRotationSpeed(), 0.5f, this->attributes)),
 		offsetPosition(new Variant(CameraBehaviorFirstPersonComponent::AttrOffsetPosition(), Ogre::Vector3(0.4f, 0.8f, -0.9f), this->attributes))
 	{
@@ -822,7 +839,7 @@ namespace NOWA
 
 	CameraBehaviorFollow2DComponent::CameraBehaviorFollow2DComponent()
 		: CameraBehaviorComponent(),
-		smoothValue(new Variant(CameraBehaviorFollow2DComponent::AttrSmoothValue(), 0.0f, this->attributes)),
+		smoothValue(new Variant(CameraBehaviorFollow2DComponent::AttrSmoothValue(), 0.6f, this->attributes)),
 		offsetPosition(new Variant(CameraBehaviorFollow2DComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 1.0f, -5.0f), this->attributes)),
 		borderOffset(new Variant(CameraBehaviorFollow2DComponent::AttrBorderOffset(), Ogre::Vector3(50.0f, 0.0f, 0.0f), this->attributes))
 	{
@@ -1031,7 +1048,7 @@ namespace NOWA
 	CameraBehaviorZoomComponent::CameraBehaviorZoomComponent()
 		: CameraBehaviorComponent(),
 		category(new Variant(CameraBehaviorZoomComponent::AttrCategory(), Ogre::String("All"), this->attributes)),
-		smoothValue(new Variant(CameraBehaviorZoomComponent::AttrSmoothValue(), 0.2f, this->attributes)),
+		smoothValue(new Variant(CameraBehaviorZoomComponent::AttrSmoothValue(), 0.6f, this->attributes)),
 		growMultiplicator(new Variant(CameraBehaviorZoomComponent::AttrGrowMultiplicator(), 2.0f, this->attributes))
 	{
 		this->growMultiplicator->setDescription("Sets a grow multiplicator how fast the orthogonal camera window size will increase, so that the game objects remain in view."

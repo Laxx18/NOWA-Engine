@@ -664,6 +664,9 @@
     <ClInclude Include="gameobject\AiLuaGoalComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
+    <ClInclude Include="camera\AttachCamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1229,6 +1232,9 @@
     </ClCompile>
     <ClCompile Include="gameobject\AiLuaGoalComponent.cpp">
       <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="camera\AttachCamera.cpp">
+      <Filter>camera</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

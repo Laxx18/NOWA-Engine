@@ -3,6 +3,7 @@
 
 #include "GameObjectComponent.h"
 #include "camera/BaseCamera.h"
+#include "main/Events.h"
 
 namespace NOWA
 {
@@ -36,6 +37,11 @@ namespace NOWA
 		* @see		GameObjectComponent::disconnect
 		*/
 		virtual bool disconnect(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
 
 		/**
 		 * @see		GameObjectComponent::onCloned
@@ -130,6 +136,8 @@ namespace NOWA
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrCameraGameObjectId(void) { return "Camera GameObject Id"; }
+	private:
+		void handleRemoveCameraBehavior(EventDataPtr eventData);
 	protected:
 		Variant* activated;
 		Variant* cameraGameObjectId;
@@ -352,8 +360,8 @@ namespace NOWA
 		Variant* rotationSpeed;
 		Variant* offsetPosition;
 	};
-	
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class EXPORTED CameraBehaviorThirdPersonComponent : public CameraBehaviorComponent
 	{

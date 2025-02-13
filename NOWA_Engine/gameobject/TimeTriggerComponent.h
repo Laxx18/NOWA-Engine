@@ -110,6 +110,18 @@ namespace NOWA
 		virtual bool disconnect(void) override;
 
 		/**
+		 * @brief Sets whether to activate just the one prior (predecessor) component, which is one above this component, or activate all components for this game object.
+		 * @param[in] activateOne
+		 */
+		void setActivateOne(bool activateOne);
+
+		/**
+		 * @brief Gets whether to activate just the one prior (predecessor) component, which is one above this component, or activate all components for this game object.
+		 * @return activateOne
+		 */
+		bool getActivateOne(void) const;
+
+		/**
 		 * @brief Sets the start time in milliseconds at which the prior component will be activated.
 		 * @param[in] startTime The start time in milliseconds to set
 		 */
@@ -152,12 +164,14 @@ namespace NOWA
 		void activateComponent(bool bActivate);
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
+		static const Ogre::String AttrActivateOne(void) { return "Activate One"; }
 		static const Ogre::String AttrStartTime(void) { return "Start Time"; }
 		static const Ogre::String AttrDuration(void){ return "Duration"; }
 		static const Ogre::String AttrRepeat(void) { return "Repeat"; }
 		static const Ogre::String AttrDeactivateAfterwards(void) { return "Deactivate Afterwards"; }
 	private:
 		Variant* activated;
+		Variant* activateOne;
 		Variant* startTime;
 		Variant* duration;
 		Variant* repeat;

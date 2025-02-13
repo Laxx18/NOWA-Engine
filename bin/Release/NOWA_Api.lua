@@ -3325,6 +3325,63 @@ return {
 			}
 		}
 	},
+	CameraBehaviorAttachComponent =
+	{
+		type = "class",
+		description = "Usage: This camera behavior can be used to attach it to follow a target game object directly. E.g. using a physics joint active slider, which attach this component to it to follow the slider, or for a camera drive etc.",
+		inherits = "CameraBehaviorComponent",
+		childs = 
+		{
+			setSmoothValue =
+			{
+				type = "method",
+				description = "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1",
+				args = "(number smoothValue)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSmoothValue =
+			{
+				type = "function",
+				description = "Gets the camera value for more smooth transform.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setOffsetPosition =
+			{
+				type = "method",
+				description = "Sets the camera offset position, it should be away from the game object.",
+				args = "(Vector3 offsetPosition)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetPosition =
+			{
+				type = "function",
+				description = "Gets the offset position, the camera is away from the game object.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			setOffsetOrientation =
+			{
+				type = "method",
+				description = "Sets the camera offset orientation.",
+				args = "(Vector3 offsetOrientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetOrientation =
+			{
+				type = "function",
+				description = "Gets the offset orietation of the camera.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			}
+		}
+	},
 	CameraBehaviorBaseComponent =
 	{
 		type = "class",
@@ -8915,6 +8972,30 @@ return {
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
 			},
+			getCameraBehaviorAttachComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(CameraBehaviorAttachComponent)",
+				valuetype = "CameraBehaviorAttachComponent"
+			},
+			getCameraBehaviorAttachComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorAttachComponent)",
+				valuetype = "CameraBehaviorAttachComponent"
+			},
+			getCameraBehaviorAttachComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorAttachComponent)",
+				valuetype = "CameraBehaviorAttachComponent"
+			},
 			getCrowdComponentFromIndex =
 			{
 				type = "function",
@@ -10770,6 +10851,14 @@ return {
 				args = "(AttributeEffectComponent other)",
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
+			},
+			castCameraBehaviorAttachComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorAttachComponent other)",
+				returns = "(CameraBehaviorAttachComponent)",
+				valuetype = "CameraBehaviorAttachComponent"
 			},
 			castCrowdComponent =
 			{

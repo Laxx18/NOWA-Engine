@@ -101,7 +101,7 @@ namespace NOWA
 					cameraBehavior->onClearData();
 
 					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(entry.first));
-					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
 
 					delete cameraBehavior;
 
@@ -315,8 +315,9 @@ namespace NOWA
 				// Deactivate the current camera and remove it from the map
 				for (auto& behavior : cameraData.behaviorData)
 				{
+					Ogre::String cameraName = it->first->getName();
 					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(it->first));
-					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
 
 					behavior.cameraBehavior->onClearData();
 					delete behavior.cameraBehavior;
@@ -352,8 +353,9 @@ namespace NOWA
 				// If the camera to be removed is not active, just remove it
 				for (auto& behavior : cameraData.behaviorData)
 				{
+					Ogre::String cameraName = it->first->getName();
 					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(it->first));
-					AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
+					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
 
 					behavior.cameraBehavior->onClearData();
 					delete behavior.cameraBehavior;
@@ -406,10 +408,10 @@ namespace NOWA
 		// Iterate through all cameras in the cameraDataMap
 		for (const auto& entry : this->cameraDataMap)
 		{
-			Ogre::String cameraName = entry.first->getName();
 			// Check if the camera is active
 			if (true == entry.second.isActive && false == entry.second.forSplitScreen)
 			{
+				Ogre::String cameraName = entry.first->getName();
 				return entry.first;
 			}
 		}

@@ -187,7 +187,7 @@ namespace NOWA
 		return Ogre::StringConverter::toString(quat);
 	}
 
-	Ogre::String toString(Ogre::Real val)
+	Ogre::String toString(double val)
 	{
 		return Ogre::StringConverter::toString(val);
 	}
@@ -198,16 +198,6 @@ namespace NOWA
 	}
 
 	Ogre::String toString(const Ogre::Radian& val)
-	{
-		return Ogre::StringConverter::toString(val);
-	}
-
-	Ogre::String toString(unsigned long val)
-	{
-		return Ogre::StringConverter::toString(val);
-	}
-
-	Ogre::String toString(int val)
 	{
 		return Ogre::StringConverter::toString(val);
 	}
@@ -256,7 +246,7 @@ namespace NOWA
 
 		luabind::module(lua)
 			[
-				luabind::def("toString", (Ogre::String(*)(Real)) & toString)
+				luabind::def("toString", (Ogre::String(*)(double)) & toString)
 			];
 
 		luabind::module(lua)
@@ -272,16 +262,6 @@ namespace NOWA
 		luabind::module(lua)
 			[
 				luabind::def("toString", (Ogre::String(*)(const Radian&)) & toString)
-			];
-
-		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(unsigned long)) & toString)
-			];
-
-		luabind::module(lua)
-			[
-				luabind::def("toString", (Ogre::String(*)(int)) & toString)
 			];
 
 		luabind::module(lua)

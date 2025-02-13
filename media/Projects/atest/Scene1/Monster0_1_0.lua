@@ -15,6 +15,9 @@ moveHorizontal = 0;
 rotation = 0;
 oldRotation = 0;
 isActive = false;
+firstTimeStart = true;
+firstTimeEnd = true;
+inputDeviceModule = nil;
 
 Monster0_1_0["connect"] = function(gameObject)
     monsterGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
@@ -29,6 +32,8 @@ Monster0_1_0["connect"] = function(gameObject)
     monsterAnimation:registerAnimation(AnimationBlender.ANIM_WALK_SOUTH, "walk-back");
 
     monsterAnimation:init1(AnimationBlender.ANIM_IDLE_2, true);
+    
+    inputDeviceModule = monsterGameObject:getInputDeviceComponent():getInputDeviceModule();
     
     --monsterAnimation:setDebugLog(true);
     
@@ -65,25 +70,27 @@ Monster0_1_0["update"] = function(dt)
     
     oldRotation = rotation;
     
-    if InputDeviceModule:isActionDown(NOWA_A_LEFT) then
+    if inputDeviceModule:isActionDown(NOWA_A_LEFT) then
         rotation = rotation - 3;
         isActive = true;
-    elseif InputDeviceModule:isActionDown(NOWA_A_RIGHT) then
+    elseif inputDeviceModule:isActionDown(NOWA_A_RIGHT) then
         rotation = rotation + 3;
         isActive = true;
     end
     
     local isRotating = oldRotation ~= rotation;
     
-    if InputDeviceModule:isActionDown(NOWA_A_UP) then
+    if inputDeviceModule:isActionDown(NOWA_A_UP) then
         moveHorizontal = speed;
         isActive = true;
-    elseif InputDeviceModule:isActionDown(NOWA_A_DOWN) then
+        firstTimeEnd = true;
+    elseif inputDeviceModule:isActionDown(NOWA_A_DOWN) then
         moveHorizontal = -speed;
         isActive = true;
+        firstTimeEnd = true;
     end
     
-    if InputDeviceModule:isActionDown(NOWA_A_JUMP) then
+    if inputDeviceModule:isActionDown(NOWA_A_JUMP) then
        monsterController:jump();
     end
     
@@ -124,9 +131,11 @@ Monster0_1_0["onContactFriction"] = function(gameObject0, gameObject1, playerCon
         otherGameObject = gameObject1;
     end
     
-    if (isActive == false) then
+    if (firstTimeStart == true) then
         terraGameObject:getTerraComponent():paintTerrainStart(playerContact:getPosition(), 10, 1);
-    else
+        firstTimeStart = false;
+    elseif (isActive == false and firstTimeEnd == true) then
+        firstTimeEnd = false;
         terraGameObject:getTerraComponent():paintTerrainEnd();
     end
     

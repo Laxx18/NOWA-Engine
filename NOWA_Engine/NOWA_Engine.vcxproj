@@ -344,6 +344,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Api.h" />
+    <ClInclude Include="camera\AttachCamera.h" />
     <ClInclude Include="camera\BaseCamera.h" />
     <ClInclude Include="camera\Camcorder.h" />
     <ClInclude Include="camera\CameraManager.h" />
@@ -561,6 +562,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Api.cpp" />
+    <ClCompile Include="camera\AttachCamera.cpp" />
     <ClCompile Include="camera\BaseCamera.cpp" />
     <ClCompile Include="camera\BasePhysicsCamera.cpp" />
     <ClCompile Include="camera\Camcorder.cpp" />

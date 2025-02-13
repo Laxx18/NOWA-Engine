@@ -21,7 +21,7 @@ namespace NOWA
 		camera(nullptr),
 		dummyEntity(nullptr),
 		baseCamera(nullptr),
-		timeSinceLastUpdate(5.0f),
+		timeSinceLastUpdate(0.0f),
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
 		bIsInSimulation(false),
@@ -254,12 +254,8 @@ namespace NOWA
 
 	bool CameraComponent::connect(void)
 	{
-		this->dummyEntity->setVisible(this->showDummyEntity->getBool());
-
-		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
-		{
-			this->gameObjectPtr->doNotTouchVisibleAttribute = true;
-		}
+		bool visible = this->showDummyEntity->getBool();
+		this->dummyEntity->setVisible(visible);
 
 		return true;
 	}
@@ -268,15 +264,14 @@ namespace NOWA
 	{
 		if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 		{
-			this->gameObjectPtr->doNotTouchVisibleAttribute = true;
 			this->dummyEntity->setVisible(false);
 		}
 		else
 		{
-			this->gameObjectPtr->doNotTouchVisibleAttribute = false;
 			this->dummyEntity->setVisible(true);
 		}
-		
+		this->bIsInSimulation = false;
+
 		return true;
 	}
 
@@ -368,11 +363,6 @@ namespace NOWA
 	{
 		this->bIsInSimulation = !notSimulating;
 
-		/*if (false == this->active->getBool())
-		{
-			return;
-		}*/
-
 		// Update camera values
 		if (this->timeSinceLastUpdate >= 0.0f)
 		{
@@ -412,19 +402,27 @@ namespace NOWA
 		{
 			this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 
-			// this->camera->detachFromParent();
-			// this->gameObjectPtr->getSceneNode()->attachObject(this->camera);
+			// Attach camera to a moving e.g. slider will work, but no camera behaviors will work anymore! Need different approach
+#if 0
+			Ogre::SceneNode* cameraParentNode = this->camera->getParentSceneNode();
+			this->camera->detachFromParent();
+			// this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(cameraParentNode);
+			this->camera->setPosition(Ogre::Vector3::ZERO);
+			this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
+			this->camera->setStatic(!this->gameObjectPtr->isDynamic());
+			this->gameObjectPtr->getSceneNode()->attachObject(this->camera);
+#endif
 
 			// As attribute? because it should be set to false, when several viewports are used
 			// this->camera->setAutoAspectRatio(true);
-#if 1
+
 			this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
 			this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
 			this->camera->setNearClipDistance(this->nearClipDistance->getReal());
 			this->camera->setFarClipDistance(this->farClipDistance->getReal());
 			this->camera->setQueryFlags(0 << 0);
 			this->setOrthographic(this->orthographic->getBool());
-#endif
+
 			// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
 			// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
 			if (true == CameraComponent::justCreated)
@@ -618,11 +616,24 @@ namespace NOWA
 		this->active->setValue(activated);
 		bool success = true;
 
+		Ogre::String name = this->camera->getName();
+
 		if (true == this->active->getBool())
 		{
 			// Hide entity for active camera
 			if (nullptr != this->camera)
 			{
+				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
+				this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+
+				// Really necessary, so that camera is always up to date with its parent node!
+
+				Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
+				Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+
+				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
 				{
@@ -700,6 +711,10 @@ namespace NOWA
 		{
 			if (true == this->bIsInSimulation)
 			{
+				this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+			}
+			else
+			{
 				this->dummyEntity->setVisible(true);
 			}
 
@@ -707,12 +722,7 @@ namespace NOWA
 			{
 				this->dummyEntity->setVisible(false);
 			}
-			else
-			{
-				this->gameObjectPtr->doNotTouchVisibleAttribute = false;
-			}
 
-			// AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, activated);
 			if (false == activated)
 			{
 				// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())

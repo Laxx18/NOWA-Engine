@@ -1614,21 +1614,13 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
 				throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");
 			}
-		}
 
-		// TODO: What about this?
-#if 0
-		// Process all priority connect components
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			const auto& gameObjectPtr = it->second;
-			auto componentPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<GameObjectComponent>());
-			if (true == componentPtr->getConnectPriority())
+			// Main camera must be activated again, if scene is stopped
+			if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
 			{
-				componentPtr->disconnect();
+				gameObjectPtr->setActivated(true);
 			}
 		}
-#endif
 
 		LuaScriptApi::getInstance()->stopInitScript("init.lua");
 		

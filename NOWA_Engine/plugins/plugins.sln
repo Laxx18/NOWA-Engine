@@ -57,6 +57,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ActivationComponent", "Acti
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AttributeEffectComponent", "AttributeEffectComponent\AttributeEffectComponent.vcxproj", "{4C883359-9754-4D1B-B3E2-35DE01F7EC0A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CameraBehaviorAttachComponent", "CameraBehaviorAttachComponent\CameraBehaviorAttachComponent.vcxproj", "{46C97B29-BEA1-47BF-8464-D5CF17B0B171}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -171,6 +173,10 @@ Global
 		{4C883359-9754-4D1B-B3E2-35DE01F7EC0A}.Debug|x64.Build.0 = Debug|x64
 		{4C883359-9754-4D1B-B3E2-35DE01F7EC0A}.Release|x64.ActiveCfg = Release|x64
 		{4C883359-9754-4D1B-B3E2-35DE01F7EC0A}.Release|x64.Build.0 = Release|x64
+		{46C97B29-BEA1-47BF-8464-D5CF17B0B171}.Debug|x64.ActiveCfg = Debug|x64
+		{46C97B29-BEA1-47BF-8464-D5CF17B0B171}.Debug|x64.Build.0 = Debug|x64
+		{46C97B29-BEA1-47BF-8464-D5CF17B0B171}.Release|x64.ActiveCfg = Release|x64
+		{46C97B29-BEA1-47BF-8464-D5CF17B0B171}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
