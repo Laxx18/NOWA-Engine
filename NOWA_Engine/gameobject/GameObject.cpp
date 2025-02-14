@@ -1850,6 +1850,11 @@ namespace NOWA
 	{
 		return this->useReflection->getBool();
 	}
+
+	bool GameObject::getCastShadows(void) const
+	{
+		return this->castShadows->getBool();
+	}
 	
 	void GameObject::setGlobal(bool global)
 	{

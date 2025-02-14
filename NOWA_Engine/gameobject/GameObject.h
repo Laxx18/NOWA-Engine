@@ -511,6 +511,12 @@ namespace NOWA
 		 * @return	useReflection True if this game object uses reflection, else false
 		 */
 		bool getUseReflection(void) const;
+
+		/**
+		 * @brief	Gets whether this game object does cast shadows
+		 * @return	castShadows True if this game object casts shadows, else false
+		 */
+		bool getCastShadows(void) const;
 		
 		/**
 		 * @brief		Sets whether this game object is global.

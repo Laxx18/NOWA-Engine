@@ -333,6 +333,7 @@ namespace NOWA
 
 	void HdrEffectComponent::resetShining(void)
 	{
+#if 0
 		if (true == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
 		{
 			return;
@@ -343,6 +344,7 @@ namespace NOWA
 			this->lightDirectionalComponent->setPowerScale(3.14159f);
 		}
 		this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.03375f, 0.05625f, 0.07875f), Ogre::ColourValue(0.04388f, 0.03291f, 0.02194f, 0.07312f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
+#endif
 	}
 
 	void HdrEffectComponent::postApplySunPower(void)

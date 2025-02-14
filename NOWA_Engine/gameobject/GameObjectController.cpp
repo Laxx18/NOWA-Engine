@@ -18,6 +18,7 @@
 #include "CameraBehaviorComponents.h"
 #include "LuaScriptComponent.h"
 #include "AiLuaComponent.h"
+#include "CameraComponent.h"
 #include "main/AppStateManager.h"
 
 #include <algorithm>    // std::set_difference, std::sort
@@ -483,6 +484,7 @@ namespace NOWA
 		clonedGameObjectPtr->setTagName(originalGameObjectPtr->getTagName());
 		clonedGameObjectPtr->setControlledByClientID(originalGameObjectPtr->getControlledByClientID());
 		clonedGameObjectPtr->setUseReflection(originalGameObjectPtr->getUseReflection());
+		clonedGameObjectPtr->setGlobal(originalGameObjectPtr->getGlobal());
 		clonedGameObjectPtr->setDefaultDirection(originalGameObjectPtr->getDefaultDirection());
 		clonedGameObjectPtr->setGlobal(originalGameObjectPtr->getGlobal());
 		clonedGameObjectPtr->setClampY(originalGameObjectPtr->getClampY());
@@ -491,6 +493,14 @@ namespace NOWA
 		clonedGameObjectPtr->setRenderDistance(originalGameObjectPtr->getRenderDistance());
 		clonedGameObjectPtr->setLodDistance(originalGameObjectPtr->getLodDistance());
 		clonedGameObjectPtr->setShadowRenderingDistance(originalGameObjectPtr->getShadowRenderingDistance());
+
+		clonedGameObjectPtr->lodLevels->setValue(originalGameObjectPtr->lodLevels->getUInt());
+		clonedGameObjectPtr->lodDistance->setValue(originalGameObjectPtr->lodDistance->getReal());
+
+		for (size_t i = 0; i < originalGameObjectPtr->dataBlocks.size(); i++)
+		{
+			clonedGameObjectPtr->setDatablock(originalGameObjectPtr->dataBlocks[i]);
+		}
 
 		if (!clonedGameObjectPtr->init())
 		{
@@ -1618,7 +1628,14 @@ namespace NOWA
 			// Main camera must be activated again, if scene is stopped
 			if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
 			{
-				gameObjectPtr->setActivated(true);
+				auto& cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+				if (nullptr != cameraCompPtr)
+				{
+					if (false == cameraCompPtr->isActivated())
+					{
+						cameraCompPtr->setActivated(true);
+					}
+				}
 			}
 		}
 

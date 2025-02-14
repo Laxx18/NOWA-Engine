@@ -669,6 +669,7 @@ namespace NOWA
 						auto planarReflectionCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PlanarReflectionComponent>());
 						if (nullptr != planarReflectionCompPtr)
 						{
+							planarReflectionCompPtr->destroyPlane();
 							planarReflectionCompPtr->createPlane();
 						}
 					}

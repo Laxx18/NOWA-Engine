@@ -1137,33 +1137,9 @@ namespace NOWA
 
 			nodeXML->append_attribute(doc.allocate_attribute("id", XMLConverter::ConvertString(doc, static_cast<unsigned int>(hash(ogreNode->getName())))));
 
-			// Special case with camera, as the scene node does not move along with the camera, so the position/orientation would always be wrong
-			Ogre::Camera* mainCamera = nullptr;
-			if ("MainCamera" == ogreNode->getName())
-			{
-				auto movableObject = static_cast<Ogre::SceneNode*>(ogreNode)->getAttachedObject(0);
-				mainCamera = dynamic_cast<Ogre::Camera*>(movableObject);
-				if (nullptr == mainCamera)
-				{
-					if (static_cast<Ogre::SceneNode*>(ogreNode)->numAttachedObjects() > 1)
-					{
-						auto movableObject = static_cast<Ogre::SceneNode*>(ogreNode)->getAttachedObject(1);
-						mainCamera = dynamic_cast<Ogre::Camera*>(movableObject);
-					}
-				}
-			}
 			// Position
 			{
-				Ogre::Vector3 position = Ogre::Vector3::ZERO;
-				if (nullptr != mainCamera)
-				{
-					position = mainCamera->getDerivedPosition();
-				}
-				else
-				{
-					position = ogreNode->_getDerivedPositionUpdated();
-				}
-
+				Ogre::Vector3 position = ogreNode->_getDerivedPositionUpdated();
 				xml_node<>* positionXML = doc.allocate_node(node_element, "position");
 				positionXML->append_attribute(doc.allocate_attribute("x", XMLConverter::ConvertString(doc, position.x)));
 				positionXML->append_attribute(doc.allocate_attribute("y", XMLConverter::ConvertString(doc, position.y)));
@@ -1173,16 +1149,7 @@ namespace NOWA
 
 			// Rotation
 			{
-				Ogre::Quaternion orientation = Ogre::Quaternion::IDENTITY;
-				if (nullptr != mainCamera)
-				{
-					orientation = mainCamera->getDerivedOrientation();
-				}
-				else
-				{
-					orientation = ogreNode->_getDerivedOrientationUpdated();
-				}
-
+				Ogre::Quaternion orientation = ogreNode->_getDerivedOrientationUpdated();
 				xml_node<>* rotationXML = doc.allocate_node(node_element, "rotation");
 				rotationXML->append_attribute(doc.allocate_attribute("qw", XMLConverter::ConvertString(doc, orientation.w)));
 				rotationXML->append_attribute(doc.allocate_attribute("qx", XMLConverter::ConvertString(doc, orientation.x)));

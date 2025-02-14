@@ -126,6 +126,8 @@ namespace NOWA
 	private:
 		void createPlane(void);
 
+		void destroyPlane(void);
+
 		void actualizePlanarReflection(void);
 	private:
 		Variant* useAccurateLighting;
@@ -138,8 +140,10 @@ namespace NOWA
 		Ogre::Real transformUpdateTimer;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
+		Ogre::String oldDatablockName;
 		Ogre::PlanarReflections::TrackedRenderable* trackedRenderable;
 		bool planarReflectionMeshCreated;
+		Ogre::Item* mirrorPlaneItem;
 	};
 
 }; //namespace end

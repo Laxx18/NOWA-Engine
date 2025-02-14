@@ -189,24 +189,19 @@ namespace NOWA
 		// Search for the prior id of the cloned game object and set the new id and set the new id, if not found set better 0, else the game objects may be corrupt!
 		GameObjectPtr spawnTargetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getClonedGameObjectFromPriorId(this->spawnTargetId->getULong());
 		if (nullptr != spawnTargetGameObjectPtr)
+		{
 			// Only the id is important!
 			this->setSpawnTargetId(spawnTargetGameObjectPtr->getId());
+		}
 		else
+		{
 			this->setSpawnTargetId(0);
+		}
 		return true;
 	}
 
 	bool SpawnComponent::initSpawnData(void)
 	{
-		// Get the physics component because the spawn component operates on it.
-		this->physicsCompPtr = makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsComponent>());
-		/*if (nullptr == this->physicsCompPtr)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Could not init spawn data because the game object: " 
-				+ this->gameObjectPtr->getName() + " has no kind of physics component!");
-			return false;
-		}*/
-
 		// Store the init position
 		this->initPosition = this->gameObjectPtr->getPosition();
 		this->initOrientation = this->gameObjectPtr->getOrientation();
@@ -282,29 +277,15 @@ namespace NOWA
 				return;
 			}
 
-			/*if (nullptr != this->physicsCompPtr)
+			if (false == this->spawnAtOrigin->getBool())
 			{
-				this->physicsCompPtr->setPosition(this->initPosition);
-				this->physicsCompPtr->setOrientation(this->initOrientation);
+				this->initPosition = this->gameObjectPtr->getPosition();
+				this->initOrientation = this->gameObjectPtr->getOrientation();
 			}
-			else
-			{
-				this->gameObjectPtr->getSceneNode()->setPosition(this->initPosition);
-				this->gameObjectPtr->getSceneNode()->setOrientation(this->initOrientation);
-			}*/
-
-			this->initPosition = this->gameObjectPtr->getPosition();
-			this->initOrientation = this->gameObjectPtr->getOrientation();
 			
 			// Search for spawn target game object here, because in post init it could be, that the target game object has not been loaded at that time!
 			if (true == this->firstTimeSetSpawnTarget)
 			{
-				// If the spawner is the same game object as this, set it visible to false when simulating
-				if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
-				{
-					this->spawnTargetGameObject->getSceneNode()->setVisible(false);
-				}
-				
 				if (this->spawnTargetId->getULong() != this->gameObjectPtr->getId())
 				{
 					auto& tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
@@ -346,11 +327,6 @@ namespace NOWA
 								this->initPosition + (this->initOrientation * this->offsetPosition->getVector3()),
 								this->initOrientation * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),
 								Ogre::Vector3::UNIT_SCALE);
-
-							// clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-							// 	this->offsetPosition->getVector3(), MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), Ogre::Vector3::UNIT_SCALE);
-							
-							clonedGameObjectPtr->setVisible(true);
 						}
 						else
 						{
@@ -360,7 +336,6 @@ namespace NOWA
 									this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3()), 
 									this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE);
-								clonedGameObjectPtr->setVisible(true);
 							}
 							else
 							{
@@ -370,8 +345,6 @@ namespace NOWA
 									this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3()), 
 									this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE);
-								clonedGameObjectPtr->setVisible(true);
-
 							}
 						}
 						if (nullptr != clonedGameObjectPtr)

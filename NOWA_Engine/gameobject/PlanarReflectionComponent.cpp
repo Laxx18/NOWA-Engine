@@ -17,29 +17,6 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	class SetMirrorDatablockProcess : public NOWA::Process
-	{
-	public:
-		explicit SetMirrorDatablockProcess(PlanarReflectionComponent* planarReflectionComponent)
-			: planarReflectionComponent(planarReflectionComponent)
-		{
-
-		}
-	protected:
-		virtual void onInit(void) override
-		{
-			this->succeed();
-			this->planarReflectionComponent->setDatablockName(planarReflectionComponent->getDatablockName());
-		}
-
-		virtual void onUpdate(float dt) override
-		{
-			this->succeed();
-		}
-	private:
-		PlanarReflectionComponent* planarReflectionComponent;
-	};
-
 	PlanarReflectionComponent::PlanarReflectionComponent()
 		: GameObjectComponent(),
 		transformUpdateTimer(0.0f),
@@ -47,6 +24,7 @@ namespace NOWA
 		oldOrientation(Ogre::Quaternion::IDENTITY),
 		trackedRenderable(nullptr),
 		planarReflectionMeshCreated(false),
+		mirrorPlaneItem(nullptr),
 		useAccurateLighting(new Variant(PlanarReflectionComponent::AttrAccurateLighting(), true, this->attributes)),
 		imageSize(new Variant(PlanarReflectionComponent::AttrImageSize(), Ogre::Vector2(512.0f, 512.0f), this->attributes)),
 		useMipmaps(new Variant(PlanarReflectionComponent::AttrMipmaps(), true, this->attributes)),
@@ -70,6 +48,8 @@ namespace NOWA
 		// this->mirrorSize->setDescription("The mirror plane size.");
 		this->datablockName->setDescription("Datablock to set for more heavy mirror computation. When left empty cheaper unlit is used automatically.");
 		this->transformUpdateRateSec->setDescription("Sets the update rate at which the mirror will be re-adjusted. Default is each halb second due to performance reasons.");
+
+		this->oldDatablockName = this->datablockName->getString();
 	}
 
 	PlanarReflectionComponent::~PlanarReflectionComponent()
@@ -143,7 +123,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlanarReflectionComponent] Init planar reflection component for game object: " + this->gameObjectPtr->getName());
 
-		this->createPlane();
+		this->setDatablockName(this->datablockName->getString());
 
 		return true;
 	}
@@ -188,17 +168,13 @@ namespace NOWA
 			{
 				if (nullptr != this->trackedRenderable)
 				{
-					Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-					if (nullptr != entity)
+					WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+					if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
 					{
-						WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-						if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
-						{
-							workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
-								static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
-								this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
-								this->mirrorSize->getVector2());
-						}
+						workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
+							static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
+							this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
+							this->mirrorSize->getVector2());
 					}
 				}
 			}
@@ -209,17 +185,13 @@ namespace NOWA
 				{
 					if (nullptr != this->trackedRenderable)
 					{
-						Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-						if (nullptr != entity)
+						WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+						if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
 						{
-							WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-							if (nullptr != workspaceBaseComponent && true == workspaceBaseComponent->getUsePlanarReflection())
-							{
-								workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
-									static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
-									this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
-									this->mirrorSize->getVector2());
-							}
+							workspaceBaseComponent->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
+								static_cast<unsigned int>(this->imageSize->getVector2().x), static_cast<unsigned int>(this->imageSize->getVector2().y),
+								this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
+								this->mirrorSize->getVector2());
 						}
 					}
 					this->oldOrientation = this->gameObjectPtr->getOrientation();
@@ -229,122 +201,10 @@ namespace NOWA
 		}
 	}
 
-#if 0
-	void PlanarReflectionComponent::createPlanarReflection(void)
-	{
-		if (nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections())
-		{
-			this->oldPosition = this->gameObjectPtr->getPosition();
-			this->oldOrientation = this->gameObjectPtr->getOrientation();
-
-			this->gameObjectPtr->setUseReflection(false);
-			this->gameObjectPtr->getAttribute(GameObject::AttrUseReflection())->setVisible(false);
-			this->gameObjectPtr->getAttribute(GameObject::AttrMeshName())->setVisible(false);
-			this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(false);
-			// Create new mirror plane
-			Ogre::String meshName = this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-
-			// Problem: When there is a planar reflection active, the plane must not be destroyed!, else crash, 
-			// so check if it needs to be created for the first time, if not and mirror size is changed
-
-			// Check if it has an item, but not a missing one!
-			if (nullptr == this->gameObjectPtr->getMovableObject<Ogre::Item>() || "Missing.mesh" == this->gameObjectPtr->getMovableObject<Ogre::Item>()->getMesh()->getName())
-			{
-				Ogre::Item* item = nullptr;
-
-				Ogre::ResourcePtr resourcePtr = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
-
-				if (nullptr != resourcePtr)
-				{
-					Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
-					Ogre::MeshManager::getSingletonPtr()->remove(resourcePtr->getHandle());
-				}
-
-				// Do not scale twice!
-				Ogre::Vector2 planeScale = Ogre::Vector2::UNIT_SCALE;
-				if (1.0f == this->gameObjectPtr->getSceneNode()->getScale().x)
-					planeScale = this->mirrorSize->getVector2().x;
-				if (1.0f == this->gameObjectPtr->getSceneNode()->getScale().y)
-					planeScale = this->mirrorSize->getVector2().y;
-
-				Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(this->gameObjectPtr->getName() + "_PlaneMirrorUnlit", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-					Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y,
-					Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-				// MathHelper::getInstance()->ensureHasTangents(planeMeshV1.dynamicCast<Ogre::v1::Mesh>());
-
-				Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(this->gameObjectPtr->getName() + "_PlaneMirrorUnlit", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
-
-				planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(meshName, "General", Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y,
-					1, 1, true, 1, 1, 1, Ogre::Vector3::UNIT_Y, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-				// Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
-
-				// Later: Make scene node and item static!
-				item = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
-				item->setName(this->gameObjectPtr->getName() + "mesh");
-				// MathHelper::getInstance()->substractOutTangentsForShader(item);
-
-				// Check whether to cast shadows
-				bool castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
-				bool visible = this->gameObjectPtr->getMovableObject()->getVisible();
-				// this->gameObjectPtr->setDynamic(true);
-				item->setCastShadows(castShadows);
-				this->gameObjectPtr->getSceneNode()->attachObject(item);
-
-				// Set the here newly created item for this game object
-				this->gameObjectPtr->init(item);
-
-				item->setVisible(visible);
-				this->gameObjectPtr->getSceneNode()->setVisible(visible);
-
-				// Check if a physics artifact component does exist for this game object and recreate the collision shape when the plane has changed
-				auto& physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
-				if (nullptr != physicsArtifactComponent)
-				{
-					// Attention: what is with joints in post init, is it required to recreate also the joints, if the collision does change for the physics body??????????
-					if (nullptr != physicsArtifactComponent->getBody())
-					{
-						physicsArtifactComponent->reCreateCollision();
-					}
-					else
-					{
-						physicsArtifactComponent->createStaticBody();
-					}
-				}
-				// Register after the component has been created
-				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-			}
-			else
-			{
-				this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->mirrorSize->getVector2().x, this->mirrorSize->getVector2().y, 1.0f));
-				// If there is a physics component, it needs to be scaled too
-				auto& physicsCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<PhysicsComponent>());
-				if (nullptr != physicsCompPtr)
-					physicsCompPtr->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-			}
-
-			bool canUseComputeMipmaps = Ogre::Root::getSingletonPtr()->getRenderSystem()->getCapabilities()->hasCapability(Ogre::RSC_COMPUTE_PROGRAM);
-			if (false == canUseComputeMipmaps)
-			{
-				this->useMipmapMethodCompute->setValue(false);
-			}
-
-			this->planarReflectionMeshCreated = true;
-
-			// this->setDatablockName("NOWAGlassRoughness");
-			this->setDatablockName(this->datablockName->getString());
-
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(1.0f));
-			delayProcess->attachChild(NOWA::ProcessPtr(new SetMirrorDatablockProcess(this)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
-		}
-	}
-#endif
-
 	void PlanarReflectionComponent::createPlane(void)
 	{
-		if (nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated)
+		if ((nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated) 
+			|| (nullptr == this->mirrorPlaneItem))
 		{
 			this->oldPosition = this->gameObjectPtr->getPosition();
 			this->oldOrientation = this->gameObjectPtr->getOrientation();
@@ -357,7 +217,7 @@ namespace NOWA
 			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->removePlanarReflectionsActor(this->gameObjectPtr->getId());
 
 			// Create new mirror plane
-			Ogre::String meshName = this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+			Ogre::String meshName = this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_PlaneMirrorUnlit";
 
 			// Do not scale twice!
 			Ogre::Vector2 planeScale = Ogre::Vector2::UNIT_SCALE;
@@ -366,37 +226,44 @@ namespace NOWA
 			if (1.0f == this->gameObjectPtr->getSceneNode()->getScale().y)
 				planeScale = this->mirrorSize->getVector2().y;
 
-			Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(this->gameObjectPtr->getName() + "_PlaneMirrorUnlit", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+			Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+			// Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
+			if (nullptr != resourceV1)
+			{
+				Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+				Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
+			}
+
+			// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+			Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+			if (nullptr != resourceV2)
+			{
+				Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+				Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+			}
+
+			Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
 				Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y,
 				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-			// MathHelper::getInstance()->ensureHasTangents(planeMeshV1.dynamicCast<Ogre::v1::Mesh>());
-
-			Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(this->gameObjectPtr->getName() + "_PlaneMirrorUnlit", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
-
-			planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(meshName, "General", Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y,
-				1, 1, true, 1, 1, 1, Ogre::Vector3::UNIT_Y, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-			// Check whether to cast shadows
-			bool castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
-			bool visible = this->gameObjectPtr->getMovableObject()->getVisible();
+			Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
 
 			// Later: Make scene node and entity static!
-			Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
+			this->mirrorPlaneItem = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
 
 			this->gameObjectPtr->setDynamic(true);
-			item->setCastShadows(castShadows);
-			this->gameObjectPtr->getSceneNode()->attachObject(item);
+			this->mirrorPlaneItem->setCastShadows(this->gameObjectPtr->getCastShadows());
+			this->gameObjectPtr->getSceneNode()->attachObject(this->mirrorPlaneItem);
 
 			// Set the here newly created entity for this game object
-			this->gameObjectPtr->init(item);
+			this->gameObjectPtr->init(this->mirrorPlaneItem);
 
 			// Get the used data block name 0
 			/*Ogre::String dataBlock = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0")->getString();
 			if ("Missing" != dataBlock)
-				item->setDatablock(dataBlock);*/
+				this->mirrorPlaneItem->setDatablock(dataBlock);*/
 
-			item->setName(this->gameObjectPtr->getName() + "mesh");
+			this->mirrorPlaneItem->setName(this->gameObjectPtr->getName() + "mesh");
 
 			// When plane is re-created actualize the data block component so that the plane gets the data block
 
@@ -406,49 +273,7 @@ namespace NOWA
 				this->datablockName->setValue(this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0")->getString());
 			}
 
-			/*
-			Ogre::HlmsPbsDatablock* sourceDataBlock = static_cast<Ogre::HlmsPbsDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock(this->datablockName->getString()));
-			if (nullptr != sourceDataBlock)
-			{
-				Ogre::String clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-				bool duplicateItem = false;
-
-				do
-				{
-					try
-					{
-						this->clonedDatablock = sourceDataBlock->clone(clonedDatablockName);
-						duplicateItem = false;
-					}
-					catch (const Ogre::Exception& exception)
-					{
-						duplicateItem = true;
-						clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(static_cast<int>(Ogre::Math::RangeRandom(0.0f, 100.0f)));
-					}
-				} while (true == duplicateItem);
-
-				if (nullptr != this->clonedDatablock)
-				{
-					item->setDatablock(this->clonedDatablock);
-				}
-			}
-			
-			for (size_t i = 0; i < item->getNumSubItems(); i++)
-			{
-				auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-				if (nullptr != sourceDataBlock)
-				{
-					// Deactivate fresnel by default, because it looks ugly
-					if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-					{
-						sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-					}
-				}
-			}*/
-
-
-			item->setVisible(visible);
-			this->gameObjectPtr->getSceneNode()->setVisible(visible);
+			this->mirrorPlaneItem->setVisible(this->gameObjectPtr->isVisible());
 
 			// Check if a physics artifact component does exist for this game object and recreate the collision shape when the plane has changed
 			auto& physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());
@@ -486,24 +311,19 @@ namespace NOWA
 
 
 			this->planarReflectionMeshCreated = true;
+		}
+	}
 
-			// this->setDatablockName(this->datablockName->getString());
+	void PlanarReflectionComponent::destroyPlane(void)
+	{
+		// Note: This is enough, as in game object init(...) the old movable object is destroyed, if there comes in a new movable object pointer
+		this->mirrorPlaneItem = nullptr;
+		if (nullptr != this->trackedRenderable)
+		{
+			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->removeRenderable(this->trackedRenderable->renderable);
 
-			// Set first other datablock (causes in Ogre internal refresh etc.) and in delay process, the actual one is set
-			/*Ogre::String oldDatablockName = this->datablockName->getString();
-			if ("NOWAGlassRoughness" == this->datablockName->getString())
-			{
-				this->setDatablockName("NOWAGlassRoughness2");
-			}
-			else
-			{
-				this->setDatablockName("NOWAGlassRoughness");
-			}
-			this->setDatablockName(oldDatablockName);*/
-
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(1.0f));
-			delayProcess->attachChild(NOWA::ProcessPtr(new SetMirrorDatablockProcess(this)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			delete this->trackedRenderable;
+			this->trackedRenderable = nullptr;
 		}
 	}
 
@@ -544,20 +364,7 @@ namespace NOWA
 		}
 		else if (PlanarReflectionComponent::AttrDatablockName() == attribute->getName())
 		{
-			// WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->removePlanarReflectionsActor(this->gameObjectPtr->getId());
 			this->setDatablockName(attribute->getString());
-
-			/*Ogre::String oldDatablockName = attribute->getString();
-			if ("NOWAGlassRoughness" == oldDatablockName)
-			{
-				this->setDatablockName("NOWAGlassRoughness2");
-			}
-			else
-			{
-				this->setDatablockName("NOWAGlassRoughness");
-			}
-			this->setDatablockName(oldDatablockName);*/
-
 		}
 		else if (PlanarReflectionComponent::AttrTransformUpdateRateSec() == attribute->getName())
 		{
@@ -696,7 +503,16 @@ namespace NOWA
 		this->datablockName->setValue(datablockName);
 
 		if (nullptr == this->gameObjectPtr || false == this->planarReflectionMeshCreated)
+		{
 			return;
+		}
+
+		if (this->oldDatablockName != datablockName)
+		{
+			this->destroyPlane();
+			this->createPlane();
+			this->oldDatablockName = datablockName;
+		}
 
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
 		if (nullptr != workspaceBaseComponent && false == workspaceBaseComponent->getUsePlanarReflection())
@@ -717,15 +533,6 @@ namespace NOWA
 			if (false == this->datablockName->getString().empty())
 			{
 				item->setDatablock(this->datablockName->getString());
-				auto datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
-				Ogre::TextureGpu* roughnessTexture = datablock->getTexture(Ogre::PBSM_ROUGHNESS);
-				if (nullptr != roughnessTexture)
-				{
-					Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-					roughnessTexture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-					hlmsTextureManager->waitForStreamingCompletion();
-				}
 			}
 			else
 			{
@@ -750,15 +557,11 @@ namespace NOWA
 				this->useMipmaps->getBool(), this->useMipmapMethodCompute->getBool(), this->gameObjectPtr->getPosition(), this->gameObjectPtr->getOrientation(),
 				this->mirrorSize->getVector2());
 
-			if (nullptr != this->trackedRenderable)
+			if (nullptr == this->trackedRenderable)
 			{
-				WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->removeRenderable(this->trackedRenderable->renderable);
-
-				delete this->trackedRenderable;
+				this->trackedRenderable = new Ogre::PlanarReflections::TrackedRenderable(item->getSubItem(0), item, Ogre::Vector3::UNIT_Z, Ogre::Vector3(0, 0, 0));
+				WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->addRenderable(*trackedRenderable);
 			}
-
-			this->trackedRenderable = new Ogre::PlanarReflections::TrackedRenderable(item->getSubItem(0), item, Ogre::Vector3::UNIT_Z, Ogre::Vector3(0, 0, 0));
-			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections()->addRenderable(*trackedRenderable);
 		}
 	}
 
