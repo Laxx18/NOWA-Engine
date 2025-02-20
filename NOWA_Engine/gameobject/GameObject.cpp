@@ -1791,7 +1791,7 @@ namespace NOWA
 							{
 								pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), workspaceBaseComponent->getDynamicCubemapTexture());
 								pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), false);
+								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
 								pbsDatablock->setRoughness(0.001f);
 								this->setDataBlockPbsReflectionTextureName("cubemap");
 							}
@@ -1826,7 +1826,7 @@ namespace NOWA
 							{
 								pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, workspaceBaseComponent->getDynamicCubemapTexture());
 								pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), false);
+								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
 								pbsDatablock->setRoughness(0.001f);
 								this->setDataBlockPbsReflectionTextureName("cubemap");
 							}

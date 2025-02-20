@@ -432,9 +432,6 @@
     <ClInclude Include="gameobject\TagChildNodeComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\BillboardComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\RibbonTrailComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -1002,9 +999,6 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\TagChildNodeComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\BillboardComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\RibbonTrailComponent.cpp">

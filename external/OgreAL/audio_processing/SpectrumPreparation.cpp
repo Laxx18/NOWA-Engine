@@ -90,16 +90,19 @@ namespace OgreAL
 			for (int index = 0; index < this->numberOfSamplesPerBar.size(); ++index)
 			{
 				previousSpectrum = spectrum[index];
-				for (int frec = 0; frec < this->numberOfSamplesPerBar[index]  && indexFFT < data.size(); ++frec)
+				for (int frec = 0; frec < this->numberOfSamplesPerBar[index] && indexFFT < data.size(); ++frec)
 				{
 					spectrum[index] += data[indexFFT];
 					++indexFFT;
 				}
-				spectrum[index] /= static_cast<Ogre::Real>(this->numberOfSamplesPerBar[index]);
+				if (this->numberOfSamplesPerBar[index] > 0)
+				{
+					spectrum[index] /= static_cast<Ogre::Real>(this->numberOfSamplesPerBar[index]);
+				}
 
 				if (this->smoothFactor > 0.0f)
 				{
-					spectrum[index] = this->lowPassFilter(spectrum[index], previousSpectrum, this->smoothFactor);
+					spectrum[index] = this->emaFilter(spectrum[index], previousSpectrum, this->smoothFactor);
 				}
 			}
 		}
@@ -188,16 +191,9 @@ namespace OgreAL
 
 	std::vector<Ogre::Real> SpectrumPreparationLogarithm::getSpectrum(std::vector<Ogre::Real>& data)
 	{
-		// And make a grouping of the FFT data using this limits. Take into account than frequency values below the first component of our 
-		// FFT can’t be represented in the visualizer, so the range 0-11Hz, 11-22Hz and 22-43Hz must be grouped together in the first bar for this example. 
-		// The first component of the FFT data, corresponding for the range 0-43Hz, will be set to the first bar, discarding the bars of the 0-11 and 11-22. 
-		// Depending on the octave divisions this solution must be applied to the next intervals too.
-		// When we know how many samples we need for each bar, we only need to iterate through the FFT data taking the average of this samples.
-
 		std::vector<Ogre::Real> spectrum(this->numberOfSamplesPerBar.size(), 0.0f);
 
-		// Only read / display half of the buffer typically for analysis 
-		// as the 2nd half is usually the same data reversed due to the nature of the way FFT works.
+		// Only read / display half of the buffer for analysis
 		int length = this->spectrumProcessingSize / 2;
 
 		if (length > 0)
@@ -212,16 +208,23 @@ namespace OgreAL
 					spectrum[index] += data[indexFFT];
 					++indexFFT;
 				}
-				spectrum[index] /= static_cast<Ogre::Real>(this->numberOfSamplesPerBar[index]);
 
+				if (this->numberOfSamplesPerBar[index] > 0)
+				{
+					spectrum[index] /= static_cast<Ogre::Real>(this->numberOfSamplesPerBar[index]);
+				}
+
+				// Apply logarithmic scaling to reduce large peaks and enhance small signals
+				spectrum[index] = std::log(1.0f + spectrum[index]);
+
+				// Apply smoothing if needed
 				if (this->smoothFactor > 0.0f)
 				{
-					spectrum[index] = this->lowPassFilter(spectrum[index], previousSpectrum, this->smoothFactor);
+					spectrum[index] = this->emaFilter(spectrum[index], previousSpectrum, this->smoothFactor);
 				}
 			}
 		}
 
 		return std::move(spectrum);
 	}
-
 };

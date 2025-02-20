@@ -1,5 +1,5 @@
 #ifndef LUA_SCRIPT_COMPONENT_H
-#define BILLBOARD_COMPONENT_H
+#define LUA_SCRIPT_COMPONENT_H
 
 #include "GameObjectComponent.h"
 #include "modules/LuaScript.h"

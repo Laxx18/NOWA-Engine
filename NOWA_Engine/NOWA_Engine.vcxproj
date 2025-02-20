@@ -368,7 +368,6 @@
     <ClInclude Include="gameobject\AnimationComponent.h" />
     <ClInclude Include="gameobject\AnimationComponentV2.h" />
     <ClInclude Include="gameobject\BackgroundScrollComponent.h" />
-    <ClInclude Include="gameobject\BillboardComponent.h" />
     <ClInclude Include="gameobject\CameraBehaviorComponents.h" />
     <ClInclude Include="gameobject\CameraComponent.h" />
     <ClInclude Include="gameobject\CompositorEffectComponents.h" />
@@ -587,7 +586,6 @@
     <ClCompile Include="gameobject\AnimationComponentV2.cpp" />
     <ClCompile Include="gameobject\AttributesComponent.cpp" />
     <ClCompile Include="gameobject\BackgroundScrollComponent.cpp" />
-    <ClCompile Include="gameobject\BillboardComponent.cpp" />
     <ClCompile Include="gameobject\CameraBehaviorComponents.cpp" />
     <ClCompile Include="gameobject\CameraComponent.cpp" />
     <ClCompile Include="gameobject\CompositorEffectComponents.cpp" />

@@ -39,40 +39,10 @@ using namespace Ogre;
 
 // http://www.gamedev.net/topic/525692-luabind-ownership-and-destruction/
 
-//#define LuaClassNonDeletable(in_class)
-//namespace luabind
-//{
-//	namespace detail
-//	{
-//		template<> struct delete_s<in_class>
-//		{
-//			static void apply(void* ptr)
-//			{
-//			}
-//		};
-//		template<> struct destruct_only_s<in_class>
-//		{
-//			static void apply(void* ptr)
-//			{
-//			}
-//		};
-//	}
-//}
-//
-//LuaClassNonDeletable(GameObject)
-//LuaClassNonDeletable(GameObjectComponent)
-//LuaClassNonDeletable(PhysicsComponent)
-
 // ***POLICY SOURCE***
 // Here are the contents of table_policy.hpp:
 
 #include <luabind/config.hpp>
-
-// #include <luabind/detail/call.hpp>
-// #include <boost/preprocessor/iteration/detail/local.hpp>
-
-// #define BOOST_PP_LOCAL_LIMITS (1, 2)
-
 #include <luabind/detail/policy.hpp>
 
 namespace
@@ -83,7 +53,6 @@ namespace
 
 #define	AddFunctionToCollection(function, description) \
 		LuaScriptApi::getInstance()->addFunctionToCollection(function, description)
-
 
 	std::vector<Ogre::String> split(const Ogre::String& content, char delimiter)
 	{
@@ -1013,13 +982,13 @@ namespace NOWA
 
 		AddClassToCollection("Mouse", "class", "OIS mouse class.");
 		AddClassToCollection("Mouse", "MouseState getMouseState()", "Gets the mouse button state.");
-		AddClassToCollection("MouseButtonID", "MB_LEFT", "Left mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_MIDDLE", "Middle mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_BUTTON_3", "3 mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_BUTTON_4", "4 mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_BUTTON_5", "5 mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_BUTTON_6", "6 mouse button.");
-		AddClassToCollection("MouseButtonID", "MB_BUTTON_7", "7 mouse button.");
+		AddClassToCollection("Mouse", "MB_LEFT", "Left mouse button.");
+		AddClassToCollection("Mouse", "MB_MIDDLE", "Middle mouse button.");
+		AddClassToCollection("Mouse", "MB_BUTTON_3", "3 mouse button.");
+		AddClassToCollection("Mouse", "MB_BUTTON_4", "4 mouse button.");
+		AddClassToCollection("Mouse", "MB_BUTTON_5", "5 mouse button.");
+		AddClassToCollection("Mouse", "MB_BUTTON_6", "6 mouse button.");
+		AddClassToCollection("Mouse", "MB_BUTTON_7", "7 mouse button.");
 
 		module(lua)
 			[
@@ -1054,179 +1023,179 @@ namespace NOWA
 			[
 				class_<OIS::Keyboard>("Keyboard")
 				.enum_("Modifier")
-			[
-				value("Alt", OIS::Keyboard::Alt),
-				value("Shift", OIS::Keyboard::Shift),
-				value("Ctrl", OIS::Keyboard::Ctrl),
-				value("CapsLock", OIS::Keyboard::CapsLock),
-				value("NumLock", OIS::Keyboard::NumLock)
-			]
-		.def("isKeyDown", &OIS::Keyboard::isKeyDown)
-			.def("isModifierDown", &OIS::Keyboard::isModifierDown)
+				[
+					value("Alt", OIS::Keyboard::Alt),
+					value("Shift", OIS::Keyboard::Shift),
+					value("Ctrl", OIS::Keyboard::Ctrl),
+					value("CapsLock", OIS::Keyboard::CapsLock),
+					value("NumLock", OIS::Keyboard::NumLock)
+				]
+				.def("isKeyDown", &OIS::Keyboard::isKeyDown)
+				.def("isModifierDown", &OIS::Keyboard::isModifierDown)
 			];
 
 		AddClassToCollection("Keyboard", "class", "OIS Keyboard class.");
 		AddClassToCollection("Keyboard", "bool isKeyDown(KeyCode key)", "Gets whether a specifig key is down.");
 		AddClassToCollection("Keyboard", "bool isModifierDown(Modifier mod)", "Gets whether a specifig modifier is down.");
-		AddClassToCollection("Modifier", "Alt", "Alt modifier.");
-		AddClassToCollection("Modifier", "Shift", "Shift modifier.");
-		AddClassToCollection("Modifier", "Ctrl", "Ctrl modifier.");
-		AddClassToCollection("Modifier", "CapsLock", "CapsLock modifier.");
-		AddClassToCollection("Modifier", "NumLock", "NumLock modifier.");
+		AddClassToCollection("Keyboard", "Alt", "Alt modifier.");
+		AddClassToCollection("Keyboard", "Shift", "Shift modifier.");
+		AddClassToCollection("Keyboard", "Ctrl", "Ctrl modifier.");
+		AddClassToCollection("Keyboard", "CapsLock", "CapsLock modifier.");
+		AddClassToCollection("Keyboard", "NumLock", "NumLock modifier.");
 
 		module(lua)
 			[
 				class_<OIS::KeyEvent>("KeyEvent")
 				// .def_readwrite("key", &OIS::KeyEvent::key)
 				// .def_readwrite("text", &OIS::KeyEvent::text)
-			.enum_("KeyCode")
-			[
-				value("KC_UNASSIGNED", OIS::KeyCode::KC_UNASSIGNED),
-				value("KC_ESCAPE", OIS::KeyCode::KC_ESCAPE),
-				value("KC_1", OIS::KeyCode::KC_1),
-				value("KC_2", OIS::KeyCode::KC_2),
-				value("KC_3", OIS::KeyCode::KC_3),
-				value("KC_4", OIS::KeyCode::KC_4),
-				value("KC_5", OIS::KeyCode::KC_5),
-				value("KC_6", OIS::KeyCode::KC_6),
-				value("KC_7", OIS::KeyCode::KC_7),
-				value("KC_8", OIS::KeyCode::KC_8),
-				value("KC_9", OIS::KeyCode::KC_9),
-				value("KC_0", OIS::KeyCode::KC_0),
-				value("KC_MINUS", OIS::KeyCode::KC_MINUS),
-				value("KC_EQUALS", OIS::KeyCode::KC_EQUALS),
-				value("KC_BACK", OIS::KeyCode::KC_BACK),
-				value("KC_TAB", OIS::KeyCode::KC_TAB),
-				value("KC_Q", OIS::KeyCode::KC_Q),
-				value("KC_W", OIS::KeyCode::KC_W),
-				value("KC_E", OIS::KeyCode::KC_E),
-				value("KC_R", OIS::KeyCode::KC_R),
-				value("KC_T", OIS::KeyCode::KC_T),
-				value("KC_Y", OIS::KeyCode::KC_Y),
-				value("KC_U", OIS::KeyCode::KC_U),
-				value("KC_I", OIS::KeyCode::KC_I),
-				value("KC_O", OIS::KeyCode::KC_O),
-				value("KC_P", OIS::KeyCode::KC_P),
-				value("KC_LBRACKET", OIS::KeyCode::KC_LBRACKET),
-				value("KC_RBRACKET", OIS::KeyCode::KC_RBRACKET),
-				value("KC_RETURN", OIS::KeyCode::KC_RETURN),
-				value("KC_LCONTROL", OIS::KeyCode::KC_LCONTROL),
-				value("KC_A", OIS::KeyCode::KC_A),
-				value("KC_S", OIS::KeyCode::KC_S),
-				value("KC_D", OIS::KeyCode::KC_D),
-				value("KC_F", OIS::KeyCode::KC_F),
-				value("KC_G", OIS::KeyCode::KC_G),
-				value("KC_H", OIS::KeyCode::KC_H),
-				value("KC_J", OIS::KeyCode::KC_J),
-				value("KC_K", OIS::KeyCode::KC_K),
-				value("KC_L", OIS::KeyCode::KC_L),
-				value("KC_SEMICOLON", OIS::KeyCode::KC_SEMICOLON),
-				value("KC_APOSTROPHE", OIS::KeyCode::KC_APOSTROPHE),
-				value("KC_GRAVE", OIS::KeyCode::KC_GRAVE),
-				value("KC_LSHIFT", OIS::KeyCode::KC_LSHIFT),
-				value("KC_BACKSLASH", OIS::KeyCode::KC_BACKSLASH),
-				value("KC_Z", OIS::KeyCode::KC_Z),
-				value("KC_X", OIS::KeyCode::KC_X),
-				value("KC_C", OIS::KeyCode::KC_C),
-				value("KC_V", OIS::KeyCode::KC_V),
-				value("KC_B", OIS::KeyCode::KC_B),
-				value("KC_N", OIS::KeyCode::KC_N),
-				value("KC_M", OIS::KeyCode::KC_M),
-				value("KC_COMMA", OIS::KeyCode::KC_COMMA),
-				value("KC_PERIOD", OIS::KeyCode::KC_PERIOD),
-				value("KC_SLASH", OIS::KeyCode::KC_SLASH),
-				value("KC_RSHIFT", OIS::KeyCode::KC_RSHIFT),
-				value("KC_MULTIPLY", OIS::KeyCode::KC_MULTIPLY),
-				value("KC_LMENU", OIS::KeyCode::KC_LMENU),
-				value("KC_SPACE", OIS::KeyCode::KC_SPACE),
-				value("KC_CAPITAL", OIS::KeyCode::KC_CAPITAL),
-				value("KC_F1", OIS::KeyCode::KC_F1),
-				value("KC_F2", OIS::KeyCode::KC_F2),
-				value("KC_F3", OIS::KeyCode::KC_F3),
-				value("KC_F4", OIS::KeyCode::KC_F4),
-				value("KC_F5", OIS::KeyCode::KC_F5),
-				value("KC_F6", OIS::KeyCode::KC_F6),
-				value("KC_F7", OIS::KeyCode::KC_F7),
-				value("KC_F8", OIS::KeyCode::KC_F8),
-				value("KC_F9", OIS::KeyCode::KC_F9),
-				value("KC_F10", OIS::KeyCode::KC_F10),
-				value("KC_NUMLOCK", OIS::KeyCode::KC_NUMLOCK),
-				value("KC_SCROLL", OIS::KeyCode::KC_SCROLL),
-				value("KC_NUMPAD7", OIS::KeyCode::KC_NUMPAD7),
-				value("KC_NUMPAD8", OIS::KeyCode::KC_NUMPAD8),
-				value("KC_NUMPAD9", OIS::KeyCode::KC_NUMPAD9),
-				value("KC_SUBTRACT", OIS::KeyCode::KC_SUBTRACT),
-				value("KC_NUMPAD4", OIS::KeyCode::KC_NUMPAD4),
-				value("KC_NUMPAD5", OIS::KeyCode::KC_NUMPAD5),
-				value("KC_NUMPAD6", OIS::KeyCode::KC_NUMPAD6),
-				value("KC_ADD", OIS::KeyCode::KC_ADD),
-				value("KC_NUMPAD1", OIS::KeyCode::KC_NUMPAD1),
-				value("KC_NUMPAD2", OIS::KeyCode::KC_NUMPAD2),
-				value("KC_NUMPAD3", OIS::KeyCode::KC_NUMPAD3),
-				value("KC_NUMPAD0", OIS::KeyCode::KC_NUMPAD0),
-				value("KC_DECIMAL", OIS::KeyCode::KC_DECIMAL),
-				value("KC_OEM_102", OIS::KeyCode::KC_OEM_102),
-				value("KC_F11", OIS::KeyCode::KC_F11),
-				value("KC_F12", OIS::KeyCode::KC_F12),
-				value("KC_F13", OIS::KeyCode::KC_F13),
-				value("KC_F14", OIS::KeyCode::KC_F14),
-				value("KC_F15", OIS::KeyCode::KC_F15),
-				value("KC_KANA", OIS::KeyCode::KC_KANA),
-				value("KC_ABNT_C1", OIS::KeyCode::KC_ABNT_C1),
-				value("KC_CONVERT", OIS::KeyCode::KC_CONVERT),
-				value("KC_NOCONVERT", OIS::KeyCode::KC_NOCONVERT),
-				value("KC_YEN", OIS::KeyCode::KC_YEN),
-				value("KC_ABNT_C2", OIS::KeyCode::KC_ABNT_C2),
-				value("KC_NUMPADEQUALS", OIS::KeyCode::KC_NUMPADEQUALS),
-				value("KC_PREVTRACK", OIS::KeyCode::KC_PREVTRACK),
-				value("KC_AT", OIS::KeyCode::KC_AT),
-				value("KC_COLON", OIS::KeyCode::KC_COLON),
-				value("KC_UNDERLINE", OIS::KeyCode::KC_UNDERLINE),
-				value("KC_KANJI", OIS::KeyCode::KC_KANJI),
-				value("KC_STOP", OIS::KeyCode::KC_STOP),
-				value("KC_AX", OIS::KeyCode::KC_AX),
-				value("KC_UNLABELED", OIS::KeyCode::KC_UNLABELED),
-				value("KC_NEXTTRACK", OIS::KeyCode::KC_NEXTTRACK),
-				value("KC_NUMPADENTER", OIS::KeyCode::KC_NUMPADENTER),
-				value("KC_RCONTROL", OIS::KeyCode::KC_RCONTROL),
-				value("KC_MUTE", OIS::KeyCode::KC_MUTE),
-				value("KC_CALCULATOR", OIS::KeyCode::KC_CALCULATOR),
-				value("KC_PLAYPAUSE", OIS::KeyCode::KC_PLAYPAUSE),
-				value("KC_MEDIASTOP", OIS::KeyCode::KC_MEDIASTOP),
-				value("KC_VOLUMEDOWN", OIS::KeyCode::KC_VOLUMEDOWN),
-				value("KC_VOLUMEUP", OIS::KeyCode::KC_VOLUMEUP),
-				value("KC_WEBHOME", OIS::KeyCode::KC_WEBHOME),
-				value("KC_NUMPADCOMMA", OIS::KeyCode::KC_NUMPADCOMMA),
-				value("KC_DIVIDE", OIS::KeyCode::KC_DIVIDE),
-				value("KC_SYSRQ", OIS::KeyCode::KC_SYSRQ),
-				value("KC_RMENU", OIS::KeyCode::KC_RMENU),
-				value("KC_PAUSE", OIS::KeyCode::KC_PAUSE),
-				value("KC_HOME", OIS::KeyCode::KC_HOME),
-				value("KC_UP", OIS::KeyCode::KC_UP),
-				value("KC_PGUP", OIS::KeyCode::KC_PGUP),
-				value("KC_LEFT", OIS::KeyCode::KC_LEFT),
-				value("KC_RIGHT", OIS::KeyCode::KC_RIGHT),
-				value("KC_END", OIS::KeyCode::KC_END),
-				value("KC_DOWN", OIS::KeyCode::KC_DOWN),
-				value("KC_PGDOWN", OIS::KeyCode::KC_PGDOWN),
-				value("KC_INSERT", OIS::KeyCode::KC_INSERT),
-				value("KC_DELETE", OIS::KeyCode::KC_DELETE),
-				value("KC_LWIN", OIS::KeyCode::KC_LWIN),
-				value("KC_RWIN", OIS::KeyCode::KC_RWIN),
-				value("KC_APPS", OIS::KeyCode::KC_APPS),
-				value("KC_POWER", OIS::KeyCode::KC_POWER),
-				value("KC_SLEEP", OIS::KeyCode::KC_SLEEP),
-				value("KC_WAKE", OIS::KeyCode::KC_WAKE),
-				value("KC_WEBSEARCH", OIS::KeyCode::KC_WEBSEARCH),
-				value("KC_WEBFAVORITES", OIS::KeyCode::KC_WEBFAVORITES),
-				value("KC_WEBREFRESH", OIS::KeyCode::KC_WEBREFRESH),
-				value("KC_WEBSTOP", OIS::KeyCode::KC_WEBSTOP),
-				value("KC_WEBFORWARD", OIS::KeyCode::KC_WEBFORWARD),
-				value("KC_WEBBACK", OIS::KeyCode::KC_WEBBACK),
-				value("KC_MYCOMPUTER", OIS::KeyCode::KC_MYCOMPUTER),
-				value("KC_MAIL", OIS::KeyCode::KC_MAIL),
-				value("KC_MEDIASELECT", OIS::KeyCode::KC_MEDIASELECT)
-			]
+				.enum_("KeyCode")
+				[
+					value("KC_UNASSIGNED", OIS::KeyCode::KC_UNASSIGNED),
+					value("KC_ESCAPE", OIS::KeyCode::KC_ESCAPE),
+					value("KC_1", OIS::KeyCode::KC_1),
+					value("KC_2", OIS::KeyCode::KC_2),
+					value("KC_3", OIS::KeyCode::KC_3),
+					value("KC_4", OIS::KeyCode::KC_4),
+					value("KC_5", OIS::KeyCode::KC_5),
+					value("KC_6", OIS::KeyCode::KC_6),
+					value("KC_7", OIS::KeyCode::KC_7),
+					value("KC_8", OIS::KeyCode::KC_8),
+					value("KC_9", OIS::KeyCode::KC_9),
+					value("KC_0", OIS::KeyCode::KC_0),
+					value("KC_MINUS", OIS::KeyCode::KC_MINUS),
+					value("KC_EQUALS", OIS::KeyCode::KC_EQUALS),
+					value("KC_BACK", OIS::KeyCode::KC_BACK),
+					value("KC_TAB", OIS::KeyCode::KC_TAB),
+					value("KC_Q", OIS::KeyCode::KC_Q),
+					value("KC_W", OIS::KeyCode::KC_W),
+					value("KC_E", OIS::KeyCode::KC_E),
+					value("KC_R", OIS::KeyCode::KC_R),
+					value("KC_T", OIS::KeyCode::KC_T),
+					value("KC_Y", OIS::KeyCode::KC_Y),
+					value("KC_U", OIS::KeyCode::KC_U),
+					value("KC_I", OIS::KeyCode::KC_I),
+					value("KC_O", OIS::KeyCode::KC_O),
+					value("KC_P", OIS::KeyCode::KC_P),
+					value("KC_LBRACKET", OIS::KeyCode::KC_LBRACKET),
+					value("KC_RBRACKET", OIS::KeyCode::KC_RBRACKET),
+					value("KC_RETURN", OIS::KeyCode::KC_RETURN),
+					value("KC_LCONTROL", OIS::KeyCode::KC_LCONTROL),
+					value("KC_A", OIS::KeyCode::KC_A),
+					value("KC_S", OIS::KeyCode::KC_S),
+					value("KC_D", OIS::KeyCode::KC_D),
+					value("KC_F", OIS::KeyCode::KC_F),
+					value("KC_G", OIS::KeyCode::KC_G),
+					value("KC_H", OIS::KeyCode::KC_H),
+					value("KC_J", OIS::KeyCode::KC_J),
+					value("KC_K", OIS::KeyCode::KC_K),
+					value("KC_L", OIS::KeyCode::KC_L),
+					value("KC_SEMICOLON", OIS::KeyCode::KC_SEMICOLON),
+					value("KC_APOSTROPHE", OIS::KeyCode::KC_APOSTROPHE),
+					value("KC_GRAVE", OIS::KeyCode::KC_GRAVE),
+					value("KC_LSHIFT", OIS::KeyCode::KC_LSHIFT),
+					value("KC_BACKSLASH", OIS::KeyCode::KC_BACKSLASH),
+					value("KC_Z", OIS::KeyCode::KC_Z),
+					value("KC_X", OIS::KeyCode::KC_X),
+					value("KC_C", OIS::KeyCode::KC_C),
+					value("KC_V", OIS::KeyCode::KC_V),
+					value("KC_B", OIS::KeyCode::KC_B),
+					value("KC_N", OIS::KeyCode::KC_N),
+					value("KC_M", OIS::KeyCode::KC_M),
+					value("KC_COMMA", OIS::KeyCode::KC_COMMA),
+					value("KC_PERIOD", OIS::KeyCode::KC_PERIOD),
+					value("KC_SLASH", OIS::KeyCode::KC_SLASH),
+					value("KC_RSHIFT", OIS::KeyCode::KC_RSHIFT),
+					value("KC_MULTIPLY", OIS::KeyCode::KC_MULTIPLY),
+					value("KC_LMENU", OIS::KeyCode::KC_LMENU),
+					value("KC_SPACE", OIS::KeyCode::KC_SPACE),
+					value("KC_CAPITAL", OIS::KeyCode::KC_CAPITAL),
+					value("KC_F1", OIS::KeyCode::KC_F1),
+					value("KC_F2", OIS::KeyCode::KC_F2),
+					value("KC_F3", OIS::KeyCode::KC_F3),
+					value("KC_F4", OIS::KeyCode::KC_F4),
+					value("KC_F5", OIS::KeyCode::KC_F5),
+					value("KC_F6", OIS::KeyCode::KC_F6),
+					value("KC_F7", OIS::KeyCode::KC_F7),
+					value("KC_F8", OIS::KeyCode::KC_F8),
+					value("KC_F9", OIS::KeyCode::KC_F9),
+					value("KC_F10", OIS::KeyCode::KC_F10),
+					value("KC_NUMLOCK", OIS::KeyCode::KC_NUMLOCK),
+					value("KC_SCROLL", OIS::KeyCode::KC_SCROLL),
+					value("KC_NUMPAD7", OIS::KeyCode::KC_NUMPAD7),
+					value("KC_NUMPAD8", OIS::KeyCode::KC_NUMPAD8),
+					value("KC_NUMPAD9", OIS::KeyCode::KC_NUMPAD9),
+					value("KC_SUBTRACT", OIS::KeyCode::KC_SUBTRACT),
+					value("KC_NUMPAD4", OIS::KeyCode::KC_NUMPAD4),
+					value("KC_NUMPAD5", OIS::KeyCode::KC_NUMPAD5),
+					value("KC_NUMPAD6", OIS::KeyCode::KC_NUMPAD6),
+					value("KC_ADD", OIS::KeyCode::KC_ADD),
+					value("KC_NUMPAD1", OIS::KeyCode::KC_NUMPAD1),
+					value("KC_NUMPAD2", OIS::KeyCode::KC_NUMPAD2),
+					value("KC_NUMPAD3", OIS::KeyCode::KC_NUMPAD3),
+					value("KC_NUMPAD0", OIS::KeyCode::KC_NUMPAD0),
+					value("KC_DECIMAL", OIS::KeyCode::KC_DECIMAL),
+					value("KC_OEM_102", OIS::KeyCode::KC_OEM_102),
+					value("KC_F11", OIS::KeyCode::KC_F11),
+					value("KC_F12", OIS::KeyCode::KC_F12),
+					value("KC_F13", OIS::KeyCode::KC_F13),
+					value("KC_F14", OIS::KeyCode::KC_F14),
+					value("KC_F15", OIS::KeyCode::KC_F15),
+					value("KC_KANA", OIS::KeyCode::KC_KANA),
+					value("KC_ABNT_C1", OIS::KeyCode::KC_ABNT_C1),
+					value("KC_CONVERT", OIS::KeyCode::KC_CONVERT),
+					value("KC_NOCONVERT", OIS::KeyCode::KC_NOCONVERT),
+					value("KC_YEN", OIS::KeyCode::KC_YEN),
+					value("KC_ABNT_C2", OIS::KeyCode::KC_ABNT_C2),
+					value("KC_NUMPADEQUALS", OIS::KeyCode::KC_NUMPADEQUALS),
+					value("KC_PREVTRACK", OIS::KeyCode::KC_PREVTRACK),
+					value("KC_AT", OIS::KeyCode::KC_AT),
+					value("KC_COLON", OIS::KeyCode::KC_COLON),
+					value("KC_UNDERLINE", OIS::KeyCode::KC_UNDERLINE),
+					value("KC_KANJI", OIS::KeyCode::KC_KANJI),
+					value("KC_STOP", OIS::KeyCode::KC_STOP),
+					value("KC_AX", OIS::KeyCode::KC_AX),
+					value("KC_UNLABELED", OIS::KeyCode::KC_UNLABELED),
+					value("KC_NEXTTRACK", OIS::KeyCode::KC_NEXTTRACK),
+					value("KC_NUMPADENTER", OIS::KeyCode::KC_NUMPADENTER),
+					value("KC_RCONTROL", OIS::KeyCode::KC_RCONTROL),
+					value("KC_MUTE", OIS::KeyCode::KC_MUTE),
+					value("KC_CALCULATOR", OIS::KeyCode::KC_CALCULATOR),
+					value("KC_PLAYPAUSE", OIS::KeyCode::KC_PLAYPAUSE),
+					value("KC_MEDIASTOP", OIS::KeyCode::KC_MEDIASTOP),
+					value("KC_VOLUMEDOWN", OIS::KeyCode::KC_VOLUMEDOWN),
+					value("KC_VOLUMEUP", OIS::KeyCode::KC_VOLUMEUP),
+					value("KC_WEBHOME", OIS::KeyCode::KC_WEBHOME),
+					value("KC_NUMPADCOMMA", OIS::KeyCode::KC_NUMPADCOMMA),
+					value("KC_DIVIDE", OIS::KeyCode::KC_DIVIDE),
+					value("KC_SYSRQ", OIS::KeyCode::KC_SYSRQ),
+					value("KC_RMENU", OIS::KeyCode::KC_RMENU),
+					value("KC_PAUSE", OIS::KeyCode::KC_PAUSE),
+					value("KC_HOME", OIS::KeyCode::KC_HOME),
+					value("KC_UP", OIS::KeyCode::KC_UP),
+					value("KC_PGUP", OIS::KeyCode::KC_PGUP),
+					value("KC_LEFT", OIS::KeyCode::KC_LEFT),
+					value("KC_RIGHT", OIS::KeyCode::KC_RIGHT),
+					value("KC_END", OIS::KeyCode::KC_END),
+					value("KC_DOWN", OIS::KeyCode::KC_DOWN),
+					value("KC_PGDOWN", OIS::KeyCode::KC_PGDOWN),
+					value("KC_INSERT", OIS::KeyCode::KC_INSERT),
+					value("KC_DELETE", OIS::KeyCode::KC_DELETE),
+					value("KC_LWIN", OIS::KeyCode::KC_LWIN),
+					value("KC_RWIN", OIS::KeyCode::KC_RWIN),
+					value("KC_APPS", OIS::KeyCode::KC_APPS),
+					value("KC_POWER", OIS::KeyCode::KC_POWER),
+					value("KC_SLEEP", OIS::KeyCode::KC_SLEEP),
+					value("KC_WAKE", OIS::KeyCode::KC_WAKE),
+					value("KC_WEBSEARCH", OIS::KeyCode::KC_WEBSEARCH),
+					value("KC_WEBFAVORITES", OIS::KeyCode::KC_WEBFAVORITES),
+					value("KC_WEBREFRESH", OIS::KeyCode::KC_WEBREFRESH),
+					value("KC_WEBSTOP", OIS::KeyCode::KC_WEBSTOP),
+					value("KC_WEBFORWARD", OIS::KeyCode::KC_WEBFORWARD),
+					value("KC_WEBBACK", OIS::KeyCode::KC_WEBBACK),
+					value("KC_MYCOMPUTER", OIS::KeyCode::KC_MYCOMPUTER),
+					value("KC_MAIL", OIS::KeyCode::KC_MAIL),
+					value("KC_MEDIASELECT", OIS::KeyCode::KC_MEDIASELECT)
+				]
 			];
 
 		AddClassToCollection("KeyEvent", "class", "OIS Keyboard key event class.");
@@ -1662,11 +1631,11 @@ namespace NOWA
 			[
 				class_<Node>("Node")
 				.enum_("TransformSpace")
-			[
-				value("TS_LOCAL", Ogre::Node::TS_LOCAL),
-				value("TS_PARENT", Ogre::Node::TS_PARENT),
-				value("TS_WORLD", Ogre::Node::TS_WORLD)
-			]
+				[
+					value("TS_LOCAL", Ogre::Node::TS_LOCAL),
+					value("TS_PARENT", Ogre::Node::TS_PARENT),
+					value("TS_WORLD", Ogre::Node::TS_WORLD)
+				]
 			];
 
 		module(lua)
@@ -1813,15 +1782,15 @@ namespace NOWA
 		AddClassToCollection("SceneManager", "class", "Main class for all Ogre specifig functions.");
 
 		module(lua)
-			[
-				class_<Ogre::v1::OldNode>("OldNode")
-				.enum_("TransformSpace")
+		[
+			class_<Ogre::v1::OldNode>("OldNode")
+			.enum_("TransformSpace")
 			[
 				value("TS_LOCAL", Ogre::v1::OldNode::TS_LOCAL),
 				value("TS_PARENT", Ogre::v1::OldNode::TS_PARENT),
 				value("TS_WORLD", Ogre::v1::OldNode::TS_WORLD)
 			]
-		.def("getPosition", &Ogre::v1::OldNode::getPosition)
+			.def("getPosition", &Ogre::v1::OldNode::getPosition)
 			.def("getOrientation", &Ogre::v1::OldNode::getOrientation)
 			.def("setDirection", &setOldNodeDirection)
 			.def("getDerivedPosition", &Ogre::v1::OldNode::_getDerivedPosition)
@@ -2538,11 +2507,6 @@ namespace NOWA
 		return makeStrongPtr<ValueBarComponent>(gameObject->getComponent<ValueBarComponent>()).get();
 	}
 
-	BillboardComponent* getBillboardComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<BillboardComponent>(gameObject->getComponent<BillboardComponent>()).get();
-	}
-
 	RibbonTrailComponent* getRibbonTrailComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<RibbonTrailComponent>(gameObject->getComponent<RibbonTrailComponent>()).get();
@@ -3233,11 +3197,6 @@ namespace NOWA
 		return makeStrongPtr<ValueBarComponent>(gameObject->getComponentFromName<ValueBarComponent>(name)).get();
 	}
 
-	BillboardComponent* getBillboardComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<BillboardComponent>(gameObject->getComponentFromName<BillboardComponent>(name)).get();
-	}
-
 	RibbonTrailComponent* getRibbonTrailComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<RibbonTrailComponent>(gameObject->getComponentFromName<RibbonTrailComponent>(name)).get();
@@ -3610,7 +3569,6 @@ namespace NOWA
 		gameObject.def("getManualObjectComponent", &getManualObjectComponent);
 		gameObject.def("getRectangleComponent", &getRectangleComponent);
 		gameObject.def("getValueBarComponent", &getValueBarComponent);
-		gameObject.def("getBillboardComponent", &getBillboardComponent);
 		gameObject.def("getRibbonTrailComponent", &getRibbonTrailComponent);
 		gameObject.def("getMyGUIWindowComponentFromIndex", (MyGUIWindowComponent * (*)(GameObject*, unsigned int)) & getMyGUIWindowComponent);
 		gameObject.def("getMyGUITextComponentFromIndex", (MyGUITextComponent * (*)(GameObject*, unsigned int)) & getMyGUITextComponent);
@@ -3750,7 +3708,6 @@ namespace NOWA
 		gameObject.def("getManualObjectComponentFromName", &getManualObjectComponentFromName);
 		gameObject.def("getRectangleComponentFromName", &getRectangleComponentFromName);
 		gameObject.def("getValueBarComponentFromName", &getValueBarComponentFromName);
-		gameObject.def("getBillboardComponentFromName", &getBillboardComponentFromName);
 		gameObject.def("getRibbonTrailComponentFromName", &getRibbonTrailComponentFromName);
 		gameObject.def("getMyGUIWindowComponentFromName", &getMyGUIWindowComponentFromName);
 		gameObject.def("getMyGUIItemBoxComponentFromName", &getMyGUIItemBoxComponentFromName);
@@ -3926,7 +3883,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "ManualObjectComponent getManualObjectComponent()", "Gets the manual object component.");
 		AddClassToCollection("GameObject", "RectangleComponent getRectangleComponent()", "Gets the rectangle component.");
 		AddClassToCollection("GameObject", "ValueBarComponent getValueBarComponent()", "Gets the value bar component.");
-		AddClassToCollection("GameObject", "BillboardComponent getBillboardComponent()", "Gets the billboard component.");
 		AddClassToCollection("GameObject", "RibbonTrailComponent getRibbonTrailComponent()", "Gets the ribbon trail component.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI window component by the given occurence index, since a game object may have besides other components several MyGUI window components.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponent()", "Gets the MyGUI window component. This can be used if the game object just has one MyGUI window component.");
@@ -4062,7 +4018,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "ManualObjectComponent getManualObjectComponentFromName(String name)", "Gets the manual object component.");
 		AddClassToCollection("GameObject", "RectangleComponent getRectangleComponentFromName(String name)", "Gets the rectangle component.");
 		AddClassToCollection("GameObject", "ValueBarComponent getValueBarComponentFromName(String name)", "Gets the value bar component.");
-		AddClassToCollection("GameObject", "BillboardComponent getBillboardComponentFromName(String name)", "Gets the billboard component.");
 		AddClassToCollection("GameObject", "RibbonTrailComponent getRibbonTrailComponentFromName(String name)", "Gets the ribbon trail component.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromName(String name)", "Gets the MyGUI window component.");
 		AddClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponentFromName(String name)", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
@@ -4247,7 +4202,7 @@ namespace NOWA
 		if (nullptr != sound)
 		{
 			unsigned short j = 0;
-			for (unsigned short i = 0; i < sound->getSpectrumProcessingSize() * 2; i++)
+			for (unsigned short i = 0; i < sound->getSpectrumProcessingSize(); i++)
 			{
 				obj[j++] = sound->getSpectrumParameter()->VUpoints[i];
 			}
@@ -4567,19 +4522,19 @@ namespace NOWA
 			[
 				class_<MyGUI::Align>("Align")
 				.enum_("Enum")
-			[
-				value("H_CENTER", MyGUI::Align::HCenter),
-				value("V_CENTER", MyGUI::Align::VCenter),
-				value("CENTER", MyGUI::Align::Center),
-				value("LEFT", MyGUI::Align::Left),
-				value("RIGHT", MyGUI::Align::Right),
-				value("H_STRECH", MyGUI::Align::HStretch),
-				value("TOP", MyGUI::Align::Top),
-				value("BOTTOM", MyGUI::Align::Bottom),
-				value("V_STRETCH", MyGUI::Align::VStretch),
-				value("STRETCH", MyGUI::Align::Stretch),
-				value("DEFAULT", MyGUI::Align::Default)
-			]
+				[
+					value("H_CENTER", MyGUI::Align::HCenter),
+					value("V_CENTER", MyGUI::Align::VCenter),
+					value("CENTER", MyGUI::Align::Center),
+					value("LEFT", MyGUI::Align::Left),
+					value("RIGHT", MyGUI::Align::Right),
+					value("H_STRECH", MyGUI::Align::HStretch),
+					value("TOP", MyGUI::Align::Top),
+					value("BOTTOM", MyGUI::Align::Bottom),
+					value("V_STRETCH", MyGUI::Align::VStretch),
+					value("STRETCH", MyGUI::Align::Stretch),
+					value("DEFAULT", MyGUI::Align::Default)
+				]
 			];
 
 		AddClassToCollection("Align", "class", "Align class for MyGUI widget positioning.");
@@ -4600,11 +4555,11 @@ namespace NOWA
 			[
 				class_<MyGUI::WidgetStyle>("WidgetStyle")
 				.enum_("Enum")
-			[
-				value("CHILD", MyGUI::WidgetStyle::Child),
-				value("POPUP", MyGUI::WidgetStyle::Popup),
-				value("OVERLAPPED", MyGUI::WidgetStyle::Overlapped)
-			]
+				[
+					value("CHILD", MyGUI::WidgetStyle::Child),
+					value("POPUP", MyGUI::WidgetStyle::Popup),
+					value("OVERLAPPED", MyGUI::WidgetStyle::Overlapped)
+				]
 			];
 
 		AddClassToCollection("WidgetStyle", "class", "WidgetStyle class.");
@@ -5186,7 +5141,6 @@ namespace NOWA
 		gameObjectController.def("castManualObjectComponent", &GameObjectController::cast<ManualObjectComponent>);
 		gameObjectController.def("castRectangleComponent", &GameObjectController::cast<RectangleComponent>);
 		gameObjectController.def("castValueBarComponent", &GameObjectController::cast<ValueBarComponent>);
-		gameObjectController.def("castBillboardComponent", &GameObjectController::cast<BillboardComponent>);
 		gameObjectController.def("castRibbonTrailComponent", &GameObjectController::cast<RibbonTrailComponent>);
 		gameObjectController.def("castMyGUIWindowComponent", &GameObjectController::cast<MyGUIWindowComponent>);
 		gameObjectController.def("castMyGUITextComponent", &GameObjectController::cast<MyGUITextComponent>);
@@ -5360,7 +5314,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "ManualObjectComponent castManualObjectComponent(ManualObjectComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "RectangleComponent castRectangleComponent(RectangleComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "ValueBarComponent castValueBarComponent(ValueBarComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "BillboardComponent castBillboardComponent(BillboardComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "RibbonTrailComponent castRibbonTrailComponent(RibbonTrailComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MyGUIWindowComponent castMyGUIWindowComponent(MyGUIWindowComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MyGUITextComponent castMyGUITextComponent(MyGUITextComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -6810,48 +6763,6 @@ namespace NOWA
 		AddClassToCollection("ValueBarComponent", "number getMaxValue()", "Gets the maximum value for the bar.");
 		AddClassToCollection("ValueBarComponent", "void setCurrentValue(number currentValue)", "Sets the current absolute value for the bar. Note: The value is clamped if it exceeds the maximum value or is < 0.");
 		AddClassToCollection("ValueBarComponent", "number getCurrentValue()", "Gets the current value for the bar.");
-	}
-
-	void bindBillboardComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<BillboardComponent, GameObjectComponent>("BillboardComponent")
-				// .def("getClassName", &BillboardComponent::getClassName)
-				// .def("clone", &BillboardComponent::clone)
-				// .def("getClassId", &BillboardComponent::getClassId)
-			.def("setActivated", &BillboardComponent::setActivated)
-			.def("isActivated", &BillboardComponent::isActivated)
-			.def("setDatablockName", &BillboardComponent::setDatablockName)
-			.def("getDatablockName", &BillboardComponent::getDatablockName)
-			.def("setPosition", &BillboardComponent::setPosition)
-			.def("getPosition", &BillboardComponent::getPosition)
-			// .def("setOrigin", &BillboardComponent::setOrigin)
-			// .def("getOrigin", &BillboardComponent::getOrigin)
-			// .def("setRotationType", &BillboardComponent::setRotationType)
-			// .def("getRotationType", &BillboardComponent::getRotationType)
-			// .def("setType", &BillboardComponent::setType)
-			// .def("getType", &BillboardComponent::getType)
-			.def("setDimensions", &BillboardComponent::setDimensions)
-			.def("getDimensions", &BillboardComponent::getDimensions)
-			.def("setColor", &BillboardComponent::setColor)
-			.def("getColor", &BillboardComponent::getColor)
-			];
-
-		AddClassToCollection("BillboardComponent", "class inherits GameObjectComponent", BillboardComponent::getStaticInfoText());
-		// AddClassToCollection("BillboardComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("BillboardComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("BillboardComponent", "number getClassId()", "Gets the class id of this component.");
-		AddClassToCollection("BillboardComponent", "void setActivated(bool activated)", "Sets whether this billboard is activated or not.");
-		AddClassToCollection("BillboardComponent", "bool isActivated()", "Gets whether this billboard is activated or not.");
-		AddClassToCollection("BillboardComponent", "void setDatablockName(String datablockName)", "Sets the data block name to used for the billboard representation. Note: It must be a unlit datablock.");
-		AddClassToCollection("BillboardComponent", "String getDatablockName()", "Gets the used datablock name.");
-		AddClassToCollection("BillboardComponent", "void setPosition(Vector3 position)", "Sets relative position offset where the billboard should be painted.");
-		AddClassToCollection("BillboardComponent", "Vector3 getPosition()", "Gets the relative position offset of the billboard.");
-		AddClassToCollection("BillboardComponent", "void setDimensions(Vector2 dimensions)", "Sets the dimensions (size x, y) of the billboard.");
-		AddClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the dimensions of the billboard.");
-		AddClassToCollection("BillboardComponent", "void setColor(Vector3 color)", "Sets the color (r, g, b) of the billboard.");
-		AddClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
 	}
 
 	/*
@@ -11324,11 +11235,8 @@ namespace NOWA
 	void bindSimpleSoundComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<SimpleSoundComponent, GameObjectComponent>("SimpleSoundComponent")
-				// .def("getClassName", &SimpleSoundComponent::getClassName)
-				// .def("clone", &SimpleSoundComponent::clone)
-				// .def("getClassId", &SimpleSoundComponent::getClassId)
+		[
+			class_<SimpleSoundComponent, GameObjectComponent>("SimpleSoundComponent")
 			.def("setSoundName", &SimpleSoundComponent::setSoundName)
 			.def("getSoundName", &SimpleSoundComponent::getSoundName)
 			.def("setLoop", &SimpleSoundComponent::setLoop)
@@ -11370,8 +11278,7 @@ namespace NOWA
 			.def("getCurrentSpectrumTimePosSec", &SimpleSoundComponent::getCurrentSpectrumTimePosSec)
 			.def("getFrequency", &SimpleSoundComponent::getFrequency)
 			.def("isSpectrumArea", &SimpleSoundComponent::isSpectrumArea)
-			.def("isInstrument", &SimpleSoundComponent::isInstrument)
-			];
+		];
 
 		AddClassToCollection("SimpleSoundComponent", "class inherits GameObjectComponent", "With this component a dolby surround is created and calibrated. It can be used for music, sound and effects like spectrum analysis, doppler effect etc.");
 		// AddClassToCollection("SimpleSoundComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -11432,7 +11339,6 @@ namespace NOWA
 		AddClassToCollection("SimpleSoundComponent", "float getCurrentSpectrumTimePosSec()", "Gets the current spectrum time position in seconds when the sound is being played.");
 		AddClassToCollection("SimpleSoundComponent", "float getFrequency()", "Gets the frequency.");
 		AddClassToCollection("SimpleSoundComponent", "bool isSpectrumArea(SpectrumArea spectrumArea)", "During spectrum analysis, gets whether a specific spectrum area has been recognized when being played.");
-		AddClassToCollection("SimpleSoundComponent", "bool isInstrument(Instrument instrument)", "During spectrum analysis, gets whether a specific instrument has been recognized when being played.");
 	}
 
 	void bindSoundComponent(lua_State* lua)
@@ -12611,6 +12517,8 @@ namespace NOWA
 			]
 			.enum_("SpectrumArea")
 			[
+				value("KICK_DRUM", OgreAL::AudioProcessor::SpectrumArea::KICK_DRUM),
+				value("SNARE_DRUM", OgreAL::AudioProcessor::SpectrumArea::SNARE_DRUM),
 				value("DEEP_BASS", OgreAL::AudioProcessor::SpectrumArea::DEEP_BASS),
 				value("LOW_BASS", OgreAL::AudioProcessor::SpectrumArea::LOW_BASS),
 				value("MID_BASS", OgreAL::AudioProcessor::SpectrumArea::MID_BASS),
@@ -12620,33 +12528,29 @@ namespace NOWA
 				value("UPPER_MIDRANGE", OgreAL::AudioProcessor::SpectrumArea::UPPER_MIDRANGE),
 				value("PRESENCE_RANGE", OgreAL::AudioProcessor::SpectrumArea::PRESENCE_RANGE),
 				value("HIGH_END", OgreAL::AudioProcessor::SpectrumArea::HIGH_END),
-				value("EXTREMELY_HIGH_END", OgreAL::AudioProcessor::SpectrumArea::EXTREMELY_HIGH_END)
-			]
-			.enum_("Instrument")
-			[
-				value("KICK_DRUM", OgreAL::AudioProcessor::Instrument::KICK_DRUM),
-				value("SNARE_DRUM", OgreAL::AudioProcessor::Instrument::SNARE_DRUM)
+				value("EXTREMELY_HIGH_END", OgreAL::AudioProcessor::SpectrumArea::EXTREMELY_HIGH_END),
+				value("HI_HAT", OgreAL::AudioProcessor::SpectrumArea::HI_HAT)
 			]
 		];
 
 		AddClassToCollection("AudioProcessor", "class", "The audio processor for spectrum analysis.");
-		AddClassToCollection("SpectrumPreparationType", "RAW", "The raw spectrum preparation.");
-		AddClassToCollection("SpectrumPreparationType", "LINEAR", "The linear spectrum preparation.");
-		AddClassToCollection("SpectrumPreparationType", "LOGARITHMIC", "The logarithmnic spectrum preparation.");
+		AddClassToCollection("AudioProcessor", "RAW", "The raw spectrum preparation.");
+		AddClassToCollection("AudioProcessor", "LINEAR", "The linear spectrum preparation.");
+		AddClassToCollection("AudioProcessor", "LOGARITHMIC", "The logarithmnic spectrum preparation.");
 
-		AddClassToCollection("SpectrumArea", "DEEP_BASS", "Deep bass spectrum area (20hz-40hz).");
-		AddClassToCollection("SpectrumArea", "LOW_BASS", "Low bass spectrum area (40hz-80hz).");
-		AddClassToCollection("SpectrumArea", "MID_BASS", "Mid bass spectrum area (80hz-160hz).");
-		AddClassToCollection("SpectrumArea", "UPPER_BASS", "Upper bass spectrum area (160hz-300hz).");
-		AddClassToCollection("SpectrumArea", "LOWER_MIDRANGE", "Lower mid range spectrum area (300hz-600hz).");
-		AddClassToCollection("SpectrumArea", "MIDDLE_MIDRANGE", "Middle mit range spectrum area (600hz-1200hz).");
-		AddClassToCollection("SpectrumArea", "UPPER_MIDRANGE", "Upper mit range spectrum area (1200hz-2400hz).");
-		AddClassToCollection("SpectrumArea", "PRESENCE_RANGE", "Presence range spectrum area (2400hz-5000hz).");
-		AddClassToCollection("SpectrumArea", "HIGH_END", "High end spectrum area (5000hz-10000hz).");
-		AddClassToCollection("SpectrumArea", "EXTREMELY_HIGH_END", "Extremely high end spectrum area (10000hz-20000hz).");
-
-		AddClassToCollection("Instrument", "KICK_DRUM", "Kick drum instrument (60hz-130hz).");
-		AddClassToCollection("Instrument", "SNARE_DRUM", "Snare drum instrument (301hz-750hz).");
+		AddClassToCollection("AudioProcessor", "KICK_DRUM", "Kick drum instrument (60hz-130hz).");
+		AddClassToCollection("AudioProcessor", "SNARE_DRUM", "Snare drum instrument (301hz-750hz).");
+		AddClassToCollection("AudioProcessor", "DEEP_BASS", "Deep bass spectrum area (20hz-40hz).");
+		AddClassToCollection("AudioProcessor", "LOW_BASS", "Low bass spectrum area (40hz-80hz).");
+		AddClassToCollection("AudioProcessor", "MID_BASS", "Mid bass spectrum area (80hz-160hz).");
+		AddClassToCollection("AudioProcessor", "UPPER_BASS", "Upper bass spectrum area (160hz-300hz).");
+		AddClassToCollection("AudioProcessor", "LOWER_MIDRANGE", "Lower mid range spectrum area (300hz-600hz).");
+		AddClassToCollection("AudioProcessor", "MIDDLE_MIDRANGE", "Middle mit range spectrum area (600hz-1200hz).");
+		AddClassToCollection("AudioProcessor", "UPPER_MIDRANGE", "Upper mit range spectrum area (1200hz-2400hz).");
+		AddClassToCollection("AudioProcessor", "PRESENCE_RANGE", "Presence range spectrum area (2400hz-5000hz).");
+		AddClassToCollection("AudioProcessor", "HIGH_END", "High end spectrum area (5000hz-10000hz).");
+		AddClassToCollection("AudioProcessor", "EXTREMELY_HIGH_END", "Extremely high end spectrum area (10000hz-20000hz).");
+		AddClassToCollection("AudioProcessor", "HI_HAT", "Hi-Hat detection using the PRESENCE RANGE (4-6 kHz), HIGH_END (6-12 kHz), and EXTREMELY_HIGH_END (12-20 kHz).");
 
 		module(lua)
 		[
@@ -12664,13 +12568,13 @@ namespace NOWA
 		];
 
 		AddClassToCollection("MathWindows", "class", "Math windows class for audio spectrum analysis, for more harmonic visualization.");
-		AddClassToCollection("WindowType", "RECTANGULAR", "The rectangular window.");
-		AddClassToCollection("WindowType", "BLACKMAN", "The blackman window.");
-		AddClassToCollection("WindowType", "BLACKMAN_HARRIS", "The blackman harris window.");
-		AddClassToCollection("WindowType", "TUKEY", "The tukey window.");
-		AddClassToCollection("WindowType", "HANNING", "The hanning window.");
-		AddClassToCollection("WindowType", "HAMMING", "The Hamming window.");
-		AddClassToCollection("WindowType", "BARLETT", "The barlett window.");
+		AddClassToCollection("MathWindows", "RECTANGULAR", "The rectangular window.");
+		AddClassToCollection("MathWindows", "BLACKMAN", "The blackman window.");
+		AddClassToCollection("MathWindows", "BLACKMAN_HARRIS", "The blackman harris window.");
+		AddClassToCollection("MathWindows", "TUKEY", "The tukey window.");
+		AddClassToCollection("MathWindows", "HANNING", "The hanning window.");
+		AddClassToCollection("MathWindows", "HAMMING", "The Hamming window.");
+		AddClassToCollection("MathWindows", "BARLETT", "The barlett window.");
 
 		module(lua)
 		[
@@ -13477,7 +13381,6 @@ namespace NOWA
 				bindTagChildNodeComponent(this->lua);
 				bindNodeTrackComponent(this->lua);
 				bindLineComponent(this->lua);
-				bindBillboardComponent(this->lua);
 				bindOgreNewt(this->lua);
 				bindJointHandlers(this->lua);
 				bindLightComponents(this->lua);

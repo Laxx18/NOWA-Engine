@@ -2877,7 +2877,74 @@ return {
 	AudioProcessor =
 	{
 		type = "class",
-		description = "The audio processor for spectrum analysis."
+		description = "The audio processor for spectrum analysis.",
+		childs = 
+		{
+			RAW =
+			{
+				type = "value"
+			},
+			LINEAR =
+			{
+				type = "value"
+			},
+			LOGARITHMIC =
+			{
+				type = "value"
+			},
+			KICK_DRUM =
+			{
+				type = "value"
+			},
+			SNARE_DRUM =
+			{
+				type = "value"
+			},
+			DEEP_BASS =
+			{
+				type = "value"
+			},
+			LOW_BASS =
+			{
+				type = "value"
+			},
+			MID_BASS =
+			{
+				type = "value"
+			},
+			UPPER_BASS =
+			{
+				type = "value"
+			},
+			LOWER_MIDRANGE =
+			{
+				type = "value"
+			},
+			MIDDLE_MIDRANGE =
+			{
+				type = "value"
+			},
+			UPPER_MIDRANGE =
+			{
+				type = "value"
+			},
+			PRESENCE_RANGE =
+			{
+				type = "value"
+			},
+			HIGH_END =
+			{
+				type = "value"
+			},
+			EXTREMELY_HIGH_END =
+			{
+				type = "value"
+			},
+			HI_HAT =
+			{
+				type = "value"
+			}
+		}
 	},
 	Axis =
 	{
@@ -3023,7 +3090,7 @@ return {
 	BillboardComponent =
 	{
 		type = "class",
-		description = "Usage: Creates billboard effect.",
+		description = "Usage: Creates a billboard effect, which also can be customized.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -7644,14 +7711,6 @@ return {
 				returns = "(ValueBarComponent)",
 				valuetype = "ValueBarComponent"
 			},
-			getBillboardComponent =
-			{
-				type = "function",
-				description = "Gets the billboard component.",
-				args = "()",
-				returns = "(BillboardComponent)",
-				valuetype = "BillboardComponent"
-			},
 			getRibbonTrailComponent =
 			{
 				type = "function",
@@ -8700,14 +8759,6 @@ return {
 				returns = "(ValueBarComponent)",
 				valuetype = "ValueBarComponent"
 			},
-			getBillboardComponentFromName =
-			{
-				type = "function",
-				description = "Gets the billboard component.",
-				args = "(string name)",
-				returns = "(BillboardComponent)",
-				valuetype = "BillboardComponent"
-			},
 			getRibbonTrailComponentFromName =
 			{
 				type = "function",
@@ -8971,6 +9022,22 @@ return {
 				args = "(string name)",
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
+			},
+			getBillboardComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(BillboardComponent)",
+				valuetype = "BillboardComponent"
+			},
+			getBillboardComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(BillboardComponent)",
+				valuetype = "BillboardComponent"
 			},
 			getCameraBehaviorAttachComponentFromIndex =
 			{
@@ -10652,14 +10719,6 @@ return {
 				returns = "(ValueBarComponent)",
 				valuetype = "ValueBarComponent"
 			},
-			castBillboardComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(BillboardComponent other)",
-				returns = "(BillboardComponent)",
-				valuetype = "BillboardComponent"
-			},
 			castRibbonTrailComponent =
 			{
 				type = "function",
@@ -10851,6 +10910,14 @@ return {
 				args = "(AttributeEffectComponent other)",
 				returns = "(AttributeEffectComponent)",
 				valuetype = "AttributeEffectComponent"
+			},
+			castBillboardComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(BillboardComponent other)",
+				returns = "(BillboardComponent)",
+				valuetype = "BillboardComponent"
 			},
 			castCameraBehaviorAttachComponent =
 			{
@@ -12095,22 +12162,6 @@ return {
 				type = "value"
 			},
 			NOWA_A_SELECT =
-			{
-				type = "value"
-			}
-		}
-	},
-	Instrument =
-	{
-		type = "class",
-		description = "Instrument class",
-		childs = 
-		{
-			KICK_DRUM =
-			{
-				type = "value"
-			},
-			SNARE_DRUM =
 			{
 				type = "value"
 			}
@@ -16089,6 +16140,26 @@ return {
 				args = "(Modifier mod)",
 				returns = "(boolean)",
 				valuetype = "boolean"
+			},
+			Alt =
+			{
+				type = "value"
+			},
+			Shift =
+			{
+				type = "value"
+			},
+			Ctrl =
+			{
+				type = "value"
+			},
+			CapsLock =
+			{
+				type = "value"
+			},
+			NumLock =
+			{
+				type = "value"
 			}
 		}
 	},
@@ -17549,7 +17620,38 @@ return {
 	MathWindows =
 	{
 		type = "class",
-		description = "Math windows class for audio spectrum analysis, for more harmonic visualization."
+		description = "Math windows class for audio spectrum analysis, for more harmonic visualization.",
+		childs = 
+		{
+			RECTANGULAR =
+			{
+				type = "value"
+			},
+			BLACKMAN =
+			{
+				type = "value"
+			},
+			BLACKMAN_HARRIS =
+			{
+				type = "value"
+			},
+			TUKEY =
+			{
+				type = "value"
+			},
+			HANNING =
+			{
+				type = "value"
+			},
+			HAMMING =
+			{
+				type = "value"
+			},
+			BARLETT =
+			{
+				type = "value"
+			}
+		}
 	},
 	Matrix3 =
 	{
@@ -17687,34 +17789,6 @@ return {
 			}
 		}
 	},
-	Modifier =
-	{
-		type = "class",
-		description = "Modifier class",
-		childs = 
-		{
-			Alt =
-			{
-				type = "value"
-			},
-			Shift =
-			{
-				type = "value"
-			},
-			Ctrl =
-			{
-				type = "value"
-			},
-			CapsLock =
-			{
-				type = "value"
-			},
-			NumLock =
-			{
-				type = "value"
-			}
-		}
-	},
 	Mouse =
 	{
 		type = "class",
@@ -17728,15 +17802,7 @@ return {
 				args = "()",
 				returns = "(MouseState)",
 				valuetype = "MouseState"
-			}
-		}
-	},
-	MouseButtonID =
-	{
-		type = "class",
-		description = "MouseButtonID class",
-		childs = 
-		{
+			},
 			MB_LEFT =
 			{
 				type = "value"
@@ -24606,14 +24672,6 @@ return {
 				args = "(SpectrumArea spectrumArea)",
 				returns = "(boolean)",
 				valuetype = "boolean"
-			},
-			isInstrument =
-			{
-				type = "function",
-				description = "During spectrum analysis, gets whether a specific instrument has been recognized when being played.",
-				args = "(Instrument instrument)",
-				returns = "(boolean)",
-				valuetype = "boolean"
 			}
 		}
 	},
@@ -24780,74 +24838,6 @@ return {
 				args = "(func closure, spawnedGameObject, originGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
-			}
-		}
-	},
-	SpectrumArea =
-	{
-		type = "class",
-		description = "SpectrumArea class",
-		childs = 
-		{
-			DEEP_BASS =
-			{
-				type = "value"
-			},
-			LOW_BASS =
-			{
-				type = "value"
-			},
-			MID_BASS =
-			{
-				type = "value"
-			},
-			UPPER_BASS =
-			{
-				type = "value"
-			},
-			LOWER_MIDRANGE =
-			{
-				type = "value"
-			},
-			MIDDLE_MIDRANGE =
-			{
-				type = "value"
-			},
-			UPPER_MIDRANGE =
-			{
-				type = "value"
-			},
-			PRESENCE_RANGE =
-			{
-				type = "value"
-			},
-			HIGH_END =
-			{
-				type = "value"
-			},
-			EXTREMELY_HIGH_END =
-			{
-				type = "value"
-			}
-		}
-	},
-	SpectrumPreparationType =
-	{
-		type = "class",
-		description = "SpectrumPreparationType class",
-		childs = 
-		{
-			RAW =
-			{
-				type = "value"
-			},
-			LINEAR =
-			{
-				type = "value"
-			},
-			LOGARITHMIC =
-			{
-				type = "value"
 			}
 		}
 	},
@@ -27103,42 +27093,6 @@ return {
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"
-			}
-		}
-	},
-	WindowType =
-	{
-		type = "class",
-		description = "WindowType class",
-		childs = 
-		{
-			RECTANGULAR =
-			{
-				type = "value"
-			},
-			BLACKMAN =
-			{
-				type = "value"
-			},
-			BLACKMAN_HARRIS =
-			{
-				type = "value"
-			},
-			TUKEY =
-			{
-				type = "value"
-			},
-			HANNING =
-			{
-				type = "value"
-			},
-			HAMMING =
-			{
-				type = "value"
-			},
-			BARLETT =
-			{
-				type = "value"
 			}
 		}
 	},

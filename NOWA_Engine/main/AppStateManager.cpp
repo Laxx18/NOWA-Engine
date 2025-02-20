@@ -343,6 +343,8 @@ namespace NOWA
 		}
 	}
 
+#if 0
+
 	void AppStateManager::adaptiveFPSRendering(void)
 	{
 		// really important:
@@ -351,13 +353,9 @@ namespace NOWA
 		// FixedUpdate: Physics because of deterministics, always at constant rate
 
 		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-		
+
 		// this keeps track of time (seconds to keep it easy)
 		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-
-		this->getCameraManager()->setMoveSpeed(20.0f);
-		this->getCameraManager()->setRotationSpeed(30.0f);
-		this->getCameraManager()->setSmoothValue(0.05f);
 
 		while (false == this->bShutdown)
 		{
@@ -405,6 +403,72 @@ namespace NOWA
 			// Sleep(0);
 		}
 	}
+#endif
+
+	void AppStateManager::adaptiveFPSRendering(void)
+	{
+		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+
+		// Time tracking
+		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+		double accumulator = 0.0;
+
+		// Fixed timestep settings
+		const double FIXED_DT = 1.0 / 60.0;  // 60Hz fixed update rate
+		const double MAX_DT = 1.0 / 30.0;    // Prevent large dt spikes
+
+		while (!this->bShutdown)
+		{
+			// Process signals from system
+			Ogre::WindowEventUtilities::messagePump();
+
+			// Calculate delta time
+			double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+			double dt = newTime - currentTime;
+			currentTime = newTime;
+
+			// Prevent dt spikes from causing physics jumps
+			dt = std::clamp(dt, 0.0, MAX_DT);
+
+			// Accumulate time for fixed-step updates
+			accumulator += dt;
+
+			// Process input as fast as possible
+			if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+			{
+				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
+			}
+
+			// Fixed timestep physics, logic update
+			while (accumulator >= FIXED_DT)
+			{
+				if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+				{
+					this->activeStateStack.back()->update(static_cast<float>(FIXED_DT));
+				}
+
+				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(FIXED_DT));
+				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
+
+				accumulator -= FIXED_DT;
+			}
+
+			// Rendering comes last (always uses latest state)
+			if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+			{
+				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
+			}
+
+			// Render one frame
+			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<float>(dt));
+
+			// If window is inactive, sleep to prevent CPU waste
+			if (!renderWindow->isVisible() && this->renderWhenInactive)
+			{
+				Ogre::Threads::Sleep(500);
+			}
+		}
+	}
 
 	void AppStateManager::fpsIndependentRendering(void)
 	{
@@ -414,10 +478,6 @@ namespace NOWA
 
 		int frameCount = 0;
 		int tickCount = 0;
-
-		this->getCameraManager()->setMoveSpeed(20.0f);
-		this->getCameraManager()->setRotationSpeed(30.0f);
-		this->getCameraManager()->setSmoothValue(0.05f);
 
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
@@ -569,10 +629,6 @@ namespace NOWA
 
 	void AppStateManager::interpolatedRendering(void)
 	{
-		this->getCameraManager()->setMoveSpeed(20.0f);
-		this->getCameraManager()->setRotationSpeed(30.0f);
-		this->getCameraManager()->setSmoothValue(0.05f);
-
 		// Default 30 ticks per second
 		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
 

@@ -22,6 +22,11 @@ namespace OgreAL
 		{
 			return Ogre::Real((1.0f - scale) * oldValue + scale * value);
 		}
+
+		inline Ogre::Real emaFilter(Ogre::Real current, Ogre::Real previous, Ogre::Real alpha) noexcept
+		{
+			return alpha * current + (1.0f - alpha) * previous;
+		}
 	protected:
 		std::vector<Ogre::Real> numberOfSamplesPerBar;
 		int spectrumProcessingSize;

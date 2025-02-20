@@ -177,9 +177,7 @@ namespace NOWA
 		 * @see	GameObjectComponent::createStaticApiForLua
 		 */
 		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
-	private:
-		Ogre::String name;
-
+	public:
 		void setRotationActivated(bool rotationActivated);
 
 		bool isRotationActivated(void) const;
@@ -306,6 +304,8 @@ namespace NOWA
 		static const Ogre::String AttrScaleDirectionChange(void) { return "Scale Dir. Change"; }
 		static const Ogre::String AttrScaleEaseFunction(void) { return "Scale Ease Function"; }
 	private:
+		Ogre::String name;
+
 		Variant* activated;
 		Variant* rotationActivated;
 		Variant* rotationAxis;

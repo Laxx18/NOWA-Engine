@@ -37,17 +37,7 @@ namespace NOWA
 
 	AreaOfInterestComponent::~AreaOfInterestComponent(void)
 	{
-		if (nullptr != this->sphereSceneQuery)
-		{
-			this->gameObjectPtr->getSceneManager()->destroyQuery(this->sphereSceneQuery);
-			this->sphereSceneQuery = nullptr;
-		}
-
-		if (nullptr != this->triggerSphereQueryObserver)
-		{
-			delete this->triggerSphereQueryObserver;
-			this->triggerSphereQueryObserver = nullptr;
-		}
+		
 	}
 
 	void AreaOfInterestComponent::initialise()
@@ -174,6 +164,17 @@ namespace NOWA
 
 	void AreaOfInterestComponent::onRemoveComponent(void)
 	{
+		if (nullptr != this->sphereSceneQuery)
+		{
+			this->gameObjectPtr->getSceneManager()->destroyQuery(this->sphereSceneQuery);
+			this->sphereSceneQuery = nullptr;
+		}
+
+		if (nullptr != this->triggerSphereQueryObserver)
+		{
+			delete this->triggerSphereQueryObserver;
+			this->triggerSphereQueryObserver = nullptr;
+		}
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 	}
 

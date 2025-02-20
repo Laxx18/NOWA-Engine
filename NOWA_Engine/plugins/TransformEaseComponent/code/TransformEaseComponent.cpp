@@ -16,6 +16,7 @@ namespace NOWA
 
 	TransformEaseComponent::TransformEaseComponent()
 		: GameObjectComponent(),
+		name("TransformEaseComponent"),
 		rotationOppositeDir(1.0f),
 		rotationProgress(0.0f),
 		rotationRound(0),

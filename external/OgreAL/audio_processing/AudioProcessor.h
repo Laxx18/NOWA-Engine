@@ -24,23 +24,20 @@ namespace OgreAL
 		// https://www.teachmeaudio.com/mixing/techniques/audio-spectrum/
 		enum SpectrumArea
 		{
-			DEEP_BASS = 0,			// 20hz-40hz
-			LOW_BASS = 1,			// 40hz-80hz
-			MID_BASS = 2,			// 80hz-160hz
-			UPPER_BASS = 3,			// 160hz-300hz
-			LOWER_MIDRANGE = 4,		// 300hz-600hz
-			MIDDLE_MIDRANGE = 5,	// 600hz-1200hz
-			UPPER_MIDRANGE = 6,		// 1200hz-2400hz
-			PRESENCE_RANGE = 7,		// 2400hz-5000hz
-			HIGH_END = 8,			// 5000hz-10000hz
-			EXTREMELY_HIGH_END = 9, // 10000hz-20000hz
-		};
-
-		enum Instrument
-		{
-			KICK_DRUM = 10,			// 60hz-130hz
-			SNARE_DRUM = 11,		// 301hz-750hz
-			MAX_VALUE = 12
+			DEEP_BASS,			// 20hz-40hz
+			LOW_BASS,			// 40hz-80hz
+			KICK_DRUM,			// 60hz-130hz
+			MID_BASS,			// 80hz-160hz
+			UPPER_BASS,			// 160hz-300hz
+			LOWER_MIDRANGE,		// 300hz-600hz
+			SNARE_DRUM, 		// 301hz-750hz
+			MIDDLE_MIDRANGE,	// 600hz-1200hz
+			UPPER_MIDRANGE,		// 1200hz-2400hz
+			PRESENCE_RANGE,		// 2400hz-5000hz
+			HIGH_END,			// 5000hz-10000hz
+			EXTREMELY_HIGH_END, // 10000hz-20000hz
+			HI_HAT,				// 7000Hz-12000Hz
+			MAX_VALUE
 		};
 
 		typedef std::deque<std::vector<Ogre::Real>> FFTHistoryContainer;
@@ -66,12 +63,14 @@ namespace OgreAL
 		const std::vector<Ogre::Real>& getPhaseList(void) noexcept;
 
 		bool isSpectrumArea(SpectrumArea spectrumArea) const noexcept;
-
-		bool isInstrument(Instrument instrument) const noexcept;
 	private:
 		void initializeFFT();
+
 		void initializeBeatDetector();
+
 		void detectBeat(std::vector<Ogre::Real>& spectrum, std::vector<Ogre::Real>& averageSpectrum);
+
+		void updateSpectrumVisualization(std::vector<Ogre::Real>& spectrum, std::vector<Ogre::Real>& averageSpectrum);
 
 		inline Ogre::Real mapValue(Ogre::Real valueToMap, Ogre::Real targetMin, Ogre::Real targetMax) noexcept;
 
@@ -108,12 +107,20 @@ namespace OgreAL
 		int sumSamplingsPerSec;
 		MathWindows::WindowType windowType;
 
-		std::vector<int> beatDetectorBandLimits;
 		FFTHistoryContainer fftHistoryBeatDetector;
 
 		SpectrumPreparationType spectrumPreparationType;
 		SpectrumPreparation* spectrumPreparation;
 		Ogre::Real smoothFactor;
+
+		std::vector<Ogre::Real> beatDetectorBandLimits;
+		size_t fftHistoryMaxSize;
+		std::vector<Ogre::Real> previousSmoothedValues;
+		std::vector<Ogre::Real> previousDetection;
+		Ogre::Real previousEnergy;
+		bool firstFrame;
+		std::vector<std::deque<Ogre::Real>> rollingWindows;
+
 	};
 
 };

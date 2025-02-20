@@ -238,8 +238,11 @@ namespace NOWA
 
 	bool PluginTemplate::canStaticAddComponent(GameObject* gameObject)
 	{
-		// No constraints so far, just add
-		return true;
+		// Can only be added once
+		if (gameObject->getComponentCount<PluginTemplate>() < 2)
+		{
+			return true;
+		}
 	}
 
 }; //namespace end

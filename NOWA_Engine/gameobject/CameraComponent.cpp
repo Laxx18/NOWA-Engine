@@ -467,7 +467,7 @@ namespace NOWA
 
 				if (nullptr == this->baseCamera)
 				{
-					this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+					this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 40.0f, 0.01f);
 				}
 				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
 				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);

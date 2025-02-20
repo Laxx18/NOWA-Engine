@@ -637,15 +637,6 @@ namespace NOWA
 		return false;
 	}
 
-	bool SimpleSoundComponent::isInstrument(OgreAL::AudioProcessor::Instrument instrument) const
-	{
-		if (nullptr != this->sound && this->sound->getAudioProcessor())
-		{
-			return this->sound->getAudioProcessor()->isInstrument(instrument);
-		}
-		return false;
-	}
-
 	void SimpleSoundComponent::setFadeInOutTime(const Ogre::Vector2& fadeInOutTime)
 	{
 		if (nullptr != this->sound)

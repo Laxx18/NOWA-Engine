@@ -1,8 +1,11 @@
 #include "NOWAPrecompiled.h"
 #include "BillboardComponent.h"
-#include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
 #include "modules/DeployResourceModule.h"
+
+#include "gameobject/GameObjectFactory.h"
+
+#include "OgreAbiUtils.h"
 
 namespace NOWA
 {
@@ -11,6 +14,7 @@ namespace NOWA
 
 	BillboardComponent::BillboardComponent()
 		: GameObjectComponent(),
+		name("BillboardComponent"),
 		billboardSet(nullptr),
 		billboard(nullptr),
 		activated(new Variant(BillboardComponent::AttrActivated(), true, this->attributes)),
@@ -69,6 +73,8 @@ namespace NOWA
         BBT_PERPENDICULAR_SELF
 		*/
 
+		this->renderDistance->setDescription("The render distance until which the billboard will be rendered, 0 means infinity.");
+
 		std::vector<Ogre::String> types(5);
 		types[0] = "Point";
 		types[1] = "Oriented Common";
@@ -76,7 +82,7 @@ namespace NOWA
 		types[3] = "Perpendicular Common";
 		types[4] = "Perpendicular Self";
 		this->type = new Variant(BillboardComponent::AttrType(), types, this->attributes);
-		
+
 		std::vector<Ogre::String> datablockNames;
 
 		// Go through all types of registered hlms unlit and check if the data block exists and set the data block
@@ -91,22 +97,26 @@ namespace NOWA
 		std::sort(datablockNames.begin(), datablockNames.end());
 		this->datablockName = new Variant(BillboardComponent::AttrDatablockName(), datablockNames, this->attributes);
 		this->datablockName->setListSelectedValue("Star");
-
-		// this->renderDistance->setDescription("The render distance until which the billboard will be rendered, 0 means infinity.");
 	}
 
 	BillboardComponent::~BillboardComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
-		if (nullptr != this->billboardSet)
-		{
-			this->billboardSet->removeBillboard(this->billboard);
-			this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
-			// In debug mode ogre is ill: there is an assert which wants to access a nullptr datablock just to check alpha :( and because of that, the application does crash
-			this->gameObjectPtr->getSceneManager()->destroyBillboardSet(this->billboardSet);
-			this->billboardSet = nullptr;
-			this->billboard = nullptr;
-		}
+		
+	}
+
+	const Ogre::String& BillboardComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void BillboardComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<BillboardComponent>(BillboardComponent::getStaticClassId(), BillboardComponent::getStaticClassName());
+	}
+
+	void BillboardComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool BillboardComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -191,9 +201,18 @@ namespace NOWA
 		return true;
 	}
 
-	void BillboardComponent::update(Ogre::Real dt, bool notSimulating)
+	void BillboardComponent::onRemoveComponent(void)
 	{
-		
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
+		if (nullptr != this->billboardSet)
+		{
+			this->billboardSet->removeBillboard(this->billboard);
+			this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
+			// In debug mode ogre is ill: there is an assert which wants to access a nullptr datablock just to check alpha :( and because of that, the application does crash
+			this->gameObjectPtr->getSceneManager()->destroyBillboardSet(this->billboardSet);
+			this->billboardSet = nullptr;
+			this->billboard = nullptr;
+		}
 	}
 
 	void BillboardComponent::createBillboard(void)
@@ -642,6 +661,84 @@ namespace NOWA
 	Ogre::v1::BillboardSet* BillboardComponent::getBillboard(void) const
 	{
 		return this->billboardSet;
+	}
+
+	// Lua registration part
+
+	BillboardComponent* getBillboardComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<BillboardComponent>(gameObject->getComponentWithOccurrence<BillboardComponent>(occurrenceIndex)).get();
+	}
+
+	BillboardComponent* getBillboardComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<BillboardComponent>(gameObject->getComponent<BillboardComponent>()).get();
+	}
+
+	BillboardComponent* getBillboardComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<BillboardComponent>(gameObject->getComponentFromName<BillboardComponent>(name)).get();
+	}
+
+	void BillboardComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+
+		module(lua)
+		[
+			class_<BillboardComponent, GameObjectComponent>("BillboardComponent")
+			// .def("getClassName", &BillboardComponent::getClassName)
+			// .def("clone", &BillboardComponent::clone)
+			// .def("getClassId", &BillboardComponent::getClassId)
+			.def("setActivated", &BillboardComponent::setActivated)
+			.def("isActivated", &BillboardComponent::isActivated)
+			.def("setDatablockName", &BillboardComponent::setDatablockName)
+			.def("getDatablockName", &BillboardComponent::getDatablockName)
+			.def("setPosition", &BillboardComponent::setPosition)
+			.def("getPosition", &BillboardComponent::getPosition)
+			// .def("setOrigin", &BillboardComponent::setOrigin)
+			// .def("getOrigin", &BillboardComponent::getOrigin)
+			// .def("setRotationType", &BillboardComponent::setRotationType)
+			// .def("getRotationType", &BillboardComponent::getRotationType)
+			// .def("setType", &BillboardComponent::setType)
+			// .def("getType", &BillboardComponent::getType)
+			.def("setDimensions", &BillboardComponent::setDimensions)
+			.def("getDimensions", &BillboardComponent::getDimensions)
+			.def("setColor", &BillboardComponent::setColor)
+			.def("getColor", &BillboardComponent::getColor)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "class inherits GameObjectComponent", BillboardComponent::getStaticInfoText());
+		// LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "String getClassName()", "Gets the class name of this component as string.");
+		// LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
+		// LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "number getClassId()", "Gets the class id of this component.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setActivated(bool activated)", "Sets whether this billboard is activated or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "bool isActivated()", "Gets whether this billboard is activated or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setDatablockName(String datablockName)", "Sets the data block name to used for the billboard representation. Note: It must be a unlit datablock.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "String getDatablockName()", "Gets the used datablock name.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setPosition(Vector3 position)", "Sets relative position offset where the billboard should be painted.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vector3 getPosition()", "Gets the relative position offset of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setDimensions(Vector2 dimensions)", "Sets the dimensions (size x, y) of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the dimensions of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setColor(Vector3 color)", "Sets the color (r, g, b) of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
+
+		gameObjectClass.def("getBillboardComponentFromName", &getBillboardComponentFromName);
+		gameObjectClass.def("getBillboardComponent", (BillboardComponent * (*)(GameObject*)) & getBillboardComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "BillboardComponent getBillboardComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "BillboardComponent getBillboardComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castBillboardComponent", &GameObjectController::cast<BillboardComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "BillboardComponent castBillboardComponent(BillboardComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool BillboardComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		// Can only be added once
+		if (gameObject->getComponentCount<BillboardComponent>() < 2)
+		{
+			return true;
+		}
 	}
 
 }; // namespace end

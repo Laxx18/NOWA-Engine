@@ -123,6 +123,7 @@ namespace OgreAL
 		mFractionSum(0.0f),
 		mRenderDelta(0),
 		mLastTime(0),
+		mTotalElapsedTime(0.0f),
 		mFirstTimeReady(true),
 		mTargetDeltaMS(0),
 		mDataRead(0)
@@ -187,6 +188,7 @@ namespace OgreAL
 		mFractionSum(0.0f),
 		mRenderDelta(0),
 		mLastTime(0),
+		mTotalElapsedTime(0.0f),
 		mFirstTimeReady(true),
 		mTargetDeltaMS(0),
 		mDataRead(0)
@@ -250,6 +252,7 @@ namespace OgreAL
 		mAudioProcessor(nullptr),
 		mRenderDelta(0),
 		mLastTime(0),
+		mTotalElapsedTime(0.0f),
 		mFirstTimeReady(true),
 		mTargetDeltaMS(0),
 		mCurrentSpectrumPos(0.0f),
@@ -430,6 +433,7 @@ namespace OgreAL
 		mTargetDeltaMS = 0;
 		mRenderDelta = 0;
 		mLastTime = 0;
+		mTotalElapsedTime = 0.0f;
 
 		if (nullptr != mSpectrumCallback)
 		{
@@ -1262,7 +1266,7 @@ namespace OgreAL
 
 		for (unsigned short i = 0; i < arraySize; i++)
 		{
-			mSpectrumParameter->VUpoints[i] = static_cast<Ogre::Real>(mData[i]) /*/ 255.0f*/ / 127.5f;
+			mSpectrumParameter->VUpoints[i] = static_cast<Ogre::Real>(mData[i]) / 85.0f;
 		}
 
 		mAudioProcessor->process(mCurrentSpectrumPos, mSpectrumParameter->VUpoints);

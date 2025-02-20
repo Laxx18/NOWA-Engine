@@ -49,7 +49,6 @@
 #include "RectangleComponent.h"
 #include "ValueBarComponent.h"
 #include "InventoryItemComponent.h"
-#include "BillboardComponent.h"
 #include "RibbonTrailComponent.h"
 #include "JointComponents.h"
 #include "PhysicsMaterialComponent.h"
@@ -158,7 +157,6 @@ namespace NOWA
 		this->componentFactory.registerClass<TagPointComponent>(TagPointComponent::getStaticClassId(), TagPointComponent::getStaticClassName());
 		this->componentFactory.registerClass<TagChildNodeComponent>(TagChildNodeComponent::getStaticClassId(), TagChildNodeComponent::getStaticClassName());
 		this->componentFactory.registerClass<LookAfterComponent>(LookAfterComponent::getStaticClassId(), LookAfterComponent::getStaticClassName());
-		this->componentFactory.registerClass<BillboardComponent>(BillboardComponent::getStaticClassId(), BillboardComponent::getStaticClassName());
 		this->componentFactory.registerClass<RibbonTrailComponent>(RibbonTrailComponent::getStaticClassId(), RibbonTrailComponent::getStaticClassName());
 		this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
 		// this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());

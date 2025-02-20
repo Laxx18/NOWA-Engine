@@ -116,6 +116,11 @@ namespace OgreAL {
 
 			~SpectrumParameter()
 			{
+				clear();
+			}
+
+			void clear()
+			{
 				VUpoints.clear();
 				phase.clear();
 				frequency.clear();
@@ -601,6 +606,7 @@ namespace OgreAL {
 		unsigned int mTargetDeltaMS;
 		unsigned int mRenderDelta;
 		unsigned long mLastTime;
+		Ogre::Real mTotalElapsedTime;
 		bool mFirstTimeReady;
 		unsigned long mDataSize;
 

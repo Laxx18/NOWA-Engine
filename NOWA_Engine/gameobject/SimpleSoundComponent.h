@@ -240,12 +240,6 @@ namespace NOWA
 		 * @return hasBeat true if a beat has been detected, else false
 		 */
 		bool isSpectrumArea(OgreAL::AudioProcessor::SpectrumArea spectrumArea) const;
-
-		/**
-		 * @brief Gets whether in the audio an instrument like low midrange has been detected at the current spectrum time pos second (60hz-130hz for kick drum, 301hz-750hz snare drum).
-		 * @return hasBeat true if a beat has been detected, else false
-		 */
-		bool isInstrument(OgreAL::AudioProcessor::Instrument instrument) const;
 		
 		// These Methods are just for lua and are special, so there are not stored for an editor
 		
