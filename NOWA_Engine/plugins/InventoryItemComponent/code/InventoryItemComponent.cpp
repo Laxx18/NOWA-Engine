@@ -1,9 +1,12 @@
 #include "NOWAPrecompiled.h"
 #include "InventoryItemComponent.h"
-#include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
-#include "MyGUIItemBoxComponent.h"
+#include "gameObject/MyGUIItemBoxComponent.h"
 #include "main/AppStateManager.h"
+
+#include "gameobject/GameObjectFactory.h"
+
+#include "OgreAbiUtils.h"
 
 namespace NOWA
 {
@@ -12,6 +15,7 @@ namespace NOWA
 
 	InventoryItemComponent::InventoryItemComponent()
 		: GameObjectComponent(),
+		name("InventoryItemComponent"),
 		resourceName(new Variant(InventoryItemComponent::AttrResourceName(), "", this->attributes)),
 		sellValue(new Variant(InventoryItemComponent::AttrSellValue(), static_cast<unsigned int>(0), this->attributes)),
 		buyValue(new Variant(InventoryItemComponent::AttrBuyValue(), static_cast<unsigned int>(0), this->attributes)),
@@ -23,7 +27,22 @@ namespace NOWA
 
 	InventoryItemComponent::~InventoryItemComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InventoryItemComponent] Destructor inventory item component for game object: " + this->gameObjectPtr->getName());
+		
+	}
+
+	const Ogre::String& InventoryItemComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void InventoryItemComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<InventoryItemComponent>(InventoryItemComponent::getStaticClassId(), InventoryItemComponent::getStaticClassName());
+	}
+
+	void InventoryItemComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool InventoryItemComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -52,7 +71,6 @@ namespace NOWA
 	{
 		InventoryItemCompPtr clonedCompPtr(boost::make_shared<InventoryItemComponent>());
 
-		
 		clonedCompPtr->setResourceName(this->resourceName->getString());
 		clonedCompPtr->setSellValue(this->sellValue->getUInt());
 		clonedCompPtr->setBuyValue(this->buyValue->getUInt());
@@ -69,6 +87,11 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[InventoryItemComponent] Init inventory item component for game object: " + this->gameObjectPtr->getName());
 
 		return true;
+	}
+
+	void InventoryItemComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
 	}
 
 	bool InventoryItemComponent::connect(void)
@@ -255,6 +278,90 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[InventoryItemComponent] Error cannot remove quantity from inventory. Because the the main game object has no inventory, for game object: " + this->gameObjectPtr->getName());
 		}
+	}
+
+	// Lua registration part
+
+	void addQuantityToInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
+	{
+		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
+	}
+
+	void removeQuantityFromInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
+	{
+		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
+	}
+
+	void addQuantityToInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
+	{
+		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
+	}
+
+	void removeQuantityFromInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
+	{
+		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
+	}
+
+	InventoryItemComponent* getInventoryItemComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponentWithOccurrence<InventoryItemComponent>(occurrenceIndex)).get();
+	}
+
+	InventoryItemComponent* getInventoryItemComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponent<InventoryItemComponent>()).get();
+	}
+
+	InventoryItemComponent* getInventoryItemComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponentFromName<InventoryItemComponent>(name)).get();
+	}
+
+	void InventoryItemComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<InventoryItemComponent, GameObjectComponent>("InventoryItemComponent")
+			// .def("getClassName", &InventoryItemComponent::getClassName)
+			// .def("getClassId", &InventoryItemComponent::getClassId)
+			.def("setResourceName", &InventoryItemComponent::setResourceName)
+			.def("getResourceName", &InventoryItemComponent::getResourceName)
+			// .def("setQuantity", &InventoryItemComponent::setQuantity)
+			// .def("getQuantity", &InventoryItemComponent::getQuantity)
+			// .def("addQuantityToInventory", &InventoryItemComponent::addQuantityToInventory)
+			// .def("removeQuantityFromInventory", &InventoryItemComponent::removeQuantityFromInventory)
+			.def("addQuantityToInventory", &addQuantityToInventory)
+			.def("removeQuantityFromInventory", &removeQuantityFromInventory)
+			.def("addQuantityToInventory2", &addQuantityToInventory2)
+			.def("removeQuantityFromInventory2", &removeQuantityFromInventory2)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "class inherits GameObjectComponent", InventoryItemComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void setResourceName(String resourceName)", "Sets the used resource name.");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "String getResourceName()", "Gets the used resource name.");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void addQuantityToInventory(String inventoryIdGameObject, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void addQuantityToInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "Vecto2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
+
+		gameObjectClass.def("getInventoryItemComponentFromName", &getInventoryItemComponentFromName);
+		gameObjectClass.def("getInventoryItemComponent", (InventoryItemComponent * (*)(GameObject*)) & getInventoryItemComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "InventoryItemComponent getInventoryItemComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "InventoryItemComponent getInventoryItemComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castInventoryItemComponent", &GameObjectController::cast<InventoryItemComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "InventoryItemComponent castInventoryItemComponent(InventoryItemComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool InventoryItemComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		return true;
 	}
 
 }; // namespace end

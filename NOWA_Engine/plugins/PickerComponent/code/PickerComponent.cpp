@@ -225,6 +225,8 @@ namespace NOWA
 
 	void PickerComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PickerComponent::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 

@@ -277,6 +277,7 @@ namespace NOWA
 
 	void AnimationSequenceComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationSequenceComponent] Destructor animation component for game object: " + this->gameObjectPtr->getName());
 
 		if (nullptr != this->skeletonVisualizer)

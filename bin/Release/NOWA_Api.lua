@@ -3155,8 +3155,8 @@ return {
 				type = "function",
 				description = "Gets the dimensions of the billboard.",
 				args = "()",
-				returns = "(Vecto2)",
-				valuetype = "Vecto2"
+				returns = "(Vector2)",
+				valuetype = "Vector2"
 			},
 			setColor =
 			{
@@ -7743,14 +7743,6 @@ return {
 				returns = "(MyGUIItemBoxComponent)",
 				valuetype = "MyGUIItemBoxComponent"
 			},
-			getInventoryItemComponent =
-			{
-				type = "function",
-				description = "Gets the inventory item component. This can be used for inventory item in conjunction with MyGUIItemBoxComponent.",
-				args = "()",
-				returns = "(InventoryItemComponent)",
-				valuetype = "InventoryItemComponent"
-			},
 			getMyGUITextComponentFromIndex =
 			{
 				type = "function",
@@ -8783,14 +8775,6 @@ return {
 				returns = "(MyGUIItemBoxComponent)",
 				valuetype = "MyGUIItemBoxComponent"
 			},
-			getInventoryItemComponentFromName =
-			{
-				type = "function",
-				description = "Gets the inventory item component. This can be used for inventory item in conjunction with MyGUIItemBoxComponent.",
-				args = "(string name)",
-				returns = "(InventoryItemComponent)",
-				valuetype = "InventoryItemComponent"
-			},
 			getMyGUITextComponentFromName =
 			{
 				type = "function",
@@ -9150,6 +9134,22 @@ return {
 				args = "(string name)",
 				returns = "(InputDeviceComponent)",
 				valuetype = "InputDeviceComponent"
+			},
+			getInventoryItemComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(InventoryItemComponent)",
+				valuetype = "InventoryItemComponent"
+			},
+			getInventoryItemComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(InventoryItemComponent)",
+				valuetype = "InventoryItemComponent"
 			},
 			getJointFlexyPipeHandleComponent =
 			{
@@ -10959,6 +10959,14 @@ return {
 				returns = "(InputDeviceComponent)",
 				valuetype = "InputDeviceComponent"
 			},
+			castInventoryItemComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(InventoryItemComponent other)",
+				returns = "(InventoryItemComponent)",
+				valuetype = "InventoryItemComponent"
+			},
 			castJointFlexyPipeHandleComponent =
 			{
 				type = "function",
@@ -12522,7 +12530,7 @@ return {
 	InventoryItemComponent =
 	{
 		type = "class",
-		description = "Usage: Is used in conjunction with MyGuiItemBoxComponent in order build a connection between an item like energy and an inventory slot. ",
+		description = "Usage: Is used in conjunction with MyGuiItemBoxComponent in order build a connection between an item like energy and an inventory slot.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -12573,6 +12581,14 @@ return {
 				args = "(string inventoryIdGameObject, string componentName, number quantity, boolean once)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getDimensions =
+			{
+				type = "function",
+				description = "Gets the color (r, g, b) of the billboard.",
+				args = "()",
+				returns = "(Vecto2)",
+				valuetype = "Vecto2"
 			}
 		}
 	},

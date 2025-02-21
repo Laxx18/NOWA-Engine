@@ -343,7 +343,7 @@ namespace NOWA
 
 	void TransformEaseComponent::onRemoveComponent(void)
 	{
-		
+		GameObjectComponent::onRemoveComponent();
 	}
 	
 	void TransformEaseComponent::onOtherComponentRemoved(unsigned int index)

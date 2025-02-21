@@ -790,8 +790,14 @@ namespace NOWA
 	{
 		if (nullptr != this->joint)
 		{
+			Ogre::String gameObjectName = "None (ad hoc)";
+			if (nullptr != this->gameObjectPtr)
+			{
+				gameObjectName = this->gameObjectPtr->getName();
+			}
+
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Joint: "
-				+ this->type->getString() + " released for game object: " + this->gameObjectPtr->getName());
+				+ this->type->getString() + " released for game object: " + gameObjectName);
 
 			this->jointAlreadyCreated = false;
 
@@ -821,8 +827,14 @@ namespace NOWA
 	{
 		if (nullptr != this->joint)
 		{
+			Ogre::String gameObjectName = "None (ad hoc)";
+			if (nullptr != this->gameObjectPtr)
+			{
+				gameObjectName = this->gameObjectPtr->getName();
+			}
+
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointComponent] Joint: "
-															+ this->type->getString() + " released for game object: " + this->gameObjectPtr->getName());
+				+ this->type->getString() + " released for game object: " + gameObjectName);
 
 			this->jointAlreadyCreated = false;
 
@@ -1149,7 +1161,11 @@ namespace NOWA
 			return true;
 		}
 
-		Ogre::String gameObjectName = this->gameObjectPtr->getName();
+		Ogre::String gameObjectName = "None (ad hoc)";
+		if (nullptr != this->gameObjectPtr)
+		{
+			gameObjectName = this->gameObjectPtr->getName();
+		}
 
 		if (true == this->jointAlreadyCreated)
 		{

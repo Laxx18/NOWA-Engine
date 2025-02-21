@@ -48,7 +48,6 @@
 #include "ManualObjectComponent.h"
 #include "RectangleComponent.h"
 #include "ValueBarComponent.h"
-#include "InventoryItemComponent.h"
 #include "RibbonTrailComponent.h"
 #include "JointComponents.h"
 #include "PhysicsMaterialComponent.h"
@@ -122,7 +121,6 @@ namespace NOWA
 		this->componentFactory.registerClass<ManualObjectComponent>(ManualObjectComponent::getStaticClassId(), ManualObjectComponent::getStaticClassName());
 		this->componentFactory.registerClass<RectangleComponent>(RectangleComponent::getStaticClassId(), RectangleComponent::getStaticClassName());
 		this->componentFactory.registerClass<ValueBarComponent>(ValueBarComponent::getStaticClassId(), ValueBarComponent::getStaticClassName());
-		this->componentFactory.registerClass<InventoryItemComponent>(InventoryItemComponent::getStaticClassId(), InventoryItemComponent::getStaticClassName());
 		this->componentFactory.registerClass<TimeTriggerComponent>(TimeTriggerComponent::getStaticClassId(), TimeTriggerComponent::getStaticClassName());
 		this->componentFactory.registerClass<TimeLineComponent>(TimeLineComponent::getStaticClassId(), TimeLineComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraComponent>(CameraComponent::getStaticClassId(), CameraComponent::getStaticClassName());

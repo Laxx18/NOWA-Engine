@@ -1029,51 +1029,15 @@ namespace NOWA
 		}
 	}
 
-	void GameObjectController::removeJointComponentBreakJointChain(const unsigned long jointId)
+	void GameObjectController::internalRemoveJointComponentBreakJointChain(const unsigned long jointId, std::unordered_set<unsigned long>& visitedJoints)
 	{
-		if (0 == jointId)
+		if (0 == jointId || visitedJoints.find(jointId) != visitedJoints.end())
 		{
 			return;
 		}
-		auto& it = this->jointComponentMap.find(jointId);
-		if (it != this->jointComponentMap.end())
-		{
-			auto& predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
-			if (nullptr != predecessorJointCompPtr)
-			{
-				// Reset also predecessor/target joint ptr, else the GameObject cannot be deleted
-				predecessorJointCompPtr->releaseJoint(true);
-				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId());
-				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId());
-			}
-			else
-			{
-				// Search for the joint component, that points to the removed one
-				for (auto& it2 = this->jointComponentMap.cbegin(); it2 != this->jointComponentMap.cend(); ++it2)
-				{
-					if (it2->second->getPredecessorId() == jointId || it2->second->getTargetId() == jointId)
-					{
-						auto& jointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it2->second->getId()));
-						if (nullptr != jointCompPtr)
-						{
-							// Reset also predecessor/target joint ptr, else the GameObject cannot be deleted
-							jointCompPtr->releaseJoint(true);
-							this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getPredecessorId());
-							this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getTargetId());
-						}
-					}
-				}
-			}
-			this->jointComponentMap.erase(it);
-		}
-	}
 
-	void GameObjectController::internalRemoveJointComponentBreakJointChain(const unsigned long jointId)
-	{
-		if (0 == jointId)
-		{
-			return;
-		}
+		visitedJoints.insert(jointId); // Mark this joint as visited
+
 		auto& it = this->jointComponentMap.find(jointId);
 		if (it != this->jointComponentMap.end())
 		{
@@ -1081,24 +1045,30 @@ namespace NOWA
 			if (nullptr != predecessorJointCompPtr)
 			{
 				predecessorJointCompPtr->releaseJoint();
-				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId());
-				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId());
+				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId(), visitedJoints);
+				this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId(), visitedJoints);
 			}
 			else
 			{
-				// Search for the joint component, that points to the removed one
+				// Search for the joint component that points to the removed one
 				for (auto& it2 = this->jointComponentMap.cbegin(); it2 != this->jointComponentMap.cend(); ++it2)
 				{
 					if (it->second->getPredecessorId() == jointId)
 					{
 						auto& predecessorJointCompPtr = NOWA::makeStrongPtr(this->getJointComponent(it->second->getPredecessorId()));
 						predecessorJointCompPtr->releaseJoint();
-						this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId());
-						this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId());
+						this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getPredecessorId(), visitedJoints);
+						this->internalRemoveJointComponentBreakJointChain(predecessorJointCompPtr->getTargetId(), visitedJoints);
 					}
 				}
 			}
 		}
+	}
+
+	void GameObjectController::removeJointComponentBreakJointChain(const unsigned long jointId)
+	{
+		std::unordered_set<unsigned long> visitedJoints;
+		internalRemoveJointComponentBreakJointChain(jointId, visitedJoints);
 	}
 
 	void GameObjectController::deleteJointDelegate(EventDataPtr eventData)
@@ -1109,8 +1079,9 @@ namespace NOWA
 		if (nullptr != jointCompPtr)
 		{
 			jointCompPtr->releaseJoint();
-			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getPredecessorId());
-			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getTargetId());
+			std::unordered_set<unsigned long> visitedJoints;
+			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getPredecessorId(), visitedJoints);
+			this->internalRemoveJointComponentBreakJointChain(jointCompPtr->getTargetId(), visitedJoints);
 		}
 	}
 

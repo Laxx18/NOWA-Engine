@@ -181,6 +181,8 @@ namespace NOWA
 
 	void Rect2DComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		if (nullptr != this->rectangle2D)
 		{
 			this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);

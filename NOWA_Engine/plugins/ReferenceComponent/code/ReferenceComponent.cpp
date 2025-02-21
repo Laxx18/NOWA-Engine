@@ -108,6 +108,8 @@ namespace NOWA
 
 	void ReferenceComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ReferenceComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 	}
 	

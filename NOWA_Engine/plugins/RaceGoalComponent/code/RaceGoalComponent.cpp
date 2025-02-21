@@ -436,6 +436,8 @@ namespace NOWA
 
 	void RaceGoalComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		if (nullptr != this->pPath)
 		{
 			delete this->pPath;

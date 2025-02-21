@@ -525,9 +525,6 @@
     <ClInclude Include="gameobject\DatablockUnlitComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\InventoryItemComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\MyGUIItemBoxComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -1089,9 +1086,6 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\GameObjectTitleComponent.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\InventoryItemComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\MyGUIItemBoxComponent.cpp">

@@ -151,6 +151,8 @@ namespace NOWA
 
 	void SplitScreenComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		this->cleanupSplitScreen();
 	}
 

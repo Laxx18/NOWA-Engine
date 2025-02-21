@@ -175,7 +175,6 @@ namespace NOWA
 	{
 		BillboardCompPtr clonedCompPtr(boost::make_shared<BillboardComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setDatablockName(this->datablockName->getListSelectedValue());
 		clonedCompPtr->setPosition(this->position->getVector3());
@@ -203,6 +202,8 @@ namespace NOWA
 
 	void BillboardComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->billboardSet)
 		{
@@ -718,9 +719,9 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setPosition(Vector3 position)", "Sets relative position offset where the billboard should be painted.");
 		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vector3 getPosition()", "Gets the relative position offset of the billboard.");
 		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setDimensions(Vector2 dimensions)", "Sets the dimensions (size x, y) of the billboard.");
-		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the dimensions of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vector2 getDimensions()", "Gets the dimensions of the billboard.");
 		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "void setColor(Vector3 color)", "Sets the color (r, g, b) of the billboard.");
-		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vecto2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
+		LuaScriptApi::getInstance()->addClassToCollection("BillboardComponent", "Vector2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
 
 		gameObjectClass.def("getBillboardComponentFromName", &getBillboardComponentFromName);
 		gameObjectClass.def("getBillboardComponent", (BillboardComponent * (*)(GameObject*)) & getBillboardComponent);

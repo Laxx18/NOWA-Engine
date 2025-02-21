@@ -288,6 +288,7 @@ namespace NOWA
 
 	void AttributeEffectComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AttributeEffectComponent] Destructor attribute effect component for game object: " + this->gameObjectPtr->getName());
 
 		if (nullptr != this->oldAttributeEffect)

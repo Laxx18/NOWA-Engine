@@ -387,7 +387,6 @@
     <ClInclude Include="gameobject\GameObjectTitleComponent.h" />
     <ClInclude Include="gameobject\GenericFactory.h" />
     <ClInclude Include="gameobject\HdrEffectComponent.h" />
-    <ClInclude Include="gameobject\InventoryItemComponent.h" />
     <ClInclude Include="gameobject\JointComponents.h" />
     <ClInclude Include="gameobject\LensFlareComponent.h" />
     <ClInclude Include="gameobject\LightAreaComponent.h" />
@@ -607,7 +606,6 @@
     <ClCompile Include="gameobject\GameObjectFactory.cpp" />
     <ClCompile Include="gameobject\GameObjectTitleComponent.cpp" />
     <ClCompile Include="gameobject\HdrEffectComponent.cpp" />
-    <ClCompile Include="gameobject\InventoryItemComponent.cpp" />
     <ClCompile Include="gameobject\JointComponents.cpp" />
     <ClCompile Include="gameobject\LensFlareComponent.cpp" />
     <ClCompile Include="gameobject\LightAreaComponent.cpp" />

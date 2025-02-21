@@ -242,6 +242,8 @@ namespace NOWA
 
 	void VegetationComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		this->gameObjectPtr->getSceneManager()->destroyQuery(this->raySceneQuery);
 		this->clearLists();
 

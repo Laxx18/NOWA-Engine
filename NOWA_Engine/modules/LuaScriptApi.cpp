@@ -2592,11 +2592,6 @@ namespace NOWA
 		return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponent<MyGUIItemBoxComponent>()).get();
 	}
 
-	InventoryItemComponent* getInventoryItemComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponent<InventoryItemComponent>()).get();
-	}
-
 	MyGUITextComponent* getMyGUITextComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<MyGUITextComponent>(gameObject->getComponent<MyGUITextComponent>()).get();
@@ -3212,11 +3207,6 @@ namespace NOWA
 		return makeStrongPtr<MyGUIItemBoxComponent>(gameObject->getComponentFromName<MyGUIItemBoxComponent>(name)).get();
 	}
 
-	InventoryItemComponent* getInventoryItemComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<InventoryItemComponent>(gameObject->getComponentFromName<InventoryItemComponent>(name)).get();
-	}
-
 	MyGUITextComponent* getMyGUITextComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<MyGUITextComponent>(gameObject->getComponentFromName<MyGUITextComponent>(name)).get();
@@ -3586,7 +3576,6 @@ namespace NOWA
 		gameObject.def("getMyGUIRepeatClickControllerComponentFromIndex", (MyGUIRepeatClickControllerComponent * (*)(GameObject*, unsigned int)) & getMyGUIRepeatClickControllerComponent);
 		gameObject.def("getMyGUIWindowComponent", (MyGUIWindowComponent * (*)(GameObject*)) & getMyGUIWindowComponent);
 		gameObject.def("getMyGUIItemBoxComponent", &getMyGUIItemBoxComponent);
-		gameObject.def("getInventoryItemComponent", &getInventoryItemComponent);
 		gameObject.def("getMyGUITextComponent", (MyGUITextComponent * (*)(GameObject*)) & getMyGUITextComponent);
 		gameObject.def("getMyGUIButtonComponent", (MyGUIButtonComponent * (*)(GameObject*)) & getMyGUIButtonComponent);
 		gameObject.def("getMyGUICheckBoxComponent", (MyGUICheckBoxComponent * (*)(GameObject*)) & getMyGUICheckBoxComponent);
@@ -3711,7 +3700,6 @@ namespace NOWA
 		gameObject.def("getRibbonTrailComponentFromName", &getRibbonTrailComponentFromName);
 		gameObject.def("getMyGUIWindowComponentFromName", &getMyGUIWindowComponentFromName);
 		gameObject.def("getMyGUIItemBoxComponentFromName", &getMyGUIItemBoxComponentFromName);
-		gameObject.def("getInventoryItemComponentFromName", &getInventoryItemComponentFromName);
 		gameObject.def("getMyGUITextComponentFromName", &getMyGUITextComponentFromName);
 		gameObject.def("getMyGUIButtonComponentFromName", &getMyGUIButtonComponentFromName);
 		gameObject.def("getMyGUICheckBoxComponentFromName", &getMyGUICheckBoxComponentFromName);
@@ -3887,7 +3875,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI window component by the given occurence index, since a game object may have besides other components several MyGUI window components.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponent()", "Gets the MyGUI window component. This can be used if the game object just has one MyGUI window component.");
 		AddClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponent()", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
-		AddClassToCollection("GameObject", "InventoryItemComponent getInventoryItemComponent()", "Gets the inventory item component. This can be used for inventory item in conjunction with MyGUIItemBoxComponent.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI text component by the given occurence index, since a game object may have besides other components several MyGUI text components.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponent()", "Gets the MyGUI text component. This can be used if the game object just has one MyGUI text component.");
 		AddClassToCollection("GameObject", "MyGUIButtonComponent getMyGUIButtonComponentFromIndex(unsigned int occurrenceIndex)", "Gets the MyGUI button component by the given occurence index, since a game object may have besides other components several MyGUI button components.");
@@ -4021,7 +4008,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "RibbonTrailComponent getRibbonTrailComponentFromName(String name)", "Gets the ribbon trail component.");
 		AddClassToCollection("GameObject", "MyGUIWindowComponent getMyGUIWindowComponentFromName(String name)", "Gets the MyGUI window component.");
 		AddClassToCollection("GameObject", "MyGUIItemBoxComponent getMyGUIItemBoxComponentFromName(String name)", "Gets the MyGUI item box component. This can be used for inventory item in conjunction with InventoryItemComponent.");
-		AddClassToCollection("GameObject", "InventoryItemComponent getInventoryItemComponentFromName(String name)", "Gets the inventory item component. This can be used for inventory item in conjunction with MyGUIItemBoxComponent.");
 		AddClassToCollection("GameObject", "MyGUITextComponent getMyGUITextComponentFromName(String name)", "Gets the MyGUI text component.");
 		AddClassToCollection("GameObject", "MyGUIButtonComponent getMyGUIButtonComponentFromName(String name)", "Gets the MyGUI button component.");
 		AddClassToCollection("GameObject", "MyGUICheckBoxComponent getMyGUICheckBoxComponentFromName(String name)", "Gets the MyGUI check box component.");
@@ -11817,6 +11803,11 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getParentId());
 	}
 
+	Ogre::String getSenderInventoryId(DragDropData* instance)
+	{
+		return Ogre::StringConverter::toString(instance->getSenderInventoryId());
+	}
+
 	void setSourceIdMyGUIController(MyGUIControllerComponent* instance, const Ogre::String& id)
 	{
 		instance->setSourceId(Ogre::StringConverter::parseUnsignedLong(id));
@@ -11825,31 +11816,6 @@ namespace NOWA
 	Ogre::String getSourceIdMyGUIController(MyGUIControllerComponent* instance)
 	{
 		return Ogre::StringConverter::toString(instance->getSourceId());
-	}
-
-	void addQuantityToInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
-	{
-		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
-	}
-
-	void removeQuantityFromInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
-	{
-		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
-	}
-
-	void addQuantityToInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
-	{
-		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
-	}
-
-	void removeQuantityFromInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
-	{
-		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
-	}
-
-	Ogre::String getSenderInventoryId(DragDropData* instance)
-	{
-		return Ogre::StringConverter::toString(instance->getSenderInventoryId());
 	}
 
 	void bindMyGUIComponents(lua_State* lua)
@@ -11910,17 +11876,17 @@ namespace NOWA
 														  "Sets whether to react if mouse has left the given widget (hover end).");
 
 		module(lua)
-			[
-				class_<MyGUIWindowComponent, MyGUIComponent>("MyGUIWindowComponent")
-				// .def("getClassName", &MyGUIWindowComponent::getClassName)
-				// .def("getClassId", &MyGUIWindowComponent::getClassId)
+		[
+			class_<MyGUIWindowComponent, MyGUIComponent>("MyGUIWindowComponent")
+			// .def("getClassName", &MyGUIWindowComponent::getClassName)
+			// .def("getClassId", &MyGUIWindowComponent::getClassId)
 			.def("setSkin", &MyGUIWindowComponent::setSkin)
 			.def("getSkin", &MyGUIWindowComponent::getSkin)
 			.def("setMovable", &MyGUIWindowComponent::setMovable)
 			.def("getMovable", &MyGUIWindowComponent::getMovable)
 			.def("setWindowCaption", &MyGUIWindowComponent::setWindowCaption)
 			.def("getWindowCaption", &MyGUIWindowComponent::getWindowCaption)
-			];
+		];
 
 		AddClassToCollection("MyGUIWindowComponent", "class inherits MyGUIComponent", MyGUIWindowComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIWindowComponent", "void setSkin(String skin)", "Sets the widgets skin. Possible values are: 'WindowCSX', 'Window', 'WindowC', 'WindowCX', 'WindowCS', 'WindowCX2_Dark', 'WindowCXS2_Dark', 'Back1Skin_Dark', 'PanelSkin'.");
@@ -12008,35 +11974,6 @@ namespace NOWA
 		AddClassToCollection("DragDropData", "string getSenderInventoryId()", "Gets the sender inventory id.");
 		AddClassToCollection("DragDropData", "void setCanDrop(bool canDrop)", "Sets whether the item can be dropped.");
 		AddClassToCollection("DragDropData", "bool getCanDrop()", "Gets whether the item can be dropped.");
-
-		module(lua)
-		[
-			class_<InventoryItemComponent, GameObjectComponent>("InventoryItemComponent")
-			// .def("getClassName", &InventoryItemComponent::getClassName)
-			// .def("getClassId", &InventoryItemComponent::getClassId)
-			.def("setResourceName", &InventoryItemComponent::setResourceName)
-			.def("getResourceName", &InventoryItemComponent::getResourceName)
-			// .def("setQuantity", &InventoryItemComponent::setQuantity)
-			// .def("getQuantity", &InventoryItemComponent::getQuantity)
-			// .def("addQuantityToInventory", &InventoryItemComponent::addQuantityToInventory)
-			// .def("removeQuantityFromInventory", &InventoryItemComponent::removeQuantityFromInventory)
-			.def("addQuantityToInventory", &addQuantityToInventory)
-			.def("removeQuantityFromInventory", &removeQuantityFromInventory)
-			.def("addQuantityToInventory2", &addQuantityToInventory2)
-			.def("removeQuantityFromInventory2", &removeQuantityFromInventory2)
-		];
-
-		AddClassToCollection("InventoryItemComponent", "class inherits GameObjectComponent", InventoryItemComponent::getStaticInfoText());
-		AddClassToCollection("InventoryItemComponent", "void setResourceName(String resourceName)", "Sets the used resource name.");
-		AddClassToCollection("InventoryItemComponent", "String getResourceName()", "Gets the used resource name.");
-		AddClassToCollection("InventoryItemComponent", "void addQuantityToInventory(String inventoryIdGameObject, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
-		AddClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
-		AddClassToCollection("InventoryItemComponent", "void addQuantityToInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
-		AddClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
 
 		module(lua)
 		[
@@ -12199,21 +12136,21 @@ namespace NOWA
 							 "Sets whether to react if a list item change has been accepted. The accepted list item index will be received.");
 
 		module(lua)
-			[
-				class_<MyGUIComboBoxComponent, MyGUIComponent>("MyGUIComboBoxComponent")
-				.def("setCaption", &MyGUIComboBoxComponent::setCaption)
-				.def("setItemCount", &MyGUIComboBoxComponent::setItemCount)
-				.def("getItemCount", &MyGUIComboBoxComponent::getItemCount)
-				.def("setItemText", &MyGUIComboBoxComponent::setItemText)
-				.def("getItemText", &MyGUIComboBoxComponent::getItemText)
-				.def("addItem", &MyGUIComboBoxComponent::addItem)
-				.def("insertItem", &MyGUIComboBoxComponent::insertItem)
-				.def("removeItem", &MyGUIComboBoxComponent::removeItem)
-				.def("getSelectedIndex", &MyGUIComboBoxComponent::getSelectedIndex)
-				.def("reactOnSelected", &MyGUIComboBoxComponent::reactOnSelected)
-				.def("setFlowDirection", &MyGUIComboBoxComponent::setFlowDirection)
-				.def("getFlowDirection", &MyGUIComboBoxComponent::getFlowDirection)
-			];
+		[
+			class_<MyGUIComboBoxComponent, MyGUIComponent>("MyGUIComboBoxComponent")
+			.def("setCaption", &MyGUIComboBoxComponent::setCaption)
+			.def("setItemCount", &MyGUIComboBoxComponent::setItemCount)
+			.def("getItemCount", &MyGUIComboBoxComponent::getItemCount)
+			.def("setItemText", &MyGUIComboBoxComponent::setItemText)
+			.def("getItemText", &MyGUIComboBoxComponent::getItemText)
+			.def("addItem", &MyGUIComboBoxComponent::addItem)
+			.def("insertItem", &MyGUIComboBoxComponent::insertItem)
+			.def("removeItem", &MyGUIComboBoxComponent::removeItem)
+			.def("getSelectedIndex", &MyGUIComboBoxComponent::getSelectedIndex)
+			.def("reactOnSelected", &MyGUIComboBoxComponent::reactOnSelected)
+			.def("setFlowDirection", &MyGUIComboBoxComponent::setFlowDirection)
+			.def("getFlowDirection", &MyGUIComboBoxComponent::getFlowDirection)
+		];
 
 		AddClassToCollection("MyGUIComboBoxComponent", "class inherits MyGUIComponent", MyGUIComboBoxComponent::getStaticInfoText());
 		AddClassToCollection("MyGUIComboBoxComponent", "void setCaption(String caption)", "Sets the caption for this widget.");
@@ -12475,16 +12412,6 @@ namespace NOWA
 
 		AddClassToCollection("MyGUIMiniMapComponent", "void reactOnMouseButtonClick(func closureFunction, int mapTileIndex)",
 														  "Sets whether to react if a mouse button has been clicked on the minimap. The clicked map tile index will be received.");
-	}
-
-	void bindPhysicsVehicle(lua_State* lua)
-	{
-
-	}
-
-	void bindPhysicsTire(lua_State* lua)
-	{
-
 	}
 
 	/////////////////////Modules///////////////////////////////////////////////////////////////
@@ -13406,8 +13333,6 @@ namespace NOWA
 				bindSimpleSoundComponent(this->lua);
 				bindSoundComponent(this->lua);
 				bindSpawnComponent(this->lua);
-				bindPhysicsVehicle(this->lua);
-				bindPhysicsTire(this->lua);
 				bindGameProgressModule(this->lua);
 				bindGameObjectController(this->lua, gameObjectControllerClass);
 				bindAiLuaComponent(this->lua);

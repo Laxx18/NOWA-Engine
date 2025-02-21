@@ -990,7 +990,6 @@ namespace NOWA
 	public:
 		GameObjectPtr internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
 			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
-		void internalRemoveJointComponentBreakJointChain(const unsigned long jointId);
 	private:
 
 		/**
@@ -1008,6 +1007,8 @@ namespace NOWA
 		void deleteJointDelegate(EventDataPtr eventData);
 
 		void updateLuaScriptExecutionOrder(void);
+
+		void internalRemoveJointComponentBreakJointChain(const unsigned long jointId, std::unordered_set<unsigned long>& visitedJoints);
 	private:
 		Ogre::String appStateName;
 

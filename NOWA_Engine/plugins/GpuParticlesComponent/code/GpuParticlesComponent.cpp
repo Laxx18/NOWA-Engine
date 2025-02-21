@@ -402,6 +402,7 @@ namespace NOWA
 
 	void GpuParticlesComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		this->destroyParticleEffect();
 	}
 	

@@ -117,7 +117,6 @@ extern "C"
 #include "gameobject/ManualObjectComponent.h"
 #include "gameobject/RectangleComponent.h"
 #include "gameobject/ValueBarComponent.h"
-#include "gameobject/InventoryItemComponent.h"
 #include "gameobject/RibbonTrailComponent.h"
 #include "gameobject/JointComponents.h"
 #include "gameobject/PhysicsMaterialComponent.h"
@@ -201,7 +200,6 @@ namespace NOWA
 	typedef boost::shared_ptr<LinesComponent> LinesCompPtr;
 	typedef boost::shared_ptr<ManualObjectComponent> ManualObjectCompPtr;
 	typedef boost::shared_ptr<RectangleComponent> RectangleCompPtr;
-	typedef boost::shared_ptr<InventoryItemComponent> InventoryItemCompPtr;
 	
 	typedef boost::shared_ptr<RibbonTrailComponent> RibbonTrailCompPtr;
 	typedef boost::shared_ptr<LookAfterComponent> LookAfterCompPtr;

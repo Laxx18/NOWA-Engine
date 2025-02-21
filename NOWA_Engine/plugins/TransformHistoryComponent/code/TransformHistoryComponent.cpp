@@ -211,6 +211,8 @@ namespace NOWA
 
 	void TransformHistoryComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &TransformHistoryComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 
 		if (nullptr != this->gameObjectStateHistory)

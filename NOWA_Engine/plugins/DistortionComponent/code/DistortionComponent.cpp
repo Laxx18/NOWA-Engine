@@ -137,6 +137,7 @@ namespace NOWA
 
 	void DistortionComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		this->destroyDistoration();
 	}
 	

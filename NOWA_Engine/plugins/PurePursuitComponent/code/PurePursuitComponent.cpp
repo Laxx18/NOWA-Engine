@@ -372,6 +372,8 @@ namespace NOWA
 
 	void PurePursuitComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PurePursuitComponent::handleCountdownActive), EventDataCountdownActive::getStaticEventType());
 
 		if (nullptr != this->pPath)

@@ -158,7 +158,7 @@ namespace NOWA
 
 	void ParticleFxComponent::onRemoveComponent(void)
 	{
-		
+		GameObjectComponent::onRemoveComponent();
 	}
 	
 	void ParticleFxComponent::onOtherComponentRemoved(unsigned int index)

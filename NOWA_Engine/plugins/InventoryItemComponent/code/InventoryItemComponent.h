@@ -1,11 +1,21 @@
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
 #ifndef INVENTORY_ITEM_COMPONENT_H
 #define INVENTORY_ITEM_COMPONENT_H
 
-#include "GameObjectComponent.h"
+#include "gameobject/GameObjectComponent.h"
+#include "main/Events.h"
+#include "OgrePlugin.h"
 
 namespace NOWA
 {
-	class EXPORTED InventoryItemComponent : public GameObjectComponent
+	/**
+	 * @brief	Usage: Is used in conjunction with MyGuiItemBoxComponent in order build a connection between an item like energy and an inventory slot.
+	 */
+	class EXPORTED InventoryItemComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
 
@@ -17,6 +27,39 @@ namespace NOWA
 		virtual ~InventoryItemComponent();
 
 		/**
+		* @see		Ogre::Plugin::install
+		*/
+		virtual void install(const Ogre::NameValuePairList* options) override;
+
+		/**
+		* @see		Ogre::Plugin::initialise
+		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
+		*/
+		virtual void initialise() override {};
+
+		/**
+		* @see		Ogre::Plugin::shutdown
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void shutdown() override {};
+
+		/**
+		* @see		Ogre::Plugin::uninstall
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void uninstall() override {};
+
+		/**
+		* @see		Ogre::Plugin::getName
+		*/
+		virtual const Ogre::String& getName() const override;
+
+		/**
+		* @see		Ogre::Plugin::getAbiCookie
+		*/
+		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
+
+		/**
 		* @see		GameObjectComponent::init
 		*/
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
@@ -25,6 +68,11 @@ namespace NOWA
 		* @see		GameObjectComponent::postInit
 		*/
 		virtual bool postInit(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
 
 		/**
 		* @see		GameObjectComponent::clone
@@ -56,7 +104,17 @@ namespace NOWA
 		*/
 		virtual Ogre::String getParentClassName(void) const override;
 
-		
+		/**
+		* @see		GameObjectComponent::actualizeValue
+		*/
+		virtual void actualizeValue(Variant* attribute) override;
+
+		/**
+		* @see		GameObjectComponent::writeXML
+		*/
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+	public:
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("InventoryItemComponent");
@@ -68,28 +126,23 @@ namespace NOWA
 		}
 
 		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		* @see		GameObjectComponent::canStaticAddComponent
+		*/
+		static bool canStaticAddComponent(GameObject* gameObject);
 
 		/**
 		 * @see	GameObjectComponent::getStaticInfoText
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Is used in conjunction with MyGuiItemBoxComponent in order build a connection between an item like energy and an inventory slot. ";
+			return "Usage: Is used in conjunction with MyGuiItemBoxComponent in order build a connection between an item like energy and an inventory slot.";
 		}
 
 		/**
-		* @see		GameObjectComponent::actualizeValue
-		*/
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
-
+		 * @see	GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
+	public:
 		/**
 		 * @brief		Sets the resource name, which must exist and also match the item resource name in a slot in @MyGuiItemBoxComponent.
 		 * @param[in]	resourceName	The resource name to set.
@@ -150,6 +203,7 @@ namespace NOWA
 		static const Ogre::String AttrSellValue(void) { return "Sell Value"; }
 		static const Ogre::String AttrBuyValue(void) { return "Buy Value"; }
 	private:
+		Ogre::String name;
 		Variant* resourceName;
 		Variant* sellValue;
 		Variant* buyValue;

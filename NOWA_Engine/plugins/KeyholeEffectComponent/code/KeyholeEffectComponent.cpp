@@ -158,6 +158,7 @@ namespace NOWA
 
 	void KeyholeEffectComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		this->destroyShape();
 	}
 	

@@ -256,7 +256,7 @@ namespace NOWA
 
 	void RandomImageShuffler::onRemoveComponent(void)
 	{
-
+		GameObjectComponent::onRemoveComponent();
 	}
 
 	void RandomImageShuffler::onOtherComponentRemoved(unsigned int index)

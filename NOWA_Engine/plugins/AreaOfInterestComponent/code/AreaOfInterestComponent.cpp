@@ -164,6 +164,7 @@ namespace NOWA
 
 	void AreaOfInterestComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
 		if (nullptr != this->sphereSceneQuery)
 		{
 			this->gameObjectPtr->getSceneManager()->destroyQuery(this->sphereSceneQuery);

@@ -23,7 +23,9 @@ namespace NOWA
 		moveCameraWeight(1.0f),
 		rotateCameraWeight(1.0f)
 	{
-
+#if _DEBUG
+		this->smoothValue = 0.01f;
+#endif
 	}
 
 	BaseCamera::~BaseCamera() 
@@ -305,6 +307,9 @@ namespace NOWA
 	
 	void BaseCamera::setSmoothValue(Ogre::Real smoothValue)
 	{
+#if _DEBUG
+		smoothValue = 0.01f;
+#endif
 		this->smoothValue = smoothValue;
 	}
 	
