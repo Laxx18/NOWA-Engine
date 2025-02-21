@@ -5,6 +5,10 @@
 #include "utilities/MathHelper.h"
 #include "main/AppStateManager.h"
 
+#include "gameobject/GameObjectFactory.h"
+
+#include "OgreAbiUtils.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -12,6 +16,7 @@ namespace NOWA
 
 	LookAfterComponent::LookAfterComponent()
 		: GameObjectComponent(),
+		name("LookAfterComponent"),
 		targetSceneNode(nullptr),
 		activated(new Variant(LookAfterComponent::AttrActivated(), true, this->attributes)),
 		headBoneName(new Variant(LookAfterComponent::AttrHeadBoneName(), std::vector<Ogre::String>(), this->attributes)),
@@ -26,6 +31,21 @@ namespace NOWA
 	LookAfterComponent::~LookAfterComponent()
 	{
 
+	}
+
+	const Ogre::String& LookAfterComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void LookAfterComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
+	}
+
+	void LookAfterComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<LookAfterComponent>(LookAfterComponent::getStaticClassId(), LookAfterComponent::getStaticClassName());
 	}
 
 	bool LookAfterComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -458,6 +478,91 @@ namespace NOWA
 	Ogre::v1::OldBone* LookAfterComponent::getHeadBone(void) const
 	{
 		return this->headBone;
+	}
+
+	// Lua registration part
+
+	LookAfterComponent* getLookAfterComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<LookAfterComponent>(gameObject->getComponentWithOccurrence<LookAfterComponent>(occurrenceIndex)).get();
+	}
+
+	LookAfterComponent* getLookAfterComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<LookAfterComponent>(gameObject->getComponent<LookAfterComponent>()).get();
+	}
+
+	LookAfterComponent* getLookAfterComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<LookAfterComponent>(gameObject->getComponentFromName<LookAfterComponent>(name)).get();
+	}
+
+	void setTargetId(LookAfterComponent* instance, const Ogre::String& id)
+	{
+		instance->setTargetId(Ogre::StringConverter::parseUnsignedLong(id));
+	}
+
+	void LookAfterComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<LookAfterComponent, GameObjectComponent>("LookAfterComponent")
+			.def("setHeadBoneName", &LookAfterComponent::setHeadBoneName)
+			.def("getHeadBoneName", &LookAfterComponent::getHeadBoneName)
+			.def("setTargetId", &setTargetId)
+			.def("setLookSpeed", &LookAfterComponent::setLookSpeed)
+			.def("getLookSpeed", &LookAfterComponent::getLookSpeed)
+			.def("setMaxPitch", &LookAfterComponent::setMaxPitch)
+			.def("getMaxPitch", &LookAfterComponent::getMaxPitch)
+			.def("setMaxYaw", &LookAfterComponent::setMaxYaw)
+			.def("getMaxYaw", &LookAfterComponent::getMaxYaw)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "class inherits GameObjectComponent", LookAfterComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setHeadBoneName(String headBoneName)", "Sets the head bone name of the skeleton file, which should be rotated.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "String getHeadBoneName()", "Gets the head bone name of the skeleton file, which should be rotated.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setTargetId(String id)", "Sets target id, at which this game object bone head should be rotated to.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setLookSpeed(number lookSpeed)", "Sets the look (rotation) speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "number getLookSpeed()", "Gets the look (rotation) speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setMaxPitch(number maxPitch)", "Sets the maximum degree of pitch for rotation.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "number getMaxPitch()", "Gets the maximum degree of pitch for rotation.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "void setMaxYaw(number maxYaw)", "Sets the maximum degree of yaw for rotation.");
+		LuaScriptApi::getInstance()->addClassToCollection("LookAfterComponent", "number getMaxYaw()", "Gets the maximum degree of yaw for rotation.");
+
+		gameObjectClass.def("getLookAfterComponentFromName", &getLookAfterComponentFromName);
+		gameObjectClass.def("getLookAfterComponent", (LookAfterComponent * (*)(GameObject*)) & getLookAfterComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "LookAfterComponent getLookAfterComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "LookAfterComponent getLookAfterComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castLookAfterComponent", &GameObjectController::cast<LookAfterComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "LookAfterComponent castLookAfterComponent(LookAfterComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool LookAfterComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<LookAfterComponent>() < 2)
+		{
+			return true;
+		}
+
+		// Checks if the entity has at least one animation and no player controller, else animation component is senseless
+		// TODO: Extend for Item
+		Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
+		if (nullptr != entity)
+		{
+			Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
+			if (nullptr != set)
+			{
+				Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
+				// list all animations
+				if (it.hasMoreElements())
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 }; // namespace end

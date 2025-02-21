@@ -135,7 +135,6 @@ extern "C"
 #include "gameObject/AiComponents.h"
 #include "gameObject/PlayerControllerComponents.h"
 #include "gameObject/CameraBehaviorComponents.h"
-#include "gameObject/LookAfterComponent.h"
 #include "gameObject/ProceduralComponents.h"
 #include "gameObject/LuaScriptComponent.h"
 #include "gameObject/OceanComponent.h"
@@ -202,7 +201,6 @@ namespace NOWA
 	typedef boost::shared_ptr<RectangleComponent> RectangleCompPtr;
 	
 	typedef boost::shared_ptr<RibbonTrailComponent> RibbonTrailCompPtr;
-	typedef boost::shared_ptr<LookAfterComponent> LookAfterCompPtr;
 
 	// JointComponents
 	typedef boost::shared_ptr<JointComponent> JointCompPtr;

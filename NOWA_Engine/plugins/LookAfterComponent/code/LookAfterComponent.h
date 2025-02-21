@@ -1,11 +1,21 @@
+/*
+Copyright (c) 2025 Lukas Kalinowski
+
+GPL v3
+*/
 #ifndef LOOK_AFTER_COMPONENTS_H
 #define LOOK_AFTER_COMPONENTS_H
 
-#include "GameObjectComponent.h"
+#include "gameobject/GameObjectComponent.h"
+#include "main/Events.h"
+#include "OgrePlugin.h"
 
 namespace NOWA
 {
-	class EXPORTED LookAfterComponent : public GameObjectComponent
+	/**
+	 * @brief	Usage: The game objects bone head will look after a target. Requirements: An AnimationComponent.
+	 */
+	class EXPORTED LookAfterComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
 
@@ -15,6 +25,39 @@ namespace NOWA
 		LookAfterComponent();
 
 		virtual ~LookAfterComponent();
+
+		/**
+		* @see		Ogre::Plugin::install
+		*/
+		virtual void install(const Ogre::NameValuePairList* options) override;
+
+		/**
+		* @see		Ogre::Plugin::initialise
+		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
+		*/
+		virtual void initialise() override {};
+
+		/**
+		* @see		Ogre::Plugin::shutdown
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void shutdown() override {};
+
+		/**
+		* @see		Ogre::Plugin::uninstall
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void uninstall() override {};
+
+		/**
+		* @see		Ogre::Plugin::getName
+		*/
+		virtual const Ogre::String& getName() const override;
+
+		/**
+		* @see		Ogre::Plugin::getAbiCookie
+		*/
+		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
 
 		/**
 		* @see		GameObjectComponent::init
@@ -61,30 +104,6 @@ namespace NOWA
 		*/
 		virtual Ogre::String getParentClassName(void) const override;
 
-		static unsigned int getStaticClassId(void)
-		{
-			return NOWA::getIdFromName("LookAfterComponent");
-		}
-
-		static Ogre::String getStaticClassName(void)
-		{
-			return "LookAfterComponent";
-		}
-
-		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
-
-		/**
-		* @see	GameObjectComponent::getStaticInfoText
-		*/
-		static Ogre::String getStaticInfoText(void)
-		{
-			return "Usage: Lets the game object's bone head look after a target. "
-				   "Requirements: An AnimationComponent";
-		}
-
 		/**
 		* @see		GameObjectComponent::actualizeValue
 		*/
@@ -102,9 +121,36 @@ namespace NOWA
 
 		virtual bool isActivated(void) const override;
 
-		void setDefaultOrientation(const Ogre::Vector3& defaultOrientation);
+	public:
+		static unsigned int getStaticClassId(void)
+		{
+			return NOWA::getIdFromName("LookAfterComponent");
+		}
 
-		Ogre::Vector3 getDefaultOrientation(void) const;
+		static Ogre::String getStaticClassName(void)
+		{
+			return "LookAfterComponent";
+		}
+
+		/**
+		 * @see  GameObjectComponent::createStaticApiForLua
+		 */
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
+
+		/**
+		* @see	GameObjectComponent::getStaticInfoText
+		*/
+		static Ogre::String getStaticInfoText(void)
+		{
+			return "Usage: The game objects bone head will look after a target. "
+				"Requirements: An AnimationComponent.";
+		}
+
+		/**
+		* @see		GameObjectComponent::canStaticAddComponent
+		*/
+		static bool canStaticAddComponent(GameObject* gameObject);
+	public:
 
 		void setHeadBoneName(const Ogre::String& headBoneName);
 
@@ -138,6 +184,7 @@ namespace NOWA
 		static const Ogre::String AttrMaxPitch(void) { return "Max. Pitch"; }
 		static const Ogre::String AttrMaxYaw(void) { return "Max. Yaw"; }
 	protected:
+		Ogre::String name;
 		Variant* activated;
 		Variant* defaultOrientation;
 		Variant* headBoneName;

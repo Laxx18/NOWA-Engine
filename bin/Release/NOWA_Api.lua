@@ -9223,6 +9223,22 @@ return {
 				returns = "(KeyholeEffectComponent)",
 				valuetype = "KeyholeEffectComponent"
 			},
+			getLookAfterComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(LookAfterComponent)",
+				valuetype = "LookAfterComponent"
+			},
+			getLookAfterComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(LookAfterComponent)",
+				valuetype = "LookAfterComponent"
+			},
 			getMinimapComponentFromIndex =
 			{
 				type = "function",
@@ -10998,6 +11014,14 @@ return {
 				args = "(KeyholeEffectComponent other)",
 				returns = "(KeyholeEffectComponent)",
 				valuetype = "KeyholeEffectComponent"
+			},
+			castLookAfterComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(LookAfterComponent other)",
+				returns = "(LookAfterComponent)",
+				valuetype = "LookAfterComponent"
 			},
 			castMinimapComponent =
 			{
@@ -17036,6 +17060,87 @@ return {
 				args = "(number index)",
 				returns = "(string)",
 				valuetype = "string"
+			}
+		}
+	},
+	LookAfterComponent =
+	{
+		type = "class",
+		description = "Usage: The game objects bone head will look after a target. Requirements: An AnimationComponent.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setHeadBoneName =
+			{
+				type = "method",
+				description = "Sets the head bone name of the skeleton file, which should be rotated.",
+				args = "(string headBoneName)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getHeadBoneName =
+			{
+				type = "function",
+				description = "Gets the head bone name of the skeleton file, which should be rotated.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setTargetId =
+			{
+				type = "method",
+				description = "Sets target id, at which this game object bone head should be rotated to.",
+				args = "(string id)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setLookSpeed =
+			{
+				type = "method",
+				description = "Sets the look (rotation) speed.",
+				args = "(number lookSpeed)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getLookSpeed =
+			{
+				type = "function",
+				description = "Gets the look (rotation) speed.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxPitch =
+			{
+				type = "method",
+				description = "Sets the maximum degree of pitch for rotation.",
+				args = "(number maxPitch)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxPitch =
+			{
+				type = "function",
+				description = "Gets the maximum degree of pitch for rotation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxYaw =
+			{
+				type = "method",
+				description = "Sets the maximum degree of yaw for rotation.",
+				args = "(number maxYaw)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxYaw =
+			{
+				type = "function",
+				description = "Gets the maximum degree of yaw for rotation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			}
 		}
 	},

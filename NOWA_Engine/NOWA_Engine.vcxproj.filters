@@ -423,9 +423,6 @@
     <ClInclude Include="gameobject\CameraBehaviorComponents.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\LookAfterComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\ProceduralComponents.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -987,9 +984,6 @@
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\CameraBehaviorComponents.cpp">
-      <Filter>gameobject</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\LookAfterComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\ProceduralComponents.cpp">

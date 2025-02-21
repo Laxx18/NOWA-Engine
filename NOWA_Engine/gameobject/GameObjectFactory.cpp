@@ -66,7 +66,6 @@
 #include "AiComponents.h"
 #include "PlayerControllerComponents.h"
 #include "CameraBehaviorComponents.h"
-#include "LookAfterComponent.h"
 #include "ProceduralComponents.h"
 #include "LuaScriptComponent.h"
 #include "OceanComponent.h"
@@ -154,7 +153,6 @@ namespace NOWA
 		this->componentFactory.registerClass<DatablockTerraComponent>(DatablockTerraComponent::getStaticClassId(), DatablockTerraComponent::getStaticClassName());
 		this->componentFactory.registerClass<TagPointComponent>(TagPointComponent::getStaticClassId(), TagPointComponent::getStaticClassName());
 		this->componentFactory.registerClass<TagChildNodeComponent>(TagChildNodeComponent::getStaticClassId(), TagChildNodeComponent::getStaticClassName());
-		this->componentFactory.registerClass<LookAfterComponent>(LookAfterComponent::getStaticClassId(), LookAfterComponent::getStaticClassName());
 		this->componentFactory.registerClass<RibbonTrailComponent>(RibbonTrailComponent::getStaticClassId(), RibbonTrailComponent::getStaticClassName());
 		this->componentFactory.registerClass<LuaScriptComponent>(LuaScriptComponent::getStaticClassId(), LuaScriptComponent::getStaticClassName());
 		// this->componentFactory.registerClass<OceanComponent>(OceanComponent::getStaticClassId(), OceanComponent::getStaticClassName());

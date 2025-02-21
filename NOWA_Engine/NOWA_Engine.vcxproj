@@ -395,7 +395,6 @@
     <ClInclude Include="gameobject\LightSpotComponent.h" />
     <ClInclude Include="gameobject\LineComponent.h" />
     <ClInclude Include="gameobject\LinesComponent.h" />
-    <ClInclude Include="gameobject\LookAfterComponent.h" />
     <ClInclude Include="gameobject\LuaScriptComponent.h" />
     <ClInclude Include="gameobject\ManualObjectComponent.h" />
     <ClInclude Include="gameobject\MeshDecalComponent.h" />
@@ -614,7 +613,6 @@
     <ClCompile Include="gameobject\LightSpotComponent.cpp" />
     <ClCompile Include="gameobject\LineComponent.cpp" />
     <ClCompile Include="gameobject\LinesComponent.cpp" />
-    <ClCompile Include="gameobject\LookAfterComponent.cpp" />
     <ClCompile Include="gameobject\LuaScriptComponent.cpp" />
     <ClCompile Include="gameobject\ManualObjectComponent.cpp" />
     <ClCompile Include="gameobject\MeshDecalComponent.cpp" />
