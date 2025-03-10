@@ -1450,6 +1450,10 @@ namespace NOWA
 			// Item does exist, increase count
 			do
 			{
+				if (i >= this->itemBoxWindow->getItemBox()->getItemBox()->getItemCount())
+				{
+					break;
+				}
 				item = this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i, false);
 				if (nullptr != item && (*item)->getResourceName() == resourceName)
 				{

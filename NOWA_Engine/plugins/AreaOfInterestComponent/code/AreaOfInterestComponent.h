@@ -228,13 +228,14 @@ namespace NOWA
 		*/
 		void checkAreaForActiveObjects(Ogre::Real dt);
 
-		void deleteGameObjectDelegate(EventDataPtr eventData);
-
 		void logLuaError(const Ogre::String& context, const luabind::error& error);
 
 		void callEnterFunction(GameObject* gameObject);
 
 		void callLeaveFunction(GameObject* gameObject);
+	private:
+		void handleGameObjectDeleted(EventDataPtr eventData);
+
 	private:
 		Ogre::String name;
 

@@ -14,6 +14,7 @@ namespace NOWA
 	class PhysicsActiveComponent;
 	class PhysicsRagDollComponent;
 	class CameraBehaviorComponent;
+	class InputDeviceComponent;
 	class OgreRecastModule;
 
 	class EXPORTED PlayerControllerComponent : public GameObjectComponent
@@ -40,7 +41,6 @@ namespace NOWA
 			luabind::object closureFunction;
 			bool oneTime;
 		};
-
 
 		PlayerControllerComponent();
 
@@ -181,6 +181,8 @@ namespace NOWA
 		Ogre::String getAnimationName(unsigned int index);
 
 		CameraBehaviorComponent* getCameraBehaviorComponent(void) const;
+
+		InputDeviceComponent* getInputDeviceComponent(void) const;
 		
 		Ogre::Real getHeight(void) const;
 		
@@ -189,7 +191,9 @@ namespace NOWA
 		Ogre::Real getSlope(void) const;
 
 		GameObject* getHitGameObjectBelow(void) const;
+
 		GameObject* getHitGameObjectFront(void) const;
+
 		GameObject* getHitGameObjectUp(void) const;
 
 		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
@@ -215,6 +219,7 @@ namespace NOWA
 
 		PhysicsActiveComponent* physicsActiveComponent;
 		CameraBehaviorComponent* cameraBehaviorComponent;
+		InputDeviceComponent* inputDeviceComponent;
 		IAnimationBlender* animationBlender;
 		Ogre::Real moveWeight;
 		Ogre::String moveLockOwner;
@@ -665,6 +670,8 @@ namespace NOWA
 		bool duckedOnce;
 		OgreAL::Sound* walkSound;
 		OgreAL::Sound* jumpSound;
+		bool hasInputDevice;
+		Ogre::SceneManager* sceneManager;
 	};
 
 	//---------------------------PathFollowState3D-------------------

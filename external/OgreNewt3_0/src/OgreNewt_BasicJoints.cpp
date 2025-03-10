@@ -1370,7 +1370,6 @@ namespace OgreNewt
 	void UpVector::setPin(const Ogre::Vector3& pin)
 	{
 		dCustomUpVector* supportJoint = static_cast<dCustomUpVector*>(m_joint);
-		m_pin = pin.normalisedCopy();
 		dVector dPin(m_pin.x, m_pin.y, m_pin.z, 1.0f);
 		supportJoint->SetPinDir(dPin);
 	}

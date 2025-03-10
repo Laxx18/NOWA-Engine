@@ -1072,8 +1072,12 @@ namespace NOWA
 						return;
 					}
 
-					// Invalid texture skip
 					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
+					if (0 == texture->getWidth())
+					{
+						hlmsTextureManager->waitForStreamingCompletion();
+					}
+					// Invalid texture skip
 					if (0 == texture->getWidth())
 					{
 						attribute->setValue(previousTextureName);

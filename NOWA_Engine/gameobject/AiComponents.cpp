@@ -1304,6 +1304,8 @@ namespace NOWA
 		neighborDistance(new Variant(AiFlockingComponent::AttrNeighborDistance(), 0.0f, this->attributes)),
 		cohesion(new Variant(AiFlockingComponent::AttrCohesion(), true, this->attributes)),
 		separation(new Variant(AiFlockingComponent::AttrSeparation(), true, this->attributes)),
+		spread(new Variant(AiFlockingComponent::AttrSpread(), false, this->attributes)),
+		formationVShape(new Variant(AiFlockingComponent::AttrFormationVShape(), false, this->attributes)),
 		alignment(new Variant(AiFlockingComponent::AttrAlignment(), true, this->attributes)),
 		border(new Variant(AiFlockingComponent::AttrBorder(), false, this->attributes)),
 		obstacle(new Variant(AiFlockingComponent::AttrObstacle(), false, this->attributes)),
@@ -1316,9 +1318,15 @@ namespace NOWA
 		this->neighborDistance->setDescription("The neighbor distance between each flocking neighbor to set. If set only neighbors within this distance form a flocking cloud. "
 												"Please place the game objects close enough to each other, so that the flocking can work. A good neighbor distance is 2 meters. If set to 0, all neighbors form the flocking cloud.");
 		this->behaviorTypeId = KI::MovingBehavior::FLOCKING;
+
+		this->separation->setDescription("Sets whether flocking agents shall be separated from each other. This behavior deactivates the spread behavior, which would conflict.");
+		this->spread->setDescription("Sets whether flocking agents shall be spread. This behavior deactivates the separation behavior, which would conflict.");
+		this->formationVShape->setDescription("Sets whether the flocking agents shall fly in a formation V-shape.");
 		
 		this->flee->addUserData(GameObject::AttrActionNeedRefresh());
 		this->seek->addUserData(GameObject::AttrActionNeedRefresh());
+		this->separation->addUserData(GameObject::AttrActionNeedRefresh());
+		this->spread->addUserData(GameObject::AttrActionNeedRefresh());
 	}
 
 	AiFlockingComponent::~AiFlockingComponent()
@@ -1343,6 +1351,16 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Separation")
 		{
 			this->separation->setValue(XMLConverter::getAttribBool(propertyElement, "data", true));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Spread")
+		{
+			this->spread->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "FormationVShape")
+		{
+			this->formationVShape->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "Alignment")
@@ -1390,6 +1408,8 @@ namespace NOWA
 		clonedCompPtr->setNeighborDistance(this->neighborDistance->getReal());
 		clonedCompPtr->setCohesionBehavior(this->cohesion->getBool());
 		clonedCompPtr->setSeparationBehavior(this->separation->getBool());
+		clonedCompPtr->setSpreadBehavior(this->spread->getBool());
+		clonedCompPtr->setFormationVShapeBehavior(this->formationVShape->getBool());
 		clonedCompPtr->setAlignmentBehavior(this->alignment->getBool());
 		clonedCompPtr->setBorderBehavior(this->border->getBool());
 		clonedCompPtr->setObstacleBehavior(this->obstacle->getBool());
@@ -1423,11 +1443,11 @@ namespace NOWA
 			for (size_t i = 0; i < flockingAgentIds.size(); i++)
 			{
 				// Remove this agent, just add all the others as neighbours
-				if (this->gameObjectPtr->getId() == flockingAgentIds[i])
+				/*if (this->gameObjectPtr->getId() == flockingAgentIds[i])
 				{
 					flockingAgentIds.erase(flockingAgentIds.begin() + i);
 					break;
-				}
+				}*/
 			}
 
 			this->movingBehaviorPtr->setFlockingAgents(flockingAgentIds);
@@ -1438,6 +1458,10 @@ namespace NOWA
 				this->movingBehaviorPtr->addBehavior(MovingBehavior::FLOCKING_COHESION);
 			if (true == this->separation->getBool())
 				this->movingBehaviorPtr->addBehavior(MovingBehavior::FLOCKING_SEPARATION);
+			if (true == this->spread->getBool())
+				this->movingBehaviorPtr->addBehavior(MovingBehavior::FLOCKING_SPREAD);
+			if (true == this->formationVShape->getBool())
+				this->movingBehaviorPtr->addBehavior(MovingBehavior::FLOCKING_FORMATION_V_SHAPE);
 			if (true == this->alignment->getBool())
 				this->movingBehaviorPtr->addBehavior(MovingBehavior::FLOCKING_ALIGNMENT);
 			// if (true == this->border->getBool())
@@ -1494,6 +1518,14 @@ namespace NOWA
 		{
 			this->setSeparationBehavior(attribute->getBool());
 		}
+		else if (AiFlockingComponent::AttrFormationVShape() == attribute->getName())
+		{
+			this->setFormationVShapeBehavior(attribute->getBool());
+		}
+		else if (AiFlockingComponent::AttrSpread() == attribute->getName())
+		{
+			this->setSpreadBehavior(attribute->getBool());
+		}
 		else if (AiFlockingComponent::AttrAlignment() == attribute->getName())
 		{
 			this->setAlignmentBehavior(attribute->getBool());
@@ -1547,6 +1579,18 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Separation"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->separation->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "Spread"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->spread->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "FormationVShape"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->formationVShape->getBool())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -1609,11 +1653,39 @@ namespace NOWA
 	void AiFlockingComponent::setSeparationBehavior(bool separation)
 	{
 		this->separation->setValue(separation);
+		if (true == separation)
+		{
+			this->spread->setValue(false);
+		}
 	}
 
 	bool AiFlockingComponent::getSeparationBehavior(void) const
 	{
 		return this->separation->getBool();
+	}
+
+	void AiFlockingComponent::setSpreadBehavior(bool spread)
+	{
+		this->spread->setValue(spread);
+		if (true == spread)
+		{
+			this->separation->setValue(false);
+		}
+	}
+
+	bool AiFlockingComponent::getSpreadBehavior(void) const
+	{
+		return this->spread->getBool();
+	}
+
+	void AiFlockingComponent::setFormationVShapeBehavior(bool formationVShape)
+	{
+		this->formationVShape->setValue(formationVShape);
+	}
+
+	bool AiFlockingComponent::getFormationVShapeBehavior(void) const
+	{
+		return this->formationVShape->getBool();
 	}
 
 	void AiFlockingComponent::setAlignmentBehavior(bool alignment)

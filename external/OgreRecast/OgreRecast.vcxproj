@@ -156,7 +156,7 @@
       <FunctionLevelLinking>
       </FunctionLevelLinking>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include/;include/DebugUtils;include/Recast;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost;include/DetourCrowd;include/Detour;include/DetourTileCache;$(NOWA)/external/terra</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include/;include/DebugUtils;include/Recast;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/boost;include/DetourCrowd;include/Detour;include/DetourTileCache;$(NOWA)/external/terra</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
@@ -171,7 +171,7 @@
       <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;terra_d.lib;OgreHlmsPbs_d.lib;OgrePlanarReflections_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;terra_d.lib;OgreHlmsPbs_d.lib;OgrePlanarReflections_d.lib;OgreHlmsUnlit_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>
       </ImageHasSafeExceptionHandlers>
     </Link>
@@ -259,7 +259,7 @@
       </StringPooling>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <AdditionalIncludeDirectories>include/;include/DebugUtils;include/Recast;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/boost;include/DetourCrowd;include/Detour;include/DetourTileCache;$(NOWA)/external/terra</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include/;include/DebugUtils;include/Recast;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include/;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include/;$(NOWA)/external/Ogre2.2SDK/boost;include/DetourCrowd;include/Detour;include/DetourTileCache;$(NOWA)/external/terra</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <CompileAs>Default</CompileAs>
@@ -275,7 +275,7 @@
       </OptimizeReferences>
       <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OgreMain.lib;OIS.lib;terra.lib;OgreHlmsPbs.lib;OgrePlanarReflections.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OgreMain.lib;OIS.lib;terra.lib;OgreHlmsPbs.lib;OgrePlanarReflections.lib;OgreHlmsUnlit.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
       <LinkTimeCodeGeneration>
       </LinkTimeCodeGeneration>

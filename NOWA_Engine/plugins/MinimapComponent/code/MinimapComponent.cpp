@@ -238,6 +238,8 @@ namespace NOWA
 
 	bool MinimapComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		const auto& targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId->getULong());
 		if (nullptr != targetGameObjectPtr)
 		{
@@ -251,6 +253,8 @@ namespace NOWA
 
 	bool MinimapComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		this->targetGameObject = nullptr;
 		this->cameraComponent = nullptr;
 		this->terraComponent = nullptr;

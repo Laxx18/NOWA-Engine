@@ -54,9 +54,6 @@
     <ClInclude Include="include\OgreRecast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="res\Resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\OgreDetourCrowd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -278,13 +275,5 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\ReadMe.txt" />
-    <None Include="res\OgreRecast.ico">
-      <Filter>Resource Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="res\OgreRecast.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

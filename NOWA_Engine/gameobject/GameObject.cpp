@@ -1734,12 +1734,12 @@ namespace NOWA
 
 	void GameObject::setVisible(bool visible)
 	{
-		bool isVisible = true;
+		bool isMovableVisible = true;
 		if (nullptr != this->movableObject)
 		{
-			isVisible = this->movableObject->getVisible();
+			isMovableVisible = this->movableObject->getVisible();
 		}
-		if (isVisible != visible)
+		if (this->visible->getBool() != visible)
 		{
 			this->visible->setValue(visible);
 			if (nullptr != this->movableObject)

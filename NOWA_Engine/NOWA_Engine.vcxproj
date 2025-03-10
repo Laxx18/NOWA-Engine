@@ -378,6 +378,7 @@
     <ClInclude Include="gameobject\DecalComponent.h" />
     <ClInclude Include="gameobject\DescriptionComponent.h" />
     <ClInclude Include="gameobject\DistributedComponent.h" />
+    <ClInclude Include="gameobject\InputDeviceComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h" />
     <ClInclude Include="gameobject\ValueBarComponent.h" />
     <ClInclude Include="gameobject\ExitComponent.h" />
@@ -446,6 +447,7 @@
     <ClInclude Include="gameobject\TransformComponent.h" />
     <ClInclude Include="gameobject\WorkspaceComponents.h" />
     <ClInclude Include="ki\Edge.h" />
+    <ClInclude Include="ki\FormationBehavior.h" />
     <ClInclude Include="ki\Goal.h" />
     <ClInclude Include="ki\GoalComposite.h" />
     <ClInclude Include="ki\MovingBehavior.h" />
@@ -594,6 +596,7 @@
     <ClCompile Include="gameobject\DecalComponent.cpp" />
     <ClCompile Include="gameobject\DescriptionComponent.cpp" />
     <ClCompile Include="gameobject\DistributedComponent.cpp" />
+    <ClCompile Include="gameobject\InputDeviceComponent.cpp" />
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp" />
     <ClCompile Include="gameobject\ValueBarComponent.cpp" />
     <ClCompile Include="gameobject\ExitComponent.cpp" />
@@ -660,6 +663,7 @@
     <ClCompile Include="gameobject\TransformComponent.cpp" />
     <ClCompile Include="gameobject\WorkspaceComponents.cpp" />
     <ClCompile Include="ki\Edge.cpp" />
+    <ClCompile Include="ki\FormationBehavior.cpp" />
     <ClCompile Include="ki\MovingBehavior.cpp" />
     <ClCompile Include="ki\Node.cpp" />
     <ClCompile Include="ki\Path.cpp" />

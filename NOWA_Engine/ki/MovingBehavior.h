@@ -40,25 +40,21 @@ namespace NOWA
 				INTERPOSE = 1 << 15,
 				FLOCKING_COHESION = 1 << 16,
 				FLOCKING_SEPARATION = 1 << 17,
-				FLOCKING_ALIGNMENT = 1 << 18,
-				FLOCKING_OBSTACLE_AVOIDANCE = 1 << 19,
-				FLOCKING_FLEE = 1 << 20,
-				FLOCKING_SEEK = 1 << 21,
-				FLOCKING = 1 << 22,
-				SEEK_2D = 1 << 23,
-				FLEE_2D = 1 << 24,
-				ARRIVE_2D = 1 << 25,
-				PATROL_2D = 1 << 26,
-				WANDER_2D = 1 << 27,
-				FOLLOW_PATH_2D = 1 << 28,
-				PURSUIT_2D = 1 << 29,
-				FOLLOW_TRACE_2D = 1 << 30
-				//wall_avoidance     = 1 << 9,
-				
-				//interpose          = 1 << 13,
-				//hide               = 1 << 14,
-				//flock              = 1 << 15,
-				//offset_pursuit     = 1 << 16,
+				FLOCKING_SPREAD = 1 << 18,
+				FLOCKING_FORMATION_V_SHAPE = 1 << 19,
+				FLOCKING_ALIGNMENT = 1 << 20,
+				FLOCKING_OBSTACLE_AVOIDANCE = 1 << 21,
+				FLOCKING_FLEE = 1 << 22,
+				FLOCKING_SEEK = 1 << 23,
+				FLOCKING = 1 << 24,
+				SEEK_2D = 1 << 25,
+				FLEE_2D = 1 << 26,
+				ARRIVE_2D = 1 << 27,
+				PATROL_2D = 1 << 28,
+				WANDER_2D = 1 << 29,
+				FOLLOW_PATH_2D = 1 << 30,
+				PURSUIT_2D = 1 << 31,
+				FOLLOW_TRACE_2D = 1 << 32
 			};
 
 			//Arrive makes use of these to determine how quickly a GameObject
@@ -388,6 +384,10 @@ namespace NOWA
 
 			std::pair<bool, Ogre::Vector3> flockingRuleSeparation(void);
 
+			std::pair<bool, Ogre::Vector3> flockingRuleSpread(void);
+
+			std::pair<bool, Ogre::Vector3> flockingFormationVShape(void);
+			
 			std::pair<bool, Ogre::Vector3> flockingRuleAlignment(void);
 
 			std::pair<bool, Ogre::Vector3> flockingRuleFlee(void);

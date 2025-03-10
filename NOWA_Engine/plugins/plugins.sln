@@ -47,8 +47,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyGuiSpriteComponent", "MyG
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SplitScreenComponent", "SplitScreenComponent\SplitScreenComponent.vcxproj", "{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InputDeviceComponent", "InputDeviceComponent\InputDeviceComponent.vcxproj", "{04110E31-7514-494A-AC05-5F2C9D3BA5D5}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JoystickConfigurationComponent", "JoystickConfigurationComponent\JoystickRConfigurationComponent.vcxproj", "{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KeyboardConfigurationComponent", "KeyboardConfigurationComponent\KeyboardConfigurationComponent.vcxproj", "{42F31C93-38C2-40B0-AD33-EAD1E691952C}"
@@ -64,6 +62,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InventoryItemComponent", "InventoryItemComponent\InventoryItemComponent.vcxproj", "{50ED3E69-5895-49DD-BB26-7FEB2F5B328A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LookAfterComponent", "LookAfterComponent\LookAfterComponent.vcxproj", "{7B07D611-ED35-4B49-B7E6-67D75AB11C30}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FollowTargetComponent", "FollowTargetComponent\FollowTargetComponent.vcxproj", "{DE6A2EC5-45E9-4CF0-9F64-55655844B556}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -159,10 +159,6 @@ Global
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Debug|x64.Build.0 = Debug|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Release|x64.ActiveCfg = Release|x64
 		{4F12A48E-C4B2-47FB-B31B-EE8A48EC5FDB}.Release|x64.Build.0 = Release|x64
-		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Debug|x64.ActiveCfg = Debug|x64
-		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Debug|x64.Build.0 = Debug|x64
-		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Release|x64.ActiveCfg = Release|x64
-		{04110E31-7514-494A-AC05-5F2C9D3BA5D5}.Release|x64.Build.0 = Release|x64
 		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.ActiveCfg = Debug|x64
 		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Debug|x64.Build.0 = Debug|x64
 		{6133EA3B-C913-42FF-8A41-5C510BE9A6D3}.Release|x64.ActiveCfg = Release|x64
@@ -195,6 +191,10 @@ Global
 		{7B07D611-ED35-4B49-B7E6-67D75AB11C30}.Debug|x64.Build.0 = Debug|x64
 		{7B07D611-ED35-4B49-B7E6-67D75AB11C30}.Release|x64.ActiveCfg = Release|x64
 		{7B07D611-ED35-4B49-B7E6-67D75AB11C30}.Release|x64.Build.0 = Release|x64
+		{DE6A2EC5-45E9-4CF0-9F64-55655844B556}.Debug|x64.ActiveCfg = Debug|x64
+		{DE6A2EC5-45E9-4CF0-9F64-55655844B556}.Debug|x64.Build.0 = Debug|x64
+		{DE6A2EC5-45E9-4CF0-9F64-55655844B556}.Release|x64.ActiveCfg = Release|x64
+		{DE6A2EC5-45E9-4CF0-9F64-55655844B556}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

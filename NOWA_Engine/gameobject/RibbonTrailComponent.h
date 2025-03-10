@@ -41,6 +41,16 @@ namespace NOWA
 		virtual bool connect(void) override;
 
 		/**
+		 * @see		GameObjectComponent::disconnect
+		 */
+		virtual bool disconnect(void) override;
+
+		/**
+		 * @see		GameObjectComponent::onRemoveComponent
+		 */
+		virtual void onRemoveComponent(void) override;
+
+		/**
 		 * @see		GameObjectComponent::getClassName
 		 */
 		virtual Ogre::String getClassName(void) const override;
@@ -263,6 +273,7 @@ namespace NOWA
 		void handleRemoveCamera(NOWA::EventDataPtr eventData);
 	private:
 		Ogre::v1::RibbonTrail* ribbonTrail;
+		Ogre::v1::BillboardSet* billboardSet;
 		Ogre::Camera* camera;
 		
 		Variant* datablockName;

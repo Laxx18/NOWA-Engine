@@ -16,6 +16,7 @@
 #include "NavMeshTerraComponent.h"
 #include "CrowdComponent.h"
 #include "DistributedComponent.h"
+#include "InputDeviceComponent.h"
 #include "SoundComponent.h"
 #include "SimpleSoundComponent.h"
 #include "GameObjectTitleComponent.h"
@@ -99,6 +100,7 @@ namespace NOWA
 		this->componentFactory.registerClass<NavMeshTerraComponent>(NavMeshTerraComponent::getStaticClassId(), NavMeshTerraComponent::getStaticClassName());
 		this->componentFactory.registerClass<CrowdComponent>(CrowdComponent::getStaticClassId(), CrowdComponent::getStaticClassName());
 		this->componentFactory.registerClass<DistributedComponent>(DistributedComponent::getStaticClassId(), DistributedComponent::getStaticClassName());
+		this->componentFactory.registerClass<InputDeviceComponent>(InputDeviceComponent::getStaticClassId(), InputDeviceComponent::getStaticClassName());
 		this->componentFactory.registerClass<SoundComponent>(SoundComponent::getStaticClassId(), SoundComponent::getStaticClassName());
 		this->componentFactory.registerClass<SimpleSoundComponent>(SimpleSoundComponent::getStaticClassId(), SimpleSoundComponent::getStaticClassName());
 		this->componentFactory.registerClass<GameObjectTitleComponent>(GameObjectTitleComponent::getStaticClassId(), GameObjectTitleComponent::getStaticClassName());

@@ -245,7 +245,7 @@ namespace NOWA
 		 * @param[in]	strength The strength at which the rotation should occur
 		 * @Note		This should only be used for kinematic bodies.
 		 */
-		virtual void setOmegaVeclocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
+		virtual void setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
 		/**
 		 * @brief		Applies the omega force in move callback function
@@ -263,8 +263,9 @@ namespace NOWA
 		 */
 		virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
-		
 		Ogre::Vector3 getOmegaVelocity(void) const;
+
+		Ogre::Vector3 getGravityDirection(void) const;
 
 		void setGyroscopicTorqueEnabled(bool enable);
 
@@ -540,6 +541,8 @@ namespace NOWA
 		bool usesBounds;
 		Ogre::Vector3 minBounds;
 		Ogre::Vector3 maxBounds;
+		
+		Ogre::Vector3 gravityDirection;
 	};
 
 }; //namespace end

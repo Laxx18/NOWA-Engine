@@ -3031,6 +3031,14 @@ return {
 			{
 				type = "value"
 			},
+			FLOCKING_SPREAD =
+			{
+				type = "value"
+			},
+			FLOCKING_FORMATION_V_SHAPE =
+			{
+				type = "value"
+			},
 			FLOCKING_ALIGNMENT =
 			{
 				type = "value"
@@ -6521,6 +6529,151 @@ return {
 			}
 		}
 	},
+	FollowTargetComponent =
+	{
+		type = "class",
+		description = "Usage: Flies after the target game object at a given distance and with a bit random height, like a litte helper or jeene.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			getOwner =
+			{
+				type = "function",
+				description = "Gets the owner game object.",
+				args = "()",
+				returns = "(GameObject)",
+				valuetype = "GameObject"
+			},
+			setActivated =
+			{
+				type = "method",
+				description = "If activated, the follow behavior will take place.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			setTargetId =
+			{
+				type = "method",
+				description = "Sets the target game object id to follow.",
+				args = "(string targetId)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getTargetId =
+			{
+				type = "function",
+				description = "Gets the target game object id to follow, which this little helper does follow.",
+				args = "()",
+				returns = "(string)",
+				valuetype = "string"
+			},
+			setOffsetAngle =
+			{
+				type = "method",
+				description = "Sets the offset angle in degrees, this little helper will be placed at. Positive angle means, the little helper will be placed at the left side of the target game object.",
+				args = "(number offsetAngle)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getOffsetAngle =
+			{
+				type = "function",
+				description = "Gets the offset angle in degrees, this little helper is be placed at. Positive angle means, the little helper will be placed at the left side of the target game object.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setYOffset =
+			{
+				type = "method",
+				description = "Sets the y-offset height of the little helper.",
+				args = "(number yOffset)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getYOffset =
+			{
+				type = "function",
+				description = "Gets the y-offset height of the little helper.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSpringLength =
+			{
+				type = "method",
+				description = "Sets the newton spring length for movement adaptation.",
+				args = "(number springLength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpringLength =
+			{
+				type = "function",
+				description = "Gets the newton spring length for movement adaptation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setSpringForce =
+			{
+				type = "method",
+				description = "Sets the newton spring force for movement adaptation.",
+				args = "(number springForce)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getSpringForce =
+			{
+				type = "function",
+				description = "Gets the newton spring force for movement adaptation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setFriction =
+			{
+				type = "method",
+				description = "Sets the newton friction for movement adaptation.",
+				args = "(number friction)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getFriction =
+			{
+				type = "function",
+				description = "Gets the newton friction for movement adaptation.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			},
+			setMaxRandomHeight =
+			{
+				type = "method",
+				description = "Sets the max random height, at which this helper fly oscilate during the fly.",
+				args = "(number maxRandomHeight)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			getMaxRandomHeight =
+			{
+				type = "function",
+				description = "Gets the max random height, at which this helper fly oscilate during the fly.",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
+			}
+		}
+	},
 	GameObject =
 	{
 		type = "class",
@@ -9095,6 +9248,30 @@ return {
 				returns = "(DistortionComponent)",
 				valuetype = "DistortionComponent"
 			},
+			getFollowTargetComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(FollowTargetComponent)",
+				valuetype = "FollowTargetComponent"
+			},
+			getFollowTargetComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(FollowTargetComponent)",
+				valuetype = "FollowTargetComponent"
+			},
+			getFollowTargetComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(FollowTargetComponent)",
+				valuetype = "FollowTargetComponent"
+			},
 			getGpuParticlesComponentFromIndex =
 			{
 				type = "function",
@@ -10959,6 +11136,14 @@ return {
 				returns = "(DistortionComponent)",
 				valuetype = "DistortionComponent"
 			},
+			castFollowTargetComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(FollowTargetComponent other)",
+				returns = "(FollowTargetComponent)",
+				valuetype = "FollowTargetComponent"
+			},
 			castGpuParticlesComponent =
 			{
 				type = "function",
@@ -12590,18 +12775,18 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			addQuantityToInventory =
+			addQuantityToInventory2 =
 			{
 				type = "method",
-				description = "Increases the quantity of this inventory item in the inventory game object. E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'",
+				description = "Increases the quantity of this inventory item in the inventory game object. E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory2(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'",
 				args = "(string inventoryIdGameObject, string componentName, number quantity, boolean once)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			removeQuantityFromInventory =
+			removeQuantityFromInventory2 =
 			{
 				type = "method",
-				description = "Decreases the quantity of this inventory item in the inventory game object. E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'",
+				description = "Decreases the quantity of this inventory item in the inventory game object. E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory2(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'",
 				args = "(string inventoryIdGameObject, string componentName, number quantity, boolean once)",
 				returns = "(nil)",
 				valuetype = "nil"

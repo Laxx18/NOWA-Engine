@@ -699,6 +699,14 @@ namespace NOWA
 
 		bool getSeparationBehavior(void) const;
 
+		void setSpreadBehavior(bool spread);
+
+		bool getSpreadBehavior(void) const;
+
+		void setFormationVShapeBehavior(bool formationVShape);
+
+		bool getFormationVShapeBehavior(void) const;
+
 		void setAlignmentBehavior(bool alignment);
 
 		bool getAlignmentBehavior(void) const;
@@ -726,6 +734,8 @@ namespace NOWA
 		static const Ogre::String AttrNeighborDistance(void) { return "Neighbor Distance"; }
 		static const Ogre::String AttrCohesion(void) { return "Cohesion"; }
 		static const Ogre::String AttrSeparation(void) { return "Separation"; }
+		static const Ogre::String AttrSpread(void) { return "Spread"; }
+		static const Ogre::String AttrFormationVShape(void) { return "Formation V-Shape"; }
 		static const Ogre::String AttrAlignment(void) { return "Alignment"; }
 		static const Ogre::String AttrBorder(void) { return "Border"; }
 		static const Ogre::String AttrObstacle(void) { return "Obstacle"; }
@@ -736,6 +746,8 @@ namespace NOWA
 		Variant* neighborDistance;
 		Variant* cohesion;
 		Variant* separation;
+		Variant* spread;
+		Variant* formationVShape;
 		Variant* alignment;
 		Variant* border;
 		Variant* obstacle;

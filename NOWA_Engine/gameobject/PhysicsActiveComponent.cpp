@@ -59,7 +59,8 @@ namespace NOWA
 		dt(0.0f),
 		usesBounds(false),
 		minBounds(Ogre::Vector3::ZERO),
-		maxBounds(Ogre::Vector3::ZERO)
+		maxBounds(Ogre::Vector3::ZERO),
+		gravityDirection(Ogre::Vector3::ZERO)
 	{
 		this->collisionType->setValue({ "ConvexHull", "ConcaveHull", "Box", "Capsule", "ChamferCylinder", "Cone", "Cylinder", "Ellipsoid", "Pyramid" });
 
@@ -850,10 +851,17 @@ namespace NOWA
 		return this->physicsBody->getOmega();
 	}
 
-	void PhysicsActiveComponent::setOmegaVeclocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
+	Ogre::Vector3 PhysicsActiveComponent::getGravityDirection(void) const
+	{
+		return this->gravityDirection;
+	}
+
+	void PhysicsActiveComponent::setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
 	{
 		if (nullptr == this->physicsBody)
+		{
 			return;
+		}
 
 		Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
 		Ogre::Vector3 resultVector = Ogre::Vector3::ZERO;
@@ -2271,6 +2279,7 @@ namespace NOWA
 		Ogre::Vector3 wholeForce = body->getGravity();
 		Ogre::Real mass = 0.0f;
 		Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
+		this->gravityDirection = Ogre::Vector3::ZERO;
 
 		// Dangerous: Causes newton crash!
 		// Clamp omega, when activated (should only be rarely the case!)
@@ -2315,6 +2324,9 @@ namespace NOWA
 					Ogre::Real strength = (this->gravity->getVector3().y /** this->mass->getReal()*/ * gravitySourcePhysicsComponentPtr->getMass()) / (squaredDistanceToGravitySource);
 
 					wholeForce.normalise();
+
+					this->gravityDirection = wholeForce;
+
 					// Also orientate, if pin is active
 					if (nullptr != this->upVector)
 					{

@@ -282,22 +282,22 @@ namespace NOWA
 
 	// Lua registration part
 
-	void addQuantityToInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
+	void _addQuantityToInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
 	{
 		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
 	}
 
-	void removeQuantityFromInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
-	{
-		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
-	}
-
-	void addQuantityToInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
+	void _addQuantityToInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
 	{
 		instance->addQuantityToInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
 	}
 
-	void removeQuantityFromInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
+	void _removeQuantityFromInventory(InventoryItemComponent* instance, const Ogre::String& id, int quantity, bool once)
+	{
+		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), "", quantity, once);
+	}
+
+	void _removeQuantityFromInventory2(InventoryItemComponent* instance, const Ogre::String& id, const Ogre::String& componentName, int quantity, bool once)
 	{
 		instance->removeQuantityFromInventory(Ogre::StringConverter::parseUnsignedLong(id), componentName, quantity, once);
 	}
@@ -330,10 +330,10 @@ namespace NOWA
 			// .def("getQuantity", &InventoryItemComponent::getQuantity)
 			// .def("addQuantityToInventory", &InventoryItemComponent::addQuantityToInventory)
 			// .def("removeQuantityFromInventory", &InventoryItemComponent::removeQuantityFromInventory)
-			.def("addQuantityToInventory", &addQuantityToInventory)
-			.def("removeQuantityFromInventory", &removeQuantityFromInventory)
-			.def("addQuantityToInventory2", &addQuantityToInventory2)
-			.def("removeQuantityFromInventory2", &removeQuantityFromInventory2)
+			.def("addQuantityToInventory", &_addQuantityToInventory)
+			.def("addQuantityToInventory2", &_addQuantityToInventory2)
+			.def("removeQuantityFromInventory", &_removeQuantityFromInventory)
+			.def("removeQuantityFromInventory2", &_removeQuantityFromInventory2)
 		];
 
 		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "class inherits GameObjectComponent", InventoryItemComponent::getStaticInfoText());
@@ -343,10 +343,10 @@ namespace NOWA
 			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
 		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
 			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 1, true)'");
-		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void addQuantityToInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
-		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
-			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void addQuantityToInventory2(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Increases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:addQuantityToInventory2(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
+		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "void removeQuantityFromInventory2(String inventoryIdGameObject, String componentName, int quantity, bool once)", "Decreases the quantity of this inventory item in the inventory game object. "
+			"E.g. if inventory is used in MainGameObject, the following call is possible: 'inventoryItem:removeQuantityFromInventory2(MAIN_GAMEOBJECT_ID, 'Player1InventoryComponent', 1, true)'");
 		LuaScriptApi::getInstance()->addClassToCollection("InventoryItemComponent", "Vecto2 getDimensions()", "Gets the color (r, g, b) of the billboard.");
 
 		gameObjectClass.def("getInventoryItemComponentFromName", &getInventoryItemComponentFromName);

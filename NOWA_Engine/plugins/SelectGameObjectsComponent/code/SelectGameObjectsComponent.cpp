@@ -168,6 +168,8 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		this->selectionManager->clearSelection();
+
 		return true;
 	}
 

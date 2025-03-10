@@ -155,6 +155,8 @@ namespace NOWA
 				this->workspaceBaseComponent->setUseHdr(true);
 			}
 		}
+
+		this->postApplySunPower();
 		
 		return true;
 	}

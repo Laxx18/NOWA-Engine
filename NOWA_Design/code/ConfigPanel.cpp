@@ -197,6 +197,9 @@ void ConfigPanel::buttonHit(MyGUI::Widget* sender)
 		{
 			this->projectManager->applySettings(projectParameter);
 		}
+
+		boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(ProjectManager::eProjectMode::LOAD));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 	}
 	this->setVisible(false);
 }

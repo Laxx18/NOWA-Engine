@@ -99,7 +99,7 @@ namespace NOWA
 			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == AreaOfInterestComponent::AttrTriggerPermanentely())
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "TriggerPermanentely")
 		{
 			this->triggerPermanentely->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
@@ -131,7 +131,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AreaOfInterestComponent] Init area of interest component for game object: " + this->gameObjectPtr->getName());
 
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::handleGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 
 		this->sphereSceneQuery = this->gameObjectPtr->getSceneManager()->createSphereQuery(Ogre::Sphere(this->gameObjectPtr->getPosition(), this->radius->getReal()));
 
@@ -176,7 +176,7 @@ namespace NOWA
 			delete this->triggerSphereQueryObserver;
 			this->triggerSphereQueryObserver = nullptr;
 		}
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &AreaOfInterestComponent::handleGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
 	}
 
 	void AreaOfInterestComponent::update(Ogre::Real dt, bool notSimulating)
@@ -187,7 +187,7 @@ namespace NOWA
 		}
 	}
 
-	void AreaOfInterestComponent::deleteGameObjectDelegate(EventDataPtr eventData)
+	void AreaOfInterestComponent::handleGameObjectDeleted(EventDataPtr eventData)
 	{
 		boost::shared_ptr<EventDataDeleteGameObject> castEventData = boost::static_pointer_cast<NOWA::EventDataDeleteGameObject>(eventData);
 		// if a game object has been deleted elsewhere remove it from the queue, in order not to work with dangling pointers

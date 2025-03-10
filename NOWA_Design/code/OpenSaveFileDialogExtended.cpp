@@ -101,6 +101,9 @@ void OpenSaveFileDialogExtended::setDialogInfo(const MyGUI::UString& _caption, c
 
 void OpenSaveFileDialogExtended::notifyListChangePosition(MyGUI::ListBox* _sender, size_t _index)
 {
+	this->autoCompleteSearch.reset();
+	mEditSearchName->setCaption("");
+
 	if (_index == MyGUI::ITEM_NONE)
 	{
 		mEditFileName->setCaption("");
@@ -287,6 +290,7 @@ void OpenSaveFileDialogExtended::update()
 				mListFiles->addItem((*item).name, *item);
 		}
 	}
+
 	MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->mMainWidget);
 }
 

@@ -506,10 +506,32 @@ void ProjectManager::internalApplySettings(void)
 
 		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
 
-		// Sent event that scene has been modified
-		boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
+		const auto& navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
+
+		// Nav mesh terra components, must be re-applied in order to re-create nav mesh
+		for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
+		{
+			navMeshTerraComponents[i]->postInit();
+		}
+
+		const auto& navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
+
+		// Nav mesh components, must be re-applied in order to re-create nav mesh
+		for (size_t i = 0; i < navMeshComponents.size(); i++)
+		{
+			navMeshComponents[i]->postInit();
+		}
+		
+		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
 	}
+	else
+	{
+		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+	}
+
+	// Sent event that scene has been modified
+	boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 
 	// Remove .scene, if user typed
 	size_t found = this->projectParameter.sceneName.find(".scene");

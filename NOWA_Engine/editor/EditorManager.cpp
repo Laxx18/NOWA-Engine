@@ -2288,7 +2288,18 @@ namespace NOWA
 				if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
 				{
 					v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+					if (0 == v2Mesh->getNumSubMeshes())
+					{
+						this->tempPlaceMovableObject = this->sceneManager->createEntity(v1Mesh);
+						this->tempPlaceMovableObject->setName("PlaceEntity");
+						this->tempPlaceMovableObject->setQueryFlags(AppStateManager::getSingletonPtr()->getGameObjectController()->getCategoryId("Default"));
+						this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
+
+						DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
+						goto ADD_NODE;
+					}
 				}
+
 				v1Mesh->unload();
 
 				this->tempPlaceMovableObject = this->sceneManager->createItem(v2Mesh);
@@ -2416,6 +2427,7 @@ namespace NOWA
 			this->tempPlaceEntity->getSubEntity(i)->setDatablock(this->tempPlaceEntity->getSubEntity(i)->getDatablock());
 		}*/
 
+ADD_NODE:
 		this->tempPlaceMovableNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC, Ogre::Vector3(0.0f, 20.0f, 0.0f));
 		this->tempPlaceMovableNode->setName("TempPlaceEntityNode");
 		this->tempPlaceMovableNode->attachObject(this->tempPlaceMovableObject);

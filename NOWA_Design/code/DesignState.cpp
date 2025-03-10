@@ -848,7 +848,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->enableWidgets(true);
 		this->simulationWindow->setVisible(true);
 		this->manipulationWindow->setVisible(true);
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 
 		this->hasSceneChanges = false;
 
@@ -856,7 +856,7 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 	}
 	else if (ProjectManager::eProjectMode::SAVE == projectMode)
 	{
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 		this->hasSceneChanges = false;
 	}
 }
@@ -990,7 +990,7 @@ void DesignState::handleSceneModified(NOWA::EventDataPtr eventData)
 {
 	this->hasSceneChanges = true;
 
-	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 }
 
 void DesignState::handleTerraChanged(NOWA::EventDataPtr eventData)
@@ -1000,7 +1000,7 @@ void DesignState::handleTerraChanged(NOWA::EventDataPtr eventData)
 	{
 		this->hasSceneChanges = true;
 
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 	}
 	else
 	{
@@ -1017,7 +1017,7 @@ void DesignState::handleEventDataGameObjectMadeGlobal(NOWA::EventDataPtr eventDa
 	}
 
 	this->hasSceneChanges = false;
-	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 }
 
 void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
@@ -1210,14 +1210,14 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 
 		if (false == this->editorManager->canUndo())
 		{
-			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 			this->hasSceneChanges = false;
 			this->undoPressed = true;
 		}
 	}
 	else if (this->redoButton == sender)
 	{
-		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + "*");
+		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 		this->hasSceneChanges = true;
 
 		this->editorManager->redo();
@@ -1365,7 +1365,7 @@ void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBox
 	}
 
 	this->hasSceneChanges = false;
-	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+	this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 
 	MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
 		MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -1656,16 +1656,16 @@ void DesignState::showDebugCollisionLines(bool show)
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
-	// Create the context menu
-	MyGUI::MenuCtrl* menu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
+	MyGUI::MenuCtrl* popupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
-	auto item1 = menu->addItem("Select_Same_Mesh");
+	auto item1 = popupMenu->addItem("Select_Same_Mesh");
 	item1->setCaptionWithReplacing("#{Select_Same_Mesh}");
-	auto item2 = menu->addItem("Select_Same_Datablock");
+	auto item2 = popupMenu->addItem("Select_Same_Datablock");
 	item2->setCaptionWithReplacing("#{Select_Same_Datablock}");
-	// menu->addItem("Option 3");
 
-	menu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
+	popupMenu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
+	popupMenu->setPopupAccept(true);
+	popupMenu->setVisible(true);
 }
 
 void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
@@ -1970,7 +1970,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 						if (nullptr != this->projectManager)
 						{
 							this->projectManager->saveProject();
-							this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
+							this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
 						}
 					}
 					return true;
@@ -2268,15 +2268,15 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		//	// Show properties
 		//	this->propertiesPanel->showProperties();
 		//}
-	}
 
-	if (false == this->simulating)
-	{
-		if (id == OIS::MB_Middle)
+		if (false == this->simulating)
 		{
-			if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+			if (id == OIS::MB_Middle)
 			{
-				this->showContextMenu(evt.state.X.abs, evt.state.Y.abs);
+				if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
+				{
+					this->showContextMenu(evt.state.X.abs, evt.state.Y.abs);
+				}
 			}
 		}
 	}

@@ -62,13 +62,41 @@ hlms Hilite/Yellow unlit
 	cull_mode none
 }
 
-
-
 hlms LightRibbonTrail unlit
 {
-    // lighting off
-    // depth_write off
+    lighting off
+    depth_write off
     scene_blend add
-    diffuse 1.0 1.0 1.0 1.0
-	diffuse_map ribbonband.png
+//  diffuse 1.0 0.0 0.0 1.0
+    diffuse_map ribbonband.png
+}
+
+hlms Examples/Flare2 unlit
+{
+	depth_write		off
+	cull_hardware	none
+
+	scene_blend		add
+
+	diffuse_map flaretrail.png
+}
+
+hlms Examples/Aureola unlit
+{
+	depth_write		off
+	cull_hardware	none
+
+	scene_blend		alpha_blend
+
+	diffuse_map aureola.png
+}
+
+hlms Examples/AnimationParticleTest unlit
+{
+	depth_write		off
+	cull_hardware	none
+
+	scene_blend		add
+	
+	diffuse_map flames_anim.png
 }

@@ -298,23 +298,26 @@ InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, con
 	{
 
 		Ogre::Terra* terra = terraDataList[k].terra;
-
 		int sizeX = (int)terra->getXZDimensions().x;
 		int sizeZ = (int)terra->getXZDimensions().y;
 
 		Ogre::Vector3 center = terra->getTerrainOrigin() + (Ogre::Vector3(terra->getXZDimensions().x, terra->getHeight(), terra->getXZDimensions().y) / 2.0f);
+		// startX = -184
+		Ogre::Real startX = terra->getTerrainOrigin().x;
+		// endX = 184 + 64 * 2 = 312
+		Ogre::Real endX = terra->getTerrainOrigin().x * -1 + (center.x * 2.0f);
 
-		int startX = (int)terra->getTerrainOrigin().x;
-		int endX = (int)terra->getTerrainOrigin().x * -1 + (int)center.x * 2;
+		Ogre::Real startY = terra->getTerrainOrigin().y;
+		// endX = 184 + 64 * 2 = 312
+		Ogre::Real endY = terra->getTerrainOrigin().y * -1 + (center.y * 2.0f);
 
-		int startZ = (int)terra->getTerrainOrigin().z;
-		int endZ = (int)terra->getTerrainOrigin().z * -1 + (int)center.z * 2;
+		Ogre::Real startZ = terra->getTerrainOrigin().z;
+		Ogre::Real endZ = terra->getTerrainOrigin().z * -1 + center.z * 2.0f;
 
-		// Attention: Check this, if its still correct!
-		aabb.setExtents(Ogre::Vector3(startX - center.x, -(terra->getTerrainOrigin().y) + (center.y), startZ - center.z),
-											   Ogre::Vector3(endX - center.x, (terra->getTerrainOrigin().y) + (center.y), endZ - center.z));
+		Ogre::Vector3 min = Ogre::Vector3(startX - center.x, terra->getTerrainOrigin().y - center.y, startZ - center.z);
+		Ogre::Vector3 max = Ogre::Vector3(endX - center.x, center.y - terra->getTerrainOrigin().y, endZ - center.z);
 
-		
+		aabb = Ogre::Aabb::newFromExtents(min, max);
 
 		size_t sizeVertices = sizeX * sizeZ;
 
@@ -333,7 +336,7 @@ InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, con
 				// Exclude maybe terra layers from vegetation placing
 				std::vector<int> layers = terra->getLayerAt(pos);
 
-				for (size_t w = 0; w < terraDataList[k].terraLayerList.size(); i++)
+				for (size_t w = 0; w < terraDataList[k].terraLayerList.size(); w++)
 				{
 					layerMatches &= layers[w] <= terraDataList[k].terraLayerList[w];
 				}

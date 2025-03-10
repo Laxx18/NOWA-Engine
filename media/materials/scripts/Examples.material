@@ -1808,7 +1808,7 @@ material WoodPallet
 	}
 }
 
-/*material Examples/LightRibbonTrail
+material Examples/LightRibbonTrail
 {
 	technique
 	{
@@ -1827,7 +1827,7 @@ material WoodPallet
 			}
 		}
 	}
-}*/
+}
 
 material Examples/TudorHouse
 {

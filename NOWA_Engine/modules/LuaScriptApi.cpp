@@ -11502,6 +11502,8 @@ namespace NOWA
 				value("OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::OBSTACLE_AVOIDANCE),
 				value("FLOCKING_COHESION", KI::MovingBehavior::BehaviorType::FLOCKING_COHESION),
 				value("FLOCKING_SEPARATION", KI::MovingBehavior::BehaviorType::FLOCKING_SEPARATION),
+				value("FLOCKING_SPREAD", KI::MovingBehavior::BehaviorType::FLOCKING_SPREAD),
+				value("FLOCKING_FORMATION_V_SHAPE", KI::MovingBehavior::BehaviorType::FLOCKING_FORMATION_V_SHAPE),
 				value("FLOCKING_ALIGNMENT", KI::MovingBehavior::BehaviorType::FLOCKING_ALIGNMENT),
 				value("FLOCKING_OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::FLOCKING_OBSTACLE_AVOIDANCE),
 				value("FLOCKING_FLEE", KI::MovingBehavior::BehaviorType::FLOCKING_FLEE),
@@ -11683,7 +11685,9 @@ namespace NOWA
 		AddClassToCollection("BehaviorType", "FOLLOW_PATH", "The agent will follow a path. Note: If recast is activated it may be a navigation mesh path.");
 		AddClassToCollection("BehaviorType", "OBSTACLE_AVOIDANCE", "The agent will avoid obstacles.");
 		AddClassToCollection("BehaviorType", "FLOCKING_COHESION", "The agent category will add the flocking cohesion behavior.");
-		AddClassToCollection("BehaviorType", "FLOCKING_SEPARATION", "The agent category will add the flocking separation behavior.");
+		AddClassToCollection("BehaviorType", "FLOCKING_SEPARATION", "Sets whether flocking agents shall be separated from each other. This behavior deactivates the spread behavior, which would conflict.");
+		AddClassToCollection("BehaviorType", "FLOCKING_SPREAD", "Sets whether flocking agents shall be spread. This behavior deactivates the separation behavior, which would conflict.");
+		AddClassToCollection("BehaviorType", "FLOCKING_FORMATION_V_SHAPE", "Sets whether the flocking agents shall fly in a formation V-shape.");
 		AddClassToCollection("BehaviorType", "FLOCKING_ALIGNMENT", "The agent category will add the flocking alignment behavior.");
 		AddClassToCollection("BehaviorType", "FLOCKING_OBSTACLE_AVOIDANCE", "The agent category will avoid obstacles.");
 		AddClassToCollection("BehaviorType", "FLOCKING_FLEE", "The agent category will flee from the target agent.");

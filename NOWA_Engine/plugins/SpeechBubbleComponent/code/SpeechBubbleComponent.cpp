@@ -288,7 +288,7 @@ namespace NOWA
 	{
 		GameObjectComponent::actualizeValue(attribute);
 
-		if (ValueBarComponent::AttrActivated() == attribute->getName())
+		if (SpeechBubbleComponent::AttrActivated() == attribute->getName())
 		{
 			this->setActivated(attribute->getBool());
 		}
@@ -418,6 +418,13 @@ namespace NOWA
 
 	void SpeechBubbleComponent::setCaption(const Ogre::String& caption)
 	{
+		auto gameObjectTitleCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<GameObjectTitleComponent>());
+		if (nullptr != gameObjectTitleCompPtr)
+		{
+			this->gameObjectTitleComponent = gameObjectTitleCompPtr.get();
+			this->gameObjectTitleComponent->getMovableText()->setVisible(true);
+		}
+
 		Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
 		this->caption->setValue(tempCaption);
 		if (nullptr != this->gameObjectTitleComponent)
@@ -455,6 +462,10 @@ namespace NOWA
 	void SpeechBubbleComponent::setRunSpeech(bool runSpeech)
 	{
 		this->runSpeech->setValue(runSpeech);
+		if (false == runSpeech)
+		{
+			this->setCaption(this->caption->getString());
+		}
 	}
 
 	bool SpeechBubbleComponent::getRunSpeech(void) const

@@ -8,6 +8,7 @@
 #include "LuaScriptComponent.h"
 #include "main/Core.h"
 #include "modules/InputDeviceModule.h"
+#include "InputDeviceComponent.h"
 #include "main/AppStateManager.h"
 
 #include "utilities/XMLConverter.h"
@@ -92,6 +93,7 @@ namespace NOWA
 		categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		physicsActiveComponent(nullptr),
 		cameraBehaviorComponent(nullptr),
+		inputDeviceComponent(nullptr),
 		animationBlender(nullptr),
 		moveWeight(1.0f),
 		jumpWeight(1.0f),
@@ -243,17 +245,35 @@ namespace NOWA
 			this->physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(physicsPlayerControllerCompPtr.get());
 		}
 		
-
 		// Get optional camera behavior component, for activation in game object controller
 		auto& cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
 		if (nullptr != cameraBehaviorCompPtr)
+		{
 			this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();
+		}
 		else
+		{
 			this->cameraBehaviorComponent = nullptr;
+		}
 
 		// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
 		// also hold shared by the game object controller
 		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
+
+		auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
+		if (nullptr != inputDeviceCompPtr)
+		{
+			this->inputDeviceComponent = inputDeviceCompPtr.get();
+
+			if (false == this->inputDeviceComponent->hasValidDevice())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
+			}
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController] Cannot use WalkingStateJumpNRun, because this game object has no valid InputDeviceComponent configured.");
+		}
 
 		this->internalShowDebugData();
 
@@ -264,6 +284,8 @@ namespace NOWA
 	{
 		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
 		this->cameraBehaviorComponent = nullptr;
+		this->physicsActiveComponent = nullptr;
+		this->inputDeviceComponent = nullptr;
 		this->moveLockOwner.clear();
 		this->jumpWeightOwner.clear();
 
@@ -710,6 +732,11 @@ namespace NOWA
 	CameraBehaviorComponent* PlayerControllerComponent::getCameraBehaviorComponent(void) const
 	{
 		return this->cameraBehaviorComponent;
+	}
+
+	InputDeviceComponent* PlayerControllerComponent::getInputDeviceComponent(void) const
+	{
+		return this->inputDeviceComponent;
 	}
 	
 	Ogre::Real PlayerControllerComponent::getHeight(void) const
@@ -1569,6 +1596,12 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Init player controller click to point component for game object: " + this->gameObjectPtr->getName());
 
+		if (nullptr == AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage("PlayerControllerClickToPointComponent: Cannot use click to point controller because, there is no valid OgreRecast path navigation configured. Is it not checked in the settings?");
+			return true;
+		}
+
 		bool success = PlayerControllerComponent::postInit();
 
 		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
@@ -1921,21 +1954,25 @@ namespace NOWA
 		groundedOnce(false),
 		duckedOnce(false),
 		hasPhysicsPlayerControllerComponent(false),
-		acceleration(0.5f)
+		acceleration(0.5f),
+		hasInputDevice(true),
+		sceneManager(nullptr),
+		walkSound(nullptr),
+		jumpSound(nullptr)
 	{
 		
 	}
 
 	WalkingStateJumpNRun::~WalkingStateJumpNRun()
 	{
-		if (this->jumpSound)
+		if (nullptr != this->walkSound)
 		{
-			OgreALModule::getInstance()->deleteSound(this->playerController->getOwner()->getSceneManager(), this->walkSound);
+			OgreALModule::getInstance()->deleteSound(this->sceneManager, this->walkSound);
 			this->walkSound = nullptr;
 		}
-		if (this->jumpSound)
+		if (nullptr != this->jumpSound)
 		{
-			OgreALModule::getInstance()->deleteSound(this->playerController->getOwner()->getSceneManager(), this->jumpSound);
+			OgreALModule::getInstance()->deleteSound(this->sceneManager, this->jumpSound);
 			this->jumpSound = nullptr;
 		}
 	}
@@ -1957,11 +1994,25 @@ namespace NOWA
 
 		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent());
 		if (nullptr != physicsPlayerControllerComponent)
+		{
 			this->hasPhysicsPlayerControllerComponent = true;
+		}
+
+		if (nullptr == this->playerController->getInputDeviceComponent() || nullptr == this->playerController->getInputDeviceComponent()->getInputDeviceModule())
+		{
+			this->hasInputDevice = false;
+		}
+
+		this->sceneManager = this->playerController->getOwner()->getSceneManager();
 	}
 
 	void WalkingStateJumpNRun::update(GameObject* player, Ogre::Real dt)
 	{
+		if (false == this->hasInputDevice)
+		{
+			return;
+		}
+
 		auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
 
 		if (this->noMoveTimer > 0.1f)
@@ -1984,6 +2035,8 @@ namespace NOWA
 		Ogre::Real tempSpeed = 0.0f;
 		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
 		Ogre::Radian heading = this->playerController->getOrientation().getYaw();
+		// Get the gravity direction from the physics component
+		Ogre::Vector3 gravityDirection = this->playerController->getPhysicsComponent()->getGravityDirection();
 
 		// Idle stop movement at the beginning
 		if (true == this->hasPhysicsPlayerControllerComponent)
@@ -2005,7 +2058,7 @@ namespace NOWA
 		// Set omega by default directly to zero, else there is an ugly small rotation...
 		this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3::ZERO);
 
-		InputDeviceModule* inputDeviceModule = NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule();
+		InputDeviceModule* inputDeviceModule = this->playerController->getInputDeviceComponent()->getInputDeviceModule();
 
 		// if no key is pressed, go to idle state
 		if (!inputDeviceModule->isActionDown(NOWA_A_UP) && !inputDeviceModule->isActionDown(NOWA_A_DOWN)
@@ -2066,8 +2119,8 @@ namespace NOWA
 				this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
 			}
 		}
-		else if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP) || NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_DOWN)
-			|| NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_LEFT) || NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_RIGHT))
+		else if (inputDeviceModule->isActionDown(NOWA_A_UP) || inputDeviceModule->isActionDown(NOWA_A_DOWN)
+			|| inputDeviceModule->isActionDown(NOWA_A_LEFT) || inputDeviceModule->isActionDown(NOWA_A_RIGHT))
 		{
 			this->boringTimer = 0;
 
@@ -2099,14 +2152,14 @@ namespace NOWA
 			{
 				Ogre::Real yawAtSpeed = 0.0f;
 				// set the key direction, so that the player will always run on x-axis
-				if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_UP))
+				if (inputDeviceModule->isActionDown(NOWA_A_UP))
 				{
 					tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
 					animId = AnimationBlender::ANIM_WALK_NORTH;
 					this->direction = Direction::UP;
-					this->keyDirection += this->playerController->getOrientation() * Ogre::Vector3::UNIT_Z;
+					this->keyDirection += this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
 				}
-				else if (NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isActionDown(NOWA_A_DOWN))
+				else if (inputDeviceModule->isActionDown(NOWA_A_DOWN))
 				{
 					tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
 					// Free from stuck when moving back
@@ -2114,24 +2167,43 @@ namespace NOWA
 					tempSpeed = -this->playerController->getPhysicsComponent()->getSpeed() * 0.5f * this->playerController->getMoveWeight();
 					animId = AnimationBlender::ANIM_WALK_SOUTH;
 					this->direction = Direction::DOWN;
-					this->keyDirection += this->playerController->getOrientation() * Ogre::Vector3::UNIT_Z;
+					this->keyDirection += this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
 				}
 				if (inputDeviceModule->isActionDown(NOWA_A_LEFT))
 				{
 					animId = AnimationBlender::ANIM_WALK_WEST;
 					this->direction = Direction::LEFT;
-					yawAtSpeed = 3.0f * this->playerController->getRotationSpeed();
+					yawAtSpeed = this->playerController->getRotationSpeed();
 					heading = heading + Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_RIGHT))
 				{
 					animId = AnimationBlender::ANIM_WALK_EAST;
 					this->direction = Direction::RIGHT;
-					yawAtSpeed = -3.0f * this->playerController->getRotationSpeed();
+					yawAtSpeed = -this->playerController->getRotationSpeed();
 					heading = heading - Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
 				}
+#if 0
+				if (false == gravityDirection.isZeroLength())
+				{
+					// Get the current up vector of the character
+					Ogre::Vector3 currentUp = this->playerController->getOrientation() * Ogre::Vector3::UNIT_Y;
 
-				this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
+					// Compute the rotation axis to align currentUp with wholeForce
+					Ogre::Vector3 rotationAxis = currentUp.crossProduct(this->playerController->getPhysicsComponent()->getGravityDirection());
+					Ogre::Real rotationAngle = currentUp.angleBetween(this->playerController->getPhysicsComponent()->getGravityDirection()).valueRadians();
+
+					// Convert rotation to angular velocity
+					Ogre::Vector3 angularVelocity = rotationAxis.normalisedCopy() * rotationAngle * this->playerController->getRotationSpeed();
+
+					// Apply rotation to align character smoothly
+					this->playerController->getPhysicsComponent()->applyOmegaForce(angularVelocity);
+				}
+				else
+#endif
+				{
+					this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
+				}
 				// heading = this->playerController->getPhysicsComponent()->getOrientation().getYaw();
 			}
 			else
@@ -2218,7 +2290,7 @@ namespace NOWA
 							this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
 						}
 					}
-					this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
+					this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
 				}
 				else
 				{
@@ -2292,6 +2364,25 @@ namespace NOWA
 			this->duckedOnce = false;
 		}
 
+		// Ensure it's a valid gravity direction (not zero)
+		if (false == gravityDirection.isZeroLength())
+		{
+			// Compute a gravity-aligned forward direction (e.g., X-axis movement)
+			Ogre::Vector3 forwardDirection = this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
+
+			// Ensure forward is perpendicular to gravity
+			forwardDirection = forwardDirection - gravityDirection * forwardDirection.dotProduct(gravityDirection);
+			forwardDirection.normalise();
+
+			// Compute a gravity-aligned right direction (e.g., strafing)
+			Ogre::Vector3 rightDirection = gravityDirection.crossProduct(forwardDirection);
+			rightDirection.normalise();
+
+			// Adjust movement direction using these new axes
+			this->keyDirection = (forwardDirection * this->keyDirection.z) + (rightDirection * this->keyDirection.x);
+		}
+
+		// Compute the final movement direction
 		Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
 
 		this->jumpKeyPressed = false;
@@ -2681,118 +2772,115 @@ namespace NOWA
 
 			if (true == success)
 			{
-				if (nullptr != this->ogreRecastModule)
+				this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).clear();
+				Ogre::Vector3 posOnNavMesh = Ogre::Vector3::ZERO;
+
+				// http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
+				// https://forums.ogre3d.org/viewtopic.php?t=62079
+				if (true == this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
 				{
-					this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot()).clear();
-					Ogre::Vector3 posOnNavMesh = Ogre::Vector3::ZERO;
+					// y immer 0.5 statt höher argghhh
+					// Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
 
-					// http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
-					// https://forums.ogre3d.org/viewtopic.php?t=62079
-					if (true == this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
+					if (nullptr != this->movingBehavior->getPath())
 					{
-						// y immer 0.5 statt höher argghhh
-						// Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
+						this->movingBehavior->getPath()->clear();
+					}
 
-						if (nullptr != this->movingBehavior->getPath())
-						{
-							this->movingBehavior->getPath()->clear();
-						}
+					// Attention: What is with targetSlot? Its here 0
+					bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, this->playerController->getDrawPath());
+					/*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
+					+ Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
+					+ " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
 
-						// Attention: What is with targetSlot? Its here 0
-						bool foundPath = this->ogreRecastModule->findPath(this->playerController->getPosition(), posOnNavMesh + Ogre::Vector3(0.0f, 0.3f, 0.0f), this->playerController->getPathSlot(), 0, this->playerController->getDrawPath());
-						/*Ogre::LogManager::getSingletonPtr()->logMessage("#############findPath size: "
-						+ Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getPath(0).size())
-						+ " y offset: " + Ogre::StringConverter::toString(this->ogreRecastModule->getOgreRecast()->getNavmeshOffsetFromGround()));*/
-
-						if (false == foundPath)
-						{
-							// Ogre::LogManager::getSingletonPtr()->logMessage("No path found!!!");
-							// this->movingBehavior->reset();
-							// this->movingBehavior->setBehavior(KI::MovingBehavior::NONE);
-						}
-						else
-						{
-							std::vector<Ogre::Vector3> path = this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot());
-
-							LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();
-							if (nullptr != luaScript)
-							{
-								luaScript->callTableFunction("onNavMeshClicked", posOnNavMesh);
-							}
-							
-							this->hasGoal = true;
-							this->movingBehavior->getPath()->clear();
-
-							// Add each time behavior, because if goal is reached, or no path, the behavior will be removed
-							this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-							this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-
-							if (false == path.empty())
-							{
-								for (size_t i = 0; i < path.size(); i++)
-								{
-#if 0
-									Ogre::Vector3 waypoint = path[i];
-									waypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-									Ogre::Vector3 resultWaypoint = Ogre::Vector3::ZERO;
-
-									std::vector<Ogre::MovableObject*> excludeObject = std::vector<Ogre::MovableObject*>(1);
-									// Exclude the player, else the final way point can be placed on the top of the player^^
-									excludeObject[0] = this->playerController->getOwner()->getMovableObject();
-									bool success = MathHelper::getInstance()->getRaycastResult(waypoint, Ogre::Vector3::NEGATIVE_UNIT_Y, this->raySceneQuery, resultWaypoint, (size_t&)movableObject, &excludeObject);
-									if (false == success)
-									{
-										waypoint = path[i];
-									}
-									else
-									{
-										waypoint.y = resultWaypoint.y;
-									}
-#endif
-
-									Ogre::Vector3 resultWaypoint = path[i];
-									// resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-
-									// First wp is useless at it is at the same position as the player
-									if (i > 0)
-									{
-										this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
-
-										if (true == this->playerController->getDrawPath())
-										{
-											if (nullptr == this->playerController->debugWaypointNode)
-											{
-												this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-												Ogre::v1::Entity* entity = this->playerController->getOwner()->getSceneManager()->createEntity("Node.mesh");
-												this->playerController->debugWaypointNode->attachObject(entity);
-											}
-											
-											this->playerController->debugWaypointNode->setPosition(resultWaypoint);
-										}
-									}
-								}
-
-								this->playerController->setMoveWeight(1.0f);
-								this->playerController->setJumpWeight(1.0f);
-
-								if ((false == this->playerController->getAnimationBlender()->isComplete() && this->movingBehavior->getPath()->getRemainingWaypoints() > 0)
-									&& false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_WALK_NORTH))
-								{
-									tempAnimationSpeed = this->playerController->getAnimationSpeed();
-									// 0.02f: Immediately blend to walk
-									// this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendSwitch, 0.2f, true);
-									this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendWhileAnimating, 0.2f, true);
-								}
-							}
-						}
+					if (false == foundPath)
+					{
+						// Ogre::LogManager::getSingletonPtr()->logMessage("No path found!!!");
+						// this->movingBehavior->reset();
+						// this->movingBehavior->setBehavior(KI::MovingBehavior::NONE);
 					}
 					else
 					{
-						if (nullptr != this->movingBehavior->getPath())
+						std::vector<Ogre::Vector3> path = this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot());
+
+						LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();
+						if (nullptr != luaScript)
 						{
-							this->movingBehavior->getPath()->clear();
+							luaScript->callTableFunction("onNavMeshClicked", posOnNavMesh);
 						}
-				    }
+							
+						this->hasGoal = true;
+						this->movingBehavior->getPath()->clear();
+
+						// Add each time behavior, because if goal is reached, or no path, the behavior will be removed
+						this->movingBehavior->removeBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+						this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+
+						if (false == path.empty())
+						{
+							for (size_t i = 0; i < path.size(); i++)
+							{
+#if 0
+								Ogre::Vector3 waypoint = path[i];
+								waypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
+								Ogre::Vector3 resultWaypoint = Ogre::Vector3::ZERO;
+
+								std::vector<Ogre::MovableObject*> excludeObject = std::vector<Ogre::MovableObject*>(1);
+								// Exclude the player, else the final way point can be placed on the top of the player^^
+								excludeObject[0] = this->playerController->getOwner()->getMovableObject();
+								bool success = MathHelper::getInstance()->getRaycastResult(waypoint, Ogre::Vector3::NEGATIVE_UNIT_Y, this->raySceneQuery, resultWaypoint, (size_t&)movableObject, &excludeObject);
+								if (false == success)
+								{
+									waypoint = path[i];
+								}
+								else
+								{
+									waypoint.y = resultWaypoint.y;
+								}
+#endif
+
+								Ogre::Vector3 resultWaypoint = path[i];
+								// resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
+
+								// First wp is useless at it is at the same position as the player
+								if (i > 0)
+								{
+									this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
+
+									if (true == this->playerController->getDrawPath())
+									{
+										if (nullptr == this->playerController->debugWaypointNode)
+										{
+											this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+											Ogre::v1::Entity* entity = this->playerController->getOwner()->getSceneManager()->createEntity("Node.mesh");
+											this->playerController->debugWaypointNode->attachObject(entity);
+										}
+											
+										this->playerController->debugWaypointNode->setPosition(resultWaypoint);
+									}
+								}
+							}
+
+							this->playerController->setMoveWeight(1.0f);
+							this->playerController->setJumpWeight(1.0f);
+
+							if ((false == this->playerController->getAnimationBlender()->isComplete() && this->movingBehavior->getPath()->getRemainingWaypoints() > 0)
+								&& false == this->playerController->getAnimationBlender()->isAnimationActive(AnimationBlender::ANIM_WALK_NORTH))
+							{
+								tempAnimationSpeed = this->playerController->getAnimationSpeed();
+								// 0.02f: Immediately blend to walk
+								// this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendSwitch, 0.2f, true);
+								this->playerController->getAnimationBlender()->blend(AnimationBlender::ANIM_WALK_NORTH, NOWA::AnimationBlender::BlendWhileAnimating, 0.2f, true);
+							}
+						}
+					}
+				}
+				else
+				{
+					if (nullptr != this->movingBehavior->getPath())
+					{
+						this->movingBehavior->getPath()->clear();
+					}
 				}
 			}
 		}

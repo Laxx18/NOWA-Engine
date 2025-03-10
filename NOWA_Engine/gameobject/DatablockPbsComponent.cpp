@@ -1633,6 +1633,7 @@ namespace NOWA
 		Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
 		Ogre::String previousTextureName = attribute->getString();
+
 		// If the data block component has just been created, get texture name from existing data block
 		Ogre::String tempTextureName = textureName;
 		
@@ -1743,7 +1744,10 @@ namespace NOWA
 						try
 						{
 							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-
+							/*if (false == this->newlyCreated)
+							{
+								hlmsTextureManager->waitForStreamingCompletion();
+							}*/
 						}
 						catch (const Ogre::Exception& exception)
 						{
@@ -1755,13 +1759,17 @@ namespace NOWA
 						}
 					}
 
-					// Invalid texture skip
 					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
 					if (0 == texture->getWidth())
 					{
-						attribute->setValue(previousTextureName);
-						this->addAttributeFilePathData(attribute);
-						return;
+						hlmsTextureManager->waitForStreamingCompletion();
+					}
+					// Invalid texture skip
+					if (0 == texture->getWidth())
+					{
+						 attribute->setValue(previousTextureName);
+						 this->addAttributeFilePathData(attribute);
+						 return;
 					}
 					// If texture has been removed, set null texture, so that it will be removed from data block
 					if (true == tempTextureName.empty())

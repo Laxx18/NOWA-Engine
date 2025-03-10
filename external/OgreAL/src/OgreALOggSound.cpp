@@ -55,8 +55,9 @@ int OgreALOggStreamSeek(void *datasource, ogg_int64_t offset, int whence)
 		dataStream->seek(offset);
 		break;
 	case SEEK_END:
-		dataStream->seek(dataStream->size());
+		dataStream->seek(dataStream->size() + 8000);
 		// Falling through purposefully here
+		break;
 	case SEEK_CUR:
 		dataStream->skip(offset);
 		break;

@@ -85,6 +85,7 @@ extern "C"
 #include "gameobject/NavMeshTerraComponent.h"
 #include "gameobject/PhysicsRagDollComponent.h"
 #include "gameobject/DistributedComponent.h"
+#include "gameobject/InputDeviceComponent.h"
 #include "gameobject/SoundComponent.h"
 #include "gameobject/SimpleSoundComponent.h"
 #include "gameobject/GameObjectTitleComponent.h"
@@ -164,6 +165,7 @@ namespace NOWA
 	typedef boost::shared_ptr<AttributesComponent> AttributesCompPtr;
 	typedef boost::shared_ptr<PhysicsRagDollComponent> PhysicsRagDollCompPtr;
 	typedef boost::shared_ptr<DistributedComponent> DistributedCompPtr;
+	typedef boost::shared_ptr<InputDeviceComponent> InputDeviceCompPtr;
 	typedef boost::shared_ptr<NavMeshComponent> NavMeshComponentCompPtr;
 	typedef boost::shared_ptr<NavMeshTerraComponent> NavMeshTerraComponentCompPtr;
 	typedef boost::shared_ptr<CrowdComponent> CrowdComponentCompPtr;

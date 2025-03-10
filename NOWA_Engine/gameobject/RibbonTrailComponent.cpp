@@ -63,9 +63,10 @@ namespace NOWA
 	RibbonTrailComponent::RibbonTrailComponent()
 		: GameObjectComponent(),
 		ribbonTrail(nullptr),
+		billboardSet(nullptr),
 		camera(nullptr),
 		maxChainElements(new Variant(RibbonTrailComponent::AttrMaxChainElements(), static_cast<unsigned int>(6000), this->attributes)),
-		numberOfChains(new Variant(RibbonTrailComponent::AttrNumberOfChains(), static_cast<unsigned int>(0), this->attributes)),
+		numberOfChains(new Variant(RibbonTrailComponent::AttrNumberOfChains(), static_cast<unsigned int>(1), this->attributes)),
 		faceCameraId(new Variant(RibbonTrailComponent::AttrFaceCameraId(), static_cast<unsigned long>(0), this->attributes, true)),
 		textureCoordRange(new Variant(RibbonTrailComponent::AttrTextureCoordRange(), Ogre::Vector2(0.0f, 0.0f), this->attributes)),
 		trailLength(new Variant(RibbonTrailComponent::AttrTrailLength(), 400.0f, this->attributes)),
@@ -95,16 +96,7 @@ namespace NOWA
 
 	RibbonTrailComponent::~RibbonTrailComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RibbonTrailComponent] Destructor ribbon trail component for game object: " + this->gameObjectPtr->getName());
-		
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &RibbonTrailComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
-		
-		if (nullptr != this->ribbonTrail)
-		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->ribbonTrail);
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->ribbonTrail);
-			this->ribbonTrail = nullptr;
-		}
+	
 	}
 	
 	void RibbonTrailComponent::handleRemoveCamera(NOWA::EventDataPtr eventData)
@@ -116,7 +108,9 @@ namespace NOWA
 			this->camera = nullptr;
 			this->faceCameraId->setValue(static_cast<unsigned long>(0));
 			if (nullptr != this->ribbonTrail)
+			{
 				this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::ZERO);
+			}
 		}
 	}
 
@@ -234,7 +228,6 @@ namespace NOWA
 	GameObjectCompPtr RibbonTrailComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		RibbonTrailCompPtr clonedCompPtr(boost::make_shared<RibbonTrailComponent>());
-
 		
 		clonedCompPtr->setMaxChainElements(this->maxChainElements->getUInt());
 		clonedCompPtr->setNumberOfChains(this->numberOfChains->getUInt());
@@ -268,28 +261,57 @@ namespace NOWA
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
-		this->setFaceCameraId(this->faceCameraId->getULong());
 		this->createRibbonTrail();
+		this->setFaceCameraId(this->faceCameraId->getULong());
+
 		return true;
 	}
 	
 	bool RibbonTrailComponent::connect(void)
 	{
+		GameObjectComponent::connect();
 		this->setFaceCameraId(this->faceCameraId->getULong());
+
+		return true;
+	}
+
+	bool RibbonTrailComponent::disconnect(void)
+	{
+		GameObjectComponent::disconnect();
 		
 		return true;
+	}
+
+	void RibbonTrailComponent::onRemoveComponent(void)
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RibbonTrailComponent] Destructor ribbon trail component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &RibbonTrailComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
+
+		if (nullptr != this->ribbonTrail)
+		{
+			this->gameObjectPtr->getSceneNode()->detachObject(this->ribbonTrail);
+			this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
+			delete this->ribbonTrail;
+			this->ribbonTrail = nullptr;
+
+			delete this->billboardSet;
+			this->billboardSet = nullptr;
+		}
 	}
 
 	void RibbonTrailComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (false == notSimulating && nullptr != this->ribbonTrail)
 		{
+			// Is already called by ogre
+			// this->ribbonTrail->preRender(this->gameObjectPtr->getSceneManager(), Ogre::Root::getSingletonPtr()->getRenderSystem());
 			this->ribbonTrail->_timeUpdate(dt);
 			
-			if (nullptr != this->camera)
+			/*if (nullptr != this->camera)
 			{
 				this->ribbonTrail->setFaceCamera(true, this->camera->getDirection());
-			}
+			}*/
 		}
 	}
 
@@ -297,75 +319,56 @@ namespace NOWA
 	{
 		if (nullptr == this->ribbonTrail)
 		{
-			// Create a ribbon trail that our lights will leave behind
-			Ogre::NameValuePairList params;
-			params["numberOfChains"] = this->numberOfChains->getUInt();
-			params["maxElements"] = this->maxChainElements->getUInt();
-			this->ribbonTrail = (Ogre::v1::RibbonTrail*)this->gameObjectPtr->getSceneManager()->createMovableObject("RibbonTrail", 
-				&this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), &params);
-
-			// this->ribbonTrail = this->gameObjectPtr->getSceneManager()->createRibbonTrail();
+			// Creates a ribbon trail that our lights will leave behind
+			this->ribbonTrail = new Ogre::v1::RibbonTrail(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
+				this->gameObjectPtr->getSceneManager(), this->maxChainElements->getUInt(), this->numberOfChains->getUInt());
 			
 			// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
-			this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_LEGACY);
+			// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_LEGACY);
 
 			auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
 
 			DeployResourceModule::getInstance()->tagResource(this->datablockName->getListSelectedValue(), data.first, data.second);
-			// this->ribbonTrail->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), "Unlit");
-			// this->ribbonTrail->setDatablockOrMaterialName("Examples/LightRibbonTrail", "General"); // does not work anymore because of fixed pipeline
-			// Must be set to false, because unlit hlms is involved
-			// this->ribbonTrail->setCastShadows(false);
+
 			this->ribbonTrail->setQueryFlags(0);
 			this->ribbonTrail->setDynamic(true);
-			
+
 			this->ribbonTrail->setUseVertexColours(true);
-			this->ribbonTrail->setUseTextureCoords(true);
-			// this->ribbonTrail->setName("RibbonTrail");
-			
-
 			this->ribbonTrail->setMaxChainElements(static_cast<unsigned int>(this->maxChainElements->getUInt()));
-			this->ribbonTrail->setNumberOfChains(static_cast<unsigned int>(this->numberOfChains->getUInt()));
-			 
-			for (unsigned int i = 0; i < static_cast<unsigned int>(this->colorChanges.size()); i++)
-			{
-				this->setColorChange(i, this->colorChanges[i]->getVector3());
-				this->setWidthChange(i, this->widthChanges[i]->getReal());
-				this->setInitialColor(i, this->initialColors[i]->getVector3());
-				this->setInitialWidth(i, this->initialWidths[i]->getReal());
-			}
+			this->ribbonTrail->setUseTextureCoords(true);
+			this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::UNIT_Y);
 
+			this->setNumberOfChains(this->numberOfChains->getUInt());
+			 
 			this->ribbonTrail->setOtherTextureCoordRange(this->textureCoordRange->getVector2().x, this->textureCoordRange->getVector2().y);
 			this->ribbonTrail->setTrailLength(this->trailLength->getReal());
 			this->ribbonTrail->setRenderingDistance(this->renderDistance->getReal());
 
-			// this->ribbonTrail->setDatablock(this->datablockName->getListSelectedValue());
-
-
 			this->gameObjectPtr->getSceneNode()->attachObject(this->ribbonTrail);
 
-// Attention: will never be destroyed
-			Ogre::SceneNode* trailNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-			// this->ribbonTrail->addNode(trailNode);
+			this->setDatablockName(this->datablockName->getListSelectedValue());
 
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
-			delayProcess->attachChild(NOWA::ProcessPtr(new SetDataBlockProcess(trailNode, this->ribbonTrail, this->datablockName->getListSelectedValue())));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 
 			// https://forums.ogre3d.org/viewtopic.php?t=91597
-			
-			/*Ogre::v1::BillboardChain * chain = this->gameObjectPtr->getSceneManager()->createBillboardChain();
-			chain->setDynamic(true);
-			chain->setNumberOfChains(1);
-			chain->setUseVertexColours(true);
-			chain->setMaxChainElements(5);
-			chain->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), "Unlit");
-			
-			for (int i = 0; i < 5; ++i)
-				chain->addChainElement(0, Ogre::v1::BillboardChain::Element(Ogre::Vector3(0.5 * i, 0, 0), 0.1, 0.2 * i, Ogre::ColourValue(1, 0, 0, 1), Ogre::Quaternion()));
-			
-			this->gameObjectPtr->getSceneNode()->attachObject(chain);
-			chain->setVisible(true);*/
+
+			//this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet(1);
+			//this->billboardSet->createBillboard(Ogre::Vector3::ZERO, this->ribbonTrail->getInitialColour(0));
+			//this->billboardSet->setDefaultHeight(5.0f);
+			//this->billboardSet->setDefaultWidth(5.0f);
+			//// this->billboardSet->setMaterialName("Examples/Flare2");
+			//// this->billboardSet->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+			//this->billboardSet->setDatablockOrMaterialName("Examples/Flare2", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+			////this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.1f, 0.1f);
+			//// this->billboardSet->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+
+			//// this->billboardSet->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+
+			//// this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->setDepthCheckEnabled(false);
+			////pBillboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.2, 0.2);
+			//this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
+
+
+			// this->billboardSet->setVisible(true);
 		}
 	}
 
@@ -537,20 +540,8 @@ namespace NOWA
 		this->datablockName->setListSelectedValue(datablockName);
 		if (nullptr != this->ribbonTrail)
 		{
-			// this->ribbonTrail->setDatablock(this->datablockName->getListSelectedValue());
-			// this->ribbonTrail->setDatablock(Ogre::Root::getSingleton().getHlmsManager()->getDatablock(datablockName));
-			// this->ribbonTrail->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), "Unlit");
-			// this->ribbonTrail->setDatablock(LightRibbonTrail"); // does not work anymore because of fixed pipeline
-
-			// Attention: will never be destroyed
-			Ogre::SceneNode* trailNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
-			//// creates the delay process and changes the application state at another tick. Note, this is necessary
-			//// because changing the application state destroys all game objects and its components from the current state.
-			//// so changing the state directly inside a component would create a mess, since everything will be destroyed
-			//// and the game object map in update loop becomes invalid while its iterating
-			delayProcess->attachChild(NOWA::ProcessPtr(new SetDataBlockProcess(trailNode, this->ribbonTrail, this->datablockName->getListSelectedValue())));
+			delayProcess->attachChild(NOWA::ProcessPtr(new SetDataBlockProcess(this->gameObjectPtr->getSceneNode(), this->ribbonTrail, "LightRibbonTrail" /*this->datablockName->getListSelectedValue()*/)));
 			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 		}
 	}
@@ -581,6 +572,9 @@ namespace NOWA
 
 		if (nullptr != this->ribbonTrail)
 		{
+			// TODO: Nothing works here for clear, so delete complete chain and re-create from scratch if something changes
+			this->ribbonTrail->removeNode(this->gameObjectPtr->getSceneNode());
+			this->ribbonTrail->clearAllChains();
 			this->ribbonTrail->setNumberOfChains(numberOfChains);
 		}
 
@@ -707,6 +701,18 @@ namespace NOWA
 			if (nullptr != cameraCompPtr)
 			{
 				this->camera = cameraCompPtr->getCamera();
+
+				if (nullptr != this->ribbonTrail)
+				{
+					this->ribbonTrail->setFaceCamera(true, this->camera->getDirection());
+				}
+			}
+		}
+		else
+		{
+			if (nullptr != this->ribbonTrail)
+			{
+				this->ribbonTrail->setFaceCamera(false);
 			}
 		}
 	}

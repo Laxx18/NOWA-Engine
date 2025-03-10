@@ -39,6 +39,43 @@
 #include "OgreRecastNavmeshPruner.h"
 #include "RecastDebugDraw.h"
 
+#include "OgreHlmsUnlitDatablock.h"
+#include "OgreHlmsUnlit.h"
+
+namespace
+{
+	void createUnlitDatablock(const Ogre::String& datablockName)
+	{
+		Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+		Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+
+		Ogre::HlmsBlendblock blendblock;
+		blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA); // Example: Transparent alpha blending
+
+		Ogre::HlmsMacroblock macroblock;
+		macroblock.mCullMode = Ogre::CULL_NONE; // Example: No culling
+		macroblock.mDepthCheck = true;
+		macroblock.mDepthWrite = true;
+
+		// Check if datablock already exists
+		Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
+
+		if (false == existingDatablock)
+		{
+			Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+				hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
+
+			existingDatablock = datablock;
+		}
+
+		existingDatablock->setMacroblock(macroblock);
+		existingDatablock->setBlendblock(blendblock);
+
+		// Set color usage
+		static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setUseColour(true); // Enable manual colour
+	}
+}
+
 OgreRecast::OgreRecast(Ogre::SceneManager* sceneMgr, const OgreRecastConfigParams& configParams)
 	: m_pSceneMgr(sceneMgr),
 	m_pRecastSN(NULL),
@@ -99,6 +136,9 @@ OgreRecast::OgreRecast(Ogre::SceneManager* sceneMgr, const OgreRecastConfigParam
 		m_PathStore[i].Target = 0;
 	}
 
+	// Must be called, so that nav mesh debug colls do not overpaint other rendered enities/items
+	createUnlitDatablock("recastdebug");
+	createUnlitDatablock("recastdebug1");
 
 	// Set configuration
 	configure(m_configParams);

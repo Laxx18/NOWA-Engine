@@ -658,6 +658,12 @@
     <ClInclude Include="camera\AttachCamera.h">
       <Filter>camera</Filter>
     </ClInclude>
+    <ClInclude Include="gameobject\InputDeviceComponent.h">
+      <Filter>gameobject</Filter>
+    </ClInclude>
+    <ClInclude Include="ki\FormationBehavior.h">
+      <Filter>ki</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\NOWA.ico">
@@ -1217,6 +1223,12 @@
     </ClCompile>
     <ClCompile Include="camera\AttachCamera.cpp">
       <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject\InputDeviceComponent.cpp">
+      <Filter>gameobject</Filter>
+    </ClCompile>
+    <ClCompile Include="ki\FormationBehavior.cpp">
+      <Filter>ki</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

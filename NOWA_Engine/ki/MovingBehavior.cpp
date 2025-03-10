@@ -51,7 +51,7 @@ namespace NOWA
 			obstaclesAvoidanceCategoryIds(0),
 			weightWander(1.0f),
 			weightObstacleAvoidance(10.0f),
-			weightSeek(1.5f),
+			weightSeek(2.5f),
 			weightFlee(1.5f),
 			weightArrive(1.0f),
 			weightPursuit(1.0f),
@@ -1170,6 +1170,7 @@ namespace NOWA
 		}
 #endif
 
+#if 0
 		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
 		{
 			if (nullptr == this->crowdComponent)
@@ -1210,6 +1211,59 @@ namespace NOWA
 			}
 			return Ogre::Vector3::ZERO;
 		}
+#endif
+
+		Ogre::Vector3 MovingBehavior::wander(Ogre::Real dt)
+		{
+			if (nullptr == this->crowdComponent)
+			{
+				// Calculates the circle center
+				Ogre::Vector3 circleCenter = this->agent->getVelocity().normalisedCopy();
+				circleCenter *= this->wanderDistance;
+
+				// Calculates the displacement force
+				Ogre::Vector3 displacement(this->agent->getOwner()->getDefaultDirection());
+				displacement *= this->wanderRadius;
+
+				// Randomly changes the vector direction by making it change its current angle
+				Ogre::Real len = displacement.length();
+				displacement = Ogre::Vector3(
+					Ogre::Math::Cos(this->wanderAngle) * len,
+					0.0f, // Default Y is unchanged unless flyMode is active
+					Ogre::Math::Sin(this->wanderAngle) * len
+				);
+
+				// Changes wanderAngle slightly so the direction varies
+				Ogre::Real theta = Ogre::Math::RangeRandom(0.0f, 1.0f) * 2.0f * Ogre::Math::PI;
+				this->wanderAngle += (theta * this->wanderJitter) - (this->wanderJitter * 0.5f);
+
+				// If fly mode is enabled, allow Y-axis wandering
+				if (true == this->flyMode)
+				{
+					Ogre::Real wanderY = Ogre::Math::RangeRandom(-this->wanderDistance, this->wanderDistance);
+					displacement.y = wanderY;
+				}
+
+				// Finally, calculate and return the wander force
+				Ogre::Vector3 wanderForce = (circleCenter + displacement);
+				wanderForce.normalise();
+				wanderForce *= this->agent->getSpeed();
+
+				return wanderForce;
+			}
+			else
+			{
+				// If destination reached: Set new random destination
+				if (true == this->crowdComponent->destinationReached())
+				{
+					Ogre::Vector3 randomPosition = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getRandomNavMeshPoint();
+					this->crowdComponent->updateDestination(randomPosition);
+					return this->seek(randomPosition, dt);
+				}
+			}
+			return Ogre::Vector3::ZERO;
+		}
+
 		
 		Ogre::Vector3 MovingBehavior::wander2D(Ogre::Real dt)
 		{
@@ -1446,54 +1500,71 @@ namespace NOWA
 
 		Ogre::Vector3 MovingBehavior::flocking(Ogre::Real dt)
 		{
-			Ogre::Vector3 v1 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v2 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v3 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v4 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v5 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v6 = Ogre::Vector3::ZERO;
-			Ogre::Vector3 v7 = Ogre::Vector3::ZERO;
-
 			bool valid = false;
-			
-			if (true == this->isSwitchOn(FLOCKING_COHESION))
-			{
-				auto result = this->flockingRuleCohesion();
-				v1 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/result.second * this->weightCohesion;
-				valid |= result.first;
-			}
-			if (true == this->isSwitchOn(FLOCKING_SEPARATION))
-			{
-				auto result = this->flockingRuleSeparation();
-				v2 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightSeparation;
-				valid |= result.first;
-			}
-			if (true == this->isSwitchOn(FLOCKING_ALIGNMENT))
-			{
-				auto result = this->flockingRuleAlignment();
-				v3 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightAlignment;
-				valid |= result.first;
-			}
-			// v4 = Ogre::Vector3(1.0f, 0.0f, 1.0f) * this->flockingRuleBorder().second;
-			if (true == this->isSwitchOn(FLOCKING_FLEE))
-			{
-				auto result = this->flockingRuleFlee();
-				v5 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightFlee;
-				valid |= result.first;
-			}
-			if (true == this->isSwitchOn(FLOCKING_SEEK))
-			{
-				auto result = this->flockingRuleSeek();
-				v6 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ result.second * this->weightSeek;
-				valid |= result.first;
-			}
-			// if (true == this->isSwitchOn(FLOCKING_OBSTACLE_AVOIDANCE))
-			// {
-			//	auto result = ...
-			// 	v7 = /*Ogre::Vector3(1.0f, 0.0f, 1.0f) **/ this->weightObstacleAvoidance;
-			// valid |= result.first;
-			// }
+			Ogre::Vector3 sumVector = Ogre::Vector3::ZERO;
 
+			if (true == this->isSwitchOn(FLOCKING_FORMATION_V_SHAPE))
+			{
+				auto result = this->flockingFormationVShape();
+				sumVector = result.second * this->weightSeparation;
+				valid |= result.first;
+			}
+			else
+			{
+				Ogre::Vector3 v1 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v2 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v3 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v4 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v5 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v6 = Ogre::Vector3::ZERO;
+				Ogre::Vector3 v7 = Ogre::Vector3::ZERO;
+
+				if (true == this->isSwitchOn(FLOCKING_COHESION))
+				{
+					auto result = this->flockingRuleCohesion();
+					v1 = result.second * this->weightCohesion;
+					valid |= result.first;
+				}
+				if (true == this->isSwitchOn(FLOCKING_SEPARATION))
+				{
+					auto result = this->flockingRuleSeparation();
+					v2 = result.second * this->weightSeparation;
+					valid |= result.first;
+				}
+				else if (true == this->isSwitchOn(FLOCKING_SPREAD))
+				{
+					auto result = this->flockingRuleSpread();
+					v2 = result.second * this->weightSeparation;
+					valid |= result.first;
+				}
+				if (true == this->isSwitchOn(FLOCKING_ALIGNMENT))
+				{
+					auto result = this->flockingRuleAlignment();
+					v3 = result.second * this->weightAlignment;
+					valid |= result.first;
+				}
+				if (true == this->isSwitchOn(FLOCKING_FLEE))
+				{
+					auto result = this->flockingRuleFlee();
+					v4 = result.second * this->weightFlee;
+					valid |= result.first;
+				}
+				if (true == this->isSwitchOn(FLOCKING_SEEK))
+				{
+					auto result = this->flockingRuleSeek();
+					v5 = result.second * this->weightSeek;
+					valid |= result.first;
+				}
+				// if (true == this->isSwitchOn(FLOCKING_OBSTACLE_AVOIDANCE))
+				// {
+				//	auto result = ...
+				// 	v7 = this->weightObstacleAvoidance;
+				// valid |= result.first;
+				// }
+
+				sumVector = v1 + v2 + v3 + v4 + v5 + v6 + v7;
+				sumVector *= this->agent->getSpeed();
+			}
 
 			if (false == valid && this->neighborDistance > 0.0f)
 			{
@@ -1508,163 +1579,467 @@ namespace NOWA
 				}
 			}
 
-			Ogre::Vector3 sumVector = v1 + v2 + v3 + v4 + v5 + v6 + v7;
-			/*if (false == this->flyMode)
-			{
-				sumVector *= Ogre::Vector3(1.0f, 0.0f, 1.0f);
-			}*/
-			sumVector *= this->agent->getSpeed();
-
 			return sumVector;
 		}
 
-		//Ogre::Vector3 MovingBehavior::flockingRuleCohesion(void)
-		//{
-		//	if (0 == this->flockingAgents.size())
-		//		return Ogre::Vector3::ZERO;
-
-		//	// Agenten versuchen ins Zentrum der Masse von Nachbaragenten zu gelangen
-		//	Ogre::Vector3 sumVec = Ogre::Vector3::ZERO;
-		//	Ogre::Vector3 retVec = Ogre::Vector3::ZERO;
-		//	for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
-		//	{
-		//		sumVec += Ogre::Vector3((*it)->getPosition().x, 0.0f, (*it)->getPosition().z);
-		//	}
-		//	sumVec /= this->flockingAgents.size();
-
-		//	//sumVec = Ogre::Vector3::ZERO;
-		//	//return sumVec / 10.0f; //(sumVec - currentSheep->getPosition()) / 100.0f;    //: 1% vom Center laufen
-		//	/*OgreNewt::BasicRaycast::BasicRaycastInfo contact = currentSheep->getContactAhead(3.0);
-		//	if (contact.mBody)
-		//	{
-		//	if ((contact.mBody->getType() != Utilities::TERRAIN) || (contact.mBody->getType() != Utilities::SHEEP))
-		//	{
-		//	retVec = (currentSheep->getPosition() - sumVec) / 5.0f;
-		//	}
-		//	}
-		//	else*/
-		//	{
-		//		retVec = (sumVec - this->agent->getPosition()) / 5.0f;
-		//	}
-		//	return retVec;   //: 1% vom Center laufen
-		//					  //		ziel-position = richtung
-		//}
-
-		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleCohesion(void)
+#if 0 // Seperation in circle effect ^^
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeparation(void)
 		{
 			bool valid = false;
-			if (0 == this->flockingAgents.size())
+			if (this->flockingAgents.empty())
 			{
 				return std::make_pair(valid, Ogre::Vector3::ZERO);
 			}
 
-			// First find the center of mass of all the agents
-			Ogre::Vector3 centerOfMass = Ogre::Vector3::ZERO;
-			Ogre::Vector3 steeringForce = Ogre::Vector3::ZERO;
-
+			Ogre::Vector3 separationForce = Ogre::Vector3::ZERO;
 			unsigned int neighborCount = 0;
 
-			// Iterate through the neighbors and sum up all the position vectors
 			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
 			{
-				// Makes sure this agent is not included in the calculations and
-				// the agent being examined is close enough. If neighbor distance is used.
+				if (agent == this->agent)
+				{
+					continue;
+				}
+
 				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
 				Ogre::Real distanceSquared = toAgent.squaredLength();
-				if (this->neighborDistance == 0.0f || distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
+
+				if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance))
 				{
-					centerOfMass += (*it)->getPosition();
+					Ogre::Real distance = Ogre::Math::Sqrt(distanceSquared);
+					if (distance > 0.0f)
+					{
+						// The closer the agent, the stronger the repulsion force
+						Ogre::Vector3 repulsion = toAgent / (distance * distance);
+						separationForce += repulsion;
+						neighborCount++;
+					}
+				}
+			}
+
+			if (neighborCount > 0 && separationForce.squaredLength() > 0.0f)
+			{
+				separationForce /= static_cast<Ogre::Real>(neighborCount); // Get the average repulsion force
+				separationForce.normalise(); // Ensure it has a consistent direction
+				valid = true;
+			}
+
+			return std::make_pair(valid, separationForce);
+		}
+
+#endif
+
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleAlignment(void)
+		{
+			if (this->flockingAgents.empty())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			Ogre::Vector3 alignmentVelocity = Ogre::Vector3::ZERO;
+			unsigned int neighborCount = 0;
+			Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
+
+			// If targetAgent is available, use its position for seeking
+			Ogre::Vector3 targetAlignment = Ogre::Vector3::ZERO;
+			if (nullptr != this->targetAgent)
+			{
+				targetAlignment = this->seek(this->targetAgent->getPosition(), 0.016f); // Using 0.016f as deltaTime for the seek behavior
+			}
+
+			// Compute alignment based on neighbor velocities
+			for (const auto& agent : this->flockingAgents)
+			{
+				if (agent == this->agent)
+				{
+					continue; // Skip the current agent
+				}
+
+				Ogre::Vector3 toAgent = this->agent->getPosition() - agent->getPosition();
+				Ogre::Real distanceSquared = toAgent.squaredLength();
+
+				if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
+				{
+					alignmentVelocity += agent->getBody()->getVelocity();
 					neighborCount++;
 				}
 			}
 
-			
-			if (neighborCount > 0 && centerOfMass.squaredLength() > 0.0f)
+			if (neighborCount == 0 || alignmentVelocity.squaredLength() == 0.0f)
 			{
-				//the center of mass is the average of the sum of positions
-				centerOfMass /= static_cast<Ogre::Real>(neighborCount);
+				return { false, targetAlignment }; // Return the target alignment if no neighbors are present
+			}
 
-				//now seek towards that position (dt is not interested
-				steeringForce = this->seek(centerOfMass, 0);
+			alignmentVelocity /= static_cast<Ogre::Real>(neighborCount);
+			alignmentVelocity = alignmentVelocity.normalisedCopy(); // Normalize for consistent direction
+
+			return { true, targetAlignment + alignmentVelocity };
+		}
+
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleCohesion(void)
+		{
+			if (this->flockingAgents.empty())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			Ogre::Vector3 centerOfMass = Ogre::Vector3::ZERO;
+			unsigned int neighborCount = 0;
+			Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
+
+			for (const auto& agent : this->flockingAgents)
+			{
+				if (agent == this->agent)
+				{
+					continue; // Skip the current agent
+				}
+
+				Ogre::Vector3 toAgent = this->agent->getPosition() - agent->getPosition();
+				Ogre::Real distanceSquared = toAgent.squaredLength();
+
+				if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
+				{
+					centerOfMass += agent->getPosition();
+					neighborCount++;
+				}
+			}
+
+			if (neighborCount == 0)
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			centerOfMass /= static_cast<Ogre::Real>(neighborCount);
+			Ogre::Vector3 steeringForce = this->seek(centerOfMass, 0);
+
+			return { true, steeringForce.normalisedCopy() };
+		}
+
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSpread(void)
+		{
+			bool valid = false;
+			if (this->flockingAgents.empty())
+			{
+				return std::make_pair(valid, Ogre::Vector3::ZERO);
+			}
+
+			Ogre::Vector3 separationForce = Ogre::Vector3::ZERO;
+			unsigned int neighborCount = 0;
+
+			const Ogre::Real separationStrength = 2.5f;
+			const Ogre::Real maxSeparationForce = 3.0f;
+
+			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
+			{
+				if (*it == this->agent) continue; // Skip the current agent
+
+				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
+				Ogre::Real distanceSquared = toAgent.squaredLength();
+
+				if (this->neighborDistance == 0.0f || (distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance))
+				{
+					Ogre::Real distance = Ogre::Math::Sqrt(distanceSquared);
+					if (distance > 0.01f)
+					{
+						Ogre::Vector3 repulsion = (toAgent / distance) * (separationStrength / distance);
+						separationForce += repulsion;
+						neighborCount++;
+					}
+				}
+			}
+
+			if (neighborCount > 0 && separationForce.squaredLength() > 0.0f)
+			{
+				// separationForce /= static_cast<Ogre::Real>(neighborCount) * 0.3f;
+
+				if (separationForce.squaredLength() > maxSeparationForce * maxSeparationForce)
+				{
+					separationForce.normalise();
+					separationForce *= maxSeparationForce;
+				}
+
 				valid = true;
 			}
 
-			// The magnitude of cohesion is usually much larger than separation or alignment so it usually helps to normalize it.
-			return std::make_pair(valid, steeringForce.normalisedCopy());
+			return std::make_pair(valid, separationForce);
 		}
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeparation(void)
 		{
-			bool valid = false;
-			if (0 == this->flockingAgents.size())
+			if (this->flockingAgents.empty())
 			{
-				return std::make_pair(valid, Ogre::Vector3::ZERO);
+				return { false, Ogre::Vector3::ZERO };
 			}
 
+			Ogre::Vector3 spreadForce = Ogre::Vector3::ZERO;
 			unsigned int neighborCount = 0;
-			// Keep a minimum distance to another neighbour
-			Ogre::Vector3 distVector = Ogre::Vector3::ZERO;
-			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
+			Ogre::Real neighborDistSquared = this->neighborDistance * this->neighborDistance;
+
+			for (const auto& agent : this->flockingAgents)
 			{
-				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
-				Ogre::Real distance = toAgent.length();
-				if (this->neighborDistance == 0.0f || distance > 0.0f && distance < this->neighborDistance)
+				if (agent == this->agent)
 				{
-					// Scale the force inversely proportional to the agents distance from its neighbor.
-					toAgent.normalise();
-					toAgent /= distance;
-					distVector += toAgent;
-					neighborCount++;
+					continue;
 				}
-			}
 
-			// Get average
-			if (neighborCount > 0 && distVector.squaredLength() > 0.0f)
-			{
-				distVector /= static_cast<Ogre::Real>(neighborCount);
-				valid = true;
-			}
-
-			return std::make_pair(valid, distVector);
-		}
-
-		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleAlignment(void)
-		{
-			bool valid = false;
-			if (0 == this->flockingAgents.size())
-			{
-				return std::make_pair(valid, Ogre::Vector3::ZERO);
-			}
-
-			//http://www.red3d.com/cwr/boids/
-
-			unsigned int neighborCount = 0;
-
-			// Calculate average velocity
-			Ogre::Vector3 sumVelocity = Ogre::Vector3::ZERO;
-			for (auto& it = this->flockingAgents.cbegin(); it != this->flockingAgents.cend(); ++it)
-			{
-				Ogre::Vector3 toAgent = this->agent->getPosition() - (*it)->getPosition();
+				Ogre::Vector3 toAgent = this->agent->getPosition() - agent->getPosition();
 				Ogre::Real distanceSquared = toAgent.squaredLength();
-				if (this->neighborDistance == 0.0f || distanceSquared > 0.0f && distanceSquared < this->neighborDistance * this->neighborDistance)
+
+				if ((this->neighborDistance == 0.0f) || (distanceSquared > 0.0f && distanceSquared < neighborDistSquared))
 				{
-					sumVelocity += (*it)->getBody()->getVelocity();
+					spreadForce += toAgent;  // Simply sum the vectors without normalization
 					neighborCount++;
 				}
 			}
-			if (neighborCount > 0 && sumVelocity.squaredLength() > 0.0f)
+
+			if (neighborCount == 0)
 			{
-				sumVelocity /= static_cast<Ogre::Real>(neighborCount);
-				sumVelocity.normalise();
-				valid = true;
+				return { false, Ogre::Vector3::ZERO };
 			}
-			
-			return std::make_pair(valid, sumVelocity);
+
+			spreadForce /= static_cast<Ogre::Real>(neighborCount);
+			return { true, spreadForce.normalisedCopy() };
 		}
+
+#if 0
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape()
+		{
+			if (this->flockingAgents.empty())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			// Determine the leader
+			PhysicsActiveComponent* leader = this->targetAgent ? this->targetAgent : this->flockingAgents.front();
+
+			// The leader does NOT follow the V-formation
+			if (this->agent == leader)
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			// Get leader's position & velocity direction
+			Ogre::Vector3 leaderPos = leader->getPosition();
+			Ogre::Vector3 leaderVel = leader->getBody()->getVelocity().normalisedCopy();
+
+			// Prevent division by zero
+			if (leaderVel.squaredLength() < 0.01f)
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			// **Revised side direction**: Compute perpendicular to the leader's velocity in the horizontal plane
+			Ogre::Vector3 sideDir = leaderVel.perpendicular().normalisedCopy();
+
+			// Find agent's index in the flock
+			auto it = std::find(this->flockingAgents.begin(), this->flockingAgents.end(), this->agent);
+			if (it == this->flockingAgents.end())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			size_t index = std::distance(this->flockingAgents.begin(), it) - 1; // -1 to exclude leader
+			if (index >= this->flockingAgents.size())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			// Compute position in the V-formation
+			int row = (index / 2) + 1;
+			Ogre::Real depthOffset = row * this->neighborDistance * 2.5f;
+			Ogre::Real sideOffset = row * this->neighborDistance * (index % 2 == 0 ? -1.0f : 1.0f);
+
+			// Prevent vertical stacking: Maintain same altitude as leader
+			Ogre::Vector3 targetPos = leaderPos + (-leaderVel * depthOffset) + (sideDir * sideOffset);
+			targetPos.y = leaderPos.y;
+
+			// Move toward target position
+			Ogre::Vector3 toTarget = targetPos - this->agent->getPosition();
+			Ogre::Real distance = toTarget.length();
+
+			// Apply velocity change
+			Ogre::Vector3 desiredVelocity = toTarget.normalisedCopy() * this->agent->getSpeed();
+
+			// Clamp the velocity to the agent's maximum speed
+			if (desiredVelocity.squaredLength() > this->agent->getMaxSpeed() * this->agent->getMaxSpeed())
+			{
+				desiredVelocity.normalise();
+				desiredVelocity *= this->agent->getMaxSpeed();
+			}
+
+			// Calculate the velocity change required
+			Ogre::Vector3 velocityChange = desiredVelocity - this->agent->getBody()->getVelocity();
+
+			// Smooth out the velocity change (optional)
+			Ogre::Real smoothingFactor = 0.1f; // You can tweak this value
+			velocityChange *= smoothingFactor;
+
+			return { true, velocityChange };
+		}
+#endif
+
+#if 0
+
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape(void)
+		{
+			if (this->flockingAgents.empty())
+			{
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			// Determine the leader (targetAgent if available, otherwise first agent)
+			PhysicsActiveComponent* leader = this->targetAgent ? this->targetAgent : this->flockingAgents.front();
+
+			// Get the leader's position and velocity
+			Ogre::Vector3 leaderPos = leader->getPosition();
+			Ogre::Vector3 leaderVel = leader->getBody()->getVelocity().normalisedCopy();
+
+			// Formation parameters
+			Ogre::Real baseSpacing = this->neighborDistance * 4.5f; // Further apart
+			Ogre::Real rowSpacing = baseSpacing * 2.5f; // Increase row spacing
+			Ogre::Vector3 vDirection = leaderVel.perpendicular();
+			bool leftSide = true; // Alternate sides
+
+			// Step 1: Calculate the desired target position for each agent
+			std::vector<Ogre::Vector3> targetPositions;
+			unsigned int index = 0;
+
+			for (const auto& agent : this->flockingAgents)
+			{
+				if (agent == leader)
+				{
+					targetPositions.push_back(leaderPos); // Leader stays at its position
+					continue;
+				}
+
+				// Determine row and offset in V-formation
+				Ogre::Real row = (index / 2) + 1; // Every two agents, go to the next row
+				Ogre::Real sideOffset = row * baseSpacing * 2.0f; // Wider spacing for wings
+				Ogre::Real depthOffset = row * rowSpacing; // More depth
+
+				Ogre::Vector3 offset = leaderVel * (-depthOffset) + vDirection * (leftSide ? -sideOffset : sideOffset);
+				Ogre::Vector3 targetPos = leaderPos + offset;
+
+				targetPositions.push_back(targetPos);
+
+				// Switch sides for the next agent
+				leftSide = !leftSide;
+				index++;
+			}
+
+			// Step 2: Calculate forces for each agent to move towards the target position
+			Ogre::Vector3 totalForce = Ogre::Vector3::ZERO;
+
+			index = 0;
+			for (const auto& agent : this->flockingAgents)
+			{
+				if (agent == leader)
+				{
+					continue; // Skip the leader
+				}
+
+				// Get the target position for this agent
+				Ogre::Vector3 targetPos = targetPositions[index];
+
+				// Local seek force per agent
+				Ogre::Vector3 desiredVelocity = targetPos - agent->getPosition();
+				Ogre::Real distance = desiredVelocity.length();
+
+				// Normalize only if distance is not zero
+				if (distance > 0.0f)
+				{
+					desiredVelocity /= distance; // Normalize
+					desiredVelocity *= agent->getSpeed();
+
+					// If agents are still melting together, apply a separation force
+					if (distance < baseSpacing * 0.8f) // If too close, spread out
+					{
+						desiredVelocity *= 1.5f; // Push them apart more
+					}
+					else if (distance > baseSpacing * 2.0f) // If too far, slow them down
+					{
+						desiredVelocity *= 0.7f;
+					}
+				}
+
+				// Accumulate forces
+				totalForce += (desiredVelocity - agent->getBody()->getVelocity());
+
+				index++;
+			}
+
+			// Normalize total force for consistency
+			totalForce /= static_cast<Ogre::Real>(this->flockingAgents.size()) * 2.0f;
+
+			return { true, totalForce };
+		}
+#endif
+
+#if 1
+
+		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingFormationVShape()
+		{
+			if (this->flockingAgents.empty()) {
+				return { false, Ogre::Vector3::ZERO };
+			}
+
+			PhysicsActiveComponent* leader = this->targetAgent ? this->targetAgent : this->flockingAgents.front();
+			if (this->agent == leader) {
+				return { false, Ogre::Vector3::ZERO }; // Leader stays in place
+			}
+
+			Ogre::Vector3 leaderPos = leader->getPosition();
+			Ogre::Vector3 leaderVel = leader->getBody()->getVelocity().normalisedCopy();
+
+			if (leaderVel.squaredLength() < 0.01f) {
+				return { false, Ogre::Vector3::ZERO }; // Avoid division by zero
+			}
+
+			// Get perpendicular direction for V-shape
+			Ogre::Vector3 sideDir = leaderVel.crossProduct(Ogre::Vector3::UNIT_Y).normalisedCopy();
+
+			// Find this agent’s index in the flock
+			auto it = std::find(this->flockingAgents.begin(), this->flockingAgents.end(), this->agent);
+			if (it == this->flockingAgents.end()) {
+				return { false, Ogre::Vector3::ZERO }; // Should not happen
+			}
+
+			size_t index = std::distance(this->flockingAgents.begin(), it) - 1; // -1 because leader is skipped
+			if (index >= this->flockingAgents.size()) {
+				return { false, Ogre::Vector3::ZERO }; // Out of bounds
+			}
+
+			// Compute this agent's position in the V-formation
+			const Ogre::Real neighborDistance = this->agent->getOwner()->getSize().squaredLength();
+
+			int row = (index / 2) + 1; // Every two agents, move to the next row
+			Ogre::Real depthOffset = row * neighborDistance * 2.5f;
+			Ogre::Real sideOffset = row * neighborDistance * (index % 2 == 0 ? -1.0f : 1.0f) * 2.0f;
+
+			// Compute target position
+			Ogre::Vector3 targetPos = leaderPos + (-leaderVel * depthOffset) + (sideDir * sideOffset);
+
+			// Seek behavior to move toward target
+			Ogre::Vector3 toTarget = targetPos - this->agent->getPosition();
+			Ogre::Real distance = toTarget.length();
+
+			Ogre::Vector3 desiredVelocity = toTarget.normalisedCopy() * this->agent->getSpeed();
+			Ogre::Vector3 velocityChange = (desiredVelocity - this->agent->getBody()->getVelocity()) * 0.1f;
+			this->agent->applyForce(velocityChange);
+
+			// Rotate smoothly
+			Ogre::Quaternion targetOrientation = this->agent->getBody()->getVelocity().getRotationTo(desiredVelocity);
+			this->agent->applyOmegaForceRotateTo(targetOrientation, Ogre::Vector3::UNIT_Y, 0.05f);
+
+			return { true, velocityChange };
+		}
+
+
+#endif
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleFlee(void)
 		{
-			if(0 == this->flockingAgents.size())
+			if(0 == this->flockingAgents.size() || nullptr == this->targetAgent)
 			{
 				return std::make_pair(false, Ogre::Vector3::ZERO);
 			}
@@ -1688,7 +2063,7 @@ namespace NOWA
 
 		std::pair<bool, Ogre::Vector3> MovingBehavior::flockingRuleSeek(void)
 		{
-			if (0 == this->flockingAgents.size())
+			if (0 == this->flockingAgents.size() || nullptr == this->targetAgent)
 			{
 				return std::make_pair(false, Ogre::Vector3::ZERO);
 			}
@@ -1849,6 +2224,14 @@ namespace NOWA
 			{
 				return MovingBehavior::FLOCKING_SEPARATION;
 			}
+			else if (behavior == "FlockingSpread")
+			{
+				return MovingBehavior::FLOCKING_SPREAD;
+			}
+			else if (behavior == "flockingFormationVShape")
+			{
+				return MovingBehavior::FLOCKING_FORMATION_V_SHAPE;
+			}
 			else if (behavior == "FlockingAlignment")
 			{
 				return MovingBehavior::FLOCKING_ALIGNMENT;
@@ -1933,6 +2316,10 @@ namespace NOWA
 				return "FlockingCohesion";
 			case MovingBehavior::FLOCKING_SEPARATION:
 				return "FlockingSeparation";
+			case MovingBehavior::FLOCKING_SPREAD:
+				return "FlockingSpread";
+			case MovingBehavior::FLOCKING_FORMATION_V_SHAPE:
+				return "FlockingFormationVShape";
 			case MovingBehavior::FLOCKING_ALIGNMENT:
 				return "FlockingAlignment";
 			case MovingBehavior::FLOCKING:
@@ -2197,9 +2584,9 @@ namespace NOWA
 
 					if (true == this->autoOrientation)
 					{
-						Ogre::Quaternion resultOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+						// Ogre::Quaternion resultOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
 						// faceDirectionSlerp is corrupt, debug it!
-						// Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
 						heading = resultOrientation.getYaw();
 
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] ratio: " + Ogre::StringConverter::toString(ratio));
@@ -2271,7 +2658,7 @@ namespace NOWA
 						}
 						else
 						{
-							this->agent->setOmegaVeclocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
+							this->agent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
 						}
 					}
 				}
@@ -2287,45 +2674,11 @@ namespace NOWA
 					}
 					else
 					{
-						Ogre::Real maxYVelocity = this->agent->getSpeed();
-						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
-						
-
-						if (this->isSwitchOn(PATH_FINDING_WANDER) || this->isSwitchOn(WANDER) || this->isSwitchOn(FLOCKING))
-						{
-							forceForVelocity = resultVelocity;
-						}
-						else
-						{
-							forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
-						}
+						forceForVelocity = resultVelocity;
 					}
-#if 0
-					//else
-					//{
-					//	
-					//	// Optionally, add a small damping effect to smooth out movement if needed
-					//	Ogre::Real damping = -0.01f;
-					//	resultVelocity.y = this->agent->getVelocity().y * damping; // Apply damping to prevent runaway
 
-					//	// FlyMode is active, control Y-velocity explicitly
-					//	// Apply a damping factor or limit to prevent runaway speeds
-					//	Ogre::Real maxYVelocity = 0.5f;// this->agent->getSpeed(); // Example limit
-					//	resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -maxYVelocity, maxYVelocity);
-					//}
-#endif
-					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
-					// Ogre::Vector3 forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
-
-					
-					
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] GO: " + this->agent->getOwner()->getName() + " force: " + Ogre::StringConverter::toString(forceForVelocity));
 					this->agent->applyRequiredForceForVelocity(forceForVelocity);
-					// This works, but is wrong, because force calculation must be used
-					// this->agent->setVelocity(forceForVelocity);
-
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] vel: " + Ogre::StringConverter::toString(resultVelocity));
-
+				
 					// Only orientate, if the character is moving, else he will be always orientated to its origin, which looks odd
 					if (Ogre::Vector3::ZERO != resultVelocity)
 					{
@@ -2334,8 +2687,6 @@ namespace NOWA
 						if (true == this->autoOrientation)
 						{
 							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
-							// this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 							this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
@@ -2770,10 +3121,29 @@ namespace NOWA
 					return this->limitFlockingVelocity(totalVelocity);
 				}
 			}
-			/*if (this->isSwitchOn(FLOCKING_SEPARATION))
+#if 0
+			if (this->isSwitchOn(FLOCKING_SEPARATION))
 			{
 				this->currentBehavior += "FlockingSeparation ";
-				velocity = this->flockingRuleSeparation() * this->weightSeparation;
+				velocity = this->flockingRuleSeparation().second * this->weightSeparation;
+				if (false == this->accumulateVelocity(totalVelocity, velocity))
+				{
+					return this->limitFlockingVelocity(totalVelocity);
+				}
+			}
+			if (this->isSwitchOn(FLOCKING_SPREAD))
+			{
+				this->currentBehavior += "FlockingSpread ";
+				velocity = this->flockingRuleSpread().second * this->weightSeparation;
+				if (false == this->accumulateVelocity(totalVelocity, velocity))
+				{
+					return this->limitFlockingVelocity(totalVelocity);
+				}
+			}
+			if (this->isSwitchOn(FLOCKING_FORMATION_V_SHAPE))
+			{
+				this->currentBehavior += "flockingFormationVShape ";
+				velocity = this->flockingFormationVShape().second * this->weightSeparation;
 				if (false == this->accumulateVelocity(totalVelocity, velocity))
 				{
 					return this->limitFlockingVelocity(totalVelocity);
@@ -2782,7 +3152,7 @@ namespace NOWA
 			if (this->isSwitchOn(FLOCKING_ALIGNMENT))
 			{
 				this->currentBehavior += "FlockingAlignment ";
-				velocity = this->flockingRuleAlignment() * this->weightAlignment;
+				velocity = this->flockingRuleAlignment().second * this->weightAlignment;
 				if (false == this->accumulateVelocity(totalVelocity, velocity))
 				{
 					return this->limitFlockingVelocity(totalVelocity);
@@ -2791,12 +3161,13 @@ namespace NOWA
 			if (this->isSwitchOn(FLOCKING_COHESION))
 			{
 				this->currentBehavior += "FlockingAlignment ";
-				velocity = this->flockingRuleCohesion() * this->weightCohesion;
+				velocity = this->flockingRuleCohesion().second * this->weightCohesion;
 				if (false == this->accumulateVelocity(totalVelocity, velocity))
 				{
 					return this->limitFlockingVelocity(totalVelocity);
 				}
-			}*/
+			}
+#endif
 			if (0 != this->mask)
 			{
 				return this->limitVelocity(totalVelocity);

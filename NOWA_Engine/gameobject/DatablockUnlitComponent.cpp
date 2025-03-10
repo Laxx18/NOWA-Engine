@@ -358,7 +358,6 @@ namespace NOWA
 		Ogre::String previousTextureName = attribute->getString();
 		// If the data block component has just been created, get texture name from existing data block
 		Ogre::String tempTextureName = textureName;
-
 		
 		// If the data block component has just been created, get texture name from existing data block
 		if (true == newlyCreated && nullptr != this->datablock)
@@ -427,8 +426,12 @@ namespace NOWA
 						return;
 					}
 
-					// Invalid texture skip
 					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
+					if (0 == texture->getWidth())
+					{
+						hlmsTextureManager->waitForStreamingCompletion();
+					}
+					// Invalid texture skip
 					if (0 == texture->getWidth())
 					{
 						attribute->setValue(previousTextureName);

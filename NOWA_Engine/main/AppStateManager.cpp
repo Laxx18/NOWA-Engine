@@ -343,7 +343,7 @@ namespace NOWA
 		}
 	}
 
-#if 0
+#if 1
 
 	void AppStateManager::adaptiveFPSRendering(void)
 	{
@@ -403,7 +403,7 @@ namespace NOWA
 			// Sleep(0);
 		}
 	}
-#endif
+#else
 
 	void AppStateManager::adaptiveFPSRendering(void)
 	{
@@ -469,6 +469,7 @@ namespace NOWA
 			}
 		}
 	}
+#endif
 
 	void AppStateManager::fpsIndependentRendering(void)
 	{

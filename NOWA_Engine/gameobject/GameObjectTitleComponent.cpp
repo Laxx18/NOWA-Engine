@@ -254,7 +254,7 @@ namespace NOWA
 		{
 			if (nullptr != this->orientationTargetGameObject)
 			{
-#if 0
+#if 1
 				Ogre::Vector3 p = this->gameObjectPtr->getPosition();
 				Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
 
@@ -411,12 +411,14 @@ namespace NOWA
 	{
 		Ogre::String tempCaption = replaceAll(caption, "\\n", "\n");
 		this->caption->setValue(tempCaption);
-		if (true != tempCaption.empty())
+		if (true == tempCaption.empty())
 		{
-			if (this->movableText)
-			{
-				this->movableText->setCaption(tempCaption);
-			}
+			// Empty string causes crash with vertices in movabletext^^
+			tempCaption = " ";
+		}
+		if (this->movableText)
+		{
+			this->movableText->setCaption(tempCaption);
 		}
 	}
 
