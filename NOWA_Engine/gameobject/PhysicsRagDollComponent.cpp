@@ -121,9 +121,6 @@ namespace NOWA
 		clonedCompPtr->setAngularDamping(this->angularDamping->getVector3());
 		clonedCompPtr->setGravity(this->gravity->getVector3());
 		clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
-		// clonedCompPtr->applyAngularImpulse(this->angularImpulse);
-		// clonedCompPtr->applyAngularVelocity(this->angularVelocity->getVector3());
-		clonedCompPtr->applyForce(this->force->getVector3());
 		clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
 		
 		clonedCompPtr->setSpeed(this->speed->getReal());
@@ -1848,12 +1845,16 @@ namespace NOWA
 		limit2(0.0f),
 		sceneNode(nullptr),
 		initialBoneOrientation(Ogre::Quaternion::IDENTITY),
-		initialBonePosition(Ogre::Vector3::ZERO),
-		forceForVelocity(Ogre::Vector3::ZERO),
-		canAddForceForVelocity(false),
-		omegaForce(Ogre::Vector3::ZERO),
-		canAddOmegaForce(false)
+		initialBonePosition(Ogre::Vector3::ZERO)
 	{
+		this->requiredVelocityForForceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->requiredVelocityForForceCommand.pending.store(false);
+		this->requiredVelocityForForceCommand.inProgress.store(false);
+
+		this->omegaForceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->omegaForceCommand.pending.store(false);
+		this->omegaForceCommand.inProgress.store(false);
+
 		OgreNewt::CollisionPtr collisionPtr;
 		Ogre::Vector3 inertia;
 		Ogre::Vector3 massOrigin;
@@ -2161,6 +2162,10 @@ namespace NOWA
 		this->applyOmegaForce(resultVector);
 	}
 
+	void PhysicsRagDollComponent::RagBone::applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength)
+	{
+	}
+
 	unsigned long PhysicsRagDollComponent::RagBone::getJointId(void)
 	{
 		if (nullptr != this->jointCompPtr)
@@ -2172,17 +2177,8 @@ namespace NOWA
 
 	void PhysicsRagDollComponent::RagBone::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
 	{
-		/////////////////////Standard gravity force/////////////////////////////////////
-
-		// Dangerous: Causes newton crash!
-		// Clamp omega, when activated (should only be rarely the case!)
-		/*Ogre::Vector3 omega = body->getOmega();
-		Ogre::Real mag2 = omega.dotProduct(omega);
-		if (mag2 > (50.0f * 50.0f))
-		{
-			omega = omega.normalise() * 50.0f;
-			body->setOmega(omega);
-		}*/
+		Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
+		GameObjectPtr nearestGravitySourceObject;
 
 		Ogre::Vector3 wholeForce = body->getGravity();
 		Ogre::Real mass = 0.0f;
@@ -2192,23 +2188,87 @@ namespace NOWA
 		body->getMassMatrix(mass, inertia);
 		wholeForce *= mass;
 
-		body->addForce(wholeForce);
-
-		if (true == this->canAddForceForVelocity)
+		if (false == this->physicsRagDollComponent->gravitySourceCategory->getString().empty())
 		{
-			Ogre::Vector3 moveForce = (this->forceForVelocity - body->getVelocity()) * mass / timeStep;
+			// If there is a gravity source GO, calculate gravity in that direction of the source, but only work with the nearest object, else the force will mess up
+			auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->physicsRagDollComponent->gravitySourceCategory->getString());
+			for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
+			{
+				wholeForce = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
+				Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
+				if (squaredDistanceToGravitySource < nearestPlanetDistance)
+				{
+					nearestPlanetDistance = squaredDistanceToGravitySource;
+					nearestGravitySourceObject = gravitySourceGameObjects[i];
+				}
+			}
 
-			body->addForce(moveForce);
-			this->forceForVelocity = Ogre::Vector3::ZERO;
-			this->canAddForceForVelocity = false;
+			// Only do calculation for the nearest planet
+			if (nullptr != nearestGravitySourceObject)
+			{
+				auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+				if (nullptr != gravitySourcePhysicsComponentPtr)
+				{
+					Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
+					directionToPlanet.normalise();
+
+					// Ensures constant acceleration of e.g. -19.8 m/s²
+					Ogre::Real gravityAcceleration = -this->physicsRagDollComponent->gravity->getVector3().length(); // Should be e.g. 19.8
+
+					wholeForce = directionToPlanet * (mass * gravityAcceleration); // F = m * a
+
+					// More realistic planetary scenario: Depending on planet size, gravity is much harder or slower like on the moon:
+					// Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
+					// Ogre::Real strength = (gravityAcceleration * gravitySourcePhysicsComponentPtr->getMass()) / squaredDistanceToGravitySource;
+					// wholeForce = directionToPlanet * (mass * strength);
+				}
+			}
 		}
 
-		// add if set a angular impulse to rotate an object
-		if (true == this->canAddOmegaForce)
+		body->addForce(wholeForce);
+
+		// Checks if a required force for velocity command is pending
+		if (this->requiredVelocityForForceCommand.pending.load())
 		{
-			body->setBodyAngularVelocity(this->omegaForce, timeStep);
-			this->omegaForce = Ogre::Vector3::ZERO;
-			this->canAddOmegaForce = false;
+			// Try to claim this command
+			bool expected = false;
+			if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				// We've claimed the command
+
+				// Get the velocity to apply
+				Ogre::Vector3 velocityToApply = this->requiredVelocityForForceCommand.vectorValue;
+
+				// Calculate and apply the force
+				Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
+				body->addForce(moveForce);
+
+				// Mark command as no longer pending
+				this->requiredVelocityForForceCommand.pending.store(false);
+
+				// Release the command
+				this->requiredVelocityForForceCommand.inProgress.store(false);
+			}
+		}
+
+		// Checks if an omage force command is pending
+		if (this->omegaForceCommand.pending.load())
+		{
+			// Try to claim this command
+			bool expected = false;
+			if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				// Get the omega force to apply
+				Ogre::Vector3 omegaForceToApply = this->omegaForceCommand.vectorValue;
+
+				body->setBodyAngularVelocity(omegaForceToApply, timeStep);
+
+				// Mark command as no longer pending
+				this->omegaForceCommand.pending.store(false);
+
+				// Release the command
+				this->omegaForceCommand.inProgress.store(false);
+			}
 		}
 	}
 
@@ -2495,11 +2555,11 @@ namespace NOWA
 		{
 			if (!this->upVector)
 			{
-				this->upVector = new OgreNewt::UpVector(this->body, this->pose);
+				this->upVector = new OgreNewt::UpVector(this->body, pose);
 			}
 			else
 			{
-				this->upVector->setPin(pose);
+				this->upVector->setPin(this->body, pose);
 			}
 		}
 		else
@@ -2572,14 +2632,26 @@ namespace NOWA
 
 	void PhysicsRagDollComponent::RagBone::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
 	{
-		this->forceForVelocity = velocity;
-		this->canAddForceForVelocity = true;
+		if (velocity != Ogre::Vector3::ZERO)
+		{
+			// Set the command values
+			this->requiredVelocityForForceCommand.vectorValue = velocity;
+
+			// Mark as pending - this will be seen by the physics thread
+			this->requiredVelocityForForceCommand.pending.store(true);
+		}
 	}
 
 	void PhysicsRagDollComponent::RagBone::applyOmegaForce(const Ogre::Vector3& omegaForce)
 	{
-		this->omegaForce = omegaForce;
-		this->canAddOmegaForce = true;
+		if (omegaForce != Ogre::Vector3::ZERO)
+		{
+			// Set the command values
+			this->omegaForceCommand.vectorValue = omegaForce;
+
+			// Mark as pending - this will be seen by the physics thread
+			this->omegaForceCommand.pending.store(true);
+		}
 	}
 
 }; // namespace end

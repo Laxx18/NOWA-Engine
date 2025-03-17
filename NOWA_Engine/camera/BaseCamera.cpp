@@ -21,7 +21,8 @@ namespace NOWA
 		firstTimeMoveValueSet(true),
 		cameraControlLocked(false),
 		moveCameraWeight(1.0f),
-		rotateCameraWeight(1.0f)
+		rotateCameraWeight(1.0f),
+		gravityDirection(Ogre::Vector3::ZERO)
 	{
 #if _DEBUG
 		this->smoothValue = 0.01f;
@@ -55,11 +56,17 @@ namespace NOWA
 		this->lastValue = Ogre::Vector2::ZERO;
 		this->lastMoveValue = Ogre::Vector3::ZERO;
 		this->firstTimeValueSet = true;
+		this->gravityDirection = Ogre::Vector3::ZERO;
 	}
 
 	void BaseCamera::setDefaultDirection(const Ogre::Vector3& defaultDirection)
 	{
 		this->defaultDirection = defaultDirection;
+	}
+
+	void BaseCamera::applyGravityDirection(const Ogre::Vector3& gravityDirection)
+	{
+		this->gravityDirection = gravityDirection;
 	}
 
 	void BaseCamera::moveCamera(Ogre::Real dt)

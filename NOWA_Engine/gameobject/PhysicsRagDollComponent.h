@@ -301,11 +301,26 @@ namespace NOWA
 			 */
 			void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
+			/**
+			 * @brief		Applies the omega force in move callback function in order to rotate the game object to the given result direction.
+			 * @param[in]	resultDirectoin The result direction to which the game object should be rotated via omega to.
+			 * @param[in]	strength The strength at which the rotation should occur
+			 * @Note		This should be used during simulation instead of @setOmegaVelocity.
+			 */
+			virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+
 			// Ogre::Vector3 getPosCorrection(void) const;
 
 			unsigned long getJointId(void);
 		private:
 			void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+
+			struct Command
+			{
+				Ogre::Vector3 vectorValue;
+				std::atomic<bool> pending;
+				std::atomic<bool> inProgress;
+			};
 		private:
 
 			// pointer to the doll to which this bone belongs.
@@ -330,11 +345,10 @@ namespace NOWA
 			Ogre::Quaternion initialBoneOrientation;
 			Ogre::Vector3 initialBonePosition;
 			Ogre::Vector3 bodySize;
-			Ogre::Vector3 forceForVelocity;
-			bool canAddForceForVelocity;
-			Ogre::Vector3 omegaForce;
-			bool canAddOmegaForce;
 			bool partial;
+
+			Command requiredVelocityForForceCommand;
+			Command omegaForceCommand;
 		};
 	public:
 		struct RagData

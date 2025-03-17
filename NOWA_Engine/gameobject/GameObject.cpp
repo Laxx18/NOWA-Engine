@@ -432,12 +432,11 @@ namespace NOWA
 		if (nullptr != this->movableObject)
 		{
 			Ogre::Aabb boundingBox = this->movableObject->getLocalAabb();
-			Ogre::Vector3 padding = (boundingBox.getMaximum() - boundingBox.getMinimum()) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
 			Ogre::Vector3 scale = this->sceneNode->getScale();
 			this->size->setReadOnly(false);
-			this->size->setValue(((boundingBox.getMaximum() - boundingBox.getMinimum()) - padding * 2.0f) * scale);
+			this->size->setValue(((boundingBox.getMaximum() - boundingBox.getMinimum())) * scale);
 			this->size->setReadOnly(true);
-			this->centerOffset = (boundingBox.getMinimum() + padding + (size->getVector3() / 2.0f)) * scale;
+			this->centerOffset = (boundingBox.getMinimum() + (size->getVector3() / 2.0f)) * scale;
 		}
 	}
 
@@ -517,6 +516,11 @@ namespace NOWA
 					&& attributeName != GameObject::AttrVisible())
 				{
 					this->actualizeValue(this->attributes[i].second);
+				}
+
+				if (attributeName == GameObject::AttrVisible())
+				{
+					this->setLoadedVisible(this->attributes[i].second);
 				}
 			}
 			this->attributes[i].second->resetChange();
@@ -1739,6 +1743,24 @@ namespace NOWA
 		{
 			isMovableVisible = this->movableObject->getVisible();
 		}
+		if (isMovableVisible != visible)
+		{
+			this->visible->setValue(visible);
+			if (nullptr != this->movableObject)
+			{
+				this->sceneNode->setVisible(visible);
+				this->movableObject->setVisible(visible);
+			}
+		}
+	}
+
+	void GameObject::setLoadedVisible(bool visible)
+	{
+		bool isMovableVisible = true;
+		if (nullptr != this->movableObject)
+		{
+			isMovableVisible = this->movableObject->getVisible();
+		}
 		if (this->visible->getBool() != visible)
 		{
 			this->visible->setValue(visible);
@@ -1747,13 +1769,6 @@ namespace NOWA
 				this->sceneNode->setVisible(visible);
 				this->movableObject->setVisible(visible);
 			}
-
-			// E.g. mygui painted components will also be hidden or shown
-			/*for (size_t i = 0; i < this->getComponents()->size(); i++)
-			{
-				auto component = std::get<COMPONENT>(this->getComponents()->at(i)).get();
-				component->setActivated(visible);
-			}*/
 		}
 	}
 

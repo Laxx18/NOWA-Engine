@@ -1,4 +1,4 @@
-#include "NOWAPrecompiled.h"
+﻿#include "NOWAPrecompiled.h"
 #include "PlayerControllerComponents.h"
 #include "GameObjectController.h"
 #include "PhysicsActiveComponent.h"
@@ -91,6 +91,7 @@ namespace NOWA
 		animationSpeed(new Variant(PlayerControllerComponent::AttrAnimationSpeed(), 1.0f, this->attributes)),
 		acceleration(new Variant(PlayerControllerComponent::AttrAcceleration(), 0.0f, this->attributes)),
 		categories(new Variant(PlayerControllerComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
+		useStandUp(new Variant(PlayerControllerComponent::AttrUseStandUp(), false, this->attributes)),
 		physicsActiveComponent(nullptr),
 		cameraBehaviorComponent(nullptr),
 		inputDeviceComponent(nullptr),
@@ -109,11 +110,18 @@ namespace NOWA
 		hitGameObjectBelow(nullptr),
 		hitGameObjectFront(nullptr),
 		hitGameObjectUp(nullptr),
+		up(Ogre::Vector3::ZERO),
+		forward(Ogre::Vector3::ZERO),
+		right(Ogre::Vector3::ZERO),
+		timeFallen(0.0f),
+		isFallen(false),
+		fallThreshold(0.7f),
+		recoveryTime(2.0f),
 		animationBlenderObserver(nullptr),
 		debugWaypointNode(nullptr)
 	{
-		this->activated->setVisible(false);
 		this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
+		this->useStandUp->setDescription("Sets whether to use stand up feature for a player, so that if he fell down, after 2 seconds, he will stand up again.");
 	}
 
 	PlayerControllerComponent::~PlayerControllerComponent()
@@ -191,6 +199,12 @@ namespace NOWA
 			this->categories->setValue(XMLConverter::getAttrib(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "UseStandUp")
+		{
+			this->useStandUp->setValue(XMLConverter::getAttribBool(propertyElement, "data", false));
+			propertyElement = propertyElement->next_sibling("property");
+		}
+
 		return true;
 	}
 
@@ -260,21 +274,6 @@ namespace NOWA
 		// also hold shared by the game object controller
 		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
 
-		auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
-		if (nullptr != inputDeviceCompPtr)
-		{
-			this->inputDeviceComponent = inputDeviceCompPtr.get();
-
-			if (false == this->inputDeviceComponent->hasValidDevice())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
-			}
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerController] Cannot use WalkingStateJumpNRun, because this game object has no valid InputDeviceComponent configured.");
-		}
-
 		this->internalShowDebugData();
 
 		return true;
@@ -289,6 +288,16 @@ namespace NOWA
 		this->moveLockOwner.clear();
 		this->jumpWeightOwner.clear();
 
+		this->height = 0.0f;
+		this->normal = Ogre::Vector3::ZERO;
+		this->priorValidHeight = 0.0f;
+		this->priorValidNormal = Ogre::Vector3::ZERO;
+
+		this->up = Ogre::Vector3::ZERO;
+		this->forward = Ogre::Vector3::ZERO;
+		this->right = Ogre::Vector3::ZERO;
+		this->timeFallen = 0.0f;
+
 		AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDrawnPath();
 
 		this->internalShowDebugData();
@@ -297,36 +306,36 @@ namespace NOWA
 
 	void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && nullptr != this->physicsActiveComponent /*&& true == this->activated->getBool()*/) // activated documented out, else idle animation will not work
+		if (false == notSimulating && nullptr != this->physicsActiveComponent && true == this->activated->getBool())
 		{
 			auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
 
 			this->setMoveWeight(1.0f);
 			this->setJumpWeight(1.0f);
 
-			Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
-
 			Ogre::Vector3 playerSize = this->gameObjectPtr->getSize();
 			Ogre::Vector3 bottomOffset = this->gameObjectPtr->getBottomOffset();
 			Ogre::Vector3 centerOffset = this->gameObjectPtr->getCenterOffset();
 			Ogre::Vector3 middleOfPlayer = this->gameObjectPtr->getMiddle();
 			// Note on ogrenewt raycast, the startpoint is always the absolute game object position. Hence if root is on the middle of the game object, it will start e.g. plus 1 meter
-			Ogre::Vector3 centerBottom = bottomOffset - playerSize.y;  /*middleOfPlayer - playerSize.y;*/
+			// Ogre::Vector3 centerBottom = bottomOffset - playerSize.y;  /*middleOfPlayer - playerSize.y;*/
+			Ogre::Vector3 centerBottom = bottomOffset;
 			const Ogre::Real fraction = 0.4f;
-			
+
 			bool showDebugData = false;
+			
 			// 1. Check objects that are below the player
 			PhysicsActiveComponent::ContactData contactsDataBelow1 = this->physicsActiveComponent->getContactBelow(0, 
-				Ogre::Vector3(-playerSize.z * fraction, centerBottom.y, 0.0f), showDebugData, this->categoriesId); // y must be 0!!
+				Ogre::Vector3(-playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y must be 0!!
 			
 			PhysicsActiveComponent::ContactData contactsDataBelow2 = this->physicsActiveComponent->getContactBelow(1, 
-				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * fraction), showDebugData, this->categoriesId); // y must be 0!!
+				Ogre::Vector3(0.0f, centerBottom.y + 0.2f, playerSize.z * fraction), showDebugData, this->categoriesId, true); // y must be 0!!
 			
 			PhysicsActiveComponent::ContactData contactsDataBelow3 = this->physicsActiveComponent->getContactBelow(2, 
-				Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.1f, 0.0f), showDebugData, this->categoriesId); // y must be 0!!
+				Ogre::Vector3(playerSize.z * fraction, centerBottom.y + 0.2f, 0.0f), showDebugData, this->categoriesId, true); // y must be 0!!
 			
-			PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X, 
-				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);
+			/*PhysicsActiveComponent::ContactData contactsDataBelowLine = this->physicsActiveComponent->getContactToDirection(0, Ogre::Vector3::UNIT_X, 
+				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, 0.0f), -playerSize.z * fraction, playerSize.z * fraction, showDebugData, this->categoriesId);*/
 
 			this->hitGameObjectBelow = contactsDataBelow1.getHitGameObject();
 			if (nullptr == this->hitGameObjectBelow)
@@ -337,10 +346,10 @@ namespace NOWA
 			{
 				this->hitGameObjectBelow = contactsDataBelow3.getHitGameObject();
 			}
-			if (nullptr == this->hitGameObjectBelow)
+			/*if (nullptr == this->hitGameObjectBelow)
 			{
 				this->hitGameObjectBelow = contactsDataBelowLine.getHitGameObject();
-			}
+			}*/
 			/*if (widget) widget->setCaption("h1: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow1))
 				+ " h2: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow2))
 				+ " h3: " + Ogre::StringConverter::toString(std::get<1>(contactsDataBelow3)));*/
@@ -383,40 +392,151 @@ namespace NOWA
 
 			// never change -0.2, because else the rope does not exist anymore and the player gets stuck on a wall
 
-			PhysicsActiveComponent::ContactData contactDataFront[4];
-			///*contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(direction, middleOfPlayer + Ogre::Vector3(0.0f, playerSize.y, 0.0f), 1, 10);
-			//contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(direction, middleOfPlayer + Ogre::Vector3(0.0f, playerSize.y * 0.5f, 0.0f), 1, 10);
-			//contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(direction, middleOfPlayer + Ogre::Vector3(0.0f, 0.2f, 0.0f), 1, 10);*/
+			Ogre::Vector3 direction = this->physicsActiveComponent->getOrientation() * this->gameObjectPtr->getDefaultDirection();
 
+			PhysicsActiveComponent::ContactData contactDataFront[3];
+
+#if 1
 			contactDataFront[0] = this->physicsActiveComponent->getContactToDirection(1, direction, 
-				Ogre::Vector3(0.0f, centerBottom.y * -0.7f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+				Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 			
 			contactDataFront[1] = this->physicsActiveComponent->getContactToDirection(2, direction, 
-				Ogre::Vector3(0.0f, 0.0f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+				Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
 			
 			contactDataFront[2] = this->physicsActiveComponent->getContactToDirection(3, direction, 
-				Ogre::Vector3(0.0f, centerBottom.y * 0.5f, playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+				Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.0f, 0.1f, showDebugData, this->categoriesId);
+#else
+			contactDataFront[0] = this->physicsActiveComponent->getContactAhead(1,
+				Ogre::Vector3(0.0f, centerBottom.y + playerSize.y, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+
+			contactDataFront[1] = this->physicsActiveComponent->getContactAhead(2,
+				Ogre::Vector3(0.0f, 0.2f, playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+
+			contactDataFront[2] = this->physicsActiveComponent->getContactAhead(3,
+				Ogre::Vector3(0.0f, centerBottom.y + (playerSize.y * 0.5f), playerSize.z - 0.2f), 0.1f, showDebugData, this->categoriesId);
+#endif
 
 			//// Build:	T |
 			////		A | -> Line to check front
-			contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y, 
-				Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
-			//
+			//contactDataFront[3] = this->physicsActiveComponent->getContactToDirection(4, Ogre::Vector3::UNIT_Y, 
+			//	Ogre::Vector3(0.0f, centerBottom.y + 0.1f, playerSize.z * 0.5f), -0.05f, playerSize.y + 0.05f, showDebugData, this->categoriesId); // 0.2 is to much, and player would stuck in certain ground
+			
 			this->hitGameObjectFront = nullptr;
 
 			if (nullptr != contactDataFront[0].getHitGameObject())
+			{
 				this->hitGameObjectFront = contactDataFront[0].getHitGameObject();
+			}
 			else if (nullptr != contactDataFront[1].getHitGameObject())
+			{
 			 	this->hitGameObjectFront = contactDataFront[1].getHitGameObject();
-			 else if (nullptr != contactDataFront[2].getHitGameObject())
+			}
+			else if (nullptr != contactDataFront[2].getHitGameObject())
+			{
 			 	this->hitGameObjectFront = contactDataFront[2].getHitGameObject();
-			
-			if (nullptr != contactDataFront[3].getHitGameObject())
+			}
+			/*if (nullptr != contactDataFront[3].getHitGameObject())
+			{
 				this->hitGameObjectFront = contactDataFront[3].getHitGameObject();
+			}*/
 
 			this->hitGameObjectUp = nullptr;
-			this->hitGameObjectUp = this->physicsActiveComponent->getContactToDirection(5, Ogre::Vector3::UNIT_X, 
-				Ogre::Vector3(0.0f, playerSize.y - bottomOffset.y, 0.0f), -playerSize.z * 0.2f, playerSize.z * 0.2f, showDebugData, this->categoriesId).getHitGameObject();
+			this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
+
+			// Get the gravity direction from the physics component
+			Ogre::Vector3 gravityDirection = this->physicsActiveComponent->getGravityDirection();
+			if (true == gravityDirection.isZeroLength())
+			{
+				// Default on a plane or terrain
+				gravityDirection = Ogre::Vector3::UNIT_Y;
+			}
+
+			// Calculates orientation vectors relative to planet surface
+			this->up = -gravityDirection;
+			// Gets the mesh's default direction
+			Ogre::Vector3 defaultDirection = this->physicsActiveComponent->getOwner()->getDefaultDirection();
+
+			// Stores current entity rotation as quaternion
+			Ogre::Quaternion currentRotation = this->physicsActiveComponent->getOrientation();
+
+			// Calculates forward vector based on the current rotation and the default direction
+			// First, gets the forward direction in the character's local space
+			this->forward = currentRotation * defaultDirection;
+			// Projects it onto the plane perpendicular to up vector
+			this->forward = forward - up * forward.dotProduct(up);
+			if (this->forward.length() < 0.001f)
+			{
+				// Fallback if forward is too small
+				// Use a vector perpendicular to up that's close to our preferred direction
+				Ogre::Vector3 worldForward;
+				if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_Z;
+				}
+				else if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_X) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_X;
+				}
+				else
+				{
+					worldForward = Ogre::Vector3::UNIT_Y;
+				}
+
+				// Find a suitable forward vector perpendicular to up
+				this->forward = worldForward - up * worldForward.dotProduct(up);
+				if (this->forward.length() < 0.001f)
+				{
+					this->forward = up.crossProduct(Ogre::Vector3(1.0f, 0.0f, 0.0f));
+					if (this->forward.length() < 0.001f)
+					{
+						this->forward = up.crossProduct(Ogre::Vector3(0.0f, 0.0f, 1.0f));
+					}
+				}
+			}
+			this->forward.normalise();
+
+			// Calculate right from forward and up (ensures orthogonality)
+			this->right = this->forward.crossProduct(up);
+			this->right.normalise();
+
+			if (true == this->useStandUp->getBool())
+			{
+				// 90° * threshold (0.7 = 63°)
+				Ogre::Real fallThresholdAngle = Ogre::Degree(90.0f * 0.7f).valueDegrees(); 
+
+				// Gravity up direction (should always be stable)
+				Ogre::Vector3 gravityUp = -this->physicsActiveComponent->getGravityDirection();
+
+				// Player's current up vector based on orientation
+				Ogre::Vector3 currentPlayerUp = this->physicsActiveComponent->getOrientation() * Ogre::Vector3::UNIT_Y;
+
+				// Compute angle deviation between player's up and gravity up
+				Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(gravityUp)).valueDegrees();
+
+				// Player is tilted significantly
+				if (angleDeviation > fallThresholdAngle) 
+				{
+					if (false == this->isFallen) // Start counting time
+					{
+						this->timeFallen = 0.0f;
+						this->isFallen = true;
+					}
+					else
+					{
+						timeFallen += dt; // Accumulate time
+						if (timeFallen >= recoveryTime) // If fallen for 2 seconds
+						{
+							this->standUp();
+							this->isFallen = false; // Reset state
+						}
+					}
+				}
+				else
+				{
+					this->isFallen = false; // Reset if player recovers naturally
+					this->timeFallen = 0.0f;
+				}
+			}
 		}
 	}
 
@@ -447,6 +567,10 @@ namespace NOWA
 		else if (PlayerControllerComponent::AttrCategories() == attribute->getName())
 		{
 			this->setCategories(attribute->getString());
+		}
+		else if (PlayerControllerComponent::AttrUseStandUp() == attribute->getName())
+		{
+			this->setUseStandUp(attribute->getBool());
 		}
 	}
 
@@ -496,6 +620,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Categories"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->categories->getString())));
 		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "UseStandUp"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useStandUp->getBool())));
+		propertiesXML->append_node(propertyXML);
 	}
 
 	Ogre::String PlayerControllerComponent::getClassName(void) const
@@ -519,6 +649,7 @@ namespace NOWA
 		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
 		clonedCompPtr->setAcceleration(this->acceleration->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
+		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
 		{
@@ -711,6 +842,16 @@ namespace NOWA
 		return this->categories->getString();
 	}
 
+	void PlayerControllerComponent::setUseStandUp(bool useStandUp)
+	{
+		this->useStandUp->setValue(useStandUp);
+	}
+
+	bool PlayerControllerComponent::getUseStandUp(void) const
+	{
+		return this->useStandUp->getBool();
+	}
+
 	void PlayerControllerComponent::setAnimationName(const Ogre::String& name, unsigned int index)
 	{
 		if (index > this->animations.size())
@@ -767,6 +908,44 @@ namespace NOWA
 	GameObject* PlayerControllerComponent::getHitGameObjectUp(void) const
 	{
 		return this->hitGameObjectUp;
+	}
+
+	Ogre::Vector3 PlayerControllerComponent::getUp(void) const
+	{
+		return this->up;
+	}
+
+	Ogre::Vector3 PlayerControllerComponent::getRight(void) const
+	{
+		return this->right;
+	}
+
+	Ogre::Vector3 PlayerControllerComponent::getForward(void) const
+	{
+		return this->forward;
+	}
+
+	bool PlayerControllerComponent::getIsFallen(void) const
+	{
+		return this->isFallen;
+	}
+
+	void PlayerControllerComponent::standUp(void)
+	{
+#if 1
+		// Hacks the physics, to let the player stand up
+		Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
+		this->physicsActiveComponent->setOrientation(uprightRotation);
+#else
+		// Hacks the physics, to let the player stand up
+		Ogre::Quaternion currentOrientation = this->physicsActiveComponent->getOrientation();
+		Ogre::Quaternion targetOrientation = Ogre::Vector3::UNIT_Y.getRotationTo(-this->physicsActiveComponent->getGravityDirection());
+
+		// Interpolate with Slerp (0.1 is the interpolation factor, adjust as needed)
+		Ogre::Quaternion smoothOrientation = Ogre::Quaternion::Slerp(0.1f, currentOrientation, targetOrientation, true);
+
+		this->physicsActiveComponent->setOrientation(smoothOrientation);
+#endif
 	}
 
 	void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
@@ -942,6 +1121,7 @@ namespace NOWA
 		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
 		clonedCompPtr->setAcceleration(this->acceleration->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
+		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 
 		for (unsigned int i = 0; i < static_cast<unsigned int>(this->animations.size()); i++)
 		{
@@ -993,6 +1173,17 @@ namespace NOWA
 	bool PlayerControllerJumpNRunComponent::connect(void)
 	{
 		bool success = PlayerControllerComponent::connect();
+
+		auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
+		if (nullptr != inputDeviceCompPtr)
+		{
+			this->inputDeviceComponent = inputDeviceCompPtr.get();
+
+			if (false == this->inputDeviceComponent->hasValidDevice())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
+			}
+		}
 
 		// Add some particle effect, when player is grounded from jump
 		AppStateManager::getSingletonPtr()->getParticleUniverseModule()->createParticleSystem("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), "smoke", 500.0f, Ogre::Quaternion::IDENTITY, this->gameObjectPtr->getPosition(), 0.05f);
@@ -1049,7 +1240,7 @@ namespace NOWA
 	void PlayerControllerJumpNRunComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating /*&& true == this->activated->getBool()*/) // activated documented out, else idle animation will not work
+		if (false == notSimulating && true == this->activated->getBool())
 		{
 			this->stateMachine->update(dt);
 		}
@@ -1352,6 +1543,7 @@ namespace NOWA
 		clonedCompPtr->setAnimationSpeed(this->animationSpeed->getReal());
 		clonedCompPtr->setAcceleration(this->acceleration->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
+		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 
 		clonedCompPtr->setStartStateName(this->startStateName->getString());
 		
@@ -1418,7 +1610,7 @@ namespace NOWA
 	void PlayerControllerJumpNRunLuaComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating /*&& true == this->activated->getBool()*/) // activated documented out, else idle animation will not work
+		if (false == notSimulating && true == this->activated->getBool())
 		{
 			this->luaStateMachine->update(dt);
 		}
@@ -1575,6 +1767,7 @@ namespace NOWA
 		clonedCompPtr->setGoalRadius(this->goalRadius->getReal());
 		clonedCompPtr->setAcceleration(this->acceleration->getReal());
 		clonedCompPtr->setCategories(this->categories->getString());
+		clonedCompPtr->setUseStandUp(this->useStandUp->getBool());
 		clonedCompPtr->setRange(this->range->getReal());
 		clonedCompPtr->setPathSlot(this->pathSlot->getInt());
 
@@ -1734,7 +1927,7 @@ namespace NOWA
 	void PlayerControllerClickToPointComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating /*&& true == this->activated->getBool()*/) // activated documented out, else idle animation will not work
+		if (false == notSimulating && true == this->activated->getBool())
 		{
 			this->stateMachine->update(dt);
 		}
@@ -2013,7 +2206,14 @@ namespace NOWA
 			return;
 		}
 
-		auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
+		if (true == this->playerController->getIsFallen())
+		{
+			return;
+		}
+
+		Ogre::Real yawAtSpeed = 0.0f;
+
+		// auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
 
 		if (this->noMoveTimer > 0.1f)
 		{
@@ -2030,13 +2230,12 @@ namespace NOWA
 		}
 
 		
-		if (widget) widget->setCaption("");
+		// if (widget) widget->setCaption("");
 
 		Ogre::Real tempSpeed = 0.0f;
 		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
 		Ogre::Radian heading = this->playerController->getOrientation().getYaw();
-		// Get the gravity direction from the physics component
-		Ogre::Vector3 gravityDirection = this->playerController->getPhysicsComponent()->getGravityDirection();
+		
 
 		// Idle stop movement at the beginning
 		if (true == this->hasPhysicsPlayerControllerComponent)
@@ -2049,16 +2248,23 @@ namespace NOWA
 
 		auto b = this->playerController->getOwner()->getBottomOffset().y;
 
-		this->inAir = height - this->playerController->getOwner()->getBottomOffset().y > 0.2f;
+		this->inAir = height - this->playerController->getOwner()->getBottomOffset().y > 0.4f;
 
 		///if (widget) widget->setCaption("In air: " + Ogre::StringConverter::toString(this->inAir));
+
+		// Get current velocities
+		Ogre::Vector3 currentVelocity = this->playerController->getPhysicsComponent()->getVelocity();
 
 		// Store the old direction, the check later whether a direction changed or not
 		this->oldDirection = this->direction;
 		// Set omega by default directly to zero, else there is an ugly small rotation...
-		this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3::ZERO);
+		// this->playerController->getPhysicsComponent()->getBody()->setOmega(Ogre::Vector3::ZERO);
 
 		InputDeviceModule* inputDeviceModule = this->playerController->getInputDeviceComponent()->getInputDeviceModule();
+		if (nullptr == inputDeviceModule)
+		{
+			return;
+		}
 
 		// if no key is pressed, go to idle state
 		if (!inputDeviceModule->isActionDown(NOWA_A_UP) && !inputDeviceModule->isActionDown(NOWA_A_DOWN)
@@ -2114,10 +2320,10 @@ namespace NOWA
 				}
 			}
 
-			if (this->playerController->isIdle() /*&& !this->playerController->getPhysicsComponent()->getHasBuoyancy()*/)
-			{
-				this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
-			}
+			//if (this->playerController->isIdle() /*&& !this->playerController->getPhysicsComponent()->getHasBuoyancy()*/)
+			//{
+			//	this->playerController->getPhysicsComponent()->setVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f));
+			//}
 		}
 		else if (inputDeviceModule->isActionDown(NOWA_A_UP) || inputDeviceModule->isActionDown(NOWA_A_DOWN)
 			|| inputDeviceModule->isActionDown(NOWA_A_LEFT) || inputDeviceModule->isActionDown(NOWA_A_RIGHT))
@@ -2150,61 +2356,48 @@ namespace NOWA
 			// 3D movement
 			if (false == this->playerController->getIsFor2D())
 			{
-				Ogre::Real yawAtSpeed = 0.0f;
-				// set the key direction, so that the player will always run on x-axis
+				// Forward/backward movement
 				if (inputDeviceModule->isActionDown(NOWA_A_UP))
 				{
 					tempSpeed = this->playerController->getPhysicsComponent()->getSpeed() * this->playerController->getMoveWeight();
 					animId = AnimationBlender::ANIM_WALK_NORTH;
 					this->direction = Direction::UP;
-					this->keyDirection += this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
+
+					// Move along the forward direction (tangent to planet surface)
+					this->keyDirection = this->playerController->getForward();
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_DOWN))
 				{
 					tempAnimationSpeed = this->playerController->getAnimationSpeed() * 0.75f;
-					// Free from stuck when moving back
 					this->playerController->setMoveWeight(1.0f);
 					tempSpeed = -this->playerController->getPhysicsComponent()->getSpeed() * 0.5f * this->playerController->getMoveWeight();
 					animId = AnimationBlender::ANIM_WALK_SOUTH;
 					this->direction = Direction::DOWN;
-					this->keyDirection += this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
+
+					// Move along the forward direction (but backward since tempSpeed is negative)
+					this->keyDirection = this->playerController->getForward();
 				}
+
+				// Rotation handling using angular forces around the up vector
 				if (inputDeviceModule->isActionDown(NOWA_A_LEFT))
 				{
 					animId = AnimationBlender::ANIM_WALK_WEST;
 					this->direction = Direction::LEFT;
+
+					// Apply rotation force around the up vector (which is perpendicular to planet surface)
 					yawAtSpeed = this->playerController->getRotationSpeed();
+
 					heading = heading + Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_RIGHT))
 				{
 					animId = AnimationBlender::ANIM_WALK_EAST;
 					this->direction = Direction::RIGHT;
+
+					// Apply negative rotation force around the up vector
 					yawAtSpeed = -this->playerController->getRotationSpeed();
 					heading = heading - Ogre::Radian(this->playerController->getRotationSpeed()) * 0.1f;
 				}
-#if 0
-				if (false == gravityDirection.isZeroLength())
-				{
-					// Get the current up vector of the character
-					Ogre::Vector3 currentUp = this->playerController->getOrientation() * Ogre::Vector3::UNIT_Y;
-
-					// Compute the rotation axis to align currentUp with wholeForce
-					Ogre::Vector3 rotationAxis = currentUp.crossProduct(this->playerController->getPhysicsComponent()->getGravityDirection());
-					Ogre::Real rotationAngle = currentUp.angleBetween(this->playerController->getPhysicsComponent()->getGravityDirection()).valueRadians();
-
-					// Convert rotation to angular velocity
-					Ogre::Vector3 angularVelocity = rotationAxis.normalisedCopy() * rotationAngle * this->playerController->getRotationSpeed();
-
-					// Apply rotation to align character smoothly
-					this->playerController->getPhysicsComponent()->applyOmegaForce(angularVelocity);
-				}
-				else
-#endif
-				{
-					this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
-				}
-				// heading = this->playerController->getPhysicsComponent()->getOrientation().getYaw();
 			}
 			else
 			{
@@ -2268,7 +2461,6 @@ namespace NOWA
 				{
 					this->boringTimer = 0.0f;
 
-					Ogre::Real yawAtSpeed = 0.0f;
 					Ogre::Real currentDegree = this->playerController->getPhysicsComponent()->getOrientation().getYaw().valueDegrees();
 					if (Direction::RIGHT == this->direction)
 					{
@@ -2363,27 +2555,6 @@ namespace NOWA
 			this->playerController->getPhysicsComponent()->getBody()->scaleCollision(Ogre::Vector3(1.0f, 1.0f, 1.0f));
 			this->duckedOnce = false;
 		}
-
-		// Ensure it's a valid gravity direction (not zero)
-		if (false == gravityDirection.isZeroLength())
-		{
-			// Compute a gravity-aligned forward direction (e.g., X-axis movement)
-			Ogre::Vector3 forwardDirection = this->playerController->getOrientation() * this->playerController->getOwner()->getDefaultDirection();
-
-			// Ensure forward is perpendicular to gravity
-			forwardDirection = forwardDirection - gravityDirection * forwardDirection.dotProduct(gravityDirection);
-			forwardDirection.normalise();
-
-			// Compute a gravity-aligned right direction (e.g., strafing)
-			Ogre::Vector3 rightDirection = gravityDirection.crossProduct(forwardDirection);
-			rightDirection.normalise();
-
-			// Adjust movement direction using these new axes
-			this->keyDirection = (forwardDirection * this->keyDirection.z) + (rightDirection * this->keyDirection.x);
-		}
-
-		// Compute the final movement direction
-		Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
 
 		this->jumpKeyPressed = false;
 
@@ -2506,28 +2677,41 @@ namespace NOWA
 		}
 
 		if (height > 2.0f)
+		{
 			this->groundedOnce = false;
+		}
+
+		Ogre::Vector3 jumpVelocity = Ogre::Vector3::ZERO;
 
 		if (1.0f == this->playerController->getJumpWeight() && (this->jumpKeyPressed && (false == this->isJumping && false == this->inAir) || (this->playerController->getDoubleJump() && this->jumpCount == 2)))
 		{
 			this->boringTimer = 0.0f;
-			// Jumpforce here no more required?
-			Ogre::Vector3 velocity = this->playerController->getPhysicsComponent()->getVelocity();
+
 			if (this->playerController->getPhysicsComponent()->getVelocity().y <= this->jumpForce * this->jumpCount)
 			{
 				if (false == this->hasPhysicsPlayerControllerComponent)
-					this->playerController->getPhysicsComponent()->addImpulse(Ogre::Vector3(0.0f, this->jumpForce * this->playerController->getJumpWeight(), 0.0f));
+				{
+					jumpVelocity = this->playerController->getUp() * this->jumpForce * this->playerController->getJumpWeight();
+					if (false == this->hasPhysicsPlayerControllerComponent)
+					{
+						this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
+					}
+				}
 				else
 				{
 					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
+					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce* this->playerController->getJumpWeight());
+					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->jump();
 				}
 				if (this->jumpCount >= 2)
+				{
 					jumpCount = 0;
+				}
 			}
 			else
 			{
 				this->isJumping = true;
-				this->playerController->setJumpWeight(0.0f);
+				// this->playerController->setJumpWeight(0.0f);
 				// if (widget) widget->setCaption("Plop");
 			}
 		}
@@ -2539,7 +2723,6 @@ namespace NOWA
 		{
 			this->tryJump = true;
 		}
-
 
 
 		// if (widget) widget->setCaption("jumpCount: " + Ogre::StringConverter::toString(this->jumpCount));
@@ -2554,15 +2737,6 @@ namespace NOWA
 			// this->walkSound->play();
 			// this->walkSound->setPitch(0.5f);
 			// if (widget) widget->setCaption("Plop");
-		}
-
-		// in order that the player does not jump again and again if the jump key is hold, only set isJumping to false if the player released the jump key
-		// so that he can jump if jump key is pressed again
-		if (false == inputDeviceModule->isActionDown(NOWA_A_JUMP))
-		{
-			this->tryJump = false;
-			this->isJumping = false;
-			this->canDoubleJump = true;
 		}
 
 		//if (NOWA::Core::getSingletonPtr()->getMainKeyboardInputDeviceModule()->isKeyDown(NOWA_K_ACTION_1) && !this->isAttacking)
@@ -2591,40 +2765,94 @@ namespace NOWA
 		//	this->isOnRope = false;
 		//}
 
-		
-		// Prevent, that the player does bounce after falling
-		if (false == this->inAir && this->playerController->getPhysicsComponent()->getVelocity().y < -1.0f)
+		// Get player's current up vector
+		Ogre::Vector3 playerUp = this->playerController->getUp();
+
+		// Get the player's current up vector based on the current orientation
+		Ogre::Vector3 currentPlayerUp = this->playerController->getPhysicsComponent()->getOrientation() * Ogre::Vector3::UNIT_Y;
+
+		// Get gravity direction (stable reference for "up")
+		Ogre::Vector3 gravityDir = this->playerController->getPhysicsComponent()->getGravityDirection();
+
+		// Compute desired yaw rotation (normal movement)
+		Ogre::Vector3 desiredAngularVelocity = -gravityDir * yawAtSpeed;
+
+		if (yawAtSpeed != 0.0f)
 		{
-			this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(directionMove);
-			// this->playerController->getAnimationBlender()->setTimePosition(this->playerController->getAnimationBlender()->getLength() - 0.1f);
-			// if (widget) widget->setCaption("Land");
+			// Apply yaw rotation
+			this->playerController->getPhysicsComponent()->applyOmegaForce(desiredAngularVelocity);
 		}
 		else
 		{
-			if (false == this->hasPhysicsPlayerControllerComponent)
-			{
-				this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(this->playerController->getPhysicsComponent()->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + directionMove);
-			}
-			else
-			{
-				static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
-			}
+			this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getForward(), 10.0f);
+		}
 
-			if (/*!this->walkSound->isPlaying() &&*/ false == this->inAir && this->direction != Direction::NONE)
-			{
-				// this->walkSound->setSecondOffset(2.0f);
-				this->walkSound->play();
-				// this->walkSound->setRolloffFactor()
-				this->walkSound->setVelocity(this->playerController->getPhysicsComponent()->getVelocity());
-				this->walkSound->setPitch(0.65f);
-				this->walkSound->setGain(0.35f);
-			}
+#if 0
+		// Compute angle deviation between player's up and gravity up
+		Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
+
+		// Set the threshold for when to apply correction
+		const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
+
+		// Only trigger correction if the angle deviation is significant and not near 180 degrees
+		if (angleDeviation > tiltThresholdAngle && false == this->inAir)
+		{
+			// Apply corrective force to upright the player
+			Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
+
+			// Only correct pitch & roll, not yaw
+			Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
+			this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(uprightRotation, correctionAxes, 5.0f);
+		}
+#endif
+
+		// Split current velocity into vertical and horizontal components
+		// Vertical component (along gravity direction)
+		Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
+		// verticalVelocity += jumpVelocity;
+
+		// Horizontal component (perpendicular to gravity)
+		Ogre::Vector3 horizontalVelocity = currentVelocity - verticalVelocity;
+
+		// Calculate movement vector in world space (X/Z movement only)
+		Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;
+
+		// Combine vertical velocity with movement
+		Ogre::Vector3 newVelocity = verticalVelocity + directionMove;
+
+		if (false == this->hasPhysicsPlayerControllerComponent)
+		{
+			this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
+		}
+		/*if (false == gravityDir.isZeroLength())
+		{
+			this->playerController->getPhysicsComponent()->setConstraintDirection(desiredAngularVelocity.normalisedCopy());
+		}*/
+		else
+		{
+			static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
+		}
+		if (/*!this->walkSound->isPlaying() &&*/ !this->inAir && this->direction != Direction::NONE)
+		{
+			this->walkSound->play();
+			this->walkSound->setVelocity(newVelocity);
+			this->walkSound->setPitch(0.65f);
+			this->walkSound->setGain(0.35f);
+		}
+
+		// in order that the player does not jump again and again if the jump key is hold, only set isJumping to false if the player released the jump key
+		// so that he can jump if jump key is pressed again
+		if (false == inputDeviceModule->isActionDown(NOWA_A_JUMP))
+		{
+			this->tryJump = false;
+			this->isJumping = false;
+			this->canDoubleJump = true;
 		}
 
 		/*if (widget) widget->setCaption("inAir: " + Ogre::StringConverter::toString(this->inAir) 
 			+ " height: " + Ogre::StringConverter::toString(height));*/
 		
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "height: " + Ogre::StringConverter::toString(height));
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "height: " + Ogre::StringConverter::toString(height) + " In Air: " + Ogre::StringConverter::toString(this->inAir));
 
 		this->playerController->getAnimationBlender()->addTime(dt * tempAnimationSpeed / this->playerController->getAnimationBlender()->getLength());
 	}
@@ -2779,7 +3007,7 @@ namespace NOWA
 				// https://forums.ogre3d.org/viewtopic.php?t=62079
 				if (true == this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
 				{
-					// y immer 0.5 statt h�her argghhh
+					// y immer 0.5 statt höher argghhh
 					// Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
 
 					if (nullptr != this->movingBehavior->getPath())

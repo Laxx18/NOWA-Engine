@@ -2418,6 +2418,70 @@ namespace NOWA
 		unsigned long id;
 	};
 
+	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataInputDeviceOccupied - Sent when an input device has been activated/deactivated and the available input device list does change
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataInputDeviceOccupied : public NOWA::BaseEventData
+	{
+	public:
+		EventDataInputDeviceOccupied(const unsigned long id, bool activated, const Ogre::String& deviceName)
+			: id(id),
+			activated(activated),
+			deviceName(deviceName)
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe8329A09;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe8329A09;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataInputDeviceOccupied(this->id, this->activated, this->deviceName));
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataInputDeviceOccupied";
+		}
+
+		unsigned long getGameObjectId(void) const
+		{
+			return this->id;
+		}
+
+		Ogre::String getDeviceName(void) const
+		{
+			return this->deviceName;
+		}
+
+		bool getIsActivated(void) const
+		{
+			return this->activated;
+		}
+	private:
+		unsigned long id;
+		bool activated;
+		Ogre::String deviceName;
+	};
+
 }; // namespace end
 
 #endif

@@ -62,6 +62,7 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] List all animations for mesh '" + this->entity->getMesh()->getName() + "':");
 		}
+
 		Ogre::v1::AnimationStateSet* set = this->entity->getAllAnimationStates();
 		if (nullptr == set)
 		{
@@ -659,7 +660,10 @@ namespace NOWA
 
 	void AnimationBlender::registerAnimation(AnimID animationId, const Ogre::String& animationName)
 	{
-		this->mappedAnimations.insert(std::make_pair(animationId, animationName));
+		if (animationName != "None")
+		{
+			this->mappedAnimations.insert(std::make_pair(animationId, animationName));
+		}
 	}
 
 	AnimationBlender::AnimID AnimationBlender::getAnimationIdFromString(const Ogre::String& animationName)

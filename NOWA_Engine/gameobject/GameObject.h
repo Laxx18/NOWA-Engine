@@ -995,6 +995,11 @@ namespace NOWA
 		void setInternalAttributeGlobal(bool isGlobal);
 
 		void setLodLevels(unsigned int lodLevels);
+
+		/**
+		 * @brief		Sets whether this game object should be visible during loading the game object. This is necessary because camera component has dummy entity, which else would always be visible on undo etc.
+		 */
+		void setLoadedVisible(bool visible);
 	protected:
 		Ogre::SceneManager* sceneManager;
 		Ogre::SceneNode* sceneNode;

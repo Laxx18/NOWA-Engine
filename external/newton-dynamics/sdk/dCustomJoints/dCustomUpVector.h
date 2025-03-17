@@ -26,7 +26,7 @@ class dCustomUpVector: public dCustomJoint
 	CUSTOM_JOINTS_API dCustomUpVector(const dVector& pin, NewtonBody* child);
 	CUSTOM_JOINTS_API virtual ~dCustomUpVector();
 
-	CUSTOM_JOINTS_API void SetPinDir (const dVector& pin);
+	CUSTOM_JOINTS_API void SetPinDir(const dVector& pin, NewtonBody* child);
 
 	protected:
 	CUSTOM_JOINTS_API virtual void SubmitConstraints (dFloat timestep, int threadIndex);

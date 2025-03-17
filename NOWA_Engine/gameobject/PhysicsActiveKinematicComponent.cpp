@@ -19,7 +19,6 @@ namespace NOWA
 		this->gyroscopicTorque->setVisible(false);
 		this->gravity->setValue(Ogre::Vector3::ZERO);
 		this->gravity->setVisible(false);
-		this->force->setVisible(false);
 		this->gravitySourceCategory->setVisible(false);
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
 		this->constraintDirection->setVisible(false);
@@ -63,9 +62,6 @@ namespace NOWA
 		clonedCompPtr->setAngularDamping(this->angularDamping->getVector3());
 		clonedCompPtr->setGravity(this->gravity->getVector3());
 		clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
-		// clonedCompPtr->applyAngularImpulse(this->angularImpulse);
-		// clonedCompPtr->applyAngularVelocity(this->angularVelocity->getVector3());
-		clonedCompPtr->applyForce(this->force->getVector3());
 		clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
 		clonedCompPtr->setSpeed(this->speed->getReal());
 		clonedCompPtr->setMaxSpeed(this->maxSpeed->getReal());

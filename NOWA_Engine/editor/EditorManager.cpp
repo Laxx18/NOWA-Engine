@@ -1741,16 +1741,25 @@ namespace NOWA
 		{
 			this->snapshotCameraTransform();
 
-			// World aabb updated uses also the scale of the node!
-			Ogre::Real distance = gameObject->getMovableObject()->getWorldAabbUpdated().getRadius() * 8.0f;
+			// Get the bounding radius (scaled) and center
+			Ogre::Real baseRadius = gameObject->getMovableObject()->getWorldAabbUpdated().getRadius();
+			Ogre::Vector3 size = gameObject->getMovableObject()->getLocalAabb().getSize() * gameObject->getScale();
 
-			this->camera->setPosition(gameObject->getPosition() + (this->camera->getOrientation() * Ogre::Vector3(0, 0, distance)));
+			// Calculate the factor based on the size of the mesh (with scaling)
+			// The factor should decrease as the object grows larger, with limits of 1.0 to 2.0
+			Ogre::Real factor = Ogre::Math::Clamp(2.0f - size.length() * 0.01f, 1.0f, 2.0f);
 
-			// Same as: camera->lookAt
+			// Calculate the adjusted distance
+			Ogre::Real adjustedDistance = baseRadius * factor;
+
+			// Set the camera position
+			this->camera->setPosition(gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
+
+			// Look at the center of the game object
 			this->camera->lookAt(gameObject->getPosition());
-			// this->camera->roll(Ogre::Radian(0.0f));
 		}
 	}
+
 
 	void EditorManager::selectGizmo(const OIS::MouseEvent& evt, const Ogre::Ray& hitRay)
 	{
@@ -3835,6 +3844,11 @@ ADD_NODE:
 			boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
 		}
+	}
+
+	void EditorManager::clearUndoRedoStack(void)
+	{
+		this->sceneManipulationCommandModule.clear();
 	}
 
 	void EditorManager::undo(void)

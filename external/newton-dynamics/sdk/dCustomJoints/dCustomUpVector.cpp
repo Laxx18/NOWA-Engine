@@ -41,9 +41,16 @@ dCustomUpVector::~dCustomUpVector()
 
 
 // bu animating the orientation of the pin vector the application can change the orientation of the picked object
-void dCustomUpVector::SetPinDir (const dVector& pin)
+void dCustomUpVector::SetPinDir(const dVector& pin, NewtonBody* child)
 {
 	m_localMatrix1 = dGrammSchmidt(pin);
+	dMatrix pivot;
+
+	NewtonBodyGetMatrix(child, &pivot[0][0]);
+
+	dMatrix matrix(dGrammSchmidt(pin));
+	matrix.m_posit = pivot.m_posit;
+	CalculateLocalMatrix(matrix, m_localMatrix0, m_localMatrix1);
 }
 
 

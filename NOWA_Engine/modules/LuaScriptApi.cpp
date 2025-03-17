@@ -6238,11 +6238,11 @@ namespace NOWA
 	void bindPlayerControllerComponents(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
-				// .def("getClassName", &PlayerControllerComponent::getClassName)
-				// .def("clone", &PlayerControllerComponent::clone)
-				// .def("getClassId", &PlayerControllerComponent::getClassId)
+		[
+			class_<PlayerControllerComponent, GameObjectComponent>("PlayerControllerComponent")
+			// .def("getClassName", &PlayerControllerComponent::getClassName)
+			// .def("clone", &PlayerControllerComponent::clone)
+			// .def("getClassId", &PlayerControllerComponent::getClassId)
 			.def("getAnimationBlender", &PlayerControllerComponent::getAnimationBlender)
 			.def("setRotationSpeed", &PlayerControllerComponent::setRotationSpeed)
 			.def("getRotationSpeed", &PlayerControllerComponent::getRotationSpeed)
@@ -6266,8 +6266,12 @@ namespace NOWA
 			.def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
 			.def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
 			.def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
+			.def("getUp", &PlayerControllerComponent::getUp)
+			.def("getRight", &PlayerControllerComponent::getRight)
+			.def("getForward", &PlayerControllerComponent::getForward)
+			.def("getIsFallen", &PlayerControllerComponent::getIsFallen)
 			.def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)
-			];
+		];
 
 		AddClassToCollection("PlayerControllerComponent", "class inherits GameObjectComponent", PlayerControllerComponent::getStaticInfoText());
 		AddClassToCollection("PlayerControllerComponent", "void setDefaultDirection(Vector3 direction)", "Sets the direction the player is modelled.");
@@ -6294,6 +6298,12 @@ namespace NOWA
 		AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit below the player. Note: Always check against nil.");
 		AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectFront()", "Gets the game object, that has been hit in front of the player. Note: Always check against nil.");
 		AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit up the player. Note: Always check against nil.");
+		
+		AddClassToCollection("PlayerControllerComponent", "Vector3 getUp()", "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.");
+		AddClassToCollection("PlayerControllerComponent", "Vector3 getRight()", "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.");
+		AddClassToCollection("PlayerControllerComponent", "Vector3 getForward()", "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.");
+		AddClassToCollection("PlayerControllerComponent", "bool getIsFallen()", "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.");
+
 		AddClassToCollection("PlayerControllerComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
 			"Sets whether to react when the given animation has finished.");
 
@@ -10374,24 +10384,24 @@ namespace NOWA
 		return instance->getContactToDirection(index, direction, offset, from, to, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
 	}
 
-	PhysicsActiveComponent::ContactData getContactBelow(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
+	PhysicsActiveComponent::ContactData getContactBelow(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds, bool useLocalOrientation)
 	{
-		return instance->getContactBelow(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds), useLocalOrientation);
 	}
 
-	PhysicsActiveComponent::ContactData getContactBelow2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames)
+	PhysicsActiveComponent::ContactData getContactBelow2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames, bool useLocalOrientation)
 	{
-		return instance->getContactBelow(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
+		return instance->getContactBelow(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames), useLocalOrientation);
 	}
 
-	PhysicsActiveComponent::ContactData getContactAbove(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds)
+	PhysicsActiveComponent::ContactData getContactAbove(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryIds, bool useLocalOrientation)
 	{
-		return instance->getContactAbove(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds));
+		return instance->getContactAbove(index, positionOffset, forceDrawLine, Ogre::StringConverter::parseUnsignedInt(categoryIds), useLocalOrientation);
 	}
 
-	PhysicsActiveComponent::ContactData getContactAbove2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames)
+	PhysicsActiveComponent::ContactData getContactAbove2(PhysicsActiveComponent* instance, int index, const Ogre::Vector3& positionOffset, bool forceDrawLine, const Ogre::String& categoryNames, bool useLocalOrientation)
 	{
-		return instance->getContactAbove(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames));
+		return instance->getContactAbove(index, positionOffset, forceDrawLine, AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categoryNames), useLocalOrientation);
 	}
 
 	void bindPhysicsActiveComponent(lua_State* lua)
@@ -10435,9 +10445,11 @@ namespace NOWA
 			.def("setOmegaVelocity", &PhysicsActiveComponent::setOmegaVelocity)
 			.def("applyOmegaForce", &PhysicsActiveComponent::applyOmegaForce)
 			.def("applyOmegaForceRotateTo", &PhysicsActiveComponent::applyOmegaForceRotateTo)
+			.def("applyOmegaForceRotateToDirection", &PhysicsActiveComponent::applyOmegaForceRotateToDirection)
 			.def("getOmegaVelocity", &PhysicsActiveComponent::getOmegaVelocity)
 			.def("applyForce", &PhysicsActiveComponent::applyForce)
 			.def("applyRequiredForceForVelocity", &PhysicsActiveComponent::applyRequiredForceForVelocity)
+			.def("applyRequiredForceForJumpVelocity", &PhysicsActiveComponent::applyRequiredForceForJumpVelocity)
 			.def("getForce", &PhysicsActiveComponent::getForce)
 			.def("setGyroscopicTorqueEnabled", &PhysicsActiveComponent::setGyroscopicTorqueEnabled)
 			.def("setContactSolvingEnabled", &PhysicsActiveComponent::setContactSolvingEnabled)
@@ -10471,6 +10483,8 @@ namespace NOWA
 			.def("getContactAbove2", &getContactAbove2)
 
 			.def("setBounds", &PhysicsActiveComponent::setBounds)
+			.def("getGravityDirection", &PhysicsActiveComponent::getGravityDirection)
+			.def("getCurrentGravityStrength", &PhysicsActiveComponent::getCurrentGravityStrength)
 		];
 
 		AddClassToCollection("ContactData", "class", "Class, that holds contact data after a physics ray cast. See @getContactToDirection, @getContactBelow.");
@@ -10519,11 +10533,18 @@ namespace NOWA
 			"The strength at which the rotation should occur. "
 			"Note: This should be used during simulation instead of @setOmegaVelocity.");
 
+		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForceRotateToDirection(Vector3 resultDirection, Ogre::Real strength)", "Applies omega force in order to rotate the game object to the given result direction. "
+			"The strength at which the rotation should occur. "
+			"Note: This should be used during simulation instead of @setOmegaVelocity.");
+
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 setOmegaVelocity(Vector3 rotation)", "Set the omega velocity (rotation). Note: This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyAngularVelocity instead. Or it may be called if its a physics active kinematic body.");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getOmega()", "Gets the global angular velocity vector to the physics body. Note: This should be used in order to rotate a game object savily.");
 		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForce(Vector3 omegaForce)", "Sets the omega force to the physics body. Similiar to @setForce(...) but for rotation.");
 		AddClassToCollection("PhysicsActiveComponent", "void applyForce(Vector3 force)", "Sets the force to the body.");
 		AddClassToCollection("PhysicsActiveComponent", "void applyRequiredForceForVelocity(Vector3 velocity)", "Applies the required force for the given velocity. Note: This should be used instead of setVelocity in simulation, for realistic physics behavior.");
+		AddClassToCollection("PhysicsActiveComponent", "void applyRequiredForceForJumpVelocity(Vector3 velocity)", "Applies the required force for the given jump velocity. "
+			"Note: This should be used instead of setVelocity in simulation, for realistic physics behavior. Note: @applyRequiredForceForJumpVelocity has been separated from @applyRequiredForceForVelocity, because using applyRequiredForceForVelocity with movement and jump did bite itself.");
+
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getForce()", "Gets the current force acting on the game object.");
 
 		AddClassToCollection("PhysicsActiveComponent", "void setGravity(Vector3 gravity)", "Sets the acting gravity for the physics body. Default value is Vector3(0, -19.8, 0).");
@@ -10589,26 +10610,34 @@ namespace NOWA
 							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
 
 
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow(int index, Vector3 offset, bool forceDrawLine, string categoryIds)", "Gets a contact data below the physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow(int index, Vector3 offset, bool forceDrawLine, string categoryIds, bool useLocalOrientation)", "Gets a contact data below the physics body. "
 			"The offset is used to set the offset position away from the physics component. "
-			"If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
+			"If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+			"If 'useLocalOrientation' is used, the ray will take the local game object orientation into account");
 		
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow2(int index, Vector3 offset, bool forceDrawLine, string categoryNames)", "Gets a contact data below the physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactBelow2(int index, Vector3 offset, bool forceDrawLine, string categoryNames, bool useLocalOrientation)", "Gets a contact data below the physics body. "
 							 "The offset is used to set the offset position away from the physics component. "
 							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
-							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+							 "Note: This method is slower, as the category names must first be translated in to the int category id. "
+							 "If 'useLocalOrientation' is used, the ray will take the local game object orientation into account");
 
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove(int index, Vector3 offset, bool forceDrawLine, string categoryIds)", "Gets a contact data above the physics body. "
-							 "The offset is used to set the offset position away from the physics component. "
-							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.");
-
-		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove2(int index, Vector3 offset, bool forceDrawLine, string categoryNames)", "Gets a contact data above the physics body. "
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove(int index, Vector3 offset, bool forceDrawLine, string categoryIds, bool useLocalOrientation)", "Gets a contact data above the physics body. "
 							 "The offset is used to set the offset position away from the physics component. "
 							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
-							 "Note: This method is slower, as the category names must first be translated in to the int category id.");
+							 "If 'useLocalOrientation' is used, the ray will take the local game object orientation into account");
+
+		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAbove2(int index, Vector3 offset, bool forceDrawLine, string categoryNames, bool useLocalOrientation)", "Gets a contact data above the physics body. "
+							 "The offset is used to set the offset position away from the physics component. "
+							 "If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. "
+							 "Note: This method is slower, as the category names must first be translated in to the int category id."
+							 "If 'useLocalOrientation' is used, the ray will take the local game object orientation into account");
 
 		AddClassToCollection("PhysicsActiveComponent", "void setBounds(Vector3 minBounds, Vector3 maxBounds)", "Sets the min max bounds, until which this body can be moved.");
-     }
+
+		AddClassToCollection("PhysicsActiveComponent", "Vector3 getGravityDirection()", "Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved. Note: Ogre::VECTOR3_ZERO will be returned if no gravity source game objects are involved.");
+		AddClassToCollection("PhysicsActiveComponent", "number getCurrentGravityStrength()", "Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved. " 
+							"Note: 0 will be returned if no gravity source game objects are involved");
+	 }
 
 	void bindPhysicsActiveCompoundComponent(lua_State* lua)
 	{
@@ -11515,7 +11544,6 @@ namespace NOWA
 				value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D),
 				value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D),
 				value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
-				value("FOLLOW_TRACE_2D", KI::MovingBehavior::BehaviorType::FOLLOW_TRACE_2D),
 				value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)
 			]
 		    .def("getPath", &KI::MovingBehavior::getPath)

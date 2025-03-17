@@ -176,6 +176,10 @@ namespace NOWA
 
 		Ogre::String getCategories(void) const;
 
+		void setUseStandUp(bool useStandUp);
+
+		bool getUseStandUp(void) const;
+
 		void setAnimationName(const Ogre::String& name, unsigned int index);
 
 		Ogre::String getAnimationName(unsigned int index);
@@ -196,6 +200,16 @@ namespace NOWA
 
 		GameObject* getHitGameObjectUp(void) const;
 
+		Ogre::Vector3 getUp(void) const;
+
+		Ogre::Vector3 getRight(void) const;
+
+		Ogre::Vector3 getForward(void) const;
+
+		bool getIsFallen(void) const;
+
+		void standUp(void);
+
 		void reactOnAnimationFinished(luabind::object closureFunction, bool oneTime);
 	protected:
 		virtual void internalShowDebugData(void);
@@ -208,6 +222,7 @@ namespace NOWA
 		static const Ogre::String AttrAnimationSpeed(void) { return "Anim Speed"; }
 		static const Ogre::String AttrAcceleration(void) { return "Acceleration"; }
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
+		static const Ogre::String AttrUseStandUp(void) { return "Use Standup"; }
 	protected:
 		Variant* activated;
 		Variant* rotationSpeed;
@@ -215,6 +230,7 @@ namespace NOWA
 		Variant* animationSpeed;
 		Variant* acceleration;
 		Variant* categories;
+		Variant* useStandUp;
 		std::vector<Variant*> animations;
 
 		PhysicsActiveComponent* physicsActiveComponent;
@@ -238,6 +254,15 @@ namespace NOWA
 		GameObject* hitGameObjectBelow;
 		GameObject* hitGameObjectFront;
 		GameObject* hitGameObjectUp;
+
+		Ogre::Vector3 up;
+		Ogre::Vector3 forward;
+		Ogre::Vector3 right;
+
+		Ogre::Real timeFallen;
+		bool isFallen;
+		Ogre::Real fallThreshold;
+		Ogre::Real recoveryTime;
 
 		AnimationBlenderObserver* animationBlenderObserver;
 		Ogre::SceneNode* debugWaypointNode;

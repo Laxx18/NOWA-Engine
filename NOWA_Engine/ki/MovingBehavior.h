@@ -54,7 +54,6 @@ namespace NOWA
 				WANDER_2D = 1 << 29,
 				FOLLOW_PATH_2D = 1 << 30,
 				PURSUIT_2D = 1 << 31,
-				FOLLOW_TRACE_2D = 1 << 32
 			};
 
 			//Arrive makes use of these to determine how quickly a GameObject
@@ -367,8 +366,6 @@ namespace NOWA
 			Ogre::Vector3 followPath(Ogre::Real dt);
 			
 			Ogre::Vector3 followPath2D(Ogre::Real dt);
-
-			Ogre::Vector3 followTrace2D(Ogre::Real dt);
 
 			Ogre::Vector3 interpose(Ogre::Real dt);
 

@@ -11989,7 +11989,7 @@ return {
 			setActivated =
 			{
 				type = "method",
-				description = "Activates the device for this owner game object.",
+				description = "Activates the device for this owner game object. Note, if there are other game objects with the same device, they will be deactivated and the chosen device reset to 'Choose Device'. There can be no two active game objects with the same device at the same time. First one must be deactivated, then the other can use the device. This can also be done for lua if its necessary e.g. to change player control.",
 				args = "(boolean activated)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -21325,6 +21325,14 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			applyOmegaForceRotateToDirection =
+			{
+				type = "method",
+				description = "Applies omega force in order to rotate the game object to the given result direction. The strength at which the rotation should occur. Note: This should be used during simulation instead of @setOmegaVelocity.",
+				args = "(Vector3 resultDirection, Ogre::Real strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setOmegaVelocity =
 			{
 				type = "function",
@@ -21353,6 +21361,14 @@ return {
 			{
 				type = "method",
 				description = "Applies the required force for the given velocity. Note: This should be used instead of setVelocity in simulation, for realistic physics behavior.",
+				args = "(Vector3 velocity)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			applyRequiredForceForJumpVelocity =
+			{
+				type = "method",
+				description = "Applies the required force for the given jump velocity. Note: This should be used instead of setVelocity in simulation, for realistic physics behavior. Note: @applyRequiredForceForJumpVelocity has been separated from @applyRequiredForceForVelocity, because using applyRequiredForceForVelocity with movement and jump did bite itself.",
 				args = "(Vector3 velocity)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -21568,32 +21584,32 @@ return {
 			getContactBelow =
 			{
 				type = "function",
-				description = "Gets a contact data below the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.",
-				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryIds)",
+				description = "Gets a contact data below the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. If 'useLocalOrientation' is used, the ray will take the local game object orientation into account",
+				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryIds, boolean useLocalOrientation)",
 				returns = "(ContactData)",
 				valuetype = "ContactData"
 			},
 			getContactBelow2 =
 			{
 				type = "function",
-				description = "Gets a contact data below the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. Note: This method is slower, as the category names must first be translated in to the int category id.",
-				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryNames)",
+				description = "Gets a contact data below the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. Note: This method is slower, as the category names must first be translated in to the int category id. If 'useLocalOrientation' is used, the ray will take the local game object orientation into account",
+				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryNames, boolean useLocalOrientation)",
 				returns = "(ContactData)",
 				valuetype = "ContactData"
 			},
 			getContactAbove =
 			{
 				type = "function",
-				description = "Gets a contact data above the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false.",
-				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryIds)",
+				description = "Gets a contact data above the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. If 'useLocalOrientation' is used, the ray will take the local game object orientation into account",
+				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryIds, boolean useLocalOrientation)",
 				returns = "(ContactData)",
 				valuetype = "ContactData"
 			},
 			getContactAbove2 =
 			{
 				type = "function",
-				description = "Gets a contact data above the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. Note: This method is slower, as the category names must first be translated in to the int category id.",
-				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryNames)",
+				description = "Gets a contact data above the physics body. The offset is used to set the offset position away from the physics component. If 'forceDrawLine' is set to true, a debug line is shown. In order to remove the line call this function once with this value set to false. Note: This method is slower, as the category names must first be translated in to the int category id.If 'useLocalOrientation' is used, the ray will take the local game object orientation into account",
+				args = "(number index, Vector3 offset, boolean forceDrawLine, string categoryNames, boolean useLocalOrientation)",
 				returns = "(ContactData)",
 				valuetype = "ContactData"
 			},
@@ -21604,6 +21620,22 @@ return {
 				args = "(Vector3 minBounds, Vector3 maxBounds)",
 				returns = "(nil)",
 				valuetype = "nil"
+			},
+			getGravityDirection =
+			{
+				type = "function",
+				description = "Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved. Note: Ogre::VECTOR3_ZERO will be returned if no gravity source game objects are involved.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getCurrentGravityStrength =
+			{
+				type = "function",
+				description = "Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved. Note: 0 will be returned if no gravity source game objects are involved",
+				args = "()",
+				returns = "(number)",
+				valuetype = "number"
 			},
 			setKinematicContactSolvingEnabled =
 			{
@@ -23123,6 +23155,38 @@ return {
 				args = "()",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
+			},
+			getUp =
+			{
+				type = "function",
+				description = "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getRight =
+			{
+				type = "function",
+				description = "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getForward =
+			{
+				type = "function",
+				description = "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getIsFallen =
+			{
+				type = "function",
+				description = "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
 			},
 			reactOnAnimationFinished =
 			{
@@ -25237,7 +25301,7 @@ return {
 			setKeepCaption =
 			{
 				type = "method",
-				description = "Sets whether to use a sound if the speech is running char by char.",
+				description = "Sets to keep the caption after the run speech is done.",
 				args = "(boolean keepCaption)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -25245,7 +25309,7 @@ return {
 			getKeepCaption =
 			{
 				type = "function",
-				description = "Gets whether to use a sound if the speech is running char by char.",
+				description = "Gets whether the caption after the run speech is done is kept.",
 				args = "()",
 				returns = "(boolean)",
 				valuetype = "boolean"

@@ -236,6 +236,8 @@ namespace NOWA
 
 		void cloneGameObjects(const std::vector<unsigned long> gameObjectIds);
 
+		void clearUndoRedoStack(void);
+
 		void undo(void);
 
 		void undoAll(void);

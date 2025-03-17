@@ -422,6 +422,22 @@ namespace NOWA
 		/// Gets the min of the coordinates between 2 vectors
 
 		/**
+		 * @brief		Gets the min of the coordinates between 2 numbers
+		 * @param[in]	v1					The first number
+		 * @param[in]	v2					The second number
+		 * @return		result				The min number.
+		 */
+		Ogre::Real min(Ogre::Real v1, Ogre::Real v2);
+
+		/**
+		 * @brief		Gets the max of the coordinates between 2 numbers
+		 * @param[in]	v1					The first number
+		 * @param[in]	v2					The second number
+		 * @return		result				The max number.
+		 */
+		Ogre::Real max(Ogre::Real v1, Ogre::Real v2);
+
+		/**
 		 * @brief		Gets the min of the coordinates between 2 vectors
 		 * @param[in]	v1					The first vector
 		 * @param[in]	v2					The second vector
@@ -828,6 +844,12 @@ namespace NOWA
 			// recur for right sub-array
 			findMinAndMax(arr, mid + 1, high, min, max);
 		}
+
+		/**
+		 * @brief			Tweaks the given unlit datablock, so that its not always rendered in foreground
+		 * @param[in]		datablockName		The datablock name to tweak
+		 */
+		void tweakUnlitDatablock(const Ogre::String& datablockName);
 	public:
 		static MathHelper* getInstance();
 	};

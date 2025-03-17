@@ -7,6 +7,8 @@
 
 namespace NOWA
 {
+	class PhysicsActiveComponent;
+
 	class EXPORTED CameraBehaviorComponent : public GameObjectComponent
 	{
 	public:
@@ -39,6 +41,11 @@ namespace NOWA
 		virtual bool disconnect(void) override;
 
 		/**
+		* @see		GameObjectComponent::update
+		*/
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
+		/**
 		* @see		GameObjectComponent::onRemoveComponent
 		*/
 		virtual void onRemoveComponent(void);
@@ -47,14 +54,6 @@ namespace NOWA
 		 * @see		GameObjectComponent::onCloned
 		 */
 		virtual bool onCloned(void) override;
-
-		/**
-		* @see		GameObjectComponent::update
-		*/
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override
-		{
-
-		}
 
 		/**
 		* @see		GameObjectComponent::getClassName
@@ -145,6 +144,7 @@ namespace NOWA
 		Ogre::Camera* activeCamera;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
+		PhysicsActiveComponent* physicsActiveComponent;
 	};
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////

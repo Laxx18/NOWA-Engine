@@ -773,7 +773,7 @@ namespace NOWA
 	{
 		for (auto& module : this->keyboardInputDeviceModules)
 		{
-			if (module->getDeviceName() == deviceName && false == module->isOccupied())
+			if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
 			{
 				module->setOccupiedId(id);
 				return module;
@@ -781,7 +781,7 @@ namespace NOWA
 		}
 		for (auto& module : this->joystickInputDeviceModules)
 		{
-			if (module->getDeviceName() == deviceName && false == module->isOccupied())
+			if ((module->getDeviceName() == deviceName && false == module->isOccupied()) || module->getOccupiedId() == id)
 			{
 				module->setOccupiedId(id);
 				return module;

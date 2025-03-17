@@ -997,86 +997,6 @@ namespace NOWA
 			return Ogre::Vector3::ZERO;
 		}
 
-		Ogre::Vector3 MovingBehavior::followTrace2D(Ogre::Real dt)
-		{
-			if (nullptr == this->targetAgent)
-			{
-				return Ogre::Vector3::ZERO;
-			}
-
-			// Move to next target if close enough to current target (working indistance squared space)
-			if (this->pPath->getWayPoints().size() > 0)
-			{
-				std::pair<bool, Ogre::Vector3> currentWaypoint = this->pPath->getCurrentWaypoint();
-				if (currentWaypoint.first)
-				{
-					Ogre::Vector3 currentWaypointX = currentWaypoint.second * Ogre::Vector3(1.0f, 0.0f, 0.0f);
-					Ogre::Vector3 agentPosX = this->agent->getPosition() * Ogre::Vector3(1.0f, 0.0f, 0.0f);
-					Ogre::Real distSqXZ = currentWaypointX.squaredDistance(agentPosX);
-					Ogre::Real distSq = this->agent->getPosition().squaredDistance(currentWaypoint.second);
-					Ogre::Real currentWaypointY = currentWaypoint.second.y;
-					Ogre::Real agentPosY = this->agent->getPosition().y;
-					Ogre::Real agentHeight = this->agent->getOwner()->getSize().y;
-
-					// make a copy of maybe the last point, because if setNextWayPoint has not other points, the list gets cleared!
-					// Attention here: When a character does start to orientate when reaching the goal, the distance is to low, because maybe the orientation speed was to low
-					// so the character never reaches the goal!
-					if (false == this->flyMode)
-					{
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] Agent Pos: " + Ogre::StringConverter::toString(this->agent->getPosition()));
-						if (distSq <= this->goalRadius * this->goalRadius * 5.0f)
-						{
-							if (distSqXZ <= this->goalRadius * this->goalRadius)
-							{
-								// Goalradius should be small when not in fly mode and the y pos comparison is more eased, so that the waypoint goal can be reached
-								// as nearest as possible
-								if (agentPosY + agentHeight > currentWaypointY && agentPosY - agentHeight < currentWaypointY)
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] setWayPoint: " + Ogre::StringConverter::toString(this->targetAgent->getPosition()));
-									// this->pPath->setNextWayPoint();
-									this->pPath->addWayPoint(this->targetAgent->getPosition());
-								}
-							}
-						}
-					}
-					else
-					{
-						if (distSq <= this->goalRadius * this->goalRadius)
-						{
-							// this->pPath->setNextWayPoint();
-							this->pPath->addWayPoint(this->targetAgent->getPosition());
-						}
-					}
-
-					if (false == this->pPath->isFinished())
-					{
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] seek: " + Ogre::StringConverter::toString(this->targetAgent->getPosition()));
-						return this->seek2D(this->targetAgent->getPosition(), dt);
-					}
-					else
-					{
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehaviour] arrive: " + Ogre::StringConverter::toString(currentWaypoint.second));
-						Ogre::Vector3 resultVelocity = this->arrive2D(currentWaypoint.second, this->deceleration, dt);
-
-						// Check if there is an path goal observer, and call when path is reached
-						if (nullptr != this->pathGoalObserver && false == this->pPath->getWayPoints().empty())
-						{
-							this->pathGoalObserver->onPathGoalReached();
-						}
-
-						this->pPath->clear();
-
-						return resultVelocity;
-					}
-				}
-			}
-			else
-			{
-				this->pPath->setWayPoint(this->targetAgent->getPosition());
-			}
-			return Ogre::Vector3::ZERO;
-		}
-
 		Ogre::Vector3 MovingBehavior::interpose(Ogre::Real dt)
 		{
 			if (nullptr == this->targetAgent)
@@ -2256,10 +2176,6 @@ namespace NOWA
 			{
 				return MovingBehavior::FOLLOW_PATH_2D;
 			}
-			else if (behavior == "FollowTrace2D")
-			{
-				return MovingBehavior::FOLLOW_TRACE_2D;
-			}
 			else if (behavior == "Wander2D")
 			{
 				return MovingBehavior::WANDER_2D;
@@ -2332,8 +2248,6 @@ namespace NOWA
 				return "Arrive2D";
 			case MovingBehavior::FOLLOW_PATH_2D:
 				return "FollowPath2D";
-			case MovingBehavior::FOLLOW_TRACE_2D:
-				return "FollowTrace2D";
 			case MovingBehavior::WANDER_2D:
 				return "Wander2D";
 			case MovingBehavior::PURSUIT_2D:
@@ -3075,15 +2989,6 @@ namespace NOWA
 			{
 				this->currentBehavior += "FollowPath2D ";
 				velocity = this->followPath2D(dt) * this->weightFollowPath;
-				if (false == this->accumulateVelocity(totalVelocity, velocity))
-				{
-					return totalVelocity;
-				}
-			}
-			else if (this->isSwitchOn(FOLLOW_TRACE_2D))
-			{
-				this->currentBehavior += "FollowTrace2D ";
-				velocity = this->followTrace2D(dt) * this->weightFollowPath;
 				if (false == this->accumulateVelocity(totalVelocity, velocity))
 				{
 					return totalVelocity;

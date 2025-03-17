@@ -30,7 +30,7 @@ namespace NOWA
 		this->skeleton = this->item->getSkeletonInstance();
 		if (nullptr != this->skeleton)
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation Blender] Cannot initialize animation blender, because the skeleton resource for item: "
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Animation BlenderV2] Cannot initialize animation blender, because the skeleton resource for item: "
 															+ item->getName() + " is missing!");
 			return;
 		}
@@ -66,6 +66,11 @@ namespace NOWA
 		if (false == skipLogging)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Animation Blender] List all animations for mesh '" + this->item->getMesh()->getName() + "':");
+		}
+
+		if (nullptr == this->skeleton)
+		{
+			return animationNames;
 		}
 
 		for (auto& anim : this->skeleton->getAnimationsNonConst())

@@ -28,6 +28,7 @@ namespace NOWA
 		activeCamera(nullptr),
 		oldPosition(Ogre::Vector3::ZERO),
 		oldOrientation(Ogre::Quaternion::IDENTITY),
+		physicsActiveComponent(nullptr),
 		activated(new Variant(CameraBehaviorComponent::AttrActivated(), false, this->attributes)),
 		cameraGameObjectId(new Variant(CameraBehaviorComponent::AttrCameraGameObjectId(), static_cast<unsigned long>(0), this->attributes, true))
 	{
@@ -76,11 +77,23 @@ namespace NOWA
 
 	bool CameraBehaviorComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
+		auto physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+		if (nullptr != physicsActiveCompPtr)
+		{
+			this->physicsActiveComponent = physicsActiveCompPtr.get();
+		}
+
 		return true;
 	}
 
 	bool CameraBehaviorComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
+		this->physicsActiveComponent = nullptr;
+
 		if (nullptr != this->baseCamera)
 		{
 			AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
@@ -115,6 +128,14 @@ namespace NOWA
 		else
 			this->setCameraGameObjectId(0);
 		return true;
+	}
+
+	void CameraBehaviorComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		if (nullptr != this->physicsActiveComponent && false == notSimulating && nullptr != this->baseCamera)
+		{
+			this->baseCamera->applyGravityDirection(this->physicsActiveComponent->getGravityDirection());
+		}
 	}
 
 	void CameraBehaviorComponent::actualizeValue(Variant* attribute)

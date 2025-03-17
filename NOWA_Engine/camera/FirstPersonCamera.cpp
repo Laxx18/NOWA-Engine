@@ -39,26 +39,82 @@ namespace NOWA
 		this->sceneNode = sceneNode;
 	}
 
-	void FirstPersonCamera::moveCamera(Ogre::Real dt)
-	{
-		if (nullptr != this->sceneNode)
-		{
-			Ogre::Vector3 targetPosition = this->sceneNode->_getDerivedPositionUpdated();
+    void FirstPersonCamera::moveCamera(Ogre::Real dt)
+    {
+        if (nullptr == this->sceneNode) return;
 
-			Ogre::Quaternion targetOrientation = MathHelper::getInstance()->lookAt(this->sceneNode->_getDerivedOrientationUpdated() * this->defaultDirection, Ogre::Vector3::UNIT_Y);
-			//Drehungsanimation der Kamera
-			Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
-			//Ogre::Quaternion delta = targetOrientation;
-			this->camera->setOrientation(delta);
-			//Die Kanone soll in der Mitte des Bildschirms sein, sie ist jedoch mit einem kleinen Offset (0.4f, 0.8f, -0.2f) am Flubber befestigt, daher X: 0.4
-			//Die Kamera soll immer mit einem Offset zum Spiel unabhängig von der Richtung des Spielers platziert sein
-			Ogre::Vector3 targetVector = targetPosition + (delta * this->offsetPosition * this->moveCameraWeight); // Attention: Is this correct here with move camera weight?
+        // Get gravity direction (which points toward the planet center)
+        Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
+        if (false == this->gravityDirection.isZeroLength())
+        {
+            gravityDir = -this->gravityDirection;
+        }
 
-			//geschmeidige Bewegung der Kamera an die Zielposition
-			targetVector = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
-			this->camera->setPosition(targetVector);
-		}
-	}
+        // Calculate surface normal (opposite of gravity direction)
+        Ogre::Vector3 surfaceNormal = gravityDir;
+
+        // Get player position and orientation
+        Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
+        Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+
+        // Get player's forward direction based on orientation and default direction
+        Ogre::Vector3 playerForward = playerOrientation * this->defaultDirection;
+
+        // Create a local coordinate system
+        Ogre::Vector3 localUp = surfaceNormal;
+
+        // We need to replicate the MathHelper::lookAt function from your original code
+        // that was used to calculate the targetOrientation
+
+        // First, determine the forward vector (direction the player is looking)
+        Ogre::Vector3 forward = playerOrientation * this->defaultDirection;
+
+        // Project this forward vector onto the local tangent plane
+        Ogre::Vector3 projectedForward = forward - (forward.dotProduct(localUp) * localUp);
+        if (projectedForward.isZeroLength())
+        {
+            // If the forward vector happens to be parallel to up, use a fallback
+            projectedForward = playerOrientation * Ogre::Vector3::UNIT_Z;
+            projectedForward = projectedForward - (projectedForward.dotProduct(localUp) * localUp);
+            if (projectedForward.isZeroLength())
+            {
+                projectedForward = localUp.perpendicular();
+            }
+        }
+        projectedForward.normalise();
+
+        // Calculate right vector
+        Ogre::Vector3 right = projectedForward.crossProduct(localUp);
+        right.normalise();
+
+        // Recalculate forward to ensure orthogonality
+        forward = localUp.crossProduct(right);
+        forward.normalise();
+
+        // Create rotation matrix and convert to quaternion
+        Ogre::Matrix3 rotMatrix;
+        rotMatrix.FromAxes(right, localUp, -forward); // Negative forward to match lookAt behavior
+        Ogre::Quaternion targetOrientation = Ogre::Quaternion(rotMatrix);
+
+        // Apply smooth rotation
+        Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
+
+        // Set camera orientation
+        this->camera->setOrientation(delta);
+
+        // Calculate camera position based on player position and offset
+        // Transform offset by the delta orientation to get the correct position in world space
+        Ogre::Vector3 transformedOffset = delta * this->offsetPosition;
+
+        // Calculate target position
+        Ogre::Vector3 targetVector = playerPosition + (transformedOffset * this->moveCameraWeight);
+
+        // Apply smooth movement
+        Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
+
+        // Set camera position
+        this->camera->setPosition(smoothedPosition);
+    }
 
 	void FirstPersonCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{

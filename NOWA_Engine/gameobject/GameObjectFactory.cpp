@@ -513,7 +513,7 @@ namespace NOWA
 				gameObjectPtr->setControlledByClientID(controlledByClientID);
 				gameObjectPtr->setDefaultDirection(defaultDirection);
 				gameObjectPtr->setUseReflection(useReflection);
-				gameObjectPtr->setVisible(visible);
+				gameObjectPtr->setLoadedVisible(visible);
 				gameObjectPtr->setGlobal(global);
 				gameObjectPtr->setClampY(clampY);
 				gameObjectPtr->setReferenceId(referenceId);

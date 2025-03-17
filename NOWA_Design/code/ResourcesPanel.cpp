@@ -1446,7 +1446,6 @@ void ResourcesPanelProject::handleSingleClick(MyGUI::TreeControl::Node* node)
 					if (luaCompPtr->getLuaScript()->getScriptName() == this->selectedText)
 					{
 						this->editorManager->getSelectionManager()->snapshotGameObjectSelection();
-						this->editorManager->focusCameraGameObject(gameObjectPtr.get());
 						this->editorManager->getSelectionManager()->clearSelection();
 						this->editorManager->getSelectionManager()->select(gameObjectPtr->getId());
 					}

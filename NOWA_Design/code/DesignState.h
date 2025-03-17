@@ -108,6 +108,7 @@ private:
 	MyGUI::Button* placeModeCheck;
 	MyGUI::PopupMenu* placeModePopupMenu;
 	MyGUI::PopupMenu* translateModePopupMenu;
+	MyGUI::MenuCtrl* editPopupMenu;
 	MyGUI::Button* translateModeCheck;
 	MyGUI::Button* pickModeCheck;
 	MyGUI::Button* scaleModeCheck;
@@ -127,6 +128,8 @@ private:
 	MyGUI::Button* cameraRedoButton;
 	MyGUI::Button* selectUndoButton;
 	MyGUI::Button* selectRedoButton;
+	MyGUI::Button* cameraSpeedUpButton;
+	MyGUI::Button* cameraSpeedDownButton;
 	MyGUI::Button* playButton;
 	MyGUI::EditBox* findObjectEdit;
 	MyGUI::Button* cameraResetButton;

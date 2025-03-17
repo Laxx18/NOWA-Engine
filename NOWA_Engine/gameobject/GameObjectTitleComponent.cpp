@@ -194,7 +194,7 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
-		this->textNode->_setDerivedOrientation(this->gameObjectPtr->getOrientation());
+		// this->textNode->_setDerivedOrientation(this->gameObjectPtr->getOrientation());
 		this->orientationTargetGameObject = nullptr;
 		return true;
 	}
@@ -469,8 +469,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 			this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
+			this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 		}
 	}
 
@@ -492,8 +492,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 			this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
+			this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 		}
 	}
 

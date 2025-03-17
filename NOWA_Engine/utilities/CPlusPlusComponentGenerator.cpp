@@ -366,7 +366,7 @@ namespace NOWA
 		{
 			Ogre::String loadData;
 
-			loadData += "\t\tif (propertyElement && XMLConverter::getAttrib(propertyElement, " + QM() + "name" + QM() + ") == \"" + capitalize(variant.getName()) + "\)\n";
+			loadData += "\t\tif (propertyElement && XMLConverter::getAttrib(propertyElement, " + QM() + "name" + QM() + ") == \"" + capitalize(variant.getName()) + "\"));\n";
 			loadData += "\t\t{\n";
 
 			if (variant.getStrGetter() != "getListSelectedValue()")

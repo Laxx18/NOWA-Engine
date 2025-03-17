@@ -4,6 +4,7 @@
 #include "PhysicsComponent.h"
 #include "main/Events.h"
 #include <unordered_map>
+#include <atomic>
 
 namespace NOWA
 {
@@ -263,9 +264,27 @@ namespace NOWA
 		 */
 		virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
+		/**
+		 * @brief		Applies the omega force in move callback function in order to rotate the game object to the given result direction.
+		 * @param[in]	resultDirectoin The result direction to which the game object should be rotated via omega to.
+		 * @param[in]	strength The strength at which the rotation should occur
+		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
+		 */
+		virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+		
 		Ogre::Vector3 getOmegaVelocity(void) const;
 
-		Ogre::Vector3 getGravityDirection(void) const;
+		/**
+		 * @brief		Gets the normalized gravity direction vector, if a gravity source game objects are (like planets) are involved.
+		 * @return		The gravity direction, or Ogre::VECTOR3_ZERO if no gravity source game objects are involved.
+		 */
+		Ogre::Vector3 getGravityDirection(void);
+
+		/**
+		 * @brief		Gets the current gravity direction strength for e.g. player jumps on a planet, if a gravity source game objects are (like planets) are involved.
+		 * @return		The gravity strngth, or 0 if no gravity source game objects are involved.
+		 */
+		Ogre::Real getCurrentGravityStrength(void) const;
 
 		void setGyroscopicTorqueEnabled(bool enable);
 
@@ -274,16 +293,23 @@ namespace NOWA
 		void resetForce(void);
 
 		/**
-		 * @brief	Applies force for the given body.
-		 * @param[in]	force The force vector to apply
-		 */
-		virtual void applyForce(const Ogre::Vector3& force);
-
-		/**
 		 * @brief	Applies the required force in order move by the given velocity.
 		 * @param[in]	velocity The velocity vector
 		 */
 		virtual void applyRequiredForceForVelocity(const Ogre::Vector3& velocity);
+
+		/**
+		 * @brief	Applies the required jump force in order to jump by the given velocity.
+		 * @Note	@applyRequiredForceForJumpVelocity has been separated from @applyRequiredForceForVelocity, because using applyRequiredForceForVelocity with movement and jump did bite itself.
+		 * @param[in]	velocity The velocity vector
+		 */
+		virtual void applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity);
+
+		/**
+		 * @brief	Applies force for the given body.
+		 * @param[in]	force The force vector to apply
+		 */
+		virtual void applyForce(const Ogre::Vector3& force);
 
 		virtual Ogre::Vector3 getForce(void) const;
 
@@ -367,13 +393,6 @@ namespace NOWA
 		
 		bool getContinuousCollision(void) const;
 
-		/**
-		 * @brief	Clamps the omega of a body by the given value, in order to prevent high peaks.
-		 * @param	clampValue The clamp value to set, 100 is a good value. Setting a value of 0, will disable clamping.
-		 * @note	This is usefull e.g. for ragdoll bones, so that the bone will not rotate like crazy.
-		 */
-		void setClampOmega(Ogre::Real clampValue);
-
 		// can be overwritten
 		virtual void moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
 
@@ -398,10 +417,10 @@ namespace NOWA
 			unsigned int categoryIds = 0xFFFFFFFF);
 
 		ContactData getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
-			unsigned int categoryIds = 0xFFFFFFFF);
+			unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
 
 		ContactData getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine = false,
-									unsigned int categoryIds = 0xFFFFFFFF);
+									unsigned int categoryIds = 0xFFFFFFFF, bool useLocalOrientation = false);
 
 		Ogre::Real determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, 
 			unsigned int categoryIds = 0xFFFFFFFF);
@@ -491,19 +510,25 @@ namespace NOWA
 		void createSoftBody(void);
 	private:
 		void destroyLineMap(void);
+
+		struct Command
+		{
+			Ogre::Vector3 vectorValue;
+			std::atomic<bool> pending;
+			std::atomic<bool> inProgress;
+		};
 	protected:
 		Ogre::Real height;
 		Ogre::Real rise;
-		Ogre::Real clampedOmega;
-		Ogre::Vector3 omegaForce;
-		bool canAddOmegaForce;
-		Ogre::Vector3 forceForVelocity;
-		bool canAddForceForVelocity;
-		bool bResetForce;
+
+		Command forceCommand;
+		Command requiredVelocityForForceCommand;
+		Command jumpForceCommand;
+		Command omegaForceCommand;
+
 		bool bIsInSimulation;
 
 		Variant* activated;
-		Variant* force;
 		Variant* gravity;
 		Variant* gravitySourceCategory;
 		Variant* massOrigin;
@@ -543,6 +568,8 @@ namespace NOWA
 		Ogre::Vector3 maxBounds;
 		
 		Ogre::Vector3 gravityDirection;
+		Ogre::Real currentGravityStrength;
+		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
 	};
 
 }; //namespace end

@@ -20,6 +20,7 @@
 #include "ocean/OgreHlmsOcean.h"
 
 #include "utilities/MovableText.h"
+#include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
@@ -975,6 +976,10 @@ namespace NOWA
 			this->writeAccessFolder + "ProfilePerFrame", this->writeAccessFolder + "ProfileAccum");
 #endif
 #endif
+
+		MathHelper::getInstance()->tweakUnlitDatablock("RedNoLighting");
+		MathHelper::getInstance()->tweakUnlitDatablock("BlueNoLighting");
+		MathHelper::getInstance()->tweakUnlitDatablock("GreenNoLighting");
 
 		return true;
 	}

@@ -238,7 +238,6 @@ namespace NOWA
 		clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
 		// clonedCompPtr->applyAngularImpulse(this->angularImpulse);
 		// clonedCompPtr->applyAngularVelocity(this->angularVelocity->getVector3());
-		clonedCompPtr->applyForce(this->force->getVector3());
 		clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
 		clonedCompPtr->setSpeed(this->speed->getReal());
 		clonedCompPtr->setMaxSpeed(this->maxSpeed->getReal());

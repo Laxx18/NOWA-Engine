@@ -45,12 +45,9 @@ namespace NOWA
 			if (threadCount > numCPU)
 				threadCount = numCPU;
 		}
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Using: " + Ogre::StringConverter::toString(threadCount) + " cores for physics simulation");
-// #ifndef _DEBUG
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreNewtModule] Using: " + Ogre::StringConverter::toString(threadCount) + " cores for physics simulation and updaterate: " + Ogre::StringConverter::toString(updateRate));
 		this->ogreNewt->setThreadCount(threadCount);
-//#else
-//		this->ogreNewt->setThreadCount(1);
-//#endif
+
 #else
 		int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
 		if (numCPU >= 2)

@@ -606,6 +606,16 @@ namespace NOWA
 							 in.x * Ogre::Math::Sin(angle) + in.y * Ogre::Math::Cos(angle));
 	}
 
+	Ogre::Real MathHelper::min(Ogre::Real v1, Ogre::Real v2)
+	{
+		return std::min(v1, v2);
+	}
+
+	Ogre::Real MathHelper::max(Ogre::Real v1, Ogre::Real v2)
+	{
+		return std::max(v1, v2);
+	}
+
 	Ogre::Vector3 MathHelper::min(const Ogre::Vector3& v1, const Ogre::Vector3& v2)
 	{
 		return Ogre::Vector3(std::min(v1.x, v2.x), std::min(v1.y, v2.y), std::min(v1.z, v2.z));
@@ -732,17 +742,20 @@ namespace NOWA
 
 	Ogre::Vector3 MathHelper::getBottomCenterOfMesh(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const
 	{
+		// Get the local AABB of the object
 		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
-		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * sceneNode->getScale();
+
+		// Apply the scene node's scale correctly
 		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * sceneNode->getScale();
-		// Do not use padding, as all objects will be a bit above the ground!
-		// Ogre::Vector3 padding = (maximumScaled - minimumScaled) * Ogre::v1::MeshManager::getSingleton().getBoundsPaddingFactor();
-		Ogre::Vector3 size = ((maximumScaled - minimumScaled) /*- padding * 2.0f*/);
-		Ogre::Vector3 centerOffset = minimumScaled + /*padding +*/ (size / 2.0f);
-		// Problem here: when physics is activated an object may slithly go up or down either to prevent collision with underlying object or because of gravity
-		// But attention: stack mode must be used, if there is an object below, because it also has an height! Else the y position is 0
-		Ogre::Real lowestObjectY = minimumScaled.y /*- (padding.y * 2.0f)*/;
-		centerOffset.y = 0.0f - lowestObjectY;
+		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * sceneNode->getScale();
+		Ogre::Vector3 size = maximumScaled - minimumScaled;
+
+		// Compute center offset (local space)
+		Ogre::Vector3 centerOffset = minimumScaled + (size * 0.5f);
+
+		// Ensure we get the actual bottom of the object
+		centerOffset.y = minimumScaled.y;
+
 		return centerOffset;
 	}
 
@@ -2389,6 +2402,37 @@ namespace NOWA
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ShaderModule]: Could not generate tangents for : " + entity->getName());
 		}
+	}
+
+	void MathHelper::tweakUnlitDatablock(const Ogre::String& datablockName)
+	{
+		Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+		Ogre::HlmsUnlit* hlmsUnlit = static_cast<Ogre::HlmsUnlit*>(hlms);
+
+		Ogre::HlmsBlendblock blendblock;
+		blendblock.setBlendType(Ogre::SBT_TRANSPARENT_ALPHA); // Example: Transparent alpha blending
+
+		Ogre::HlmsMacroblock macroblock;
+		macroblock.mCullMode = Ogre::CULL_NONE; // Example: No culling
+		macroblock.mDepthCheck = true;
+		macroblock.mDepthWrite = true;
+
+		// Check if datablock already exists
+		Ogre::HlmsDatablock* existingDatablock = hlmsUnlit->getDatablock(datablockName);
+
+		if (false == existingDatablock)
+		{
+			Ogre::HlmsUnlitDatablock* datablock = static_cast<Ogre::HlmsUnlitDatablock*>(
+				hlmsUnlit->createDatablock(datablockName, datablockName, Ogre::HlmsMacroblock(macroblock), Ogre::HlmsBlendblock(blendblock), Ogre::HlmsParamVec()));
+
+			existingDatablock = datablock;
+		}
+
+		existingDatablock->setMacroblock(macroblock);
+		existingDatablock->setBlendblock(blendblock);
+
+		// Set color usage
+		static_cast<Ogre::HlmsUnlitDatablock*>(existingDatablock)->setUseColour(true); // Enable manual colour
 	}
 
 }; // namespace end

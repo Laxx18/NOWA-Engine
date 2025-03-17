@@ -433,7 +433,7 @@ namespace OgreNewt
 		/*
 		by calling this function in realtime, you can effectively "animate" the pin.
 		*/
-		void setPin( const Ogre::Vector3& pin );
+		void setPin(const Body* body, const Ogre::Vector3& pin);
 
 		//! get the current pin direction.
 		const Ogre::Vector3& getPin() const;

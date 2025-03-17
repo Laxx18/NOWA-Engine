@@ -81,6 +81,7 @@ void DesignState::enter(void)
 	this->ogreNewt = nullptr;
 	this->selectQuery = nullptr;
 	this->undoPressed = false;
+	this->editPopupMenu = nullptr;
 
 	// Register the tree control
 	MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -396,36 +397,107 @@ void DesignState::setupMyGUIWidgets(void)
 		this->manipulationWindow->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 
 		this->gridButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("gridButton");
+		this->gridButton->setNeedToolTip(true);
+		this->gridButton->setUserString("tooltip", "Shows a grid");
+		this->gridButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->gridValueComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("gridValueComboBox");
 		this->gridValueComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		this->gridValueComboBox->setNeedToolTip(true);
+		this->gridValueComboBox->setUserString("tooltip", "Sets a grid value (meters) to move game objects in grid steps.");
+		this->gridValueComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->categoriesComboBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ComboBox>("categoriesComboBox");
 		this->categoriesComboBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		this->categoriesComboBox->setNeedToolTip(true);
+		this->categoriesComboBox->setUserString("tooltip", "Sets a category (or several combined) in the scene, so that only game objects, which do belong to those categories can be selected and manipulated.");
+		this->categoriesComboBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->selectModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectModeCheck");
+		this->selectModeCheck->setNeedToolTip(true);
+		this->selectModeCheck->setUserString("tooltip", "Sets the game objects selection mode.");
+		this->selectModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->placeModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("placeModeCheck");
+		this->placeModeCheck->setNeedToolTip(true);
+		this->placeModeCheck->setUserString("tooltip", "Sets a mode to place new game objects.");
+		this->placeModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->translateModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("translateModeCheck");
+		this->translateModeCheck->setNeedToolTip(true);
+		this->translateModeCheck->setUserString("tooltip", "Sets the Gizmo to translation mode for game objects translation.");
+		this->translateModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->pickModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("pickModeCheck");
+		this->pickModeCheck->setNeedToolTip(true);
+		this->pickModeCheck->setUserString("tooltip", "Starts the simulation with a physics picker mode, in which game objects with physics active components can be dragged by a spring picker.");
+		this->pickModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->scaleModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("scaleModeCheck");
+		this->scaleModeCheck->setNeedToolTip(true);
+		this->scaleModeCheck->setUserString("tooltip", "Sets the Gizmo to scale mode for game objects scale.");
+		this->scaleModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->rotate1ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate1ModeCheck");
+		this->rotate1ModeCheck->setNeedToolTip(true);
+		this->rotate1ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 1 for game objects rotation. Mode 1 means, that each game object is rotated individually.");
+		this->rotate1ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->rotate2ModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("rotate2ModeCheck");
+		this->rotate2ModeCheck->setNeedToolTip(true);
+		this->rotate2ModeCheck->setUserString("tooltip", "Sets the Gizmo to orientation mode 2 for game objects rotation. Mode 2 means, that if several game objects are selected, they are rotated around the center of all game objects.");
+		this->rotate2ModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->terrainModifyModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainModifyModeCheck");
+		this->terrainModifyModeCheck->setNeedToolTip(true);
+		this->terrainModifyModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may modify the terrain height by mouse with the selected brush.");
+		this->terrainModifyModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->terrainSmoothModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainSmoothModeCheck");
+		this->terrainSmoothModeCheck->setNeedToolTip(true);
+		this->terrainSmoothModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and then if this mode is activated, the user may smooth a modified the terrain by mouse with the selected brush.");
+		this->terrainSmoothModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->terrainPaintModeCheck = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("terrainPaintModeCheck");
+		this->terrainPaintModeCheck->setNeedToolTip(true);
+		this->terrainPaintModeCheck->setUserString("tooltip", "If a terra component is involved, please specify a brush and layer id (layer image) and then if this mode is activated, the user may point on the terrain by mouse with the selected brush.");
+		this->terrainPaintModeCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 		this->wakeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("wakeButton");
+		this->wakeButton->setNeedToolTip(true);
+		this->wakeButton->setUserString("tooltip", "Wakes all selected game objects with physics active components, so that they are involved in physics calculation.");
+		this->wakeButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->sleepButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("sleepButton");
+		this->sleepButton->setNeedToolTip(true);
+		this->sleepButton->setUserString("tooltip", "Sets all selectedgame objects with physics active components to sleep mode, so that they are not involved in physics calculation.");
+		this->sleepButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->removeButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("removeButton");
+		this->removeButton->setNeedToolTip(true);
+		this->removeButton->setUserString("tooltip", "Removes the selected game objects from the scene.");
+		this->removeButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->copyButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("copyButton");
+		this->copyButton->setNeedToolTip(true);
+		this->copyButton->setUserString("tooltip", "Copies the selected game objects and afterwards switches to Gizmo translation mode, so that the copied game objects can be moved to another place.");
+		this->copyButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->focusButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("focusButton");
+		this->focusButton->setNeedToolTip(true);
+		this->focusButton->setUserString("tooltip", "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but has found it in the game objects menu.");
+		this->focusButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		
+		MyGUI::TextBox* findTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("findObjectTextBox");
+		findTextBox->setNeedToolTip(true);
+		findTextBox->setUserString("tooltip", "Teleports the camera to the given selected game object. This is useful: E.g. if a game object is not visible or the user cannot find it in the 3D scene, but the user has the game object id in clipboard.");
+		findTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 		this->findObjectEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("findObjectEdit");
 		this->findObjectEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		this->findObjectEdit->setNeedKeyFocus(true);
 		this->findObjectEdit->setNeedMouseFocus(true);
+		
+		MyGUI::TextBox* constraintAxesTextBox = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::TextBox>("constraintAxesTextBox");
+		constraintAxesTextBox->setNeedToolTip(true);
+		constraintAxesTextBox->setUserString("tooltip", "This mode is useful if the user wants to create a 2.5 Jump'n'Run game, in order to e.g. constraint the z-axis a the set distance value (meters), "
+			"so that all game objects can only be placed at that z-distance, but freely on x- and y-axis.");
+		constraintAxesTextBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 		this->constraintAxisEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("constraintAxisEdit");
 		this->constraintAxisEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 		this->constraintAxisEdit->setNeedKeyFocus(true);
 		this->constraintAxisEdit->setNeedMouseFocus(true);
 
 		this->cameraResetButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraResetButton");
+		this->cameraResetButton->setNeedToolTip(true);
+		this->cameraResetButton->setUserString("tooltip", "Resets the camera translation and orientation to origin in the scene.");
+		this->cameraResetButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 		this->gridButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->gridButton->eventMouseSetFocus += MyGUI::newDelegate(this, &DesignState::setFocus);
 		this->categoriesComboBox->eventComboChangePosition += MyGUI::newDelegate(this, &DesignState::itemSelected);
@@ -499,7 +571,7 @@ void DesignState::setupMyGUIWidgets(void)
 	{
 		MyGUI::IntPoint windowPosition;
 		this->widgetsSimulation = MyGUI::LayoutManager::getInstancePtr()->loadLayout("SimulationWindow.layout");
-		windowPosition.left = 500;
+		windowPosition.left = (NOWA::Core::getSingletonPtr()->getOgreRenderWindow()->getWidth() * 0.5f) - 150;
 		windowPosition.top = 0;
 		this->simulationWindow = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("simulationWindow");
 		this->simulationWindow->setPosition(windowPosition);
@@ -514,12 +586,31 @@ void DesignState::setupMyGUIWidgets(void)
 		this->redoButton->setEnabled(false);
 		this->cameraUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraUndoButton");
 		this->cameraUndoButton->setEnabled(false);
+		this->cameraUndoButton->setNeedToolTip(true);
+		this->cameraUndoButton->setUserString("tooltip", "Undo the camera transform");
+		this->cameraUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->cameraRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraRedoButton");
 		this->cameraRedoButton->setEnabled(false);
+		this->cameraRedoButton->setNeedToolTip(true);
+		this->cameraRedoButton->setUserString("tooltip", "Redo the camera transform");
+		this->cameraRedoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->selectUndoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectUndoButton");
 		this->selectUndoButton->setEnabled(false);
+		this->selectUndoButton->setNeedToolTip(true);
+		this->selectUndoButton->setUserString("tooltip", "Undo the last selection");
+		this->selectUndoButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 		this->selectRedoButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("selectRedoButton");
 		this->selectRedoButton->setEnabled(false);
+		this->selectRedoButton->setNeedToolTip(true);
+		this->selectRedoButton->setUserString("tooltip", "Redo the last selection");
+		this->cameraSpeedUpButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedUpButton");
+		this->cameraSpeedUpButton->setEnabled(false);
+		this->cameraSpeedUpButton->setNeedToolTip(true);
+		this->cameraSpeedUpButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->cameraSpeedDownButton = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("cameraSpeedDownButton");
+		this->cameraSpeedDownButton->setEnabled(false);
+		this->cameraSpeedDownButton->setNeedToolTip(true);
+		this->cameraSpeedDownButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 		this->playButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->undoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
@@ -528,6 +619,9 @@ void DesignState::setupMyGUIWidgets(void)
 		this->cameraRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->selectUndoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
 		this->selectRedoButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+		this->cameraSpeedUpButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+		this->cameraSpeedDownButton->eventMouseButtonClick += MyGUI::newDelegate(this, &DesignState::buttonHit);
+		
 	}
 
 	// MyGUI::EditPtr actionLabel = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>("EditBoxEmpty", 0.6f, 0.9f, 0.3f, 0.05f, MyGUI::Align::Default, "Main", "DebugLabel");
@@ -849,6 +943,9 @@ void DesignState::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->simulationWindow->setVisible(true);
 		this->manipulationWindow->setVisible(true);
 		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName());
+
+		this->cameraSpeedUpButton->setEnabled(true);
+		this->cameraSpeedDownButton->setEnabled(true);
 
 		this->hasSceneChanges = false;
 
@@ -1246,6 +1343,45 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		// Show properties
 		this->propertiesPanel->showProperties();
 		this->resourcesPanel->refresh();
+	}
+	else if (this->cameraSpeedUpButton == sender)
+	{
+		this->cameraMoveSpeed += 5.0f;
+		if (this->cameraMoveSpeed > 52.0f)
+		{
+			this->cameraMoveSpeed = 52.0f;
+			this->cameraSpeedUpButton->setEnabled(false);
+		}
+
+		this->cameraSpeedDownButton->setEnabled(true);
+
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+		if (nullptr != cameraBehavior)
+		{
+			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+
+			this->cameraSpeedUpButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+		}
+	}
+	else if (this->cameraSpeedDownButton == sender)
+	{
+		this->cameraMoveSpeed -= 5.0f;
+		if (this->cameraMoveSpeed < 2.0f)
+		{
+			this->cameraMoveSpeed = 2.0f;
+			this->cameraSpeedUpButton->setEnabled(true);
+			this->cameraSpeedDownButton->setEnabled(false);
+		}
+
+		this->cameraSpeedUpButton->setEnabled(true);
+
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+		if (nullptr != cameraBehavior)
+		{
+			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+
+			this->cameraSpeedDownButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+		}
 	}
 	else if (this->removeButton == sender)
 	{
@@ -1656,16 +1792,16 @@ void DesignState::showDebugCollisionLines(bool show)
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
-	MyGUI::MenuCtrl* popupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
+	this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
-	auto item1 = popupMenu->addItem("Select_Same_Mesh");
+	auto item1 = this->editPopupMenu->addItem("Select_Same_Mesh");
 	item1->setCaptionWithReplacing("#{Select_Same_Mesh}");
-	auto item2 = popupMenu->addItem("Select_Same_Datablock");
+	auto item2 = this->editPopupMenu->addItem("Select_Same_Datablock");
 	item2->setCaptionWithReplacing("#{Select_Same_Datablock}");
 
-	popupMenu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
-	popupMenu->setPopupAccept(true);
-	popupMenu->setVisible(true);
+	this->editPopupMenu->eventMenuCtrlAccept += MyGUI::newDelegate(this, &DesignState::onMenuItemSelected);
+	this->editPopupMenu->setPopupAccept(true);
+	this->editPopupMenu->setVisible(true);
 }
 
 void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item)
@@ -2217,6 +2353,32 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 
 bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 {
+	if (OIS::MB_Left == id || OIS::MB_Right == id)
+	{
+		if (nullptr != this->editPopupMenu)
+		{
+			MyGUI::Widget* focusedWidget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+
+			// Check if the focused widget is inside popupMenu
+			bool isInsidePopup = false;
+			while (focusedWidget)
+			{
+				if (focusedWidget == this->editPopupMenu)
+				{
+					isInsidePopup = true;
+					break;
+				}
+				focusedWidget = focusedWidget->getParent();
+			}
+
+			// If no menu item has focus, hide the menu
+			if (false == isInsidePopup)
+			{
+				this->editPopupMenu = nullptr;
+			}
+		}
+	}
+
 	// Prevent scene manipulation, when user does something in GUI
 	if (nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget()/* && false == this->simulating*/)
 	{

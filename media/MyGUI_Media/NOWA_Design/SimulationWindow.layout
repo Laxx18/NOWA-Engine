@@ -4,10 +4,10 @@
         <Property key="Movable" value="false"/>
         <Property key="Caption" value="Simulation"/>
         <Property key="Visible" value="true"/>
-		<Widget type="Button" skin="ButtonImage" position="10 5 29 26" name="playButton">
-            <Property key="StateSelected" value="true"/>
+		<Widget type="Button" skin="ButtonImage" position="15 5 29 26" name="playButton">
             <Property key="NeedToolTip" value="true"/>
             <Property key="ImageResource" value="PlayImage"/>
+			<Property key="ModeImage" value="true"/>
             <Property key="ImageGroup" value="States"/>
         </Widget>
         <Widget type="Button" skin="ButtonImage" position="45 5 29 26" name="undoButton">
@@ -48,6 +48,18 @@
             <Property key="ImageGroup" value="States"/>
         </Widget>
 		
+		<Widget type="Button" skin="ButtonImage" position="225 5 29 26" name="cameraSpeedUpButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="CameraSpeedUpImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+        <Widget type="Button" skin="ButtonImage" position="255 5 29 26" name="cameraSpeedDownButton">
+            <Property key="NeedToolTip" value="true"/>
+            <Property key="ImageResource" value="CameraSpeedDownImage"/>
+			<Property key="ModeImage" value="true"/>
+            <Property key="ImageGroup" value="States"/>
+        </Widget>
+		
     </Widget>
-    <CodeGeneratorSettings/>
 </MyGUI>

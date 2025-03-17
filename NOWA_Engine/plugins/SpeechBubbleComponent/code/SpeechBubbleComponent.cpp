@@ -224,20 +224,28 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		this->indices = 0;
+		this->currentCaptionWidth = 0.0f;
+		this->currentCaptionHeight = 0.0f;
 		this->currentCharIndex = 0;
 		this->timeSinceLastChar = 0.0f;
 		this->timeSinceLastRun = 0.0f;
 		this->speechDone = false;
+		this->couldDraw = false;
+		this->bIsInSimulation = false;
 
 		if (nullptr != this->simpleSoundComponent)
 		{
 			this->simpleSoundComponent->setActivated(false);
 		}
 
-		this->destroySpeechBubble();
+		if (nullptr != this->gameObjectTitleComponent)
+		{
+			this->gameObjectTitleComponent = nullptr;
+			this->simpleSoundComponent = nullptr;
+		}
 
-		this->gameObjectTitleComponent = nullptr;
-		this->simpleSoundComponent = nullptr;
+		this->destroySpeechBubble();
 
 		return true;
 	}
@@ -394,7 +402,7 @@ namespace NOWA
 		{
 			if (false == activated)
 			{
-				this->destroySpeechBubble();
+		
 				if (nullptr != this->gameObjectTitleComponent)
 				{
 					this->gameObjectTitleComponent->getMovableText()->setVisible(false);
@@ -508,11 +516,12 @@ namespace NOWA
 
 	void SpeechBubbleComponent::setKeepCaption(bool keepCaption)
 	{
+		this->keepCaption->setValue(keepCaption);
 	}
 
 	bool SpeechBubbleComponent::getKeepCaption(void) const
 	{
-		return false;
+		return this->keepCaption->getBool();
 	}
 
 	void SpeechBubbleComponent::reactOnSpeechDone(luabind::object closureFunction)
@@ -603,15 +612,10 @@ namespace NOWA
 				return;
 			}
 
-			// Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + (Ogre::Vector3(0.0f, this->currentCaptionHeight, 0.0f) * 0.5f);
-			Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
 			Ogre::Quaternion o = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedOrientation();
+			Ogre::Vector3 p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() + Ogre::Vector3(0.0f, this->currentCaptionHeight * 1.2f, 0.0f);
 			Ogre::Vector3 sp = Ogre::Vector3::ZERO;
 			Ogre::Quaternion so = Ogre::Quaternion::IDENTITY;
-
-			// Ogre::Vector3  p = this->gameObjectTitleComponent->getMovableText()->getParentSceneNode()->_getDerivedPosition() * Ogre::Vector3(this->gameObjectTitleComponent->getAlignment().x, this->gameObjectTitleComponent->getAlignment().y, 1.0f);
-			 // 	- Ogre::Vector3(0.0f, this->currentCaptionHeight * 0.5f, 0.0f);
-
 
 			// https://stackoverflow.com/questions/3477988/how-can-a-programmatically-draw-a-scalable-aethetically-pleasing-curved-comic
 
@@ -733,8 +737,8 @@ namespace NOWA
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "string getCaption()", "Gets the caption text.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setSpeechDuration(float speechDuration)", "Sets the speed duration. That is how long the bubble shall remain in seconds.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "float getSpeechDuration()", "Gets the speed duration. That is how long the bubble shall remain in seconds.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets whether to use a sound if the speech is running char by char.");
-		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether to use a sound if the speech is running char by char.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setKeepCaption(bool keepCaption)", "Sets to keep the caption after the run speech is done.");
+		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getKeepCaption()", "Gets whether the caption after the run speech is done is kept.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void setRunSpeechSound(bool runSpeechSound)", "Sets whether the caption should remain after the speech run.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "bool getRunSpeechSound()", "Gets whether the caption is remained after the speech run.");
 		LuaScriptApi::getInstance()->addClassToCollection("SpeechBubbleComponent", "void reactOnSpeechDone(func closureFunction)", "Sets whether to react if a speech is done.");

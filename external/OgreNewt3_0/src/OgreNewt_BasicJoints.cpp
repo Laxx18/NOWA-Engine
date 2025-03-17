@@ -1367,11 +1367,12 @@ namespace OgreNewt
 	{
 	}
 
-	void UpVector::setPin(const Ogre::Vector3& pin)
+	void UpVector::setPin(const Body* body, const Ogre::Vector3& pin)
 	{
 		dCustomUpVector* supportJoint = static_cast<dCustomUpVector*>(m_joint);
 		dVector dPin(m_pin.x, m_pin.y, m_pin.z, 1.0f);
-		supportJoint->SetPinDir(dPin);
+
+		supportJoint->SetPinDir(dPin, body->getNewtonBody());
 	}
 
 	const Ogre::Vector3& UpVector::getPin() const

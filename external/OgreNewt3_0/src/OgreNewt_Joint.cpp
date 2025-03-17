@@ -29,7 +29,7 @@ namespace OgreNewt
 	{
 		if (m_joint)
 		{
-			NewtonWaitForUpdateToFinish(world->getNewtonWorld());
+			// NewtonWaitForUpdateToFinish(world->getNewtonWorld());
 			m_joint->SetUserData(nullptr);
 			m_joint->SetUserDestructorCallback(nullptr);
 			NewtonDestroyJoint(world->getNewtonWorld(), m_joint->GetJoint());

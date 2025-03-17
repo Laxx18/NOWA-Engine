@@ -1776,6 +1776,7 @@ namespace NOWA
 					{
 						hlmsTextureManager->destroyTexture(texture);
 						texture = nullptr;
+						return;
 					}
 
 					const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);

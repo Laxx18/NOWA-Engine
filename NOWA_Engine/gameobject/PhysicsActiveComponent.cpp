@@ -32,7 +32,6 @@ namespace NOWA
 		gravitySourceCategory(new Variant(PhysicsActiveComponent::AttrGravitySourceCategory(), Ogre::String(), this->attributes)),
 		linearDamping(new Variant(PhysicsActiveComponent::AttrLinearDamping(), Ogre::Real(0.1f), this->attributes)),
 		angularDamping(new Variant(PhysicsActiveComponent::AttrAngularDamping(), Ogre::Vector3(0.1f, 0.1f, 0.1f), this->attributes)),
-		force(new Variant(PhysicsActiveComponent::AttrForce(), Ogre::Vector3::ZERO, this->attributes)),
 		continuousCollision(new Variant(PhysicsActiveComponent::AttrContinuousCollision(), false, this->attributes)),
 		maxSpeed(new Variant(PhysicsActiveComponent::AttrMaxSpeed(), Ogre::Real(5.0f), this->attributes)),
 		speed(new Variant(PhysicsActiveComponent::AttrSpeed(), Ogre::Real(1.0f), this->attributes)),
@@ -48,20 +47,32 @@ namespace NOWA
 		planeConstraint(nullptr),
 		hasAttraction(false),
 		hasSpring(false),
-		omegaForce(Ogre::Vector3::ZERO),
-		canAddOmegaForce(false),
-		forceForVelocity(Ogre::Vector3::ZERO),
-		canAddForceForVelocity(false),
-		bResetForce(false),
 		bIsInSimulation(false),
-		clampedOmega(0.0f),
 		lastTime(0.0),
 		dt(0.0f),
 		usesBounds(false),
 		minBounds(Ogre::Vector3::ZERO),
 		maxBounds(Ogre::Vector3::ZERO),
-		gravityDirection(Ogre::Vector3::ZERO)
+		gravityDirection(Ogre::Vector3::ZERO),
+		currentGravityStrength(0.0f)
 	{
+		this->forceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->forceCommand.pending.store(false);
+		this->forceCommand.inProgress.store(false);
+
+		this->requiredVelocityForForceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->requiredVelocityForForceCommand.pending.store(false);
+		this->requiredVelocityForForceCommand.inProgress.store(false);
+
+		this->jumpForceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->jumpForceCommand.pending.store(false);
+		this->jumpForceCommand.inProgress.store(false);
+
+		this->omegaForceCommand.vectorValue = Ogre::Vector3::ZERO;
+		this->omegaForceCommand.pending.store(false);
+		this->omegaForceCommand.inProgress.store(false);
+
+
 		this->collisionType->setValue({ "ConvexHull", "ConcaveHull", "Box", "Capsule", "ChamferCylinder", "Cone", "Cylinder", "Ellipsoid", "Pyramid" });
 
 		/*
@@ -273,8 +284,6 @@ namespace NOWA
 		clonedCompPtr->setAngularDamping(this->angularDamping->getVector3());
 		clonedCompPtr->setGravity(this->gravity->getVector3());
 		clonedCompPtr->setGravitySourceCategory(this->gravitySourceCategory->getString());
-		// clonedCompPtr->applyAngularImpulse(this->angularImpulse);
-		// clonedCompPtr->applyForce(this->force->getVector3());
 		clonedCompPtr->setConstraintDirection(this->constraintDirection->getVector3());
 		clonedCompPtr->setContinuousCollision(this->continuousCollision->getBool());
 		clonedCompPtr->setSpeed(this->speed->getReal());
@@ -827,6 +836,11 @@ namespace NOWA
 		return this->angularDamping->getVector3();
 	}
 
+	Ogre::Real PhysicsActiveComponent::getCurrentGravityStrength(void) const
+	{
+		return this->currentGravityStrength;
+	}
+
 	void PhysicsActiveComponent::setGyroscopicTorqueEnabled(bool gyroscopicTorque)
 	{
 		this->gyroscopicTorque->setValue(gyroscopicTorque);
@@ -851,9 +865,11 @@ namespace NOWA
 		return this->physicsBody->getOmega();
 	}
 
-	Ogre::Vector3 PhysicsActiveComponent::getGravityDirection(void) const
+	Ogre::Vector3 PhysicsActiveComponent::getGravityDirection(void)
 	{
-		return this->gravityDirection;
+		// Ensures the latest updated gravity value is read
+		while (false == gravityUpdated.test_and_set());  // Waits until a new update is available
+		return gravityDirection;
 	}
 
 	void PhysicsActiveComponent::setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
@@ -884,32 +900,77 @@ namespace NOWA
 
 	void PhysicsActiveComponent::applyOmegaForce(const Ogre::Vector3& omegaForce)
 	{
-		this->omegaForce = omegaForce;
-		this->canAddOmegaForce = true;
+		// Set the command values
+		this->omegaForceCommand.vectorValue = omegaForce;
+
+		// Mark as pending - this will be seen by the physics thread
+		this->omegaForceCommand.pending.store(true);
 	}
 
 	void PhysicsActiveComponent::applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength)
 	{
 		if (nullptr == this->physicsBody)
+		{
+			return;
+		}
+
+		// Compute difference in orientation
+		Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
+
+		// Convert quaternion difference to angular velocity
+		Ogre::Vector3 angularVelocity;
+		Ogre::Degree angle;
+		Ogre::Vector3 rotationAxis;
+
+		diffOrientation.ToAngleAxis(angle, rotationAxis);
+
+		// Ensure the rotation axis is valid (ToAngleAxis can return zero rotation)
+		if (rotationAxis.isZeroLength())
 			return;
 
-		Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
-		Ogre::Vector3 resultVector = Ogre::Vector3::ZERO;
+		// Scale by strength
+		angularVelocity = rotationAxis * angle.valueRadians() * strength;
 
-		if (axes.x == 1.0f)
+		// Filter by axes
+		angularVelocity.x *= axes.x;
+		angularVelocity.y *= axes.y;
+		angularVelocity.z *= axes.z;
+
+		// Apply omega force
+		this->applyOmegaForce(angularVelocity);
+	}
+
+	void PhysicsActiveComponent::applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength)
+	{
+		if (nullptr == this->physicsBody)
 		{
-			resultVector.x = diffOrientation.getPitch().valueRadians() * strength;
+			return;
 		}
-		if (axes.y == 1.0f)
+
+		// Get the current forward direction from the physics body's orientation
+		Ogre::Vector3 currentDir = this->physicsBody->getOrientation() * this->gameObjectPtr->getDefaultDirection();
+
+		// Compute the rotation required to align currentDir with targetDir
+		Ogre::Quaternion rotationQuat = currentDir.getRotationTo(resultDirection);
+
+		// Convert quaternion rotation into angular velocity
+		Ogre::Vector3 angularVelocity;
+		Ogre::Degree angle;
+		Ogre::Vector3 rotationAxis;
+
+		rotationQuat.ToAngleAxis(angle, rotationAxis);
+
+		// Ensure the rotation axis is valid (ToAngleAxis can return zero rotation)
+		if (rotationAxis.isZeroLength())
 		{
-			resultVector.y = diffOrientation.getYaw().valueRadians() * strength;
+			return;
 		}
-		if (axes.z == 1.0f)
-		{
-			resultVector.z = diffOrientation.getRoll().valueRadians() * strength;
-		}
-	
-		this->applyOmegaForce(resultVector);
+
+		// Scale angular velocity by rotation strength
+		angularVelocity = rotationAxis * angle.valueRadians() * strength;
+
+		// Apply omega force to rotate towards the desired direction
+		this->applyOmegaForce(angularVelocity);
 	}
 
 	void PhysicsActiveComponent::addImpulse(const Ogre::Vector3& deltaVector)
@@ -938,7 +999,6 @@ namespace NOWA
 
 	void PhysicsActiveComponent::resetForce(void)
 	{
-		this->bResetForce = true;
 		if (nullptr != this->physicsBody)
 		{
 			this->physicsBody->setVelocity(Ogre::Vector3::ZERO);
@@ -948,15 +1008,37 @@ namespace NOWA
 
 	void PhysicsActiveComponent::applyForce(const Ogre::Vector3& force)
 	{
-		this->force->setValue(force);
+		if (force != Ogre::Vector3::ZERO)
+		{
+			// Set the command values
+			this->forceCommand.vectorValue = force;
+
+			// Mark as pending - this will be seen by the physics thread
+			this->forceCommand.pending.store(true);
+		}
 	}
 
 	void PhysicsActiveComponent::applyRequiredForceForVelocity(const Ogre::Vector3& velocity)
 	{
-		this->forceForVelocity = velocity;
-		if (Ogre::Vector3::ZERO != this->forceForVelocity)
+		if (velocity != Ogre::Vector3::ZERO)
 		{
-			this->canAddForceForVelocity = true;
+			// Set the command values
+			this->requiredVelocityForForceCommand.vectorValue = velocity;
+
+			// Mark as pending - this will be seen by the physics thread
+			this->requiredVelocityForForceCommand.pending.store(true);
+		}
+	}
+
+	void PhysicsActiveComponent::applyRequiredForceForJumpVelocity(const Ogre::Vector3& velocity)
+	{
+		if (velocity != Ogre::Vector3::ZERO)
+		{
+			// Set the command values
+			this->jumpForceCommand.vectorValue = velocity;
+
+			// Mark as pending - this will be seen by the physics thread
+			this->jumpForceCommand.pending.store(true);
 		}
 	}
 
@@ -968,7 +1050,7 @@ namespace NOWA
 
 	Ogre::Vector3 PhysicsActiveComponent::getCurrentForceForVelocity(void) const
 	{
-		return this->forceForVelocity;
+		return this->requiredVelocityForForceCommand.vectorValue;
 	}
 
 	Ogre::Vector3 PhysicsActiveComponent::getForce(void) const
@@ -1007,7 +1089,9 @@ namespace NOWA
 	{
 		this->gravity->setValue(gravity);
 		if (nullptr != this->physicsBody)
+		{
 			this->physicsBody->setGravity(gravity);
+		}
 	}
 
 	const Ogre::Vector3 PhysicsActiveComponent::getGravity(void) const
@@ -1117,13 +1201,23 @@ namespace NOWA
 #if 1
 	void PhysicsActiveComponent::setConstraintDirection(const Ogre::Vector3& constraintDirection)
 	{
-		this->releaseConstraintDirection();
+		if (true == constraintDirection.isZeroLength())
+		{
+			if (nullptr != this->upVector)
+			{
+				this->releaseConstraintDirection();
+			}
+		}
 
 		this->constraintDirection->setValue(constraintDirection);
 		// Only set pin, if there is no constraint axis, because constraint axis also uses pin
-		if (nullptr != this->physicsBody && Ogre::Vector3::ZERO != this->constraintDirection->getVector3())
+		if (nullptr != this->physicsBody && Ogre::Vector3::ZERO != constraintDirection && nullptr == this->upVector)
 		{
-			this->upVector = new OgreNewt::UpVector(this->physicsBody, this->constraintDirection->getVector3());
+			this->upVector = new OgreNewt::UpVector(this->physicsBody, constraintDirection);
+		}
+		else if (nullptr != this->upVector)
+		{
+			this->upVector->setPin(this->physicsBody, constraintDirection);
 		}
 	}
 
@@ -1223,11 +1317,6 @@ namespace NOWA
 	bool PhysicsActiveComponent::getContinuousCollision(void) const
 	{
 		return this->continuousCollision->getBool();
-	}
-
-	void PhysicsActiveComponent::setClampOmega(Ogre::Real clampValue)
-	{
-		this->clampedOmega = clampValue;
 	}
 		
 	void PhysicsActiveComponent::setAsSoftBody(bool asSoftBody)
@@ -1568,24 +1657,165 @@ namespace NOWA
 		}
 	}
 
+	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds, bool useLocalOrientation)
+	{
+		GameObject* gameObject = nullptr;
+		Ogre::Real height = 500.0f; // Default invalid value for checking
+		Ogre::Real slope = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+		Ogre::Vector3 charPoint = Ogre::Vector3::ZERO;
+		Ogre::Vector3 rayEndPoint = Ogre::Vector3::ZERO;
+		Ogre::Vector3 targetDir = Ogre::Vector3::ZERO;
+
+		if (false == useLocalOrientation)
+		{
+			targetDir = this->gravityDirection.isZeroLength() ? Ogre::Vector3::NEGATIVE_UNIT_Y : this->gravityDirection;
+			charPoint = this->physicsBody->getPosition() + offset;
+			rayEndPoint = charPoint + (targetDir * 500.0f);
+		}
+		else
+		{
+			// Compute the world-space position of the offset point (where the ray starts)
+			charPoint = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
+
+			// Compute the local downward direction, transformed into world space
+			targetDir = this->physicsBody->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Y;
+
+			// Compute the end point of the ray by extending it downward
+			rayEndPoint = charPoint + (targetDir * 500.0f); // 500 units below
+		}
+
+		// Create ray along the rotated downward direction
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+
+		if (this->bShowDebugData || forceDrawLine)
+		{
+			// Get a key from id and user index to match a line when drawing is enabled
+			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactBelow";
+			auto& it = this->drawLineMap.find(key);
+			if (it == this->drawLineMap.cend())
+			{
+				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				debugLineObject->setQueryFlags(0 << 0);
+				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				debugLineObject->setCastShadows(false);
+				debugLineNode->attachObject(debugLineObject);
+				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(charPoint);
+				debugLineObject->index(0);
+				debugLineObject->position(rayEndPoint);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+			else
+			{
+				Ogre::ManualObject* debugLineObject = it->second.second;
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(charPoint);
+				debugLineObject->index(0);
+				debugLineObject->position(rayEndPoint);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+		}
+
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		if (info.mBody)
+		{
+			unsigned int type = info.mBody->getType();
+			unsigned int finalType = type & categoryIds;
+			
+			if (type == finalType)
+			{
+				Ogre::String name = info.mBody->getOgreNode()->getName();
+				// Scale distance according to the ray length
+				height = info.mDistance * 500.0f;
+
+				// Compute the angle between gravity direction and the surface normal
+				normal = info.mNormal;
+				slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
+
+				try
+				{
+					// Get associated GameObject
+					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+					if (tempNode)
+					{
+						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
+					}
+					else
+					{
+						return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+					}
+				}
+				catch (...)
+				{
+					return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+				}
+			}
+		}
+		return PhysicsActiveComponent::ContactData(gameObject, height, normal, slope);
+	}
+
 	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAhead(int index, const Ogre::Vector3& offset, Ogre::Real length, bool forceDrawLine, unsigned int categoryIds)
 	{
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f;
 		Ogre::Real slope = 0.0f;
 		Ogre::Vector3 normal = Ogre::Vector3::UNIT_SCALE * 100.0f;
+		Ogre::Vector3 rayEndPoint = Ogre::Vector3::ZERO;
+		Ogre::Vector3 targetDir = Ogre::Vector3::ZERO;
 
-		// raycast in direction of the object
-		Ogre::Vector3 direction = this->physicsBody->getOrientation() * this->gameObjectPtr->getDefaultDirection();
-		// get the position relative to direction and an offset
-		Ogre::Vector3 position = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
+		// Get the default direction (mesh forward direction)
+		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
 
-		// get the position relative to direction and an offset
-		Ogre::Vector3 fromPosition = position;
-		Ogre::Vector3 toPosition = position + (direction * length);
+		// Create a rotation from the Z-axis to the default direction
+		Ogre::Quaternion defaultRot = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDir);
 
-		// shoot the ray in that direction
-		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
+		// Apply both the default rotation and the body's orientation to the offset
+		Ogre::Vector3 charPoint = this->physicsBody->getPosition() +
+			(this->physicsBody->getOrientation() * defaultRot * offset);
+
+		// Get the forward direction in world space
+		Ogre::Vector3 forwardDir = this->physicsBody->getOrientation() * defaultDir;
+
+		// If we have a gravity direction, we need to adjust our "ahead" direction to be perpendicular to gravity
+		if (false == this->gravityDirection.isZeroLength())
+		{
+			// Project the forward direction onto the plane perpendicular to gravity
+			// by removing the component of forward that's parallel to gravity
+			Ogre::Real dot = forwardDir.dotProduct(this->gravityDirection);
+			forwardDir = forwardDir - (this->gravityDirection * dot);
+
+			// If after projection we have a zero vector (rare case where forward was exactly parallel to gravity)
+			// we need a fallback direction
+			if (true == forwardDir.isZeroLength())
+			{
+				// Create an arbitrary perpendicular vector to gravity
+				if (this->gravityDirection != Ogre::Vector3::UNIT_X)
+				{
+					forwardDir = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				else
+				{
+					forwardDir = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_Y);
+				}
+			}
+
+			// Normalize to ensure we have a unit direction
+			forwardDir.normalise();
+		}
+
+		// Compute the end point of the ray by extending it in the forward direction
+		rayEndPoint = charPoint + (forwardDir * length);
+
+		// Create ray along the adjusted forward direction
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
 		
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
@@ -1597,15 +1827,15 @@ namespace NOWA
 				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 				debugLineObject->setCastShadows(false);
 				debugLineNode->attachObject(debugLineObject);
 				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
 				debugLineObject->clear();
 				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
+				debugLineObject->position(charPoint);
 				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
+				debugLineObject->position(rayEndPoint);
 				debugLineObject->index(1);
 				debugLineObject->end();
 			}
@@ -1614,9 +1844,9 @@ namespace NOWA
 				Ogre::ManualObject* debugLineObject = it->second.second;
 				debugLineObject->clear();
 				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
+				debugLineObject->position(charPoint);
 				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
+				debugLineObject->position(rayEndPoint);
 				debugLineObject->index(1);
 				debugLineObject->end();
 			}
@@ -1668,25 +1898,166 @@ namespace NOWA
 			}
 		}
 		return std::move(PhysicsActiveComponent::ContactData(gameObject, height, normal, slope));
-
 	}
 
-	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, 
+	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds, bool useLocalOrientation)
+	{
+		GameObject* gameObject = nullptr;
+		Ogre::Real height = 500.0f; // Default invalid value for checking
+		Ogre::Real slope = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+		Ogre::Vector3 charPoint = Ogre::Vector3::ZERO;
+		Ogre::Vector3 rayEndPoint = Ogre::Vector3::ZERO;
+		Ogre::Vector3 targetDir = Ogre::Vector3::ZERO;
+
+		if (false == useLocalOrientation)
+		{
+			targetDir = this->gravityDirection.isZeroLength() ? Ogre::Vector3::UNIT_Y : -this->gravityDirection;
+			charPoint = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
+			rayEndPoint = charPoint + (targetDir * 500.0f);
+		}
+		else
+		{
+			// Compute the world-space position of the offset point (where the ray starts)
+			charPoint = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
+
+			// Compute the local downward direction, transformed into world space
+			targetDir = this->physicsBody->getOrientation() * Ogre::Vector3::UNIT_Y;
+
+			// Compute the end point of the ray by extending it downward
+			rayEndPoint = charPoint + (targetDir * 500.0f); // 500 units below
+		}
+
+		// Create ray along the rotated downward direction
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
+
+		// Debug drawing
+		if (this->bShowDebugData || forceDrawLine)
+		{
+			Ogre::Vector3 fromPosition = charPoint;
+			Ogre::Vector3 toPosition = rayEndPoint;
+
+			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactAbove";
+			auto& it = this->drawLineMap.find(key);
+			if (it == this->drawLineMap.cend())
+			{
+				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				debugLineObject->setQueryFlags(0 << 0);
+				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				debugLineObject->setCastShadows(false);
+				debugLineNode->attachObject(debugLineObject);
+				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(fromPosition);
+				debugLineObject->index(0);
+				debugLineObject->position(toPosition);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+			else
+			{
+				Ogre::ManualObject* debugLineObject = it->second.second;
+				debugLineObject->clear();
+				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+				debugLineObject->position(fromPosition);
+				debugLineObject->index(0);
+				debugLineObject->position(toPosition);
+				debugLineObject->index(1);
+				debugLineObject->end();
+			}
+		}
+
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		if (info.mBody)
+		{
+			unsigned int type = info.mBody->getType();
+			unsigned int finalType = type & categoryIds;
+			if (type == finalType)
+			{
+				// Convert distance to world units
+				height = info.mDistance * 500.0f;
+
+				// Compute slope using gravity direction
+				normal = info.mNormal;
+				slope = Ogre::Math::ACos(-targetDir.dotProduct(normal) / (targetDir.length() * normal.length())).valueDegrees();
+
+				try
+				{
+					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+					if (tempNode)
+					{
+						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
+					}
+					else
+					{
+						return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+					}
+				}
+				catch (...)
+				{
+					return PhysicsActiveComponent::ContactData(nullptr, height, normal, slope);
+				}
+			}
+		}
+
+		return PhysicsActiveComponent::ContactData(gameObject, height, normal, slope);
+	}
+
+	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset,
 		Ogre::Real from, Ogre::Real to, bool forceDrawLine, unsigned int categoryIds)
 	{
 		GameObject* gameObject = nullptr;
 		Ogre::Real height = 500.0f;
 		Ogre::Real slope = 0.0f;
 		Ogre::Vector3 normal = Ogre::Vector3::UNIT_SCALE * 100.0f;
-		// raycast in direction of the object
-		Ogre::Vector3 position = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
-	
-		// get the position relative to direction and an offset
-		Ogre::Vector3 fromPosition = position + (direction * from);
-		Ogre::Vector3 toPosition = position + (direction * to);
 
+		// Get the default direction (mesh forward direction)
+		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
+
+		// Create a rotation from the Z-axis to the default direction
+		Ogre::Quaternion defaultRot = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDir);
+
+		// Apply both the default rotation and the body's orientation to the offset
+		Ogre::Vector3 position = this->physicsBody->getPosition() +
+			(this->physicsBody->getOrientation() * defaultRot * offset);
+
+		// Adjust the direction based on gravity if needed
+		Ogre::Vector3 adjustedDirection = direction;
+		if (false == this->gravityDirection.isZeroLength())
+		{
+			// Project the direction onto the plane perpendicular to gravity
+			Ogre::Real dot = direction.dotProduct(this->gravityDirection);
+			adjustedDirection = direction - (this->gravityDirection * dot);
+
+			// If after projection we have a zero vector, we need a fallback direction
+			if (true == adjustedDirection.isZeroLength())
+			{
+				// Create an arbitrary perpendicular vector to gravity
+				if (this->gravityDirection != Ogre::Vector3::UNIT_X)
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				else
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_Y);
+				}
+			}
+
+			// Normalize to ensure we have a unit direction
+			adjustedDirection.normalise();
+		}
+
+		// Calculate the start and end positions for the ray
+		Ogre::Vector3 fromPosition = position + (adjustedDirection * from);
+		Ogre::Vector3 toPosition = position + (adjustedDirection * to);
+
+		// Create ray
 		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
-		
+
 		if (true == this->bShowDebugData || true == forceDrawLine)
 		{
 			// Get a key from id and user index to match a line, when line drawing is set to on
@@ -1721,200 +2092,8 @@ namespace NOWA
 				debugLineObject->end();
 			}
 		}
-		
+
 		// get contact result
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-		if (info.mBody)
-		{
-			unsigned int type = info.mBody->getType();
-			unsigned int finalType = type & categoryIds;
-			if (type == finalType)
-			{
-				//* 500 da bei der distanz ein Wert zwischen [0,1] rauskommt also zb. 0.0019
-				//Die Distanz ist relativ zur Länge des Raystrahls
-				//d. h. wenn der Raystrahl nichts mehr trifft wird in diesem Fall
-				//die Distanz > 500, da prozentural, es wird vorher skaliert
-				height = info.mDistance * 500.0f;
-
-				//Y
-				//|
-				//|___ Normale
-				//Winkel zwischen Y-Richtung und der normalen eines Objektes errechnen
-				Ogre::Vector3 vec = Ogre::Vector3::UNIT_Y;
-				normal = info.mNormal;
-				slope = Ogre::Math::ACos(vec.dotProduct(normal) / (vec.length() * normal.length())).valueDegrees();
-
-				try
-				{
-					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-					if (tempNode)
-					{
-						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
-						// PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(info.mBody->getUserData());
-						// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-						// return physicsComponent->getOwner().get();
-					}
-					else
-					{
-						return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
-					}
-				}
-				catch (...)
-				{
-					// if its a game object or else, catch the throw and return from the function
-					return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
-				}
-			}
-		}
-		return std::move(PhysicsActiveComponent::ContactData(gameObject, height, normal, slope));
-	}
-
-	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactBelow(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds)
-	{
-		GameObject* gameObject = nullptr;
-		Ogre::Real height = 500.0f; // Default invalid value for checking
-		Ogre::Real slope = 0.0f;
-		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-		// Anfangsposition
-		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + offset;
-		// Strahl von Anfangsposition bis 500 Meter nach unten erzeugen
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f, true);
-
-		if (true == this->bShowDebugData || true == forceDrawLine)
-		{
-			Ogre::Vector3 fromPosition = charPoint;
-			Ogre::Vector3 toPosition = charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f;
-
-			// Get a key from id and user index to match a line, when line drawing is set to on
-			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactBelow";
-			auto& it = this->drawLineMap.find(key);
-			if (it == this->drawLineMap.cend())
-			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
-			}
-			else
-			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
-			}
-		}
-
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-		if (info.mBody)
-		{
-			unsigned int type = info.mBody->getType();
-			unsigned int finalType = type & categoryIds;
-			if (type == finalType)
-			{
-				//* 500 da bei der distanz ein Wert zwischen [0,1] rauskommt also zb. 0.0019
-				//Die Distanz ist relativ zur Länge des Raystrahls
-				//d. h. wenn der Raystrahl nichts mehr trifft wird in diesem Fall
-				//die Distanz > 500, da prozentural, es wird vorher skaliert
-				height = info.mDistance * 500.0f;
-
-				//Y
-				//|
-				//|___ Normale
-				//Winkel zwischen Y-Richtung und der normalen eines Objektes errechnen
-				Ogre::Vector3 vec = Ogre::Vector3::UNIT_Y;
-				normal = info.mNormal;
-				slope = Ogre::Math::ACos(vec.dotProduct(normal) / (vec.length() * normal.length())).valueDegrees();
-
-				try
-				{
-					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-					if (tempNode)
-					{
-						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
-						// PhysicsComponent* physicsComponent = OgreNewt::any_cast<PhysicsComponent*>(info.mBody->getUserData());
-						// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-						// return physicsComponent->getOwner().get();
-					}
-					else
-					{
-						return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
-					}
-				}
-				catch (...)
-				{
-					// if its a game object or else, catch the throw and return from the function
-					return std::move(PhysicsActiveComponent::ContactData(nullptr, height, normal, slope));
-				}
-			}
-		}
-		return std::move(PhysicsActiveComponent::ContactData(gameObject, height, normal, slope));
-	}
-
-	PhysicsActiveComponent::ContactData PhysicsActiveComponent::getContactAbove(int index, const Ogre::Vector3& offset, bool forceDrawLine, unsigned int categoryIds)
-	{
-		GameObject* gameObject = nullptr;
-		Ogre::Real height = 500.0f; // Default invalid value for checking
-		Ogre::Real slope = 0.0f;
-		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-		// Anfangsposition
-		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + offset;
-		// Strahl von Anfangsposition bis 500 Meter nach unten erzeugen
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::UNIT_Y * 500.0f, true);
-
-		if (true == this->bShowDebugData || true == forceDrawLine)
-		{
-			Ogre::Vector3 fromPosition = charPoint;
-			Ogre::Vector3 toPosition = charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f;
-
-			// Get a key from id and user index to match a line, when line drawing is set to on
-			Ogre::String key = std::to_string(this->gameObjectPtr->getId()) + std::to_string(index) + "getContactBelow";
-			auto& it = this->drawLineMap.find(key);
-			if (it == this->drawLineMap.cend())
-			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
-			}
-			else
-			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
-			}
-		}
-
 		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
 		if (info.mBody)
 		{
@@ -1965,15 +2144,52 @@ namespace NOWA
 	GameObject* PhysicsActiveComponent::getContact(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, 
 		Ogre::Real from, Ogre::Real to, bool forceDrawLine, unsigned int categoryIds)
 	{
-		Ogre::Vector3 tempDirection = this->physicsBody->getOrientation() * direction;
 		GameObject* gameObject = nullptr;
-		// raycast in direction of the object
-		Ogre::Vector3 position = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
-		// get the position relative to direction and an offset
+		Ogre::Real height = 500.0f;
+		Ogre::Real slope = 0.0f;
+		Ogre::Vector3 normal = Ogre::Vector3::UNIT_SCALE * 100.0f;
 
-		Ogre::Vector3 fromPosition = position + (tempDirection * from);
-		Ogre::Vector3 toPosition = position + (tempDirection * to);
+		// Get the default direction (mesh forward direction)
+		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
 
+		// Create a rotation from the Z-axis to the default direction
+		Ogre::Quaternion defaultRot = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDir);
+
+		// Apply both the default rotation and the body's orientation to the offset
+		Ogre::Vector3 position = this->physicsBody->getPosition() +
+			(this->physicsBody->getOrientation() * defaultRot * offset);
+
+		// Adjust the direction based on gravity if needed
+		Ogre::Vector3 adjustedDirection = direction;
+		if (false == this->gravityDirection.isZeroLength())
+		{
+			// Project the direction onto the plane perpendicular to gravity
+			Ogre::Real dot = direction.dotProduct(this->gravityDirection);
+			adjustedDirection = direction - (this->gravityDirection * dot);
+
+			// If after projection we have a zero vector, we need a fallback direction
+			if (true == adjustedDirection.isZeroLength())
+			{
+				// Create an arbitrary perpendicular vector to gravity
+				if (this->gravityDirection != Ogre::Vector3::UNIT_X)
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				else
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_Y);
+				}
+			}
+
+			// Normalize to ensure we have a unit direction
+			adjustedDirection.normalise();
+		}
+
+		// Calculate the start and end positions for the ray
+		Ogre::Vector3 fromPosition = position + (adjustedDirection * from);
+		Ogre::Vector3 toPosition = position + (adjustedDirection * to);
+
+		// Create ray
 		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
 
 		if (true == forceDrawLine)
@@ -1986,7 +2202,7 @@ namespace NOWA
 				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
 				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 				debugLineObject->setCastShadows(false);
 				debugLineNode->attachObject(debugLineObject);
 				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
@@ -2037,10 +2253,48 @@ namespace NOWA
 
 	bool PhysicsActiveComponent::getFixedContactToDirection(int index, const Ogre::Vector3& direction, const Ogre::Vector3& offset, Ogre::Real scale, unsigned int categoryIds)
 	{
-		// raycast in direction of the object
-		Ogre::Vector3 position = this->physicsBody->getPosition() + (this->physicsBody->getOrientation() * offset);
-		// get the position relative to direction and an offset
-		OgreNewt::BasicRaycast ray(this->ogreNewt, position, position + (direction * scale), true);
+		// Get the default direction (mesh forward direction)
+		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
+
+		// Create a rotation from the Z-axis to the default direction
+		Ogre::Quaternion defaultRot = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDir);
+
+		// Apply both the default rotation and the body's orientation to the offset
+		Ogre::Vector3 position = this->physicsBody->getPosition() +
+			(this->physicsBody->getOrientation() * defaultRot * offset);
+
+		// Adjust the direction based on gravity if needed
+		Ogre::Vector3 adjustedDirection = direction;
+		if (false == this->gravityDirection.isZeroLength())
+		{
+			// Project the direction onto the plane perpendicular to gravity
+			Ogre::Real dot = direction.dotProduct(this->gravityDirection);
+			adjustedDirection = direction - (this->gravityDirection * dot);
+
+			// If after projection we have a zero vector, we need a fallback direction
+			if (true == adjustedDirection.isZeroLength())
+			{
+				// Create an arbitrary perpendicular vector to gravity
+				if (this->gravityDirection != Ogre::Vector3::UNIT_X)
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_X);
+				}
+				else
+				{
+					adjustedDirection = this->gravityDirection.crossProduct(Ogre::Vector3::UNIT_Y);
+				}
+			}
+
+			// Normalize to ensure we have a unit direction
+			adjustedDirection.normalise();
+		}
+
+		// Calculate the start and end positions for the ray
+		Ogre::Vector3 fromPosition = position + adjustedDirection;
+		Ogre::Vector3 toPosition = position + (adjustedDirection * scale);
+
+		// Create ray
+		OgreNewt::BasicRaycast ray(this->ogreNewt, fromPosition, toPosition, true);
 
 		// get contact result
 		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
@@ -2076,10 +2330,25 @@ namespace NOWA
 	Ogre::Real PhysicsActiveComponent::determineGameObjectHeight(const Ogre::Vector3& positionOffset1, const Ogre::Vector3& positionOffset2, unsigned int categoryIds)
 	{
 		Ogre::Real height = 500.0f;
-		//Anfangsposition
-		Ogre::Vector3 charPoint = this->physicsBody->getPosition() + positionOffset1;
-		//Straht von Anfangsposition bis 500 Meter nach unten erzeugen
-		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f, true);
+
+		// Get the default direction (mesh forward direction)
+		Ogre::Vector3 defaultDir = this->gameObjectPtr->getDefaultDirection();
+
+		// Create a rotation from the Z-axis to the default direction
+		Ogre::Quaternion defaultRot = Ogre::Vector3::UNIT_Z.getRotationTo(defaultDir);
+
+		// Apply both the default rotation and the body's orientation to the positionOffset1
+		Ogre::Vector3 charPoint = this->physicsBody->getPosition() +
+			(this->physicsBody->getOrientation() * defaultRot * positionOffset1);
+
+		// Compute the local downward direction, transformed into world space
+		Ogre::Vector3 localDown = this->physicsBody->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Y;
+
+		// Compute the end point of the ray by extending it downward
+		Ogre::Vector3 rayEndPoint = charPoint + (localDown * 500.0f); // 500 units below
+
+		// Create ray along the rotated downward direction
+		OgreNewt::BasicRaycast ray(this->ogreNewt, charPoint, rayEndPoint, true);
 
 		OgreNewt::BasicRaycast::BasicRaycastInfo& info = ray.getFirstHit();
 		if (info.mBody)
@@ -2090,9 +2359,10 @@ namespace NOWA
 			{
 				height = info.mDistance * 500.0f;
 
-				charPoint = this->physicsBody->getPosition() + positionOffset2;
-				//Straht von Anfangsposition bis 500 Meter nach unten erzeugen
-				ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + Ogre::Vector3::NEGATIVE_UNIT_Y * 500.0f, true);
+				Ogre::Vector3 charPoint = this->physicsBody->getPosition() +
+					(this->physicsBody->getOrientation() * defaultRot * positionOffset2);
+
+				ray = OgreNewt::BasicRaycast(this->ogreNewt, charPoint, charPoint + rayEndPoint, true);
 				info = ray.getFirstHit();
 				if (info.mBody)
 				{
@@ -2279,23 +2549,18 @@ namespace NOWA
 		Ogre::Vector3 wholeForce = body->getGravity();
 		Ogre::Real mass = 0.0f;
 		Ogre::Vector3 inertia = Ogre::Vector3::ZERO;
-		this->gravityDirection = Ogre::Vector3::ZERO;
-
-		// Dangerous: Causes newton crash!
-		// Clamp omega, when activated (should only be rarely the case!)
-		/*if (0.0f != this->clampedOmega)
-		{
-			Ogre::Vector3 omega = body->getOmega();
-			Ogre::Real mag2 = omega.dotProduct(omega);
-			if (mag2 > (this->clampedOmega * this->clampedOmega))
-			{
-				omega = omega.normalise() * this->clampedOmega;
-				body->setOmega(omega);
-			}
-		}*/
+		this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
 
 		Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
 		GameObjectPtr nearestGravitySourceObject;
+
+		// calculate gravity
+		body->getMassMatrix(mass, inertia);
+
+		if (false == this->hasAttraction)
+		{
+			wholeForce *= mass;
+		}
 
 		if (false == this->gravitySourceCategory->getString().empty())
 		{
@@ -2318,71 +2583,124 @@ namespace NOWA
 				auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
 				if (nullptr != gravitySourcePhysicsComponentPtr)
 				{
-					wholeForce = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-					Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
-					// * this->mass->getReal() is commented out, because mass is multiplicated below: wholeForce *= mass;
-					Ogre::Real strength = (this->gravity->getVector3().y /** this->mass->getReal()*/ * gravitySourcePhysicsComponentPtr->getMass()) / (squaredDistanceToGravitySource);
+					Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
+					directionToPlanet.normalise();
 
-					wholeForce.normalise();
+					// Ensures constant acceleration of e.g. -19.8 m/s²
+					Ogre::Real gravityAcceleration = -this->gravity->getVector3().length(); // Should be e.g. 19.8
 
-					this->gravityDirection = wholeForce;
+					this->gravityDirection = -directionToPlanet;
+					wholeForce = directionToPlanet * (mass * gravityAcceleration); // F = m * a
 
-					// Also orientate, if pin is active
-					if (nullptr != this->upVector)
+					// Store the current gravity strength for jump normalization
+					this->currentGravityStrength = gravityAcceleration;
+					// Mark gravity as updated
+					this->gravityUpdated.test_and_set();
+
+					/*if (nullptr != this->upVector)
 					{
-						this->upVector->setPin(wholeForce);
-					}
-					wholeForce *= strength;
+						this->setConstraintDirection(directionToPlanet.crossProduct(this->getOrientation() * this->gameObjectPtr->getDefaultDirection()));
+					}*/
+
+					// More realistic planetary scenario: Depending on planet size, gravity is much harder or slower like on the moon:
+					// Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();
+					// Ogre::Real strength = (gravityAcceleration * gravitySourcePhysicsComponentPtr->getMass()) / squaredDistanceToGravitySource;
+					// wholeForce = directionToPlanet * (mass * strength);
 				}
 			}
-		}
-		// calculate gravity
-		body->getMassMatrix(mass, inertia);
+			else
+			{
+				this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+				this->currentGravityStrength = 0.0f;
 
-		if (false == this->hasAttraction)
-		{
-			wholeForce *= mass;
-		}
-
-		// Add force does stress, when using simultanously on lots of objects, especially in a lua script!
-
-		// Add custom force, if set from the outside
-		if (Ogre::Vector3::ZERO != this->force->getVector3() || true == this->bResetForce)
-		{
-			body->addForce(this->force->getVector3());
-			this->force->setValue(Ogre::Vector3::ZERO);
-			this->bResetForce = false;
+				this->gravityUpdated.clear();
+			}
 		}
 
-		// Calculate required force for the given velocity
-		if (true == this->canAddForceForVelocity)
+		// Checks if a force command is pending
+		if (this->forceCommand.pending.load())
 		{
-			// http://www.ogre3d.org/addonforums/viewtopic.php?f=4&t=9810&p=57245&hilit=force#p57245
-			// http://newtondynamics.com/forum/viewtopic.php?f=9&t=7613&p=52138&hilit=NewtonBodyCalculateInverseDynamicsForce#p52138
+			// Try to claim this command
+			bool expected = false;
+			if (this->forceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				Ogre::Vector3 forceToApply = this->forceCommand.vectorValue;
+				body->addForce(forceToApply);
 
-			// Ogre::Vector3 currentVelocity = body->getVelocityAtPoint(body->getPosition());
+				// Mark command as no longer pending
+				this->forceCommand.pending.store(false);
 
-			Ogre::Vector3 moveForce = (this->forceForVelocity - body->getVelocity()) * mass / timeStep;
-			wholeForce += moveForce;
-
-			this->forceForVelocity = Ogre::Vector3::ZERO;
-			this->canAddForceForVelocity = false;
+				// Release the command
+				this->forceCommand.inProgress.store(false);
+			}
 		}
 
-		// add if set a angular torque to rotate an object
-		//if (true == this->canAddAngularTorqueForce)
-		//{
-		//	body->setTorque(this->angularTorqueForce); // does not work? Crashes after a while especially when called from lua script
-		//	this->angularTorqueForce = Ogre::Vector3::ZERO;
-		//	this->canAddAngularTorqueForce = false;
-		//}
-
-		// add if set a angular impulse to rotate an object
-		if (true == this->canAddOmegaForce || true == this->bResetForce)
+		// Checks if a required force for velocity command is pending
+		if (this->requiredVelocityForForceCommand.pending.load())
 		{
-			body->setBodyAngularVelocity(this->omegaForce, timeStep);
-			this->omegaForce = Ogre::Vector3::ZERO;
-			this->canAddOmegaForce = false;
+			// Try to claim this command
+			bool expected = false;
+			if (this->requiredVelocityForForceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				// We've claimed the command
+
+				// Get the velocity to apply
+				Ogre::Vector3 velocityToApply = this->requiredVelocityForForceCommand.vectorValue;
+
+				// Calculate and apply the force
+				Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
+				body->addForce(moveForce);
+
+				// Mark command as no longer pending
+				this->requiredVelocityForForceCommand.pending.store(false);
+
+				// Release the command
+				this->requiredVelocityForForceCommand.inProgress.store(false);
+			}
+		}
+
+		// Checks if a jump force command is pending
+		if (this->jumpForceCommand.pending.load())
+		{
+			// Try to claim this command
+			bool expected = false;
+			if (this->jumpForceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				// We've claimed the command
+
+				// Get the velocity to apply
+				Ogre::Vector3 velocityToApply = this->jumpForceCommand.vectorValue;
+
+				// Calculate and apply the force
+				Ogre::Vector3 moveForce = (velocityToApply - body->getVelocity()) * mass / timeStep;
+				body->addForce(moveForce);
+
+				// Mark command as no longer pending
+				this->jumpForceCommand.pending.store(false);
+
+				// Release the command
+				this->jumpForceCommand.inProgress.store(false);
+			}
+		}
+
+		// Checks if an omage force command is pending
+		if (this->omegaForceCommand.pending.load())
+		{
+			// Try to claim this command
+			bool expected = false;
+			if (this->omegaForceCommand.inProgress.compare_exchange_strong(expected, true))
+			{
+				// Get the omega force to apply
+				Ogre::Vector3 omegaForceToApply = this->omegaForceCommand.vectorValue;
+
+				body->setBodyAngularVelocity(omegaForceToApply, timeStep);
+
+				// Mark command as no longer pending
+				this->omegaForceCommand.pending.store(false);
+
+				// Release the command
+				this->omegaForceCommand.inProgress.store(false);
+			}
 		}
 
 		/////////////////Force observer//////////////////////////////////////////

@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--<MyGUI type="Layout">
-    <Widget type="Widget" skin="PanelSkin" position="544 232 158 158" layer="ToolTip" name="_Main">
-        <Widget type="EditBox" skin="WordWrapEmpty" position="8 8 145 68" align="Stretch" name="text_Desc" />
-    </Widget>
-</MyGUI>-->
-
 <MyGUI type="Layout">
     <Widget type="Widget" skin="PanelSmall" position="200 480 144 32" layer="ToolTip" name="tooltipPanel">
         <Property key="Widget_Visible" value="false"/>
@@ -13,6 +7,7 @@
             <Property key="Edit_Static" value="true"/>
             <Property key="Text_TextAlign" value="Left Top"/>
             <Property key="Widget_Caption" value="[ToolTip Info]"/>
+			<Property key="TextColour" value="1 1 1"/>
         </Widget>
     </Widget>
 </MyGUI>
