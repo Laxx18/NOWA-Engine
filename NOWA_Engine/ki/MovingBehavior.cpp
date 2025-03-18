@@ -2433,11 +2433,13 @@ namespace NOWA
 
 			// Apply the physics velocity according to the resulting behavior
 			Ogre::Vector3 resultVelocity = this->calculate(dt);
+			Ogre::Vector3 gravityDir = this->agent->getGravityDirection();
 
 			if (nullptr != this->crowdComponent)
 			{
 				if (Ogre::Vector3::ZERO != resultVelocity)
 				{
+					// TODO: gravityDir for planets movement
 					this->crowdComponent->setVelocity(resultVelocity);
 					resultVelocity = this->crowdComponent->beginUpdateVelocity();
 				}
@@ -2518,6 +2520,7 @@ namespace NOWA
 
 				*/
 
+				// TODO: gravityDir for planet movement
 				physicsPlayerControllerComponent->move(this->agent->getSpeed() * resultVelocity.length(), 0.0f, heading);
 			}
 			else
@@ -2529,30 +2532,22 @@ namespace NOWA
 					Ogre::Vector3 targetVelocity = Ogre::Vector3::ZERO;
 					if (false == this->flyMode)
 					{
-						// resultVelocity.y = 0.0f;
-						// forceForVelocity = Ogre::Vector3(0.0f, -1.0f, 0.0f) + resultVelocity;
-						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
+						// Compute vertical velocity along the gravity direction
+						Ogre::Vector3 verticalVelocity = gravityDir * this->agent->getVelocity().dotProduct(gravityDir);
+
+						// Compute movement direction (excluding vertical component)
+						Ogre::Vector3 directionMove = resultVelocity - (resultVelocity.dotProduct(gravityDir) * gravityDir);
+
+						// Combine vertical velocity with movement direction
+						targetVelocity = verticalVelocity + directionMove;
 					}
 					else
 					{
-						
-						// FlyMode is active, control Y-velocity explicitly
-						// Apply a damping factor or limit to prevent runaway speeds
-						Ogre::Real maxYVelocity = this->agent->getSpeed();
-						resultVelocity.y = Ogre::Math::Clamp(resultVelocity.y, -1.0f, maxYVelocity);
-
-						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
-
-						// Optionally, add a small damping effect to smooth out movement if needed
-						// Ogre::Real damping = 0.95f;
-						// targetVelocity.y = physicsActiveKinematicComponent->getVelocity().y * damping; // Apply damping to prevent runaway
+						// In fly mode, use resultVelocity directly
+						targetVelocity = resultVelocity;
 					}
-					
-					physicsActiveKinematicComponent->setVelocity(targetVelocity);
 
-					// Internally velocity is re-calculated in force, that is required to keep up with the set velocity
-					
-					// physicsActiveKinematicComponent->setVelocity(resultVelocity);
+					physicsActiveKinematicComponent->setVelocity(targetVelocity);
 
 					if (Ogre::Vector3::ZERO != resultVelocity)
 					{
@@ -2567,12 +2562,14 @@ namespace NOWA
 						if (true == this->autoOrientation)
 						{
 							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
-							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
+							
+							Ogre::Vector3 desiredAngularVelocity = -gravityDir * newOrientation.getYaw().valueDegrees();
+
+							this->agent->setOmegaVelocity(desiredAngularVelocity);
 						}
 						else
 						{
-							this->agent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
+							this->agent->setOmegaVelocityRotateTo(newOrientation, gravityDir);
 						}
 					}
 				}
@@ -2580,33 +2577,42 @@ namespace NOWA
 				else
 				{
 					Ogre::Vector3 forceForVelocity = Ogre::Vector3::ZERO;
+
 					if (false == this->flyMode)
 					{
-						resultVelocity.y = 0.0f;
-						// forceForVelocity = Ogre::Vector3(0.0f, -1.0f, 0.0f) + resultVelocity;
-						forceForVelocity = this->agent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) + resultVelocity;
+						// Compute vertical velocity along the gravity direction
+						Ogre::Vector3 verticalVelocity = gravityDir * this->agent->getVelocity().dotProduct(gravityDir);
+
+						// Compute movement direction (excluding vertical component)
+						Ogre::Vector3 directionMove = resultVelocity - (resultVelocity.dotProduct(gravityDir) * gravityDir);
+
+						// Combine vertical velocity with movement direction
+						forceForVelocity = verticalVelocity + directionMove;
 					}
 					else
 					{
+						// In fly mode, use resultVelocity directly
 						forceForVelocity = resultVelocity;
 					}
 
+					// Apply the calculated force
 					this->agent->applyRequiredForceForVelocity(forceForVelocity);
-				
-					// Only orientate, if the character is moving, else he will be always orientated to its origin, which looks odd
-					if (Ogre::Vector3::ZERO != resultVelocity)
-					{
-						Ogre::Quaternion newOrientation = this->agent->getOrientation();
 
-						if (true == this->autoOrientation)
-						{
-							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							this->agent->applyOmegaForce(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
-						}
-						else
-						{
-							this->agent->applyOmegaForceRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
-						}
+				
+					Ogre::Quaternion newOrientation = this->agent->getOrientation();
+
+					if (true == this->autoOrientation)
+					{
+						newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
+
+						// Compute desired yaw rotation (normal movement)
+						Ogre::Vector3 desiredAngularVelocity = -gravityDir * newOrientation.getYaw().valueDegrees();
+
+						this->agent->applyOmegaForce(desiredAngularVelocity);
+					}
+					else
+					{
+						this->agent->applyOmegaForceRotateTo(newOrientation, gravityDir);
 					}
 				}
 			}

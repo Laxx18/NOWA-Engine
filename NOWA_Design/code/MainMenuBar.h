@@ -57,6 +57,8 @@ public:
 	void drawNavigationMap(bool bDraw);
 
 	void drawCollisionLines(bool bDraw);
+
+	void toggleMyGUIComponents(bool bToggleMyGUIComponents);
 private:
 	void notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuItem* item);
 
@@ -78,6 +80,7 @@ private:
 	void handleSceneValid(NOWA::EventDataPtr eventData);
 	void handleProjectEncoded(NOWA::EventDataPtr eventData);
 	void handleLuaError(NOWA::EventDataPtr eventData);
+	void handleSceneInvalid(NOWA::EventDataPtr eventData);
 	void notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch, const std::string& selectedText);
 	void onClickUrl(MyGUI::HyperTextBox* sender, const std::string& url);
 
@@ -163,6 +166,10 @@ private:
 	bool bDrawNavigationMesh;
 	bool bDrawCollisionLines;
 	bool bTestSelectedGameObjects;
+
+	bool bToggleMyGUIComponents;
+	// Map to store the visibility state of each MyGUIComponent
+	std::unordered_map<NOWA::MyGUIComponent*, bool> componentVisibilityMap;
 };
 
 #endif

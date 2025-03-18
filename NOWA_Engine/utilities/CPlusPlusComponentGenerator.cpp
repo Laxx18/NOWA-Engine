@@ -543,10 +543,10 @@ namespace NOWA
 				writeVariable += "0\"));\n";   // Default case
 			}
 
-			writeVariable += "\t\tpropertyXML->append_attribute(doc.allocate_attribute(\"name\", \"" + capitalize(variant.getName()) + "\"));\n";
+			writeVariable += "\t\tpropertyXML->append_attribute(doc.allocate_attribute(\"name\", \"" + capitalize(variant.getName()) + "\");\n";
 
 			// Assuming a method to convert to string representation
-			writeVariable += "\t\tpropertyXML->append_attribute(doc.allocate_attribute(\"data\", XMLConverter::ConvertString(doc, this->" + variant.getName() + "->" + variant.getStrGetter() + ")));\n";
+			writeVariable += "\t\tpropertyXML->append_attribute(doc.allocate_attribute(\"data\", XMLConverter::ConvertString(doc, this->" + variant.getName() + "->" + variant.getStrGetter() + ")))\n";
 			writeVariable += "\t\tpropertiesXML->append_node(propertyXML);\n";
 
 			if (sourceContent.find(writeVariable) == Ogre::String::npos)

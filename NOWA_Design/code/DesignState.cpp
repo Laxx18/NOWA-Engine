@@ -82,6 +82,9 @@ void DesignState::enter(void)
 	this->selectQuery = nullptr;
 	this->undoPressed = false;
 	this->editPopupMenu = nullptr;
+	this->isMouseAtTop = false;
+	this->guiVisible = true;
+	this->mouseTopTimer = 0.0f;
 
 	// Register the tree control
 	MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -743,14 +746,6 @@ void DesignState::enableWidgets(bool enable)
 	{
 		this->resourcesPanel->setVisible(enable);
 	}
-	/*if (nullptr != this->simulationWindow)
-	{
-		this->simulationWindow->setVisible(enable);
-	}*/
-	/*if (nullptr != this->manipulationWindow)
-	{
-		this->manipulationWindow->setVisible(enable);
-	}*/
 }
 
 void DesignState::simulate(bool pause, bool withUndo)
@@ -1686,6 +1681,25 @@ void DesignState::update(Ogre::Real dt)
 	{
 		this->shutdown();
 	}
+
+	// Update mouse top timer if mouse is at top
+	if (true == this->isMouseAtTop)
+	{
+		this->mouseTopTimer += dt;
+
+		// If timer exceeds the delay, toggle GUI visibility
+		if (this->mouseTopTimer >= MOUSE_TOP_DELAY)
+		{
+			this->mouseTopTimer = 0.0f; // Reset timer
+			this->guiVisible = !this->guiVisible; // Toggle visibility
+
+			// Toggle visibility of all your MyGUI widgets
+			this->toggleGuiVisibility(this->guiVisible);
+
+			// Reset flag to prevent repeated toggling
+			this->isMouseAtTop = false;
+		}
+	}
 }
 
 void DesignState::lateUpdate(Ogre::Real dt)
@@ -1892,6 +1906,26 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 
 	// Close (destroy) the menu after selection
 	MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
+}
+
+void DesignState::toggleGuiVisibility(bool visible)
+{
+	if (nullptr != this->propertiesPanel)
+	{
+		this->propertiesPanel->setVisible(visible);
+	}
+	if (nullptr != this->resourcesPanel)
+	{
+		this->resourcesPanel->setVisible(visible);
+	}
+	if (nullptr != this->simulationWindow)
+	{
+		this->simulationWindow->setVisible(visible);
+	}
+	if (nullptr != this->manipulationWindow)
+	{
+		this->manipulationWindow->setVisible(visible);
+	}
 }
 
 bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
@@ -2269,8 +2303,24 @@ void DesignState::processUnbufferedMouseInput(Ogre::Real dt)
 
 bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 {
+	// Prevent scene manipulation, when user does something in GUI
+	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
+
 	if (false == this->simulating)
 	{
+		if (nullptr == widget)
+		{
+			// Check if mouse is at the top of the screen
+			bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
+
+			// If mouse just entered or left the top region, reset timer
+			if (isNowAtTop != this->isMouseAtTop)
+			{
+				this->mouseTopTimer = 0.0f;
+				this->isMouseAtTop = isNowAtTop;
+			}
+		}
+
 		if (evt.state.buttonDown(OIS::MB_Middle))
 		{
 			Ogre::MovableObject* movableObject = nullptr;
@@ -2287,8 +2337,6 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 		}
 	}
 
-	// Prevent scene manipulation, when user does something in GUI
-	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 	if (nullptr != widget && false == this->simulating)
 	{
 		// If mouse wheel has been pressed, search for the scroll view in panel view parenting and simulate scrolling manually, because it does not work in MyGUI :(

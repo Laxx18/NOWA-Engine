@@ -52,6 +52,7 @@
 	<Tag name="Flashlight">Flashlight</Tag>
 	<Tag name="Pause">Pause</Tag>
 	<Tag name="Grid">Grid</Tag>
+	<Tag name="ToggleMyGuiComponents">Toggle MyGui Components</Tag>
 	
 	<Tag name="Key_Up">Up</Tag>
 	<Tag name="Key_Down">Down</Tag>

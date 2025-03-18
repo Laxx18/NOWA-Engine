@@ -54,7 +54,10 @@ namespace NOWA
 		minBounds(Ogre::Vector3::ZERO),
 		maxBounds(Ogre::Vector3::ZERO),
 		gravityDirection(Ogre::Vector3::ZERO),
-		currentGravityStrength(0.0f)
+		currentGravityStrength(0.0f),
+		up(Ogre::Vector3::ZERO),
+		forward(Ogre::Vector3::ZERO),
+		right(Ogre::Vector3::ZERO)
 	{
 		this->forceCommand.vectorValue = Ogre::Vector3::ZERO;
 		this->forceCommand.pending.store(false);
@@ -351,6 +354,9 @@ namespace NOWA
 
 	bool PhysicsActiveComponent::disconnect(void)
 	{
+		this->up = Ogre::Vector3::ZERO;
+		this->forward = Ogre::Vector3::ZERO;
+		this->right = Ogre::Vector3::ZERO;
 		this->resetForce();
 		this->destroyLineMap();
 
@@ -360,6 +366,65 @@ namespace NOWA
 	void PhysicsActiveComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		this->bIsInSimulation = !notSimulating;
+
+		if (true == this->bIsInSimulation)
+		{
+			// Get the gravity direction from the physics component
+			if (true == this->gravityDirection.isZeroLength())
+			{
+				// Default on a plane or terrain
+				this->gravityDirection = Ogre::Vector3::UNIT_Y;
+			}
+
+			// Calculates orientation vectors relative to planet surface
+			this->up = -this->gravityDirection;
+			// Gets the mesh's default direction
+			Ogre::Vector3 defaultDirection = this->gameObjectPtr->getDefaultDirection();
+
+			// Stores current entity rotation as quaternion
+			Ogre::Quaternion currentRotation = this->getOrientation();
+
+			// Calculates forward vector based on the current rotation and the default direction
+			// First, gets the forward direction in the character's local space
+			this->forward = currentRotation * defaultDirection;
+			// Projects it onto the plane perpendicular to up vector
+			this->forward = forward - up * forward.dotProduct(up);
+
+			if (this->forward.squaredLength() < 0.001f * 0.001f) // = 0.000001f
+			{
+				// Fallback if forward is too small
+				// Use a vector perpendicular to up that's close to our preferred direction
+				Ogre::Vector3 worldForward;
+				if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_Z;
+				}
+				else if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_X) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_X;
+				}
+				else
+				{
+					worldForward = Ogre::Vector3::UNIT_Y;
+				}
+
+				// Find a suitable forward vector perpendicular to up
+				this->forward = worldForward - up * worldForward.dotProduct(up);
+				if (this->forward.squaredLength() < 0.001f * 0.001f)
+				{
+					this->forward = up.crossProduct(Ogre::Vector3(1.0f, 0.0f, 0.0f));
+					if (this->forward.squaredLength() < 0.001f * 0.001f)
+					{
+						this->forward = up.crossProduct(Ogre::Vector3(0.0f, 0.0f, 1.0f));
+					}
+				}
+			}
+			this->forward.normalise();
+
+			// Calculate right from forward and up (ensures orthogonality)
+			this->right = this->forward.crossProduct(up);
+			this->right.normalise();
+		}
 
 		if (true == this->usesBounds)
 		{
@@ -2541,6 +2606,21 @@ namespace NOWA
 			debugLineObject = nullptr;
 		}
 		this->drawLineMap.clear();
+	}
+
+	Ogre::Vector3 PhysicsActiveComponent::getUp(void) const
+	{
+		return this->up;
+	}
+
+	Ogre::Vector3 PhysicsActiveComponent::getRight(void) const
+	{
+		return this->right;
+	}
+
+	Ogre::Vector3 PhysicsActiveComponent::getForward(void) const
+	{
+		return this->forward;
 	}
 
 	void PhysicsActiveComponent::moveCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)

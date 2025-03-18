@@ -6266,9 +6266,6 @@ namespace NOWA
 			.def("getHitGameObjectBelow", &PlayerControllerComponent::getHitGameObjectBelow)
 			.def("getHitGameObjectFront", &PlayerControllerComponent::getHitGameObjectFront)
 			.def("getHitGameObjectUp", &PlayerControllerComponent::getHitGameObjectUp)
-			.def("getUp", &PlayerControllerComponent::getUp)
-			.def("getRight", &PlayerControllerComponent::getRight)
-			.def("getForward", &PlayerControllerComponent::getForward)
 			.def("getIsFallen", &PlayerControllerComponent::getIsFallen)
 			.def("reactOnAnimationFinished", &PlayerControllerComponent::reactOnAnimationFinished)
 		];
@@ -6299,9 +6296,6 @@ namespace NOWA
 		AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectFront()", "Gets the game object, that has been hit in front of the player. Note: Always check against nil.");
 		AddClassToCollection("PlayerControllerComponent", "GameObject getHitGameObjectBelow()", "Gets the game object, that has been hit up the player. Note: Always check against nil.");
 		
-		AddClassToCollection("PlayerControllerComponent", "Vector3 getUp()", "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.");
-		AddClassToCollection("PlayerControllerComponent", "Vector3 getRight()", "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.");
-		AddClassToCollection("PlayerControllerComponent", "Vector3 getForward()", "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.");
 		AddClassToCollection("PlayerControllerComponent", "bool getIsFallen()", "Gets whether the player is fallen, that is: Player has usually its upright posture, but if he fels down due to some forces, this will be detected for reaction.");
 
 		AddClassToCollection("PlayerControllerComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
@@ -10427,6 +10421,9 @@ namespace NOWA
 			.def("getLinearDamping", &PhysicsActiveComponent::getLinearDamping)
 			.def("setAngularDamping", &PhysicsActiveComponent::setAngularDamping)
 			.def("getAngularDamping", &PhysicsActiveComponent::getAngularDamping)
+			.def("getUp", &PhysicsActiveComponent::getUp)
+			.def("getRight", &PhysicsActiveComponent::getRight)
+			.def("getForward", &PhysicsActiveComponent::getForward)
 			.def("translate", &PhysicsActiveComponent::translate)
 			.def("addImpulse", &PhysicsActiveComponent::addImpulse)
 			.def("setVelocity", &PhysicsActiveComponent::setVelocity)
@@ -10588,6 +10585,10 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "bool getContinuousCollision()", "Gets whether continuous collision mode is used.");
 		AddClassToCollection("PhysicsActiveComponent", "void setAngularDamping(Vector3 angularDamping)", "Sets the angular damping. Range: [0, 1]");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getAngularDamping()", "Gets the angular damping.");
+
+		AddClassToCollection("PhysicsActiveComponent", "Vector3 getUp()", "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.");
+		AddClassToCollection("PhysicsActiveComponent", "Vector3 getRight()", "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.");
+		AddClassToCollection("PhysicsActiveComponent", "Vector3 getForward()", "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.");
 
 		AddClassToCollection("PhysicsActiveComponent", "ContactData getContactAhead(int index,  Vector3 offset, float length, bool forceDrawLine, string categoryIds)", "Gets a contact data if there was a physics ray contact a head of the physics body. "
 			"The direction is for the ray direction to shoot and the offset, at which offset position away from the physics component. "

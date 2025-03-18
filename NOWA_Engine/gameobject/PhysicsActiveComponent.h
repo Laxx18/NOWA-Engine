@@ -477,6 +477,12 @@ namespace NOWA
 		 * @param[in]	onContactFunctionName		The function name to set
 		 */
 		void setOnContactFunctionName(const Ogre::String& onContactFunctionName);
+
+		Ogre::Vector3 getUp(void) const;
+
+		Ogre::Vector3 getRight(void) const;
+
+		Ogre::Vector3 getForward(void) const;
 	public:
 		static const Ogre::String AttrActivated(void) { return "Activated"; }
 		static const Ogre::String AttrForce(void) { return "Force"; }
@@ -570,6 +576,10 @@ namespace NOWA
 		Ogre::Vector3 gravityDirection;
 		Ogre::Real currentGravityStrength;
 		std::atomic_flag gravityUpdated = ATOMIC_FLAG_INIT;
+
+		Ogre::Vector3 up;
+		Ogre::Vector3 forward;
+		Ogre::Vector3 right;
 	};
 
 }; //namespace end

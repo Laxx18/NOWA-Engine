@@ -1118,10 +1118,10 @@
 			<position x="4.07081" y="-9.53674e-07" z="2.56241"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<entity name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2838543028"/>
@@ -1347,16 +1347,16 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="ManuallyControlled" data="true"/>
 				</userData>
-			</item>
+			</entity>
 		</node>
 		<node name="Flubber_0" id="2650477498">
 			<position x="-3.76524" y="0" z="2.16407"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<entity name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2671502223"/>
@@ -1582,7 +1582,7 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="12" name="ManuallyControlled" data="true"/>
 				</userData>
-			</item>
+			</entity>
 		</node>
 		<node name="Name_3" id="3612665400">
 			<position x="8.42311" y="1.56826" z="-10.0193"/>
@@ -2480,10 +2480,10 @@
 			<position x="17.0249" y="2.40406" z="7.15323"/>
 			<rotation qw="0.422618" qx="0" qy="0.906308" qz="0"/>
 			<scale x="1" y="1" z="1"/>
-			<item name="Flubber_2" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subitem index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subitem index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subitem index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
+			<entity name="Flubber_2" meshFile="Flubber.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
+				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3968932022"/>
@@ -2699,7 +2699,7 @@
 					<property type="7" name="Categories" data="Player"/>
 					<property type="12" name="TriggerPermanentely" data="false"/>
 				</userData>
-			</item>
+			</entity>
 		</node>
 		<node name="Name_0" id="3612666705">
 			<position x="15.2945" y="1.52864" z="-12.8305"/>

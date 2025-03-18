@@ -354,6 +354,12 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 		menuItem->hideItemChild();
 		menuItem->setEnabled(false);
 		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
+
+		menuItem = utilitiesMenuControl->addItem("toggleMyGuiVisibilityMenuItem", MyGUI::MenuItemType::Normal, Ogre::StringConverter::toString(id++));
+		menuItem->setCaptionWithReplacing("#{ToggleMyGuiComponents}");
+		menuItem->hideItemChild();
+		menuItem->setEnabled(false);
+		menuItem->eventMouseButtonClick += MyGUI::newDelegate(this, &MainMenuBar::buttonHit);
 	}
 
 	// Create Simulation items
@@ -403,6 +409,7 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
 }
 
 MainMenuBar::~MainMenuBar()
@@ -411,6 +418,7 @@ MainMenuBar::~MainMenuBar()
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
 
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->analysisWidgets);
 	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
@@ -483,6 +491,7 @@ void MainMenuBar::enableMenuEntries(bool enable)
 	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setEnabled(enable && nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()); // Draw navigation mesh
 	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setEnabled(enable); // Draw Collision Lines
 	this->utilitiesMenuItem->getItemChild()->getItemAt(8)->setEnabled(enable); // Optimize scene
+	this->utilitiesMenuItem->getItemChild()->getItemAt(9)->setEnabled(enable); // Toggle MyGUI Components
 
 	this->simulationMenuItem->getItemChild()->getItemAt(0)->setEnabled(enable); // control selected player
 	this->simulationMenuItem->getItemChild()->getItemAt(1)->setEnabled(enable); // test selected game objects
@@ -617,8 +626,9 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			{
 				boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-				this->projectManager->loadProject(item->getCaption(), index - 9);
-				RecentFilesManager::getInstance().setActiveFile(item->getCaption());
+				Ogre::String name = item->getCaption();
+				this->projectManager->loadProject(name, index - 9);
+				RecentFilesManager::getInstance().setActiveFile(name);
 				this->updateRecentFilesMenu();
 			}
 			break;
@@ -798,7 +808,13 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			this->projectManager->getEditorManager()->optimizeScene(true);
 			break;
 		}
-		case 50: // Control selected player
+		case 50: // Toggle MyGUI Components
+		{
+			this->bToggleMyGUIComponents = !this->bToggleMyGUIComponents;
+			this->toggleMyGUIComponents(this->bToggleMyGUIComponents);
+			break;
+		}
+		case 51: // Control selected player
 		{
 			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
 			{
@@ -811,7 +827,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			}
 			break;
 		}
-		case 51: // Test selected game objects
+		case 52: // Test selected game objects
 		{
 			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
 			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
@@ -819,12 +835,12 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
 			break;
 		}
-		case 52: // About
+		case 53: // About
 		{
 			this->showAboutWindow();
 			break;
 		}
-		case 53: // Scene description
+		case 54: // Scene description
 		{
 			this->showSceneDescriptionWindow();
 			break;
@@ -1023,6 +1039,8 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 		this->bDrawNavigationMesh = false;
 		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
+
+		// this->componentVisibilityMap.clear();
 	}
 }
 
@@ -1063,6 +1081,16 @@ void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 		// this->simulationWindow->setColour(MyGUI::Colour(0.6f, 0.1f, 0.1f));
 		this->simulationWindow->getCaptionWidget()->setTextColour(MyGUI::Colour::Red);
 		this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName() + ", Lua Errors: (" + Ogre::StringConverter::toString(this->errorCount) + ")");
+	}
+}
+
+void MainMenuBar::handleSceneInvalid(NOWA::EventDataPtr eventData)
+{
+	boost::shared_ptr<EventDataSceneInvalid> castEventData = boost::static_pointer_cast<EventDataSceneInvalid>(eventData);
+	if (-1 != castEventData->getRecentFileIndex())
+	{
+		RecentFilesManager::getInstance().removeRecentFile(castEventData->getRecentFileIndex());
+		this->updateRecentFilesMenu();
 	}
 }
 
@@ -1838,6 +1866,10 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
 	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
+	if (true == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
+	{
+		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+	}
 	NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
 }
 
@@ -1845,5 +1877,35 @@ void MainMenuBar::drawCollisionLines(bool bDraw)
 {
 	this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(bDraw);
 	NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
+}
+
+void MainMenuBar::toggleMyGUIComponents(bool bToggleMyGUIComponents)
+{
+	const auto& allMyGuiComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::MyGUIComponent>();
+
+	// Iterate through all MyGUI components
+	for (const auto& myGuiComponent : allMyGuiComponents)
+	{
+		// Check if the component visibility has been stored before
+		auto it = this->componentVisibilityMap.find(myGuiComponent.get());
+		if (it == this->componentVisibilityMap.end())
+		{
+			// If not found, store the current visibility state of the component
+			this->componentVisibilityMap[myGuiComponent.get()] = myGuiComponent->isActivated();
+		}
+
+		bool wasVisible = this->componentVisibilityMap[myGuiComponent.get()];
+		if (true == bToggleMyGUIComponents)
+		{
+			if (true == wasVisible)
+			{
+				myGuiComponent->setActivated(true);
+			}
+		}
+		else
+		{
+			myGuiComponent->setActivated(false);
+		}
+	}
 }
 

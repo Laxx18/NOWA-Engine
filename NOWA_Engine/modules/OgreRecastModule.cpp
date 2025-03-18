@@ -116,7 +116,7 @@ namespace NOWA
 
 	bool OgreRecastModule::hasNavigationMeshElements(void) const
 	{
-		return this->staticObstacles.size() > 0 || this->terraInputGeomCells.size() > 0;
+		return this->staticObstacles.size() > 0 || this->dynamicObstacles.size() > 0 || this->terraInputGeomCells.size() > 0;
 	}
 
 	void OgreRecastModule::addStaticObstacle(unsigned long id)
@@ -396,6 +396,11 @@ namespace NOWA
 
 	void OgreRecastModule::buildNavigationMesh(void)
 	{
+		if (true == this->staticObstacles.empty() && true == this->dynamicObstacles.empty() && true == this->terraInputGeomCells.empty())
+		{
+			return;
+		}
+
 		// Only recreate if flag is set (scene modified), because its an heavy process
 		if (true == this->mustRegenerate)
 		{
@@ -461,7 +466,9 @@ namespace NOWA
 
 			// Create input geom after TileCacheBuild is finished
 			this->createInputGeom();
-
+#if 0
+			// is done already above:
+			// this->hasValidNavMesh = this->detourTileCache->TileCacheBuild(entities, items);
 			if (true == this->terraInputGeomCells.empty())
 			{
 
@@ -470,6 +477,7 @@ namespace NOWA
 				// Rebuild tiles that touch inputGeom bounding box
 				this->detourTileCache->buildTiles(inputGeom);
 			}
+#endif
 
 			if (false == this->hasValidNavMesh)
 			{

@@ -29,6 +29,8 @@
 #include "OgreNewtModule.h"
 #include "DeployResourceModule.h"
 
+#include <filesystem>
+
 namespace NOWA
 {
 	DotSceneImportModule::DotSceneImportModule(Ogre::SceneManager* sceneManager)
@@ -253,6 +255,11 @@ namespace NOWA
 		// Project is always: "Projects/ProjectName/SceneName.scene"
 		// E.g.: "Projects/Plattformer/Level1/Level1.scene", "Projects/Plattformer/Level2.scene", "Projects/Plattformer/Level3.scene"
 		this->scenePath = projectPath + "/" + this->projectParameter.projectName + "/" + this->projectParameter.sceneName + "/" + this->projectParameter.sceneName + ".scene";
+
+		if (false == std::filesystem::exists(this->scenePath))
+		{
+			return false;
+		}
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule]: Begin Parsing scene: '" + this->scenePath + "' for resource group : '" + resourceGroupName + "'");
 

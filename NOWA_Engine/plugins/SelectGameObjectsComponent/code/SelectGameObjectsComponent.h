@@ -158,6 +158,10 @@ namespace NOWA
 
 		void select(unsigned long gameObjectId, bool bSelect);
 
+		void setActivatePlayerController(bool activatePlayerController); 
+
+		bool getActivatePlayerController(void) const;
+
 	public:
 		/**
 		* @see		GameObjectComponent::getStaticClassId
@@ -197,6 +201,7 @@ namespace NOWA
 		static const Ogre::String AttrCategories(void) { return "Categories"; }
 		static const Ogre::String AttrUseMultiSelection(void) { return "Use Multi Selection"; }
 		static const Ogre::String AttrUseSelectionRectangle(void) { return "Use Selection Rectangle"; }
+		static const Ogre::String AttrActivatePlayerController(void) { return "Activate Playercontroller"; }
 	protected:
 		/**
 		 * @brief		Actions on key pressed event.
@@ -272,6 +277,7 @@ namespace NOWA
 		Variant* useMultiSelection;
 		Variant* useSelectionRectangle;
 
+		Variant* activatePlayerController;
 	};
 
 }; // namespace end

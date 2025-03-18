@@ -132,6 +132,8 @@ namespace NOWA
 		*/
 		void changeSelectionObserver(ISelectionObserver* selectionObserver);
 
+		ISelectionObserver* getSelectionObserver(void) const;
+
 		void selectGameObjects(const Ogre::Vector2& leftTopCorner, const Ogre::Vector2& bottomRightCorner);
 
 		void clearSelection(void);

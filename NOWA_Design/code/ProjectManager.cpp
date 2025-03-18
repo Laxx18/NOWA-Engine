@@ -347,7 +347,8 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 		{
 			if (-1 != recentFileIndex)
 			{
-				RecentFilesManager::getInstance().removeRecentFile(recentFileIndex);
+				boost::shared_ptr<EventDataSceneInvalid> eventDataSceneInvalid(new EventDataSceneInvalid(recentFileIndex, projectFilePathName));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneInvalid);
 			}
 
 			// Trigger for main menu bar, that the recent list will be updated via this event

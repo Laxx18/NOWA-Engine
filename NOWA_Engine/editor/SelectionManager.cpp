@@ -355,6 +355,11 @@ namespace NOWA
 		}
 	}
 
+	SelectionManager::ISelectionObserver* SelectionManager::getSelectionObserver(void) const
+	{
+		return this->selectionObserver;
+	}
+
 	void SelectionManager::selectGameObjects(const Ogre::Vector2& leftTopCorner, const Ogre::Vector2& bottomRightCorner)
 	{
 		// Build the 2D rectangle

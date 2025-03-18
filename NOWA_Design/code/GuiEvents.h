@@ -443,5 +443,63 @@ private:
 	bool bActive;
 };
 
+//---------------------------------------------------------------------------------------------------------------------
+// EventDataSceneInvalid - Sent when a loaded scene is invalid
+//---------------------------------------------------------------------------------------------------------------------
+class EventDataSceneInvalid : public NOWA::BaseEventData
+{
+public:
+
+	EventDataSceneInvalid(unsigned char recentFileIndex, const Ogre::String& sceneFilePathName)
+		: recentFileIndex(recentFileIndex),
+		sceneFilePathName(sceneFilePathName)
+	{
+
+	}
+
+	static NOWA::EventType getStaticEventType(void)
+	{
+		return 0xeeab0010;
+	}
+
+	virtual const NOWA::EventType getEventType(void) const
+	{
+		return 0xeeab0010;
+	}
+
+	virtual void serialize(std::ostrstream& out) const
+	{
+
+	}
+
+	virtual void deserialize(std::istrstream& in)
+	{
+
+	}
+
+	virtual NOWA::EventDataPtr copy() const
+	{
+		return NOWA::EventDataPtr(new EventDataSceneInvalid(this->recentFileIndex, this->sceneFilePathName));
+	}
+
+	virtual const char* getName(void) const
+	{
+		return "EventDataSceneInvalid";
+	}
+
+	unsigned char getRecentFileIndex(void) const
+	{
+		return this->recentFileIndex;
+	}
+
+	Ogre::String getSceneFilePathName(void) const
+	{
+		this->sceneFilePathName;
+	}
+private:
+	unsigned char recentFileIndex;
+	Ogre::String sceneFilePathName;
+};
+
 #endif
 

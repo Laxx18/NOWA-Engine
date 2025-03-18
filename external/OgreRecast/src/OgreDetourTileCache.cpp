@@ -305,6 +305,11 @@ bool OgreDetourTileCache::TileCacheBuild(InputGeom *inputGeom)
 
     // Count the total size of all generated tiles of the tiled navmesh
     const dtNavMesh* nav = m_recast->m_navMesh;
+    if (nullptr == nav)
+    {
+        return false;
+    }
+
     int navmeshMemUsage = 0;
     for (int i = 0; i < nav->getMaxTiles(); ++i)
     {
@@ -312,8 +317,6 @@ bool OgreDetourTileCache::TileCacheBuild(InputGeom *inputGeom)
         if (tile->header)
             navmeshMemUsage += tile->dataSize;
     }
-
-
 
 //    printf("navmeshMemUsage = %.1f kB\n", navmeshMemUsage/1024.0f);
     Ogre::LogManager::getSingletonPtr()->logMessage("Navmesh Mem Usage = "+ Ogre::StringConverter::toString(navmeshMemUsage/1024.0f) +" kB");

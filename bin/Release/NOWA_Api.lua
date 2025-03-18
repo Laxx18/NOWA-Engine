@@ -21549,6 +21549,30 @@ return {
 				returns = "(boolean)",
 				valuetype = "boolean"
 			},
+			getUp =
+			{
+				type = "function",
+				description = "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getRight =
+			{
+				type = "function",
+				description = "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
+			getForward =
+			{
+				type = "function",
+				description = "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.",
+				args = "()",
+				returns = "(Vector3)",
+				valuetype = "Vector3"
+			},
 			getContactAhead =
 			{
 				type = "function",
@@ -23155,30 +23179,6 @@ return {
 				args = "()",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
-			},
-			getUp =
-			{
-				type = "function",
-				description = "Gets the player up vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet orientation or jumping.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getRight =
-			{
-				type = "function",
-				description = "Gets the player right vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet sideward movement.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
-			},
-			getForward =
-			{
-				type = "function",
-				description = "Gets the player forward vector. The nice thing is: Its independent of any orientation of the player. So it also can be used for planet forward movement.",
-				args = "()",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
 			},
 			getIsFallen =
 			{

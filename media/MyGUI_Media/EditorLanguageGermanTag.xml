@@ -52,6 +52,7 @@
 	<Tag name="Flashlight">Taschenlampe</Tag>
 	<Tag name="Pause">Pause</Tag>
 	<Tag name="Grid">Gitter</Tag>
+	<Tag name="ToggleMyGuiComponents">MyGui-Komponenten umschalten</Tag>
 	
 	<Tag name="Key_Up">Hoch</Tag>
 	<Tag name="Key_Down">Runter</Tag>

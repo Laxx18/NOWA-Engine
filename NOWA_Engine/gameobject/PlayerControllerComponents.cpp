@@ -110,9 +110,6 @@ namespace NOWA
 		hitGameObjectBelow(nullptr),
 		hitGameObjectFront(nullptr),
 		hitGameObjectUp(nullptr),
-		up(Ogre::Vector3::ZERO),
-		forward(Ogre::Vector3::ZERO),
-		right(Ogre::Vector3::ZERO),
 		timeFallen(0.0f),
 		isFallen(false),
 		fallThreshold(0.7f),
@@ -292,10 +289,6 @@ namespace NOWA
 		this->normal = Ogre::Vector3::ZERO;
 		this->priorValidHeight = 0.0f;
 		this->priorValidNormal = Ogre::Vector3::ZERO;
-
-		this->up = Ogre::Vector3::ZERO;
-		this->forward = Ogre::Vector3::ZERO;
-		this->right = Ogre::Vector3::ZERO;
 		this->timeFallen = 0.0f;
 
 		AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDrawnPath();
@@ -442,62 +435,6 @@ namespace NOWA
 
 			this->hitGameObjectUp = nullptr;
 			this->hitGameObjectUp = this->physicsActiveComponent->getContactAbove(5, Ogre::Vector3(0.0f, playerSize.y + 0.1f, 0.0f), showDebugData, this->categoriesId, true).getHitGameObject();
-
-			// Get the gravity direction from the physics component
-			Ogre::Vector3 gravityDirection = this->physicsActiveComponent->getGravityDirection();
-			if (true == gravityDirection.isZeroLength())
-			{
-				// Default on a plane or terrain
-				gravityDirection = Ogre::Vector3::UNIT_Y;
-			}
-
-			// Calculates orientation vectors relative to planet surface
-			this->up = -gravityDirection;
-			// Gets the mesh's default direction
-			Ogre::Vector3 defaultDirection = this->physicsActiveComponent->getOwner()->getDefaultDirection();
-
-			// Stores current entity rotation as quaternion
-			Ogre::Quaternion currentRotation = this->physicsActiveComponent->getOrientation();
-
-			// Calculates forward vector based on the current rotation and the default direction
-			// First, gets the forward direction in the character's local space
-			this->forward = currentRotation * defaultDirection;
-			// Projects it onto the plane perpendicular to up vector
-			this->forward = forward - up * forward.dotProduct(up);
-			if (this->forward.length() < 0.001f)
-			{
-				// Fallback if forward is too small
-				// Use a vector perpendicular to up that's close to our preferred direction
-				Ogre::Vector3 worldForward;
-				if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z) > 0.7f)
-				{
-					worldForward = Ogre::Vector3::UNIT_Z;
-				}
-				else if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_X) > 0.7f)
-				{
-					worldForward = Ogre::Vector3::UNIT_X;
-				}
-				else
-				{
-					worldForward = Ogre::Vector3::UNIT_Y;
-				}
-
-				// Find a suitable forward vector perpendicular to up
-				this->forward = worldForward - up * worldForward.dotProduct(up);
-				if (this->forward.length() < 0.001f)
-				{
-					this->forward = up.crossProduct(Ogre::Vector3(1.0f, 0.0f, 0.0f));
-					if (this->forward.length() < 0.001f)
-					{
-						this->forward = up.crossProduct(Ogre::Vector3(0.0f, 0.0f, 1.0f));
-					}
-				}
-			}
-			this->forward.normalise();
-
-			// Calculate right from forward and up (ensures orthogonality)
-			this->right = this->forward.crossProduct(up);
-			this->right.normalise();
 
 			if (true == this->useStandUp->getBool())
 			{
@@ -908,21 +845,6 @@ namespace NOWA
 	GameObject* PlayerControllerComponent::getHitGameObjectUp(void) const
 	{
 		return this->hitGameObjectUp;
-	}
-
-	Ogre::Vector3 PlayerControllerComponent::getUp(void) const
-	{
-		return this->up;
-	}
-
-	Ogre::Vector3 PlayerControllerComponent::getRight(void) const
-	{
-		return this->right;
-	}
-
-	Ogre::Vector3 PlayerControllerComponent::getForward(void) const
-	{
-		return this->forward;
 	}
 
 	bool PlayerControllerComponent::getIsFallen(void) const
@@ -1852,16 +1774,21 @@ namespace NOWA
 		GameObjectComponent::connect(); // Lua script is requested
 		bool success = PlayerControllerComponent::connect();
 
-		this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
+		if (nullptr == this->movingBehaviorPtr)
+		{
+			this->postInit();
+		}
 
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[4]->getListSelectedValue());
+		if (nullptr != this->animationBlender)
+		{
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[4]->getListSelectedValue());
 
-		this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+		}
 
 		this->stateMachine->setCurrentState(PathFollowState3D::getName());
 		
@@ -2364,7 +2291,7 @@ namespace NOWA
 					this->direction = Direction::UP;
 
 					// Move along the forward direction (tangent to planet surface)
-					this->keyDirection = this->playerController->getForward();
+					this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
 				}
 				else if (inputDeviceModule->isActionDown(NOWA_A_DOWN))
 				{
@@ -2375,7 +2302,7 @@ namespace NOWA
 					this->direction = Direction::DOWN;
 
 					// Move along the forward direction (but backward since tempSpeed is negative)
-					this->keyDirection = this->playerController->getForward();
+					this->keyDirection = this->playerController->getPhysicsComponent()->getForward();
 				}
 
 				// Rotation handling using angular forces around the up vector
@@ -2691,7 +2618,7 @@ namespace NOWA
 			{
 				if (false == this->hasPhysicsPlayerControllerComponent)
 				{
-					jumpVelocity = this->playerController->getUp() * this->jumpForce * this->playerController->getJumpWeight();
+					jumpVelocity = this->playerController->getPhysicsComponent()->getUp() * this->jumpForce * this->playerController->getJumpWeight();
 					if (false == this->hasPhysicsPlayerControllerComponent)
 					{
 						this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
@@ -2766,7 +2693,7 @@ namespace NOWA
 		//}
 
 		// Get player's current up vector
-		Ogre::Vector3 playerUp = this->playerController->getUp();
+		Ogre::Vector3 playerUp = this->playerController->getPhysicsComponent()->getUp();
 
 		// Get the player's current up vector based on the current orientation
 		Ogre::Vector3 currentPlayerUp = this->playerController->getPhysicsComponent()->getOrientation() * Ogre::Vector3::UNIT_Y;
@@ -2784,7 +2711,7 @@ namespace NOWA
 		}
 		else
 		{
-			this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getForward(), 10.0f);
+			this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
 		}
 
 #if 0
@@ -2809,10 +2736,6 @@ namespace NOWA
 		// Split current velocity into vertical and horizontal components
 		// Vertical component (along gravity direction)
 		Ogre::Vector3 verticalVelocity = gravityDir * currentVelocity.dotProduct(gravityDir);
-		// verticalVelocity += jumpVelocity;
-
-		// Horizontal component (perpendicular to gravity)
-		Ogre::Vector3 horizontalVelocity = currentVelocity - verticalVelocity;
 
 		// Calculate movement vector in world space (X/Z movement only)
 		Ogre::Vector3 directionMove = this->keyDirection * tempSpeed * this->acceleration;

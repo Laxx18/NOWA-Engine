@@ -76,6 +76,8 @@ private:
 
 	void showContextMenu(int mouseX, int mouseY);
 	void onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* item);
+
+	void toggleGuiVisibility(bool visible);
 private:
 	// Event delegates
 	void handleGenerateCategoriesDelegate(NOWA::EventDataPtr eventData);
@@ -158,6 +160,12 @@ private:
 	std::set<unsigned long> oldSelectedGameObjectIds;
 	Ogre::RaySceneQuery* selectQuery;
 	Ogre::String selectedMovableObjectInfo;
+
+	bool isMouseAtTop;
+	bool guiVisible;
+	Ogre::Real mouseTopTimer;
+	const Ogre::Real MOUSE_TOP_DELAY = 1.0f; // 1 second delay
+	const int TOP_THRESHOLD = 10; // pixels from top to trigger
 };
 
 #endif

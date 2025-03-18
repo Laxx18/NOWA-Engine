@@ -6,6 +6,7 @@
 #include "main/AppStateManager.h"
 #include "main/InputDeviceCore.h"
 #include "gameobject/GameObjectFactory.h"
+#include "gameobject/PlayerControllerComponents.h"
 
 #include "OgreAbiUtils.h"
 
@@ -17,8 +18,9 @@ namespace NOWA
 	class SelectionObserver : public NOWA::SelectionManager::ISelectionObserver
 	{
 	public:
-		SelectionObserver()
-			: selectionStrategy(new NOWA::DefaultOutLine()) // = new NOWA::RimEffectOutLine();
+		SelectionObserver(bool activatePlayerController)
+			: selectionStrategy(new NOWA::DefaultOutLine()), // = new NOWA::RimEffectOutLine();
+			activatePlayerController(activatePlayerController)
 		{
 
 		}
@@ -42,9 +44,26 @@ namespace NOWA
 			{
 				this->selectionStrategy->unHighlight(gameObject);
 			}
+
+			if (true == activatePlayerController)
+			{
+				const auto& playerControllerCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlayerControllerComponent>());
+
+				if (nullptr != playerControllerCompPtr)
+				{
+					PlayerControllerComponent* playerControllerComponent = playerControllerCompPtr.get();
+					playerControllerComponent->setActivated(selected);
+				}
+			}
+		}
+
+		void setActivatePlayerController(bool activatePlayerController)
+		{
+			this->activatePlayerController = activatePlayerController;
 		}
 	private:
 		NOWA::DefaultOutLine* selectionStrategy;
+		bool activatePlayerController;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,9 +75,11 @@ namespace NOWA
 		activated(new Variant(SelectGameObjectsComponent::AttrActivated(), true, this->attributes)),
 		categories(new Variant(SelectGameObjectsComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useMultiSelection(new Variant(SelectGameObjectsComponent::AttrUseMultiSelection(), true, this->attributes)),
-		useSelectionRectangle(new Variant(SelectGameObjectsComponent::AttrUseSelectionRectangle(), true, this->attributes))
+		useSelectionRectangle(new Variant(SelectGameObjectsComponent::AttrUseSelectionRectangle(), true, this->attributes)),
+		activatePlayerController(new Variant(SelectGameObjectsComponent::AttrActivatePlayerController(), true, this->attributes))
 	{
 		this->selectionManager = new SelectionManager();
+		this->activatePlayerController->setDescription("If set to true and for the corresponding game object a player controller does exist, it will be activated if game object has been selected or deactivated, if not.");
 		// postbuild still necessary?
 		// "$(DevEnvDir)devenv" "$(NOWA)/NOWA_Engine/NOWA_Engine.sln" /Build $(configuration) /project "$(NOWA)/NOWA_Engine/NOWA_Engine/NOWA_Engine.vcxproj" 
 	}
@@ -122,7 +143,11 @@ namespace NOWA
 			this->useSelectionRectangle->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "ActivatePlayerController")
+		{
+			this->activatePlayerController->setValue(XMLConverter::getAttribBool(propertyElement, "data"));
+			propertyElement = propertyElement->next_sibling("property");
+		}
 		return true;
 	}
 
@@ -137,8 +162,7 @@ namespace NOWA
 
 		// TODO: What if camera does change?
 		this->selectionManager->init(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), 
-			this->categories->getString(), OIS::MB_Left, new SelectionObserver);
-
+			this->categories->getString(), OIS::MB_Left, new SelectionObserver(this->activatePlayerController->getBool()));
 
 		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -224,6 +248,10 @@ namespace NOWA
 		{
 			this->setUseSelectionRectangle(attribute->getBool());
 		}
+		else if (SelectGameObjectsComponent::AttrActivatePlayerController() == attribute->getName())
+		{
+			this->setActivatePlayerController(attribute->getBool());
+		}
 	}
 
 	void SelectGameObjectsComponent::writeXML(xml_node<>* propertiesXML, xml_document<>& doc)
@@ -259,6 +287,12 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "UseSelectionRectangle"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->useSelectionRectangle->getBool())));
+		propertiesXML->append_node(propertyXML);
+
+		propertyXML = doc.allocate_node(node_element, "property");
+		propertyXML->append_attribute(doc.allocate_attribute("type", "12"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "ActivatePlayerController"));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activatePlayerController->getBool())));
 		propertiesXML->append_node(propertyXML);
 	}
 
@@ -327,7 +361,6 @@ namespace NOWA
 		{
 			if (true == this->useMultiSelection->getBool())
 			{
-
 				this->selectionManager->handleKeyPress(keyEventRef);
 			}
 		}
@@ -369,21 +402,21 @@ namespace NOWA
 				return true;
 			}
 
+			const auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+
 			if (this->closureFunction.is_valid())
 			{
-				auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
-
-				std::vector<GameObject*> gameObjectList(selectedGameObjects.size());
+				std::vector<GameObject*> selectedGameObjectList(selectedGameObjects.size());
 				size_t i = 0;
 				for (auto& selectedGameObject : selectedGameObjects)
 				{
-					gameObjectList[i] = selectedGameObject.second.gameObject;
+					selectedGameObjectList[i] = selectedGameObject.second.gameObject;
 					i++;
 				}
 
 				try
 				{
-					luabind::call_function<void>(this->closureFunction, gameObjectList);
+					luabind::call_function<void>(this->closureFunction, selectedGameObjectList);
 				}
 				catch (luabind::error& error)
 				{
@@ -442,6 +475,22 @@ namespace NOWA
 		{
 			this->selectionManager->select(gameObjectId, bSelect);
 		}
+	}
+
+	void SelectGameObjectsComponent::setActivatePlayerController(bool activatePlayerController)
+	{
+		this->activatePlayerController->setValue(activatePlayerController);
+
+		const auto& selectionObserver = this->selectionManager->getSelectionObserver();
+		if (nullptr != selectionObserver)
+		{
+			static_cast<SelectionObserver*>(selectionObserver)->setActivatePlayerController(activatePlayerController);
+		}
+	}
+
+	bool SelectGameObjectsComponent::getActivatePlayerController(void) const
+	{
+		return this->activatePlayerController->getBool();
 	}
 
 	// Lua registration part

@@ -1492,7 +1492,6 @@ namespace NOWA
 
 		if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
 		{
-			AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->handleSceneModified(0);
 			AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->buildNavigationMesh();
 		}
 		
