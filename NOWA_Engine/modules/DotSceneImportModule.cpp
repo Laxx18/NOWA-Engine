@@ -485,7 +485,7 @@ namespace NOWA
 			}
 		}
 
-		if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
+		if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
 		{
 			bool skip = false;
 			if (true == this->showProgress)
@@ -497,6 +497,10 @@ namespace NOWA
 			{
 				Core::getSingletonPtr()->getEngineResourceListener()->scriptParseEnded("Navigation Mesh finished", skip);
 			}
+		}
+		else
+		{
+			AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
 		}
 
 		if (nullptr != this->sceneLoaderCallback)

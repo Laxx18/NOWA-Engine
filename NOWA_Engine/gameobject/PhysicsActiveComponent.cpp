@@ -373,7 +373,7 @@ namespace NOWA
 			if (true == this->gravityDirection.isZeroLength())
 			{
 				// Default on a plane or terrain
-				this->gravityDirection = Ogre::Vector3::UNIT_Y;
+				this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
 			}
 
 			// Calculates orientation vectors relative to planet surface
@@ -944,23 +944,63 @@ namespace NOWA
 			return;
 		}
 
+		// Compute difference in orientation
 		Ogre::Quaternion diffOrientation = this->physicsBody->getOrientation().Inverse() * resultOrientation;
-		Ogre::Vector3 resultVector = Ogre::Vector3::ZERO;
 
-		if (axes.x == 1.0f)
+		// Convert quaternion difference to angular velocity
+		Ogre::Vector3 angularVelocity;
+		Ogre::Degree angle;
+		Ogre::Vector3 rotationAxis;
+
+		diffOrientation.ToAngleAxis(angle, rotationAxis);
+
+		// Ensure the rotation axis is valid (ToAngleAxis can return zero rotation)
+		if (rotationAxis.isZeroLength())
+			return;
+
+		// Scale by strength
+		angularVelocity = rotationAxis * angle.valueRadians() * strength;
+
+		// Filter by axes
+		angularVelocity.x *= axes.x;
+		angularVelocity.y *= axes.y;
+		angularVelocity.z *= axes.z;
+
+		// Apply omega force
+		this->setOmegaVelocity(angularVelocity);
+	}
+
+	void PhysicsActiveComponent::setOmegaVelocityRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength)
+	{
+		if (nullptr == this->physicsBody)
 		{
-			resultVector.x = diffOrientation.getPitch().valueRadians() * strength;
-		}
-		if (axes.y == 1.0f)
-		{
-			resultVector.y = diffOrientation.getYaw().valueRadians() * strength;
-		}
-		if (axes.z == 1.0f)
-		{
-			resultVector.z = diffOrientation.getRoll().valueRadians() * strength;
+			return;
 		}
 
-		this->setOmegaVelocity(resultVector);
+		// Get the current forward direction from the physics body's orientation
+		Ogre::Vector3 currentDir = this->physicsBody->getOrientation() * this->gameObjectPtr->getDefaultDirection();
+
+		// Compute the rotation required to align currentDir with targetDir
+		Ogre::Quaternion rotationQuat = currentDir.getRotationTo(resultDirection);
+
+		// Convert quaternion rotation into angular velocity
+		Ogre::Vector3 angularVelocity;
+		Ogre::Degree angle;
+		Ogre::Vector3 rotationAxis;
+
+		rotationQuat.ToAngleAxis(angle, rotationAxis);
+
+		// Ensure the rotation axis is valid (ToAngleAxis can return zero rotation)
+		if (rotationAxis.isZeroLength())
+		{
+			return;
+		}
+
+		// Scale angular velocity by rotation strength
+		angularVelocity = rotationAxis * angle.valueRadians() * strength;
+
+		// Apply omega force to rotate towards the desired direction
+		this->applyOmegaForce(angularVelocity);
 	}
 
 	void PhysicsActiveComponent::applyOmegaForce(const Ogre::Vector3& omegaForce)

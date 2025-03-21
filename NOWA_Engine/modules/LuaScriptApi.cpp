@@ -2122,31 +2122,6 @@ namespace NOWA
 		return makeStrongPtr<CameraComponent>(gameObject->getComponent<CameraComponent>()).get();
 	}
 
-	CameraBehaviorBaseComponent* getCameraBehaviorBaseComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CameraBehaviorBaseComponent>(gameObject->getComponent<CameraBehaviorBaseComponent>()).get();
-	}
-
-	CameraBehaviorFirstPersonComponent* getCameraBehaviorFirstPersonComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CameraBehaviorFirstPersonComponent>(gameObject->getComponent<CameraBehaviorFirstPersonComponent>()).get();
-	}
-
-	CameraBehaviorThirdPersonComponent* getCameraBehaviorThirdPersonComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CameraBehaviorThirdPersonComponent>(gameObject->getComponent<CameraBehaviorThirdPersonComponent>()).get();
-	}
-
-	CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CameraBehaviorFollow2DComponent>(gameObject->getComponent<CameraBehaviorFollow2DComponent>()).get();
-	}
-
-	CameraBehaviorZoomComponent* getCameraBehaviorZoomComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<CameraBehaviorZoomComponent>(gameObject->getComponent<CameraBehaviorZoomComponent>()).get();
-	}
-
 	CompositorEffectBloomComponent* getCompositorEffectBloomComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<CompositorEffectBloomComponent>(gameObject->getComponent<CompositorEffectBloomComponent>()).get();
@@ -2821,31 +2796,6 @@ namespace NOWA
 	{
 		return makeStrongPtr<CameraComponent>(gameObject->getComponentFromName<CameraComponent>(name)).get();
 	}
-
-	CameraBehaviorBaseComponent* getCameraBehaviorBaseComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CameraBehaviorBaseComponent>(gameObject->getComponentFromName<CameraBehaviorBaseComponent>(name)).get();
-	}
-
-	CameraBehaviorFirstPersonComponent* getCameraBehaviorFirstPersonComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CameraBehaviorFirstPersonComponent>(gameObject->getComponentFromName<CameraBehaviorFirstPersonComponent>(name)).get();
-	}
-
-	CameraBehaviorThirdPersonComponent* getCameraBehaviorThirdPersonComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CameraBehaviorThirdPersonComponent>(gameObject->getComponentFromName<CameraBehaviorThirdPersonComponent>(name)).get();
-	}
-
-	CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CameraBehaviorFollow2DComponent>(gameObject->getComponentFromName<CameraBehaviorFollow2DComponent>(name)).get();
-	}
-
-	CameraBehaviorZoomComponent* getCameraBehaviorZoomComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<CameraBehaviorZoomComponent>(gameObject->getComponentFromName<CameraBehaviorZoomComponent>(name)).get();
-	}
 	
 	CompositorEffectBloomComponent* getCompositorEffectBloomComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
@@ -3455,11 +3405,6 @@ namespace NOWA
 		gameObject.def("getAiMoveComponent2D", &getAiMoveComponent2D);
 		gameObject.def("getAiPathFollowComponent2D", &getAiPathFollowComponent2D);
 		gameObject.def("getAiWanderComponent2D", &getAiWanderComponent2D);
-		gameObject.def("getCameraBehaviorBaseComponent", &getCameraBehaviorBaseComponent);
-		gameObject.def("getCameraBehaviorFirstPersonComponent", &getCameraBehaviorFirstPersonComponent);
-		gameObject.def("getCameraBehaviorThirdPersonComponent", &getCameraBehaviorThirdPersonComponent);
-		gameObject.def("getCameraBehaviorFollow2DComponent", &getCameraBehaviorFollow2DComponent);
-		gameObject.def("getCameraBehaviorZoomComponent", &getCameraBehaviorZoomComponent);
 		gameObject.def("getCameraComponent", &getCameraComponent);
 		gameObject.def("getCompositorEffectBloomComponent", &getCompositorEffectBloomComponent);
 		gameObject.def("getCompositorEffectGlassComponent", &getCompositorEffectGlassComponent);
@@ -3610,11 +3555,6 @@ namespace NOWA
 		gameObject.def("getAiMoveComponent2DFromName", &getAiMoveComponent2D);
 		gameObject.def("getAiPathFollowComponent2DFromName", &getAiPathFollowComponent2D);
 		gameObject.def("getAiWanderComponent2DFromName", &getAiWanderComponent2D);
-		gameObject.def("getCameraBehaviorBaseComponentFromName", &getCameraBehaviorBaseComponentFromName);
-		gameObject.def("getCameraBehaviorFirstPersonComponentFromName", &getCameraBehaviorFirstPersonComponentFromName);
-		gameObject.def("getCameraBehaviorThirdPersonComponentFromName", &getCameraBehaviorThirdPersonComponentFromName);
-		gameObject.def("getCameraBehaviorFollow2DComponentFromName", &getCameraBehaviorFollow2DComponentFromName);
-		gameObject.def("getCameraBehaviorZoomComponentFromName", &getCameraBehaviorZoomComponentFromName);
 		gameObject.def("getCameraComponentFromName", &getCameraComponentFromName);
 		gameObject.def("getCompositorEffectBloomComponentFromName", &getCompositorEffectBloomComponentFromName);
 		gameObject.def("getCompositorEffectGlassComponentFromName", &getCompositorEffectGlassComponentFromName);
@@ -3779,11 +3719,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "AiMoveComponent2D getAiMoveComponent2D()", "Gets the ai move component for 2D. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiPathFollowComponent2D getAiPathFollowComponent2D()", "Gets the ai path follow component for 2D. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiWanderComponent2D getAiWanderComponent2D()", "Gets the ai wander component for 2D. Requirements: A physics active component.");
-		AddClassToCollection("GameObject", "CameraBehaviorBaseComponent getCameraBehaviorBaseComponent()", "Gets the camera behavior base component.");
-		AddClassToCollection("GameObject", "CameraBehaviorFirstPersonComponent getCameraBehaviorFirstPersonComponent()", "Gets the camera behavior first person component.");
-		AddClassToCollection("GameObject", "CameraBehaviorThirdPersonComponent getCameraBehaviorThirdPersonComponent()", "Gets the camera third first person component.");
-		AddClassToCollection("GameObject", "CameraBehaviorFollow2DComponent getCameraBehaviorFollow2DComponent()", "Gets the camera follow 2D component.");
-		AddClassToCollection("GameObject", "CameraBehaviorZoomComponent getCameraBehaviorZoomComponent()", "Gets the camera zoom component.");
 		AddClassToCollection("GameObject", "CameraComponent getCameraComponent()", "Gets the camera component.");
 		AddClassToCollection("GameObject", "CompositorEffectBloomComponent getCompositorEffectBloomComponent()", "Gets the compositor effect bloom component.");
 		AddClassToCollection("GameObject", "CompositorEffectGlassComponent getCompositorEffectGlassComponent()", "Gets the compositor effect glass component.");
@@ -3920,11 +3855,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "AiMoveComponent2D getAiMoveComponent2D()", "Gets the ai move component for 2D. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiPathFollowComponent2D getAiPathFollowComponent2D()", "Gets the ai path follow component for 2D. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "AiWanderComponent2D getAiWanderComponent2D()", "Gets the ai wander component for 2D. Requirements: A physics active component.");
-		AddClassToCollection("GameObject", "CameraBehaviorBaseComponent getCameraBehaviorBaseComponentFromName(String name)", "Gets the camera behavior base component.");
-		AddClassToCollection("GameObject", "CameraBehaviorFirstPersonComponent getCameraBehaviorFirstPersonComponentFromName(String name)", "Gets the camera behavior first person component.");
-		AddClassToCollection("GameObject", "CameraBehaviorThirdPersonComponent getCameraBehaviorThirdPersonComponentFromName(String name)", "Gets the camera third first person component.");
-		AddClassToCollection("GameObject", "CameraBehaviorFollow2DComponent getCameraBehaviorFollow2DComponentFromName(String name)", "Gets the camera follow 2D component.");
-		AddClassToCollection("GameObject", "CameraBehaviorZoomComponent getCameraBehaviorZoomComponentFromName(String name)", "Gets the camera zoom component.");
 		AddClassToCollection("GameObject", "CameraComponent getCameraComponentFromName(String name)", "Gets the camera component.");
 		AddClassToCollection("GameObject", "CompositorEffectBloomComponent getCompositorEffectBloomComponentFromName(String name)", "Gets the compositor effect bloom component.");
 		AddClassToCollection("GameObject", "CompositorEffectGlassComponent getCompositorEffectGlassComponentFromName(String name)", "Gets the compositor effect glass component.");
@@ -5039,11 +4969,6 @@ namespace NOWA
 		gameObjectController.def("castAiMoveComponent2D", &GameObjectController::cast<AiMoveComponent2D>);
 		gameObjectController.def("castAiPathFollowComponent2D", &GameObjectController::cast<AiPathFollowComponent2D>);
 		gameObjectController.def("castAiWanderComponent2D", &GameObjectController::cast<AiWanderComponent2D>);
-		gameObjectController.def("castCameraBehaviorBaseComponent", &GameObjectController::cast<CameraBehaviorBaseComponent>);
-		gameObjectController.def("castCameraBehaviorFirstPersonComponent", &GameObjectController::cast<CameraBehaviorFirstPersonComponent>);
-		gameObjectController.def("castCameraBehaviorThirdPersonComponent", &GameObjectController::cast<CameraBehaviorThirdPersonComponent>);
-		gameObjectController.def("castCameraBehaviorFollow2DComponent", &GameObjectController::cast<CameraBehaviorFollow2DComponent>);
-		gameObjectController.def("castCameraBehaviorZoomComponent", &GameObjectController::cast<CameraBehaviorZoomComponent>);
 		gameObjectController.def("castCameraComponent", &GameObjectController::cast<CameraComponent>);
 		gameObjectController.def("castCompositorEffectBloomComponent", &GameObjectController::cast<CompositorEffectBloomComponent>);
 		gameObjectController.def("castCompositorEffectGlassComponent", &GameObjectController::cast<CompositorEffectGlassComponent>);
@@ -5212,11 +5137,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "AiMoveComponent2D castAiMoveComponent2D(AiMoveComponent2D other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AiPathFollowComponent2D castAiPathFollowComponent2D(AiPathFollowComponent2D other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AiWanderComponent2D castAiWanderComponent2D(AiWanderComponent2D other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CameraBehaviorBaseComponent castCameraBehaviorBaseComponent(CameraBehaviorBaseComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CameraBehaviorFirstPersonComponent castCameraBehaviorFirstPersonComponent(CameraBehaviorFirstPersonComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CameraBehaviorThirdPersonComponent castCameraBehaviorThirdPersonComponent(CameraBehaviorThirdPersonComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CameraBehaviorFollow2DComponent castCameraBehaviorFollow2DComponent(CameraBehaviorFollow2DComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "CameraBehaviorZoomComponent castCameraBehaviorZoomComponent(CameraBehaviorZoomComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CameraComponent castCameraComponent(CameraComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectBloomComponent castCompositorEffectBloomComponent(CompositorEffectBloomComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "CompositorEffectGlassComponent castCompositorEffectGlassComponent(CompositorEffectGlassComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -8085,14 +8005,14 @@ namespace NOWA
 		AddClassToCollection("AiObstacleAvoidanceComponent", "string getObstacleCategories()", "Gets categories, that are considered as obstacle for hiding.");
 
 		module(lua)
-			[
-				class_<AiHideComponent, AiComponent>("AiHideComponent")
-				// .def("clone", &AiHideComponent::clone)
+		[
+			class_<AiHideComponent, AiComponent>("AiHideComponent")
+			// .def("clone", &AiHideComponent::clone)
 			.def("setObstacleRangeRadius", &AiHideComponent::setObstacleRangeRadius)
 			.def("getObstacleRangeRadius", &AiHideComponent::getObstacleRangeRadius)
 			.def("setObstacleCategories", &AiHideComponent::setObstacleCategories)
 			.def("getObstacleCategories", &AiHideComponent::getObstacleCategories)
-			];
+		];
 
 		AddClassToCollection("AiHideComponent", "class inherits AiComponent", AiHideComponent::getStaticInfoText());
 		AddClassToCollection("AiHideComponent", "void setTargetId(String targetId)", "Sets a target id game object, this game object is hiding at.");
@@ -8103,12 +8023,12 @@ namespace NOWA
 		AddClassToCollection("AiHideComponent", "string getObstacleCategories()", "Gets categories, that are considered as obstacle for keeping a distance.");
 
 		module(lua)
-			[
-				class_<AiMoveComponent2D, AiComponent>("AiMoveComponent2D")
-				// .def("clone", &AiMoveComponent2D::clone)
+		[
+			class_<AiMoveComponent2D, AiComponent>("AiMoveComponent2D")
+			// .def("clone", &AiMoveComponent2D::clone)
 			.def("setBehaviorType", &AiMoveComponent2D::setBehaviorType)
 			.def("getBehaviorType", &AiMoveComponent2D::getBehaviorType)
-			];
+		];
 
 		AddClassToCollection("AiMoveComponent2D", "class", AiMoveComponent2D::getStaticInfoText());
 		AddClassToCollection("AiMoveComponent2D", "void setBehaviorType(String behaviorType)", "Sets the behavior type what this ai component should do. Possible values are 'Seek2D', 'Flee2D', 'Arrive2D'");
@@ -8117,9 +8037,9 @@ namespace NOWA
 		AddClassToCollection("AiMoveComponent2D", "String getTargetId()", "Gets the target game object id.");
 
 		module(lua)
-			[
-				class_<AiPathFollowComponent2D, AiComponent>("AiPathFollowComponent2D")
-				// .def("clone", &AiPathFollowComponent2D::clone)
+		[
+			class_<AiPathFollowComponent2D, AiComponent>("AiPathFollowComponent2D")
+			// .def("clone", &AiPathFollowComponent2D::clone)
 			.def("setWaypointsCount", &AiPathFollowComponent2D::setWaypointsCount)
 			.def("getWaypointsCount", &AiPathFollowComponent2D::getWaypointsCount)
 			// .def("setWaypointId", &AiPathFollowComponent2D::setWaypointId)
@@ -8135,7 +8055,7 @@ namespace NOWA
 			// .def("getInvertDirection", &AiPathFollowComponent2D::getInvertDirection)
 			.def("setGoalRadius", &AiPathFollowComponent2D::setGoalRadius)
 			.def("getGoalRadius", &AiPathFollowComponent2D::getGoalRadius)
-			];
+		];
 
 		AddClassToCollection("AiPathFollowComponent2D", "class", AiPathFollowComponent2D::getStaticInfoText());
 		AddClassToCollection("AiPathFollowComponent2D", "void setWaypointsCount(int count)", "Sets the way points count.");
@@ -8153,16 +8073,16 @@ namespace NOWA
 		AddClassToCollection("AiPathFollowComponent2D", "float getGoalRadius()", "Gets the goal radius at which the game object is considered within the next waypoint range.");
 
 		module(lua)
-			[
-				class_<AiWanderComponent2D, AiComponent>("AiWanderComponent2D")
-				// .def("clone", &AiWanderComponent2D::clone)
+		[
+			class_<AiWanderComponent2D, AiComponent>("AiWanderComponent2D")
+			// .def("clone", &AiWanderComponent2D::clone)
 			.def("setWanderJitter", &AiWanderComponent2D::setWanderJitter)
 			.def("getWanderJitter", &AiWanderComponent2D::getWanderJitter)
 			.def("setWanderRadius", &AiWanderComponent2D::setWanderRadius)
 			.def("getWanderRadius", &AiWanderComponent2D::getWanderRadius)
 			.def("setWanderDistance", &AiWanderComponent2D::setWanderDistance)
 			.def("getWanderDistance", &AiWanderComponent2D::getWanderDistance)
-			];
+		];
 
 		AddClassToCollection("AiWanderComponent2D", "class", AiWanderComponent2D::getStaticInfoText());
 		AddClassToCollection("AiWanderComponent2D", "void setWanderJitter(float wanderJitter)", "Sets the wander jitter. That is how often the game object does change its direction. Default valus is 1.");
@@ -8175,140 +8095,12 @@ namespace NOWA
 		/// more to come...
 	}
 
-	void bindCameraBehaviorComponents(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<CameraBehaviorComponent, GameObjectComponent>("CameraBehaviorComponent")
-				// .def("getClassName", &CameraBehaviorComponent::getClassName)
-			.def("getParentClassName", &CameraBehaviorComponent::getParentClassName)
-			.def("setActivated", &CameraBehaviorComponent::setActivated)
-			.def("isActivated", &CameraBehaviorComponent::isActivated)
-			.def("getCamera", &CameraBehaviorComponent::getCamera)
-			.def("setCameraControlLocked", &CameraBehaviorComponent::setCameraControlLocked)
-			.def("getCameraControlLocked", &CameraBehaviorComponent::getCameraControlLocked)
-			];
-
-		AddClassToCollection("CameraBehaviorComponent", "class inherits GameObjectComponent", CameraBehaviorComponent::getStaticInfoText());
-		// AddClassToCollection("CameraBehaviorComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("CameraBehaviorComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// AddClassToCollection("CameraBehaviorComponent", "number getClassId()", "Gets the class id of this component.");
-		AddClassToCollection("CameraBehaviorComponent", "void setActivated(bool activated)", "Sets the camera behavior component is activated. If true, the camera will do its work according the used behavior.");
-		AddClassToCollection("CameraBehaviorComponent", "bool isActivated()", "Gets whether camera behavior component is activated. If true, the camera will do its work according the used behavior.");
-		AddClassToCollection("CameraBehaviorComponent", "Camera getCamera()", "Gets the used camera pointer for direct manipulation.");
-		AddClassToCollection("CameraBehaviorComponent", "void setCameraControlLocked(bool locked)", "Sets whether the camera can be moved by keys. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
-		AddClassToCollection("CameraBehaviorComponent", "bool getCameraControlLocked()", "Gets the rotation speed for the ai controller game object. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
-
-
-		module(lua)
-			[
-				class_<CameraBehaviorBaseComponent, CameraBehaviorComponent>("CameraBehaviorBaseComponent")
-				// .def("clone", &CameraBehaviorBaseComponent::clone)
-			.def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
-			.def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
-			.def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
-			.def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
-			.def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
-			.def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)
-			];
-		AddClassToCollection("CameraBehaviorBaseComponent", "class inherits CameraBehaviorComponent", CameraBehaviorBaseComponent::getStaticInfoText());
-		AddClassToCollection("CameraBehaviorBaseComponent", "void setMoveSpeed(float moveSpeed)", "Sets the camera move speed.");
-		AddClassToCollection("CameraBehaviorBaseComponent", "float getMoveSpeed()", "Gets the camera move speed.");
-		AddClassToCollection("CameraBehaviorBaseComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the camera rotation speed.");
-		AddClassToCollection("CameraBehaviorBaseComponent", "float getRotationSpeed()", "Gets the camera rotation speed.");
-		AddClassToCollection("CameraBehaviorBaseComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
-		AddClassToCollection("CameraBehaviorBaseComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
-
-		module(lua)
-			[
-				class_<CameraBehaviorFirstPersonComponent, CameraBehaviorComponent>("CameraBehaviorFirstPersonComponent")
-				// .def("clone", &CameraBehaviorFirstPersonComponent::clone)
-			.def("setSmoothValue", &CameraBehaviorFirstPersonComponent::setSmoothValue)
-			.def("getSmoothValue", &CameraBehaviorFirstPersonComponent::getSmoothValue)
-			.def("setRotationSpeed", &CameraBehaviorFirstPersonComponent::setRotationSpeed)
-			.def("getRotationSpeed", &CameraBehaviorFirstPersonComponent::getRotationSpeed)
-			.def("setOffsetPosition", &CameraBehaviorFirstPersonComponent::setOffsetPosition)
-			.def("getOffsetPosition", &CameraBehaviorFirstPersonComponent::getOffsetPosition)
-			];
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "class inherits CameraBehaviorComponent", CameraBehaviorFirstPersonComponent::getStaticInfoText());
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the camera rotation speed.");
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "float getRotationSpeed()", "Gets the camera rotation speed.");
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
-		AddClassToCollection("CameraBehaviorFirstPersonComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
-
-		module(lua)
-			[
-				class_<CameraBehaviorThirdPersonComponent, CameraBehaviorComponent>("CameraBehaviorThirdPersonComponent")
-				// .def("clone", &CameraBehaviorThirdPersonComponent::clone)
-			.def("setYOffset", &CameraBehaviorThirdPersonComponent::setYOffset)
-			.def("getYOffset", &CameraBehaviorThirdPersonComponent::getYOffset)
-			.def("setLookAtOffset", &CameraBehaviorThirdPersonComponent::setLookAtOffset)
-			.def("getLookAtOffset", &CameraBehaviorThirdPersonComponent::getLookAtOffset)
-			.def("setSpringForce", &CameraBehaviorThirdPersonComponent::setSpringForce)
-			.def("getSpringForce", &CameraBehaviorThirdPersonComponent::getSpringForce)
-			.def("setFriction", &CameraBehaviorThirdPersonComponent::setFriction)
-			.def("getFriction", &CameraBehaviorThirdPersonComponent::getFriction)
-			.def("setSpringLength", &CameraBehaviorThirdPersonComponent::setSpringLength)
-			.def("getSpringLength", &CameraBehaviorThirdPersonComponent::getSpringLength)
-			];
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "class inherits CameraBehaviorComponent", CameraBehaviorThirdPersonComponent::getStaticInfoText());
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "void setYOffset(float yOffset)", "Sets the camera y-offset, the camera is placed above the game object.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "float getYOffset()", "Gets the camera y-offset, the camera is placed above the game object.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "void setLookAtOffset(Vector3 lookAtOffset)", "Sets the camera look at game object offset.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "Vector3 getLookAtOffset()", "Gets the camera look at game object offset.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "void setSpringForce(float springForce)", "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "float getSpringForce()", "Gets the camera spring force.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "void setFriction(float friction)", "Sets the camera friction during movement.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "float getFriction()", "Gets the camera friction during movement.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "void setSpringLength(float springLength)", "Sets the camera spring length during movement.");
-		AddClassToCollection("CameraBehaviorThirdPersonComponent", "float getSpringLength()", "Gets the camera spring length during movement.");
-
-		module(lua)
-			[
-				class_<CameraBehaviorFollow2DComponent, CameraBehaviorComponent>("CameraBehaviorFollow2DComponent")
-				// .def("clone", &CameraBehaviorFollow2DComponent::clone)
-			.def("setSmoothValue", &CameraBehaviorFollow2DComponent::setSmoothValue)
-			.def("getSmoothValue", &CameraBehaviorFollow2DComponent::getSmoothValue)
-			.def("setOffsetPosition", &CameraBehaviorFollow2DComponent::setOffsetPosition)
-			.def("getOffsetPosition", &CameraBehaviorFollow2DComponent::getOffsetPosition)
-			];
-		AddClassToCollection("CameraBehaviorFollow2DComponent", "class inherits CameraBehaviorComponent", CameraBehaviorFollow2DComponent::getStaticInfoText());
-		AddClassToCollection("CameraBehaviorFollow2DComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
-		AddClassToCollection("CameraBehaviorFollow2DComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
-		AddClassToCollection("CameraBehaviorFollow2DComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
-		AddClassToCollection("CameraBehaviorFollow2DComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
-
-		module(lua)
-		[
-			class_<CameraBehaviorZoomComponent, CameraBehaviorComponent>("CameraBehaviorZoomComponent")
-			// .def("clone", &CameraBehaviorZoomComponent::clone)
-			.def("setCategory", &CameraBehaviorZoomComponent::setCategory)
-			.def("getCategory", &CameraBehaviorZoomComponent::getCategory)
-			.def("setSmoothValue", &CameraBehaviorZoomComponent::setSmoothValue)
-			.def("getSmoothValue", &CameraBehaviorZoomComponent::getSmoothValue)
-			.def("setGrowMultiplicator", &CameraBehaviorZoomComponent::setGrowMultiplicator)
-			.def("getGrowMultiplicator", &CameraBehaviorZoomComponent::getGrowMultiplicator)
-		];
-		AddClassToCollection("CameraBehaviorZoomComponent", "class inherits CameraBehaviorComponent", CameraBehaviorZoomComponent::getStaticInfoText());
-		AddClassToCollection("CameraBehaviorZoomComponent", "void setCategory(string category)", "Sets the category, for which the bounds are calculated and the zoom adapted, so that all GameObjects of this category are visible.");
-		AddClassToCollection("CameraBehaviorZoomComponent", "string getCategory()", "Gets the category, for which the bounds are calculated and the zoom adapted, so that all GameObjects of this category are visible.");
-		AddClassToCollection("CameraBehaviorZoomComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
-		AddClassToCollection("CameraBehaviorZoomComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
-		AddClassToCollection("CameraBehaviorZoomComponent", "void setGrowMultiplicator(float growMultiplicator)", "Sets a grow multiplicator how fast the orthogonal camera window size will increase, so that the game objects remain in view."
-			"Play with this value, because it also depends e.g. how fast your game objects are moving.");
-		AddClassToCollection("CameraBehaviorZoomComponent", "float getGrowMultiplicator()", "Gets a grow multiplicator how fast the orthogonal camera window size will increase, so that the game objects remain in view."
-			"Play with this value, because it also depends e.g. how fast your game objects are moving.");
-
-	}
-
 	void bindCameraComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<CameraComponent, GameObjectComponent>("CameraComponent")
-				// .def("getClassName", &CameraComponent::getClassName)
+		[
+			class_<CameraComponent, GameObjectComponent>("CameraComponent")
+			// .def("getClassName", &CameraComponent::getClassName)
 			.def("getParentClassName", &CameraComponent::getParentClassName)
 			.def("setActivated", &CameraComponent::setActivated)
 			.def("isActivated", &CameraComponent::isActivated)
@@ -8326,7 +8118,7 @@ namespace NOWA
 			.def("getCameraPosition", &CameraComponent::getCameraPosition)
 			.def("setCameraDegreeOrientation", &CameraComponent::setCameraDegreeOrientation)
 			.def("getCameraDegreeOrientation", &CameraComponent::getCameraDegreeOrientation)
-			];
+		];
 
 		AddClassToCollection("CameraComponent", "class inherits GameObjectComponent", CameraComponent::getStaticInfoText());
 		// AddClassToCollection("CameraComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -8349,27 +8141,52 @@ namespace NOWA
 		// AddClassToCollection("CameraComponent", "Vector3 getColor()", "Gets the currently used background color.");
 	}
 
+	void bindCameraBehaviorComponent(lua_State* lua)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorComponent, GameObjectComponent>("CameraBehaviorComponent")
+			// .def("getClassName", &CameraBehaviorComponent::getClassName)
+			.def("getParentClassName", &CameraBehaviorComponent::getParentClassName)
+			.def("setActivated", &CameraBehaviorComponent::setActivated)
+			.def("isActivated", &CameraBehaviorComponent::isActivated)
+			.def("getCamera", &CameraBehaviorComponent::getCamera)
+			.def("setCameraControlLocked", &CameraBehaviorComponent::setCameraControlLocked)
+			.def("getCameraControlLocked", &CameraBehaviorComponent::getCameraControlLocked)
+		];
+
+		AddClassToCollection("CameraBehaviorComponent", "class inherits GameObjectComponent", CameraBehaviorComponent::getStaticInfoText());
+		// AddClassToCollection("CameraBehaviorComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
+		// AddClassToCollection("CameraBehaviorComponent", "String getClassName()", "Gets the class name of this component as string.");
+		// AddClassToCollection("CameraBehaviorComponent", "number getClassId()", "Gets the class id of this component.");
+		AddClassToCollection("CameraBehaviorComponent", "void setActivated(bool activated)", "Sets the camera behavior component is activated. If true, the camera will do its work according the used behavior.");
+		AddClassToCollection("CameraBehaviorComponent", "bool isActivated()", "Gets whether camera behavior component is activated. If true, the camera will do its work according the used behavior.");
+		AddClassToCollection("CameraBehaviorComponent", "Camera getCamera()", "Gets the used camera pointer for direct manipulation.");
+		AddClassToCollection("CameraBehaviorComponent", "void setCameraControlLocked(bool locked)", "Sets whether the camera can be moved by keys. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
+		AddClassToCollection("CameraBehaviorComponent", "bool getCameraControlLocked()", "Gets the rotation speed for the ai controller game object. Note: This should be locked, if a behavior is active, since the camera will be moved automatically.");
+	}
+
 	void bindCompositorEffects(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<CompositorEffectBaseComponent, GameObjectComponent>("CompositorEffectBaseComponent")
-				// .def("getClassName", &CompositorEffectBaseComponent::getClassName)
+		[
+			class_<CompositorEffectBaseComponent, GameObjectComponent>("CompositorEffectBaseComponent")
+			// .def("getClassName", &CompositorEffectBaseComponent::getClassName)
 			.def("getParentClassName", &CompositorEffectBaseComponent::getParentClassName)
 			.def("setActivated", &CompositorEffectBaseComponent::setActivated)
 			.def("isActivated", &CompositorEffectBaseComponent::isActivated)
-			];
+		];
 
 		AddClassToCollection("CompositorEffectBaseComponent", "class inherits GameObjectComponent", CompositorEffectBaseComponent::getStaticInfoText());
 
 		module(lua)
-			[
-				class_<CompositorEffectBloomComponent, CompositorEffectBaseComponent>("CompositorEffectBloomComponent")
-				.def("setImageWeight", &CompositorEffectBloomComponent::setImageWeight)
+		[
+			class_<CompositorEffectBloomComponent, CompositorEffectBaseComponent>("CompositorEffectBloomComponent")
+			.def("setImageWeight", &CompositorEffectBloomComponent::setImageWeight)
 			.def("getImageWeight", &CompositorEffectBloomComponent::getImageWeight)
 			.def("setBlurWeight", &CompositorEffectBloomComponent::setBlurWeight)
 			.def("getBlurWeight", &CompositorEffectBloomComponent::getBlurWeight)
-			];
+		];
 
 		AddClassToCollection("CompositorEffectBloomComponent", "class inherits CompositorEffectBaseComponent", CompositorEffectBloomComponent::getStaticInfoText());
 		// AddClassToCollection("CompositorEffectBloomComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -8381,11 +8198,11 @@ namespace NOWA
 		AddClassToCollection("CompositorEffectBloomComponent", "float getblurWeight()", "Gets the blur weight.");
 
 		module(lua)
-			[
-				class_<CompositorEffectGlassComponent, CompositorEffectBaseComponent>("CompositorEffectGlassComponent")
-				.def("setGlassWeight", &CompositorEffectGlassComponent::setGlassWeight)
+		[
+			class_<CompositorEffectGlassComponent, CompositorEffectBaseComponent>("CompositorEffectGlassComponent")
+			.def("setGlassWeight", &CompositorEffectGlassComponent::setGlassWeight)
 			.def("getGlassWeight", &CompositorEffectGlassComponent::getGlassWeight)
-			];
+		];
 
 		AddClassToCollection("CompositorEffectGlassComponent", "class inherits CompositorEffectBaseComponent", CompositorEffectGlassComponent::getStaticInfoText());
 		// AddClassToCollection("CompositorEffectGlassComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -8441,11 +8258,11 @@ namespace NOWA
 		AddClassToCollection("CompositorEffectOldTvComponent", "Vector3 getSinusTime()", "Gets the sinus time frequency.");
 
 		module(lua)
-			[
-				class_<CompositorEffectBlackAndWhiteComponent, CompositorEffectBaseComponent>("CompositorEffectBlackAndWhiteComponent")
-				.def("setColor", &CompositorEffectBlackAndWhiteComponent::setColor)
+		[
+			class_<CompositorEffectBlackAndWhiteComponent, CompositorEffectBaseComponent>("CompositorEffectBlackAndWhiteComponent")
+			.def("setColor", &CompositorEffectBlackAndWhiteComponent::setColor)
 			.def("getColor", &CompositorEffectBlackAndWhiteComponent::getColor)
-			];
+		];
 
 		AddClassToCollection("CompositorEffectBlackAndWhiteComponent", "class inherits CompositorEffectBaseComponent", CompositorEffectBlackAndWhiteComponent::getStaticInfoText());
 		// AddClassToCollection("CompositorEffectBlackAndWhiteComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -10440,6 +10257,8 @@ namespace NOWA
 			.def("getMaxSpeed", &PhysicsActiveComponent::getMaxSpeed)
 			.def("getMinSpeed", &PhysicsActiveComponent::getMinSpeed)
 			.def("setOmegaVelocity", &PhysicsActiveComponent::setOmegaVelocity)
+			.def("setOmegaVelocityRotateTo", &PhysicsActiveComponent::setOmegaVelocityRotateTo)
+			.def("setOmegaVelocityRotateToDirection", &PhysicsActiveComponent::setOmegaVelocityRotateToDirection)
 			.def("applyOmegaForce", &PhysicsActiveComponent::applyOmegaForce)
 			.def("applyOmegaForceRotateTo", &PhysicsActiveComponent::applyOmegaForceRotateTo)
 			.def("applyOmegaForceRotateToDirection", &PhysicsActiveComponent::applyOmegaForceRotateToDirection)
@@ -10524,17 +10343,19 @@ namespace NOWA
 		AddClassToCollection("PhysicsActiveComponent", "float getMaxSpeed()", "Gets the max speed.");
 		// Attention: Why can min speed not be set, and is set automatically when speed is set??
 		AddClassToCollection("PhysicsActiveComponent", "float getMinSpeed()", "Gets the min speed.");
-		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForce(Vector3 omegaForce)", "Applies omega force vector of the physics body. Note: This should be used during simulation instead of @setOmegaVelocity.");
-		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForceRotateTo(Quaternion resultOrientation, Vector3 axes, Ogre::Real strength)", "Applies omega force in order to rotate the game object to the given orientation. "
+		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForce(Vector3 omegaForce)", "Applies omega force vector of the physics body. Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.");
+		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForceRotateTo(Quaternion resultOrientation, Vector3 axes, number strength)", "Applies omega force in order to rotate the game object to the given orientation. "
 			"The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). "
 			"The strength at which the rotation should occur. "
-			"Note: This should be used during simulation instead of @setOmegaVelocity.");
+			"Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.");
 
-		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForceRotateToDirection(Vector3 resultDirection, Ogre::Real strength)", "Applies omega force in order to rotate the game object to the given result direction. "
+		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForceRotateToDirection(Vector3 resultDirection, number strength)", "Applies omega force in order to rotate the game object to the given result direction. "
 			"The strength at which the rotation should occur. "
-			"Note: This should be used during simulation instead of @setOmegaVelocity.");
+			"Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.");
 
-		AddClassToCollection("PhysicsActiveComponent", "Vector3 setOmegaVelocity(Vector3 rotation)", "Set the omega velocity (rotation). Note: This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyAngularVelocity instead. Or it may be called if its a physics active kinematic body.");
+		AddClassToCollection("PhysicsActiveComponent", "void setOmegaVelocity(Vector3 rotation)", "Set the omega velocity (rotation) for the physics kinematic component.");
+		AddClassToCollection("PhysicsActiveComponent", "void setOmegaVelocityRotateTo(Vector3 rotation, Vector3 axes, number strength)", "Sets the omega velocity in order to rotate the physics kinematic component to the given orientation.");
+		AddClassToCollection("PhysicsActiveComponent", "void setOmegaVelocityRotateToDirection(Vector3 rotation, Vector3 axes, number strength)", "Sets the omega velocity in order to rotate the physics kinematic component to the given direction.");
 		AddClassToCollection("PhysicsActiveComponent", "Vector3 getOmega()", "Gets the global angular velocity vector to the physics body. Note: This should be used in order to rotate a game object savily.");
 		AddClassToCollection("PhysicsActiveComponent", "void applyOmegaForce(Vector3 omegaForce)", "Sets the omega force to the physics body. Similiar to @setForce(...) but for rotation.");
 		AddClassToCollection("PhysicsActiveComponent", "void applyForce(Vector3 force)", "Sets the force to the body.");
@@ -13326,8 +13147,8 @@ namespace NOWA
 				bindAnimationComponent(this->lua);
 				bindAttributesComponent(this->lua);
 				bindDistributedComponent(this->lua);
-				bindCameraBehaviorComponents(this->lua);
 				bindCameraComponent(this->lua);
+				bindCameraBehaviorComponent(this->lua);
 				bindCompositorEffects(this->lua);
 				bindDatablockComponent(this->lua);
 				bindTerraComponent(this->lua);
@@ -13394,7 +13215,10 @@ namespace NOWA
 				// Add dynamic component lua api registrations (if existing)
 				for (auto componentInfo : GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 				{
-					GameObjectFactory::getInstance()->getComponentFactory()->createForLuaApi(NOWA::getIdFromName(componentInfo.first), this->lua, gameObjectClass, gameObjectControllerClass);
+					if (CameraBehaviorComponent::getStaticClassName() != componentInfo.first)
+					{
+						GameObjectFactory::getInstance()->getComponentFactory()->createForLuaApi(NOWA::getIdFromName(componentInfo.first), this->lua, gameObjectClass, gameObjectControllerClass);
+					}
 				}
 
 				// Finish splitted registration

@@ -68,6 +68,8 @@ namespace OgreNewt
 
 		Ogre::Vector3 getDirection(void) const;
 
+		void setGravityDirection(const Ogre::Vector3& gravityDirection);
+
 		void setMass(Ogre::Real mass);
 
 		void setCollisionPositionOffset(const Ogre::Vector3& collisionPositionOffset);
@@ -116,6 +118,10 @@ namespace OgreNewt
 
 		Ogre::Quaternion getStartOrientation(void) const;
 
+		void setActive(bool active);
+
+		bool isActive(void) const;
+
 		PlayerCallback* getPlayerCallback(void) const;
 
 	protected:
@@ -127,6 +133,7 @@ namespace OgreNewt
 		Ogre::Vector3 m_oldStartPosition;
 		Ogre::Quaternion m_oldStartOrientation;
 		Ogre::Vector3 m_direction;
+		Ogre::Vector3 m_gravityDirection;
 		Ogre::Real m_mass;
 		Ogre::Real m_radius;
 		Ogre::Real m_height;
@@ -141,6 +148,7 @@ namespace OgreNewt
 		Ogre::Real m_walkSpeed;
 		Ogre::Real m_jumpSpeed;
 		bool m_canJump;
+		bool m_active;
 
 		PlayerCallback* m_playerCallback;
 	};

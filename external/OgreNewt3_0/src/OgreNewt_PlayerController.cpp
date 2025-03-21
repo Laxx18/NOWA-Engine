@@ -13,7 +13,8 @@ namespace OgreNewt
 
 	PlayerController::PlayerController(NewtonWorld* const world, const dMatrix& location, const dMatrix& localAxis, dFloat mass, dFloat radius, dFloat height, dFloat stepHeight, dFloat startHeading, PlayerCallback* playerCallback)
 		: dPlayerController(world, location, localAxis, mass, radius, height, stepHeight),
-		playerCallback(playerCallback)
+		playerCallback(playerCallback),
+		m_active(true)
 	{
 
 	}
@@ -31,6 +32,11 @@ namespace OgreNewt
 		const dVector gravity(GetLocalFrame().RotateVector(dVector(bodyGravity.y, 0.0f, 0.0f, 0.0f)));
 		const dVector totalImpulse(GetImpulse() + gravity.Scale(GetMass() * timestep));
 		SetImpulse(totalImpulse);
+	}
+
+	void PlayerController::setActive(bool active)
+	{
+		m_active = active;
 	}
 
 	dFloat PlayerController::ContactFrictionCallback(const dVector& position, const dVector& normal, int contactId, const NewtonBody* const otherbody) const
@@ -67,6 +73,14 @@ namespace OgreNewt
 
 				this->playerCallback->onContact(playerControllerBody, position, normal, contact.m_penetration, contact.m_contactID, otherBody);
 			}
+		}
+	}
+
+	void PlayerController::PreUpdate(dFloat timestep)
+	{
+		if (m_active)
+		{
+			dPlayerController::PreUpdate(timestep);
 		}
 	}
 

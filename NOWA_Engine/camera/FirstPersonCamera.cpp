@@ -97,7 +97,7 @@ namespace NOWA
         Ogre::Quaternion targetOrientation = Ogre::Quaternion(rotMatrix);
 
         // Apply smooth rotation
-        Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
+        Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * 60.0f * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
 
         // Set camera orientation
         this->camera->setOrientation(delta);
@@ -107,7 +107,7 @@ namespace NOWA
         Ogre::Vector3 transformedOffset = delta * this->offsetPosition;
 
         // Calculate target position
-        Ogre::Vector3 targetVector = playerPosition + (transformedOffset * this->moveCameraWeight);
+        Ogre::Vector3 targetVector = playerPosition + (transformedOffset * this->moveCameraWeight * dt * 60.0f);
 
         // Apply smooth movement
         Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));

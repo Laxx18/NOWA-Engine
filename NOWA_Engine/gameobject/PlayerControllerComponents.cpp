@@ -4,6 +4,7 @@
 #include "PhysicsActiveComponent.h"
 #include "PhysicsRagDollComponent.h"
 #include "PhysicsPlayerControllerComponent.h"
+#include "PhysicsActiveKinematicComponent.h"
 #include "NodeComponent.h"
 #include "LuaScriptComponent.h"
 #include "main/Core.h"
@@ -162,6 +163,19 @@ namespace NOWA
 		this->deleteDebugData();
 	}
 
+	void PlayerControllerComponent::onOtherComponentRemoved(unsigned int index)
+	{
+		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		if (nullptr != gameObjectCompPtr)
+		{
+			auto& inputDeviceCompPtr = boost::dynamic_pointer_cast<InputDeviceComponent>(gameObjectCompPtr);
+			if (nullptr != inputDeviceCompPtr)
+			{
+				this->inputDeviceComponent = nullptr;
+			}
+		}
+	}
+
 	bool PlayerControllerComponent::init(rapidxml::xml_node<>*& propertyElement)
 	{
 		GameObjectComponent::init(propertyElement);
@@ -234,54 +248,22 @@ namespace NOWA
 
 	bool PlayerControllerComponent::connect(void)
 	{
-		// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
-		this->setCategories(this->categories->getString());
-		
-		// Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
-		auto& physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
-		if (nullptr == physicsPlayerControllerCompPtr)
-		{
-			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
-			if (nullptr == physicsActiveCompPtr)
-			{
-				return false;
-			}
-			else
-			{
-				this->physicsActiveComponent = physicsActiveCompPtr.get();
-			}
-		}
-		else
-		{
-			this->physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(physicsPlayerControllerCompPtr.get());
-		}
-		
-		// Get optional camera behavior component, for activation in game object controller
-		auto& cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
-		if (nullptr != cameraBehaviorCompPtr)
-		{
-			this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();
-		}
-		else
-		{
-			this->cameraBehaviorComponent = nullptr;
-		}
+		GameObjectComponent::connect();
 
-		// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
-		// also hold shared by the game object controller
-		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
-
-		this->internalShowDebugData();
+		this->setActivated(this->activated->getBool());
 
 		return true;
 	}
 
 	bool PlayerControllerComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
 		this->cameraBehaviorComponent = nullptr;
 		this->physicsActiveComponent = nullptr;
-		this->inputDeviceComponent = nullptr;
+		// Will cause crash in state, input device component shall be existing!
+		// this->inputDeviceComponent = nullptr;
 		this->moveLockOwner.clear();
 		this->jumpWeightOwner.clear();
 
@@ -299,9 +281,9 @@ namespace NOWA
 
 	void PlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && nullptr != this->physicsActiveComponent && true == this->activated->getBool())
+		if (false == notSimulating && nullptr != this->physicsActiveComponent/* && true == this->activated->getBool()*/)
 		{
-			auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
+			// auto widget = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow", false);
 
 			this->setMoveWeight(1.0f);
 			this->setJumpWeight(1.0f);
@@ -603,6 +585,71 @@ namespace NOWA
 	void PlayerControllerComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
+
+		// Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
+		auto& physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
+		if (nullptr == physicsPlayerControllerCompPtr)
+		{
+			auto& physicsActiveCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveComponent>());
+			if (nullptr == physicsActiveCompPtr)
+			{
+				auto& physicsActiveKinematicCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsActiveKinematicComponent>());
+				if (nullptr == physicsActiveKinematicCompPtr)
+				{
+					return;
+				}
+				else
+				{
+					this->physicsActiveComponent = dynamic_cast<PhysicsActiveKinematicComponent*>(physicsActiveKinematicCompPtr.get());
+				}
+			}
+			else
+			{
+				this->physicsActiveComponent = physicsActiveCompPtr.get();
+			}
+		}
+		else
+		{
+			this->physicsActiveComponent = dynamic_cast<PhysicsActiveComponent*>(physicsPlayerControllerCompPtr.get());
+		}
+
+		// Get optional camera behavior component, for activation in game object controller
+		auto& cameraBehaviorCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraBehaviorComponent>());
+		if (nullptr != cameraBehaviorCompPtr)
+		{
+			this->cameraBehaviorComponent = cameraBehaviorCompPtr.get();
+		}
+		else
+		{
+			this->cameraBehaviorComponent = nullptr;
+		}
+
+		if (true == activated)
+		{
+			// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
+			this->setCategories(this->categories->getString());
+
+			// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
+			// also hold shared by the game object controller
+			AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
+
+			this->internalShowDebugData();
+
+			auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
+			if (nullptr != inputDeviceCompPtr)
+			{
+				this->inputDeviceComponent = inputDeviceCompPtr.get();
+
+				if (false == this->inputDeviceComponent->hasValidDevice())
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
+				}
+			}
+		}
+		/*else
+		{
+			this->inputDeviceComponent = nullptr;
+		}*/
 
 		// Sent event, that this player controller has been activated or deactivated
 		boost::shared_ptr<EventDataActivatePlayerController> eventDataActivePlayerController(new EventDataActivatePlayerController(this->activated->getBool()));
@@ -1096,44 +1143,13 @@ namespace NOWA
 	{
 		bool success = PlayerControllerComponent::connect();
 
-		auto inputDeviceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<InputDeviceComponent>());
-		if (nullptr != inputDeviceCompPtr)
+		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
+		if (nullptr != physicsPlayerControllerComponent)
 		{
-			this->inputDeviceComponent = inputDeviceCompPtr.get();
-
-			if (false == this->inputDeviceComponent->hasValidDevice())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PlayerControllerJumpNRunComponent] Cannot use WalkingStateJumpNRun, because the InputDeviceComponent has not valid input device set.");
-			}
+			// Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
+			physicsPlayerControllerComponent->setActivated(false);
 		}
 
-		// Add some particle effect, when player is grounded from jump
-		AppStateManager::getSingletonPtr()->getParticleUniverseModule()->createParticleSystem("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), "smoke", 500.0f, Ogre::Quaternion::IDENTITY, this->gameObjectPtr->getPosition(), 0.05f);
-		auto particleStruct = AppStateManager::getSingletonPtr()->getParticleUniverseModule()->getParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-		if (nullptr != particleStruct)
-		{
-			particleStruct->particleOffsetPosition = Ogre::Vector3(0.0f, -0.1f, 0.0f);
-			particleStruct->particle->setScaleTime(10.0f);
-		}
-		
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_SOUTH, this->animations[4]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_WEST, this->animations[5]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_EAST, this->animations[6]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_START, this->animations[7]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_WALK, this->animations[8]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_HIGH_JUMP_END, this->animations[9]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_END, this->animations[10]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[11]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
-		this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_DUCK, this->animations[13]->getListSelectedValue());
-
-		this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
-
-		this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
 		return success;
 	}
 
@@ -1156,13 +1172,20 @@ namespace NOWA
 			this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
 		}
 
+		PhysicsPlayerControllerComponent* physicsPlayerControllerComponent = dynamic_cast<PhysicsPlayerControllerComponent*>(this->physicsActiveComponent);
+		if (nullptr != physicsPlayerControllerComponent)
+		{
+			// Deactivates the movement, because internally newtons player body update would run and let the player fall, even he is not active yet via the walking state on a planet
+			physicsPlayerControllerComponent->setActivated(false);
+		}
+
 		return success;
 	}
 
 	void PlayerControllerJumpNRunComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating && true == this->activated->getBool())
+		if (false == notSimulating/* && true == this->activated->getBool()*/)
 		{
 			this->stateMachine->update(dt);
 		}
@@ -1359,6 +1382,42 @@ namespace NOWA
 		propertiesXML->append_node(propertyXML);
 	}
 
+	void PlayerControllerJumpNRunComponent::setActivated(bool activated)
+	{
+		PlayerControllerComponent::setActivated(activated);
+
+		if (true == activated)
+		{
+			// Add some particle effect, when player is grounded from jump
+			AppStateManager::getSingletonPtr()->getParticleUniverseModule()->createParticleSystem("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()), "smoke", 500.0f, Ogre::Quaternion::IDENTITY, this->gameObjectPtr->getPosition(), 0.05f);
+			auto particleStruct = AppStateManager::getSingletonPtr()->getParticleUniverseModule()->getParticle("smoke" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+			if (nullptr != particleStruct)
+			{
+				particleStruct->particleOffsetPosition = Ogre::Vector3(0.0f, -0.1f, 0.0f);
+				particleStruct->particle->setScaleTime(10.0f);
+			}
+
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_1, this->animations[0]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_2, this->animations[1]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_IDLE_3, this->animations[2]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_NORTH, this->animations[3]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_SOUTH, this->animations[4]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_WEST, this->animations[5]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_WALK_EAST, this->animations[6]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_START, this->animations[7]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_WALK, this->animations[8]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_HIGH_JUMP_END, this->animations[9]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_JUMP_END, this->animations[10]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[11]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_SNEAK, this->animations[12]->getListSelectedValue());
+			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_DUCK, this->animations[13]->getListSelectedValue());
+
+			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+
+			this->stateMachine->setCurrentState(WalkingStateJumpNRun::getName());
+		}
+	}
+
 	KI::StateMachine<GameObject>* PlayerControllerJumpNRunComponent::getStateMaschine(void) const
 	{
 		return this->stateMachine;
@@ -1532,7 +1591,7 @@ namespace NOWA
 	void PlayerControllerJumpNRunLuaComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating && true == this->activated->getBool())
+		if (false == notSimulating/* && true == this->activated->getBool()*/)
 		{
 			this->luaStateMachine->update(dt);
 		}
@@ -1572,6 +1631,11 @@ namespace NOWA
 	NOWA::KI::LuaStateMachine<GameObject>* PlayerControllerJumpNRunLuaComponent::getStateMachine(void) const
 	{
 		return this->luaStateMachine;
+	}
+
+	void PlayerControllerJumpNRunLuaComponent::setActivated(bool activated)
+	{
+		PlayerControllerComponent::setActivated(activated);
 	}
 
 	void PlayerControllerJumpNRunLuaComponent::setStartStateName(const Ogre::String& startStateName)
@@ -1854,7 +1918,7 @@ namespace NOWA
 	void PlayerControllerClickToPointComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		PlayerControllerComponent::update(dt, notSimulating);
-		if (false == notSimulating && true == this->activated->getBool())
+		if (false == notSimulating /*&& true == this->activated->getBool()*/)
 		{
 			this->stateMachine->update(dt);
 		}
@@ -1982,6 +2046,11 @@ namespace NOWA
 	Ogre::String PlayerControllerClickToPointComponent::getParentClassName(void) const
 	{
 		return "PlayerControllerComponent";
+	}
+
+	void PlayerControllerClickToPointComponent::setActivated(bool activated)
+	{
+		PlayerControllerComponent::setActivated(activated);
 	}
 
 	KI::StateMachine<GameObject>* PlayerControllerClickToPointComponent::getStateMachine(void) const
@@ -2116,6 +2185,8 @@ namespace NOWA
 		if (nullptr != physicsPlayerControllerComponent)
 		{
 			this->hasPhysicsPlayerControllerComponent = true;
+			// Just here activate the player for potentional planetary movement
+			physicsPlayerControllerComponent->setActivated(true);
 		}
 
 		if (nullptr == this->playerController->getInputDeviceComponent() || nullptr == this->playerController->getInputDeviceComponent()->getInputDeviceModule())
@@ -2409,6 +2480,7 @@ namespace NOWA
 							this->playerController->getPhysicsComponent()->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
 						}
 					}
+
 					this->playerController->getPhysicsComponent()->applyOmegaForce(Ogre::Vector3(0.0f, yawAtSpeed, 0.0f));
 				}
 				else
@@ -2619,15 +2691,12 @@ namespace NOWA
 				if (false == this->hasPhysicsPlayerControllerComponent)
 				{
 					jumpVelocity = this->playerController->getPhysicsComponent()->getUp() * this->jumpForce * this->playerController->getJumpWeight();
-					if (false == this->hasPhysicsPlayerControllerComponent)
-					{
-						this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
-					}
+					this->playerController->getPhysicsComponent()->applyRequiredForceForJumpVelocity(jumpVelocity);
 				}
 				else
 				{
 					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
-					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce* this->playerController->getJumpWeight());
+					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->setJumpSpeed(this->jumpForce * this->playerController->getJumpWeight());
 					static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->jump();
 				}
 				if (this->jumpCount >= 2)
@@ -2704,34 +2773,41 @@ namespace NOWA
 		// Compute desired yaw rotation (normal movement)
 		Ogre::Vector3 desiredAngularVelocity = -gravityDir * yawAtSpeed;
 
-		if (yawAtSpeed != 0.0f)
+		if (false == this->hasPhysicsPlayerControllerComponent)
 		{
-			// Apply yaw rotation
-			this->playerController->getPhysicsComponent()->applyOmegaForce(desiredAngularVelocity);
-		}
-		else
-		{
-			this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
+			if (yawAtSpeed != 0.0f)
+			{
+				// Apply yaw rotation
+				this->playerController->getPhysicsComponent()->applyOmegaForce(desiredAngularVelocity);
+			}
+			else
+			{
+				this->playerController->getPhysicsComponent()->applyOmegaForceRotateToDirection(this->playerController->getPhysicsComponent()->getForward(), 10.0f);
+			}
 		}
 
 #if 0
-		// Compute angle deviation between player's up and gravity up
-		Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
-
-		// Set the threshold for when to apply correction
-		const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
-
-		// Only trigger correction if the angle deviation is significant and not near 180 degrees
-		if (angleDeviation > tiltThresholdAngle && false == this->inAir)
+		if (true == hasPhysicsKinematicComponent)
 		{
-			// Apply corrective force to upright the player
-			Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
+			// Compute angle deviation between player's up and gravity up
+			Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
 
-			// Only correct pitch & roll, not yaw
-			Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
-			this->playerController->getPhysicsComponent()->applyOmegaForceRotateTo(uprightRotation, correctionAxes, 5.0f);
+			// Set the threshold for when to apply correction
+			const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
+
+			// Only trigger correction if the angle deviation is significant and not near 180 degrees
+			if (angleDeviation > tiltThresholdAngle && false == this->inAir)
+			{
+				// Apply corrective force to upright the player
+				Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
+
+				// Only correct pitch & roll, not yaw
+				Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
+				this->playerController->getPhysicsComponent()->setOmegaVelocityRotateTo(uprightRotation, correctionAxes, 5.0f);
+			}
 		}
 #endif
+
 
 		// Split current velocity into vertical and horizontal components
 		// Vertical component (along gravity direction)
@@ -2747,10 +2823,6 @@ namespace NOWA
 		{
 			this->playerController->getPhysicsComponent()->applyRequiredForceForVelocity(newVelocity);
 		}
-		/*if (false == gravityDir.isZeroLength())
-		{
-			this->playerController->getPhysicsComponent()->setConstraintDirection(desiredAngularVelocity.normalisedCopy());
-		}*/
 		else
 		{
 			static_cast<PhysicsPlayerControllerComponent*>(this->playerController->getPhysicsComponent())->move(0.0f, tempSpeed, heading);
@@ -2883,7 +2955,7 @@ namespace NOWA
 			// Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
 			if (nullptr != this->playerController->getCameraBehaviorComponent())
 			{
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(2.0f));
 				delayProcess->attachChild(NOWA::ProcessPtr(new UpdateCameraBehaviorProcess()));
 				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 			}

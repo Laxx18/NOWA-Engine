@@ -9,7 +9,7 @@ namespace NOWA
 	{
 	public:
 
-		ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z, Ogre::Real yOffset = 2.0f,
+		ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection = Ogre::Vector3::NEGATIVE_UNIT_Z, const Ogre::Vector3& offsetPosition = Ogre::Vector3(0.0f, 2.0f, 0.0f),
 			const Ogre::Vector3& lookAtOffset = Ogre::Vector3::ZERO, Ogre::Real cameraSpring = 0.1f,
 			Ogre::Real cameraFriction = 0.5f, Ogre::Real cameraSpringLength = 6.0f);
 
@@ -33,7 +33,7 @@ namespace NOWA
 			return "THIRD_PERSON_CAMERA";
 		}
 
-		void setYOffset(Ogre::Real yOffset);
+		void setOffsetPosition(const Ogre::Vector3& offsetPosition);
 
 		void setCameraSpring(Ogre::Real cameraSpring);
 
@@ -49,7 +49,7 @@ namespace NOWA
 		virtual void onSetData(void);
 
 	private:
-		Ogre::Real yOffset;
+		Ogre::Vector3 offsetPosition;
 		Ogre::Real cameraSpring;
 		Ogre::Real cameraFriction;
 		Ogre::Real cameraSpringLength;

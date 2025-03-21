@@ -59,13 +59,19 @@ namespace OgreNewt
 		// Apply gravity 
 		void ApplyMove(dFloat timestep);
 
+		void setActive(bool active);
+
 	protected:
 
 		virtual dFloat ContactFrictionCallback(const dVector& position, const dVector& normal, int contactId, const NewtonBody* const otherbody) const override;
 
 		virtual void UpdatePlayerStatus(dPlayerControllerContactSolver& contactSolver) override;
+
+		virtual void PreUpdate(dFloat timestep) override;
 	protected:
 		PlayerCallback* playerCallback;
+		bool m_active;
+		Ogre::Vector3 m_gravityDirection;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -81,9 +81,20 @@ namespace NOWA
 
 		this->oldPosition = this->gameObjectPtr->getPosition();
 		this->oldOrientation = this->gameObjectPtr->getOrientation();
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		
 		this->manageNavMesh();
 		return true;
+	}
+
+	void NavMeshComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 	}
 
 	void NavMeshComponent::manageNavMesh(void)
@@ -149,7 +160,9 @@ namespace NOWA
 					auto dataPair = AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeDynamicObstacle(this->gameObjectPtr->getId(), false);
 					ConvexVolume* convexVolume = dataPair.second;
 					if (nullptr == convexVolume)
+					{
 						return;
+					}
 
 					// Transform hull to new location
 					convexVolume->move(this->oldPosition - this->gameObjectPtr->getPosition());
@@ -166,7 +179,9 @@ namespace NOWA
 					InputGeom* inputGeom = dataPair.first;
 					ConvexVolume* convexVolume = dataPair.second;
 					if (nullptr == inputGeom)
+					{
 						return;
+					}
 
 					// Apply rotation to the inputGeometry and calculate a new 2D convex hull
 
@@ -182,9 +197,13 @@ namespace NOWA
 					convexVolume = inputGeom->getConvexHull(AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentRadius());
 
 					if (false == this->walkable->getBool())
+					{
 						convexVolume->area = RC_NULL_AREA;   // Be sure to set the proper area for the convex shape!
+					}
 					else
+					{
 						convexVolume->area = RC_WALKABLE_AREA;
+					}
 
 					convexVolume->hmin = convexVolume->hmin - 0.1f;
 
@@ -261,7 +280,9 @@ namespace NOWA
 		this->activated->setValue(activated);
 		
 		if (true == activated)
+		{
 			this->manageNavMesh();
+		}
 	}
 
 	bool NavMeshComponent::isActivated(void) const

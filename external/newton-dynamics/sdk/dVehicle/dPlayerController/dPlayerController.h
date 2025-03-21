@@ -51,6 +51,8 @@ class dPlayerController: public dVehicle
 	//void SetHeadingAngle(dFloat angle) {m_headingAngle = dClamp (angle, dFloat (-dPi), dFloat (dPi));}
 	void SetHeadingAngle(dFloat angle) { m_headingAngle = angle; }
 
+	DVEHICLE_API void SetGravityDirection(const dVector& gravityDirection);
+
 	DVEHICLE_API dVector GetVelocity() const;
 	DVEHICLE_API void SetVelocity(const dVector& veloc);
 
@@ -99,6 +101,8 @@ class dPlayerController: public dVehicle
 	bool m_isAirbone;
 	bool m_isOnFloor;
 	bool m_isCrouched;
+	dVector m_gravityDirection;
+
 	friend class dVehicleManager;
 	friend class dPlayerControllerImpulseSolver;
 };

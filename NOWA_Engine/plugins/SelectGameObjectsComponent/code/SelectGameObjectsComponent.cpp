@@ -7,6 +7,7 @@
 #include "main/InputDeviceCore.h"
 #include "gameobject/GameObjectFactory.h"
 #include "gameobject/PlayerControllerComponents.h"
+#include "gameobject/InputDeviceComponent.h"
 
 #include "OgreAbiUtils.h"
 
@@ -18,9 +19,10 @@ namespace NOWA
 	class SelectionObserver : public NOWA::SelectionManager::ISelectionObserver
 	{
 	public:
-		SelectionObserver(bool activatePlayerController)
+		SelectionObserver(bool activatePlayerController, bool useMultiSelection)
 			: selectionStrategy(new NOWA::DefaultOutLine()), // = new NOWA::RimEffectOutLine();
-			activatePlayerController(activatePlayerController)
+			activatePlayerController(activatePlayerController),
+			useMultiSelection(useMultiSelection)
 		{
 
 		}
@@ -47,6 +49,14 @@ namespace NOWA
 
 			if (true == activatePlayerController)
 			{
+				const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<InputDeviceComponent>());
+
+				if (nullptr != inputDeviceCompPtr)
+				{
+					InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
+					inputDeviceComponent->setActivated(selected);
+				}
+
 				const auto& playerControllerCompPtr = NOWA::makeStrongPtr(gameObject->getComponent<PlayerControllerComponent>());
 
 				if (nullptr != playerControllerCompPtr)
@@ -54,6 +64,8 @@ namespace NOWA
 					PlayerControllerComponent* playerControllerComponent = playerControllerCompPtr.get();
 					playerControllerComponent->setActivated(selected);
 				}
+
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(selected, gameObject->getId(), 0, !this->useMultiSelection);
 			}
 		}
 
@@ -61,9 +73,15 @@ namespace NOWA
 		{
 			this->activatePlayerController = activatePlayerController;
 		}
+
+		void setUseMultiSelection(bool useMultiSelection)
+		{
+			this->useMultiSelection = useMultiSelection;
+		}
 	private:
 		NOWA::DefaultOutLine* selectionStrategy;
 		bool activatePlayerController;
+		bool useMultiSelection;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +180,7 @@ namespace NOWA
 
 		// TODO: What if camera does change?
 		this->selectionManager->init(this->gameObjectPtr->getSceneManager(), NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), 
-			this->categories->getString(), OIS::MB_Left, new SelectionObserver(this->activatePlayerController->getBool()));
+			this->categories->getString(), OIS::MB_Left, new SelectionObserver(this->activatePlayerController->getBool(), this->useMultiSelection->getBool()));
 
 		// If a listener has been added via key/mouse/joystick pressed, a new listener would be inserted during this iteration, which would cause a crash in mouse/key/button release iterator, hence add in next frame
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -333,6 +351,12 @@ namespace NOWA
 	void SelectGameObjectsComponent::setUseMultiSelection(bool useMultiSelection)
 	{
 		this->useMultiSelection->setValue(useMultiSelection);
+
+		const auto& selectionObserver = this->selectionManager->getSelectionObserver();
+		if (nullptr != selectionObserver)
+		{
+			static_cast<SelectionObserver*>(selectionObserver)->setUseMultiSelection(useMultiSelection);
+		}
 	}
 
 	bool SelectGameObjectsComponent::getUseMultiSelection(void) const

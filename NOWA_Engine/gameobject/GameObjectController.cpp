@@ -19,6 +19,7 @@
 #include "LuaScriptComponent.h"
 #include "AiLuaComponent.h"
 #include "CameraComponent.h"
+#include "InputDeviceComponent.h"
 #include "main/AppStateManager.h"
 
 #include <algorithm>    // std::set_difference, std::sort
@@ -1158,6 +1159,12 @@ namespace NOWA
 				// Just deactivate all other camera behaviors for the same camera game object id (splitscreen), or if no cameraGameObjectId set
 				if (nullptr != it->second->getCameraBehaviorComponent() && 0 == cameraGameObjectId)
 				{
+					const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(it->second->getOwner()->getComponent<InputDeviceComponent>());
+					if (nullptr != inputDeviceCompPtr)
+					{
+						InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
+						inputDeviceComponent->setActivated(false);
+					}
 					it->second->getCameraBehaviorComponent()->setActivated(false);
 				}
 			}
@@ -1165,8 +1172,22 @@ namespace NOWA
 		auto& existingPlayerControllerIt = this->playerControllerComponentMap.find(gameObjectId);
 		if (existingPlayerControllerIt != this->playerControllerComponentMap.cend())
 		{
+			const auto& inputDeviceCompPtr = NOWA::makeStrongPtr(existingPlayerControllerIt->second->getOwner()->getComponent<InputDeviceComponent>());
+			if (nullptr != inputDeviceCompPtr)
+			{
+				InputDeviceComponent* inputDeviceComponent = inputDeviceCompPtr.get();
+				inputDeviceComponent->setActivated(active);
+			}
+
 			existingPlayerControllerIt->second->getOwner()->selected = active;
-			existingPlayerControllerIt->second->setActivated(active);
+			if (true == active && false == existingPlayerControllerIt->second->isActivated())
+			{
+				existingPlayerControllerIt->second->setActivated(true);
+			}
+			else if (false == active && true == existingPlayerControllerIt->second->isActivated())
+			{
+				existingPlayerControllerIt->second->setActivated(false);
+			}
 			if (nullptr != existingPlayerControllerIt->second->getCameraBehaviorComponent())
 			{
 				if (0 != cameraGameObjectId)

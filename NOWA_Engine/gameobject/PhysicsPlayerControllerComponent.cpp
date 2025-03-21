@@ -245,6 +245,17 @@ namespace NOWA
 		return clonedCompPtr;
 	}
 
+	void PhysicsPlayerControllerComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		PhysicsActiveComponent::update(dt, notSimulating);
+
+		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
+		if (nullptr != playerControllerBody)
+		{
+			playerControllerBody->setGravityDirection(this->gravityDirection);
+		}
+	}
+
 	void PhysicsPlayerControllerComponent::setPosition(Ogre::Real x, Ogre::Real y, Ogre::Real z)
 	{
 		this->setPosition(Ogre::Vector3(x, y, z));
@@ -422,6 +433,15 @@ namespace NOWA
 		else if (PhysicsPlayerControllerComponent::AttrOnContactFunctionName() == attribute->getName())
 		{
 			this->setOnContactFunctionName(attribute->getString());
+		}
+	}
+
+	void PhysicsPlayerControllerComponent::setActivated(bool activated)
+	{
+		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
+		if (nullptr != playerControllerBody)
+		{
+			playerControllerBody->setActive(activated);
 		}
 	}
 
@@ -674,11 +694,49 @@ namespace NOWA
 
 	void PhysicsPlayerControllerComponent::move(Ogre::Real forwardSpeed, Ogre::Real sideSpeed, const Ogre::Radian& headingAngleRad)
 	{
+#if 0
 		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
 		if (nullptr != playerControllerBody)
 		{
 			playerControllerBody->move(forwardSpeed, sideSpeed, headingAngleRad);
 		}
+#else
+		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
+		if (nullptr == playerControllerBody)
+		{
+			return;
+		}
+
+		// Get the player's local up vector
+		Ogre::Vector3 playerUp = this->up;
+
+		// Compute the forward vector in world space
+		Ogre::Vector3 forward = Ogre::Quaternion(Ogre::Radian(headingAngleRad), playerUp) * Ogre::Vector3::UNIT_Z;
+
+		// Project forward onto the local tangent plane to ensure movement stays on the surface
+		Ogre::Vector3 projectedForward = forward - (forward.dotProduct(this->gravityDirection) * this->gravityDirection);
+		projectedForward.normalise();
+
+		// Compute right vector
+		Ogre::Vector3 right = projectedForward.crossProduct(playerUp);
+		right.normalise();
+
+		// Compute final movement vector in world space
+		Ogre::Vector3 movementDir = (projectedForward * forwardSpeed) + (right * sideSpeed);
+
+		// Ensure movement remains on the tangent plane
+		movementDir = movementDir - (movementDir.dotProduct(this->gravityDirection) * this->gravityDirection);
+
+		// Normalize to prevent unintended scaling effects
+		movementDir.normalise();
+
+		// Convert movement direction into forward and side speeds for PlayerControllerBody
+		Ogre::Real finalForwardSpeed = movementDir.dotProduct(projectedForward) * forwardSpeed;
+		Ogre::Real finalSideSpeed = movementDir.dotProduct(right) * sideSpeed;
+
+		// Apply the movement to the PlayerControllerBody
+		playerControllerBody->move(finalForwardSpeed, finalSideSpeed, headingAngleRad);
+#endif
 	}
 
 	void PhysicsPlayerControllerComponent::setHeading(const Ogre::Radian& headingAngleRad)

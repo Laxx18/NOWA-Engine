@@ -758,6 +758,48 @@ namespace NOWA
 	};
 
 	//---------------------------------------------------------------------------------------------------------------------
+	// EventDataGeometryModified - Sent when a geometry has been modified in the scene
+	//---------------------------------------------------------------------------------------------------------------------
+	class EventDataGeometryModified : public NOWA::BaseEventData
+	{
+	public:
+		EventDataGeometryModified()
+		{
+
+		}
+
+		static NOWA::EventType getStaticEventType(void)
+		{
+			return 0xe96c7c50;
+		}
+
+		virtual const NOWA::EventType getEventType(void) const
+		{
+			return 0xe96c7c50;
+		}
+
+		virtual void serialize(std::ostrstream& out) const
+		{
+
+		}
+
+		virtual void deserialize(std::istrstream& in)
+		{
+
+		}
+
+		virtual NOWA::EventDataPtr copy() const
+		{
+			return NOWA::EventDataPtr(new EventDataGeometryModified());
+		}
+
+		virtual const char* getName(void) const
+		{
+			return "EventDataGeometryModified";
+		}
+	};
+
+	//---------------------------------------------------------------------------------------------------------------------
 	// EventDataFeedback - Sent when something when wrong with feedback text
 	//---------------------------------------------------------------------------------------------------------------------
 	class EventDataFeedback : public NOWA::BaseEventData

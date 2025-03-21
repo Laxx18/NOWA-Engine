@@ -773,6 +773,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		this->editorManager->setViewportGridEnabled(false);
 		this->editorManager->getGizmo()->setEnabled(false);
 
+#if 0
 		// Strangly the sleep state must be actualized, according to the current sleep state of each game object, else a simulation will only work once
 		// After that the user must click sleep and un-sleep
 		const auto& gameObjects = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
@@ -788,6 +789,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 				// physicsActiveComponent->setVelocity(Ogre::Vector3::ZERO);
 			}
 		}
+#endif
 	}
 	else
 	{
@@ -2306,21 +2308,21 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 	// Prevent scene manipulation, when user does something in GUI
 	MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 
+	if (nullptr == widget)
+	{
+		// Check if mouse is at the top of the screen
+		bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
+
+		// If mouse just entered or left the top region, reset timer
+		if (isNowAtTop != this->isMouseAtTop)
+		{
+			this->mouseTopTimer = 0.0f;
+			this->isMouseAtTop = isNowAtTop;
+		}
+	}
+
 	if (false == this->simulating)
 	{
-		if (nullptr == widget)
-		{
-			// Check if mouse is at the top of the screen
-			bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
-
-			// If mouse just entered or left the top region, reset timer
-			if (isNowAtTop != this->isMouseAtTop)
-			{
-				this->mouseTopTimer = 0.0f;
-				this->isMouseAtTop = isNowAtTop;
-			}
-		}
-
 		if (evt.state.buttonDown(OIS::MB_Middle))
 		{
 			Ogre::MovableObject* movableObject = nullptr;

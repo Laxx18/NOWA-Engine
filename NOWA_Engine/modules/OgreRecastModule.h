@@ -216,7 +216,7 @@ namespace NOWA
 
 		OgreDetourCrowd* getOgreDetourCrowd(void) const;
 
-		void handleSceneModified(NOWA::EventDataPtr eventData);
+		void handleGeometryModified(NOWA::EventDataPtr eventData);
 	private:
 		OgreRecastModule(const Ogre::String& appStateName);
 		~OgreRecastModule();

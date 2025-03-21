@@ -6,11 +6,11 @@
 
 namespace NOWA
 {
-	ThirdPersonCamera::ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, Ogre::Real yOffset, const Ogre::Vector3& lookAtOffset,
+	ThirdPersonCamera::ThirdPersonCamera(unsigned int id, Ogre::SceneNode* sceneNode, const Ogre::Vector3& defaultDirection, const Ogre::Vector3& offsetPosition, const Ogre::Vector3& lookAtOffset,
 		Ogre::Real cameraSpring, Ogre::Real cameraFriction, Ogre::Real cameraSpringLength)
 		: BaseCamera(id, 0.0f, 0.0f, 0.0f, defaultDirection),
 		sceneNode(sceneNode),
-		yOffset(yOffset),
+		offsetPosition(offsetPosition),
 		lookAtOffset(lookAtOffset),
 		cameraSpring(cameraSpring),
 		cameraFriction(cameraFriction),
@@ -43,9 +43,9 @@ namespace NOWA
 		}
 	}
 
-	void ThirdPersonCamera::setYOffset(Ogre::Real yOffset)
+	void ThirdPersonCamera::setOffsetPosition(const Ogre::Vector3& offsetPosition)
 	{
-		this->yOffset = yOffset;
+		this->offsetPosition = offsetPosition;
 	}
 
 	void ThirdPersonCamera::setCameraSpring(Ogre::Real cameraSpring)
@@ -123,7 +123,7 @@ namespace NOWA
 
 		// Calculate the desired camera position in local coordinates
 		// This is the player position plus an offset in the direction opposite to the player's forward
-		Ogre::Vector3 playerViewPosition = playerPosition + (localUp * this->yOffset);
+		Ogre::Vector3 playerViewPosition = playerPosition + (localUp * this->offsetPosition);
 
 		// Calculate the camera's desired position
 		// It should be behind the player (in the direction opposite to the player's forward)
@@ -132,7 +132,7 @@ namespace NOWA
 
 		// Apply spring physics for smooth camera movement
 		Ogre::Vector3 displacement = targetPosition - cameraPosition;
-		Ogre::Vector3 velocityVector = displacement * this->cameraSpring * this->cameraFriction;
+		Ogre::Vector3 velocityVector = displacement * this->cameraSpring * this->cameraFriction * dt * 60.0f;
 
 		// Calculate new camera position
 		Ogre::Vector3 newCameraPosition = cameraPosition + velocityVector;

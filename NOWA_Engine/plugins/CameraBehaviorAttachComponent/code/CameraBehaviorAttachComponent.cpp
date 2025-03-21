@@ -272,16 +272,15 @@ namespace NOWA
 	void CameraBehaviorAttachComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
 	{
 		module(lua)
-			[
-				class_<CameraBehaviorAttachComponent, CameraBehaviorComponent>("CameraBehaviorFirstPersonComponent")
-					// .def("clone", &CameraBehaviorFirstPersonComponent::clone)
-					.def("setSmoothValue", &CameraBehaviorAttachComponent::setSmoothValue)
-					.def("getSmoothValue", &CameraBehaviorAttachComponent::getSmoothValue)
-					.def("setOffsetPosition", &CameraBehaviorAttachComponent::setOffsetPosition)
-					.def("getOffsetPosition", &CameraBehaviorAttachComponent::getOffsetPosition)
-					.def("setOffsetOrientation", &CameraBehaviorAttachComponent::setOffsetOrientation)
-					.def("getOffsetOrientation", &CameraBehaviorAttachComponent::getOffsetOrientation)
-			];
+		[
+			class_<CameraBehaviorAttachComponent, CameraBehaviorComponent>("CameraBehaviorAttachComponent")
+			.def("setSmoothValue", &CameraBehaviorAttachComponent::setSmoothValue)
+			.def("getSmoothValue", &CameraBehaviorAttachComponent::getSmoothValue)
+			.def("setOffsetPosition", &CameraBehaviorAttachComponent::setOffsetPosition)
+			.def("getOffsetPosition", &CameraBehaviorAttachComponent::getOffsetPosition)
+			.def("setOffsetOrientation", &CameraBehaviorAttachComponent::setOffsetOrientation)
+			.def("getOffsetOrientation", &CameraBehaviorAttachComponent::getOffsetOrientation)
+		];
 		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorAttachComponent", "class inherits CameraBehaviorComponent", CameraBehaviorAttachComponent::getStaticInfoText());
 		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorAttachComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
 		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorAttachComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");

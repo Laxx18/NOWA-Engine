@@ -121,6 +121,9 @@ namespace NOWA
 				}
 				i++;
 			}
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void)
@@ -177,6 +180,9 @@ namespace NOWA
 				}
 				i++;
 			}
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 	private:
 		std::vector<EditorManager::GameObjectData> oldGameObjectDataList;
@@ -623,6 +629,9 @@ namespace NOWA
 				// Register after the component has been created
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 			}
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 	private:
@@ -872,6 +881,9 @@ namespace NOWA
 			out << '\0';
 			// Set the stream
 			this->gameObjectsToAddStream = out.str();
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -913,6 +925,9 @@ namespace NOWA
 			// But only for the cloned ones
 			// Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
 			AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		void createGameObjects(void)
@@ -983,6 +998,9 @@ namespace NOWA
 					break;
 				}
 			}
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
@@ -1017,6 +1035,9 @@ namespace NOWA
 
 			this->editorManager->setManipulationMode(EditorManager::EDITOR_TRANSLATE_MODE);
 			this->editorManager->setGizmoToGameObjectsCenter();
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 	private:
 		EditorManager* editorManager;
@@ -1135,11 +1156,17 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->terraComponent->setHeightData(this->oldHeightData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 
 		virtual void redo(void) override
 		{
 			this->terraComponent->setHeightData(this->newHeightData);
+
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 	private:
 		std::vector<Ogre::uint16> oldHeightData;

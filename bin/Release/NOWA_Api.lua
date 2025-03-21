@@ -3461,7 +3461,7 @@ return {
 	{
 		type = "class",
 		description = "Requirements: A kind of player controller component must exist.",
-		inherits = "CameraBehaviorComponent",
+		inherits = "CameraBehaviorBaseComponent",
 		childs = 
 		{
 			setMoveSpeed =
@@ -3664,25 +3664,24 @@ return {
 	CameraBehaviorThirdPersonComponent =
 	{
 		type = "class",
-		description = "Requirements: A kind of player controller component must exist. Note: If player is not in front of camera, adjust the game object's global mesh direction.",
-		inherits = "CameraBehaviorComponent",
+		description = "CameraBehaviorThirdPersonComponent class",
 		childs = 
 		{
-			setYOffset =
+			setOffsetPosition =
 			{
 				type = "method",
-				description = "Sets the camera y-offset, the camera is placed above the game object.",
-				args = "(number yOffset)",
+				description = "Sets the camera offset position, it should be away from the game object.",
+				args = "(Vector3 offsetPosition)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			getYOffset =
+			getOffsetPosition =
 			{
 				type = "function",
-				description = "Gets the camera y-offset, the camera is placed above the game object.",
+				description = "Gets the offset position, the camera is away from the game object.",
 				args = "()",
-				returns = "(number)",
-				valuetype = "number"
+				returns = "(Vector3)",
+				valuetype = "Vector3"
 			},
 			setLookAtOffset =
 			{
@@ -7128,46 +7127,6 @@ return {
 				returns = "(AiWanderComponent2D)",
 				valuetype = "AiWanderComponent2D"
 			},
-			getCameraBehaviorBaseComponent =
-			{
-				type = "function",
-				description = "Gets the camera behavior base component.",
-				args = "()",
-				returns = "(CameraBehaviorBaseComponent)",
-				valuetype = "CameraBehaviorBaseComponent"
-			},
-			getCameraBehaviorFirstPersonComponent =
-			{
-				type = "function",
-				description = "Gets the camera behavior first person component.",
-				args = "()",
-				returns = "(CameraBehaviorFirstPersonComponent)",
-				valuetype = "CameraBehaviorFirstPersonComponent"
-			},
-			getCameraBehaviorThirdPersonComponent =
-			{
-				type = "function",
-				description = "Gets the camera third first person component.",
-				args = "()",
-				returns = "(CameraBehaviorThirdPersonComponent)",
-				valuetype = "CameraBehaviorThirdPersonComponent"
-			},
-			getCameraBehaviorFollow2DComponent =
-			{
-				type = "function",
-				description = "Gets the camera follow 2D component.",
-				args = "()",
-				returns = "(CameraBehaviorFollow2DComponent)",
-				valuetype = "CameraBehaviorFollow2DComponent"
-			},
-			getCameraBehaviorZoomComponent =
-			{
-				type = "function",
-				description = "Gets the camera zoom component.",
-				args = "()",
-				returns = "(CameraBehaviorZoomComponent)",
-				valuetype = "CameraBehaviorZoomComponent"
-			},
 			getCameraComponent =
 			{
 				type = "function",
@@ -8224,46 +8183,6 @@ return {
 				returns = "(AiHideComponent)",
 				valuetype = "AiHideComponent"
 			},
-			getCameraBehaviorBaseComponentFromName =
-			{
-				type = "function",
-				description = "Gets the camera behavior base component.",
-				args = "(string name)",
-				returns = "(CameraBehaviorBaseComponent)",
-				valuetype = "CameraBehaviorBaseComponent"
-			},
-			getCameraBehaviorFirstPersonComponentFromName =
-			{
-				type = "function",
-				description = "Gets the camera behavior first person component.",
-				args = "(string name)",
-				returns = "(CameraBehaviorFirstPersonComponent)",
-				valuetype = "CameraBehaviorFirstPersonComponent"
-			},
-			getCameraBehaviorThirdPersonComponentFromName =
-			{
-				type = "function",
-				description = "Gets the camera third first person component.",
-				args = "(string name)",
-				returns = "(CameraBehaviorThirdPersonComponent)",
-				valuetype = "CameraBehaviorThirdPersonComponent"
-			},
-			getCameraBehaviorFollow2DComponentFromName =
-			{
-				type = "function",
-				description = "Gets the camera follow 2D component.",
-				args = "(string name)",
-				returns = "(CameraBehaviorFollow2DComponent)",
-				valuetype = "CameraBehaviorFollow2DComponent"
-			},
-			getCameraBehaviorZoomComponentFromName =
-			{
-				type = "function",
-				description = "Gets the camera zoom component.",
-				args = "(string name)",
-				returns = "(CameraBehaviorZoomComponent)",
-				valuetype = "CameraBehaviorZoomComponent"
-			},
 			getCameraComponentFromName =
 			{
 				type = "function",
@@ -9199,6 +9118,86 @@ return {
 				args = "(string name)",
 				returns = "(CameraBehaviorAttachComponent)",
 				valuetype = "CameraBehaviorAttachComponent"
+			},
+			getCameraBehaviorBaseComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorBaseComponent)",
+				valuetype = "CameraBehaviorBaseComponent"
+			},
+			getCameraBehaviorBaseComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorBaseComponent)",
+				valuetype = "CameraBehaviorBaseComponent"
+			},
+			getCameraBehaviorFirstPersonComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorFirstPersonComponent)",
+				valuetype = "CameraBehaviorFirstPersonComponent"
+			},
+			getCameraBehaviorFirstPersonComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorFirstPersonComponent)",
+				valuetype = "CameraBehaviorFirstPersonComponent"
+			},
+			getCameraBehaviorFollow2DComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorFollow2DComponent)",
+				valuetype = "CameraBehaviorFollow2DComponent"
+			},
+			getCameraBehaviorFollow2DComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorFollow2DComponent)",
+				valuetype = "CameraBehaviorFollow2DComponent"
+			},
+			getCameraBehaviorThirdPersonComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorThirdPersonComponent)",
+				valuetype = "CameraBehaviorThirdPersonComponent"
+			},
+			getCameraBehaviorThirdPersonComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorThirdPersonComponent)",
+				valuetype = "CameraBehaviorThirdPersonComponent"
+			},
+			getCameraBehaviorZoomComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(CameraBehaviorZoomComponent)",
+				valuetype = "CameraBehaviorZoomComponent"
+			},
+			getCameraBehaviorZoomComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(CameraBehaviorZoomComponent)",
+				valuetype = "CameraBehaviorZoomComponent"
 			},
 			getCrowdComponentFromIndex =
 			{
@@ -10208,46 +10207,6 @@ return {
 				returns = "(AiWanderComponent2D)",
 				valuetype = "AiWanderComponent2D"
 			},
-			castCameraBehaviorBaseComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(CameraBehaviorBaseComponent other)",
-				returns = "(CameraBehaviorBaseComponent)",
-				valuetype = "CameraBehaviorBaseComponent"
-			},
-			castCameraBehaviorFirstPersonComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(CameraBehaviorFirstPersonComponent other)",
-				returns = "(CameraBehaviorFirstPersonComponent)",
-				valuetype = "CameraBehaviorFirstPersonComponent"
-			},
-			castCameraBehaviorThirdPersonComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(CameraBehaviorThirdPersonComponent other)",
-				returns = "(CameraBehaviorThirdPersonComponent)",
-				valuetype = "CameraBehaviorThirdPersonComponent"
-			},
-			castCameraBehaviorFollow2DComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(CameraBehaviorFollow2DComponent other)",
-				returns = "(CameraBehaviorFollow2DComponent)",
-				valuetype = "CameraBehaviorFollow2DComponent"
-			},
-			castCameraBehaviorZoomComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(CameraBehaviorZoomComponent other)",
-				returns = "(CameraBehaviorZoomComponent)",
-				valuetype = "CameraBehaviorZoomComponent"
-			},
 			castCameraComponent =
 			{
 				type = "function",
@@ -11119,6 +11078,46 @@ return {
 				args = "(CameraBehaviorAttachComponent other)",
 				returns = "(CameraBehaviorAttachComponent)",
 				valuetype = "CameraBehaviorAttachComponent"
+			},
+			castCameraBehaviorBaseComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorBaseComponent other)",
+				returns = "(CameraBehaviorBaseComponent)",
+				valuetype = "CameraBehaviorBaseComponent"
+			},
+			castCameraBehaviorFirstPersonComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorFirstPersonComponent other)",
+				returns = "(CameraBehaviorFirstPersonComponent)",
+				valuetype = "CameraBehaviorFirstPersonComponent"
+			},
+			castCameraBehaviorFollow2DComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorFollow2DComponent other)",
+				returns = "(CameraBehaviorFollow2DComponent)",
+				valuetype = "CameraBehaviorFollow2DComponent"
+			},
+			castCameraBehaviorThirdPersonComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorThirdPersonComponent other)",
+				returns = "(CameraBehaviorThirdPersonComponent)",
+				valuetype = "CameraBehaviorThirdPersonComponent"
+			},
+			castCameraBehaviorZoomComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(CameraBehaviorZoomComponent other)",
+				returns = "(CameraBehaviorZoomComponent)",
+				valuetype = "CameraBehaviorZoomComponent"
 			},
 			castCrowdComponent =
 			{
@@ -21312,7 +21311,7 @@ return {
 			applyOmegaForce =
 			{
 				type = "method",
-				description = "Applies omega force vector of the physics body. Note: This should be used during simulation instead of @setOmegaVelocity.",
+				description = "Applies omega force vector of the physics body. Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.",
 				args = "(Vector3 omegaForce)",
 				returns = "(nil)",
 				valuetype = "nil"
@@ -21320,26 +21319,42 @@ return {
 			applyOmegaForceRotateTo =
 			{
 				type = "method",
-				description = "Applies omega force in order to rotate the game object to the given orientation. The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). The strength at which the rotation should occur. Note: This should be used during simulation instead of @setOmegaVelocity.",
-				args = "(Quaternion resultOrientation, Vector3 axes, Ogre::Real strength)",
+				description = "Applies omega force in order to rotate the game object to the given orientation. The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.). The strength at which the rotation should occur. Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.",
+				args = "(Quaternion resultOrientation, Vector3 axes, number strength)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			applyOmegaForceRotateToDirection =
 			{
 				type = "method",
-				description = "Applies omega force in order to rotate the game object to the given result direction. The strength at which the rotation should occur. Note: This should be used during simulation instead of @setOmegaVelocity.",
-				args = "(Vector3 resultDirection, Ogre::Real strength)",
+				description = "Applies omega force in order to rotate the game object to the given result direction. The strength at which the rotation should occur. Note: This should be used during simulation instead of @setOmegaVelocity, if its not a kinematic component.",
+				args = "(Vector3 resultDirection, number strength)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
 			setOmegaVelocity =
 			{
-				type = "function",
-				description = "Set the omega velocity (rotation). Note: This should only be set for initialization and not during simulation, as It could break physics calculation. Use @applyAngularVelocity instead. Or it may be called if its a physics active kinematic body.",
+				type = "method",
+				description = "Set the omega velocity (rotation) for the physics kinematic component.",
 				args = "(Vector3 rotation)",
-				returns = "(Vector3)",
-				valuetype = "Vector3"
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOmegaVelocityRotateTo =
+			{
+				type = "method",
+				description = "Sets the omega velocity in order to rotate the physics kinematic component to the given orientation.",
+				args = "(Vector3 rotation, Vector3 axes, number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setOmegaVelocityRotateToDirection =
+			{
+				type = "method",
+				description = "Sets the omega velocity in order to rotate the physics kinematic component to the given direction.",
+				args = "(Vector3 rotation, Vector3 axes, number strength)",
+				returns = "(nil)",
+				valuetype = "nil"
 			},
 			getOmega =
 			{

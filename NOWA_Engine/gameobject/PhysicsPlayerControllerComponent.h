@@ -60,6 +60,11 @@ namespace NOWA
 
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
+		/**
+		* @see		GameObjectComponent::update
+		*/
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
 		virtual bool isMovable(void) const override
 		{
 			return true;
@@ -119,6 +124,8 @@ namespace NOWA
 		virtual void setScale(const Ogre::Vector3& scale) override;
 
 		virtual void actualizeValue(Variant* attribute) override;
+
+		virtual void setActivated(bool activated) override;
 
 		void setFrame(const Ogre::Quaternion& frame);
 

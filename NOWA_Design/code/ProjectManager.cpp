@@ -532,7 +532,10 @@ void ProjectManager::internalApplySettings(void)
 
 	// Sent event that scene has been modified
 	boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneModified);
+
+	boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 
 	// Remove .scene, if user typed
 	size_t found = this->projectParameter.sceneName.find(".scene");

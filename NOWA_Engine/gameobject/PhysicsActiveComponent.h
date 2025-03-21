@@ -249,9 +249,16 @@ namespace NOWA
 		virtual void setOmegaVelocityRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
 		/**
+		 * @brief		Applies the omega velocity in order to rotate the game object to the given result direction.
+		 * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
+		 * @param[in]	strength The strength at which the rotation should occur
+		 */
+		virtual void setOmegaVelocityRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
+
+		/**
 		 * @brief		Applies the omega force in move callback function
 		 * @param[in]	omegaForce The omega force vector to apply
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
+		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
 		 */
 		virtual void applyOmegaForce(const Ogre::Vector3& omegaForce);
 
@@ -260,15 +267,15 @@ namespace NOWA
 		 * @param[in]	resultOrientation The result orientation to which the game object should be rotated via omega to.
 		 * @param[in]	axes The axes at which the rotation should occur (Vector3::UNIT_Y for y, Vector3::UNIT_SCALE for all axes, or just Vector3(1, 1, 0) for x,y axis etc.)
 		 * @param[in]	strength The strength at which the rotation should occur
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
+		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
 		 */
 		virtual void applyOmegaForceRotateTo(const Ogre::Quaternion& resultOrientation, const Ogre::Vector3& axes, Ogre::Real strength = 10.0f);
 
 		/**
 		 * @brief		Applies the omega force in move callback function in order to rotate the game object to the given result direction.
-		 * @param[in]	resultDirectoin The result direction to which the game object should be rotated via omega to.
+		 * @param[in]	resultDirection The result direction to which the game object should be rotated via omega to.
 		 * @param[in]	strength The strength at which the rotation should occur
-		 * @Note		This should be used during simulation instead of @setOmegaVelocity.
+		 * @Note		This should be used during simulation instead of @setOmegaVelocity, if its not a physics kinematic component.
 		 */
 		virtual void applyOmegaForceRotateToDirection(const Ogre::Vector3& resultDirection, Ogre::Real strength = 10.0f);
 		

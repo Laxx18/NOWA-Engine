@@ -81,6 +81,14 @@ namespace NOWA
 		return true;
 	}
 
+	void NavMeshTerraComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+	}
+
 	bool NavMeshTerraComponent::connect(void)
 	{
 		this->setActivated(this->activated->getBool());
@@ -151,9 +159,13 @@ namespace NOWA
 		this->activated->setValue(activated);
 		
 		if (true == this->activated->getBool())
+		{
 			AppStateManager::getSingletonPtr()->getOgreRecastModule()->addTerra(this->gameObjectPtr->getId());
+		}
 		else
+		{
 			AppStateManager::getSingletonPtr()->getOgreRecastModule()->removeTerra(this->gameObjectPtr->getId(), true);
+		}
 	}
 
 	bool NavMeshTerraComponent::isActivated(void) const

@@ -19,7 +19,6 @@ namespace NOWA
 		this->gyroscopicTorque->setVisible(false);
 		this->gravity->setValue(Ogre::Vector3::ZERO);
 		this->gravity->setVisible(false);
-		this->gravitySourceCategory->setVisible(false);
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
 		this->constraintDirection->setVisible(false);
 
@@ -125,6 +124,102 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
+			this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+
+			Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
+			GameObjectPtr nearestGravitySourceObject;
+
+			if (false == this->gravitySourceCategory->getString().empty())
+			{
+				// If there is a gravity source GO, calculate gravity in that direction of the source, but only work with the nearest object, else the force will mess up
+				auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
+				for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
+				{
+					Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
+					Ogre::Real squaredDistanceToGravitySource = directionToPlanet.squaredLength();
+					if (squaredDistanceToGravitySource < nearestPlanetDistance)
+					{
+						nearestPlanetDistance = squaredDistanceToGravitySource;
+						nearestGravitySourceObject = gravitySourceGameObjects[i];
+					}
+				}
+
+				// Only do calculation for the nearest planet
+				if (nullptr != nearestGravitySourceObject)
+				{
+					auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
+					if (nullptr != gravitySourcePhysicsComponentPtr)
+					{
+						Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
+						directionToPlanet.normalise();
+
+						// Ensures constant acceleration of e.g. -19.8 m/s²
+						Ogre::Real gravityAcceleration = -this->gravity->getVector3().length(); // Should be e.g. 19.8
+
+						this->gravityDirection = -directionToPlanet;
+
+						// Store the current gravity strength for jump normalization
+						this->currentGravityStrength = gravityAcceleration;
+						// Mark gravity as updated
+						this->gravityUpdated.test_and_set();
+					}
+				}
+				else
+				{
+					this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
+					this->gravityUpdated.clear();
+				}
+			}
+
+			// Calculates orientation vectors relative to planet surface
+			this->up = -this->gravityDirection;
+			// Gets the mesh's default direction
+			Ogre::Vector3 defaultDirection = this->gameObjectPtr->getDefaultDirection();
+
+			// Stores current entity rotation as quaternion
+			Ogre::Quaternion currentRotation = this->getOrientation();
+
+			// Calculates forward vector based on the current rotation and the default direction
+			// First, gets the forward direction in the character's local space
+			this->forward = currentRotation * defaultDirection;
+			// Projects it onto the plane perpendicular to up vector
+			this->forward = forward - up * forward.dotProduct(up);
+
+			if (this->forward.squaredLength() < 0.001f * 0.001f) // = 0.000001f
+			{
+				// Fallback if forward is too small
+				// Use a vector perpendicular to up that's close to our preferred direction
+				Ogre::Vector3 worldForward;
+				if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_Z) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_Z;
+				}
+				else if (defaultDirection.dotProduct(Ogre::Vector3::UNIT_X) > 0.7f)
+				{
+					worldForward = Ogre::Vector3::UNIT_X;
+				}
+				else
+				{
+					worldForward = Ogre::Vector3::UNIT_Y;
+				}
+
+				// Find a suitable forward vector perpendicular to up
+				this->forward = worldForward - up * worldForward.dotProduct(up);
+				if (this->forward.squaredLength() < 0.001f * 0.001f)
+				{
+					this->forward = up.crossProduct(Ogre::Vector3(1.0f, 0.0f, 0.0f));
+					if (this->forward.squaredLength() < 0.001f * 0.001f)
+					{
+						this->forward = up.crossProduct(Ogre::Vector3(0.0f, 0.0f, 1.0f));
+					}
+				}
+			}
+			this->forward.normalise();
+
+			// Calculate right from forward and up (ensures orthogonality)
+			this->right = this->forward.crossProduct(up);
+			this->right.normalise();
+
 			static_cast<OgreNewt::KinematicBody*>(this->physicsBody)->integrateVelocity(dt);
 		}
 	}

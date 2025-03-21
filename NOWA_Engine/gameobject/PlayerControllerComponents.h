@@ -86,6 +86,11 @@ namespace NOWA
 		*/
 		virtual void onRemoveComponent(void) override;
 
+		/**
+		* @see		GameObjectComponent::onOtherComponentRemoved
+		*/
+		virtual void onOtherComponentRemoved(unsigned int index) override;
+
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("PlayerControllerComponent");
@@ -342,6 +347,11 @@ namespace NOWA
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
+		/**
+		* @see		GameObjectComponent::setActivated
+		*/
+		virtual void setActivated(bool activated) override;
+
 		KI::StateMachine<GameObject>* getStateMaschine(void) const;
 
 		void setJumpForce(Ogre::Real jumpForce);
@@ -470,6 +480,11 @@ namespace NOWA
 		* @see		GameObjectComponent::writeXML
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+		/**
+		* @see		GameObjectComponent::setActivated
+		*/
+		virtual void setActivated(bool activated) override;
 		
 		void setStartStateName(const Ogre::String& startStateName);
 
@@ -574,6 +589,11 @@ namespace NOWA
 		* @see		GameObjectComponent::writeXML
 		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+		/**
+		* @see		GameObjectComponent::setActivated
+		*/
+		virtual void setActivated(bool activated) override;
 
 		KI::StateMachine<GameObject>* getStateMachine(void) const;
 

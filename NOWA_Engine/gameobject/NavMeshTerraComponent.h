@@ -20,9 +20,20 @@ namespace NOWA
 
 		virtual ~NavMeshTerraComponent();
 
+		/**
+		* @see		GameObjectComponent::init
+		*/
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
+		/**
+		* @see		GameObjectComponent::postInit
+		*/
 		virtual bool postInit(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
 
 		/**
 		* @see		GameObjectComponent::connect
@@ -34,17 +45,32 @@ namespace NOWA
 		*/
 		virtual bool disconnect(void) override;
 
+		/**
+		* @see		GameObjectComponent::getClassName
+		*/
 		virtual Ogre::String getClassName(void) const override;
 
+		/**
+		* @see		GameObjectComponent::getParentClassName
+		*/
 		virtual Ogre::String getParentClassName(void) const override;
 
+		/**
+		* @see		GameObjectComponent::clone
+		*/
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
+		/**
+		* @see		GameObjectComponent::getStaticClassId
+		*/
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("NavMeshTerraComponent");
 		}
 
+		/**
+		* @see		GameObjectComponent::getStaticClassName
+		*/
 		static Ogre::String getStaticClassName(void)
 		{
 			return "NavMeshTerraComponent";
@@ -74,6 +100,9 @@ namespace NOWA
 		 */
 		virtual void actualizeValue(Variant* attribute) override;
 
+		/**
+		* @see		GameObjectComponent::writeXML
+		*/
 		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
 
 		virtual void setActivated(bool activated) override;

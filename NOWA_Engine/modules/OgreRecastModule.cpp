@@ -35,7 +35,7 @@ namespace NOWA
 				this->detourCrowd = new OgreDetourCrowd(this->ogreRecast);
 			}
 
-			AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleSceneModified), EventDataSceneModified::getStaticEventType());
+			AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
 
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreRecastModule] Recast created");
 		}
@@ -49,11 +49,11 @@ namespace NOWA
 
 	OgreRecastModule::~OgreRecastModule()
 	{
-		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleSceneModified), EventDataSceneModified::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &OgreRecastModule::handleGeometryModified), EventDataGeometryModified::getStaticEventType());
 		this->destroyContent();
 	}
 
-	void OgreRecastModule::handleSceneModified(NOWA::EventDataPtr eventData)
+	void OgreRecastModule::handleGeometryModified(NOWA::EventDataPtr eventData)
 	{
 		this->mustRegenerate = true;
 	}
@@ -153,7 +153,9 @@ namespace NOWA
 	void OgreRecastModule::addDynamicObstacle(unsigned long id, bool walkable, InputGeom* externalInputGeom, ConvexVolume* externalConvexVolume)
 	{
 		if (nullptr == this->detourTileCache)
+		{
 			return;
+		}
 
 		InputGeom* inputGeom = nullptr;
 		ConvexVolume* convexVolume = nullptr;
@@ -222,9 +224,13 @@ namespace NOWA
 		else
 		{
 			if (false == walkable)
+			{
 				it->second.second->area = RC_NULL_AREA;   // Set area described by convex polygon to "unwalkable"
+			}
 			else
+			{
 				it->second.second->area = RC_WALKABLE_AREA;
+			}
 		}
 	}
 
@@ -358,6 +364,8 @@ namespace NOWA
 				if (nullptr != terra)
 				{
 					this->terraInputGeomCells.emplace(id, nullptr);
+					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 				}
 			}
 		}
@@ -382,6 +390,8 @@ namespace NOWA
 				{
 					inputGeom = it->second;
 					this->terraInputGeomCells.erase(id);
+					boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 
 					if (true == destroy)
 					{

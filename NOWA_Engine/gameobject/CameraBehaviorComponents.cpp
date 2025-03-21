@@ -12,7 +12,7 @@
 #include "camera/FollowCamera2D.h"
 #include "camera/ZoomCamera.h"
 #include "main/AppStateManager.h"
-#include "modules/WorkspaceModule.h"
+#include "modules/LuaScriptApi.h"
 #include "gameobject/CameraComponent.h"
 
 #include "main/Core.h"
@@ -326,6 +326,14 @@ namespace NOWA
 		return clonedCompPtr;
 	}
 
+	bool CameraBehaviorBaseComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<CameraBehaviorBaseComponent>() < 2)
+		{
+			return true;
+		}
+	}
+
 	bool CameraBehaviorBaseComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AiMoveComponent] Init camera behavior base component for game object: " + this->gameObjectPtr->getName());
@@ -447,6 +455,54 @@ namespace NOWA
 		return smoothValue->getReal();
 	}
 
+	// Lua registration part
+
+	CameraBehaviorBaseComponent* getCameraBehaviorBaseComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<CameraBehaviorBaseComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorBaseComponent>(occurrenceIndex)).get();
+	}
+
+	CameraBehaviorBaseComponent* getCameraBehaviorBaseComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<CameraBehaviorBaseComponent>(gameObject->getComponent<CameraBehaviorBaseComponent>()).get();
+	}
+
+	CameraBehaviorBaseComponent* getCameraBehaviorBaseComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<CameraBehaviorBaseComponent>(gameObject->getComponentFromName<CameraBehaviorBaseComponent>(name)).get();
+	}
+
+	void CameraBehaviorBaseComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorBaseComponent, GameObjectComponent>("CameraBehaviorBaseComponent")
+			.def("setMoveSpeed", &CameraBehaviorBaseComponent::setMoveSpeed)
+			.def("getMoveSpeed", &CameraBehaviorBaseComponent::getMoveSpeed)
+			.def("setRotationSpeed", &CameraBehaviorBaseComponent::setRotationSpeed)
+			.def("getRotationSpeed", &CameraBehaviorBaseComponent::getRotationSpeed)
+			.def("setSmoothValue", &CameraBehaviorBaseComponent::setSmoothValue)
+			.def("getSmoothValue", &CameraBehaviorBaseComponent::getSmoothValue)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "class inherits CameraBehaviorBaseComponent", CameraBehaviorBaseComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setMoveSpeed(float moveSpeed)", "Sets the camera move speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getMoveSpeed()", "Gets the camera move speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the camera rotation speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getRotationSpeed()", "Gets the camera rotation speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorBaseComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
+
+		gameObjectClass.def("getCameraBehaviorBaseComponentFromName", &getCameraBehaviorBaseComponentFromName);
+		gameObjectClass.def("getCameraBehaviorBaseComponent", (CameraBehaviorBaseComponent * (*)(GameObject*)) & getCameraBehaviorBaseComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorBaseComponent getCameraBehaviorBaseComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorBaseComponent getCameraBehaviorBaseComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castCameraBehaviorBaseComponent", &GameObjectController::cast<CameraBehaviorBaseComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorBaseComponent castCameraBehaviorBaseComponent(CameraBehaviorBaseComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	CameraBehaviorFirstPersonComponent::CameraBehaviorFirstPersonComponent()
@@ -505,6 +561,14 @@ namespace NOWA
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
+	}
+
+	bool CameraBehaviorFirstPersonComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<CameraBehaviorFirstPersonComponent>() < 2)
+		{
+			return true;
+		}
 	}
 
 	bool CameraBehaviorFirstPersonComponent::postInit(void)
@@ -629,13 +693,61 @@ namespace NOWA
 	{
 		return offsetPosition->getVector3();
 	}
+
+	// Lua registration part
+
+	CameraBehaviorFirstPersonComponent* getCameraBehaviorFirstPersonComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<CameraBehaviorFirstPersonComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorFirstPersonComponent>(occurrenceIndex)).get();
+	}
+
+	CameraBehaviorFirstPersonComponent* getCameraBehaviorFirstPersonComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<CameraBehaviorFirstPersonComponent>(gameObject->getComponent<CameraBehaviorFirstPersonComponent>()).get();
+	}
+
+	CameraBehaviorFirstPersonComponent* getCameraBehaviorFirstPersonComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<CameraBehaviorFirstPersonComponent>(gameObject->getComponentFromName<CameraBehaviorFirstPersonComponent>(name)).get();
+	}
+
+	void CameraBehaviorFirstPersonComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorFirstPersonComponent, GameObjectComponent>("CameraBehaviorFirstPersonComponent")
+			.def("setSmoothValue", &CameraBehaviorFirstPersonComponent::setSmoothValue)
+			.def("getSmoothValue", &CameraBehaviorFirstPersonComponent::getSmoothValue)
+			.def("setRotationSpeed", &CameraBehaviorFirstPersonComponent::setRotationSpeed)
+			.def("getRotationSpeed", &CameraBehaviorFirstPersonComponent::getRotationSpeed)
+			.def("setOffsetPosition", &CameraBehaviorFirstPersonComponent::setOffsetPosition)
+			.def("getOffsetPosition", &CameraBehaviorFirstPersonComponent::getOffsetPosition)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "class inherits CameraBehaviorComponent", CameraBehaviorFirstPersonComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "void setRotationSpeed(float rotationSpeed)", "Sets the camera rotation speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "float getRotationSpeed()", "Gets the camera rotation speed.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFirstPersonComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
+
+		gameObjectClass.def("getCameraBehaviorFirstPersonComponentFromName", &getCameraBehaviorFirstPersonComponentFromName);
+		gameObjectClass.def("getCameraBehaviorFirstPersonComponent", (CameraBehaviorFirstPersonComponent * (*)(GameObject*)) & getCameraBehaviorFirstPersonComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorFirstPersonComponent getCameraBehaviorFirstPersonComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorFirstPersonComponent getCameraBehaviorFirstPersonComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castCameraBehaviorFirstPersonComponent", &GameObjectController::cast<CameraBehaviorFirstPersonComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorFirstPersonComponent castCameraBehaviorFirstPersonComponent(CameraBehaviorFirstPersonComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	CameraBehaviorThirdPersonComponent::CameraBehaviorThirdPersonComponent()
 		: CameraBehaviorComponent(),
-		yOffset(new Variant(CameraBehaviorThirdPersonComponent::AttrYOffset(), 2.0f, this->attributes)),
-		lookAtOffset(new Variant(CameraBehaviorThirdPersonComponent::AttrLookAtOffset(), Ogre::Vector3::ZERO, this->attributes)),
+		offsetPosition(new Variant(CameraBehaviorThirdPersonComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 2.0f, 5.0f), this->attributes)),
+		lookAtOffset(new Variant(CameraBehaviorThirdPersonComponent::AttrLookAtOffset(), Ogre::Vector3(0.0f, -1.0f, 0.0f), this->attributes)),
 		springForce(new Variant(CameraBehaviorThirdPersonComponent::AttrSpringForce(), 0.1f, this->attributes)),
 		friction(new Variant(CameraBehaviorThirdPersonComponent::AttrFriction(), 0.5f, this->attributes)),
 		springLength(new Variant(CameraBehaviorThirdPersonComponent::AttrSpringLength(), 6.0f, this->attributes))
@@ -654,7 +766,7 @@ namespace NOWA
 		
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "YOffset")
 		{
-			this->yOffset->setValue(XMLConverter::getAttribReal(propertyElement, "data", 2.0f));
+			this->offsetPosition->setValue(XMLConverter::getAttribVector3(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "LookAtOffset")
@@ -685,11 +797,10 @@ namespace NOWA
 	{
 		CameraBehaviorThirdPersonCompPtr clonedCompPtr(boost::make_shared<CameraBehaviorThirdPersonComponent>());
 
-		
 		// Do not clone activated, since its no visible and switched manually in game object controller
 		// clonedCompPtr->setActivated(this->activated->getBool());
 		
-		clonedCompPtr->setYOffset(this->yOffset->getReal());
+		clonedCompPtr->setOffsetPosition(this->offsetPosition->getVector3());
 		clonedCompPtr->setLookAtOffset(this->lookAtOffset->getVector3());
 		clonedCompPtr->setSpringForce(this->springForce->getReal());
 		clonedCompPtr->setFriction(this->friction->getReal());
@@ -702,6 +813,14 @@ namespace NOWA
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
+	}
+
+	bool CameraBehaviorThirdPersonComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<CameraBehaviorThirdPersonComponent>() < 2)
+		{
+			return true;
+		}
 	}
 
 	bool CameraBehaviorThirdPersonComponent::postInit(void)
@@ -727,9 +846,9 @@ namespace NOWA
 	{
 		CameraBehaviorComponent::actualizeValue(attribute);
 		
-		if (CameraBehaviorThirdPersonComponent::AttrYOffset() == attribute->getName())
+		if (CameraBehaviorThirdPersonComponent::AttrOffsetPosition() == attribute->getName())
 		{
-			this->setYOffset(attribute->getReal());
+			this->setOffsetPosition(attribute->getVector3());
 		}
 		else if (CameraBehaviorThirdPersonComponent::AttrLookAtOffset() == attribute->getName())
 		{
@@ -754,9 +873,9 @@ namespace NOWA
 		CameraBehaviorComponent::writeXML(propertiesXML, doc);
 		
 		xml_node<>* propertyXML = doc.allocate_node(node_element, "property");
-		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
+		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "YOffset"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->yOffset->getReal())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->offsetPosition->getVector3())));
 		propertiesXML->append_node(propertyXML);
 
 		propertyXML = doc.allocate_node(node_element, "property");
@@ -791,9 +910,19 @@ namespace NOWA
 			this->acquireActiveCamera();
 
 			this->baseCamera = new ThirdPersonCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getDefaultDirection(),
-				this->yOffset->getReal(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
+				this->offsetPosition->getVector3(), this->lookAtOffset->getVector3(), this->springForce->getReal(), this->friction->getReal(), this->springLength->getReal());
 		}
 		CameraBehaviorComponent::setActivated(activated);
+	}
+
+	void CameraBehaviorThirdPersonComponent::setOffsetPosition(const Ogre::Vector3& offsetPosition)
+	{
+		this->offsetPosition->setValue(offsetPosition);
+	}
+
+	Ogre::Vector3 CameraBehaviorThirdPersonComponent::getOffsetPosition(void) const
+	{
+		return this->offsetPosition->getVector3();
 	}
 
 	Ogre::String CameraBehaviorThirdPersonComponent::getClassName(void) const
@@ -804,16 +933,6 @@ namespace NOWA
 	Ogre::String CameraBehaviorThirdPersonComponent::getParentClassName(void) const
 	{
 		return "CameraBehaviorComponent";
-	}
-	
-	void CameraBehaviorThirdPersonComponent::setYOffset(Ogre::Real yOffset)
-	{
-		this->yOffset->setValue(yOffset);
-	}
-
-	Ogre::Real CameraBehaviorThirdPersonComponent::getYOffset(void) const
-	{
-		return yOffset->getReal();
 	}
 
 	void CameraBehaviorThirdPersonComponent::setLookAtOffset(const Ogre::Vector3& lookAtOffset)
@@ -854,6 +973,61 @@ namespace NOWA
 	Ogre::Real CameraBehaviorThirdPersonComponent::getSpringLength(void) const
 	{
 		return springLength->getReal();
+	}
+
+	// Lua registration part
+
+	CameraBehaviorThirdPersonComponent* getCameraBehaviorThirdPersonComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<CameraBehaviorThirdPersonComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorThirdPersonComponent>(occurrenceIndex)).get();
+	}
+
+	CameraBehaviorThirdPersonComponent* getCameraBehaviorThirdPersonComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<CameraBehaviorThirdPersonComponent>(gameObject->getComponent<CameraBehaviorThirdPersonComponent>()).get();
+	}
+
+	CameraBehaviorThirdPersonComponent* getCameraBehaviorThirdPersonComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<CameraBehaviorThirdPersonComponent>(gameObject->getComponentFromName<CameraBehaviorThirdPersonComponent>(name)).get();
+	}
+
+	void CameraBehaviorThirdPersonComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorThirdPersonComponent, GameObjectComponent>("CameraBehaviorThirdPersonComponent")
+			.def("setOffsetPosition", &CameraBehaviorThirdPersonComponent::setOffsetPosition)
+			.def("getOffsetPosition", &CameraBehaviorThirdPersonComponent::getOffsetPosition)
+			.def("setLookAtOffset", &CameraBehaviorThirdPersonComponent::setLookAtOffset)
+			.def("getLookAtOffset", &CameraBehaviorThirdPersonComponent::getLookAtOffset)
+			.def("setSpringForce", &CameraBehaviorThirdPersonComponent::setSpringForce)
+			.def("getSpringForce", &CameraBehaviorThirdPersonComponent::getSpringForce)
+			.def("setFriction", &CameraBehaviorThirdPersonComponent::setFriction)
+			.def("getFriction", &CameraBehaviorThirdPersonComponent::getFriction)
+			.def("setSpringLength", &CameraBehaviorThirdPersonComponent::setSpringLength)
+			.def("getSpringLength", &CameraBehaviorThirdPersonComponent::getSpringLength)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "void setLookAtOffset(Vector3 lookAtOffset)", "Sets the camera look at game object offset.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "Vector3 getLookAtOffset()", "Gets the camera look at game object offset.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "void setSpringForce(float springForce)", "Sets the camera spring force, that is, when the game object is rotated the camera is moved to the same direction but with a spring effect.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "float getSpringForce()", "Gets the camera spring force.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "void setFriction(float friction)", "Sets the camera friction during movement.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "float getFriction()", "Gets the camera friction during movement.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "void setSpringLength(float springLength)", "Sets the camera spring length during movement.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorThirdPersonComponent", "float getSpringLength()", "Gets the camera spring length during movement.");
+
+		gameObjectClass.def("getCameraBehaviorThirdPersonComponentFromName", &getCameraBehaviorThirdPersonComponentFromName);
+		gameObjectClass.def("getCameraBehaviorThirdPersonComponent", (CameraBehaviorThirdPersonComponent * (*)(GameObject*)) & getCameraBehaviorThirdPersonComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonComponent getCameraBehaviorThirdPersonComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorThirdPersonComponent getCameraBehaviorThirdPersonComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castCameraBehaviorThirdPersonComponent", &GameObjectController::cast<CameraBehaviorThirdPersonComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorThirdPersonComponent castCameraBehaviorThirdPersonComponent(CameraBehaviorThirdPersonComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -914,6 +1088,14 @@ namespace NOWA
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
+	}
+
+	bool CameraBehaviorFollow2DComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<CameraBehaviorFollow2DComponent>() < 2)
+		{
+			return true;
+		}
 	}
 
 	bool CameraBehaviorFollow2DComponent::postInit(void)
@@ -1063,6 +1245,50 @@ namespace NOWA
 	{
 		return this->borderOffset->getVector3();
 	}
+
+	// Lua registration part
+
+	CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<CameraBehaviorFollow2DComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorFollow2DComponent>(occurrenceIndex)).get();
+	}
+
+	CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<CameraBehaviorFollow2DComponent>(gameObject->getComponent<CameraBehaviorFollow2DComponent>()).get();
+	}
+
+	CameraBehaviorFollow2DComponent* getCameraBehaviorFollow2DComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<CameraBehaviorFollow2DComponent>(gameObject->getComponentFromName<CameraBehaviorFollow2DComponent>(name)).get();
+	}
+
+	void CameraBehaviorFollow2DComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorFollow2DComponent, GameObjectComponent>("CameraBehaviorFollow2DComponent")
+			.def("setSmoothValue", &CameraBehaviorFollow2DComponent::setSmoothValue)
+			.def("getSmoothValue", &CameraBehaviorFollow2DComponent::getSmoothValue)
+			.def("setOffsetPosition", &CameraBehaviorFollow2DComponent::setOffsetPosition)
+			.def("getOffsetPosition", &CameraBehaviorFollow2DComponent::getOffsetPosition)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "class inherits CameraBehaviorComponent", CameraBehaviorFollow2DComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "void setOffsetPosition(Vector3 offsetPosition)", "Sets the camera offset position, it should be away from the game object.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorFollow2DComponent", "Vector3 getOffsetPosition()", "Gets the offset position, the camera is away from the game object.");
+
+		gameObjectClass.def("getCameraBehaviorFollow2DComponentFromName", &getCameraBehaviorFollow2DComponentFromName);
+		gameObjectClass.def("getCameraBehaviorFollow2DComponent", (CameraBehaviorFollow2DComponent * (*)(GameObject*)) & getCameraBehaviorFollow2DComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorFollow2DComponent getCameraBehaviorFollow2DComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorFollow2DComponent getCameraBehaviorFollow2DComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castCameraBehaviorFollow2DComponent", &GameObjectController::cast<CameraBehaviorFollow2DComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorFollow2DComponent castCameraBehaviorFollow2DComponent(CameraBehaviorFollow2DComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1121,6 +1347,14 @@ namespace NOWA
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
+	}
+
+	bool CameraBehaviorZoomComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		if (gameObject->getComponentCount<CameraBehaviorZoomComponent>() < 2)
+		{
+			return true;
+		}
 	}
 
 	bool CameraBehaviorZoomComponent::postInit(void)
@@ -1267,6 +1501,56 @@ namespace NOWA
 	Ogre::Real CameraBehaviorZoomComponent::getGrowMultiplicator(void) const
 	{
 		return this->growMultiplicator->getReal();
+	}
+
+	// Lua registration part
+
+	CameraBehaviorZoomComponent* getCameraBehaviorZoomComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<CameraBehaviorZoomComponent>(gameObject->getComponentWithOccurrence<CameraBehaviorZoomComponent>(occurrenceIndex)).get();
+	}
+
+	CameraBehaviorZoomComponent* getCameraBehaviorZoomComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<CameraBehaviorZoomComponent>(gameObject->getComponent<CameraBehaviorZoomComponent>()).get();
+	}
+
+	CameraBehaviorZoomComponent* getCameraBehaviorZoomComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<CameraBehaviorZoomComponent>(gameObject->getComponentFromName<CameraBehaviorZoomComponent>(name)).get();
+	}
+
+	void CameraBehaviorZoomComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<CameraBehaviorZoomComponent, GameObjectComponent>("CameraBehaviorZoomComponent")
+			.def("setCategory", &CameraBehaviorZoomComponent::setCategory)
+			.def("getCategory", &CameraBehaviorZoomComponent::getCategory)
+			.def("setSmoothValue", &CameraBehaviorZoomComponent::setSmoothValue)
+			.def("getSmoothValue", &CameraBehaviorZoomComponent::getSmoothValue)
+			.def("setGrowMultiplicator", &CameraBehaviorZoomComponent::setGrowMultiplicator)
+			.def("getGrowMultiplicator", &CameraBehaviorZoomComponent::getGrowMultiplicator)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "class inherits CameraBehaviorComponent", CameraBehaviorZoomComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "void setCategory(string category)", "Sets the category, for which the bounds are calculated and the zoom adapted, so that all GameObjects of this category are visible.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "string getCategory()", "Gets the category, for which the bounds are calculated and the zoom adapted, so that all GameObjects of this category are visible.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "void setSmoothValue(float smoothValue)", "Sets the camera value for more smooth transform. Note: Setting to 0, camera transform is not smooth, setting to 1 would be to smooth and lag behind, a good value is 0.1");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "float getSmoothValue()", "Gets the camera value for more smooth transform.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "void setGrowMultiplicator(float growMultiplicator)", "Sets a grow multiplicator how fast the orthogonal camera window size will increase, so that the game objects remain in view."
+			"Play with this value, because it also depends e.g. how fast your game objects are moving.");
+		LuaScriptApi::getInstance()->addClassToCollection("CameraBehaviorZoomComponent", "float getGrowMultiplicator()", "Gets a grow multiplicator how fast the orthogonal camera window size will increase, so that the game objects remain in view."
+			"Play with this value, because it also depends e.g. how fast your game objects are moving.");
+
+		gameObjectClass.def("getCameraBehaviorZoomComponentFromName", &getCameraBehaviorZoomComponentFromName);
+		gameObjectClass.def("getCameraBehaviorZoomComponent", (CameraBehaviorZoomComponent * (*)(GameObject*)) & getCameraBehaviorZoomComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorZoomComponent getCameraBehaviorZoomComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "CameraBehaviorZoomComponent getCameraBehaviorZoomComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castCameraBehaviorZoomComponent", &GameObjectController::cast<CameraBehaviorZoomComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "CameraBehaviorZoomComponent castCameraBehaviorZoomComponent(CameraBehaviorZoomComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 
 }; // namespace end

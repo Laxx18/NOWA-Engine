@@ -73,6 +73,7 @@ namespace OgreNewt
 		m_walkSpeed(10.0f),
 		m_jumpSpeed(20.0f),
 		m_canJump(false),
+		m_active(true),
 		// Must be created for each body! Else several player controller will not work!
 		m_playerControllerManager(new BasicPlayerControllerManager(this->world->getNewtonWorld()))
 	{
@@ -229,6 +230,12 @@ namespace OgreNewt
 		return m_direction;
 	}
 
+	void PlayerControllerBody::setGravityDirection(const Ogre::Vector3& gravityDirection)
+	{
+		m_gravityDirection = gravityDirection;
+		m_playerControllerManager->getPlayerController()->SetGravityDirection(dVector(gravityDirection.x, gravityDirection.y, gravityDirection.z, 1.0f));
+	}
+
 	void PlayerControllerBody::setMass(Ogre::Real mass)
 	{
 		m_mass = mass;
@@ -276,7 +283,7 @@ namespace OgreNewt
 
 	Ogre::Vector3 PlayerControllerBody::getUpDirection(void) const
 	{
-		dVector upDir/* = m_playerController->GetUpDir()*/;
+		dVector upDir;
 		return Ogre::Vector3(upDir.m_x, upDir.m_y, upDir.m_z);
 	}
 
@@ -348,6 +355,17 @@ namespace OgreNewt
 	Ogre::Quaternion PlayerControllerBody::getStartOrientation(void) const
 	{
 		return m_startOrientation;
+	}
+
+	void PlayerControllerBody::setActive(bool active)
+	{
+		m_active = active;
+		m_playerControllerManager->getPlayerController()->setActive(active);
+	}
+
+	bool PlayerControllerBody::isActive(void) const
+	{
+		return m_active;
 	}
 
 	PlayerCallback* PlayerControllerBody::getPlayerCallback(void) const

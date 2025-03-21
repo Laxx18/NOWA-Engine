@@ -6,6 +6,29 @@
 #include "MyGUIHelper.h"
 #include "modules/WorkspaceModule.h"
 
+namespace
+{
+	MyGUI::TextBox* findWidgetBySuffix(MyGUI::Widget* mWidgetClient, const std::string& suffix)
+	{
+		if (!mWidgetClient || mWidgetClient->getChildCount() == 0) return nullptr;
+
+		MyGUI::Widget* firstChild = mWidgetClient->getChildAt(0); // Get the first child
+		if (!firstChild) return nullptr;
+
+		MyGUI::EnumeratorWidgetPtr iter = firstChild->getEnumerator();
+		while (iter.next()) // Iterate over children of firstChild
+		{
+			MyGUI::Widget* widget = iter.current();
+			if (widget && widget->getName().size() >= suffix.size() &&
+				widget->getName().compare(widget->getName().size() - suffix.size(), suffix.size(), suffix) == 0)
+			{
+				return dynamic_cast<MyGUI::TextBox*>(widget);
+			}
+		}
+		return nullptr;
+	}
+}
+
 ConfigPanel::ConfigPanel(ProjectManager* projectManager, const MyGUI::FloatCoord& coords)
 	: BaseLayout("ConfigPanelView.layout"),
 	projectManager(projectManager),
@@ -891,7 +914,6 @@ std::tuple<Ogre::Real, unsigned short, bool, unsigned short, unsigned short, Ogr
 ConfigPanelRecast::ConfigPanelRecast()
 	: BasePanelViewItem("ConfigPanelOgreRecast.layout")
 {
-	
 }
 
 void ConfigPanelRecast::initialise()
@@ -985,22 +1007,170 @@ void ConfigPanelRecast::setParameter(bool hasRecast,
 										bool keepInterResults
 									)
 {
+	MyGUI::TextBox* textBox = findWidgetBySuffix(mWidgetClient, "cellSizeText");
+	// Do not call that twice
+	if (true == textBox->getNeedToolTip())
+	{
+		return;
+	}
+
 	this->navigationCheck->setStateCheck(hasRecast);
+	this->navigationCheck->setNeedToolTip(true);
+	this->navigationCheck->setUserString("tooltip", "Use recast navigation mesh feature for this scene?");
+	this->navigationCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 	this->cellSizeEdit->setOnlyText(Ogre::StringConverter::toString(cellSize));
+
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Cellsize (cs) is the width and depth resolution used when sampling the source geometry. "
+		"The width and depth of the cell columns that make up voxel fields. "
+		"Cells are laid out on the width / depth plane of voxel fields. Width is associated with the x - axis of the source geometry.Depth is associated with the z - axis. "
+		"A lower value allows for the generated meshes to more closely match the source geometry, but at a higher processing and memory cost. "
+		"The xz - plane cell size to use for fields. [Limit:> 0][Units:wu]. "
+		"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
+		"The minimum value for this parameter depends on the platform's ");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 	this->cellHeightEdit->setOnlyText(Ogre::StringConverter::toString(cellHeight));
+	textBox = findWidgetBySuffix(mWidgetClient, "cellHeightText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Cellheight (ch) is the height resolution used when sampling the source geometry. The height of the voxels in voxel fields. "
+		"Height is associated with the y - axis of the source geometry. "
+		"A smaller value allows for the final meshes to more closely match the source geometry at a potentially higher processing cost. "
+		"(Unlike cellSize, using a lower value for cellHeight does not significantly increase memory use.) "
+		"The y - axis cell size to use for fields. [Limit:> 0][Units:wu]. "
+		"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
+		"The minimum value for this parameter depends on the platform's floating point accuracy, with the practical minimum usually around 0.05. "
+		"Setting ch lower will result in more accurate detection of areas the agent can still pass under, as min walkable height is discretisized "
+		"in number of cells.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->agentMaxSlopeEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxSlope));
+	textBox = findWidgetBySuffix(mWidgetClient, "agentMaxSlopeText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "* The maximum slope that is considered traversable (in degrees). "
+		"[Limits:0 <= value < 180] "
+		"The practical upper limit for this parameter is usually around 85 degrees. All higher values will result in performance issues during nav mesh generation.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
+
 	this->agentMaxClimbEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxClimb));
+	textBox = findWidgetBySuffix(mWidgetClient, "agentHeightText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The Maximum ledge height that is considered to still be traversable. "
+		"This parameter serves at setting walkableClimb(maxTraversableStep) parameter, precision of this parameter is determined by cellHeight(ch). "
+		"[Limit:>= 0] "
+		"Allows the mesh to flow over low lying obstructions such as curbs and up / down stairways. The value is usually set to how far up / down an agent can step.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
+
 	this->agentHeightEdit->setOnlyText(Ogre::StringConverter::toString(agentHeight));
+	textBox = findWidgetBySuffix(mWidgetClient, "agentMaxClimbText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The height of an agent. Defines the minimum height that "
+		"agents can walk under. Parts of the navmesh with lower ceilings will be pruned off.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->agentRadiusEdit->setOnlyText(Ogre::StringConverter::toString(agentRadius));
+	textBox = findWidgetBySuffix(mWidgetClient, "agentRadiusText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The radius on the xz (ground) plane of the circle that describes the agent (character) size. "
+		"Serves at setting walkableRadius(traversableAreaBorderSize) parameter, the precision of walkableRadius is affected by cellSize(cs). "
+		"This parameter is also used by DetourCrowd to determine the area other agents have to avoid in order not to collide with an agent. "
+		"The distance to erode / shrink the walkable area of the heightfield away from obstructions. "
+		"[Limit:>= 0] "
+		"In general, this is the closest any part of the final mesh should get to an obstruction in the source geometry. It is usually set to the maximum agent radius. "
+		"While a value of zero is legal, it is not recommended and can result in odd edge case issues.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->edgeMaxLenEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxLen));
+	textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxLenText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The maximum allowed length for contour edges along the border of the mesh. "
+		"[Limit:>= 0] "
+		"Extra vertices will be inserted as needed to keep contour edges below this length. A value of zero effectively disables this feature. "
+		"Serves at setting maxEdgeLen, the precision of maxEdgeLen is affected by cellSize(cs).");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 	this->edgeMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxError));
+	textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxErrorText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The maximum distance a simplfied contour's border edges should deviate the original raw contour. (edge matching) "
+		"[Limit:>= 0][Units:wu] "
+		"The effect of this parameter only applies to the xz - plane. "
+		"The maximum distance the edges of meshes may deviate from the source geometry. "
+		"A lower value will result in mesh edges following the xz - plane geometry contour more accurately at the expense of an increased triangle count. "
+		"A value to zero is not recommended since it can result in a large increase in the number of polygons in the final meshes at a high processing cost.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 	this->regionMinSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMinSize));
+	textBox = findWidgetBySuffix(mWidgetClient, "regionMinSizeText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The minimum number of cells allowed to form isolated island areas (size). "
+		"[Limit:>= 0] "
+		"Any regions that are smaller than this area will be marked as unwalkable. This is useful in removing useless regions that can sometimes form on geometry such as table tops, box tops, etc.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+	
 	this->regionMergeSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMergeSize));
+	textBox = findWidgetBySuffix(mWidgetClient, "regionMergeSizeText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Any regions with a span count smaller than this value will, if possible, be merged with larger regions. [Limit:>= 0][Units:vx]");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->vertsPerPolyCombo->setIndexSelected(vertsPerPoly - 1);
+	textBox = findWidgetBySuffix(mWidgetClient, "vertsPerPolyText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The maximum number of vertices allowed for polygons generated during the contour to polygon conversion process. "
+		"[Limit:>= 3] "
+		"If the mesh data is to be used to construct __declspec(dllexport) a Detour navigation mesh, then the upper limit is limited to <= DT_VERTS_PER_POLYGON(= 6). "
+		"The maximum number of vertices per polygon for polygons generated during the voxel to polygon conversion process. "
+		"Higher values increase processing cost, but can also result in better formed polygons in the final meshes. A value of around 6 is generally adequate with diminishing returns for higher values.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
 	this->detailSampleDistEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleDist));
+	textBox = findWidgetBySuffix(mWidgetClient, "detailSampleDistText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Sets the sampling distance to use when generating the detail mesh. "
+		"(For height detail only.) [Limits:0 or >= 0.9][Units:wu] "
+		"Sets the sampling distance to use when matching the detail mesh to the surface of the original geometry. "
+		"Impacts how well the final detail mesh conforms to the surface contour of the original geometry. "
+		"Higher values result in a detail mesh which conforms more closely to the original geometry's surface at the cost of a higher final triangle count and higher processing cost. "
+		"Setting this argument to less than 0.9 disables this functionality.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->detailSampleMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleMaxError));
+	textBox = findWidgetBySuffix(mWidgetClient, "detailSampleMaxErrorText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "The maximum distance the detail mesh surface should deviate from heightfield data. "
+		"(For height detail only.) [Limit:>= 0][Units:wu] "
+		"The maximum distance the surface of the detail mesh may deviate from the surface of the original geometry. "
+		"The accuracy is impacted by contourSampleDistance. "
+		"The value of this parameter has no meaning if contourSampleDistance is set to zero. "
+		"Setting the value to zero is not recommended since it can result in a large increase in the number of triangles in the final detail mesh at a high processing cost. "
+		"Stronly related to detailSampleDist(contourSampleDistance).");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->pointExtendsEdit->setOnlyText(Ogre::StringConverter::toString(pointExtends));
+	textBox = findWidgetBySuffix(mWidgetClient, "pointExtendsText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Set the offset size (box) around points used to look for nav polygons. "
+		"This offset is used in all search for points on the navmesh. "
+		"The maximum offset that a specified point can be off from the navmesh.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
 	this->keepInterResultsCheck->setStateSelected(keepInterResults);
+	textBox = findWidgetBySuffix(mWidgetClient, "keepInterResultsText");
+	textBox->setNeedToolTip(true);
+	textBox->setUserString("tooltip", "Determines whether intermediary results are stored in OgreRecast or whether they are removed after navmesh creation.");
+	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 }
 
 std::tuple<bool, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, 

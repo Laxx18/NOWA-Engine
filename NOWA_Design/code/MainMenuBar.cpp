@@ -585,6 +585,8 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 		}
 		case SETTINGS: // Settings
 		{
+			this->drawCollisionLines(false);
+			this->drawNavigationMap(false);
 			this->configPanel->setVisible(true);
 			this->configPanel->callForSettings(true);
 			// Apply settings from loaded project
@@ -1866,10 +1868,6 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
 	this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
-	if (true == NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
-	}
 	NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
 }
 
