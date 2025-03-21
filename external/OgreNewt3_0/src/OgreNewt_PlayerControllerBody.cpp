@@ -233,7 +233,9 @@ namespace OgreNewt
 	void PlayerControllerBody::setGravityDirection(const Ogre::Vector3& gravityDirection)
 	{
 		m_gravityDirection = gravityDirection;
-		m_playerControllerManager->getPlayerController()->SetGravityDirection(dVector(gravityDirection.x, gravityDirection.y, gravityDirection.z, 1.0f));
+
+		// Newton will not work with this!
+		// m_playerControllerManager->getPlayerController()->SetGravityDirection(dVector(gravityDirection.x, gravityDirection.y, gravityDirection.z, 1.0f));
 	}
 
 	void PlayerControllerBody::setMass(Ogre::Real mass)

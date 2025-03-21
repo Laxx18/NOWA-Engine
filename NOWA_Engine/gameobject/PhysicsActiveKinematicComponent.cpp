@@ -19,6 +19,7 @@ namespace NOWA
 		this->gyroscopicTorque->setVisible(false);
 		this->gravity->setValue(Ogre::Vector3::ZERO);
 		this->gravity->setVisible(false);
+		this->gravitySourceCategory->setVisible(false);
 		this->constraintDirection->setValue(Ogre::Vector3::ZERO);
 		this->constraintDirection->setVisible(false);
 
@@ -125,51 +126,6 @@ namespace NOWA
 		if (false == notSimulating)
 		{
 			this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-
-			Ogre::Real nearestPlanetDistance = std::numeric_limits<Ogre::Real>::max();
-			GameObjectPtr nearestGravitySourceObject;
-
-			if (false == this->gravitySourceCategory->getString().empty())
-			{
-				// If there is a gravity source GO, calculate gravity in that direction of the source, but only work with the nearest object, else the force will mess up
-				auto gravitySourceGameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromCategory(this->gravitySourceCategory->getString());
-				for (size_t i = 0; i < gravitySourceGameObjects.size(); i++)
-				{
-					Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourceGameObjects[i]->getPosition();
-					Ogre::Real squaredDistanceToGravitySource = directionToPlanet.squaredLength();
-					if (squaredDistanceToGravitySource < nearestPlanetDistance)
-					{
-						nearestPlanetDistance = squaredDistanceToGravitySource;
-						nearestGravitySourceObject = gravitySourceGameObjects[i];
-					}
-				}
-
-				// Only do calculation for the nearest planet
-				if (nullptr != nearestGravitySourceObject)
-				{
-					auto& gravitySourcePhysicsComponentPtr = NOWA::makeStrongPtr(nearestGravitySourceObject->getComponent<PhysicsComponent>());
-					if (nullptr != gravitySourcePhysicsComponentPtr)
-					{
-						Ogre::Vector3 directionToPlanet = this->getPosition() - gravitySourcePhysicsComponentPtr->getPosition();
-						directionToPlanet.normalise();
-
-						// Ensures constant acceleration of e.g. -19.8 m/s²
-						Ogre::Real gravityAcceleration = -this->gravity->getVector3().length(); // Should be e.g. 19.8
-
-						this->gravityDirection = -directionToPlanet;
-
-						// Store the current gravity strength for jump normalization
-						this->currentGravityStrength = gravityAcceleration;
-						// Mark gravity as updated
-						this->gravityUpdated.test_and_set();
-					}
-				}
-				else
-				{
-					this->gravityDirection = Ogre::Vector3::NEGATIVE_UNIT_Y;
-					this->gravityUpdated.clear();
-				}
-			}
 
 			// Calculates orientation vectors relative to planet surface
 			this->up = -this->gravityDirection;

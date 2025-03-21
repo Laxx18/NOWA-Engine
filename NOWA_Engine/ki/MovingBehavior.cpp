@@ -2445,6 +2445,11 @@ namespace NOWA
 				}
 			}
 
+			// Ensures resultVelocity is perpendicular to gravityDir
+			Ogre::Vector3 forward = resultVelocity - gravityDir * resultVelocity.dotProduct(gravityDir);
+			forward.normalise();
+
+
 			Ogre::Real velocityLength = this->agent->getVelocity().length();
 			// Ogre::Real velocityLength = (this->agent->getPosition() - this->oldAgentPositionForStuck).length();
 			if (true == Ogre::Math::RealEqual(velocityLength, 0.0f))
@@ -2530,16 +2535,10 @@ namespace NOWA
 				if (nullptr != physicsActiveKinematicComponent)
 				{
 					Ogre::Vector3 targetVelocity = Ogre::Vector3::ZERO;
+
 					if (false == this->flyMode)
 					{
-						// Compute vertical velocity along the gravity direction
-						Ogre::Vector3 verticalVelocity = gravityDir * this->agent->getVelocity().dotProduct(gravityDir);
-
-						// Compute movement direction (excluding vertical component)
-						Ogre::Vector3 directionMove = resultVelocity - (resultVelocity.dotProduct(gravityDir) * gravityDir);
-
-						// Combine vertical velocity with movement direction
-						targetVelocity = verticalVelocity + directionMove;
+						targetVelocity = /*physicsActiveKinematicComponent->getVelocity() * Ogre::Vector3(0.0f, 1.0f, 0.0f) +*/ resultVelocity;
 					}
 					else
 					{
@@ -2549,27 +2548,18 @@ namespace NOWA
 
 					physicsActiveKinematicComponent->setVelocity(targetVelocity);
 
-					if (Ogre::Vector3::ZERO != resultVelocity)
+					if (false == resultVelocity.isZeroLength())
 					{
-						// Ogre::Quaternion newOrientation = this->defaultDirection.getRotationTo(this->resultVelocity);
-						// Ogre::Quaternion newOrientation = (this->agent->getOrientation() * this->defaultDirection).getRotationTo(this->resultVelocity);
-
-						//// https://learn.unity.com/tutorial/adventure-game-phase-1-the-player?projectId=5c514af7edbc2a001fd5c012#5c7f8528edbc2a002053b6d0
-						// physicsActiveKinematicComponent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(1.0f, 0.0f, 0.0f));
-						// physicsActiveKinematicComponent->setOmegaVelocity(newOrientation * Ogre::Vector3(0.0f, 1.0f, 0.0f));
-						Ogre::Quaternion newOrientation = this->agent->getOrientation();
-
-						if (true == this->autoOrientation)
+						Ogre::Quaternion newOrientation;
+						if (this->autoOrientation)
 						{
 							newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-							
-							Ogre::Vector3 desiredAngularVelocity = -gravityDir * newOrientation.getYaw().valueDegrees();
-
-							this->agent->setOmegaVelocity(desiredAngularVelocity);
+							// newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+							this->agent->setOmegaVelocity(Ogre::Vector3(0.0f, newOrientation.getYaw().valueDegrees() * 0.1f, 0.0f));
 						}
 						else
 						{
-							this->agent->setOmegaVelocityRotateTo(newOrientation, gravityDir);
+							this->agent->setOmegaVelocityRotateTo(newOrientation, Ogre::Vector3(0.0f, 1.0f, 0.0f));
 						}
 					}
 				}
@@ -2603,12 +2593,7 @@ namespace NOWA
 
 					if (true == this->autoOrientation)
 					{
-						newOrientation = (this->agent->getOrientation() * this->agent->getOwner()->getDefaultDirection()).getRotationTo(resultVelocity);
-
-						// Compute desired yaw rotation (normal movement)
-						Ogre::Vector3 desiredAngularVelocity = -gravityDir * newOrientation.getYaw().valueDegrees();
-
-						this->agent->applyOmegaForce(desiredAngularVelocity);
+						this->agent->applyOmegaForceRotateToDirection(forward);
 					}
 					else
 					{

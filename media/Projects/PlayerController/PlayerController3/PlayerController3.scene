@@ -129,8 +129,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="23.6031" y="5.11264" z="62.9271"/>
-			<rotation qw="0.973942" qx="0.00518595" qy="0.226384" qz="0.0126602"/>
+			<position x="24.7644" y="-0.728505" z="56.0162"/>
+			<rotation qw="0.964656" qx="0.263093" qy="-0.00243695" qz="0.0146624"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -159,8 +159,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="23.6031 5.11264 62.9271"/>
-					<property type="9" name="CameraOrientation" data="0.250356 26.1744 1.54768"/>
+					<property type="9" name="CameraPosition" data="17.7072 -0.570221 56.8771"/>
+					<property type="9" name="CameraOrientation" data="26.27 -54.5493 -56.4107"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -449,25 +449,23 @@
 				</userData>
 			</entity>
 		</node>
-		<node name="Flubber_1" id="2650477933">
-			<position x="18.5278" y="2.40868" z="45.8309"/>
-			<rotation qw="0.786243" qx="0.617918" qy="0" qz="0"/>
+		<node name="Monster01_2" id="2507279691">
+			<position x="35.6048" y="-7.70406" z="41.6308"/>
+			<rotation qw="0.806147" qx="0.522844" qy="0.150828" qz="-0.232405"/>
 			<scale x="1" y="1" z="1"/>
-			<entity name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
-				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+			<entity name="Monster01_2" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="Monster01"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
-					<property type="7" name="Id" data="3268791078"/>
-					<property type="7" name="Category" data="Player"/>
+					<property type="7" name="Id" data="3270274338"/>
+					<property type="7" name="Category" data="Default"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
-					<property type="9" name="DefaultDirection" data="0 0 -1"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -476,75 +474,347 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="SOLID/TEX/mouth.png"/>
-					<property type="7" name="DataBlock1" data="SOLID/TEX/eyes.png"/>
-					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png"/>
-					<property type="7" name="ComponentPhysicsPlayerControllerComponent" data="PhysicsPlayerControllerComponent"/>
+					<property type="7" name="DataBlock0" data="Monster01"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
-					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
+					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
 					<property type="6" name="LinearDamping" data="0.1"/>
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
-					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="7" name="GravitySourceCategory" data="Planet"/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="4"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="4"/>
+					<property type="7" name="CollisionType" data="Cylinder"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="walk-01"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="12" name="ShowSkeleton" data="false"/>
+					<property type="7" name="ComponentAiPathFollowComponent" data="AiPathFollowComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="false"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="2" name="WaypointsCount" data="4"/>
+					<property type="2" name="Waypoint0" data="2802038310"/>
+					<property type="2" name="Waypoint1" data="416221888"/>
+					<property type="2" name="Waypoint2" data="2576133683"/>
+					<property type="2" name="Waypoint3" data="3397849275"/>
+					<property type="12" name="Repeat" data="true"/>
+					<property type="12" name="DirectionChange" data="true"/>
+					<property type="12" name="InvertDirection" data="false"/>
+					<property type="6" name="GoalRadius" data="0.2"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Monster01_0" id="2507280561">
+			<position x="21.3818" y="7.65685" z="42.8764"/>
+			<rotation qw="0.828712" qx="0.538993" qy="0.0821331" qz="-0.126402"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="Monster01"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="894907600"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Monster01"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
+					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.001 0.001 0.001"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data="Planet"/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="3"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="3"/>
+					<property type="7" name="CollisionType" data="Cylinder"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
+					<property type="7" name="ComponentAiWanderComponent" data="AiWanderComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="true"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="6" name="WanderJitter" data="0.5"/>
+					<property type="6" name="WanderRadius" data="3"/>
+					<property type="6" name="WanderDistance" data="30"/>
+					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="walk-01"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="12" name="ShowSkeleton" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Monster01_1" id="2507280126">
+			<position x="28.5338" y="7.83861" z="44.0205"/>
+			<rotation qw="0.786626" qx="0.58096" qy="0.165737" qz="-0.127422"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Monster01_1" meshFile="Monster01.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="Monster01"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="629520661"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="Monster01"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
+					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 90"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data="Planet"/>
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
-					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="7" name="CollisionType" data="Cylinder"/>
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
 					<property type="7" name="OnContactFunctionName" data=""/>
-					<property type="6" name="Radius" data="0.37482"/>
-					<property type="6" name="Height" data="1.29978"/>
-					<property type="6" name="StepHeight" data="0.3"/>
-					<property type="6" name="JumpSpeed" data="10"/>
-					<property type="7" name="OnContactFrictionFunctionName" data=""/>
-					<property type="7" name="OnContactFunctionName" data=""/>
-					<property type="7" name="ComponentPlayerControllerJumpNRunComponent" data="PlayerControllerJumpNRunComponent"/>
+					<property type="7" name="ComponentAiMoveComponent" data="AiMoveComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
+					<property type="12" name="Activated" data="true"/>
 					<property type="6" name="RotationSpeed" data="10"/>
-					<property type="6" name="GoalRadius" data="0.5"/>
-					<property type="6" name="AnimationSpeed" data="1"/>
-					<property type="6" name="Acceleration" data="0"/>
-					<property type="7" name="Categories" data="All"/>
-					<property type="12" name="UseStandUp" data="false"/>
-					<property type="6" name="JumpForce" data="15"/>
-					<property type="12" name="DoubleJump" data="false"/>
-					<property type="6" name="RunAfterWalkTime" data="0"/>
-					<property type="12" name="For2D" data="false"/>
-					<property type="7" name="AnimIdle1" data="Idle"/>
-					<property type="7" name="AnimIdle2" data="Idle"/>
-					<property type="7" name="AnimIdle3" data="Idle"/>
-					<property type="7" name="AnimWalkNorth" data="WalkNorth"/>
-					<property type="7" name="AnimWalkSouth" data="WalkSouth"/>
-					<property type="7" name="AnimWalkWest" data="WalkWest"/>
-					<property type="7" name="AnimWalkEast" data="WalkEast"/>
-					<property type="7" name="AnimJumpStart" data="Jump"/>
-					<property type="7" name="AnimJumpWalk" data="Jump"/>
-					<property type="7" name="AnimHighJumpEnd" data="Jump"/>
-					<property type="7" name="AnimJumpEnd" data="Jump"/>
-					<property type="7" name="AnimRun" data="WalkNorth"/>
-					<property type="7" name="AnimSneak" data="None"/>
-					<property type="7" name="AnimDuck" data="None"/>
-					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
+					<property type="12" name="FlyMode" data="false"/>
+					<property type="6" name="StuckTime" data="0"/>
+					<property type="12" name="AutoOrientation" data="true"/>
+					<property type="12" name="AutoAnimation" data="false"/>
+					<property type="6" name="AgentId" data="0"/>
+					<property type="7" name="BehaviorType" data="Seek"/>
+					<property type="2" name="TargetId" data="894907600"/>
+					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="7" name="DeviceName" data="Win32InputManager"/>
-					<property type="12" name="IsExclusive" data="false"/>
+					<property type="12" name="AnimationActivated" data="true"/>
+					<property type="7" name="AnimationName" data="walk-01"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="12" name="AnimationRepeat" data="true"/>
+					<property type="12" name="ShowSkeleton" data="false"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Node_3" id="4215510815">
+			<position x="38.5055" y="-10.413" z="41.0469"/>
+			<rotation qw="0.872828" qx="0.463117" qy="-0.0978521" qz="-0.118825"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Node_3" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2802038310"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Node_0" id="4215511250">
+			<position x="35.1929" y="-3.44418" z="40.6736"/>
+			<rotation qw="0.872828" qx="0.463117" qy="-0.0978521" qz="-0.118825"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Node_0" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="3397849275"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Node_1" id="4215511685">
+			<position x="38.2289" y="1.74106" z="37.2886"/>
+			<rotation qw="0.872828" qx="0.463117" qy="-0.0978521" qz="-0.118825"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Node_1" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="2576133683"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
+				</userData>
+			</entity>
+		</node>
+		<node name="Node_2" id="4215510380">
+			<position x="44.5989" y="-5.0814" z="36.2366"/>
+			<rotation qw="0.872828" qx="0.463117" qy="-0.0978521" qz="-0.118825"/>
+			<scale x="1" y="1" z="1"/>
+			<entity name="Node_2" meshFile="Node.mesh" castShadows="true" visible="true">
+				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
+				<userData>
+					<property type="7" name="Object" data="GameObject"/>
+					<property type="7" name="Id" data="416221888"/>
+					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
+					<property type="7" name="TagName" data=""/>
+					<property type="2" name="ControlledByClient" data="0"/>
+					<property type="12" name="Static" data="false"/>
+					<property type="12" name="UseReflection" data="false"/>
+					<property type="12" name="Visible" data="true"/>
+					<property type="9" name="DefaultDirection" data="0 0 1"/>
+					<property type="12" name="Global" data="false"/>
+					<property type="12" name="ClampY" data="false"/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="300"/>
+					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentNodeComponent" data="NodeComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Show" data="true"/>
 				</userData>
 			</entity>
 		</node>
