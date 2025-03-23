@@ -166,6 +166,8 @@ private:
 	Ogre::Real mouseTopTimer;
 	const Ogre::Real MOUSE_TOP_DELAY = 1.0f; // 1 second delay
 	const int TOP_THRESHOLD = 10; // pixels from top to trigger
+
+	NOWA::GameObject* selectedGameObject;
 };
 
 #endif

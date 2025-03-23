@@ -85,6 +85,7 @@ void DesignState::enter(void)
 	this->isMouseAtTop = false;
 	this->guiVisible = true;
 	this->mouseTopTimer = 0.0f;
+	this->selectedGameObject = nullptr;
 
 	// Register the tree control
 	MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -1725,6 +1726,16 @@ void DesignState::lateUpdate(Ogre::Real dt)
 		else if (ms.buttonDown(OIS::MB_Right))
 		{
 			this->firstTimeValueSet = true;
+
+			Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
+
+			if (nullptr != this->selectedGameObject && GetAsyncKeyState(VK_LMENU))
+			{
+				gravityDir = this->camera->getDerivedPosition() - this->selectedGameObject->getPosition();
+				gravityDir.normalise();
+			}
+
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())->applyGravityDirection(-gravityDir);
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->rotateCamera(dt, false);
 		}
 		else if (nullptr != NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0))
@@ -2474,6 +2485,15 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 		}
 
 		this->editorManager->handleMousePress(evt, id);
+
+		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() == 1)
+		{
+			this->selectedGameObject = this->editorManager->getSelectionManager()->getSelectedGameObjects().cbegin()->second.gameObject;
+		}
+		else
+		{
+			this->selectedGameObject = nullptr;
+		}
 
 		//if (false == this->simulating && false == this->bQuit && true == validScene && this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
 		//{

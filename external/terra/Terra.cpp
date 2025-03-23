@@ -106,10 +106,7 @@ namespace Ogre
         mNormalMapperWorkspace(0),
         mNormalMapCamera(0),
         m_brushSize(64),
-        mHlmsTerraIndex(std::numeric_limits<uint32>::max()),
-        m_prevPosition(Ogre::Vector3::ZERO),
-        m_dynamicBrushMode(false),
-        m_hasPrevPosition(false)
+        mHlmsTerraIndex(std::numeric_limits<uint32>::max())
     {
         if (nullptr == m_camera)
         {
@@ -1394,37 +1391,29 @@ namespace Ogre
 
     void Terra::setBrushName(const Ogre::String& brushName)
     {
-        if ("AllWhite.png" != brushName)
+        TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
+
+        Ogre::Image2 brushImage;
+        brushImage.load(brushName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+
+        brushImage.resize(m_brushSize, m_brushSize);
+
+        size_t size = brushImage.getWidth() * brushImage.getHeight();
+        if (0 == size)
+            return;
+
+        m_brushData.resize(size, 0);
+
+        Ogre::ColourValue cval;
+        for (uint32 y = 0; y < brushImage.getHeight(); y++)
         {
-            m_dynamicBrushMode = false;
-            TextureGpuManager* textureManager = mManager->getDestinationRenderSystem()->getTextureGpuManager();
-
-            Ogre::Image2 brushImage;
-            brushImage.load(brushName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-
-            brushImage.resize(m_brushSize, m_brushSize);
-
-            size_t size = brushImage.getWidth() * brushImage.getHeight();
-            if (0 == size)
-                return;
-
-            m_brushData.resize(size, 0);
-
-            Ogre::ColourValue cval;
-            for (uint32 y = 0; y < brushImage.getHeight(); y++)
+            // TextureBox texBox = brushImage.getData(0);
+            // const float* RESTRICT_ALIAS imageData = reinterpret_cast<float* RESTRICT_ALIAS>(texBox.at(0, y, 0));
+            for (uint32 x = 0; x < brushImage.getWidth(); x++)
             {
-                // TextureBox texBox = brushImage.getData(0);
-                // const float* RESTRICT_ALIAS imageData = reinterpret_cast<float* RESTRICT_ALIAS>(texBox.at(0, y, 0));
-                for (uint32 x = 0; x < brushImage.getWidth(); x++)
-                {
-                    cval = brushImage.getColourAt(x, y, 0);
-                    m_brushData[y * brushImage.getWidth() + x] = cval.r;
-                }
+                cval = brushImage.getColourAt(x, y, 0);
+                m_brushData[y * brushImage.getWidth() + x] = cval.r;
             }
-        }
-        else
-        {
-            m_dynamicBrushMode = true;
         }
     }
 
@@ -1452,12 +1441,6 @@ namespace Ogre
         memcpy(&m_oldHeightData[0], texBox.data, m_heightMapStagingTexture->_getSizeBytes());
 
         m_heightMapStagingTexture->stopMapRegion();
-
-        if (true == m_dynamicBrushMode)
-        {
-            m_prevPosition = position;
-            m_hasPrevPosition = true;
-        }
         
         this->applyHeightDiff(position, m_brushData, m_brushSize, strength);
     }
@@ -1487,159 +1470,14 @@ namespace Ogre
 
     void Terra::modifyTerrain(const Ogre::Vector3& position, float strength)
     {
-        if (true == m_dynamicBrushMode)
-        {
-            if (false == m_hasPrevPosition)
-            {
-                m_prevPosition = position;
-                m_hasPrevPosition = true;
-            }
-
-            // Compute movement direction
-            Ogre::Vector3 direction = position - m_prevPosition;
-#if 1
-            direction.normalise(); // Normalize to unit length
-
-#else
-            direction.y = 0;  // Ignore Y for directional calculation
-            if (direction.length() > 0.0001f)
-            {
-                direction.normalise();
-            }
-#endif
-
-            // Generate the brush data based on the movement direction
-            generateBrushData(m_brushData, direction);
-        }
-
         // Apply the height modification
         this->applyHeightDiff(position, m_brushData, m_brushSize, strength);
-
-        if (true == m_dynamicBrushMode)
-        {
-            // Update previous position for the next frame
-            m_prevPosition = position;
-        }
     }
 
     void Terra::smoothTerrain(const Ogre::Vector3& position, float strength)
     {
         this->applySmoothDiff(position, m_brushData, m_brushSize, strength);
     }
-
-#if 0
-    void Terra::generateBrushData(std::vector<float>& brushData, const Ogre::Vector3& direction)
-    {
-        brushData.resize(m_brushSize * m_brushSize, 0.0f);
-
-        float maxDistance = std::sqrt(2) * m_brushSize / 2.0f; // Max possible diagonal distance
-
-        for (int y = 0; y < m_brushSize; ++y)
-        {
-            for (int x = 0; x < m_brushSize; ++x)
-            {
-                float relX = (x - m_brushSize / 2) / float(m_brushSize / 2); // Normalize from -1 to 1
-                float relY = (y - m_brushSize / 2) / float(m_brushSize / 2);
-
-                // Project point onto movement direction
-                float dotProduct = relX * direction.x + relY * direction.z;
-                float influence = std::clamp(dotProduct + 0.5f, 0.0f, 1.0f); // Shift to [0,1]
-
-                brushData[y * m_brushSize + x] = influence;
-            }
-        }
-    }
-#endif
-
-#if 0
-    void Terra::generateBrushData(std::vector<float>& m_brushData, const Ogre::Vector3& direction)
-    {
-        m_brushData.resize(m_brushSize * m_brushSize, 0.0f);
-
-        for (int y = 0; y < m_brushSize; ++y)
-        {
-            for (int x = 0; x < m_brushSize; ++x)
-            {
-                // Centered coordinates [-1,1]
-                float relX = (x - m_brushSize / 2) / float(m_brushSize / 2);
-                float relY = (y - m_brushSize / 2) / float(m_brushSize / 2);
-
-                // Projection onto direction
-                float incline = (relX * direction.x + relY * direction.z) * 0.5f + 0.5f; // Normalize [0,1]
-
-                // Clamp to valid range
-                incline = std::clamp(incline, 0.0f, 1.0f);
-
-                m_brushData[y * m_brushSize + x] = incline;
-            }
-        }
-    }
-#endif
-
-#if 0
-    void Terra::generateBrushData(std::vector<float>& m_brushData, const Ogre::Vector3& direction)
-    {
-        m_brushData.resize(m_brushSize * m_brushSize, 0.0f);
-
-        // Create orthonormal basis for rotation
-        Ogre::Vector3 right = Ogre::Vector3::UNIT_Y.crossProduct(direction); // Perpendicular vector
-        Ogre::Vector3 forward = direction; // Forward direction
-
-        for (int y = 0; y < m_brushSize; ++y)
-        {
-            for (int x = 0; x < m_brushSize; ++x)
-            {
-                // Convert to [-1,1] range
-                float relX = (x - m_brushSize / 2) / float(m_brushSize / 2);
-                float relY = (y - m_brushSize / 2) / float(m_brushSize / 2);
-
-                // Rotate point using direction
-                Ogre::Vector3 point = relX * right + relY * forward;
-
-                // Use forward component for incline
-                float incline = (point.dotProduct(forward) + 1.0f) * 0.5f;  // Normalize [0,1]
-
-                // Clamp and assign
-                m_brushData[y * m_brushSize + x] = std::clamp(incline, 0.0f, 1.0f);
-            }
-        }
-    }
-#endif
-
-#if 1
-    void Terra::generateBrushData(std::vector<float>& m_brushData, const Ogre::Vector3& direction)
-    {
-        m_brushData.resize(m_brushSize * m_brushSize, 0.0f);
-
-        // Create orthonormal basis for rotation
-        Ogre::Vector3 right = Ogre::Vector3::UNIT_Y.crossProduct(direction); // Perpendicular to direction
-        if (right.length() < 0.0001f) right = Ogre::Vector3::UNIT_X; // Prevent zero vector
-        right.normalise();
-
-        Ogre::Vector3 forward = direction; // Movement direction
-
-        for (int y = 0; y < m_brushSize; ++y)
-        {
-            for (int x = 0; x < m_brushSize; ++x)
-            {
-                // Convert grid coordinates to [-1,1] range
-                float relX = (x - m_brushSize / 2) / float(m_brushSize / 2);
-                float relY = (y - m_brushSize / 2) / float(m_brushSize / 2);
-
-                // Rotate point using new basis vectors
-                Ogre::Vector3 point = relX * right + relY * forward;
-
-                // Use forward component to define incline
-                float incline = (point.dotProduct(forward) + 1.0f) * 0.5f;  // Normalize [0,1]
-
-                // Clamp and assign
-                m_brushData[y * m_brushSize + x] = std::clamp(incline, 0.0f, 1.0f);
-            }
-        }
-    }
-
-#endif
-
 
     void Terra::applyHeightDiff(const Ogre::Vector3& position, const std::vector<float>& data, int boxSize, float strength)
     {

@@ -32,8 +32,7 @@ namespace NOWA
 
 	PhysicsActiveKinematicComponent::~PhysicsActiveKinematicComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveKinematicComponent] Destructor physics active kinematic component for game object: " 
-			+ this->gameObjectPtr->getName());
+		
 	}
 
 	bool PhysicsActiveKinematicComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -104,6 +103,16 @@ namespace NOWA
 			return false;
 
 		return success;
+	}
+
+	void PhysicsActiveKinematicComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveKinematicComponent] RemoveComponent physics active kinematic component for game object: "
+			+ this->gameObjectPtr->getName());
+
+		this->releaseConstraintAxis();
 	}
 
 	bool PhysicsActiveKinematicComponent::connect(void)

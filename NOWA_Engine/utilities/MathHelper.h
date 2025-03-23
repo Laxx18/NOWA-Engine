@@ -564,6 +564,17 @@ namespace NOWA
 		void getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 								 const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale);
 
+		void getDetailedMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices,
+			size_t& indexCount, unsigned long*& indices,
+			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
+			bool& isVET_HALF4, bool& isIndices32);
+
+		void getDetailedMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, Ogre::Vector3*& normals,
+			Ogre::Vector2*& textureCoords, // Added parameter for texture coordinates
+			size_t& indexCount, unsigned long*& indices,
+			const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
+			bool& isVET_HALF4, bool& isIndices32);
+
 		/**
 		* @brief			Gets geometry information about a given manual object
 		* @param[in]		manualObject	The manual object to get the mesh and geometry data from
@@ -630,6 +641,9 @@ namespace NOWA
 		*/
 		bool getRaycastResult(const Ogre::Vector3& origin, const Ogre::Vector3& direction, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject,
 							  std::vector<Ogre::MovableObject*>* excludeMovableObjects = nullptr);
+
+		bool getRaycastDetailsResult(const Ogre::Ray& ray, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject,
+			Ogre::Vector3*& outVertices, size_t& outVertexCount, unsigned long*& outIndices, size_t& outIndexCount);
 
 		/**
 		* @brief			Performs a raycast on model from the given x and z coordinate

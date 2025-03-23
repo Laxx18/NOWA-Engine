@@ -44,16 +44,16 @@ dCustomUpVector::~dCustomUpVector()
 void dCustomUpVector::SetPinDir(const dVector& pin, NewtonBody* child)
 {
 	m_localMatrix1 = dGrammSchmidt(pin);
-	dMatrix pivot;
+	/*dMatrix pivot;
 
 	NewtonBodyGetMatrix(child, &pivot[0][0]);
 
 	dMatrix matrix(dGrammSchmidt(pin));
 	matrix.m_posit = pivot.m_posit;
-	CalculateLocalMatrix(matrix, m_localMatrix0, m_localMatrix1);
+	CalculateLocalMatrix(matrix, m_localMatrix0, m_localMatrix1);*/
 }
 
-
+#if 1
 void dCustomUpVector::SubmitConstraints (dFloat timestep, int threadIndex)
 {
 	dMatrix matrix0;
@@ -84,4 +84,36 @@ void dCustomUpVector::SubmitConstraints (dFloat timestep, int threadIndex)
 		NewtonUserJointAddAngularRow (m_joint, 0.0f, &matrix0.m_right[0]);
 	}
 }
+#else
+void dCustomUpVector::SubmitConstraints(dFloat timestep, int threadIndex)
+{
+	dMatrix matrix0;
+	dMatrix matrix1;
+
+	// Calculate the global matrices of both bodies
+	CalculateGlobalMatrix(matrix0, matrix1);
+
+	// Calculate the lateral direction for correction
+	dVector lateralDir = matrix0.m_front.CrossProduct(matrix1.m_front);
+	dFloat mag = lateralDir.DotProduct3(lateralDir);
+
+	if (mag > 1.0e-6f)
+	{
+		// Normalize lateral direction
+		mag = dSqrt(mag);
+		lateralDir = lateralDir.Scale(1.0f / mag);
+
+		// Compute the rotation angle
+		dFloat angle = dAsin(mag);
+
+		// Apply only ONE angular correction to align up vectors
+		NewtonUserJointAddAngularRow(m_joint, angle, &lateralDir[0]);
+	}
+
+	// Apply ONE more constraint along a perpendicular direction to prevent sideways tilt
+	dVector rightDir = matrix0.m_front.CrossProduct(matrix0.m_up);
+	NewtonUserJointAddAngularRow(m_joint, 0.0f, &rightDir[0]);
+}
+#endif
+
 

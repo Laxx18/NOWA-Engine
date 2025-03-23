@@ -1154,6 +1154,329 @@ namespace NOWA
 		}
 	}
 
+	void MathHelper::getDetailedMeshInformation2(
+		const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices,
+		size_t& indexCount, unsigned long*& indices,
+		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
+		bool& isVET_HALF4, bool& isIndices32)
+	{
+		// Compute total number of vertices and indices
+		unsigned int numVertices = 0;
+		unsigned int numIndices = 0;
+
+		for (const auto& subMesh : mesh->getSubMeshes())
+		{
+			numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
+			numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
+		}
+
+		// Allocate memory
+		vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
+		indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
+
+		vertexCount = numVertices;
+		indexCount = numIndices;
+
+		unsigned int addedVertices = 0;
+		unsigned int addedIndices = 0;
+		unsigned int index_offset = 0;
+		unsigned int subMeshOffset = 0;
+
+		for (const auto& subMesh : mesh->getSubMeshes())
+		{
+			Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
+			if (vaos.empty()) continue;
+
+			Ogre::VertexArrayObject* vao = vaos[0];
+			isIndices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
+
+			Ogre::VertexArrayObject::ReadRequestsVec requests;
+			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+
+			vao->readRequests(requests);
+			vao->mapAsyncTickets(requests);
+
+			unsigned int subMeshVerticesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
+
+			// Compute matrix for normals that handles both rotation and non-uniform scaling
+			Ogre::Matrix3 rotMatrix;
+			orientation.ToRotationMatrix(rotMatrix);
+
+			// Create a scaling matrix for normal transformation
+			Ogre::Matrix3 scaleMatrix;
+			scaleMatrix[0][0] = scale.x;
+			scaleMatrix[1][1] = scale.y;
+			scaleMatrix[2][2] = scale.z;
+
+			// Combine rotation and scaling, then compute inverse-transpose
+			Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+			Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
+
+			// Check vertex format and set isVET_HALF4 appropriately
+			isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
+
+			// Extract Positions
+			if (requests[0].type == Ogre::VET_HALF4)
+			{
+				for (size_t i = 0; i < subMeshVerticesNum; ++i)
+				{
+					// Assuming interleaved data where:
+					// position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
+					const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+
+					// Extract position
+					Ogre::Vector3 pos;
+					pos.x = Ogre::Bitwise::halfToFloat(data[0]);
+					pos.y = Ogre::Bitwise::halfToFloat(data[1]);
+					pos.z = Ogre::Bitwise::halfToFloat(data[2]);
+
+					// Update data pointers to next vertex (for interleaved data)
+					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+
+					// Store the transformed data - fixed to use the input position parameter correctly
+					vertices[i + subMeshOffset] = (orientation * (pos * scale)) + position;
+				}
+			}
+			else if (requests[0].type == Ogre::VET_FLOAT3)
+			{
+				for (size_t i = 0; i < subMeshVerticesNum; ++i)
+				{
+					// Read position data
+					const float* pos = reinterpret_cast<const float*>(requests[0].data);
+					Ogre::Vector3 vertexPosition;
+					vertexPosition.x = *pos++;
+					vertexPosition.y = *pos++;
+					vertexPosition.z = *pos++;
+					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+
+					// Apply transformations - fixed to use the input position parameter correctly
+					vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
+				}
+			}
+			else
+			{
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
+			}
+
+			subMeshOffset += subMeshVerticesNum;
+			vao->unmapAsyncTickets(requests);
+
+			// Read index data
+			Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
+			if (indexBuffer)
+			{
+				Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
+
+				unsigned int* pIndices = nullptr;
+				if (isIndices32)
+				{
+					pIndices = (unsigned*)(asyncTicket->map());
+				}
+				else
+				{
+					unsigned short* pShortIndices = (unsigned short*)(asyncTicket->map());
+					pIndices = new unsigned int[indexBuffer->getNumElements()];
+					for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
+					{
+						pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
+					}
+				}
+
+				for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
+				{
+					indices[addedIndices++] = pIndices[i] + index_offset;
+				}
+
+				if (!isIndices32)
+					delete[] pIndices;
+
+				asyncTicket->unmap();
+			}
+			index_offset += static_cast<unsigned int>(vao->getVertexBuffers()[0]->getNumElements());
+		}
+	}
+
+	void MathHelper::getDetailedMeshInformation2(
+		const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, Ogre::Vector3*& normals,
+		Ogre::Vector2*& textureCoords, // Added parameter for texture coordinates
+		size_t& indexCount, unsigned long*& indices,
+		const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale,
+		bool& isVET_HALF4, bool& isIndices32)
+	{
+		// Compute total number of vertices and indices
+		unsigned int numVertices = 0;
+		unsigned int numIndices = 0;
+
+		for (const auto& subMesh : mesh->getSubMeshes())
+		{
+			numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
+			numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
+		}
+
+		// Allocate memory
+		vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
+		normals = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
+		textureCoords = OGRE_ALLOC_T(Ogre::Vector2, numVertices, Ogre::MEMCATEGORY_GEOMETRY); // Allocate for texture coordinates
+		indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
+
+		vertexCount = numVertices;
+		indexCount = numIndices;
+
+		unsigned int addedVertices = 0;
+		unsigned int addedIndices = 0;
+		unsigned int index_offset = 0;
+		unsigned int subMeshOffset = 0;
+
+		for (const auto& subMesh : mesh->getSubMeshes())
+		{
+			Ogre::VertexArrayObjectArray vaos = subMesh->mVao[0];
+			if (vaos.empty()) continue;
+
+			Ogre::VertexArrayObject* vao = vaos[0];
+			isIndices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
+
+			Ogre::VertexArrayObject::ReadRequestsVec requests;
+			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
+			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_NORMAL));
+			requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_TEXTURE_COORDINATES)); // Add request for texture coordinates
+
+			vao->readRequests(requests);
+			vao->mapAsyncTickets(requests);
+
+			unsigned int subMeshVerticesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
+
+			// Compute matrix for normals that handles both rotation and non-uniform scaling
+			Ogre::Matrix3 rotMatrix;
+			orientation.ToRotationMatrix(rotMatrix);
+
+			// Create a scaling matrix for normal transformation
+			Ogre::Matrix3 scaleMatrix;
+			scaleMatrix[0][0] = scale.x;
+			scaleMatrix[1][1] = scale.y;
+			scaleMatrix[2][2] = scale.z;
+
+			// Combine rotation and scaling, then compute inverse-transpose
+			Ogre::Matrix3 normalMatrix = rotMatrix * scaleMatrix;
+			Ogre::Matrix3 invNormalMatrix = normalMatrix.Inverse().Transpose();
+
+			// Check vertex format and set isVET_HALF4 appropriately
+			isVET_HALF4 = (requests[0].type == Ogre::VET_HALF4);
+
+			// Extract Positions
+			if (requests[0].type == Ogre::VET_HALF4)
+			{
+				for (size_t i = 0; i < subMeshVerticesNum; ++i)
+				{
+					// Assuming interleaved data where:
+					// position is first (x, y, z), followed by normal (nx, ny, nz) for each vertex
+					const Ogre::uint16* data = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
+
+					// Extract position
+					Ogre::Vector3 pos;
+					pos.x = Ogre::Bitwise::halfToFloat(data[0]);
+					pos.y = Ogre::Bitwise::halfToFloat(data[1]);
+					pos.z = Ogre::Bitwise::halfToFloat(data[2]);
+
+					// Extract normal
+					const Ogre::uint16* norm = reinterpret_cast<const Ogre::uint16*>(requests[1].data);
+					Ogre::Vector3 normal;
+					normal.x = Ogre::Bitwise::halfToFloat(norm[0]);
+					normal.y = Ogre::Bitwise::halfToFloat(norm[1]);
+					normal.z = Ogre::Bitwise::halfToFloat(norm[2]);
+
+					// Extract texture coordinates
+					const Ogre::uint16* texCoords = reinterpret_cast<const Ogre::uint16*>(requests[2].data);
+					Ogre::Vector2 uv;
+					uv.x = Ogre::Bitwise::halfToFloat(texCoords[0]);
+					uv.y = Ogre::Bitwise::halfToFloat(texCoords[1]);
+
+					// Update data pointers to next vertex (for interleaved data)
+					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+					requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+					requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+
+					// Store the transformed data - fixed to use the input position parameter correctly
+					vertices[i + subMeshOffset] = (orientation * (pos * scale)) + position;
+					normals[i + subMeshOffset] = invNormalMatrix * normal;
+					textureCoords[i + subMeshOffset] = uv; // Store texture coordinates
+				}
+			}
+			else if (requests[0].type == Ogre::VET_FLOAT3)
+			{
+				for (size_t i = 0; i < subMeshVerticesNum; ++i)
+				{
+					// Read position data
+					const float* pos = reinterpret_cast<const float*>(requests[0].data);
+					Ogre::Vector3 vertexPosition;
+					vertexPosition.x = *pos++;
+					vertexPosition.y = *pos++;
+					vertexPosition.z = *pos++;
+					requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
+
+					// Read normal data
+					const float* norm = reinterpret_cast<const float*>(requests[1].data);
+					Ogre::Vector3 normal;
+					normal.x = *norm++;
+					normal.y = *norm++;
+					normal.z = *norm++;
+					requests[1].data += requests[1].vertexBuffer->getBytesPerElement();
+
+					// Read texture coordinate data
+					const float* texCoords = reinterpret_cast<const float*>(requests[2].data);
+					Ogre::Vector2 uv;
+					uv.x = *texCoords++;
+					uv.y = *texCoords++;
+					requests[2].data += requests[2].vertexBuffer->getBytesPerElement();
+
+					// Apply transformations - fixed to use the input position parameter correctly
+					vertices[i + subMeshOffset] = (orientation * (vertexPosition * scale)) + position;
+					normals[i + subMeshOffset] = invNormalMatrix * normal;
+					textureCoords[i + subMeshOffset] = uv; // Store texture coordinates
+				}
+			}
+			else
+			{
+				OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "Unsupported vertex format!", "getMeshInformation2");
+			}
+
+			subMeshOffset += subMeshVerticesNum;
+			vao->unmapAsyncTickets(requests);
+
+			// Read index data
+			Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
+			if (indexBuffer)
+			{
+				Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
+
+				unsigned int* pIndices = nullptr;
+				if (isIndices32)
+				{
+					pIndices = (unsigned*)(asyncTicket->map());
+				}
+				else
+				{
+					unsigned short* pShortIndices = (unsigned short*)(asyncTicket->map());
+					pIndices = new unsigned int[indexBuffer->getNumElements()];
+					for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
+					{
+						pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
+					}
+				}
+
+				for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
+				{
+					indices[addedIndices++] = pIndices[i] + index_offset;
+				}
+
+				if (!isIndices32)
+					delete[] pIndices;
+
+				asyncTicket->unmap();
+			}
+			index_offset += static_cast<unsigned int>(vao->getVertexBuffers()[0]->getNumElements());
+		}
+	}
+
 	void MathHelper::getManualMeshInformation(const Ogre::v1::ManualObject* manualObject, size_t& vertexCount, Ogre::Vector3*& vertices,
 		size_t& indexCount, unsigned long*& indices, const Ogre::Vector3& position, const Ogre::Quaternion& orient, const Ogre::Vector3& scale)
 	{
@@ -1608,8 +1931,8 @@ namespace NOWA
 				// mesh data to retrieve         
 				size_t vertexCount;
 				size_t indexCount;
-				Ogre::Vector3* vertices;
-				unsigned long* indices;
+				Ogre::Vector3* vertices = nullptr;
+				unsigned long* indices = nullptr;
 
 				// get the mesh information
 				this->getMeshInformation(entity->getMesh(), vertexCount, vertices, indexCount, indices,
@@ -1738,6 +2061,191 @@ namespace NOWA
 						// Terra may have its origin in negative, hence subtract to become positive
 						closestDistance = std::get<3>(resultData);
 						targetMovableObject = (size_t)terra;
+					}
+				}
+			}
+		}
+
+		// return the result
+		if (closestDistance >= 0.0f)
+		{
+			// raycast success
+			result = closestResult;
+			return true;
+		}
+		else
+		{
+			// raycast failed
+			return false;
+		}
+	}
+
+	bool MathHelper::getRaycastDetailsResult(const Ogre::Ray& ray, Ogre::RaySceneQuery* raySceneQuery, Ogre::Vector3& result, size_t& targetMovableObject,
+		Ogre::Vector3*& outVertices, size_t& outVertexCount, unsigned long*& outIndices, size_t& outIndexCount)
+	{
+		result = Ogre::Vector3::ZERO;
+		targetMovableObject = 0;
+		outVertices = nullptr;
+		outIndices = nullptr;
+		outVertexCount = 0;
+		outIndexCount = 0;
+		raySceneQuery->setRay(ray);
+
+		// execute the query, returns a vector of hits
+		if (raySceneQuery->execute().size() <= 0)
+		{
+			// raycast did not hit an objects bounding box
+			return false;
+		}
+
+		// at this point we have raycast to a series of different objects bounding boxes.
+		// we need to test these different objects to see which is the first polygon hit.
+		// there are some minor optimizations (distance based) that mean we wont have to
+		// check all of the objects most of the time, but the worst case scenario is that
+		// we need to test every triangle of every object.
+		Ogre::Real closestDistance = -1.0f;
+		Ogre::Vector3 closestResult;
+		Ogre::RaySceneQueryResult& queryResult = raySceneQuery->getLastResults();
+		for (size_t qrIdx = 0; qrIdx < queryResult.size(); qrIdx++)
+		{
+			Ogre::String type = queryResult[qrIdx].movable->getMovableType();
+			if ("Camera" == type)
+				continue;
+			// stop checking if we have found a raycast hit that is closer
+			// than all remaining entities
+			if (closestDistance >= 0.0f && closestDistance < queryResult[qrIdx].distance)
+			{
+				break;
+			}
+
+			// only check this result if its a hit against an entity
+			if (type.compare("Entity") == 0)
+			{
+				// get the entity to check
+				Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(queryResult[qrIdx].movable);
+				Ogre::String entityName = entity->getName();
+
+				// Exclude gizmo
+				if ("XArrowGizmoEntity" == entityName || "YArrowGizmoEntity" == entityName || "ZArrowGizmoEntity" == entityName || "SphereGizmoEntity" == entityName)
+				{
+					continue;
+				}
+
+				// mesh data to retrieve         
+				size_t vertexCount;
+				size_t indexCount;
+				Ogre::Vector3* vertices = nullptr;
+				unsigned long* indices = nullptr;
+
+				// get the mesh information
+				this->getMeshInformation(entity->getMesh(), vertexCount, vertices, indexCount, indices,
+					entity->getParentNode()->_getDerivedPosition(),
+					entity->getParentNode()->_getDerivedOrientation(),
+					entity->getParentNode()->_getDerivedScale());
+
+				// test for hitting individual triangles on the mesh
+				bool newClosestFound = false;
+				for (int i = 0; i < static_cast<int>(indexCount); i += 3)
+				{
+					// check for a hit against this triangle
+					std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(ray, vertices[indices[i]],
+						vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+
+					// if it was a hit check if its the closest
+					if (hit.first)
+					{
+						if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+						{
+							// this is the closest so far, save it off
+							closestDistance = hit.second;
+							newClosestFound = true;
+						}
+					}
+				}
+
+				// if we found a new closest raycast for this object, update the
+				// closestResult before moving on to the next object.
+				if (true == newClosestFound)
+				{
+					targetMovableObject = (size_t)entity;
+					outVertexCount = vertexCount;
+					outIndexCount = indexCount;
+					outVertices = vertices;
+					outIndices = indices;
+
+					closestResult = ray.getPoint(closestDistance);
+				}
+				else
+				{
+					// free the verticies and indicies memory
+					OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+					OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
+				}
+			}
+			else if (type.compare("Item") == 0)
+			{
+				Ogre::Item* item = dynamic_cast<Ogre::Item*>(queryResult[qrIdx].movable);
+				if (nullptr != item)
+				{
+					// If its the exclude entity, continue the loop with a different ones
+					bool foundExcludedOne = false;
+					Ogre::String itemName = item->getName();
+
+					// Exclude gizmo
+					if ("XArrowGizmoEntity" == itemName || "YArrowGizmoEntity" == itemName || "ZArrowGizmoEntity" == itemName || "SphereGizmoEntity" == itemName)
+					{
+						continue;
+					}
+
+					// mesh data to retrieve
+					size_t vertexCount;
+					size_t indexCount;
+					Ogre::Vector3* vertices = nullptr;
+					unsigned long* indices = nullptr;
+
+					// get the mesh information
+					this->getMeshInformation2(item->getMesh(), vertexCount, vertices,
+						indexCount, indices, item->getParentNode()->_getDerivedPositionUpdated(),
+						item->getParentNode()->_getDerivedOrientationUpdated(),
+						item->getParentNode()->getScale());
+
+					// test for hitting individual triangles on the mesh
+					bool newClosestFound = false;
+					for (int i = 0; i < static_cast<int> (indexCount); i += 3)
+					{
+						// check for a hit against this triangle
+						std::pair<bool, Ogre::Real> hit = Ogre::Math::intersects(raySceneQuery->getRay(),
+							vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]], true, false);
+
+						// if it was a hit check if its the closest
+						if (hit.first)
+						{
+							if ((closestDistance < 0.0f) || (hit.second < closestDistance))
+							{
+								// this is the closest so far, save it off
+								closestDistance = hit.second;
+								newClosestFound = true;
+							}
+						}
+					}
+
+					// if we found a new closest raycast for this object, update the
+					// closestResult before moving on to the next object.
+					if (true == newClosestFound)
+					{
+						targetMovableObject = (size_t)item;
+						outVertexCount = vertexCount;
+						outIndexCount = indexCount;
+						outVertices = vertices;
+						outIndices = indices;
+
+						closestResult = raySceneQuery->getRay().getPoint(closestDistance);
+					}
+					else
+					{
+						// free the verticies and indicies memory
+						OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+						OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 					}
 				}
 			}
