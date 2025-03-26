@@ -129,8 +129,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="17.7072" y="-0.570221" z="56.8771"/>
-			<rotation qw="0.812007" qx="0.388918" qy="-0.297814" qz="-0.317323"/>
+			<position x="43.0326" y="-17.4618" z="64.507"/>
+			<rotation qw="0.936464" qx="0.29023" qy="0.183244" qz="-0.0722692"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -159,8 +159,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="13.9827 -15.054 63.1426"/>
-					<property type="9" name="CameraOrientation" data="54.5 -2.37309 -46.2747"/>
+					<property type="9" name="CameraPosition" data="43.0326 -17.4618 64.507"/>
+					<property type="9" name="CameraOrientation" data="34.7548 21.5102 -2.02205"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -442,7 +442,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="Categories" data="Player"/>
+					<property type="7" name="Categories" data="Player+Ai"/>
 					<property type="12" name="UseMultiSelection" data="true"/>
 					<property type="12" name="UseSelectionRectangle" data="true"/>
 					<property type="12" name="ActivatePlayerController" data="true"/>
@@ -450,7 +450,7 @@
 			</entity>
 		</node>
 		<node name="Monster01_2" id="2507279691">
-			<position x="35.6048" y="-7.70406" z="41.6308"/>
+			<position x="35.6544" y="-7.67189" z="41.7028"/>
 			<rotation qw="0.806147" qx="0.522844" qy="0.150828" qz="-0.232405"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="Monster01_2" meshFile="Monster01.mesh" castShadows="true" visible="true">
@@ -481,7 +481,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
-					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.65 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -489,7 +489,7 @@
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="9" name="ConstraintDirection" data="-0.42766 -0.28785 -0.85688"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="4"/>
 					<property type="6" name="MinSpeed" data="1"/>
@@ -533,14 +533,14 @@
 		</node>
 		<node name="Monster01_0" id="2507280561">
 			<position x="21.3818" y="7.65685" z="42.8764"/>
-			<rotation qw="0.828712" qx="0.538993" qy="0.0821331" qz="-0.126402"/>
+			<rotation qw="0.824885" qx="0.536332" qy="0.097325" qz="-0.149803"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="Monster01_0" meshFile="Monster01.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="Monster01"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="894907600"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Ai"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -563,7 +563,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
-					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.65 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -571,7 +571,7 @@
 					<property type="9" name="AngularDamping" data="0.001 0.001 0.001"/>
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="9" name="ConstraintDirection" data="-0.3289 -0.64731 -0.68761"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="3"/>
 					<property type="6" name="MinSpeed" data="1"/>
@@ -592,9 +592,9 @@
 					<property type="12" name="AutoOrientation" data="true"/>
 					<property type="12" name="AutoAnimation" data="true"/>
 					<property type="6" name="AgentId" data="0"/>
-					<property type="6" name="WanderJitter" data="0.5"/>
+					<property type="6" name="WanderJitter" data="1"/>
 					<property type="6" name="WanderRadius" data="3"/>
-					<property type="6" name="WanderDistance" data="30"/>
+					<property type="6" name="WanderDistance" data="15"/>
 					<property type="7" name="ComponentAnimationComponent" data="AnimationComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -604,6 +604,28 @@
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="12" name="AnimationRepeat" data="true"/>
 					<property type="12" name="ShowSkeleton" data="false"/>
+					<property type="7" name="ComponentPlayerControllerComponent" data="PlayerControllerComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="RotationSpeed" data="10"/>
+					<property type="6" name="GoalRadius" data="0.5"/>
+					<property type="6" name="AnimationSpeed" data="1"/>
+					<property type="6" name="Acceleration" data="0"/>
+					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="UseStandUp" data="false"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="0"/>
+					<property type="9" name="YOffset" data="0 3 4"/>
+					<property type="9" name="LookAtOffset" data="0 -1 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
+					<property type="6" name="Friction" data="0.5"/>
+					<property type="6" name="SpringLength" data="6"/>
 				</userData>
 			</entity>
 		</node>
@@ -639,7 +661,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0.5 1.2 0.5"/>
-					<property type="9" name="OffsetPosition" data="0 0.5 0"/>
+					<property type="9" name="OffsetPosition" data="0 0.65 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 90"/>
 					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>
@@ -647,7 +669,7 @@
 					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
 					<property type="9" name="Gravity" data="0 -19.8 0"/>
 					<property type="7" name="GravitySourceCategory" data="Planet"/>
-					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="9" name="ConstraintDirection" data="-0.42997 -0.54738 -0.71798"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="1"/>
 					<property type="6" name="MinSpeed" data="1"/>
@@ -831,7 +853,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -866,7 +888,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -901,7 +923,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -936,7 +958,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -971,7 +993,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1006,7 +1028,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1041,7 +1063,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1076,7 +1098,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1111,7 +1133,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1146,7 +1168,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1181,7 +1203,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1216,7 +1238,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1251,7 +1273,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -1286,7 +1308,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>

@@ -513,8 +513,9 @@ namespace NOWA
 	void OgreRecastModule::debugDrawNavMesh(bool draw)
 	{
 		this->debugDraw = draw;
-		if (/*this->staticObstacles.size() > 0 && */true == this->hasValidNavMesh)
+		if (true == this->hasValidNavMesh)
 		{
+			this->buildNavigationMesh();
 			// this->ogreRecast->drawNavMesh(draw);
 			this->detourTileCache->drawNavMesh(draw);
 		}

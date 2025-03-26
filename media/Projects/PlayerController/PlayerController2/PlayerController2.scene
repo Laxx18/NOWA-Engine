@@ -98,6 +98,15 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteNoLightingBackground"/>
+					<property type="7" name="ComponentSelectGameObjectsComponent" data="SelectGameObjectsComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="7" name="Categories" data="Player"/>
+					<property type="12" name="UseMultiSelection" data="true"/>
+					<property type="12" name="UseSelectionRectangle" data="true"/>
+					<property type="12" name="ActivatePlayerController" data="true"/>
 				</userData>
 			</entity>
 		</node>
@@ -145,7 +154,7 @@
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="198329000"/>
-					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="Category" data="Player"/>
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
@@ -219,9 +228,20 @@
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
 					<property type="12" name="IsExclusive" data="false"/>
+					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="6" name="CameraGameObjectId" data="0"/>
+					<property type="9" name="YOffset" data="0 2 5"/>
+					<property type="9" name="LookAtOffset" data="0 -1 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
+					<property type="6" name="Friction" data="1.2"/>
+					<property type="6" name="SpringLength" data="6"/>
 				</userData>
 			</entity>
 		</node>
@@ -450,7 +470,7 @@
 			</item>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="4.72024" y="3.39429" z="-9.30398"/>
+			<position x="4.93968" y="3.39429" z="-9.82324"/>
 			<rotation qw="0.827413" qx="-0.100119" qy="0.548596" qz="0.0663812"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
@@ -480,8 +500,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="4.72024 3.39429 -9.30398"/>
-					<property type="9" name="CameraOrientation" data="-13.7988 67.0908 -5.40675e-05"/>
+					<property type="9" name="CameraPosition" data="4.93968 3.39429 -9.82324"/>
+					<property type="9" name="CameraOrientation" data="-13.7988 67.0908 -5.49467e-05"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>

@@ -17,20 +17,17 @@ namespace
 	std::vector<Ogre::String> split(const Ogre::String& str)
 	{
 		std::vector<Ogre::String> values;
-		std::regex rgx("([0-9]{1,3})(?:,([0-9]{1,3}))(?:,([0-9]{1,3}))(?:,([0-9]{1,3}))");
-		std::smatch baseMatch;
-		std::regex_search(str, baseMatch, rgx);
-		if (baseMatch.size() == 5)
+		std::regex rgx("\\s*,\\s*"); // Match commas with optional spaces
+		std::sregex_token_iterator iter(str.begin(), str.end(), rgx, -1);
+		std::sregex_token_iterator end;
+
+		for (; iter != end; ++iter)
 		{
-			for (size_t i = 0; i < 4; i++)
-			{
-				values.emplace_back(baseMatch[i + 1]);
-			}
+			values.emplace_back(*iter);
 		}
+
 		return values;
 	}
-
-	std::mutex mutex;
 }
 
 namespace NOWA
@@ -65,6 +62,7 @@ namespace NOWA
 		this->terraLayers->setDescription("Sets the terra layer thresholds, on which the vegetation shall be placed. Terra has 4 layers and maximum threshold is 255. E.g. setting to: 255,255,0,255 will place vegetation "
 										  "on all layers but layer 3. Setting e.g. 255,122,0,0 would place vegetation just on layer 1 and 2, but on layer 2 even the layer 2 painting is not that strong (half of max). "
 										  "Note: Only usable if terra is involved.");
+		this->vegetationTypesCount->setDescription("Sets the vegetation count, which kind of game objects shall be placed.");
 		this->vegetationTypesCount->addUserData(GameObject::AttrActionNeedRefresh());
 	}
 
@@ -667,378 +665,699 @@ namespace NOWA
 		this->vegetationItemList.clear();
 	}
 
-	void VegetationComponent::regenerateVegetation()
+//	void VegetationComponent::regenerateVegetation()
+//	{
+//		if (false == this->activated->getBool())
+//		{
+//			return;
+//		}
+//
+//		if (nullptr == this->gameObjectPtr)
+//		{
+//			return;
+//		}
+//
+//		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+//		{
+//		 	return;
+//		}
+//
+//		// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
+//		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+//		{
+//			return;
+//		}
+//
+//		// First clear everything, and only regenerate if at least either on veg id, or mesh name is available
+//		// e.g. if reducing count or increasing count, only regenerate if there are some game objects or meshes set.
+//		this->clearLists();
+//
+//		if (vegetationTypesCount->getUInt() == 0)
+//		{
+//			return;
+//		}
+//
+//		bool validData = true;
+//
+//		for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
+//		{
+//			Ogre::String name = this->vegetationMeshNames[i]->getString();
+//
+//			validData &= (false == name.empty());
+//		}
+//
+//		if (false == validData)
+//		{
+//			return;
+//		}
+//
+//		unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+//		this->raySceneQuery->setQueryMask(categoryId);
+//
+//		Ogre::Terra* terra = nullptr;
+//
+//		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
+//		if (nullptr != targetGameObjectPtr)
+//		{
+//			auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
+//			if (nullptr != terraCompPtr)
+//			{
+//				terra = terraCompPtr->getTerra();
+//			}
+//		}
+//
+//		Ogre::Vector2 bounds = Ogre::Vector2::ZERO;
+//
+//		if (nullptr != targetGameObjectPtr)
+//		{
+//			this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
+//			this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
+//		}
+//		else
+//		{
+//
+//			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+//			if (false == terraList.empty())
+//			{
+//				// TODO: What if later x-terras?
+//				auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+//				if (nullptr != terraCompPtr)
+//				{
+//					terra = terraCompPtr->getTerra();
+//				}
+//			}
+//		}
+//
+//		Ogre::Real sizeX = 1.0f;
+//		Ogre::Real sizeZ = 1.0f;
+//		unsigned long createdCount = 0;
+//
+//
+//		Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+//
+//		std::vector<Ogre::MeshPtr> meshes;
+//
+//		for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
+//		{
+//			if (false == this->vegetationMeshNames[i]->getString().empty())
+//			{
+//				// Note: Even meshPtr points to an ogre v1 entity mesh, it will be transformed to ogre v2 item!
+//				auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+//
+//				// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+//				Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(this->vegetationMeshNames[i]->getString());
+//				if (nullptr != resourceV2)
+//				{
+//					Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(this->vegetationMeshNames[i]->getString());
+//					Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
+//				}
+//
+//				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
+//				v1Mesh->unload();
+//				v1Mesh.setNull();
+//
+//				meshes.emplace_back(v2Mesh);
+//			}
+//			else
+//			{
+//				meshes.emplace_back(nullptr);
+//			}
+//		}
+//
+//		unsigned int vegetationQueryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
+//
+//		const Ogre::Real size = Ogre::Math::Abs(this->minimumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x + Ogre::Math::Abs(this->maximumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x;
+//		const Ogre::Real step = sizeX / this->density->getReal();
+//		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+//		size_t partitionSize = size / numThreads;
+//		size_t partitionIncrement = 0;
+//		size_t rest = MathHelper::getInstance()->wrappedModulo(size, numThreads);
+//
+//		Ogre::Real fractionStart = 0.0f;
+//		Ogre::Real fractionEnd = 0.0f;
+//
+//		auto start = std::chrono::high_resolution_clock::now();
+//
+//		// With threading takes approx. 11 seconds. Half the time in debug mode!
+//#if 1
+//
+//		std::vector<std::thread> threads;
+//		for (size_t i = 0; i < numThreads; i++)
+//		{
+//			Ogre::Real fractionStart = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionIncrement);
+//			Ogre::Real fractionEnd = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionSize + partitionIncrement);
+//
+//			if (i == numThreads - 1)
+//			{
+//				fractionEnd = fractionEnd + rest;
+//			}
+//
+//			threads.emplace_back(std::thread([this, categoryId, terra, &meshes, camera, vegetationQueryFlags, targetGameObjectPtr, &createdCount, fractionStart, fractionEnd, step]()
+//								 {
+//									 mutex.lock();
+//									 Ogre::Real sizeX = 1.0f;
+//									 Ogre::Real sizeZ = 1.0f;
+//
+//									 for (Ogre::Real x = fractionStart; x < fractionEnd; x += sizeX / this->density->getReal())
+//									 {
+//										 for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
+//										 {
+//											 Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
+//
+//											 Ogre::MovableObject* hitMovableObject = nullptr;
+//											 Ogre::Real closestDistance = 0.0f;
+//											 Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+//											 Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+//
+//											 // Shoot ray at object position down
+//											 Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
+//											 // Check if there is an hit with an polygon of an entity, item, terra etc.
+//											 this->raySceneQuery->setRay(hitRay);
+//
+//											 std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
+//											 /*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
+//											 excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
+//											 excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
+//											 excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
+//											 excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
+//
+//											 MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+//
+//											 objPosition.y += internalHitPoint.y;
+//
+//											 if (nullptr == hitMovableObject)
+//											 {
+//												 // Nothing found for given category, skip this quadrant
+//												 continue;
+//											 }
+//
+//											 if (0.0f != this->maxHeight->getReal())
+//											 {
+//												 if (internalHitPoint.y > this->maxHeight->getReal())
+//												 {
+//													 continue;
+//												 }
+//											 }
+//
+//											 if (nullptr != terra)
+//											 {
+//												 bool layerMatches = true;
+//												 // Exclude maybe terra layers from vegetation placing
+//												 std::vector<int> layers = terra->getLayerAt(objPosition);
+//
+//												 // Ogre::String str;
+//												 for (size_t i = 0; i < this->terraLayerList.size(); i++)
+//												 { 
+//													 layerMatches &= layers[i] <= this->terraLayerList[i];
+//													 // str += Ogre::StringConverter::toString(layers[i]) + " ";
+//												 }
+//
+//												 //  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "layers: " + str);
+//												 if (false == layerMatches)
+//												 {
+//													 // Skip this vegetation position
+//													 continue;
+//												 }
+//											 }
+//
+//											 // Create Mesh
+//											 Ogre::Item* item = nullptr;
+//
+//											 int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
+//
+//											 Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
+//
+//											 try
+//											 {
+//												 item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
+//												 // After terrain
+//												 item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+//												 item->setQueryFlags(vegetationQueryFlags);
+//												 item->setCastShadows(false);
+//												 if (0.0f != this->renderDistance->getReal())
+//												 {
+//													 item->setRenderingDistance(this->renderDistance->getReal());
+//												 }
+//
+//
+//
+//
+//#if 0
+//
+//												 for (size_t i = 0; i < item->getNumSubItems(); i++)
+//												 {
+//													 const Ogre::String* str = item->getSubItem(i)->getDatablock()->getNameStr();
+//													 int a = 0;
+//													 a = 1;
+//													 item->getSubItem(i)->setDatablock(*str);
+//												 }
+//												 // Change the addressing mode of the roughness map to wrap via code.
+//												// Detail maps default to wrap, but the rest to clamp.
+//												 Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
+//												 //Make a hard copy of the sampler block
+//												 auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
+//												 if (nullptr != sampleBlock)
+//												 {
+//													 Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
+//													 samplerblockCopy.mU = Ogre::TAM_WRAP;
+//													 samplerblockCopy.mV = Ogre::TAM_WRAP;
+//													 samplerblockCopy.mW = Ogre::TAM_WRAP;
+//													 //Set the new samplerblock. The Hlms system will
+//													 //automatically create the API block if necessary
+//													 datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
+//												 }
+//
+//												 for (size_t i = 0; i < item->getNumSubItems(); i++)
+//												 {
+//													 auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+//													 if (nullptr != sourceDataBlock)
+//													 {
+//														 // Deactivate fresnel by default, because it looks ugly
+//														 if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+//														 {
+//															 sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+//														 }
+//													 }
+//												 }
+//#endif
+//
+//												 sizeX = item->getWorldAabb().getSize().x;
+//												 sizeZ = item->getWorldAabb().getSize().z;
+//											 }
+//											 catch (...)
+//											 {
+//												 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
+//												 return;
+//											 }
+//
+//											 SceneNode* node = nullptr;
+//
+//											 if (nullptr != item)
+//											 {
+//												 if (nullptr == targetGameObjectPtr)
+//												 {
+//													 node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+//												 }
+//												 else
+//												 {
+//													 node = targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+//												 }
+//												 node->attachObject(item);
+//
+//												 this->vegetationItemList.emplace_back(item);
+//
+//												 // VegetationScaleMin/Max as attribute?
+//												 //  scale
+//												 Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
+//												 node->scale(s, s, s);
+//
+//												 // objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
+//
+//												 node->setPosition(objPosition);
+//
+//												 if (true == this->autoOrientation->getBool())
+//												 {
+//													 node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+//												 }
+//
+//												 Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
+//												 Quaternion p = node->getOrientation();
+//												 Quaternion q;
+//												 q.FromAngleAxis(angle, Vector3::UNIT_Y);
+//												 node->setOrientation(p * q);
+//
+//											 }
+//											
+//											 createdCount++;
+//										 }
+//									 }
+//									 mutex.unlock();
+//								 }));
+//								 partitionIncrement += partitionSize;
+//		}
+//
+//		for (size_t i = 0; i < numThreads; i++)
+//		{
+//			threads[i].join();
+//		}
+//
+//#endif
+//
+//		// Without threading takes approx. 21 seconds
+//#if 0
+//		for (Ogre::Real x = this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x < this->maximumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x += sizeX / this->density->getReal())
+//		{
+//			for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
+//			{
+//				Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
+//
+//				Ogre::MovableObject* hitMovableObject = nullptr;
+//				Ogre::Real closestDistance = 0.0f;
+//				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+//				Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+//
+//				// Shoot ray at object position down
+//				Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
+//				// Check if there is an hit with an polygon of an entity, item, terra etc.
+//				this->raySceneQuery->setRay(hitRay);
+//				this->raySceneQuery->setQueryMask(categoryId);
+//
+//				std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
+//				/*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
+//				excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
+//				excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
+//				excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
+//				excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
+//				MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+//
+//				objPosition.y += internalHitPoint.y;
+//
+//				if (nullptr == hitMovableObject)
+//				{
+//					// Nothing found for given category, skip this quadrant
+//					continue;
+//				}
+//
+//				if (0.0f != this->maxHeight->getReal())
+//				{
+//					if (internalHitPoint.y > this->maxHeight->getReal())
+//					{
+//						continue;
+//					}
+//				}
+//
+//				if (nullptr != terra)
+//				{
+//					// Exclude maybe terra layers from vegetation placing
+//					int* layers = terra->getLayerAt(objPosition);
+//					for (size_t i = 0; i < this->terraLayerList.size(); i++)
+//					{
+//						if (layers[i] < this->terraLayerList[i])
+//						{
+//							continue;
+//						}
+//					}
+//				}
+//
+//				// Create Mesh
+//				Ogre::Item* item = nullptr;
+//
+//				int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
+//
+//				Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
+//
+//				try
+//				{
+//					item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
+//					// After terrain
+//					item->setRenderQueueGroup( NOWA::RENDER_QUEUE_V2_MESH);
+//					item->setQueryFlags(vegetationQueryFlags);
+//					item->setCastShadows(false);
+//					if (0.0f != this->renderDistance->getReal())
+//					{
+//						item->setRenderingDistance(this->renderDistance->getReal());
+//					}
+//
+//#if 0
+//					for (size_t i = 0; i < item->getNumSubItems(); i++)
+//					{
+//						auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+//						if (nullptr != sourceDataBlock)
+//						{
+//							// sourceDataBlock->mShadowConstantBias = 0.0001f;
+//							// Deactivate fresnel by default, because it looks ugly
+//							if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+//							{
+//								sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+//							}
+//						}
+//					}
+//#endif
+//
+//					sizeX = item->getWorldAabb().getSize().x;
+//					sizeZ = item->getWorldAabb().getSize().z;
+//				}
+//				catch (...)
+//				{
+//					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
+//					return;
+//				}
+//
+//				SceneNode* node = nullptr;
+//
+//				if (nullptr != item)
+//				{
+//					if (nullptr == targetGameObjectPtr)
+//					{
+//						node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+//					}
+//					else
+//					{
+//						targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+//					}
+//					node->attachObject(item);
+//
+//					this->vegetationItemList.emplace_back(item);
+//
+//					// VegetationScaleMin/Max as attribute?
+//					//  scale
+//					Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
+//					node->scale(s, s, s);
+//
+//					// objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
+//
+//					node->setPosition(objPosition);
+//
+//					Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
+//					Quaternion q;
+//					q.FromAngleAxis(angle, Vector3::UNIT_Y);
+//					node->setOrientation(q);
+//
+//					if (true == this->autoOrientation->getBool())
+//					{
+//						node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+//					}
+//				}
+//
+//				createdCount++;
+//			}
+//		}
+//#endif
+//
+//		auto finish = std::chrono::high_resolution_clock::now();
+//		std::chrono::duration<double, std::milli> elapsed = finish - start;
+//		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Generation took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + " seconds.");
+//
+//		if (true == this->bShowDebugData)
+//		{
+//			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
+//		}
+//		else
+//		{
+//			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
+//		}
+//
+//		boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
+//		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+//	}
+
+void VegetationComponent::regenerateVegetation()
+{
+	if (false == this->activated->getBool())
 	{
-		if (false == this->activated->getBool())
+		return;
+	}
+
+	if (nullptr == this->gameObjectPtr)
+	{
+		return;
+	}
+
+	if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+	{
+		return;
+	}
+
+	// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
+	if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
+	{
+		return;
+	}
+
+	// First clear everything, and only regenerate if at least either on veg id, or mesh name is available
+	// e.g. if reducing count or increasing count, only regenerate if there are some game objects or meshes set.
+	this->clearLists();
+
+	if (vegetationTypesCount->getUInt() == 0)
+	{
+		return;
+	}
+
+	bool validData = true;
+
+	for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
+	{
+		Ogre::String name = this->vegetationMeshNames[i]->getString();
+
+		validData &= (false == name.empty());
+	}
+
+	if (false == validData)
+	{
+		return;
+	}
+
+	// Early validation and preparation
+	if (this->vegetationMeshNames.empty()) {
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] No vegetation meshes defined.");
+		return;
+	}
+
+	// Precompute and cache frequently used values
+	unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
+	this->raySceneQuery->setQueryMask(categoryId);
+
+	Ogre::Terra* terra = nullptr;
+	GameObjectPtr targetGameObjectPtr = nullptr;
+
+	// Improved object and terrain retrieval
+	targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
+	if (targetGameObjectPtr)
+	{
+		auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
+		if (terraCompPtr)
 		{
-			return;
+			terra = terraCompPtr->getTerra();
 		}
+	}
 
-		if (nullptr == this->gameObjectPtr)
+	// Fallback terrain retrieval if no target object
+	if (!terra)
+	{
+		auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+		if (!terraList.empty())
 		{
-			return;
-		}
-
-		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-		{
-		 	return;
-		}
-
-		// Reset variants when stopping simulation, would re-generate everything, which is bad, hence use skip flag
-		if (GameObject::AttrCustomDataSkipCreation() == this->gameObjectPtr->getCustomDataString())
-		{
-			return;
-		}
-
-		// First clear everything, and only regenerate if at least either on veg id, or mesh name is available
-		// e.g. if reducing count or increasing count, only regenerate if there are some game objects or meshes set.
-		this->clearLists();
-
-		if (vegetationTypesCount->getUInt() == 0)
-		{
-			return;
-		}
-
-		bool validData = true;
-
-		for (size_t i = 0; i < this->vegetationTypesCount->getUInt(); i++)
-		{
-			Ogre::String name = this->vegetationMeshNames[i]->getString();
-
-			validData &= (false == name.empty());
-		}
-
-		if (false == validData)
-		{
-			return;
-		}
-
-		unsigned int categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
-		this->raySceneQuery->setQueryMask(categoryId);
-
-		Ogre::Terra* terra = nullptr;
-
-		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetGameObjectId->getULong());
-		if (nullptr != targetGameObjectPtr)
-		{
-			auto terraCompPtr = NOWA::makeStrongPtr(targetGameObjectPtr->getComponent<TerraComponent>());
-			if (nullptr != terraCompPtr)
+			auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
+			if (terraCompPtr)
 			{
 				terra = terraCompPtr->getTerra();
 			}
 		}
+	}
 
-		Ogre::Vector2 bounds = Ogre::Vector2::ZERO;
+	// Precompute bounds
+	if (targetGameObjectPtr)
+	{
+		this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
+		this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
+	}
 
-		if (nullptr != targetGameObjectPtr)
+	// Mesh preparation with error handling
+	std::vector<Ogre::MeshPtr> meshes;
+	meshes.reserve(this->vegetationMeshNames.size());
+
+	for (const auto& meshName : this->vegetationMeshNames)
+	{
+		if (meshName->getString().empty())
 		{
-			this->minimumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMinimum();
-			this->maximumBounds = targetGameObjectPtr->getMovableObject()->getWorldAabb().getMaximum();
-		}
-		else
-		{
-
-			auto terraList = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-			if (false == terraList.empty())
-			{
-				// TODO: What if later x-terras?
-				auto terraCompPtr = NOWA::makeStrongPtr(terraList[0]->getComponent<TerraComponent>());
-				if (nullptr != terraCompPtr)
-				{
-					terra = terraCompPtr->getTerra();
-				}
-			}
+			meshes.emplace_back(nullptr);
+			continue;
 		}
 
-		Ogre::Real sizeX = 1.0f;
-		Ogre::Real sizeZ = 1.0f;
-		unsigned long createdCount = 0;
-
-		std::vector<Ogre::MeshPtr> meshes;
-
-		for (size_t i = 0; i < this->vegetationMeshNames.size(); i++)
+		try
 		{
-			if (false == this->vegetationMeshNames[i]->getString().empty())
+			// Load V1 mesh and convert to V2
+			auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName->getString(),
+				Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+				Ogre::v1::HardwareBuffer::HBU_STATIC,
+				Ogre::v1::HardwareBuffer::HBU_STATIC);
+
+			// Clean up any existing V2 mesh to prevent naming conflicts
+			Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName->getString());
+			if (resourceV2)
 			{
-				// Note: Even meshPtr points to an ogre v1 entity mesh, it will be transformed to ogre v2 item!
-				auto v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-				// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-				Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(this->vegetationMeshNames[i]->getString());
-				if (nullptr != resourceV2)
-				{
-					Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(this->vegetationMeshNames[i]->getString());
-					Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-				}
-
-				auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(this->vegetationMeshNames[i]->getString(), Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-				v1Mesh->unload();
-				v1Mesh.setNull();
-
-				meshes.emplace_back(v2Mesh);
-			}
-			else
-			{
-				meshes.emplace_back(nullptr);
+				Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName->getString());
+				Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
 			}
 
-			
+			auto v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName->getString(),
+				Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+				v1Mesh.get(),
+				true, true, true);
+
+			v1Mesh->unload();
+			v1Mesh.setNull();
+
+			meshes.emplace_back(v2Mesh);
 		}
-
-		unsigned int vegetationQueryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
-
-		const Ogre::Real size = Ogre::Math::Abs(this->minimumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x + Ogre::Math::Abs(this->maximumBounds.x) * this->scale->getReal() + this->positionXZ->getVector2().x;
-		const Ogre::Real step = sizeX / this->density->getReal();
-		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
-		size_t partitionSize = size / numThreads;
-		size_t partitionIncrement = 0;
-		size_t rest = MathHelper::getInstance()->wrappedModulo(size, numThreads);
-
-		Ogre::Real fractionStart = 0.0f;
-		Ogre::Real fractionEnd = 0.0f;
-
-		auto start = std::chrono::high_resolution_clock::now();
-
-		// With threading takes approx. 11 seconds. Half the time in debug mode!
-#if 1
-
-		std::vector<std::thread> threads;
-		for (size_t i = 0; i < numThreads; i++)
+		catch (const Ogre::Exception& e)
 		{
-			Ogre::Real fractionStart = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionIncrement);
-			Ogre::Real fractionEnd = ((this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x) + partitionSize + partitionIncrement);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,"[VegetationComponent] Mesh loading error: " + e.getDescription());
+			meshes.emplace_back(nullptr);
+		}
+	}
 
-			if (i == numThreads - 1)
+	// Compute generation parameters
+	unsigned int vegetationQueryFlags = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->gameObjectPtr->getCategory());
+	const Ogre::Real size = Ogre::Math::Abs(this->minimumBounds.x) * this->scale->getReal() +
+		this->positionXZ->getVector2().x +
+		Ogre::Math::Abs(this->maximumBounds.x) * this->scale->getReal() +
+		this->positionXZ->getVector2().x;
+
+	// Parallel generation with improved thread distribution
+	const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
+	const Ogre::Real step = 1.0f / this->density->getReal();
+	std::atomic<unsigned long> createdCount{ 0 };
+	std::vector<std::thread> threads;
+	std::mutex vegetationMutex;
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	Ogre::Camera* camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+
+	auto generateVegetation = [&](size_t threadIndex, size_t totalThreads) {
+		std::vector<Ogre::Item*> localVegetationItems;
+
+		for (Ogre::Real x = this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x +
+			(threadIndex * size / totalThreads);
+			x < this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x +
+			((threadIndex + 1) * size / totalThreads);
+			x += step)
+		{
+			for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y;
+				z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y;
+				z += step)
 			{
-				fractionEnd = fractionEnd + rest;
-			}
-
-			threads.emplace_back(std::thread([this, categoryId, terra, &meshes, vegetationQueryFlags, targetGameObjectPtr, &createdCount, fractionStart, fractionEnd, step]()
-								 {
-									 mutex.lock();
-									 Ogre::Real sizeX = 1.0f;
-									 Ogre::Real sizeZ = 1.0f;
-
-									 for (Ogre::Real x = fractionStart; x < fractionEnd; x += sizeX / this->density->getReal())
-									 {
-										 for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
-										 {
-											 Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
-
-											 Ogre::MovableObject* hitMovableObject = nullptr;
-											 Ogre::Real closestDistance = 0.0f;
-											 Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-											 Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-
-											 // Shoot ray at object position down
-											 Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-											 // Check if there is an hit with an polygon of an entity, item, terra etc.
-											 this->raySceneQuery->setRay(hitRay);
-
-											 std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
-											 /*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-											 excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-											 excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-											 excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-											 excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
-
-											 MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-
-											 objPosition.y += internalHitPoint.y;
-
-											 if (nullptr == hitMovableObject)
-											 {
-												 // Nothing found for given category, skip this quadrant
-												 continue;
-											 }
-
-											 if (0.0f != this->maxHeight->getReal())
-											 {
-												 if (internalHitPoint.y > this->maxHeight->getReal())
-												 {
-													 continue;
-												 }
-											 }
-
-											 if (nullptr != terra)
-											 {
-												 bool layerMatches = true;
-												 // Exclude maybe terra layers from vegetation placing
-												 std::vector<int> layers = terra->getLayerAt(objPosition);
-
-												 // Ogre::String str;
-												 for (size_t i = 0; i < this->terraLayerList.size(); i++)
-												 { 
-													 layerMatches &= layers[i] <= this->terraLayerList[i];
-													 // str += Ogre::StringConverter::toString(layers[i]) + " ";
-												 }
-
-												 //  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "layers: " + str);
-												 if (false == layerMatches)
-												 {
-													 // Skip this vegetation position
-													 continue;
-												 }
-											 }
-
-											 // Create Mesh
-											 Ogre::Item* item = nullptr;
-
-											 int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
-
-											 Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
-
-											 try
-											 {
-												 item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
-												 // After terrain
-												 item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-												 item->setQueryFlags(vegetationQueryFlags);
-												 item->setCastShadows(false);
-												 if (0.0f != this->renderDistance->getReal())
-												 {
-													 item->setRenderingDistance(this->renderDistance->getReal());
-												 }
-
-
-
-
-#if 0
-
-												 for (size_t i = 0; i < item->getNumSubItems(); i++)
-												 {
-													 const Ogre::String* str = item->getSubItem(i)->getDatablock()->getNameStr();
-													 int a = 0;
-													 a = 1;
-													 item->getSubItem(i)->setDatablock(*str);
-												 }
-												 // Change the addressing mode of the roughness map to wrap via code.
-												// Detail maps default to wrap, but the rest to clamp.
-												 Ogre::HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(0)->getDatablock());
-												 //Make a hard copy of the sampler block
-												 auto sampleBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-												 if (nullptr != sampleBlock)
-												 {
-													 Ogre::HlmsSamplerblock samplerblockCopy(*sampleBlock);
-													 samplerblockCopy.mU = Ogre::TAM_WRAP;
-													 samplerblockCopy.mV = Ogre::TAM_WRAP;
-													 samplerblockCopy.mW = Ogre::TAM_WRAP;
-													 //Set the new samplerblock. The Hlms system will
-													 //automatically create the API block if necessary
-													 datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblockCopy);
-												 }
-
-												 for (size_t i = 0; i < item->getNumSubItems(); i++)
-												 {
-													 auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-													 if (nullptr != sourceDataBlock)
-													 {
-														 // Deactivate fresnel by default, because it looks ugly
-														 if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-														 {
-															 sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-														 }
-													 }
-												 }
-#endif
-
-												 sizeX = item->getWorldAabb().getSize().x;
-												 sizeZ = item->getWorldAabb().getSize().z;
-											 }
-											 catch (...)
-											 {
-												 Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
-												 return;
-											 }
-
-											 SceneNode* node = nullptr;
-
-											 if (nullptr != item)
-											 {
-												 if (nullptr == targetGameObjectPtr)
-												 {
-													 node = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-												 }
-												 else
-												 {
-													 targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-												 }
-												 node->attachObject(item);
-
-												 this->vegetationItemList.emplace_back(item);
-
-												 // VegetationScaleMin/Max as attribute?
-												 //  scale
-												 Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
-												 node->scale(s, s, s);
-
-												 // objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
-
-												 node->setPosition(objPosition);
-
-												 if (true == this->autoOrientation->getBool())
-												 {
-													 node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-												 }
-
-												 Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
-												 Quaternion p = node->getOrientation();
-												 Quaternion q;
-												 q.FromAngleAxis(angle, Vector3::UNIT_Y);
-												 node->setOrientation(p * q);
-
-											 }
-											
-											 createdCount++;
-										 }
-									 }
-									 mutex.unlock();
-								 }));
-								 partitionIncrement += partitionSize;
-		}
-
-		for (size_t i = 0; i < numThreads; i++)
-		{
-			threads[i].join();
-		}
-
-#endif
-
-		// Without threading takes approx. 21 seconds
-#if 0
-		for (Ogre::Real x = this->minimumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x < this->maximumBounds.x * this->scale->getReal() + this->positionXZ->getVector2().x; x += sizeX / this->density->getReal())
-		{
-			for (Ogre::Real z = this->minimumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z < this->maximumBounds.z * this->scale->getReal() + this->positionXZ->getVector2().y; z += sizeZ / this->density->getReal())
-			{
-				Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-sizeX + x, sizeX + x), 0.0f, Math::RangeRandom(-sizeZ + z, sizeZ + z));
-
+				std::lock_guard<std::mutex> lock(vegetationMutex);
+				Ogre::Vector3 objPosition = Vector3(Math::RangeRandom(-size + x, size + x), 0.0f, Math::RangeRandom(-size + z, size + z));
+				
 				Ogre::MovableObject* hitMovableObject = nullptr;
 				Ogre::Real closestDistance = 0.0f;
 				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 				Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-
+				
 				// Shoot ray at object position down
 				Ogre::Ray hitRay = Ogre::Ray(objPosition + Ogre::Vector3(0.0f, 10000.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
 				// Check if there is an hit with an polygon of an entity, item, terra etc.
 				this->raySceneQuery->setRay(hitRay);
-				this->raySceneQuery->setQueryMask(categoryId);
-
+				
 				std::vector<Ogre::MovableObject*> excludeMovableObjects(0);
 				/*excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
 				excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
 				excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
 				excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
 				excludeMovableObjects[4] = this->gizmo->getSphereEntity();*/
-				MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-
+				
+				MathHelper::getInstance()->getRaycastFromPoint(this->raySceneQuery, camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+				
 				objPosition.y += internalHitPoint.y;
-
+				
 				if (nullptr == hitMovableObject)
 				{
 					// Nothing found for given category, skip this quadrant
 					continue;
 				}
-
+				
 				if (0.0f != this->maxHeight->getReal())
 				{
 					if (internalHitPoint.y > this->maxHeight->getReal())
@@ -1046,66 +1365,55 @@ namespace NOWA
 						continue;
 					}
 				}
-
+				
 				if (nullptr != terra)
 				{
+					bool layerMatches = true;
 					// Exclude maybe terra layers from vegetation placing
-					int* layers = terra->getLayerAt(objPosition);
+					std::vector<int> layers = terra->getLayerAt(objPosition);
+				
+					// Ogre::String str;
 					for (size_t i = 0; i < this->terraLayerList.size(); i++)
+					{ 
+						layerMatches &= layers[i] <= this->terraLayerList[i];
+						// str += Ogre::StringConverter::toString(layers[i]) + " ";
+					}
+				
+					//  Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "layers: " + str);
+					if (false == layerMatches)
 					{
-						if (layers[i] < this->terraLayerList[i])
-						{
-							continue;
-						}
+						// Skip this vegetation position
+						continue;
 					}
 				}
-
+				
 				// Create Mesh
 				Ogre::Item* item = nullptr;
-
+				
 				int rndIndexMeshName = MathHelper::getInstance()->getRandomNumber<int>(0, static_cast<unsigned int>(this->vegetationMeshNames.size() - 1));
-
+				
 				Ogre::MeshPtr meshPtr = meshes[rndIndexMeshName];
-
+				
 				try
 				{
 					item = this->gameObjectPtr->getSceneManager()->createItem(meshPtr, Ogre::SCENE_STATIC);
 					// After terrain
-					item->setRenderQueueGroup( NOWA::RENDER_QUEUE_V2_MESH);
+					item->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 					item->setQueryFlags(vegetationQueryFlags);
 					item->setCastShadows(false);
 					if (0.0f != this->renderDistance->getReal())
 					{
 						item->setRenderingDistance(this->renderDistance->getReal());
 					}
-
-#if 0
-					for (size_t i = 0; i < item->getNumSubItems(); i++)
-					{
-						auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-						if (nullptr != sourceDataBlock)
-						{
-							// sourceDataBlock->mShadowConstantBias = 0.0001f;
-							// Deactivate fresnel by default, because it looks ugly
-							if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-							{
-								sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-							}
-						}
-					}
-#endif
-
-					sizeX = item->getWorldAabb().getSize().x;
-					sizeZ = item->getWorldAabb().getSize().z;
 				}
 				catch (...)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Could not create item for mesh: " + meshPtr->getName() + " because the mesh is invalid for game object: " + this->gameObjectPtr->getName());
 					return;
 				}
-
+				
 				SceneNode* node = nullptr;
-
+				
 				if (nullptr != item)
 				{
 					if (nullptr == targetGameObjectPtr)
@@ -1114,53 +1422,63 @@ namespace NOWA
 					}
 					else
 					{
-						targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+						node = targetGameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 					}
 					node->attachObject(item);
-
+				
 					this->vegetationItemList.emplace_back(item);
-
+				
 					// VegetationScaleMin/Max as attribute?
 					//  scale
 					Ogre::Real s = Math::RangeRandom(0.5f, 1.2f);
 					node->scale(s, s, s);
-
+				
 					// objPosition.y += std::min(item->getLocalAabb().getMinimum().y, Real(0.0f)) * -0.1f /*+ lay.down*/;  //par
-
+				
 					node->setPosition(objPosition);
-
-					Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
-					Quaternion q;
-					q.FromAngleAxis(angle, Vector3::UNIT_Y);
-					node->setOrientation(q);
-
+				
 					if (true == this->autoOrientation->getBool())
 					{
 						node->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
 					}
+				
+					Ogre::Degree angle(Math::RangeRandom(0.0f, 360.f));
+					Quaternion p = node->getOrientation();
+					Quaternion q;
+					q.FromAngleAxis(angle, Vector3::UNIT_Y);
+					node->setOrientation(p * q);
+				
 				}
-
+															
 				createdCount++;
 			}
 		}
-#endif
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> elapsed = finish - start;
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Generation took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + " seconds.");
-
-		if (true == this->bShowDebugData)
+		// Batch update the shared vegetation list
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
+			std::lock_guard<std::mutex> lock(vegetationMutex);
+			this->vegetationItemList.insert(this->vegetationItemList.end(), localVegetationItems.begin(), localVegetationItems.end());
 		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
-		}
+	};
 
-		boost::shared_ptr<EventDataRefreshGui> eventDataRefreshGui(new EventDataRefreshGui());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshGui);
+	// Create and start threads
+	for (size_t i = 0; i < numThreads; ++i)
+	{
+		threads.emplace_back(generateVegetation, i, numThreads);
 	}
+
+	// Wait for all threads to complete
+	for (auto& thread : threads)
+	{
+		thread.join();
+	}
+
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> elapsed = finish - start;
+	Ogre::LogManager::getSingletonPtr()->logMessage(this->bShowDebugData ? Ogre::LML_CRITICAL : Ogre::LML_TRIVIAL, "[VegetationComponent] Generation took: " + Ogre::StringConverter::toString(elapsed.count() * 0.001) + " seconds.");
+
+	Ogre::LogManager::getSingletonPtr()->logMessage(this->bShowDebugData ? Ogre::LML_CRITICAL : Ogre::LML_TRIVIAL, "[VegetationComponent] Created: " + Ogre::StringConverter::toString(createdCount) + " objects.");
+}
 
 	void VegetationComponent::handleUpdateBounds(NOWA::EventDataPtr eventData)
 	{

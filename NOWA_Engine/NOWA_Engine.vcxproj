@@ -1,17 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
@@ -25,22 +17,9 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
@@ -54,15 +33,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="NOWA_Engine.props" />
-  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="NOWA_Engine.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="NOWA_Engine.props" />
   </ImportGroup>
@@ -71,23 +42,10 @@
     <Import Project="NOWA_Engine.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <TargetName>$(ProjectName)_d</TargetName>
-    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
-    <IntDir>obj/$(Configuration)/</IntDir>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)_d</TargetName>
     <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
-    <IntDir>obj/$(Configuration)/</IntDir>
-    <TargetName>$(ProjectName)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>$(ProjectName)</TargetName>
@@ -95,66 +53,6 @@
     <IncludePath>$(IncludePath)</IncludePath>
     <OutDir>$(NOWA)/bin/$(configuration)/libs/</OutDir>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/ois/includes;$(NOWA)/external/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OpenAL11CoreSDK/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/Gist/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <FloatingPointExceptions>
-      </FloatingPointExceptions>
-      <MinimalRebuild>true</MinimalRebuild>
-      <ShowIncludes>false</ShowIncludes>
-      <UseFullPaths>false</UseFullPaths>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
-      <EnableParallelCodeGeneration>
-      </EnableParallelCodeGeneration>
-      <FunctionLevelLinking>
-      </FunctionLevelLinking>
-      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <CompileAs>CompileAsCpp</CompileAs>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OgreMain_d.lib;OIS_d.lib;OgreMeshLodGenerator_d.lib;OgreHlmsPbs_d.lib;OgreHlmsUnlit_d.lib;OgrePlanarReflections_d.lib;dMath_d.lib;newton_d.lib;dScene_d.lib;dCustomJoints_d.lib;dNewton_d.lib;dContainers_d.lib;dVehicle_d.lib;OgreNewt3_0_d.lib;RakNet_vc9_d.lib;Lua_d.lib;LuaBind_d.lib;OgreRecast_d.lib;OgreProcedural_d.lib;OgreALVC9_d.lib;tinyxml.lib;OgreOverlay_d.lib;FParser_d.lib;MeshSplitter_d.lib;ParticleUniverse_d.lib;MyGuiEngine_d.lib;Ogre2Platform_d.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
-      <OptimizeReferences>
-      </OptimizeReferences>
-      <EnableCOMDATFolding>
-      </EnableCOMDATFolding>
-      <IgnoreAllDefaultLibraries>
-      </IgnoreAllDefaultLibraries>
-      <IgnoreSpecificDefaultLibraries>
-      </IgnoreSpecificDefaultLibraries>
-    </Link>
-    <PostBuildEvent>
-      <Command>
-      </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
-    <ProjectReference>
-      <LinkLibraryDependencies>false</LinkLibraryDependencies>
-    </ProjectReference>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -203,69 +101,6 @@
       </IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
-    </Link>
-    <PostBuildEvent>
-      <Command>
-      </Command>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-    </PreBuildEvent>
-    <ProjectReference>
-      <LinkLibraryDependencies>false</LinkLibraryDependencies>
-    </ProjectReference>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>
-      </FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
-      <PreprocessorDefinitions>COMPOSITORS_PORTED;RTSHADER_NOT_PORTED;CAELUM_NOT_PORTED;HYDRAX_NOT_PORTED;PAGEDGEOMETRY_NOT_PORTED;TERRAIN_NOT_PORTED;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(NOWA)/NOWA_Engine/;$(NOWA)/external/Ogre2.2SDK;$(NOWA)/external/Ogre2.2SDK/VCBuild/include;$(NOWA)/external/Ogre2.2SDK/OgreMain/include;$(NOWA)/external/Ogre2.2SDK/Components/Overlay/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Common/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Pbs/include;$(NOWA)/external/Ogre2.2SDK/Components/Hlms/Unlit/include;$(NOWA)/external/Ogre2.2SDK/Components/PlanarReflections/Include;$(NOWA)/external/Ogre2.2SDK/Components/MeshLodGenerator/Include;$(NOWA)/external/ois/includes;$(NOWA)/external/rapidjson;$(NOWA)/external/newton-dynamics/sdk/dgNewton;$(NOWA)/external/newton-dynamics/sdk/dCustomJoints;$(NOWA)/external/newton-dynamics/sdk/dMath;$(NOWA)/external/newton-dynamics/sdk/dContainers;$(NOWA)/external/newton-dynamics/sdk/dgTimeTracker;$(NOWA)/external/newton-dynamics/sdk/dgCore;$(NOWA)/external/boost;$(NOWA)/external/OgreNewt3_0/inc;$(NOWA)/external/Ogg/include;$(NOWA)/external/Vorbis/include;$(NOWA)/external/RakNet_4_0_81/Source;$(NOWA)/NOWA_Engine/plugins/FaderPlugin/FaderPlugin/inc;$(NOWA)/external/tinyxml_2_6_2;$(NOWA)/external/lua-5_2/src;$(NOWA)/external/lua-5_2/LuaBind;$(NOWA)/external/OgreRecast/include;$(NOWA)/external/OpenAL11CoreSDK/include;$(NOWA)/external/OgreAL/include;$(NOWA)/external/fparser4.5.1;$(NOWA)/external/MeshSplitter;$(NOWA)/external/ParticleUniverse/Plugins/ParticleUniverse/include;$(NOWA)/external/MyGUIEngine/Common;$(NOWA)/external/MyGUIEngine/include;$(NOWA)/external/MyGUIEngine/Ogre2Platform/include;$(NOWA)/external/OgreProcedural/library/include;$(NOWA)/external/Gist/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
-      <MinimalRebuild>true</MinimalRebuild>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <EnableParallelCodeGeneration>
-      </EnableParallelCodeGeneration>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <OmitFramePointers>false</OmitFramePointers>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PrecompiledHeaderFile>NOWAPrecompiled.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4786;4503;4251;4275;4290;4661;4996;4127;4100</DisableSpecificWarnings>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <CompileAs>CompileAsCpp</CompileAs>
-      <DebugInformationFormat />
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
-      <EnableCOMDATFolding>
-      </EnableCOMDATFolding>
-      <OptimizeReferences>
-      </OptimizeReferences>
-      <AdditionalLibraryDirectories>$(NOWA)/bin/$(Configuration);$(NOWA)/bin/$(Configuration)/libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OgreMain.lib;OIS.lib;OgreMeshLodGenerator.lib;OgreHlmsPbs.lib;OgreHlmsUnlit.lib;OgrePlanarReflections.lib;dMath.lib;newton.lib;dScene.lib;dCustomJoints.lib;dNewton.lib;dContainers.lib;dVehicle.lib;OgreNewt3_0.lib;RakNet_vc9.lib;Lua.lib;LuaBind.lib;OgreRecast.lib;OgreProcedural.lib;OgreALVC9.lib;tinyxml.lib;OgreOverlay.lib;FParser.lib;ParticleUniverse.lib;MeshSplitter.lib;MyGuiEngine.lib;Ogre2Platform.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(NOWA)/bin/$(configuration)/$(TargetName)$(TargetExt)</OutputFile>
-      <ProgramDatabaseFile>$(NOWA)/bin/$(configuration)/$(TargetName).pdb</ProgramDatabaseFile>
-      <LinkTimeCodeGeneration>
-      </LinkTimeCodeGeneration>
-      <IgnoreAllDefaultLibraries>
-      </IgnoreAllDefaultLibraries>
-      <IgnoreSpecificDefaultLibraries>
-      </IgnoreSpecificDefaultLibraries>
-      <AssemblyDebug>
-      </AssemblyDebug>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -718,9 +553,7 @@
     <ClCompile Include="network\GameObjectStateHistory.cpp" />
     <ClCompile Include="network\Server.cpp" />
     <ClCompile Include="NOWAPrecompiled.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="ocean\Ocean.cpp" />
@@ -728,9 +561,7 @@
     <ClCompile Include="ocean\OgreHlmsOcean.cpp" />
     <ClCompile Include="ocean\OgreHlmsOceanDatablock.cpp" />
     <ClCompile Include="shader\HlmsBaseListenerContainer.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="shader\HlmsFog.cpp" />

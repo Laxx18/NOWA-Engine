@@ -2717,7 +2717,7 @@ namespace NOWA
 					// Mark gravity as updated
 					this->gravityUpdated.test_and_set();
 
-					this->setConstraintDirection(this->gravityDirection);
+					// this->setConstraintDirection(this->gravityDirection);
 
 					// More realistic planetary scenario: Depending on planet size, gravity is much harder or slower like on the moon:
 					// Ogre::Real squaredDistanceToGravitySource = wholeForce.squaredLength();

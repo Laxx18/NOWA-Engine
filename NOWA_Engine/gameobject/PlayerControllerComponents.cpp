@@ -1823,13 +1823,6 @@ namespace NOWA
 		// so the moving behavior is shared amongst all components
 		this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
 
-		this->movingBehaviorPtr->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
-		this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
-		this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
-		this->movingBehaviorPtr->setGoalRadius(0.5f);
-		this->movingBehaviorPtr->setStuckCheckTime(1000.0f);
-		this->movingBehaviorPtr->setFlyMode(false);
-
 		return success;
 	}
 
@@ -1852,6 +1845,16 @@ namespace NOWA
 			this->animationBlender->registerAnimation(NOWA::AnimationBlender::ANIM_RUN, this->animations[4]->getListSelectedValue());
 
 			this->animationBlender->init(NOWA::AnimationBlender::ANIM_IDLE_1);
+		}
+
+		if (nullptr != this->movingBehaviorPtr)
+		{
+			this->movingBehaviorPtr->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
+			this->movingBehaviorPtr->setRotationSpeed(this->rotationSpeed->getReal());
+			this->movingBehaviorPtr->setGoalRadius(this->goalRadius->getReal());
+			// this->movingBehaviorPtr->setGoalRadius(0.5f);
+			this->movingBehaviorPtr->setStuckCheckTime(1000.0f);
+			this->movingBehaviorPtr->setFlyMode(false);
 		}
 
 		this->stateMachine->setCurrentState(PathFollowState3D::getName());
@@ -2891,7 +2894,8 @@ namespace NOWA
 		ogreRecastModule(AppStateManager::getSingletonPtr()->getOgreRecastModule()),
 		canClick(true),
 		mouseX(0),
-		mouseY(0)
+		mouseY(0),
+		maxHeightDifference(1.0f)
 	{
 		/*this->walkSound = OgreALModule::getInstance()->createSound("PlayerWalk1", "Walk.wav");
 		this->walkSound->setGain(0.5f);
@@ -2924,6 +2928,8 @@ namespace NOWA
 		this->raySceneQuery = this->playerController->getRaySceneQuery();
 		this->raySceneQuery = this->playerController->getOwner()->getSceneManager()->createRayQuery(Ogre::Ray(), this->playerController->getCategoriesId());
 		this->raySceneQuery->setSortByDistance(true);
+
+		this->maxHeightDifference = AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast()->getAgentHeight();
 
 		this->movingBehavior->addBehavior(NOWA::KI::MovingBehavior::FOLLOW_PATH);
 
@@ -3000,8 +3006,14 @@ namespace NOWA
 
 				// http://www.stevefsp.org/projects/rcndoc/prod/classdtNavMeshQuery.html
 				// https://forums.ogre3d.org/viewtopic.php?t=62079
-				if (true == this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
+				// Attention: This line will always find a path, even the user clicked on a non navigable place, so the nearest position to that place is used, which may not be what the user wants for his game
+				if (this->ogreRecastModule->getOgreRecast()->findNearestPointOnNavmesh(clickedPosition + Ogre::Vector3(0.0f, 0.3f, 0.0f), posOnNavMesh))
 				{
+					// Check if the result is within an acceptable height range
+					if (std::abs(posOnNavMesh.y - clickedPosition.y) > this->maxHeightDifference)
+					{
+						posOnNavMesh.y = clickedPosition.y; // Ignore the result if it's too far from the click
+					}
 					// y immer 0.5 statt höher argghhh
 					// Ogre::LogManager::getSingletonPtr()->logMessage("findNearestPointOnNavmesh: " + Ogre::StringConverter::toString(posOnNavMesh));
 

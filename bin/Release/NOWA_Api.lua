@@ -9415,6 +9415,30 @@ return {
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
 			},
+			getMeshModifyComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
+			getMeshModifyComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
+			getMeshModifyComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
+			},
 			getMinimapComponentFromIndex =
 			{
 				type = "function",
@@ -11206,6 +11230,14 @@ return {
 				args = "(LookAfterComponent other)",
 				returns = "(LookAfterComponent)",
 				valuetype = "LookAfterComponent"
+			},
+			castMeshModifyComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(MeshModifyComponent other)",
+				returns = "(MeshModifyComponent)",
+				valuetype = "MeshModifyComponent"
 			},
 			castMinimapComponent =
 			{
@@ -17967,6 +17999,39 @@ return {
 	{
 		type = "class",
 		description = "Performs a linear transform on a procedural mesh."
+	},
+	MeshModifyComponent =
+	{
+		type = "class",
+		description = "Usage: The mesh modify component can be used to modify the mesh of an game object with an Ogre::Item, in order e.g. to create hills on a sphere etc.  Note: This component can only be used, if the game object does possess an Ogre::Item and NOT an Ogre::v1::Entity.The Ogre::Item MUST just have one subItem!It will not work for several sub items yet.",
+		inherits = "GameObjectComponent",
+		childs = 
+		{
+			setActivated =
+			{
+				type = "method",
+				description = "Sets whether this component should be activated or not.",
+				args = "(boolean activated)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			isActivated =
+			{
+				type = "function",
+				description = "Gets whether this component is activated.",
+				args = "()",
+				returns = "(boolean)",
+				valuetype = "boolean"
+			},
+			getOwner =
+			{
+				type = "function",
+				description = "Gets the owner game object.",
+				args = "()",
+				returns = "(GameObject)",
+				valuetype = "GameObject"
+			}
+		}
 	},
 	MeshUVTransform =
 	{

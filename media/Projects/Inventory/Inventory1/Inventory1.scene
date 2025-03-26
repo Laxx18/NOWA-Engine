@@ -764,7 +764,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
-					<property type="7" name="TerraLayers" data="255,255,255,255"/>
+					<property type="7" name="TerraLayers" data="255,0,255,255"/>
 				</userData>
 			</terra>
 		</node>
@@ -937,8 +937,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="2.48659" y="9.00068" z="18.7037"/>
-			<rotation qw="0.960263" qx="-0.0856425" qy="-0.26458" qz="-0.0236021"/>
+			<position x="0.683313" y="5.96213" z="27.1329"/>
+			<rotation qw="0.98483" qx="-0.0928705" qy="0.145931" qz="0.0137588"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -967,8 +967,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="2.48659 9.00068 18.7037"/>
-					<property type="9" name="CameraOrientation" data="-14.5808 -2.48863 -0.000583952"/>
+					<property type="9" name="CameraPosition" data="0.683313 5.96213 27.1329"/>
+					<property type="9" name="CameraOrientation" data="-19.1138 84.866 -2.43969e-05"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -1088,22 +1088,39 @@
 					<property type="7" name="Categories" data="Player"/>
 					<property type="12" name="UseMultiSelection" data="true"/>
 					<property type="12" name="UseSelectionRectangle" data="true"/>
+					<property type="12" name="ActivatePlayerController" data="true"/>
 					<property type="7" name="ComponentVegetationComponent" data="VegetationComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
-					<property type="12" name="Activated" data="false"/>
-					<property type="2" name="TargetGameObjectId" data="0"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="2" name="TargetGameObjectId" data="2276036206"/>
 					<property type="6" name="Density" data="1"/>
 					<property type="8" name="PositionXZ" data="0 0"/>
 					<property type="6" name="Scale" data="1"/>
 					<property type="12" name="AutoOrientation" data="false"/>
 					<property type="7" name="Categories" data="Terrain"/>
-					<property type="6" name="MaxHeight" data="0"/>
+					<property type="6" name="MaxHeight" data="2"/>
 					<property type="6" name="RenderDistance" data="100"/>
 					<property type="7" name="TerraLayers" data="255,255,0,255"/>
 					<property type="2" name="VegetationTypesCount" data="1"/>
 					<property type="7" name="VegetationMeshName0" data="grass_clump.mesh"/>
+					<property type="7" name="ComponentVegetationComponent" data="VegetationComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="false"/>
+					<property type="2" name="TargetGameObjectId" data="2276036206"/>
+					<property type="6" name="Density" data="1"/>
+					<property type="8" name="PositionXZ" data="0 0"/>
+					<property type="6" name="Scale" data="1"/>
+					<property type="12" name="AutoOrientation" data="false"/>
+					<property type="7" name="Categories" data="Terrain"/>
+					<property type="6" name="MaxHeight" data="1"/>
+					<property type="6" name="RenderDistance" data="100"/>
+					<property type="7" name="TerraLayers" data="0, 255, 0, 0"/>
+					<property type="2" name="VegetationTypesCount" data="1"/>
+					<property type="7" name="VegetationMeshName0" data="tree01_Layer1.mesh"/>
 					<property type="7" name="ComponentInputDeviceComponent" data="InputDeviceComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1136,7 +1153,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="10"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1335,9 +1352,9 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="6" name="YOffset" data="7"/>
-					<property type="9" name="LookAtOffset" data="0 0 2"/>
-					<property type="6" name="SpringForce" data="0.01"/>
+					<property type="9" name="YOffset" data="0 2 5"/>
+					<property type="9" name="LookAtOffset" data="0 -1 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="7"/>
 					<property type="7" name="ComponentCrowdComponent" data="CrowdComponent"/>
@@ -1371,7 +1388,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="10"/>
 					<property type="6" name="LodLevels" data="0"/>
@@ -1570,9 +1587,9 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="6" name="YOffset" data="7"/>
-					<property type="9" name="LookAtOffset" data="0 0 2"/>
-					<property type="6" name="SpringForce" data="0.01"/>
+					<property type="9" name="YOffset" data="0 2 5"/>
+					<property type="9" name="LookAtOffset" data="0 -1 0"/>
+					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
 					<property type="6" name="SpringLength" data="7"/>
 					<property type="7" name="ComponentCrowdComponent" data="CrowdComponent"/>
@@ -2498,7 +2515,7 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="true"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
+					<property type="2" name="RenderQueueIndex" data="110"/>
 					<property type="2" name="RenderDistance" data="100"/>
 					<property type="6" name="LodDistance" data="10"/>
 					<property type="6" name="LodLevels" data="0"/>

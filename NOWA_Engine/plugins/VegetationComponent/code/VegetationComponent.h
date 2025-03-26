@@ -210,7 +210,7 @@ namespace NOWA
 		 */
 		static Ogre::String getStaticInfoText(void)
 		{
-			return "Usage: Its possible to generate controlled random vegetation and map over a target game object or whole scene.";
+			return "Usage: Its possible to generate controlled random vegetation and map over a target game object or whole scene. Requirements: Must be placed under a Main-Gameobject";
 		}
 		
 		/**

@@ -24,9 +24,7 @@ namespace NOWA
 		rotateCameraWeight(1.0f),
 		gravityDirection(Ogre::Vector3::UNIT_Y)
 	{
-#if _DEBUG
 		this->smoothValue = 0.01f;
-#endif
 	}
 
 	BaseCamera::~BaseCamera() 
@@ -77,11 +75,11 @@ namespace NOWA
 		MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 		if (nullptr != widget)
 		{
-			this->reset();
 			return;
 		}
 		
 		Ogre::Vector3 moveValue = Ogre::Vector3::ZERO;
+		bool isMoving = false;
 
 		OIS::JoyStick* joyStick = NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0);
 
@@ -102,13 +100,24 @@ namespace NOWA
 			moveVertical = (Ogre::Real)joystickState.mAxes[2].abs / 32767.0f;
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveHorizontal " + Ogre::StringConverter::toString(moveHorizontal));
 			if (Ogre::Math::Abs(moveVertical) < DEAD_ZONE)
-				moveVertical = 0.0f;
+			{
+				isMoving = false;
+			}
+			else
+			{
+				isMoving = true;
+			}
 
 			moveHorizontal = (Ogre::Real)joystickState.mAxes[3].abs / 32767.0f;
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: moveVertical " + Ogre::StringConverter::toString(moveVertical));
 			if (Ogre::Math::Abs(moveHorizontal) < DEAD_ZONE)
-				moveHorizontal = 0.0f;
-			
+			{
+				isMoving = false;
+			}
+			else
+			{
+				isMoving = true;
+			}
 
 			moveValue += Ogre::Vector3((this->moveSpeed * moveHorizontal), 0.0f, (this->moveSpeed * moveVertical) * this->moveCameraWeight);
 
@@ -136,29 +145,38 @@ namespace NOWA
 			}*/
 		}
 		
+		// Normalize movement speed by frame time
+		Ogre::Real normalizedMoveSpeed = this->moveSpeed * this->moveCameraWeight;
+
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_LEFT))
 		{
-			moveValue += Ogre::Vector3(-this->moveSpeed * this->moveCameraWeight, 0.0f, 0.0f);
+			moveValue += Ogre::Vector3(-normalizedMoveSpeed, 0.0f, 0.0f);
+			isMoving = true;
 		}
-		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_RIGHT))
+		else if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_RIGHT))
 		{
-			moveValue += Ogre::Vector3(this->moveSpeed * this->moveCameraWeight, 0.0f, 0.0f);
+			moveValue += Ogre::Vector3(normalizedMoveSpeed, 0.0f, 0.0f);
+			isMoving = true;
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_BACKWARD))
 		{
-			moveValue += Ogre::Vector3(0.0f, 0.0f, this->moveSpeed * this->moveCameraWeight);
+			moveValue += Ogre::Vector3(0.0f, 0.0f, normalizedMoveSpeed);
+			isMoving = true;
 		}
-		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_FORWARD))
+		else if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_FORWARD))
 		{
-			moveValue += Ogre::Vector3(0.0f, 0.0f, -this->moveSpeed * this->moveCameraWeight);
+			moveValue += Ogre::Vector3(0.0f, 0.0f, -normalizedMoveSpeed);
+			isMoving = true;
 		}
 		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_DOWN))
 		{
-			moveValue += Ogre::Vector3(0.0f, -this->moveSpeed * this->moveCameraWeight, 0.0f);
+			moveValue += Ogre::Vector3(0.0f, -normalizedMoveSpeed, 0.0f);
+			isMoving = true;
 		}
-		if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_UP))
+		else if (NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(NOWA_K_CAMERA_UP))
 		{
-			moveValue += Ogre::Vector3(0.0f, this->moveSpeed * this->moveCameraWeight, 0.0f);
+			moveValue += Ogre::Vector3(0.0f, normalizedMoveSpeed, 0.0f);
+			isMoving = true;
 		}
 		
 		if (this->camera->getProjectionType() == Ogre::PT_ORTHOGRAPHIC)
@@ -182,83 +200,30 @@ namespace NOWA
 			this->firstTimeMoveValueSet = false;
 		}
 
-		moveValue = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue, this->lastMoveValue, this->smoothValue);
+		// Adjust low-pass filter interpolation based on frame time
+		Ogre::Real dynamicSmoothValue = this->smoothValue * dt;
 
-		if (Ogre::Vector3::ZERO != moveValue)
+		// If not moving, gradually reduce lastMoveValue to zero
+		if (false == isMoving)
 		{
-			this->camera->moveRelative(moveValue * dt);
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[BaseCamera]: move dt " + Ogre::StringConverter::toString(dt) + " move value: " + Ogre::StringConverter::toString(moveValue * dt));
+			moveValue = Ogre::Vector3::ZERO;
+			dynamicSmoothValue = this->smoothValue * dt * 1000.0f; // Faster deceleration
+		}
+
+		moveValue = NOWA::MathHelper::getInstance()->lowPassFilter(moveValue, this->lastMoveValue, dynamicSmoothValue);
+
+		if (moveValue.length() > 0.0001f)
+		{
+			// Move camera relative to frame time
+			this->camera->moveRelative(moveValue);
 			this->lastMoveValue = moveValue;
-		}
-	}
-
-#if 0
-	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
-	{
-		if (true == cameraControlLocked)
-		{
-			return;
-		}
-
-		Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
-
-		if (false == forJoyStick)
-		{
-			const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-			rotationValue.x = -ms.X.rel * this->rotateSpeed * this->rotateCameraWeight;
-			rotationValue.y = -ms.Y.rel * this->rotateSpeed * this->rotateCameraWeight;
 		}
 		else
 		{
-			OIS::JoyStick* joyStick = NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0);
-
-			if (nullptr != joyStick)
-			{
-				Ogre::Real rotateHorizontal = 0.0f; // Range is -1.f for full left to +1.f for full right
-				Ogre::Real rotateVertical = 0.0f; // -1.f for full down to +1.f for full up.
-
-				const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
-
-				// We receive the full analog range of the axes, and so have to implement our
-				// own dead zone.  This is an empirical value, since some joysticks have more
-				// jitter or creep around the center point than others.  We'll use 5% of the
-				// range as the dead zone, but generally you would want to give the user the
-				// option to change this.
-				const Ogre::Real DEAD_ZONE = 0.09f;
-
-				rotateVertical = (Ogre::Real)joystickState.mAxes[0].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateVertical) < DEAD_ZONE)
-					rotateVertical = 0.0f;
-
-				rotateHorizontal = (Ogre::Real)joystickState.mAxes[1].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateHorizontal) < DEAD_ZONE)
-					rotateHorizontal = 0.0f;
-
-				rotationValue.x = (this->rotateSpeed * 10.0f * rotateHorizontal) * this->rotateCameraWeight;
-				rotationValue.y = (this->rotateSpeed * 10.0f * rotateVertical) * this->rotateCameraWeight;
-			}
-		}
-		
-
-		if (this->firstTimeValueSet)
-		{
-			this->lastValue = rotationValue;
-			this->firstTimeValueSet = false;
-		}
-
-		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, this->smoothValue);
-		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
-
-		if (Ogre::Vector2::ZERO != rotationValue)
-		{
-			this->camera->yaw(Ogre::Degree(rotationValue.x * dt));
-			this->camera->pitch(Ogre::Degree(rotationValue.y * dt));
-			this->camera->roll(Ogre::Radian(0.0f));
-
-			this->lastValue = rotationValue;
+			this->lastMoveValue = Ogre::Vector3::ZERO;
 		}
 	}
-#else
+
 	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{
 		if (true == cameraControlLocked)
@@ -267,13 +232,21 @@ namespace NOWA
 		}
 
 		Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
+
+		// Normalize rotation speed by frame time
+		Ogre::Real normalizedRotateSpeed = this->rotateSpeed * this->rotateCameraWeight;
+		bool isRotating = false;
 
 		// Input handling remains the same
 		if (false == forJoyStick)
 		{
 			const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-			rotationValue.x = -ms.X.rel * this->rotateSpeed * this->rotateCameraWeight;
-			rotationValue.y = -ms.Y.rel * this->rotateSpeed * this->rotateCameraWeight;
+			isRotating = ms.X.rel != 0 || ms.Y.rel != 0;
+			if (true == isRotating)
+			{
+				rotationValue.x = -ms.X.rel * normalizedRotateSpeed;
+				rotationValue.y = -ms.Y.rel * normalizedRotateSpeed;
+			}
 		}
 		else
 		{
@@ -284,14 +257,31 @@ namespace NOWA
 				Ogre::Real rotateVertical = 0.0f;
 				const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
 				const Ogre::Real DEAD_ZONE = 0.09f;
+
 				rotateVertical = (Ogre::Real)joystickState.mAxes[0].abs / -32767.0f;
 				if (Ogre::Math::Abs(rotateVertical) < DEAD_ZONE)
+				{
 					rotateVertical = 0.0f;
+					isRotating = false;
+				}
+				else
+				{
+					isRotating = true;
+				}
+
 				rotateHorizontal = (Ogre::Real)joystickState.mAxes[1].abs / -32767.0f;
 				if (Ogre::Math::Abs(rotateHorizontal) < DEAD_ZONE)
+				{
 					rotateHorizontal = 0.0f;
-				rotationValue.x = (this->rotateSpeed * 10.0f * rotateHorizontal) * this->rotateCameraWeight;
-				rotationValue.y = (this->rotateSpeed * 10.0f * rotateVertical) * this->rotateCameraWeight;
+					isRotating = false;
+				}
+				else
+				{
+					isRotating = true;
+				}
+
+				rotationValue.x = normalizedRotateSpeed * 10.0f * rotateHorizontal;
+				rotationValue.y = normalizedRotateSpeed * 10.0f * rotateVertical;
 			}
 		}
 
@@ -301,14 +291,21 @@ namespace NOWA
 			this->firstTimeValueSet = false;
 		}
 
-		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, this->smoothValue);
-		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
+		// Adjust low-pass filter interpolation based on frame time
+		Ogre::Real dynamicSmoothValue = this->smoothValue * dt;
 
-		if (Ogre::Vector2::ZERO != rotationValue)
+		// If not rotating, gradually reduce lastValue to zero
+		if (false == isRotating)
 		{
-			// Save current orientation and position
-			Ogre::Quaternion oldOrientation = this->camera->getOrientation();
+			rotationValue = Ogre::Vector2::ZERO;
+			dynamicSmoothValue = this->smoothValue * dt * 1000.0f; // Faster deceleration
+		}
 
+		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, dynamicSmoothValue);
+		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, dynamicSmoothValue);
+
+		if (rotationValue.length() > 0.0001f)
+		{
 			// Create a local coordinate system based on gravity
 			Ogre::Vector3 upVector = -this->gravityDirection;
 
@@ -316,8 +313,8 @@ namespace NOWA
 			this->camera->setFixedYawAxis(true, upVector);
 
 			// Apply rotations using standard camera methods
-			this->camera->yaw(Ogre::Degree(rotationValue.x * dt));
-			this->camera->pitch(Ogre::Degree(rotationValue.y * dt));
+			this->camera->yaw(Ogre::Degree(rotationValue.x));
+			this->camera->pitch(Ogre::Degree(rotationValue.y));
 			this->camera->roll(Ogre::Radian(0.0f));
 
 			// Reset fixed yaw axis setting if needed
@@ -329,8 +326,11 @@ namespace NOWA
 
 			this->lastValue = rotationValue;
 		}
+		else
+		{
+			this->lastValue = Ogre::Vector2::ZERO;
+		}
 	}
-#endif
 
 	Ogre::Vector3 BaseCamera::getPosition(void)
 	{
@@ -374,9 +374,6 @@ namespace NOWA
 	
 	void BaseCamera::setSmoothValue(Ogre::Real smoothValue)
 	{
-#if _DEBUG
-		smoothValue = 0.01f;
-#endif
 		this->smoothValue = smoothValue;
 	}
 	

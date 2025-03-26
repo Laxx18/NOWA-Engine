@@ -851,14 +851,30 @@ namespace OgreAL {
 		// If the suggested device is in the list we use it, otherwise select the default device
 		mDevice = alcOpenDevice(deviceInList ? deviceName.c_str() : NULL);
 		CheckError(alcGetError(mDevice), "Failed to open Device");
-		CheckCondition(mDevice != NULL, 13, "Failed to open audio device");
+
+		try
+		{
+			CheckCondition(mDevice != NULL, 13, "Failed to open audio device");
+		}
+		catch (...)
+		{
+
+		}
 
 		Ogre::LogManager::getSingleton().logMessage("Choosing: " + Ogre::String(alcGetString(mDevice, ALC_DEVICE_SPECIFIER)));
 
 		// Create OpenAL Context
 		mContext = alcCreateContext(mDevice, NULL);
 		CheckError(alcGetError(mDevice), "Failed to create Context");
-		CheckCondition(mContext != NULL, 13, "Failed to create OpenAL Context");
+
+		try
+		{
+			CheckCondition(mContext != NULL, 13, "Failed to create OpenAL Context");
+		}
+		catch (...)
+		{
+
+		}
 
 		alcMakeContextCurrent(mContext);
 		CheckError(alcGetError(mDevice), "Failed to set current context");

@@ -150,7 +150,8 @@ namespace OgreNewt
 		m_startOrientation = startOrientation;
 		m_startPosition = startPosition;
 
-		if (m_oldStartPosition == m_startPosition && m_oldStartOrientation == m_startOrientation)
+		if (m_oldStartPosition == m_startPosition && m_oldStartOrientation == m_startOrientation && direction.positionEquals(m_direction) && mass == m_mass && radius == m_radius
+			&& height == m_height && stepHeight == m_stepHeight && categoryId == m_categoryType)
 		{
 			return;
 		}

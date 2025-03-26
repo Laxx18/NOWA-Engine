@@ -2593,7 +2593,30 @@ namespace NOWA
 
 					if (true == this->autoOrientation)
 					{
-						this->agent->applyOmegaForceRotateToDirection(forward);
+						// Get the player's current up vector based on the current orientation
+						Ogre::Vector3 currentPlayerUp = this->agent->getOrientation() * Ogre::Vector3::UNIT_Y;
+
+						// Compute angle deviation between player's up and gravity up
+						Ogre::Real angleDeviation = Ogre::Math::ACos(currentPlayerUp.dotProduct(-gravityDir)).valueDegrees();
+
+						// Prevents fall over
+						// Set the threshold for when to apply correction
+						const Ogre::Real tiltThresholdAngle = Ogre::Degree(20.0f).valueDegrees(); // Adjust the threshold as needed
+
+						// Only trigger correction if the angle deviation is significant and not near 180 degrees
+						if (angleDeviation > tiltThresholdAngle)
+						{
+							// Apply corrective force to upright the player
+							Ogre::Quaternion uprightRotation = Ogre::Vector3::UNIT_Y.getRotationTo(-gravityDir);
+
+							// Only correct pitch & roll, not yaw
+							Ogre::Vector3 correctionAxes(1.0f, 0.0f, 1.0f);
+							this->agent->applyOmegaForceRotateTo(uprightRotation, correctionAxes, 5.0f);
+						}
+						else
+						{
+							this->agent->applyOmegaForceRotateToDirection(forward, 5.0f);
+						}
 					}
 					else
 					{

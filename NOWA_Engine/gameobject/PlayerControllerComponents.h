@@ -742,6 +742,7 @@ namespace NOWA
 		bool canClick;
 		int mouseX;
 		int mouseY;
+		Ogre::Real maxHeightDifference;
 	};
 
 }; //namespace end

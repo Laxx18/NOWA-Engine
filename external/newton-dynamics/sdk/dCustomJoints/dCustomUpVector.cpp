@@ -44,13 +44,13 @@ dCustomUpVector::~dCustomUpVector()
 void dCustomUpVector::SetPinDir(const dVector& pin, NewtonBody* child)
 {
 	m_localMatrix1 = dGrammSchmidt(pin);
-	/*dMatrix pivot;
+	dMatrix pivot;
 
 	NewtonBodyGetMatrix(child, &pivot[0][0]);
 
 	dMatrix matrix(dGrammSchmidt(pin));
 	matrix.m_posit = pivot.m_posit;
-	CalculateLocalMatrix(matrix, m_localMatrix0, m_localMatrix1);*/
+	CalculateLocalMatrix(matrix, m_localMatrix0, m_localMatrix1);
 }
 
 #if 1

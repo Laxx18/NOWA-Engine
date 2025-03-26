@@ -194,6 +194,8 @@ namespace NOWA
 		if (4 == this->terraLayerList.size())
 		{
 			this->terraLayers->setValue(terraLayers);
+			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
 		}
 		else
 		{

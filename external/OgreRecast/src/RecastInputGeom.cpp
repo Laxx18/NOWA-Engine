@@ -344,15 +344,18 @@ InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, con
 				if (false == layerMatches)
 				{
 					// Skip this terra position
-					// TODO: Or set high y value!, so that the algorithm of recast will skip it!
-					continue;
+					meshVertices[pageId][i].x = x;
+					meshVertices[pageId][i].y = 50.0f;
+					meshVertices[pageId][i].z = z;
 				}
+				else
+				{
+					bool res = terra->getHeightAt(pos);
 
-				bool res = terra->getHeightAt(pos);
-
-				meshVertices[pageId][i].x = x;
-				meshVertices[pageId][i].y = pos.y;
-				meshVertices[pageId][i].z = z;
+					meshVertices[pageId][i].x = x;
+					meshVertices[pageId][i].y = pos.y;
+					meshVertices[pageId][i].z = z;
+				}
 				i++;
 			}
 		}

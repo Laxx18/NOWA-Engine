@@ -742,20 +742,15 @@ namespace NOWA
 
 	Ogre::Vector3 MathHelper::getBottomCenterOfMesh(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject) const
 	{
-		// Get the local AABB of the object
 		Ogre::Aabb boundingBox = movableObject->getLocalAabb();
-
-		// Apply the scene node's scale correctly
-		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * sceneNode->getScale();
 		Ogre::Vector3 maximumScaled = boundingBox.getMaximum() * sceneNode->getScale();
-		Ogre::Vector3 size = maximumScaled - minimumScaled;
-
-		// Compute center offset (local space)
-		Ogre::Vector3 centerOffset = minimumScaled + (size * 0.5f);
-
-		// Ensure we get the actual bottom of the object
-		centerOffset.y = minimumScaled.y;
-
+		Ogre::Vector3 minimumScaled = boundingBox.getMinimum() * sceneNode->getScale();
+		Ogre::Vector3 size = ((maximumScaled - minimumScaled));
+		Ogre::Vector3 centerOffset = minimumScaled + (size / 2.0f);
+		// Problem here: when physics is activated an object may slithly go up or down either to prevent collision with underlying object or because of gravity
+		// But attention: stack mode must be used, if there is an object below, because it also has an height! Else the y position is 0
+		Ogre::Real lowestObjectY = minimumScaled.y;
+		centerOffset.y = 0.0f - lowestObjectY;
 		return centerOffset;
 	}
 

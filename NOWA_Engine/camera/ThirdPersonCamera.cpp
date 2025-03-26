@@ -73,6 +73,7 @@ namespace NOWA
 		this->sceneNode = sceneNode;
 	}
 
+#if 0
 	void ThirdPersonCamera::moveCamera(Ogre::Real dt)
 	{
 		if (nullptr == this->sceneNode) return;
@@ -155,6 +156,92 @@ namespace NOWA
 		// This prevents the camera from rolling when moving on curved surfaces
 		this->camera->setFixedYawAxis(true, localUp);
 	}
+#else
+	void ThirdPersonCamera::moveCamera(Ogre::Real dt)
+	{
+		if (nullptr == this->sceneNode) return;
+
+		// Get gravity direction (which points toward the planet center)
+		Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
+		if (false == this->gravityDirection.isZeroLength())
+		{
+			gravityDir = -this->gravityDirection;
+		}
+
+		// Calculate surface normal (opposite of gravity direction)
+		Ogre::Vector3 surfaceNormal = gravityDir;
+
+		// Get current camera and player positions
+		Ogre::Vector3 cameraPosition = this->camera->getPosition();
+		Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
+
+		// Get player's orientation
+		Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+
+		// Calculate player's forward direction
+		Ogre::Vector3 playerForward = playerOrientation * this->defaultDirection;
+
+		// Create a local coordinate system aligned with the planet surface
+		Ogre::Vector3 localUp = surfaceNormal;
+
+		// Project player's forward direction onto the local plane
+		Ogre::Vector3 playerForwardProjected = playerForward - (playerForward.dotProduct(localUp) * localUp);
+		if (playerForwardProjected.isZeroLength())
+		{
+			// Fallback if the projected direction is zero
+			Ogre::Vector3 fallbackDirection = playerOrientation * Ogre::Vector3::UNIT_Z;
+			playerForwardProjected = fallbackDirection - (fallbackDirection.dotProduct(localUp) * localUp);
+			if (playerForwardProjected.isZeroLength())
+			{
+				// Second fallback
+				playerForwardProjected = localUp.perpendicular();
+			}
+		}
+		playerForwardProjected.normalise();
+
+		// Calculate local right and forward vectors
+		Ogre::Vector3 localRight = localUp.crossProduct(playerForwardProjected);
+		localRight.normalise();
+		Ogre::Vector3 localForward = localRight.crossProduct(localUp);
+		localForward.normalise();
+
+		// Calculate the desired camera position in local coordinates
+		Ogre::Vector3 playerViewPosition = playerPosition + (localUp * this->offsetPosition);
+
+		// Calculate the camera's desired position
+		Ogre::Vector3 targetPosition = playerViewPosition - (playerForwardProjected * this->cameraSpringLength);
+
+		// Normalize spring parameters based on frame time
+		Ogre::Real normalizedSpring = this->cameraSpring * dt * 100.0f;
+		Ogre::Real normalizedFriction = this->cameraFriction * dt * 100.0f;
+
+		// Apply spring physics for smooth camera movement
+		Ogre::Vector3 displacement = targetPosition - cameraPosition;
+
+		// Use a more stable spring calculation
+		Ogre::Vector3 velocityVector = displacement * normalizedSpring * normalizedFriction;
+
+		// Calculate new camera position
+		Ogre::Vector3 newCameraPosition = cameraPosition + velocityVector;
+
+		// Enforce minimum distance from player to avoid clipping
+		Ogre::Vector3 cameraToPlayer = playerViewPosition - newCameraPosition;
+		Ogre::Real currentDistance = cameraToPlayer.length();
+		if (currentDistance < this->cameraSpringLength * 0.5f)
+		{
+			newCameraPosition = playerViewPosition - (cameraToPlayer.normalisedCopy() * this->cameraSpringLength * 0.5f);
+		}
+
+		// Set camera position
+		this->camera->setPosition(newCameraPosition);
+
+		// Make camera look at player with offset
+		this->camera->lookAt(playerViewPosition + this->lookAtOffset);
+
+		// Ensure camera's up vector is aligned with the local up vector
+		this->camera->setFixedYawAxis(true, localUp);
+	}
+#endif
 
 	void ThirdPersonCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{

@@ -797,11 +797,7 @@ namespace NOWA
 			mass = 1.0f;
 		}
 		this->mass->setValue(mass);
-		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
-		if (nullptr != playerControllerBody)
-		{
-			playerControllerBody->setMass(mass);
-		}
+
 		this->createDynamicBody();
 	}
 
@@ -865,12 +861,6 @@ namespace NOWA
 		}
 
 		this->radius->setValue(tempRadius);
-
-		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
-		if (nullptr != playerControllerBody)
-		{
-			playerControllerBody->setRadius(radius);
-		}
 		this->createDynamicBody();
 	}
 
@@ -889,11 +879,6 @@ namespace NOWA
 
 		this->height->setValue(tempHeight);
 
-		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
-		if (nullptr != playerControllerBody)
-		{
-			playerControllerBody->setHeight(height);
-		}
 		this->createDynamicBody();
 	}
 
@@ -905,11 +890,7 @@ namespace NOWA
 	void PhysicsPlayerControllerComponent::setStepHeight(Ogre::Real stepHeight)
 	{
 		this->stepHeight->setValue(stepHeight);
-		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
-		if (nullptr != playerControllerBody)
-		{
-			playerControllerBody->setStepHeight(stepHeight);
-		}
+
 		this->createDynamicBody();
 	}
 
