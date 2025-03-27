@@ -13,42 +13,42 @@
             <Property key="Caption" value="#{CellSize}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 52 175 20" name="cellSizeEdit">
-			<Property key="Caption" value="0.6"/>
+			<Property key="Caption" value="0.05"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 84 260 20" name="cellHeightText">
             <Property key="Caption" value="#{CellHeight}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 84 175 20" name="cellHeightEdit">
-			<Property key="Caption" value="0.2"/>
+			<Property key="Caption" value="0.4"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 116 260 20" name="agentMaxSlopeText">
             <Property key="Caption" value="#{AgentMaxSlope}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 116 175 20" name="agentMaxSlopeEdit">
-			<Property key="Caption" value="0.2"/>
+			<Property key="Caption" value="20"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 148 260 20" name="agentHeightText">
             <Property key="Caption" value="#{AgentHeight}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 148 175 20" name="agentHeightEdit">
-			<Property key="Caption" value="2.5"/>
+			<Property key="Caption" value="0.8"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 180 260 20" name="agentMaxClimbText">
             <Property key="Caption" value="#{AgentMaxClimb}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 180 175 20" name="agentMaxClimbEdit">
-			<Property key="Caption" value="1"/>
+			<Property key="Caption" value="0.5"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 212 260 20" name="agentRadiusText">
             <Property key="Caption" value="#{AgentRadius}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 212 175 20" name="agentRadiusEdit">
-			<Property key="Caption" value="0.5"/>
+			<Property key="Caption" value="0.3"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 244 260 20" name="edgeMaxLenText">
@@ -62,21 +62,21 @@
             <Property key="Caption" value="#{EdgeMaxError}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 276 175 20" name="edgeMaxErrorEdit">
-			<Property key="Caption" value="1.3"/>
+			<Property key="Caption" value="0.1"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 308 260 20" name="regionMinSizeText">
             <Property key="Caption" value="#{RegionMinSize}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 308 175 20" name="regionMinSizeEdit">
-			<Property key="Caption" value="50"/>
+			<Property key="Caption" value="10"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 340 260 20" name="regionMergeSizeText">
             <Property key="Caption" value="#{RegionMergeSize}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 340 175 20" name="regionMergeSizeEdit">
-			<Property key="Caption" value="20"/>
+			<Property key="Caption" value="10"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 372 260 20" name="vertsPerPolyText">
@@ -97,14 +97,14 @@
             <Property key="Caption" value="#{DetailSampleDist}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 404 175 20" name="detailSampleDistEdit">
-			<Property key="Caption" value="6"/>
+			<Property key="Caption" value="1"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 436 260 20" name="detailSampleMaxErrorText">
             <Property key="Caption" value="#{DetailSampleMaxError}:"/>
         </Widget>
         <Widget type="EditBox" skin="EditBox" position="280 436 175 20" name="detailSampleMaxErrorEdit">
-			<Property key="Caption" value="1"/>
+			<Property key="Caption" value="0.1"/>
 		</Widget>
 		
 		<Widget type="TextBox" skin="TextBox" position="10 468 260 20" name="pointExtendsText">

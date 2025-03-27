@@ -157,6 +157,11 @@ namespace NOWA
 		return true;
 	}
 
+	void LookAfterComponent::onRemoveComponent(void)
+	{
+		this->headBone = nullptr;
+	}
+
 	bool LookAfterComponent::connect(void)
 	{
 		GameObjectPtr targetGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->targetId->getULong());
@@ -206,7 +211,9 @@ namespace NOWA
 	bool LookAfterComponent::disconnect(void)
 	{
 		if (nullptr != this->headBone)
+		{
 			this->headBone->reset();
+		}
 		return true;
 	}
 
@@ -229,76 +236,81 @@ namespace NOWA
 			if (nullptr != this->targetSceneNode && nullptr != this->headBone && true == this->activated->getBool())
 			{
 				Ogre::v1::OldNode* neckBone = this->headBone->getParent();
-				// Get the head to be facing the camera, along the vector between the camera and the head this is done in world space for simplicity
+				// Get head position in world space
 				Ogre::Vector3 headBonePosition = this->gameObjectPtr->getSceneNode()->convertLocalToWorldPosition(this->headBone->_getDerivedPosition());
-				
 				Ogre::Vector3 objectPosition = this->targetSceneNode->getPosition();
-				Ogre::Vector3 between = objectPosition - headBonePosition;
-				Ogre::Vector3 unitBetween = between.normalisedCopy();
-				
-				// Now let's get the neckBone because that is the required space to orient the head in. Again, get the world orientation because this is a convenient space to work in.
-				
-				Ogre::Quaternion neckBoneWorldOrientation = this->gameObjectPtr->getSceneNode()->convertLocalToWorldOrientation(neckBone->_getDerivedOrientation());
 
-				// http://wiki.ogre3d.org/Make+A+Character+Look+At+The+Camera
-				
-				// Now build a coordinate system for head relative to the neck. An orthogonal coordinate system IS A ROTATION! 
-				// The head is defined to have it's x-axis aligned with the neck, y axis pointing straight out the front of th head between the eyes and z axis pointing towards the left ear.
-				// Do not induce any roll(rotation about y in my case) in the head relative to the neck.
-				// Note: Cameras use the UP (0,1,0) vector for this, but that will only work for a character if the character is standing straight up! What if the character was lying down...doesn't work then...
-				// Basically it's a bunch of cross products. look x up = right, look x right = new up.
-				// The cross product of two vectors is a vector orthogonal to the original two...pretty convenient for building orthoganol coordinate systems, huh?
-				// The reason we use the neck up is that this enforces that there will be no roll about the neck axis because the "right" vector will always be orthogonal to it. 
-				// Remember, we're working completely in world space right now. This is probably the hardest part for people to understand, so think about it clearly.
+				// Calculate direction vector from head to target (world space)
+				Ogre::Vector3 directionToTarget = (objectPosition - headBonePosition).normalisedCopy();
 
-				Ogre::Vector3 headForward = unitBetween;
-				Ogre::Vector3 neckUp = neckBoneWorldOrientation.xAxis();
-				Ogre::Vector3 headRight = neckUp.crossProduct(headForward);
-				Ogre::Vector3 headUp = headForward.crossProduct(headRight);
+				// Get the game object's forward direction in world space
+				Ogre::Vector3 gameObjectForward = this->gameObjectPtr->getSceneNode()->getOrientation() * this->gameObjectPtr->getDefaultDirection();
 
-				// Put them together. Remember, up is x, forward is y, right is z. We also normalize the rotation because of possible numerical errors in computing the cross product.
-				Ogre::Quaternion rot(headUp, headForward, headRight);
-				rot.normalise(); //might have gotten messed up
+				// Check if target is behind the game object (dot product < 0)
+				Ogre::Real dotProduct = gameObjectForward.dotProduct(directionToTarget);
 
-				// Now put the rotation into neck space.
-				rot = neckBoneWorldOrientation.Inverse() * rot;
-				
-				// So now we have a rotation, but a head can't go out of a certain range...I don't know what this is, IANAD...figure it out yourself, 
-				// or use something sensible, like PI/2 for both. Because of the way I set up my skeleton, and how ogre defines yaw, pitch and roll (rotation about y, x, z respectively), 
-				// the code looks strange, but I assure you it works. The head is rotated 180 about the neck x-axis, that's why we have the PI-abs(yawNeckSpace) in there.
-				Ogre::Real pitchNeckSpace = rot.getRoll().valueDegrees();
-				Ogre::Real yawNeckSpace = rot.getPitch().valueDegrees();
+				Ogre::Quaternion currentOrientation = this->headBone->getOrientation();
+				Ogre::Quaternion defaultOrientation = this->headBone->getInitialOrientation();
+				Ogre::Real smoothingFactor = 0.01f; // Adjust this value to control smoothing speed
 
-				// if(Ogre::Math::Abs(pitchNeckSpace) > this->maxPitch->getReal() || (/*180.0f -*/ Ogre::Math::Abs(yawNeckSpace)) > this->maxYaw->getReal())
-				// {
-				// 	return;
-				// }
-
-				// Note:If you don't care about smoothly moving the head, skip to the end.
-				// We need to figure out how much of an angular change the head movement is (we're only going to consider one angle...if you want separate speeds for yaw, pitch, and roll, 
-				// figure it out yourself and add to this how-to). The way to do this is basically if B = A + ? then ? = B-A. We have B (the desired rotation) and A (the current rotation), so it's simple quaternion algebra.
-				Ogre::Vector3 currentDirection = headBone->getOrientation() * this->gameObjectPtr->getDefaultDirection();
-				Ogre::Quaternion currentOrientation = headBone->getOrientation();
-
-				Ogre::Quaternion destinationOrientation = currentDirection.getRotationTo(unitBetween) * currentOrientation;
-
-				Ogre::Quaternion rotationBetween = rot * headBone->getOrientation().Inverse();
-				Ogre::Radian angle;
-				Ogre::Vector3 axis;
-				rotationBetween.ToAngleAxis(angle, axis);
-				Ogre::Real angleDeg = angle.valueDegrees();
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[LookAfterComponent] angleDeg: " + Ogre::StringConverter::toString(angleDeg));
-
-				// Ok, we're in the home stretch. We want to create a smooth rotation. We use Slerp for this. We determine how far along the animation we are by the ratio of the farthest we can rotate in this frame and the total rotation. Make sure you use the shortestPath=true option in slerp or you could get exorcist-like results. "lookSpeed" is in radians per second, deltaT is in seconds
-
-				Ogre::Real maxAngleThisFrame = this->lookSpeed->getReal() * dt;
-				Ogre::Real ratio = 1.0f;
-				if(angleDeg > maxAngleThisFrame)
+				if (dotProduct >= 0) // Target is in front of or at the side of the game object
 				{
-					ratio = maxAngleThisFrame / angle.valueDegrees();
+					// Get neck world-space orientation
+					Ogre::Quaternion neckWorldOrientation = this->gameObjectPtr->getSceneNode()->convertLocalToWorldOrientation(neckBone->_getDerivedOrientation());
+
+					// Compute the target head orientation in world space
+					Ogre::Vector3 headForward = directionToTarget; // The direction the head should face
+					Ogre::Vector3 neckUp = neckWorldOrientation.xAxis(); // Neck's "up" vector
+					Ogre::Vector3 headRight = neckUp.crossProduct(headForward).normalisedCopy(); // Right vector of head
+					Ogre::Vector3 headUp = headForward.crossProduct(headRight); // Up vector of head
+
+					// Construct the quaternion for target head orientation in world space
+					Ogre::Quaternion targetWorldOrientation(headUp, headForward, headRight);
+					targetWorldOrientation.normalise();
+
+					// Convert target rotation to neck space
+					Ogre::Quaternion targetLocalOrientation = neckWorldOrientation.Inverse() * targetWorldOrientation;
+
+					// Extract yaw and pitch from the target orientation
+					Ogre::Vector3 targetDirection = targetLocalOrientation * Ogre::Vector3::UNIT_Y;
+
+					// Pitch calculation uses asin, handling the Z-axis (vertical) component
+					Ogre::Real pitch = Ogre::Math::ASin(targetDirection.z).valueDegrees();
+
+					// Yaw derived from the X and Y components
+					Ogre::Real yaw = Ogre::Math::ATan2(targetDirection.x, targetDirection.y).valueDegrees();
+
+					// Clamp pitch and yaw to limits
+					pitch = Ogre::Math::Clamp(pitch, -this->maxPitch->getReal(), this->maxPitch->getReal());
+					yaw = Ogre::Math::Clamp(yaw, -this->maxYaw->getReal(), this->maxYaw->getReal());
+
+					// Construct final rotation with clamped values
+					Ogre::Quaternion finalRotation = Ogre::Quaternion(Ogre::Degree(-yaw), Ogre::Vector3::UNIT_Z) *
+						Ogre::Quaternion(Ogre::Degree(pitch), Ogre::Vector3::UNIT_X);
+
+					// Compute angular difference using ToAngleAxis
+					Ogre::Quaternion rotationBetween = finalRotation;
+					Ogre::Radian angle;
+					Ogre::Vector3 axis;
+					rotationBetween.ToAngleAxis(angle, axis);
+					Ogre::Real angleDiff = angle.valueDegrees();
+
+					// Apply smooth interpolation
+					Ogre::Real maxAngleThisFrame = this->lookSpeed->getReal() * dt;
+					Ogre::Real ratio = 1.0f;
+					if (angleDiff > maxAngleThisFrame)
+					{
+						ratio = maxAngleThisFrame / angleDiff;
+					}
+					Ogre::Quaternion smoothedRotation = Ogre::Quaternion::Slerp(ratio, currentOrientation, finalRotation, true);
+					this->headBone->setOrientation(smoothedRotation);
 				}
-				rot = Ogre::Quaternion::Slerp(ratio, headBone->getOrientation(), destinationOrientation, true);
-				this->headBone->setOrientation(rot);
+				else // Target is behind the game object
+				{
+					// Smoothly interpolate back to default orientation
+					Ogre::Quaternion smoothedRotation = Ogre::Quaternion::Slerp(smoothingFactor, currentOrientation, defaultOrientation, true);
+					this->headBone->setOrientation(smoothedRotation);
+				}
 			}
 		}
 	}
@@ -306,7 +318,6 @@ namespace NOWA
 	GameObjectCompPtr LookAfterComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		LookAfterCompPtr clonedCompPtr(boost::make_shared<LookAfterComponent>());
-
 		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setHeadBoneName(this->headBoneName->getListSelectedValue());

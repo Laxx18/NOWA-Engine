@@ -46,6 +46,11 @@ namespace NOWA
 		virtual void onRemoveComponent(void) override;
 
 		/**
+		* @see		GameObjectComponent::onOtherComponentRemoved
+		*/
+		virtual void onOtherComponentRemoved(unsigned int index);
+
+		/**
 		* @see		GameObjectComponent::getClassName
 		*/
 		virtual Ogre::String getClassName(void) const override;

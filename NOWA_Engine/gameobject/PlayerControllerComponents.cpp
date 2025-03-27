@@ -2954,17 +2954,20 @@ namespace NOWA
 
 		if (true == this->playerController->getGameObject()->isSelected() && true == ms.buttonDown(OIS::MB_Middle))
 		{
+#if 1
 			// Attention: Why has this been used? Because during simulation the camera transform will be slow
-			/*AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);*/
+			// AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
+			// AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
+
 
 			// Add delay to camera behavior if target location has been clicked, so that the scene will not be rotated to early
 			if (nullptr != this->playerController->getCameraBehaviorComponent())
 			{
-				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(2.0f));
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(1.0f));
 				delayProcess->attachChild(NOWA::ProcessPtr(new UpdateCameraBehaviorProcess()));
 				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 			}
+#endif
 
 			// Get target position
 			/*std::pair<bool, Ogre::Vector3> result = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getTargetBodyPosition(ms.X.abs, ms.Y.abs,
@@ -3036,6 +3039,9 @@ namespace NOWA
 					}
 					else
 					{
+						AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.1f);
+						AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.1f);
+
 						std::vector<Ogre::Vector3> path = this->ogreRecastModule->getOgreRecast()->getPath(this->playerController->getPathSlot());
 
 						LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();

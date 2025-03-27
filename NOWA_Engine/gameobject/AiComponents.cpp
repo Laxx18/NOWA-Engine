@@ -196,6 +196,22 @@ namespace NOWA
 		this->tryRemoveMovingBehavior();
 	}
 
+	void AiComponent::onOtherComponentRemoved(unsigned int index)
+	{
+		auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(index));
+		if (nullptr != gameObjectCompPtr)
+		{
+			auto& physicsCompPtr = boost::dynamic_pointer_cast<PhysicsComponent>(gameObjectCompPtr);
+			if (nullptr != physicsCompPtr)
+			{
+				if (nullptr != this->movingBehaviorPtr)
+				{
+					this->movingBehaviorPtr->setAgentId(0);
+				}
+			}
+		}
+	}
+
 	void AiComponent::actualizeValue(Variant* attribute)
 	{
 		GameObjectComponent::actualizeValue(attribute);

@@ -1041,7 +1041,7 @@ void ConfigPanelRecast::setParameter(bool hasRecast,
 		"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
 		"The minimum value for this parameter depends on the platform's floating point accuracy, with the practical minimum usually around 0.05. "
 		"Setting ch lower will result in more accurate detection of areas the agent can still pass under, as min walkable height is discretisized "
-		"in number of cells.");
+		"in number of cells. Note: If several levels (e.g. in a house) are involved, this value should be at least 0.4, else It can happen, that the player does stand on the level 2 but navigation points are calculated for level 1.");
 	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 

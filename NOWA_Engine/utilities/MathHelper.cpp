@@ -327,6 +327,7 @@ namespace NOWA
 		return std::move(targetOrientation);
 	}
 
+#if 0
 	Ogre::Quaternion MathHelper::faceDirectionSlerp(const Ogre::Quaternion& sourceOrientation, const Ogre::Vector3& direction, const Ogre::Vector3& defaultDirection, Ogre::Real dt, Ogre::Real rotationSpeed)
 	{
 		Ogre::Vector3 currentDirection = sourceOrientation * defaultDirection;
@@ -347,6 +348,44 @@ namespace NOWA
 		}
 		return std::move(Ogre::Quaternion::Slerp(ratio, sourceOrientation, destinationOrientation, true));
 	}
+#else
+	Ogre::Quaternion MathHelper::faceDirectionSlerp(
+		const Ogre::Quaternion& sourceOrientation,
+		const Ogre::Vector3& direction,
+		const Ogre::Vector3& defaultDirection,
+		Ogre::Real dt,
+		Ogre::Real rotationSpeed)
+	{
+		Ogre::Vector3 currentDirection = sourceOrientation * defaultDirection;
+
+		// Get rotation needed to face direction
+		Ogre::Quaternion deltaRotation = currentDirection.getRotationTo(direction);
+
+		// Compute the target orientation
+		Ogre::Quaternion destinationOrientation = deltaRotation * sourceOrientation;
+
+		// Ensure rotation does NOT introduce unwanted movement
+		Ogre::Quaternion rotationBetween = destinationOrientation * sourceOrientation.Inverse();
+
+		// Extract rotation angle
+		Ogre::Radian angle;
+		Ogre::Vector3 axis;
+		rotationBetween.ToAngleAxis(angle, axis);
+
+		// Ensure rotation happens around the character's vertical axis (Y-axis)
+		if (axis.isZeroLength())
+		{
+			axis = Ogre::Vector3::UNIT_Y; // Default to Y-axis if rotation axis is unstable
+		}
+
+		// Clamp rotation speed per frame
+		Ogre::Real maxAngleThisFrame = rotationSpeed * dt;
+		Ogre::Real ratio = (angle.valueDegrees() > maxAngleThisFrame) ? (maxAngleThisFrame / angle.valueDegrees()) : 1.0f;
+
+		// Apply interpolated rotation
+		return Ogre::Quaternion::Slerp(ratio, sourceOrientation, destinationOrientation, true);
+	}
+#endif
 
 	Ogre::Quaternion MathHelper::lookAt(const Ogre::Vector3& unnormalizedTargetDirection, const Ogre::Vector3 fixedAxis)
 	{

@@ -273,7 +273,7 @@ namespace NOWA
 		: CameraBehaviorComponent(),
 		moveSpeed(new Variant(CameraBehaviorBaseComponent::AttrMoveSpeed(), 20.0f, this->attributes)),
 		rotationSpeed(new Variant(CameraBehaviorBaseComponent::AttrRotationSpeed(), 20.0f, this->attributes)),
-		smoothValue(new Variant(CameraBehaviorBaseComponent::AttrSmoothValue(), 0.6f, this->attributes))
+		smoothValue(new Variant(CameraBehaviorBaseComponent::AttrSmoothValue(), 0.1f, this->attributes))
 	{
 		
 	}
