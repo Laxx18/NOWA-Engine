@@ -1775,12 +1775,6 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlayerControllerClickToPointComponent] Init player controller click to point component for game object: " + this->gameObjectPtr->getName());
 
-		if (nullptr == AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage("PlayerControllerClickToPointComponent: Cannot use click to point controller because, there is no valid OgreRecast path navigation configured. Is it not checked in the settings?");
-			return true;
-		}
-
 		bool success = PlayerControllerComponent::postInit();
 
 		this->categoriesId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories->getString());
@@ -1822,6 +1816,12 @@ namespace NOWA
 		// Moving behavior is added and create in game object controller, because even this component, which is a player controller, could also have some other ai components
 		// so the moving behavior is shared amongst all components
 		this->movingBehaviorPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->addMovingBehavior(this->gameObjectPtr->getId());
+
+		if (nullptr == AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage("PlayerControllerClickToPointComponent: Cannot use click to point controller because, there is no valid OgreRecast path navigation configured. Is it not checked in the settings?");
+			return true;
+		}
 
 		return success;
 	}
@@ -1871,7 +1871,7 @@ namespace NOWA
 			this->movingBehaviorPtr->getPath()->clear();
 		}
 
-		if (nullptr != this->stateMachine->getCurrentState())
+		if (nullptr != this->stateMachine && nullptr != this->stateMachine->getCurrentState())
 		{
 			this->stateMachine->getCurrentState()->exit(this->gameObjectPtr.get());
 		}

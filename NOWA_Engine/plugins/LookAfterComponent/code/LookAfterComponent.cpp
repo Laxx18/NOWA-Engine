@@ -9,6 +9,10 @@
 
 #include "OgreAbiUtils.h"
 
+#include "Animation/OgreSkeletonAnimation.h"
+#include "Animation/OgreSkeletonInstance.h"
+#include "Animation/OgreBone.h"
+
 namespace NOWA
 {
 	using namespace rapidxml;
@@ -18,6 +22,8 @@ namespace NOWA
 		: GameObjectComponent(),
 		name("LookAfterComponent"),
 		targetSceneNode(nullptr),
+		headBone(nullptr),
+		headBoneV2(nullptr),
 		activated(new Variant(LookAfterComponent::AttrActivated(), true, this->attributes)),
 		headBoneName(new Variant(LookAfterComponent::AttrHeadBoneName(), std::vector<Ogre::String>(), this->attributes)),
 		targetId(new Variant(LookAfterComponent::AttrTargetId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -96,16 +102,15 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{
-
 			Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
 			if (nullptr != skeleton)
 			{
 				std::vector<Ogre::String> boneNames;
 
-				unsigned short numBones = entity->getSkeleton()->getNumBones();
+				unsigned short numBones = skeleton->getNumBones();
 				for (unsigned short iBone = 0; iBone < numBones; iBone++)
 				{
-					Ogre::v1::OldBone* bone = entity->getSkeleton()->getBone(iBone);
+					Ogre::v1::OldBone* bone = skeleton->getBone(iBone);
 					if (nullptr == bone)
 					{
 						continue;
@@ -153,6 +158,68 @@ namespace NOWA
 				this->headBoneName->setValue(boneNames);
 			}
 		}
+		else
+		{
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
+			{
+				Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+				if (nullptr != skeleton)
+				{
+					std::vector<Ogre::String> boneNames;
+
+					unsigned short numBones = skeleton->getNumBones();
+					for (unsigned short iBone = 0; iBone < numBones; iBone++)
+					{
+						Ogre::Bone* bone = skeleton->getBone(iBone);
+						if (nullptr == bone)
+						{
+							continue;
+						}
+
+						// Absolutely HAVE to create bone representations first. Otherwise we would get the wrong child count
+						// because an attached object counts as a child
+						// Would be nice to have a function that only gets the children that are bones...
+						unsigned short numChildren = bone->getNumChildren();
+						if (numChildren == 0)
+						{
+							bool unique = true;
+							for (size_t i = 0; i < boneNames.size(); i++)
+							{
+								if (boneNames[i] == bone->getName())
+								{
+									unique = false;
+									break;
+								}
+							}
+							if (true == unique)
+							{
+								boneNames.emplace_back(bone->getName());
+							}
+						}
+						else
+						{
+							bool unique = true;
+							for (size_t i = 0; i < boneNames.size(); i++)
+							{
+								if (boneNames[i] == bone->getName())
+								{
+									unique = false;
+									break;
+								}
+							}
+							if (true == unique)
+							{
+								boneNames.emplace_back(bone->getName());
+							}
+						}
+					}
+
+					// Add all available bone names to list
+					this->headBoneName->setValue(boneNames);
+				}
+			}
+		}
 			
 		return true;
 	}
@@ -160,6 +227,7 @@ namespace NOWA
 	void LookAfterComponent::onRemoveComponent(void)
 	{
 		this->headBone = nullptr;
+		this->headBoneV2 = nullptr;
 	}
 
 	bool LookAfterComponent::connect(void)
@@ -171,38 +239,80 @@ namespace NOWA
 		}
 
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr == entity)
-			return false;
-
-		Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-		if (nullptr != oldSkeletonInstance)
+		if (nullptr != entity)
 		{
-			this->headBone = oldSkeletonInstance->getBone(this->headBoneName->getListSelectedValue());
-
-			// If there is no neck bone
-			Ogre::v1::OldNode* neckBone = this->headBone->getParent();
-			if (nullptr == neckBone)
+			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
+			if (nullptr != oldSkeletonInstance)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LookAfterComponent] Warning the given bone: " + this->headBone->getName()
-					+ " has no parent for " + this->gameObjectPtr->getName() + ". Look after component will not work!");
-				this->headBone = nullptr;
-				return true;
+				this->headBone = oldSkeletonInstance->getBone(this->headBoneName->getListSelectedValue());
+
+				// If there is no neck bone
+				Ogre::v1::OldNode* neckBone = this->headBone->getParent();
+				if (nullptr == neckBone)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LookAfterComponent] Warning the given bone: " + this->headBone->getName()
+						+ " has no parent for " + this->gameObjectPtr->getName() + ". Look after component will not work!");
+					this->headBone = nullptr;
+					return true;
+				}
+
+				this->headBone->reset();
+				// Existing animations have control of the bones of the skeleton when they are running. 
+				// Each bone has an animation track for each animation which must be destroyed.
+
+	// Attention: Problem: All animation of all mesh copies will be destroyed!
+				// Set also the bone to manually controlled in order to modify it.
+				this->headBone->setManuallyControlled(true);
+				int numAnimations = oldSkeletonInstance->getNumAnimations();
+				for (int i = 0; i < numAnimations; i++)
+				{
+					Ogre::v1::Animation* anim = oldSkeletonInstance->getAnimation(i);
+					// Attention: destroyOldNodeTrack must be used!
+					// anim->destroyNodeTrack(headBone->getHandle());
+					anim->destroyOldNodeTrack(headBone->getHandle());
+				}
 			}
-
-			this->headBone->reset();
-			// Existing animations have control of the bones of the skeleton when they are running. 
-			// Each bone has an animation track for each animation which must be destroyed.
-
-// Attention: Problem: All animation of all mesh copies will be destroyed!
-			// Set also the bone to manually controlled in order to modify it.
-			this->headBone->setManuallyControlled(true);
-			int numAnimations = oldSkeletonInstance->getNumAnimations();
-			for (int i = 0; i < numAnimations; i++)
+		}
+		else
+		{
+			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			if (nullptr != item)
 			{
-				Ogre::v1::Animation* anim = oldSkeletonInstance->getAnimation(i);
-				// Attention: destroyOldNodeTrack must be used!
-				// anim->destroyNodeTrack(headBone->getHandle());
-				anim->destroyOldNodeTrack(headBone->getHandle());
+				Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+				if (nullptr != skeleton)
+				{
+					Ogre::SkeletonInstance* skeleton = item->getSkeletonInstance();
+					if (nullptr != skeleton)
+					{
+						this->headBoneV2 = skeleton->getBone(this->headBoneName->getListSelectedValue());
+
+						// If there is no neck bone
+						Ogre::Bone* neckBone = this->headBoneV2->getParent();
+						if (nullptr == neckBone)
+						{
+							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LookAfterComponent] Warning the given bone: " + this->headBone->getName()
+								+ " has no parent for " + this->gameObjectPtr->getName() + ". Look after component will not work!");
+							this->headBone = nullptr;
+							return true;
+						}
+
+						this->headBone->reset();
+						// Existing animations have control of the bones of the skeleton when they are running. 
+						// Each bone has an animation track for each animation which must be destroyed.
+
+			// Attention: Problem: All animation of all mesh copies will be destroyed!
+						// Set also the bone to manually controlled in order to modify it.
+						// this->headBone->setManuallyControlled(true);
+						const auto animations = skeleton->getAnimations();
+
+						for (auto& anim : skeleton->getAnimationsNonConst())
+						{
+							// anim._applyAnimation
+							// Will not work, because animations cannot be modified for items?
+							// anim->destroyOldNodeTrack(headBone->getHandle());
+						}
+					}
+				}
 			}
 		}
 		return true;
@@ -213,6 +323,11 @@ namespace NOWA
 		if (nullptr != this->headBone)
 		{
 			this->headBone->reset();
+			this->headBone = nullptr;
+		}
+		if (nullptr != this->headBoneV2)
+		{
+			this->headBoneV2 = nullptr;
 		}
 		return true;
 	}
@@ -558,7 +673,6 @@ namespace NOWA
 		}
 
 		// Checks if the entity has at least one animation and no player controller, else animation component is senseless
-		// TODO: Extend for Item
 		Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{

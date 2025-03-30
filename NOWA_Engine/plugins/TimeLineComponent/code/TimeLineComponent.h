@@ -1,10 +1,19 @@
-#ifndef TIME_LINE_COMPONENT_H
-#define TIME_LINE_COMPONENT_H
+/*
+Copyright (c) 2025 Lukas Kalinowski
 
-#include "GameObjectComponent.h"
+GPL v3
+*/
+
+#ifndef TIMELINECOMPONENT_H
+#define TIMELINECOMPONENT_H
+
+#include "gameobject/GameObjectComponent.h"
+#include "main/Events.h"
+#include "OgrePlugin.h"
 
 namespace NOWA
 {
+
 	/**
 	 * @class 	TimeLineComponent
 	 * @brief 	This component can be used in the main game object to add id's of other game objects, that are activated at a specifig time point and deactivated after a duration of time.
@@ -18,11 +27,11 @@ namespace NOWA
 	 *  startPoint[0] = 2
 	 *  repeatCount[0] = 4
 	 *  duration[0] = 4
-	 *   
+	 *
 	 *  startPoint[1] = 7
 	 *  repeatCount[1] = 0
 	 *  duration[1] = 4
-	 *   
+	 *
 	 *  startPoint[2] = 13
 	 *  repeatCount[2] = 3
 	 *  duration[2] = 6
@@ -32,31 +41,63 @@ namespace NOWA
 	 *  STx -> timePointStartEventName function
 	 *  RCx -> timePointStartEventName function
 	 *  EPx -> timePointEndEventName function
-	 *  
+	 *
 	 *  sumTimePoints (with repeat counts) = startPoint * 3 + (repeatCount - 1) * 3 + endPoint * 3 = 11 = total points
-	 *  
+	 *
 	 *                   D0 = 4                   D1 = 4                             D2 = 6
 	 *            __________|__________    __________|__________         _______________|_______________
 	 *            |                   |    |                   |         |                             |
 	 *           ST0                 EP0  ST1                 EP1       ST2                           EP2
 	 *            |   RC0  RC1  RC2   |    |                   |         |        RC0       RC1        |
 	 *            |    |    |    |    |    |                   |         |         |         |         |
-	 *            |    |    |    |    |    |                   |         |         |         |         | 
+	 *            |    |    |    |    |    |                   |         |         |         |         |
 	 *  |----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|-> time (sec)
 	 *  0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19  20
-	 *  
+	 *
 	 *                    R = 4                    R = 0                              R = 3
 	 */
-	class EXPORTED TimeLineComponent : public GameObjectComponent
+	class EXPORTED TimeLineComponent : public GameObjectComponent, public Ogre::Plugin
 	{
 	public:
-
-		typedef boost::shared_ptr<NOWA::TimeLineComponent> NodeTrackCompPtr;
+		typedef boost::shared_ptr<TimeLineComponent> TimeLineComponentPtr;
 	public:
-	
+
 		TimeLineComponent();
 
 		virtual ~TimeLineComponent();
+
+		/**
+		* @see		Ogre::Plugin::install
+		*/
+		virtual void install(const Ogre::NameValuePairList* options) override;
+
+		/**
+		* @see		Ogre::Plugin::initialise
+		* @note		Do nothing here, because its called far to early and nothing is there of NOWA-Engine yet!
+		*/
+		virtual void initialise() override {};
+
+		/**
+		* @see		Ogre::Plugin::shutdown
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void shutdown() override {};
+
+		/**
+		* @see		Ogre::Plugin::uninstall
+		* @note		Do nothing here, because its called far to late and nothing is there of NOWA-Engine anymore! Use @onRemoveComponent in order to destroy something.
+		*/
+		virtual void uninstall() override {};
+
+		/**
+		* @see		Ogre::Plugin::getName
+		*/
+		virtual const Ogre::String& getName() const override;
+		
+		/**
+		* @see		Ogre::Plugin::getAbiCookie
+		*/
+		virtual void getAbiCookie(Ogre::AbiCookie& outAbiCookie) override;
 
 		/**
 		* @see		GameObjectComponent::init
@@ -93,20 +134,42 @@ namespace NOWA
 		*/
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
+		/**
+		* @see		GameObjectComponent::update
+		*/
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
+		/**
+		* @see		GameObjectComponent::actualizeValue
+		*/
+		virtual void actualizeValue(Variant* attribute) override;
+
+		/**
+		* @see		GameObjectComponent::writeXML
+		*/
+		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
+
+	public:
+		/**
+		* @see		GameObjectComponent::getStaticClassId
+		*/
 		static unsigned int getStaticClassId(void)
 		{
 			return NOWA::getIdFromName("TimeLineComponent");
 		}
 
+		/**
+		* @see		GameObjectComponent::getStaticClassName
+		*/
 		static Ogre::String getStaticClassName(void)
 		{
 			return "TimeLineComponent";
 		}
-
+	
 		/**
-		 * @see  GameObjectComponent::createStaticApiForLua
-		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		* @see		GameObjectComponent::canStaticAddComponent
+		*/
+		static bool canStaticAddComponent(GameObject* gameObject);
 
 		/**
 		* @see	GameObjectComponent::getStaticInfoText
@@ -118,25 +181,16 @@ namespace NOWA
 				"Example: Creating a film sequence or a space game, in which enemy space ships are spawned at specific time points. Its also possible set a current time and automatically the nearest time point is determined."
 				"Requirements: MainGameObject ";
 		}
-
+		
 		/**
-		 * @see		GameObjectComponent::update
+		 * @see	GameObjectComponent::createStaticApiForLua
 		 */
-		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObjectClass, luabind::class_<GameObjectController>& gameObjectControllerClass);
 
+	public:
 		/**
-		 * @see		GameObjectComponent::actualizeValue
-		 */
-		virtual void actualizeValue(Variant* attribute) override;
-
-		/**
-		* @see		GameObjectComponent::writeXML
-		*/
-		virtual void writeXML(rapidxml::xml_node<>* propertiesXML, rapidxml::xml_document<>& doc) override;
-
-		/**
-		* @see		GameObjectComponent::setActivated
-		*/
+			* @see		GameObjectComponent::setActivated
+			*/
 		virtual void setActivated(bool activated) override;
 
 		virtual bool isActivated(void) const override;
@@ -263,8 +317,8 @@ namespace NOWA
 		static const Ogre::String AttrTimePointCount(void) { return "Time Point Count"; }
 		static const Ogre::String AttrGameObjectId(void) { return "game object Id "; }
 		static const Ogre::String AttrStartTime(void) { return "Start Time "; }
-		static const Ogre::String AttrDuration(void) {return "Duration "; }
-		static const Ogre::String AttrRepeatCount(void) {return "Repeat Count "; }
+		static const Ogre::String AttrDuration(void) { return "Duration "; }
+		static const Ogre::String AttrRepeatCount(void) { return "Repeat Count "; }
 		static const Ogre::String AttrTimePointStartEventName(void) { return "Timepoint Start Event Name "; }
 		static const Ogre::String AttrTimePointEndEventName(void) { return "Timepoint End Event Name "; }
 	private:
@@ -276,6 +330,8 @@ namespace NOWA
 		std::vector<Variant*> repeatCounts;
 		std::vector<Variant*> timePointStartEventNames;
 		std::vector<Variant*> timePointEndEventNames;
+
+		Ogre::String name;
 		std::vector<GameObject*> gameObjects;
 		std::vector<bool> alreadyActivatedList;
 		unsigned int timePointIndex;
@@ -285,6 +341,7 @@ namespace NOWA
 		bool callForEndPoint;
 	};
 
-}; //namespace end
+}; // namespace end
 
 #endif
+

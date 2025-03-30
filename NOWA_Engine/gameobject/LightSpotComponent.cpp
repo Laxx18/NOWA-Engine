@@ -164,14 +164,22 @@ namespace NOWA
 
 	bool LightSpotComponent::connect(void)
 	{
-		this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+		if (nullptr != this->dummyEntity)
+		{
+			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
+			this->dummyEntity->setVisible(visible);
+		}
 
 		return true;
 	}
 
 	bool LightSpotComponent::disconnect(void)
 	{
-		this->dummyEntity->setVisible(true);
+		if (nullptr != this->dummyEntity)
+		{
+			bool visible = this->gameObjectPtr->isVisible();
+			this->dummyEntity->setVisible(visible);
+		}
 
 		return true;
 	}

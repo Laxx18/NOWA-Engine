@@ -41,7 +41,7 @@ namespace NOWA
 	using namespace rapidxml;
 	using namespace luabind;
 
-	GameObject::GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, 
+	GameObject::GameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject,
 		const Ogre::String& category, const Ogre::String& renderCategory,
 		bool dynamic, GameObject::eType type, unsigned long id)
 		: sceneManager(sceneManager),
@@ -605,7 +605,6 @@ namespace NOWA
 				luaScriptNoCompileErrors = luaScriptCompPtr->compileScript();
 			}
 		}
-
 
 		boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(this->getComponent<AiLuaComponent>());
 		

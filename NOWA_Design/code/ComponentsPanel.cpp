@@ -323,7 +323,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 			NOWA::GameObjectCompPtr gameObjectComponentPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::GameObjectComponent>(componentName));
 
 			// MyGUIItemBoxComponent: A player may have an inventory, or a shop, or another trader
-			if (NOWA::PhysicsMaterialComponent::getStaticClassName() == componentName || NOWA::TimeLineComponent::getStaticClassName() == componentName)
+			if (NOWA::PhysicsMaterialComponent::getStaticClassName() == componentName)
 			{
 				// Physics material only possible to add to main game object, because special treatment, it will be connected a last, to have all components connect prior
 				// to get valid data
@@ -464,7 +464,6 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 				|| (NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::TimeTriggerComponent::getStaticClassName() == tempComponentName)
-				|| (NOWA::TimeLineComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::SpawnComponent::getStaticClassName() == tempComponentName))
 			{
 				validToEnable = true;

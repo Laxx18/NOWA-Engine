@@ -62,11 +62,8 @@ namespace NOWA
 	{
 		if (nullptr != dummyEntity)
 		{
-			if (true == this->dummyEntity->isVisible() && false == this->show->getBool())
-			{
-				this->dummyEntity->setVisible(false);
-			}
-			
+			bool visible = this->show->getBool() && this->gameObjectPtr->isVisible();
+			this->dummyEntity->setVisible(visible);
 		}
 
 		return true;
@@ -74,9 +71,10 @@ namespace NOWA
 
 	bool NodeComponent::disconnect(void)
 	{
-		if (false == this->dummyEntity->isVisible())
+		if (nullptr != this->dummyEntity)
 		{
-			this->dummyEntity->setVisible(true);
+			bool visible = this->gameObjectPtr->isVisible();
+			this->dummyEntity->setVisible(visible);
 		}
 		return true;
 	}

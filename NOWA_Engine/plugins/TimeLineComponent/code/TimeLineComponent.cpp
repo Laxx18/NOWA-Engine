@@ -1,8 +1,12 @@
 #include "NOWAPrecompiled.h"
 #include "TimeLineComponent.h"
 #include "utilities/XMLConverter.h"
-#include "NodeComponent.h"
+#include "modules/LuaScriptApi.h"
+#include "main/EventManager.h"
 #include "main/AppStateManager.h"
+#include "gameobject/GameObjectFactory.h"
+
+#include "OgreAbiUtils.h"
 
 namespace NOWA
 {
@@ -18,15 +22,30 @@ namespace NOWA
 		activated(new Variant(TimeLineComponent::AttrActivated(), true, this->attributes))
 	{
 		this->timePointCount = new Variant(TimeLineComponent::AttrTimePointCount(), 0, this->attributes);
-	
+
 		// Since when node game object count is changed, the whole properties must be refreshed, so that new field may come for node tracks
 		this->timePointCount->addUserData(GameObject::AttrActionNeedRefresh());
 		this->timePointCount->addUserData(GameObject::AttrActionSeparator());
 	}
 
-	TimeLineComponent::~TimeLineComponent()
+	TimeLineComponent::~TimeLineComponent(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TimeLineComponent] Destructor time line component for game object: " + this->gameObjectPtr->getName());
+		
+	}
+
+	const Ogre::String& TimeLineComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void TimeLineComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<TimeLineComponent>(TimeLineComponent::getStaticClassId(), TimeLineComponent::getStaticClassName());
+	}
+	
+	void TimeLineComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool TimeLineComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -240,7 +259,7 @@ namespace NOWA
 				if (true == this->bShowDebugData)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TimeLineComponent] Current timepoint Index: " + Ogre::StringConverter::toString(this->timePointIndex)
-							+ " current global sub Index: " + Ogre::StringConverter::toString(this->globalSubIndex[this->timePointIndex]) + " current sub time point: " + Ogre::StringConverter::toString(subTimePoint + stepSec));
+						+ " current global sub Index: " + Ogre::StringConverter::toString(this->globalSubIndex[this->timePointIndex]) + " current sub time point: " + Ogre::StringConverter::toString(subTimePoint + stepSec));
 				}
 				if (this->timeDt >= subTimePoint + stepSec && false == this->callForEndPoint)
 				{
@@ -265,7 +284,7 @@ namespace NOWA
 						}
 
 						this->alreadyActivatedList[this->totalIndex] = true;
-						
+
 						int repeatCount = this->repeatCounts[this->timePointIndex]->getInt() - 1;
 						if (repeatCount < 0)
 							repeatCount = 0;
@@ -375,7 +394,7 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("name", "Activated"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->activated->getBool())));
 		propertiesXML->append_node(propertyXML);
-		
+
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "2"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "TimePointCount"));
@@ -395,7 +414,7 @@ namespace NOWA
 			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "StartTime" + Ogre::StringConverter::toString(i))));
 			propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->startTimes[i]->getReal())));
 			propertiesXML->append_node(propertyXML);
-			
+
 			propertyXML = doc.allocate_node(node_element, "property");
 			propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
 			propertyXML->append_attribute(doc.allocate_attribute("name", XMLConverter::ConvertString(doc, "Duration" + Ogre::StringConverter::toString(i))));
@@ -476,7 +495,7 @@ namespace NOWA
 				this->timePointStartEventNames[i]->setDescription("Sets the lua start event name, in order to react when the time point is met. E.g. onStartSpawnEnemyTimePoint()");
 				this->timePointStartEventNames[i]->addUserData(GameObject::AttrActionGenerateLuaFunction(), "(timePointSec)");
 				// this->timePointStartEventNames[i]->addUserData(GameObject::AttrActionNeedRefresh());
-				
+
 				this->timePointEndEventNames[i] = new Variant(TimeLineComponent::AttrTimePointEndEventName() + Ogre::StringConverter::toString(i), "", this->attributes);
 				this->timePointEndEventNames[i]->addUserData(GameObject::AttrActionGenerateLuaFunction(), "(timePointSec)");
 				// this->timePointEndEventNames[i]->addUserData(GameObject::AttrActionNeedRefresh());
@@ -518,7 +537,7 @@ namespace NOWA
 		if (index > this->startTimes.size())
 			index = static_cast<unsigned int>(this->startTimes.size()) - 1;
 
-		
+
 		if (timePosition < 0.0f)
 			timePosition = 0.0f;
 
@@ -680,7 +699,7 @@ namespace NOWA
 			}
 		}
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TimeLineComponent] The given time of " + Ogre::StringConverter::toString(seconds) 
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[TimeLineComponent] The given time of " + Ogre::StringConverter::toString(seconds)
 			+ " exceeds the time line! Hence no time points will be triggered for game object: " + this->gameObjectPtr->getName());
 		return false;
 	}
@@ -718,4 +737,62 @@ namespace NOWA
 		return sumDurations;
 	}
 
-}; // namespace end
+	// Lua registration part
+
+	TimeLineComponent* getTimeLineComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<TimeLineComponent>(gameObject->getComponentWithOccurrence<TimeLineComponent>(occurrenceIndex)).get();
+	}
+
+	TimeLineComponent* getTimeLineComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<TimeLineComponent>(gameObject->getComponent<TimeLineComponent>()).get();
+	}
+
+	TimeLineComponent* getTimeLineComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<TimeLineComponent>(gameObject->getComponentFromName<TimeLineComponent>(name)).get();
+	}
+
+	void TimeLineComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<TimeLineComponent, GameObjectComponent>("TimeLineComponent")
+				.def("setActivated", &TimeLineComponent::setActivated)
+				.def("isActivated", &TimeLineComponent::isActivated)
+				.def("setCurrentTimeSec", &TimeLineComponent::setCurrentTimeSec)
+				.def("getCurrentTimeSec", &TimeLineComponent::getCurrentTimeSec)
+				.def("getMaxTimeLineDuration", &TimeLineComponent::getMaxTimeLineDuration)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "class inherits GameObjectComponent", TimeLineComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "void setActivated(bool activated)", "Sets whether time line can start or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "bool isActivated()", "Gets whether this time line is activated or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "bool setCurrentTimeSec(float timeSec)", "Sets the current time in seconds. Note: The next time point is determined, and the corresponding game object or lua function (if existing) called. Note: If the given time exceeds the overwhole time line duration, false is returned.");
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "float getCurrentTimeSec()", "Gets the current time in seconds, since this component is running.");
+		LuaScriptApi::getInstance()->addClassToCollection("TimeLineComponent", "float getMaxTimeLineDuration()", "Calculates and gets the maximum time line duration in seconds. Note: Do not call this to often, because the max time is calculated each time from the scratch, in order to be as flexible as possible. E.g. a time point has been removed during runtime.");
+
+		gameObjectClass.def("getTimeLineComponentFromName", &getTimeLineComponentFromName);
+		gameObjectClass.def("getTimeLineComponent", (TimeLineComponent * (*)(GameObject*)) & getTimeLineComponent);
+		// If its desired to create several of this components for one game object
+		gameObjectClass.def("getTimeLineComponentFromIndex", (TimeLineComponent * (*)(GameObject*, unsigned int)) & getTimeLineComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeLineComponent getTimeLineComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeLineComponent getTimeLineComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeLineComponent getTimeLineComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castTimeLineComponent", &GameObjectController::cast<TimeLineComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "TimeLineComponent castTimeLineComponent(TimeLineComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool TimeLineComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		// Can only be added once
+		if (gameObject->getComponentCount<TimeLineComponent>() < 2)
+		{
+			return true;
+		}
+	}
+
+}; //namespace end

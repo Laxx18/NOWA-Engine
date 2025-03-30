@@ -10,6 +10,9 @@ GPL v3
 #include "main/Events.h"
 #include "OgrePlugin.h"
 
+class OgreBone;
+class OgreSkeletonInstance;
+
 namespace NOWA
 {
 	/**
@@ -199,6 +202,7 @@ namespace NOWA
 		Variant* maxYaw;
 		Ogre::SceneNode* targetSceneNode;
 		Ogre::v1::OldBone* headBone;
+		Ogre::Bone* headBoneV2;
 	};
 
 }; //namespace end

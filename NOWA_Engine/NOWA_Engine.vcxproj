@@ -276,7 +276,6 @@
     <ClInclude Include="gameobject\TagChildNodeComponent.h" />
     <ClInclude Include="gameobject\TagPointComponent.h" />
     <ClInclude Include="gameobject\TerraComponent.h" />
-    <ClInclude Include="gameobject\TimeLineComponent.h" />
     <ClInclude Include="gameobject\TimeTriggerComponent.h" />
     <ClInclude Include="gameobject\Tire.h" />
     <ClInclude Include="gameobject\TransformComponent.h" />
@@ -492,7 +491,6 @@
     <ClCompile Include="gameobject\TagChildNodeComponent.cpp" />
     <ClCompile Include="gameobject\TagPointComponent.cpp" />
     <ClCompile Include="gameobject\TerraComponent.cpp" />
-    <ClCompile Include="gameobject\TimeLineComponent.cpp" />
     <ClCompile Include="gameobject\TimeTriggerComponent.cpp" />
     <ClCompile Include="gameobject\Tire.cpp" />
     <ClCompile Include="gameobject\TransformComponent.cpp" />

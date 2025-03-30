@@ -531,9 +531,6 @@
     <ClInclude Include="modules\MeshDecalGeneratorModule.h">
       <Filter>modules</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\TimeLineComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="camera\ZoomCamera.h">
       <Filter>camera</Filter>
     </ClInclude>
@@ -1096,9 +1093,6 @@
     </ClCompile>
     <ClCompile Include="modules\MeshDecalGeneratorModule.cpp">
       <Filter>modules</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\TimeLineComponent.cpp">
-      <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="camera\ZoomCamera.cpp">
       <Filter>camera</Filter>
