@@ -402,9 +402,6 @@
     <ClInclude Include="main\IntroState.h">
       <Filter>main</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\TimeTriggerComponent.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\CameraComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
@@ -964,9 +961,6 @@
     </ClCompile>
     <ClCompile Include="main\IntroState.cpp">
       <Filter>main</Filter>
-    </ClCompile>
-    <ClCompile Include="gameobject\TimeTriggerComponent.cpp">
-      <Filter>gameobject</Filter>
     </ClCompile>
     <ClCompile Include="gameobject\CameraComponent.cpp">
       <Filter>gameobject</Filter>

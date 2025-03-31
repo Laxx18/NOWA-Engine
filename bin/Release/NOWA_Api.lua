@@ -7735,14 +7735,6 @@ return {
 				returns = "(TimeTriggerComponent)",
 				valuetype = "TimeTriggerComponent"
 			},
-			getTimeLineComponent =
-			{
-				type = "function",
-				description = "Gets the time line component.",
-				args = "()",
-				returns = "(TimeLineComponent)",
-				valuetype = "TimeLineComponent"
-			},
 			getMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -8743,14 +8735,6 @@ return {
 				returns = "(TimeTriggerComponent)",
 				valuetype = "TimeTriggerComponent"
 			},
-			getTimeLineComponentFromName =
-			{
-				type = "function",
-				description = "Gets the time line component.",
-				args = "(string name)",
-				returns = "(TimeLineComponent)",
-				valuetype = "TimeLineComponent"
-			},
 			getMoveMathFunctionComponentFromName =
 			{
 				type = "function",
@@ -9718,6 +9702,30 @@ return {
 				args = "(string name)",
 				returns = "(SplitScreenComponent)",
 				valuetype = "SplitScreenComponent"
+			},
+			getTimeLineComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(TimeLineComponent)",
+				valuetype = "TimeLineComponent"
+			},
+			getTimeLineComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(TimeLineComponent)",
+				valuetype = "TimeLineComponent"
+			},
+			getTimeLineComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(TimeLineComponent)",
+				valuetype = "TimeLineComponent"
 			},
 			getTransformEaseComponentFromIndex =
 			{
@@ -10815,14 +10823,6 @@ return {
 				returns = "(TimeTriggerComponent)",
 				valuetype = "TimeTriggerComponent"
 			},
-			castTimeLineComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(TimeLineComponent other)",
-				returns = "(TimeLineComponent)",
-				valuetype = "TimeLineComponent"
-			},
 			castMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -11334,6 +11334,14 @@ return {
 				args = "(SplitScreenComponent other)",
 				returns = "(SplitScreenComponent)",
 				valuetype = "SplitScreenComponent"
+			},
+			castTimeLineComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(TimeLineComponent other)",
+				returns = "(TimeLineComponent)",
+				valuetype = "TimeLineComponent"
 			},
 			castTransformEaseComponent =
 			{

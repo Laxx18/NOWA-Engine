@@ -69,6 +69,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MeshModifyComponent", "Mesh
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimeLineComponent", "TimeLineComponent\TimeLineComponent.vcxproj", "{784F7C0F-26A7-44E7-94C6-FDA9E98589A4}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimeTriggerComponent", "TimeTriggerComponent\TimeTriggerComponent.vcxproj", "{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -207,6 +209,10 @@ Global
 		{784F7C0F-26A7-44E7-94C6-FDA9E98589A4}.Debug|x64.Build.0 = Debug|x64
 		{784F7C0F-26A7-44E7-94C6-FDA9E98589A4}.Release|x64.ActiveCfg = Release|x64
 		{784F7C0F-26A7-44E7-94C6-FDA9E98589A4}.Release|x64.Build.0 = Release|x64
+		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Debug|x64.ActiveCfg = Debug|x64
+		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Debug|x64.Build.0 = Debug|x64
+		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Release|x64.ActiveCfg = Release|x64
+		{ACB6212C-BAB6-4CA1-8D90-DAAE2430A346}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

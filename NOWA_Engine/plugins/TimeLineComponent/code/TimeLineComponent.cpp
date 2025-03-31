@@ -15,6 +15,7 @@ namespace NOWA
 
 	TimeLineComponent::TimeLineComponent()
 		: GameObjectComponent(),
+		name("TimeLineComponent"),
 		timePointIndex(0),
 		totalIndex(0),
 		timeDt(0.0f),

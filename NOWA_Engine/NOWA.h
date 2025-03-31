@@ -121,7 +121,6 @@ extern "C"
 #include "gameobject/RibbonTrailComponent.h"
 #include "gameobject/JointComponents.h"
 #include "gameobject/PhysicsMaterialComponent.h"
-#include "gameobject/TimeTriggerComponent.h"
 #include "gameobject/CameraComponent.h"
 #include "gameobject/ReflectionCameraComponent.h"
 #include "gameObject/WorkspaceComponents.h"
@@ -240,7 +239,6 @@ namespace NOWA
 	
 	typedef boost::shared_ptr<PhysicsComponent> PhysicsCompPtr;
 	typedef boost::shared_ptr<PhysicsActiveComponent> PhysicsActiveCompPtr;
-	typedef boost::shared_ptr<TimeTriggerComponent> TimeTriggerCompPtr;
 	typedef boost::shared_ptr<CameraComponent> CameraCompPtr;
 	typedef boost::shared_ptr<ReflectionCameraComponent> ReflectionCameraCompPtr;
 

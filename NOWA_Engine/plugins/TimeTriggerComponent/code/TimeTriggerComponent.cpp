@@ -1,7 +1,12 @@
 #include "NOWAPrecompiled.h"
 #include "TimeTriggerComponent.h"
-#include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
+#include "modules/LuaScriptApi.h"
+#include "main/EventManager.h"
+#include "main/AppStateManager.h"
+#include "gameobject/GameObjectFactory.h"
+
+#include "OgreAbiUtils.h"
 
 namespace NOWA
 {
@@ -10,6 +15,7 @@ namespace NOWA
 
 	TimeTriggerComponent::TimeTriggerComponent()
 		: GameObjectComponent(),
+		name("TimeTriggerComponent"),
 		timeDt(0.0f),
 		startCounting(false),
 		firstTimeActivated(true),
@@ -27,9 +33,24 @@ namespace NOWA
 		this->deactivateAfterwards->setDescription("Sets whether to deactivate the component above after the time is over or let the component remain activated.");
 	}
 
-	TimeTriggerComponent::~TimeTriggerComponent()
+	TimeTriggerComponent::~TimeTriggerComponent(void)
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TimeTriggerComponent] Destructor time trigger component for game object: " + this->gameObjectPtr->getName());
+		
+	}
+
+	const Ogre::String& TimeTriggerComponent::getName() const
+	{
+		return this->name;
+	}
+
+	void TimeTriggerComponent::install(const Ogre::NameValuePairList* options)
+	{
+		GameObjectFactory::getInstance()->getComponentFactory()->registerPluginComponentClass<TimeTriggerComponent>(TimeTriggerComponent::getStaticClassId(), TimeTriggerComponent::getStaticClassName());
+	}
+	
+	void TimeTriggerComponent::getAbiCookie(Ogre::AbiCookie& outAbiCookie)
+	{
+		outAbiCookie = Ogre::generateAbiCookie();
 	}
 
 	bool TimeTriggerComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -72,9 +93,8 @@ namespace NOWA
 
 	GameObjectCompPtr TimeTriggerComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
-		TimeTriggerCompPtr clonedCompPtr(boost::make_shared<TimeTriggerComponent>());
+		TimeTriggerComponentPtr clonedCompPtr(boost::make_shared<TimeTriggerComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setActivateOne(this->activateOne->getBool());
 		clonedCompPtr->setStartTime(this->startTime->getReal());
@@ -340,4 +360,52 @@ namespace NOWA
 		return this->deactivateAfterwards->getBool();
 	}
 
-}; // namespace end
+	// Lua registration part
+
+	TimeTriggerComponent* getTimeTriggerComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponentWithOccurrence<TimeTriggerComponent>(occurrenceIndex)).get();
+	}
+
+	TimeTriggerComponent* getTimeTriggerComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponent<TimeTriggerComponent>()).get();
+	}
+
+	TimeTriggerComponent* getTimeTriggerComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponentFromName<TimeTriggerComponent>(name)).get();
+	}
+
+	void TimeTriggerComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<TimeTriggerComponent, GameObjectComponent>("TimeTriggerComponent")
+			.def("setActivated", &TimeTriggerComponent::setActivated)
+			.def("isActivated", &TimeTriggerComponent::isActivated)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("TimeTriggerComponent", "class inherits GameObjectComponent", TimeTriggerComponent::getStaticInfoText());
+		LuaScriptApi::getInstance()->addClassToCollection("TimeTriggerComponent", "void setActivated(bool activated)", "Sets whether time trigger can start or not.");
+		LuaScriptApi::getInstance()->addClassToCollection("TimeTriggerComponent", "bool isActivated()", "Gets whether this time trigger is activated or not.");
+
+		gameObjectClass.def("getTimeTriggerComponentFromName", &getTimeTriggerComponentFromName);
+		gameObjectClass.def("getTimeTriggerComponent", (TimeTriggerComponent * (*)(GameObject*)) & getTimeTriggerComponent);
+		// If its desired to create several of this components for one game object
+		gameObjectClass.def("getTimeTriggerComponentFromIndex", (TimeTriggerComponent * (*)(GameObject*, unsigned int)) & getTimeTriggerComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponentFromIndex(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castTimeTriggerComponent", &GameObjectController::cast<TimeTriggerComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "TimeTriggerComponent castTimeTriggerComponent(TimeTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
+	}
+
+	bool TimeTriggerComponent::canStaticAddComponent(GameObject* gameObject)
+	{
+		return true;
+	}
+
+}; //namespace end

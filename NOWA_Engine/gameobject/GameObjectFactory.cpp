@@ -52,7 +52,6 @@
 #include "RibbonTrailComponent.h"
 #include "JointComponents.h"
 #include "PhysicsMaterialComponent.h"
-#include "TimeTriggerComponent.h"
 #include "CameraComponent.h"
 #include "ReflectionCameraComponent.h"
 #include "WorkspaceComponents.h"
@@ -121,7 +120,6 @@ namespace NOWA
 		this->componentFactory.registerClass<ManualObjectComponent>(ManualObjectComponent::getStaticClassId(), ManualObjectComponent::getStaticClassName());
 		this->componentFactory.registerClass<RectangleComponent>(RectangleComponent::getStaticClassId(), RectangleComponent::getStaticClassName());
 		this->componentFactory.registerClass<ValueBarComponent>(ValueBarComponent::getStaticClassId(), ValueBarComponent::getStaticClassName());
-		this->componentFactory.registerClass<TimeTriggerComponent>(TimeTriggerComponent::getStaticClassId(), TimeTriggerComponent::getStaticClassName());
 		this->componentFactory.registerClass<CameraComponent>(CameraComponent::getStaticClassId(), CameraComponent::getStaticClassName());
 		this->componentFactory.registerClass<ReflectionCameraComponent>(ReflectionCameraComponent::getStaticClassId(), ReflectionCameraComponent::getStaticClassName());
 

@@ -463,7 +463,6 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 			else if ((NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
-				|| (NOWA::TimeTriggerComponent::getStaticClassName() == tempComponentName)
 				|| (NOWA::SpawnComponent::getStaticClassName() == tempComponentName))
 			{
 				validToEnable = true;

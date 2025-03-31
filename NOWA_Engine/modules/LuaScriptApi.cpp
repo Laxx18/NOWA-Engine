@@ -2417,16 +2417,6 @@ namespace NOWA
 		return makeStrongPtr<TagPointComponent>(gameObject->getComponent<TagPointComponent>()).get();
 	}
 
-	TimeTriggerComponent* getTimeTriggerComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponentWithOccurrence<TimeTriggerComponent>(occurrenceIndex)).get();
-	}
-
-	TimeTriggerComponent* getTimeTriggerComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponent<TimeTriggerComponent>()).get();
-	}
-
 	MoveMathFunctionComponent* getMoveMathFunctionComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<MoveMathFunctionComponent>(gameObject->getComponent<MoveMathFunctionComponent>()).get();
@@ -3082,11 +3072,6 @@ namespace NOWA
 		return makeStrongPtr<TagPointComponent>(gameObject->getComponentFromName<TagPointComponent>(name)).get();
 	}
 
-	TimeTriggerComponent* getTimeTriggerComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<TimeTriggerComponent>(gameObject->getComponentFromName<TimeTriggerComponent>(name)).get();
-	}
-
 	MoveMathFunctionComponent* getMoveMathFunctionComponentFromName(GameObject* gameObject, const Ogre::String& name)
 	{
 		return makeStrongPtr<MoveMathFunctionComponent>(gameObject->getComponentFromName<MoveMathFunctionComponent>(name)).get();
@@ -3480,8 +3465,6 @@ namespace NOWA
 		gameObject.def("getMeshDecalComponent", &getMeshDecalComponent);
 		gameObject.def("getTagPointComponent", (TagPointComponent * (*)(GameObject*)) & getTagPointComponent);
 		gameObject.def("getTagPointComponentFromIndex", (TagPointComponent * (*)(GameObject*, unsigned int)) & getTagPointComponent);
-		gameObject.def("getTimeTriggerComponent", (TimeTriggerComponent * (*)(GameObject*)) & getTimeTriggerComponent);
-		gameObject.def("getTimeTriggerComponentFromIndex", (TimeTriggerComponent * (*)(GameObject*, unsigned int)) & getTimeTriggerComponent);
 		gameObject.def("getMoveMathFunctionComponent", &getMoveMathFunctionComponent);
 
 		gameObject.def("getTagChildNodeComponent", (TagChildNodeComponent * (*)(GameObject*)) & getTagChildNodeComponent);
@@ -3615,7 +3598,6 @@ namespace NOWA
 		gameObject.def("getPhysicsExplosionComponentFromName", &getPhysicsExplosionComponentFromName);
 		gameObject.def("getMeshDecalComponentFromName", &getMeshDecalComponentFromName);
 		gameObject.def("getTagPointComponentFromName", &getTagPointComponentFromName);
-		gameObject.def("getTimeTriggerComponentFromName", &getTimeTriggerComponentFromName);
 		gameObject.def("getMoveMathFunctionComponentFromName", &getMoveMathFunctionComponentFromName);
 		gameObject.def("getTagChildNodeComponentFromName", &getTagChildNodeComponentFromName);
 		gameObject.def("getNodeTrackComponentFromName", &getNodeTrackComponentFromName);
@@ -3781,8 +3763,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponent()", "Gets the mesh decal component.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromIndex(unsigned int occurrenceIndex)", "Gets the tag point component by the given occurence index, since a game object may have besides other components several tag point components.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponent()", "Gets the tag point component. This can be used if the game object just has one tag point component.");
-		AddClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponentFromIndex(unsigned int occurrenceIndex)", "Gets the time trigger component by the given occurence index, since a game object may have besides other components several tag point components.");
-		AddClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponent()", "Gets the time trigger component. This can be used if the game object just has one time trigger component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponent()", "Gets the move math function component.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponent(unsigned int occurrenceIndex)", "Gets the tag child node component by the given occurence index, since a game object may have besides other components several tag child node components.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponentFromIndex()", "Gets the tag child node component. This can be used if the game object just has one tag child node component.");
@@ -3911,7 +3891,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PhysicsExplosionComponent getPhysicsExplosionComponentFromName(String name)", "Gets the physics explosion component.");
 		AddClassToCollection("GameObject", "MeshDecalComponent getMeshDecalComponentFromName(String name)", "Gets the mesh decal component.");
 		AddClassToCollection("GameObject", "TagPointComponent getTagPointComponentFromName(String name)", "Gets the tag point component.");
-		AddClassToCollection("GameObject", "TimeTriggerComponent getTimeTriggerComponentFromName(String name)", "Gets the time trigger component.");
 		AddClassToCollection("GameObject", "MoveMathFunctionComponent getMoveMathFunctionComponentFromName(String name)", "Gets the mvoe math function component.");
 		AddClassToCollection("GameObject", "TagChildNodeComponent getTagChildNodeComponentFromName(String nameunsigned int occurrenceIndex)", "Gets the tag child node component by the given occurence index, since a game object may have besides other components several tag child node components.");
 		AddClassToCollection("GameObject", "NodeTrackComponent getNodeTrackComponentFromName(String name)", "Gets the node track component.");
@@ -5027,7 +5006,6 @@ namespace NOWA
 		gameObjectController.def("castPhysicsExplosionComponent", &GameObjectController::cast<PhysicsExplosionComponent>);
 		gameObjectController.def("castMeshDecalComponent", &GameObjectController::cast<MeshDecalComponent>);
 		gameObjectController.def("castTagPointComponent", &GameObjectController::cast<TagPointComponent>);
-		gameObjectController.def("castTimeTriggerComponent", &GameObjectController::cast<TimeTriggerComponent>);
 		gameObjectController.def("castMoveMathFunctionComponent", &GameObjectController::cast<MoveMathFunctionComponent>);
 		gameObjectController.def("castTagChildNodeComponent", &GameObjectController::cast<TagChildNodeComponent>);
 		gameObjectController.def("castNodeTrackComponent", &GameObjectController::cast<NodeTrackComponent>);
@@ -5194,7 +5172,6 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "PhysicsExplosionComponent castPhysicsExplosionComponent(PhysicsExplosionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MeshDecalComponent castMeshDecalComponent(MeshDecalComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TagPointComponent castTagPointComponent(TagPointComponent other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "TimeTriggerComponent castTimeTriggerComponent(TimeTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "MoveMathFunctionComponent castMoveMathFunctionComponent(MoveMathFunctionComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "TagChildNodeComponent castTagChildNodeComponent(TagChildNodeComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "NodeTrackComponent castNodeTrackComponent(NodeTrackComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -6299,20 +6276,6 @@ namespace NOWA
 		AddClassToCollection("TagPointComponent", "Vector3 getOffsetPosition()", "Gets the offset position at which the source game object is attached.");
 		AddClassToCollection("TagPointComponent", "void setOffsetOrientation(Vector3 offsetPosition)", "Sets an offset orientation at which the source game object should be attached.");
 		AddClassToCollection("TagPointComponent", "Vector3 getOffsetOrientation()", "Gets the offset orientation at which the source game object is attached.");
-	}
-
-	void bindTimeTriggerComponent(lua_State* lua)
-	{
-		module(lua)
-			[
-				class_<TimeTriggerComponent, GameObjectComponent>("TimeTriggerComponent")
-				.def("setActivated", &TimeTriggerComponent::setActivated)
-			.def("isActivated", &TimeTriggerComponent::isActivated)
-			];
-
-		AddClassToCollection("TimeTriggerComponent", "class inherits GameObjectComponent", TimeTriggerComponent::getStaticInfoText());
-		AddClassToCollection("TimeTriggerComponent", "void setActivated(bool activated)", "Sets whether time trigger can start or not.");
-		AddClassToCollection("TimeTriggerComponent", "bool isActivated()", "Gets whether this time trigger is activated or not.");
 	}
 
 	void bindMoveMathFunctionComponent(lua_State* lua)
@@ -13120,7 +13083,6 @@ namespace NOWA
 				bindParticleUniverseComponent(this->lua);
 				bindPlayerControllerComponents(this->lua);
 				bindTagPointComponent(this->lua);
-				bindTimeTriggerComponent(this->lua);
 				bindMoveMathFunctionComponent(this->lua);
 				bindTagChildNodeComponent(this->lua);
 				bindNodeTrackComponent(this->lua);
