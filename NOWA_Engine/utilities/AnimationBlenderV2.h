@@ -37,8 +37,6 @@ namespace NOWA
 
 		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) const override;
 
-		virtual void setAnimationBlenderObserver(IAnimationBlenderObserver* animationBlenderObserver) override;
-
 		virtual void blend(AnimID animationId, BlendingTransition transition, Ogre::Real duration, bool loop) override;
 		
 		virtual void blend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop) override;
@@ -107,6 +105,14 @@ namespace NOWA
 
 		virtual void setSourceEnabled(bool bEnable) override;
 
+		virtual void addAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
+
+		virtual void removeAnimationBlenderObserver(IAnimationBlenderObserver* observer) override;
+
+		virtual void notifyObservers(void) override;
+
+		virtual void deleteAllObservers(void) override;
+
 		Ogre::SkeletonAnimation* getAnimationState(AnimID animationId);
 
 		Ogre::SkeletonAnimation* getAnimationState(const Ogre::String& animationName);
@@ -122,6 +128,10 @@ namespace NOWA
 		Ogre::Quaternion getLocalToWorldOrientation(Ogre::Bone* bone);
 	public:
 		static void dumpAllAnimations(Ogre::Node* node, Ogre::String padding);
+	protected:
+		virtual void queueAnimationFinishedCallback(std::function<void()> callback) override;
+
+		virtual void processDeferredCallbacks(void) override;
 	private:
 		void internalInit(const Ogre::String& animationName, bool loop = true);
 		void internalBlend(const Ogre::String& animationName, BlendingTransition transition, Ogre::Real duration, bool loop = true);
@@ -152,8 +162,9 @@ namespace NOWA
 
 		std::map<AnimID, Ogre::String> mappedAnimations;
 
-		IAnimationBlenderObserver* animationBlenderObserver;
-		bool skipReactOnAnimation;
+		std::vector<IAnimationBlenderObserver*> animationBlenderObservers;
+		// Deferred callback queue
+		std::vector<std::function<void()>> deferredCallbacks;
 		bool canAnimate;
 	};
 

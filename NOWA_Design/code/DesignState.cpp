@@ -1564,8 +1564,15 @@ void DesignState::updateInfo(Ogre::Real dt)
 		const RenderingMetrics& metrics = Ogre::Root::getSingletonPtr()->getRenderSystem()->getMetrics();
 
 		float avgTime = frameStats->getAvgTime();
-		char m[32];
-		sprintf(m, "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
+		char m[64];  // Increase buffer size
+		if (avgTime > 0.0f && avgTime < 1000.0f) // Prevent division by zero and extreme values
+		{
+			snprintf(m, sizeof(m), "%.2fms - %.2ffps", avgTime, 1000.0f / avgTime);
+		}
+		else
+		{
+			snprintf(m, sizeof(m), "FPS: Invalid");
+		}
 		info += " FPS: " + Ogre::String(m);
 		// Is always 0??
 		/*info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
@@ -2325,7 +2332,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 		bool isNowAtTop = (evt.state.Y.abs <= TOP_THRESHOLD);
 
 		// If mouse just entered or left the top region, reset timer
-		if (isNowAtTop != this->isMouseAtTop)
+		if (isNowAtTop != this->isMouseAtTop && evt.state.buttonDown(OIS::MB_Left))
 		{
 			this->mouseTopTimer = 0.0f;
 			this->isMouseAtTop = isNowAtTop;

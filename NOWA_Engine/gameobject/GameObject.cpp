@@ -8,6 +8,7 @@
 #include "MyGUIItemBoxComponent.h"
 #include "AiLuaComponent.h"
 #include "BackgroundScrollComponent.h"
+#include "CameraComponent.h"
 #include "modules/WorkspaceModule.h"
 #include "modules/DeployResourceModule.h"
 #include "WorkspaceComponents.h"
@@ -1760,7 +1761,21 @@ namespace NOWA
 		{
 			isMovableVisible = this->movableObject->getVisible();
 		}
-		if (this->visible->getBool() != visible)
+
+		const auto& cameraCompPtr = NOWA::makeStrongPtr(this->getComponent<CameraComponent>());
+		if (nullptr != cameraCompPtr)
+		{
+			if (this->visible->getBool() != visible)
+			{
+				this->visible->setValue(visible);
+				if (nullptr != this->movableObject)
+				{
+					this->sceneNode->setVisible(visible);
+					this->movableObject->setVisible(visible);
+				}
+			}
+		}
+		else
 		{
 			this->visible->setValue(visible);
 			if (nullptr != this->movableObject)

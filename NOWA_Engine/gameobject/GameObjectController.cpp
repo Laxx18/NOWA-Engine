@@ -437,7 +437,7 @@ namespace NOWA
 
 		Ogre::MovableObject* clonedMovableObject = nullptr;
 			
-		if (GameObject::ENTITY == originalGameObjectPtr->getType())
+		if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
 		{
 			clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
 		}

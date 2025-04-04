@@ -355,12 +355,15 @@ namespace NOWA
 					NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 					auto ptrFunction = [this]()
 					{
-						this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
-						this->tryRemoveMovingBehavior();
-						delete this->pathGoalObserver;
-						this->pathGoalObserver = nullptr;
-						this->movingBehaviorPtr->setPathGoalObserver(nullptr);
-						this->movingBehaviorPtr.reset();
+						if (nullptr != this->movingBehaviorPtr)
+						{
+							this->movingBehaviorPtr->removeBehavior(this->behaviorTypeId);
+							this->tryRemoveMovingBehavior();
+							delete this->pathGoalObserver;
+							this->pathGoalObserver = nullptr;
+							this->movingBehaviorPtr->setPathGoalObserver(nullptr);
+							this->movingBehaviorPtr.reset();
+						}
 					};
 					NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 					delayProcess->attachChild(closureProcess);

@@ -2977,39 +2977,39 @@ ADD_NODE:
 		// Depending on translate mode adjust the height, or orientation of GO's
 		switch (this->translateMode)
 		{
-		case EDITOR_TRANSLATE_MODE_STACK:
-		case EDITOR_TRANSLATE_MODE_STACK_ORIENTATED:
-		{
-			Ogre::v1::Entity* hitMovableObject = nullptr;
-			Ogre::Real closestDistance = 0.0f;
-
-			// Shoot ray at object position down and exclude that object and gizmo
-			Ogre::Ray hitRay = Ogre::Ray(gameObject->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, gameObject->getSize().y * 10.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-			// Check if there is an hit with an polygon of an entity and stack the to be placed object
-			this->placeObjectQuery->setRay(hitRay);
-
-			std::vector<Ogre::MovableObject*> excludeMovableObjects(5);
-			excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-			excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-			excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-			excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-			excludeMovableObjects[4] = this->gizmo->getSphereEntity();
-			MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-
-			// If nothing to stack to, calc the hit point on floor plane
-			if (nullptr == hitMovableObject)
+			case EDITOR_TRANSLATE_MODE_STACK:
+			case EDITOR_TRANSLATE_MODE_STACK_ORIENTATED:
 			{
-				internalHitPoint = this->getHitPointOnFloor(hitRay);
+				Ogre::v1::Entity* hitMovableObject = nullptr;
+				Ogre::Real closestDistance = 0.0f;
+
+				// Shoot ray at object position down and exclude that object and gizmo
+				Ogre::Ray hitRay = Ogre::Ray(gameObject->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, gameObject->getSize().y * 10.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
+				// Check if there is an hit with an polygon of an entity and stack the to be placed object
+				this->placeObjectQuery->setRay(hitRay);
+
+				std::vector<Ogre::MovableObject*> excludeMovableObjects(5);
+				excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
+				excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
+				excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
+				excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
+				excludeMovableObjects[4] = this->gizmo->getSphereEntity();
+				MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+
+				// If nothing to stack to, calc the hit point on floor plane
+				if (nullptr == hitMovableObject)
+				{
+					internalHitPoint = this->getHitPointOnFloor(hitRay);
+				}
+				// Move the gizmo to the bottom center of the entity mesh
+				Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
+				if (entity)
+				{
+					internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), gameObject->getMovableObject<Ogre::v1::Entity>());
+				}
+				success = true;
+				break;
 			}
-			// Move the gizmo to the bottom center of the entity mesh
-			Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-			if (entity)
-			{
-				internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), gameObject->getMovableObject<Ogre::v1::Entity>());
-			}
-			success = true;
-			break;
-		}
 		}
 
 		if (EDITOR_TRANSLATE_MODE_STACK_ORIENTATED != this->translateMode)

@@ -378,23 +378,23 @@ namespace NOWA
 		{
 			if (nullptr != this->gameObjectPtr)
 			{
-				Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
-				// Ogre::Vector3 cameraPosition = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
+				// Ogre::Vector3 cameraPosition = this->camera->getDerivedPosition();
+				Ogre::Vector3 cameraPosition = this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated();
 
 				if (false == MathHelper::getInstance()->vector3Equals(this->position->getVector3(), cameraPosition, 0.001f))
 				{
-					this->position->setValue(cameraPosition);
+					this->setCameraPosition(cameraPosition);
 				}
 
-				Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
-
+				// Ogre::Quaternion cameraOrientation = this->camera->getDerivedOrientation();
+				Ogre::Quaternion cameraOrientation = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
 				// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-				// Ogre::Quaternion cameraOrientation = this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated();
+				// 
 				Ogre::Vector3 orientationDegree = MathHelper::getInstance()->quatToDegrees(cameraOrientation);
 
 				if (false == MathHelper::getInstance()->vector3Equals(this->orientation->getVector3(), orientationDegree, 0.001f))
 				{
-					this->orientation->setValue(orientationDegree);
+					this->setCameraOrientation(cameraOrientation);
 				}
 
 				this->timeSinceLastUpdate = 2.0f;

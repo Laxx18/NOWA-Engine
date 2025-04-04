@@ -2,6 +2,7 @@
 #include "AnimationComponent.h"
 #include "GameObjectController.h"
 #include "utilities/XMLConverter.h"
+#include "modules/LuaScriptApi.h"
 #include "PlayerControllerComponents.h"
 
 namespace NOWA
@@ -64,7 +65,6 @@ namespace NOWA
 		showSkeleton(new Variant(AnimationComponent::AttrShowSkeleton(), false, this->attributes)),
 		animationBlender(nullptr),
 		skeletonVisualizer(nullptr),
-		animationBlenderObserver(nullptr),
 		bIsInSimulation(false)
 	{
 		
@@ -72,22 +72,7 @@ namespace NOWA
 
 	AnimationComponent::~AnimationComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Destructor animation component for game object: " + this->gameObjectPtr->getName());
-		if (nullptr != this->animationBlenderObserver)
-		{
-			delete this->animationBlenderObserver;
-			this->animationBlenderObserver = nullptr;
-		}
-		if (this->animationBlender)
-		{
-			delete this->animationBlender;
-			this->animationBlender = nullptr;
-		}
-		if (nullptr != this->skeletonVisualizer)
-		{
-			delete this->skeletonVisualizer;
-			this->skeletonVisualizer = nullptr;
-		}
+		
 	}
 
 	bool AnimationComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -191,7 +176,7 @@ namespace NOWA
 		else
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] It seems, that this game object: '" + this->gameObjectPtr->getName() 
-				+ "' is using the wrong animation component type, as it has no v1::entity but item. Please use AnimationComponentV2! So no animations will work so far.");
+				+ "' is using the wrong animation component type, as it has no v1::entity but item. Please use AnimationComponent! So no animations will work so far.");
 		}
 	}
 
@@ -217,6 +202,22 @@ namespace NOWA
 		this->resetAnimation();
 
 		return true;
+	}
+
+	void AnimationComponent::onRemoveComponent(void)
+	{
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Destructor animation component for game object: " + this->gameObjectPtr->getName());
+		if (nullptr != this->animationBlender)
+		{
+			this->animationBlender->deleteAllObservers();
+			delete this->animationBlender;
+			this->animationBlender = nullptr;
+		}
+		if (nullptr != this->skeletonVisualizer)
+		{
+			delete this->skeletonVisualizer;
+			this->skeletonVisualizer = nullptr;
+		}
 	}
 
 	Ogre::String AnimationComponent::getClassName(void) const
@@ -396,11 +397,6 @@ namespace NOWA
 	void AnimationComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-
-		if (false == this->isComplete())
-		{
-			return;
-		}
 
 		// First deactivate
 		if (nullptr != this->animationBlender)
@@ -585,16 +581,94 @@ namespace NOWA
 			return;
 		}
 
-		if (nullptr == this->animationBlenderObserver)
-		{
-			this->animationBlenderObserver = new AnimationBlenderObserver(closureFunction, oneTime);
-		}
-		else
-		{
-			static_cast<AnimationBlenderObserver*>(this->animationBlenderObserver)->setNewFunctionName(closureFunction, oneTime);
-		}
-		// Note: animation blender will delete observer automatically
-		this->animationBlender->setAnimationBlenderObserver(this->animationBlenderObserver);
+		AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+		this->animationBlender->addAnimationBlenderObserver(newObserver);
+	}
+
+	// Lua registration part
+
+	AnimationComponent* getAnimationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
+	{
+		return makeStrongPtr<AnimationComponent>(gameObject->getComponentWithOccurrence<AnimationComponent>(occurrenceIndex)).get();
+	}
+
+	AnimationComponent* getAnimationComponent(GameObject* gameObject)
+	{
+		return makeStrongPtr<AnimationComponent>(gameObject->getComponent<AnimationComponent>()).get();
+	}
+
+	AnimationComponent* getAnimationComponentFromName(GameObject* gameObject, const Ogre::String& name)
+	{
+		return makeStrongPtr<AnimationComponent>(gameObject->getComponentFromName<AnimationComponent>(name)).get();
+	}
+
+	void AnimationComponent::createStaticApiForLua(lua_State* lua, class_<GameObject>& gameObjectClass, class_<GameObjectController>& gameObjectControllerClass)
+	{
+		module(lua)
+		[
+			class_<AnimationComponent, GameObjectComponent>("AnimationComponent")
+			// .def("getClassName", &AnimationComponent::getClassName)
+			.def("getParentClassName", &AnimationComponent::getParentClassName)
+			// .def("clone", &AnimationComponent::clone)
+			// .def("getClassId", &AnimationComponent::getClassId)
+			// .def("getParentClassId", &AnimationComponent::getParentClassId)
+			.def("setActivated", &AnimationComponent::setActivated)
+			.def("isActivated", &AnimationComponent::isActivated)
+			.def("setAnimationName", &AnimationComponent::setAnimationName)
+			.def("getAnimationName", &AnimationComponent::getAnimationName)
+			.def("setSpeed", &AnimationComponent::setSpeed)
+			.def("getSpeed", &AnimationComponent::getSpeed)
+			.def("setRepeat", &AnimationComponent::setRepeat)
+			.def("getRepeat", &AnimationComponent::getRepeat)
+			.def("isComplete", &AnimationComponent::isComplete)
+			.def("getAnimationBlender", &AnimationComponent::getAnimationBlender)
+			.def("getBone", &AnimationComponent::getBone)
+			.def("setTimePosition", &AnimationComponent::setTimePosition)
+			.def("getTimePosition", &AnimationComponent::getTimePosition)
+			.def("getLength", &AnimationComponent::getLength)
+			.def("setWeight", &AnimationComponent::setWeight)
+			.def("getWeight", &AnimationComponent::getWeight)
+			.def("getLocalToWorldPosition", &AnimationComponent::getLocalToWorldPosition)
+			.def("getLocalToWorldOrientation", &AnimationComponent::getLocalToWorldOrientation)
+			.def("reactOnAnimationFinished", &AnimationComponent::reactOnAnimationFinished)
+		];
+
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "class inherits GameObjectComponent", AnimationComponent::getStaticInfoText());
+		// LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
+		// LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "String getClassName()", "Gets the class name of this component as string.");
+		// LuaScriptApi::getInstance()->addClassToCollection(("AnimationComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
+		// LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "number getClassId()", "Gets the class id of this component.");
+		// LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not (Start the animations).");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "bool isActivated()", "Gets whether this component is activated.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setAnimationName(String animationName)", "Sets the to be played animation name. If it does not exist, the animation cannot be played later.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "String getAnimationName()", "Gets currently used animation name.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setSpeed(float speed)", "Sets the animation speed for the current animation.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "float getSpeed()", "Gets the animation speed for currently used animation.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setRepeat(bool repeat)", "Sets whether the current animation should be repeated when finished.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "bool getRepeat()", "Gets whether the current animation will be repeated when finished.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "bool isComplete()", "Gets whether the current animation has finished.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "AnmationBlender getAnimationBlender()", "Gets animation blender to manipulate animations directly.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "Bone getBone(String boneName)", "Gets the bone by the given bone name for direct manipulation. Nil is delivered, if the bone name does not exist.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setTimePosition(float timePosition)", "Sets the time position for the animation.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "float getTimePosition()", "Gets the current animation time position.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "float getLength()", "Gets the animation length.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "float getWeight()", "Gets the current animation weight.");
+		LuaScriptApi::getInstance()->addClassToCollection("AnimationComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
+			"Sets whether to react when the given animation has finished.");
+
+		gameObjectClass.def("getAnimationComponentFromName", &getAnimationComponentFromName);
+		gameObjectClass.def("getAnimationComponent", (AnimationComponent * (*)(GameObject*)) & getAnimationComponent);
+		// If its desired to create several of this components for one game object
+		gameObjectClass.def("getAnimationComponent2", (AnimationComponent * (*)(GameObject*, unsigned int)) & getAnimationComponent);
+
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponent getAnimationComponent2(unsigned int occurrenceIndex)", "Gets the component by the given occurence index, since a game object may this component maybe several times.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponent getAnimationComponent()", "Gets the component. This can be used if the game object this component just once.");
+		LuaScriptApi::getInstance()->addClassToCollection("GameObject", "AnimationComponent getAnimationComponentFromName(String name)", "Gets the component from name.");
+
+		gameObjectControllerClass.def("castAnimationComponent", &GameObjectController::cast<AnimationComponent>);
+		LuaScriptApi::getInstance()->addClassToCollection("GameObjectController", "AnimationComponent castAnimationComponent(AnimationComponent other)", "Casts an incoming type from function for lua auto completion.");
 	}
 	
 }; // namespace end

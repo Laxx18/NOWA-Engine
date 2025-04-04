@@ -69,8 +69,7 @@ namespace NOWA
 		activated(new Variant(AnimationComponentV2::AttrActivated(), true, this->attributes)),
 		animationName(new Variant(AnimationComponentV2::AttrName(), std::vector<Ogre::String>(), this->attributes)),
 		animationSpeed(new Variant(AnimationComponentV2::AttrSpeed(), 1.0f, this->attributes)),
-		animationRepeat(new Variant(AnimationComponentV2::AttrRepeat(), true, this->attributes)),
-		animationBlenderObserver(nullptr)
+		animationRepeat(new Variant(AnimationComponentV2::AttrRepeat(), true, this->attributes))
 	{
 		
 	}
@@ -207,13 +206,9 @@ namespace NOWA
 
 	void AnimationComponentV2::onRemoveComponent(void)
 	{
-		if (nullptr != this->animationBlenderObserver)
-		{
-			delete this->animationBlenderObserver;
-			this->animationBlenderObserver = nullptr;
-		}
 		if (nullptr != this->animationBlender)
 		{
+			this->animationBlender->deleteAllObservers();
 			delete this->animationBlender;
 			this->animationBlender = nullptr;
 		}
@@ -604,16 +599,8 @@ namespace NOWA
 			return;
 		}
 
-		if (nullptr == this->animationBlenderObserver)
-		{
-			this->animationBlenderObserver = new AnimationBlenderObserver(closureFunction, oneTime);
-		}
-		else
-		{
-			static_cast<AnimationBlenderObserver*>(this->animationBlenderObserver)->setNewFunctionName(closureFunction, oneTime);
-		}
-		// Note: animation blender will delete observer automatically
-		this->animationBlender->setAnimationBlenderObserver(this->animationBlenderObserver);
+		AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+		this->animationBlender->addAnimationBlenderObserver(newObserver);
 	}
 
 }; //namespace end

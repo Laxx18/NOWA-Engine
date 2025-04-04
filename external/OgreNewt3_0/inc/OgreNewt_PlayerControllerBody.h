@@ -40,7 +40,7 @@ namespace OgreNewt
 	{
 	public:
 		PlayerControllerBody(World* world, Ogre::SceneManager* sceneManager, const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction, 
-			Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback = nullptr);
+			Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback = nullptr);
 
 		//! destructor
 		virtual ~PlayerControllerBody();
@@ -62,7 +62,7 @@ namespace OgreNewt
 		Ogre::Quaternion getFrame(void) const;
 
 		void reCreatePlayer(const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-			Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback);
+			Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback);
 
 		void setDirection(const Ogre::Vector3& direction);
 

@@ -327,6 +327,7 @@ namespace NOWA
 								this->initPosition + (this->initOrientation * this->offsetPosition->getVector3()),
 								this->initOrientation * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),
 								Ogre::Vector3::UNIT_SCALE);
+							clonedGameObjectPtr->setVisible(true);
 						}
 						else
 						{
@@ -336,6 +337,7 @@ namespace NOWA
 									this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3()), 
 									this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE);
+								clonedGameObjectPtr->setVisible(true);
 							}
 							else
 							{
@@ -345,6 +347,7 @@ namespace NOWA
 									this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3()), 
 									this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE);
+								clonedGameObjectPtr->setVisible(true);
 							}
 						}
 						if (nullptr != clonedGameObjectPtr)

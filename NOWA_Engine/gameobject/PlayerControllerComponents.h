@@ -259,7 +259,6 @@ namespace NOWA
 		Ogre::Real fallThreshold;
 		Ogre::Real recoveryTime;
 
-		AnimationBlenderObserver* animationBlenderObserver;
 		Ogre::SceneNode* debugWaypointNode;
 	};
 

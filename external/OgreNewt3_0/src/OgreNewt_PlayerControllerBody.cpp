@@ -51,7 +51,7 @@ namespace OgreNewt
 {
 	PlayerControllerBody::PlayerControllerBody(World* world, Ogre::SceneManager* sceneManager,
 		const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-		Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback)
+		Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback)
 		: Body(world, sceneManager),
 		world(world),
 		m_startOrientation(startOrientation),
@@ -60,7 +60,7 @@ namespace OgreNewt
 		m_oldStartOrientation(Ogre::Quaternion(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, 1.0f)),
 		m_direction(direction),
 		m_mass(mass),
-		m_collisionPositionOffset(Ogre::Vector3::ZERO),
+		m_collisionPositionOffset(collisionPosition),
 		m_height(height),
 		m_radius(radius),
 		m_stepHeight(stepHeight),
@@ -77,7 +77,7 @@ namespace OgreNewt
 		// Must be created for each body! Else several player controller will not work!
 		m_playerControllerManager(new BasicPlayerControllerManager(this->world->getNewtonWorld()))
 	{
-		reCreatePlayer(startOrientation, startPosition, direction, mass, radius, height, stepHeight, categoryId, playerCallback);
+		reCreatePlayer(startOrientation, startPosition, direction, mass, radius, height, stepHeight, m_collisionPositionOffset, categoryId, playerCallback);
 	}
 
 	PlayerControllerBody::~PlayerControllerBody()
@@ -145,19 +145,20 @@ namespace OgreNewt
 	}
 
 	void PlayerControllerBody::reCreatePlayer(const Ogre::Quaternion& startOrientation, const Ogre::Vector3& startPosition, const Ogre::Vector3& direction,
-		Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, unsigned int categoryId, PlayerCallback* playerCallback)
+		Ogre::Real mass, Ogre::Real radius, Ogre::Real height, Ogre::Real stepHeight, const Ogre::Vector3& collisionPosition, unsigned int categoryId, PlayerCallback* playerCallback)
 	{
 		m_startOrientation = startOrientation;
 		m_startPosition = startPosition;
 
 		if (m_oldStartPosition == m_startPosition && m_oldStartOrientation == m_startOrientation && direction.positionEquals(m_direction) && mass == m_mass && radius == m_radius
-			&& height == m_height && stepHeight == m_stepHeight && categoryId == m_categoryType)
+			&& height == m_height && stepHeight == m_stepHeight && categoryId == m_categoryType && collisionPosition == m_collisionPositionOffset)
 		{
 			return;
 		}
 
 		m_oldStartPosition = m_startPosition;
 		m_oldStartOrientation = m_startOrientation;
+		m_collisionPositionOffset = collisionPosition;
 
 		m_direction = direction;
 		m_mass = mass;
@@ -198,15 +199,12 @@ namespace OgreNewt
 
 		NewtonBodySetUserData(m_body, this);
 
-		if (Ogre::Vector3::ZERO != m_collisionPositionOffset)
-		{
-			dMatrix collisionMatrix;
-			NewtonCollisionGetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
+		dMatrix collisionMatrix;
+		NewtonCollisionGetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
 
-			collisionMatrix.m_posit = dVector(m_collisionPositionOffset.x, m_collisionPositionOffset.y, m_collisionPositionOffset.z, 0.0f);
+		collisionMatrix.m_posit = dVector(m_collisionPositionOffset.x, m_collisionPositionOffset.y, m_collisionPositionOffset.z, 0.0f);
 
-			NewtonCollisionSetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
-		}
+		NewtonCollisionSetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
 
 		// set the transform callback
 		NewtonBodySetTransformCallback(m_body, Body::newtonTransformCallback);

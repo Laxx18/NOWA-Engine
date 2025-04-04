@@ -97,6 +97,25 @@ namespace NOWA
 			ANIM_ACTION_2,
 			ANIM_ACTION_3,
 			ANIM_ACTION_4,
+			ANIM_PULL,
+			ANIM_PUSH,
+			ANIM_KNOCK_DOWN,
+			ANIM_STAND_UP,
+			ANIM_TALK,
+			ANIM_POINT,
+			ANIM_LAUGH,
+			ANIM_LAND_1,
+			ANIM_LAND_2,
+			ANIM_SHOOT,
+			ANIM_START_CLIMB,
+			ANIM_TAKE_DAMAGE,
+			ANIM_SHRUG,
+			ANIM_SALTO,
+			ANIM_CRY,
+			ANIM_CHEER,
+			ANIM_CAST_SPELL_1,
+			ANIM_CAST_SPELL_2,
+			ANIM_CAST_SPELL_3,
 			ANIM_NONE
 		};
 
@@ -121,12 +140,6 @@ namespace NOWA
 		* @return		A string list with all animation names. If none found, empty list will be delivered.
 		*/
 		virtual std::vector<Ogre::String> getAllAvailableAnimationNames(bool skipLogging = true) const = 0;
-
-		/**
-		 * @brief		Sets the animation blender observer to react when an animation, that is started via blendAndContinue is finished.
-		 * @param[in]	animationBlenderObserver		The animation blender observer to set
-		 */
-		virtual void setAnimationBlenderObserver(IAnimationBlenderObserver* animationBlenderObserver) = 0;
 
 		/**
 		* @brief		Blends from the current animation to the new given one.
@@ -247,6 +260,25 @@ namespace NOWA
 		virtual void setDebugLog(bool debugLog) = 0;
 
 		virtual void setSourceEnabled(bool bEnable) = 0;
+
+		/**
+		 * @brief		Adds the animation blender observer to react when an animation, that is started via blendAndContinue is finished.
+		 * @param[in]	animationBlenderObserver		The animation blender observer to add
+		 */
+		virtual void addAnimationBlenderObserver(IAnimationBlenderObserver* observer) = 0;
+
+		virtual void removeAnimationBlenderObserver(IAnimationBlenderObserver* observer) = 0;
+
+		virtual void notifyObservers(void) = 0;
+
+		/**
+		 * @brief		Must be called by the class, which owns the animation blender to delete its observer.
+		 */
+		virtual void deleteAllObservers(void) = 0;
+	protected:
+		virtual void queueAnimationFinishedCallback(std::function<void()> callback) = 0;
+
+		virtual void processDeferredCallbacks(void) = 0;
 	};
 
 }; // namespace end

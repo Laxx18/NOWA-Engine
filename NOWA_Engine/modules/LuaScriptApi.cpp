@@ -964,9 +964,9 @@ namespace NOWA
 		OIS::Keyboard* keyboard;
 		*/
 		module(lua)
-			[
-				class_<OIS::Mouse>("Mouse")
-				.def("getMouseState", &OIS::Mouse::getMouseState)
+		[
+			class_<OIS::Mouse>("Mouse")
+			.def("getMouseState", &OIS::Mouse::getMouseState)
 			.enum_("MouseButtonID")
 			[
 				value("MB_LEFT", OIS::MB_Left),
@@ -978,7 +978,7 @@ namespace NOWA
 				value("MB_BUTTON_6", OIS::MB_Button6),
 				value("MB_BUTTON_7", OIS::MB_Button7)
 			]
-			];
+		];
 
 		AddClassToCollection("Mouse", "class", "OIS mouse class.");
 		AddClassToCollection("Mouse", "MouseState getMouseState()", "Gets the mouse button state.");
@@ -1932,16 +1932,6 @@ namespace NOWA
 		return makeStrongPtr<GameObjectComponent>(gameObject->getComponentByIndex(index)).get();
 	}
 
-	AnimationComponent* getAnimationComponent(GameObject* gameObject, unsigned int occurrenceIndex)
-	{
-		return makeStrongPtr<AnimationComponent>(gameObject->getComponentWithOccurrence<AnimationComponent>(occurrenceIndex)).get();
-	}
-
-	AnimationComponent* getAnimationComponent(GameObject* gameObject)
-	{
-		return makeStrongPtr<AnimationComponent>(gameObject->getComponent<AnimationComponent>()).get();
-	}
-
 	AttributesComponent* getAttributesComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<AttributesComponent>(gameObject->getComponent<AttributesComponent>()).get();
@@ -2625,11 +2615,6 @@ namespace NOWA
 	LuaScriptComponent* getLuaScriptComponent(GameObject* gameObject)
 	{
 		return makeStrongPtr<LuaScriptComponent>(gameObject->getComponent<LuaScriptComponent>()).get();
-	}
-
-	AnimationComponent* getAnimationComponentFromName(GameObject* gameObject, const Ogre::String& name)
-	{
-		return makeStrongPtr<AnimationComponent>(gameObject->getComponentFromName<AnimationComponent>(name)).get();
 	}
 
 	AttributesComponent* getAttributesComponentFromName(GameObject* gameObject, const Ogre::String& name)
@@ -3359,11 +3344,7 @@ namespace NOWA
 		gameObject.def("getOccurrenceIndexFromComponent", &GameObject::getOccurrenceIndexFromComponent);
 		gameObject.def("deleteComponent", (bool (GameObject::*)(const Ogre::String&, unsigned int)) & GameObject::deleteComponent);
 		gameObject.def("deleteComponentByIndex", &GameObject::deleteComponentByIndex);
-
-		gameObject.def("getAnimationComponent", (AnimationComponent * (*)(GameObject*)) & getAnimationComponent);
-		gameObject.def("getAnimationComponentFromIndex", (AnimationComponent * (*)(GameObject*, unsigned int)) & getAnimationComponent);
 		gameObject.def("getAttributesComponent", &getAttributesComponent);
-
 		gameObject.def("getPhysicsBuoyancyComponent", &getPhysicsBuoyancyComponent);
 		gameObject.def("getPhysicsTriggerComponent", &getPhysicsTriggerComponent);
 		gameObject.def("getDistributedComponent", &getDistributedComponent);
@@ -3508,8 +3489,6 @@ namespace NOWA
 		gameObject.def("getMyGUIRepeatClickControllerComponent", (MyGUIRepeatClickControllerComponent * (*)(GameObject*)) & getMyGUIRepeatClickControllerComponent);
 		gameObject.def("getMyGUIMiniMapComponent", (MyGUIMiniMapComponent * (*)(GameObject*)) & getMyGUIMiniMapComponent);
 		gameObject.def("getLuaScriptComponent", &getLuaScriptComponent);
-
-		gameObject.def("getAnimationComponentFromName", &getAnimationComponentFromName);
 		gameObject.def("getAttributesComponentFromName", &getAttributesComponentFromName);
 		gameObject.def("getPhysicsBuoyancyComponentFromName", &getPhysicsBuoyancyComponentFromName);
 		gameObject.def("getPhysicsTriggerComponentFromName", &getPhysicsTriggerComponentFromName);
@@ -3672,8 +3651,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "bool deleteComponent(string componentClassName, unsigned int occurrenceIndex)", "Deletes the component by the given class name and optionally with its occurrence index.");
 		AddClassToCollection("GameObject", "bool deleteComponentByIndex(unsigned int index)", "Deletes the component by the given index.");
 		AddClassToCollection("GameObject", "GameObjectTitleComponent getGameObjectTitleComponent()", "Gets the game object title component.");
-		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponentFromIndex(unsigned int occurrenceIndex)", "Gets the animation component by the given occurence index, since a game object may have besides other components several animation components.");
-		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponent()", "Gets the animation component. This can be used if the game object just has one animation component.");
 		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponent()", "Gets the attributes component.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponent()", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponent()", "Gets the distributed component. Usage in a network scenario.");
@@ -3805,8 +3782,6 @@ namespace NOWA
 		AddClassToCollection("GameObject", "MyGUIRepeatClickControllerComponent getMyGUIRepeatClickControllerComponent()", "Gets the MyGUI repeat click controller component. This can be used if the game object just has one MyGUI repeat click controller component.");
 		AddClassToCollection("GameObject", "MyGUIMiniMapComponent getMyGUIMiniMapComponent()", "Gets the MyGUI mini map component. Note: There can only be one mini map.");
 		AddClassToCollection("GameObject", "LuaScriptComponent getLuaScriptComponent()", "Gets the lua script component.");
-
-		AddClassToCollection("GameObject", "AnimationComponent getAnimationComponentFromName(String name)", "Gets the animation component.");
 		AddClassToCollection("GameObject", "AttributesComponent getAttributesComponentFromName(String name)", "Gets the attributes component.");
 		AddClassToCollection("GameObject", "BuoyancyComponent getBuoyancyComponentFromName(String name)", "Gets the physics buoyancy component.");
 		AddClassToCollection("GameObject", "DistributedComponent getDistributedComponentFromName(String name)", "Gets the distributed component. Usage in a network scenario.");
@@ -4400,23 +4375,23 @@ namespace NOWA
 		];*/
 
 		module(lua)
+		[
+			class_<MyGUI::Align>("Align")
+			.enum_("Enum")
 			[
-				class_<MyGUI::Align>("Align")
-				.enum_("Enum")
-				[
-					value("H_CENTER", MyGUI::Align::HCenter),
-					value("V_CENTER", MyGUI::Align::VCenter),
-					value("CENTER", MyGUI::Align::Center),
-					value("LEFT", MyGUI::Align::Left),
-					value("RIGHT", MyGUI::Align::Right),
-					value("H_STRECH", MyGUI::Align::HStretch),
-					value("TOP", MyGUI::Align::Top),
-					value("BOTTOM", MyGUI::Align::Bottom),
-					value("V_STRETCH", MyGUI::Align::VStretch),
-					value("STRETCH", MyGUI::Align::Stretch),
-					value("DEFAULT", MyGUI::Align::Default)
-				]
-			];
+				value("H_CENTER", MyGUI::Align::HCenter),
+				value("V_CENTER", MyGUI::Align::VCenter),
+				value("CENTER", MyGUI::Align::Center),
+				value("LEFT", MyGUI::Align::Left),
+				value("RIGHT", MyGUI::Align::Right),
+				value("H_STRECH", MyGUI::Align::HStretch),
+				value("TOP", MyGUI::Align::Top),
+				value("BOTTOM", MyGUI::Align::Bottom),
+				value("V_STRETCH", MyGUI::Align::VStretch),
+				value("STRETCH", MyGUI::Align::Stretch),
+				value("DEFAULT", MyGUI::Align::Default)
+			]
+		];
 
 		AddClassToCollection("Align", "class", "Align class for MyGUI widget positioning.");
 		AddClassToCollection("Align", "H_CENTER", "Horizontal center.");
@@ -4433,15 +4408,15 @@ namespace NOWA
 
 
 		module(lua)
+		[
+			class_<MyGUI::WidgetStyle>("WidgetStyle")
+			.enum_("Enum")
 			[
-				class_<MyGUI::WidgetStyle>("WidgetStyle")
-				.enum_("Enum")
-				[
-					value("CHILD", MyGUI::WidgetStyle::Child),
-					value("POPUP", MyGUI::WidgetStyle::Popup),
-					value("OVERLAPPED", MyGUI::WidgetStyle::Overlapped)
-				]
-			];
+				value("CHILD", MyGUI::WidgetStyle::Child),
+				value("POPUP", MyGUI::WidgetStyle::Popup),
+				value("OVERLAPPED", MyGUI::WidgetStyle::Overlapped)
+			]
+		];
 
 		AddClassToCollection("WidgetStyle", "class", "WidgetStyle class.");
 		AddClassToCollection("WidgetStyle", "CHILD", "Child.");
@@ -4916,7 +4891,6 @@ namespace NOWA
 		gameObjectController.def("castMouseButtonID", &GameObjectController::cast<OIS::MouseButtonID>);
 
 		gameObjectController.def("castGameObjectComponent", &GameObjectController::cast<GameObjectComponent>);
-		gameObjectController.def("castAnimationComponent", &GameObjectController::cast<AnimationComponent>);
 		gameObjectController.def("castAttributesComponent", &GameObjectController::cast<AttributesComponent>);
 		gameObjectController.def("castPhysicsBuoyancyComponent", &GameObjectController::cast<PhysicsBuoyancyComponent>);
 		gameObjectController.def("castPhysicsTriggerComponent", &GameObjectController::cast<PhysicsTriggerComponent>);
@@ -5082,7 +5056,6 @@ namespace NOWA
 			"The category ids for filtering. Using ALL_CATEGORIES_ID, everything is selectable.");
 		
 		AddClassToCollection("GameObjectController", "GameObject castGameObject(GameObject other)", "Casts an incoming type from function for lua auto completion.");
-		AddClassToCollection("GameObjectController", "AnimationComponent castAnimationComponent(AnimationComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AttributesComponent castAttributesComponent(AttributesComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsBuoyancyComponent castPhysicsBuoyancyComponent(PhysicsBuoyancyComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsTriggerComponent castPhysicsTriggerComponent(PhysicsTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5325,12 +5298,58 @@ namespace NOWA
 		module(lua)
 		[
 			class_<IAnimationBlender>("IAnimationBlender")
+			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
+			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
+			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
+			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
+			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
+			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
+			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
+			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
+			.def("getProgress", &IAnimationBlender::getProgress)
+			
+			.def("isComplete", &IAnimationBlender::isComplete)
+			.def("registerAnimation", &IAnimationBlender::registerAnimation)
+			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
+			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
+			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
+			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
+			.def("addTime", &IAnimationBlender::addTime)
+			.def("setTimePosition", &IAnimationBlender::setTimePosition)
+			.def("getTimePosition", &IAnimationBlender::getTimePosition)
+			.def("getLength", &IAnimationBlender::getLength)
+			.def("setWeight", &IAnimationBlender::setWeight)
+			.def("getWeight", &IAnimationBlender::getWeight)
+			.def("resetBones", &IAnimationBlender::resetBones)
+			.def("setDebugLog", &IAnimationBlender::setDebugLog)
+		];
+
+		module(lua)
+		[
+			class_<IAnimationBlender::BlendingTransition>("BlendingTransition")
 			.enum_("BlendingTransition")
 			[
 				value("BLEND_SWITCH", IAnimationBlender::BlendSwitch),
 				value("BLEND_WHILE_ANIMATING", IAnimationBlender::BlendWhileAnimating),
 				value("BLEND_THEN_ANIMATE", IAnimationBlender::BlendThenAnimate)
 			]
+		];
+
+		module(lua)
+		[
+			class_<IAnimationBlender::AnimID>("AnimID")
 			.enum_("AnimID")
 			[
 				value("ANIM_IDLE_1", IAnimationBlender::ANIM_IDLE_1),
@@ -5385,49 +5404,26 @@ namespace NOWA
 				value("ANIM_ACTION_2", IAnimationBlender::ANIM_ACTION_2),
 				value("ANIM_ACTION_3", IAnimationBlender::ANIM_ACTION_3),
 				value("ANIM_ACTION_4", IAnimationBlender::ANIM_ACTION_4),
-				value("ANIM_NONE", IAnimationBlender::ANIM_NONE)
+				value("ANIM_NONE", IAnimationBlender::ANIM_NONE),
+				value("ANIM_PULL", IAnimationBlender::ANIM_PULL),
+				value("ANIM_PUSH", IAnimationBlender::ANIM_PUSH),
+				value("ANIM_KNOCK_DOWN", IAnimationBlender::ANIM_KNOCK_DOWN),
+				value("ANIM_STAND_UP", IAnimationBlender::ANIM_STAND_UP),
+				value("ANIM_POINT", IAnimationBlender::ANIM_POINT),
+				value("ANIM_LAUGH", IAnimationBlender::ANIM_LAUGH),
+				value("ANIM_LAND_1", IAnimationBlender::ANIM_LAND_1),
+				value("ANIM_LAND_2", IAnimationBlender::ANIM_LAND_2),
+				value("ANIM_SHOOT", IAnimationBlender::ANIM_SHOOT),
+				value("ANIM_START_CLIMB", IAnimationBlender::ANIM_START_CLIMB),
+				value("ANIM_TAKE_DAMAGE", IAnimationBlender::ANIM_TAKE_DAMAGE),
+				value("ANIM_SHRUG", IAnimationBlender::ANIM_SHRUG),
+				value("ANIM_SALTO", IAnimationBlender::ANIM_SALTO),
+				value("ANIM_CRY", IAnimationBlender::ANIM_CRY),
+				value("ANIM_CHEER", IAnimationBlender::ANIM_CHEER),
+				value("ANIM_CAST_SPELL_1", IAnimationBlender::ANIM_CAST_SPELL_1),
+				value("ANIM_CAST_SPELL_2", IAnimationBlender::ANIM_CAST_SPELL_2),
+				value("ANIM_CAST_SPELL_3", IAnimationBlender::ANIM_CAST_SPELL_3)
 			]
-
-			.def("init1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, bool)) & IAnimationBlender::init)
-			.def("init2", (void (IAnimationBlender::*)(const Ogre::String&, bool)) & IAnimationBlender::init)
-			.def("getAllAvailableAnimationNames", &getAllAvailableAnimationNames)
-			.def("blend1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blend)
-			.def("blend3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blend)
-			.def("blend5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blend6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blend)
-			.def("blendExclusive1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive2", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive4", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive5", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendExclusive6", (void (IAnimationBlender::*)(const Ogre::String&, IAnimationBlender::BlendingTransition, Ogre::Real, bool)) & IAnimationBlender::blendExclusive)
-			.def("blendAndContinue1", (void (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue2", (void (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue3", (void (IAnimationBlender::*)(IAnimationBlender::AnimID, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("blendAndContinue4", (void (IAnimationBlender::*)(const Ogre::String&, Ogre::Real)) & IAnimationBlender::blendAndContinue)
-			.def("getProgress", &IAnimationBlender::getProgress)
-			
-			.def("isComplete", &IAnimationBlender::isComplete)
-			.def("registerAnimation", &IAnimationBlender::registerAnimation)
-			.def("getAnimationIdFromString", &IAnimationBlender::getAnimationIdFromString)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(IAnimationBlender::AnimID)) & IAnimationBlender::hasAnimation)
-			.def("hasAnimation", (bool (IAnimationBlender::*)(const Ogre::String&)) & IAnimationBlender::hasAnimation)
-			.def("isAnimationActive", &IAnimationBlender::isAnimationActive)
-			.def("isAnimationActive", &IAnimationBlender::isAnyAnimationActive)
-			.def("addTime", &IAnimationBlender::addTime)
-			.def("setTimePosition", &IAnimationBlender::setTimePosition)
-			.def("getTimePosition", &IAnimationBlender::getTimePosition)
-			.def("getLength", &IAnimationBlender::getLength)
-			.def("setWeight", &IAnimationBlender::setWeight)
-			.def("getWeight", &IAnimationBlender::getWeight)
-			.def("resetBones", &IAnimationBlender::resetBones)
-			.def("setDebugLog", &IAnimationBlender::setDebugLog)
-			/*.def("setSpeed", &IAnimationBlender::setSpeed)
-			.def("getSpeed", &IAnimationBlender::getSpeed)
-			.def("setRepeat", &IAnimationBlender::setRepeat)
-			.def("getRepeat", &IAnimationBlender::getRepeat)*/
 		];
 
 		module(lua)
@@ -5452,9 +5448,9 @@ namespace NOWA
 		];
 
 		AddClassToCollection("AnimationBlender", "class", "This class can be used for more complex animations and transitions between them.");
-		AddClassToCollection("BlendingTransition", "BLEND_SWITCH", "Ends the current animation and start a new one.");
-		AddClassToCollection("BlendingTransition", "BLEND_WHILE_ANIMATING", "Fades from current animation to a new one.");
-		AddClassToCollection("BlendingTransition", "BLEND_THEN_ANIMATE", "Fades the current animation to the first frame of the new one, after that execute the new animation.");
+		AddClassToCollection("AnimationBlender", "BLEND_SWITCH", "Ends the current animation and start a new one.");
+		AddClassToCollection("AnimationBlender", "BLEND_WHILE_ANIMATING", "Fades from current animation to a new one.");
+		AddClassToCollection("AnimationBlender", "BLEND_THEN_ANIMATE", "Fades the current animation to the first frame of the new one, after that execute the new animation.");
 
 		AddClassToCollection("AnimID", "ANIM_IDLE_1", "Idle 1 animation.");
 		AddClassToCollection("AnimID", "ANIM_IDLE_2", "Idle 2 animation.");
@@ -5508,6 +5504,26 @@ namespace NOWA
 		AddClassToCollection("AnimID", "ANIM_ACTION_2", "Action 2 animation.");
 		AddClassToCollection("AnimID", "ANIM_ACTION_3", "Action 3 animation.");
 		AddClassToCollection("AnimID", "ANIM_ACTION_4", "Action 4 animation.");
+		AddClassToCollection("AnimID", "ANIM_PULL", "Pull animation.");
+		AddClassToCollection("AnimID", "ANIM_PUSH", "Push animation.");
+		AddClassToCollection("AnimID", "ANIM_KNOCK_DOWN", "Knock down animation.");
+		AddClassToCollection("AnimID", "ANIM_STAND_UP", "Stand up animation.");
+		AddClassToCollection("AnimID", "ANIM_TALK", "Talk animation.");
+		AddClassToCollection("AnimID", "ANIM_POINT", "Point on something animation.");
+		AddClassToCollection("AnimID", "ANIM_LAUGH", "Laugh animation.");
+		AddClassToCollection("AnimID", "ANIM_LAND_1", "After fall or jump land 1 animation.");
+		AddClassToCollection("AnimID", "ANIM_LAND_2", "After fall or jump land 2 animation.");
+		AddClassToCollection("AnimID", "ANIM_SHOOT", "Shoot something animation.");
+		AddClassToCollection("AnimID", "ANIM_START_CLIMB", "Start climb animation.");
+		AddClassToCollection("AnimID", "ANIM_TAKE_DAMAGE", "Take damage animation.");
+		AddClassToCollection("AnimID", "ANIM_SHRUG", "Shrug animation.");
+		AddClassToCollection("AnimID", "ANIM_SALTO", "Salto animation.");
+		AddClassToCollection("AnimID", "ANIM_CRY", "Cry animation.");
+		AddClassToCollection("AnimID", "ANIM_CHEER", "Cheer animation.");
+		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_1", "Cast spell 1 animation.");
+		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_2", "Cast spell 2 animation.");
+		AddClassToCollection("AnimID", "ANIM_CAST_SPELL_3", "Cast spell 3 animation.");
+
 		AddClassToCollection("AnimID", "ANIM_NONE", "None animation (default).");
 		AddClassToCollection("AnimationBlender", "void init1(AnimID animationId, bool loop)", "Inits the animation blender, also sets and start the first current animation id.");
 		AddClassToCollection("AnimationBlender", "void init2(String animationName, bool loop)", "Inits the animation blender, also sets and start the first current animation name.");
@@ -5544,60 +5560,6 @@ namespace NOWA
 		AddClassToCollection("AnimationBlender", "float getLength()", "Gets the animation length.");
 		AddClassToCollection("AnimationBlender", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved");
 		AddClassToCollection("AnimationBlender", "float getWeight()", "Gets the current animation weight.");
-
-		module(lua)
-		[
-			class_<AnimationComponent, GameObjectComponent>("AnimationComponent")
-			// .def("getClassName", &AnimationComponent::getClassName)
-			.def("getParentClassName", &AnimationComponent::getParentClassName)
-			// .def("clone", &AnimationComponent::clone)
-			// .def("getClassId", &AnimationComponent::getClassId)
-			// .def("getParentClassId", &AnimationComponent::getParentClassId)
-			.def("setActivated", &AnimationComponent::setActivated)
-			.def("isActivated", &AnimationComponent::isActivated)
-			.def("setAnimationName", &AnimationComponent::setAnimationName)
-			.def("getAnimationName", &AnimationComponent::getAnimationName)
-			.def("setSpeed", &AnimationComponent::setSpeed)
-			.def("getSpeed", &AnimationComponent::getSpeed)
-			.def("setRepeat", &AnimationComponent::setRepeat)
-			.def("getRepeat", &AnimationComponent::getRepeat)
-			.def("isComplete", &AnimationComponent::isComplete)
-			.def("getAnimationBlender", &AnimationComponent::getAnimationBlender)
-			.def("getBone", &AnimationComponent::getBone)
-			.def("setTimePosition", &AnimationComponent::setTimePosition)
-			.def("getTimePosition", &AnimationComponent::getTimePosition)
-			.def("getLength", &AnimationComponent::getLength)
-			.def("setWeight", &AnimationComponent::setWeight)
-			.def("getWeight", &AnimationComponent::getWeight)
-			.def("getLocalToWorldPosition", &AnimationComponent::getLocalToWorldPosition)
-			.def("getLocalToWorldOrientation", &AnimationComponent::getLocalToWorldOrientation)
-			.def("reactOnAnimationFinished", &AnimationComponent::reactOnAnimationFinished)
-		];
-
-		AddClassToCollection("AnimationComponent", "class inherits GameObjectComponent", AnimationComponent::getStaticInfoText());
-		// AddClassToCollection("AnimationComponent", "GameObjectComponent clone()", "Gets a new cloned game object component from this one.");
-		// AddClassToCollection("AnimationComponent", "String getClassName()", "Gets the class name of this component as string.");
-		// // AddClassToCollection(("AnimationComponent", "String getParentClassName()", "Gets the parent class name (the one this component is derived from) of this component as string.");
-		// AddClassToCollection("AnimationComponent", "number getClassId()", "Gets the class id of this component.");
-		// AddClassToCollection("AnimationComponent", "number getParentClassId()", "Gets the parent class id (the one this component is derived from) of this component.");
-		AddClassToCollection("AnimationComponent", "void setActivated(bool activated)", "Sets whether this component should be activated or not (Start the animations).");
-		AddClassToCollection("AnimationComponent", "bool isActivated()", "Gets whether this component is activated.");
-		AddClassToCollection("AnimationComponent", "void setAnimationName(String animationName)", "Sets the to be played animation name. If it does not exist, the animation cannot be played later.");
-		AddClassToCollection("AnimationComponent", "String getAnimationName()", "Gets currently used animation name.");
-		AddClassToCollection("AnimationComponent", "void setSpeed(float speed)", "Sets the animation speed for the current animation.");
-		AddClassToCollection("AnimationComponent", "float getSpeed()", "Gets the animation speed for currently used animation.");
-		AddClassToCollection("AnimationComponent", "void setRepeat(bool repeat)", "Sets whether the current animation should be repeated when finished.");
-		AddClassToCollection("AnimationComponent", "bool getRepeat()", "Gets whether the current animation will be repeated when finished.");
-		AddClassToCollection("AnimationComponent", "bool isComplete()", "Gets whether the current animation has finished.");
-		AddClassToCollection("AnimationComponent", "AnmationBlender getAnimationBlender()", "Gets animation blender to manipulate animations directly.");
-		AddClassToCollection("AnimationComponent", "Bone getBone(String boneName)", "Gets the bone by the given bone name for direct manipulation. Nil is delivered, if the bone name does not exist.");
-		AddClassToCollection("AnimationComponent", "void setTimePosition(float timePosition)", "Sets the time position for the animation.");
-		AddClassToCollection("AnimationComponent", "float getTimePosition()", "Gets the current animation time position.");
-		AddClassToCollection("AnimationComponent", "float getLength()", "Gets the animation length.");
-		AddClassToCollection("AnimationComponent", "void setWeight(float weight)", "Sets the animation weight. The more less the weight the more less all bones are moved.");
-		AddClassToCollection("AnimationComponent", "float getWeight()", "Gets the current animation weight.");
-		AddClassToCollection("AnimationComponent", "void reactOnAnimationFinished(func closureFunction, bool oneTime)",
-							 "Sets whether to react when the given animation has finished.");
 	}
 
 	void addAttributeBool(AttributesComponent* instance, const Ogre::String& name, bool value)
@@ -6878,9 +6840,9 @@ namespace NOWA
 		AddClassToCollection("TubeGenerator", "class", "Generates a procedural mesh tube.");
 
 		module(lua)
-			[
-				class_<Procedural::Boolean>("Boolean")
-				// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
+		[
+			class_<Procedural::Boolean>("Boolean")
+			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
 			.enum_("BooleanOperation")
 			[
 				value("BT_UNION", Procedural::Boolean::BT_UNION),
@@ -6888,18 +6850,18 @@ namespace NOWA
 				value("BT_DIFFERENCE", Procedural::Boolean::BT_DIFFERENCE)
 			]
 
-		.def("setMesh1", &Procedural::Boolean::setMesh1)
+			.def("setMesh1", &Procedural::Boolean::setMesh1)
 			.def("setMesh2", &Procedural::Boolean::setMesh2)
 			.def("setBooleanOperation", &Procedural::Boolean::setBooleanOperation)
 			.def("addToTriangleBuffer", &Procedural::Boolean::addToTriangleBuffer)
-			];
+		];
 
 		AddClassToCollection("Boolean", "class", "Uses a boolean operation on two procedural meshes.");
 
 		module(lua)
-			[
-				class_<Procedural::Extruder>("Extruder")
-				// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
+		[
+			class_<Procedural::Extruder>("Extruder")
+			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
 			.def("addToTriangleBuffer", &Procedural::Extruder::addToTriangleBuffer)
 			.def("setShapeToExtrude", &Procedural::Extruder::setShapeToExtrude)
 			.def("setMultiShapeToExtrude", &Procedural::Extruder::setMultiShapeToExtrude)
@@ -6910,14 +6872,14 @@ namespace NOWA
 			.def("setShapeTextureTrack", &Procedural::Extruder::setShapeTextureTrack)
 			.def("setPathTextureTrack", &Procedural::Extruder::setPathTextureTrack)
 			.def("setCapped", &Procedural::Extruder::setCapped)
-			];
+		];
 
 		AddClassToCollection("Extruder", "class", "Extrudes a procedural meshes.");
 
 		module(lua)
-			[
-				class_<Procedural::Lathe>("Lathe")
-				// .def(constructor<Shape*, unsigned int>())
+		[
+			class_<Procedural::Lathe>("Lathe")
+			// .def(constructor<Shape*, unsigned int>())
 			.def("setNumSeg", &Procedural::Lathe::setNumSeg)
 			.def("setAngleBegin", &Procedural::Lathe::setAngleBegin)
 			.def("setAngleEnd", &Procedural::Lathe::setAngleEnd)
@@ -6926,141 +6888,141 @@ namespace NOWA
 			.def("setShapeToExtrude", &Procedural::Lathe::setShapeToExtrude)
 			.def("setMultiShapeToExtrude", &Procedural::Lathe::setMultiShapeToExtrude)
 			.def("addToTriangleBuffer", &Procedural::Lathe::addToTriangleBuffer)
-			];
+		];
 
 		AddClassToCollection("Lathe", "class", "Performs a lathe operation on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::MeshLinearTransform>("MeshLinearTransform")
-				.def("modify", &Procedural::MeshLinearTransform::modify)
+		[
+			class_<Procedural::MeshLinearTransform>("MeshLinearTransform")
+			.def("modify", &Procedural::MeshLinearTransform::modify)
 			.def("setTranslation", &Procedural::MeshLinearTransform::setTranslation)
 			.def("setRotation", &Procedural::MeshLinearTransform::setRotation)
-			];
+		];
 
 		AddClassToCollection("MeshLinearTransform", "class", "Performs a linear transform on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::MeshUVTransform>("MeshUVTransform")
-				.def("setTile", &Procedural::MeshUVTransform::setTile)
+		[
+			class_<Procedural::MeshUVTransform>("MeshUVTransform")
+			.def("setTile", &Procedural::MeshUVTransform::setTile)
 			.def("setOrigin", &Procedural::MeshUVTransform::setOrigin)
 			.def("setSwitchUV", &Procedural::MeshUVTransform::setSwitchUV)
-			];
+		];
 
 		AddClassToCollection("MeshUVTransform", "class", "Transforms UV on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::SpherifyModifier>("SpherifyModifier")
-				.def("setInputTriangleBuffer", &Procedural::SpherifyModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::SpherifyModifier>("SpherifyModifier")
+			.def("setInputTriangleBuffer", &Procedural::SpherifyModifier::setInputTriangleBuffer)
 			.def("setRadius", &Procedural::SpherifyModifier::setRadius)
 			.def("setCenter", &Procedural::SpherifyModifier::setCenter)
 			.def("modify", &Procedural::SpherifyModifier::modify)
-			];
+		];
 
 		AddClassToCollection("SpherifyModifier", "class", "Modifies a sphere on a procedural mesh.");
 
 		module(lua)
-			[
+		[
 				class_<Procedural::CalculateNormalsModifier>("CalculateNormalsModifier")
 				.enum_("NormalComputeMode")
-			[
-				value("NCM_VERTEX", Procedural::CalculateNormalsModifier::NCM_VERTEX),
-				value("NCM_TRIANGLE", Procedural::CalculateNormalsModifier::NCM_TRIANGLE)
-			]
-		.def("setComputeMode", &Procedural::CalculateNormalsModifier::setComputeMode)
+				[
+					value("NCM_VERTEX", Procedural::CalculateNormalsModifier::NCM_VERTEX),
+					value("NCM_TRIANGLE", Procedural::CalculateNormalsModifier::NCM_TRIANGLE)
+				]
+			.def("setComputeMode", &Procedural::CalculateNormalsModifier::setComputeMode)
 			.def("setInputTriangleBuffer", &Procedural::CalculateNormalsModifier::setInputTriangleBuffer)
 			.def("setMustWeldUnweldFirst", &Procedural::CalculateNormalsModifier::setMustWeldUnweldFirst)
 			.def("modify", &Procedural::CalculateNormalsModifier::modify)
-			];
+		];
 
 		AddClassToCollection("CalculateNormalsModifier", "class", "Calculates and modifies normals on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::WeldVerticesModifier>("WeldVerticesModifier")
-				.def("setInputTriangleBuffer", &Procedural::WeldVerticesModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::WeldVerticesModifier>("WeldVerticesModifier")
+			.def("setInputTriangleBuffer", &Procedural::WeldVerticesModifier::setInputTriangleBuffer)
 			.def("setTolerance", &Procedural::WeldVerticesModifier::setTolerance)
 			.def("modify", &Procedural::WeldVerticesModifier::modify)
-			];
+		];
 
 		AddClassToCollection("WeldVerticesModifier", "class", "Welds vertices on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::UnweldVerticesModifier>("UnweldVerticesModifier")
-				.def("setInputTriangleBuffer", &Procedural::UnweldVerticesModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::UnweldVerticesModifier>("UnweldVerticesModifier")
+			.def("setInputTriangleBuffer", &Procedural::UnweldVerticesModifier::setInputTriangleBuffer)
 			.def("modify", &Procedural::UnweldVerticesModifier::modify)
-			];
+		];
 
 		AddClassToCollection("UnweldVerticesModifier", "class", "Unwelds vertices on a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::PlaneUVModifier>("PlaneUVModifier")
-				.def("setPlaneNormal", &Procedural::PlaneUVModifier::setPlaneNormal)
+		[
+			class_<Procedural::PlaneUVModifier>("PlaneUVModifier")
+			.def("setPlaneNormal", &Procedural::PlaneUVModifier::setPlaneNormal)
 			.def("setInputTriangleBuffer", &Procedural::PlaneUVModifier::setInputTriangleBuffer)
 			.def("setPlaneCenter", &Procedural::PlaneUVModifier::setPlaneCenter)
 			.def("setPlaneSize", &Procedural::PlaneUVModifier::setPlaneSize)
 			.def("modify", &Procedural::PlaneUVModifier::modify)
-			];
+		];
 
 		AddClassToCollection("PlaneUVModifier", "class", "Modifies UV on a procedural plane.");
 
 		module(lua)
-			[
-				class_<Procedural::SphereUVModifier>("SphereUVModifier")
-				.def("setInputTriangleBuffer", &Procedural::SphereUVModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::SphereUVModifier>("SphereUVModifier")
+			.def("setInputTriangleBuffer", &Procedural::SphereUVModifier::setInputTriangleBuffer)
 			.def("modify", &Procedural::SphereUVModifier::modify)
-			];
+		];
 
 		AddClassToCollection("SphereUVModifier", "class", "Modifies UV on a procedural sphere.");
 
 		module(lua)
-			[
-				class_<Procedural::HemisphereUVModifier>("HemisphereUVModifier")
-				.def("setInputTriangleBuffer", &Procedural::HemisphereUVModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::HemisphereUVModifier>("HemisphereUVModifier")
+			.def("setInputTriangleBuffer", &Procedural::HemisphereUVModifier::setInputTriangleBuffer)
 			.def("setTextureRectangleTop", &Procedural::HemisphereUVModifier::setTextureRectangleTop)
 			.def("setTextureRectangleBottom", &Procedural::HemisphereUVModifier::setTextureRectangleBottom)
 			.def("modify", &Procedural::HemisphereUVModifier::modify)
-			];
+		];
 
 		AddClassToCollection("HemisphereUVModifier", "class", "Modifies UV on a procedural hemisphere.");
 
 		module(lua)
-			[
-				class_<Procedural::CylinderUVModifier>("CylinderUVModifier")
-				.def("setInputTriangleBuffer", &Procedural::CylinderUVModifier::setInputTriangleBuffer)
+		[
+			class_<Procedural::CylinderUVModifier>("CylinderUVModifier")
+			.def("setInputTriangleBuffer", &Procedural::CylinderUVModifier::setInputTriangleBuffer)
 			.def("setRadius", &Procedural::CylinderUVModifier::setRadius)
 			.def("setHeight", &Procedural::CylinderUVModifier::setHeight)
 			.def("modify", &Procedural::CylinderUVModifier::modify)
-			];
+		];
 
 		AddClassToCollection("CylinderUVModifier", "class", "Modifies UV on a procedural cylinder.");
 
 		module(lua)
-			[
-				class_<Procedural::BoxUVModifier>("BoxUVModifier")
-				.enum_("MappingType")
+		[
+			class_<Procedural::BoxUVModifier>("BoxUVModifier")
+			.enum_("MappingType")
 			[
 				value("MT_FULL", Procedural::BoxUVModifier::MT_FULL),
 				value("MT_CROSS", Procedural::BoxUVModifier::MT_CROSS),
 				value("MT_PACKED", Procedural::BoxUVModifier::MT_PACKED)
 			]
-		.def("setInputTriangleBuffer", &Procedural::BoxUVModifier::setInputTriangleBuffer)
+			.def("setInputTriangleBuffer", &Procedural::BoxUVModifier::setInputTriangleBuffer)
 			.def("setBoxSize", &Procedural::BoxUVModifier::setBoxSize)
 			.def("setBoxCenter", &Procedural::BoxUVModifier::setBoxCenter)
 			.def("setMappingType", &Procedural::BoxUVModifier::setMappingType)
 			.def("modify", &Procedural::BoxUVModifier::modify)
-			];
+		];
 
 		AddClassToCollection("BoxUVModifier", "class", "Modifies UV on a procedural box.");
 
 		module(lua)
-			[
-				class_<Procedural::MultiShape>("MultiShape")
-				// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
+		[
+			class_<Procedural::MultiShape>("MultiShape")
+			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
 			.def("addShape", &Procedural::MultiShape::addShape)
 			.def("clear", &Procedural::MultiShape::clear)
 			.def("getPoints", &Procedural::MultiShape::getPoints)
@@ -7072,7 +7034,7 @@ namespace NOWA
 			.def("close", &Procedural::MultiShape::close)
 			.def("isOutsideRealOutside", &Procedural::MultiShape::isOutsideRealOutside)
 			// .def("buildFromSegmentSoup", &Procedural::MultiShape::buildFromSegmentSoup)
-			];
+		];
 
 		AddClassToCollection("MultiShape", "class", "Combines procedural shapes.");
 
@@ -7096,9 +7058,9 @@ namespace NOWA
 		//	];
 
 		module(lua)
-			[
-				class_<Procedural::Path>("ProceduralPath")
-				// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
+		[
+			class_<Procedural::Path>("ProceduralPath")
+			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
 			.def("addPoint", (Procedural::Path & (Procedural::Path::*)(const Vector3&)) & Procedural::Path::addPoint)
 			.def("addPoint", (Procedural::Path & (Procedural::Path::*)(Real, Real, Real)) & Procedural::Path::addPoint)
 			.def("insertPoint", (Procedural::Path & (Procedural::Path::*)(std::size_t, Real, Real, Real)) & Procedural::Path::insertPoint)
@@ -7129,14 +7091,14 @@ namespace NOWA
 			.def("reverse", &Procedural::Path::reverse)
 			.def("buildFromSegmentSoup", &Procedural::Path::buildFromSegmentSoup)
 			.def("convertToShape", &Procedural::Path::convertToShape)
-			];
+		];
 
 		AddClassToCollection("ProceduralPath", "class", "Generates a procedural path.");
 
 		module(lua)
-			[
-				class_<Procedural::MultiPath>("ProceduralMultiPath")
-				.def("clear", &Procedural::MultiPath::clear)
+		[
+			class_<Procedural::MultiPath>("ProceduralMultiPath")
+			.def("clear", &Procedural::MultiPath::clear)
 			.def("addPath", &Procedural::MultiPath::addPath)
 			.def("addMultiPath", &Procedural::MultiPath::addMultiPath)
 			.def("setPath", &Procedural::MultiPath::setPath)
@@ -7145,16 +7107,16 @@ namespace NOWA
 			.def("_calcIntersections", &Procedural::MultiPath::_calcIntersections)
 			// .def("getIntersections", &Procedural::MultiPath::getIntersections)  // PathCoordinate struct must be announced
 			.def("getNoIntersectionParts", &Procedural::MultiPath::getNoIntersectionParts)
-			];
+		];
 
 		AddClassToCollection("ProceduralMultiPath", "class", "Generates a procedural multi path.");
 
 		// Here Ogre::SimpleSpline missing
 
 		module(lua)
-			[
-				class_<Procedural::CatmullRomSpline3>("CatmullRomSpline3")
-				.def(constructor<>())
+		[
+			class_<Procedural::CatmullRomSpline3>("CatmullRomSpline3")
+			.def(constructor<>())
 			.def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::CatmullRomSpline3::setNumSeg)
 			.def("close", &Procedural::CatmullRomSpline3::close)
@@ -7165,15 +7127,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::CatmullRomSpline3::safeGetPoint)
 			.def("getPointCount", &Procedural::CatmullRomSpline3::getPointCount)
 			.def("realizePath", &Procedural::CatmullRomSpline3::realizePath)
-			];
+		];
 
 		AddClassToCollection("CatmullRomSpline3", "class", "Generates a procedural catmull rom spline3.");
 
 		module(lua)
-			[
-				class_<Procedural::CatmullRomSpline2>("CatmullRomSpline2")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::CatmullRomSpline2>("CatmullRomSpline2")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::CatmullRomSpline2::setNumSeg)
 			.def("close", &Procedural::CatmullRomSpline2::close)
 
@@ -7183,26 +7145,26 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::CatmullRomSpline2::safeGetPoint)
 			.def("getPointCount", &Procedural::CatmullRomSpline2::getPointCount)
 			.def("realizeShape", &Procedural::CatmullRomSpline2::realizeShape)
-			];
+		];
 
 		AddClassToCollection("CatmullRomSpline2", "class", "Generates a procedural catmull rom spline2.");
 
 		module(lua)
-			[
-				class_<Procedural::CubicHermiteSplineAutoTangentMode>("keys")
-				.enum_("CubicHermiteSplineAutoTangentMode")
+		[
+			class_<Procedural::CubicHermiteSplineAutoTangentMode>("keys")
+			.enum_("CubicHermiteSplineAutoTangentMode")
 			[
 				value("AT_NONE", Procedural::AT_NONE),
 				value("AT_STRAIGHT", Procedural::AT_STRAIGHT),
 				value("AT_CATMULL", Procedural::AT_CATMULL)
 			]
-			];
+		];
 
 		module(lua)
-			[
-				class_<Procedural::CubicHermiteSpline2>("CubicHermiteSpline2")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::CubicHermiteSpline2>("CubicHermiteSpline2")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::CubicHermiteSpline2::setNumSeg)
 			.def("close", &Procedural::CubicHermiteSpline2::close)
 
@@ -7213,15 +7175,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::CubicHermiteSpline2::safeGetPoint)
 			.def("getPointCount", &Procedural::CubicHermiteSpline2::getPointCount)
 			.def("realizeShape", &Procedural::CubicHermiteSpline2::realizeShape)
-			];
+		];
 
 		AddClassToCollection("CubicHermiteSpline2", "class", "Generates a procedural cubic hermite spline2.");
 
 		module(lua)
-			[
-				class_<Procedural::KochanekBartelsSpline2>("KochanekBartelsSpline2")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::KochanekBartelsSpline2>("KochanekBartelsSpline2")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::KochanekBartelsSpline2::setNumSeg)
 			.def("close", &Procedural::KochanekBartelsSpline2::close)
 
@@ -7232,15 +7194,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::KochanekBartelsSpline2::safeGetPoint)
 			.def("getPointCount", &Procedural::KochanekBartelsSpline2::getPointCount)
 			.def("realizeShape", &Procedural::KochanekBartelsSpline2::realizeShape)
-			];
+		];
 
 		AddClassToCollection("KochanekBartelsSpline2", "class", "Generates a procedural kochanek bartels spline2.");
 
 		module(lua)
-			[
-				class_<Procedural::CubicHermiteSpline3>("CubicHermiteSpline3")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::CubicHermiteSpline3>("CubicHermiteSpline3")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::CubicHermiteSpline3::setNumSeg)
 			.def("close", &Procedural::CubicHermiteSpline3::close)
 
@@ -7251,28 +7213,28 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::CubicHermiteSpline3::safeGetPoint)
 			.def("getPointCount", &Procedural::CubicHermiteSpline3::getPointCount)
 			.def("realizePath", &Procedural::CubicHermiteSpline3::realizePath)
-			];
+		];
 
 		AddClassToCollection("CubicHermiteSpline3", "class", "Generates a procedural cubic ermite spline3.");
 
 		module(lua)
-			[
-				class_<Procedural::LinePath>("LinePath")
-				.def("setPoint1", &Procedural::LinePath::setPoint1)
+		[
+			class_<Procedural::LinePath>("LinePath")
+			.def("setPoint1", &Procedural::LinePath::setPoint1)
 			.def("setPoint2", &Procedural::LinePath::setPoint2)
 
 			.def("setNumSeg", &Procedural::LinePath::setNumSeg)
 			.def("betweenPoints", &Procedural::LinePath::betweenPoints)
 			.def("realizePath", &Procedural::LinePath::realizePath)
-			];
+		];
 
 		AddClassToCollection("LinePath", "class", "Generates a procedural line path.");
 
 		module(lua)
-			[
-				class_<Procedural::RoundedCornerSpline2>("RoundedCornerSpline2")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::RoundedCornerSpline2>("RoundedCornerSpline2")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::RoundedCornerSpline2::setNumSeg)
 			.def("close", &Procedural::RoundedCornerSpline2::close)
 
@@ -7282,15 +7244,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::RoundedCornerSpline2::safeGetPoint)
 			.def("getPointCount", &Procedural::RoundedCornerSpline2::getPointCount)
 			.def("realizeShape", &Procedural::RoundedCornerSpline2::realizeShape)
-			];
+		];
 
 		AddClassToCollection("RoundedCornerSpline2", "class", "Generates a procedural rounded corner spline2.");
 
 		module(lua)
-			[
-				class_<Procedural::RoundedCornerSpline3>("RoundedCornerSpline3")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::RoundedCornerSpline3>("RoundedCornerSpline3")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::RoundedCornerSpline3::setNumSeg)
 			.def("close", &Procedural::RoundedCornerSpline3::close)
 
@@ -7300,15 +7262,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::RoundedCornerSpline3::safeGetPoint)
 			.def("getPointCount", &Procedural::RoundedCornerSpline3::getPointCount)
 			.def("realizePath", &Procedural::RoundedCornerSpline3::realizePath)
-			];
+		];
 
 		AddClassToCollection("RoundedCornerSpline3", "class", "Generates a procedural rounded corner spline3.");
 
 		module(lua)
-			[
-				class_<Procedural::BezierCurve2>("BezierCurve2")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::BezierCurve2>("BezierCurve2")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::BezierCurve2::setNumSeg)
 			.def("close", &Procedural::BezierCurve2::close)
 
@@ -7317,15 +7279,15 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::BezierCurve2::safeGetPoint)
 			.def("getPointCount", &Procedural::BezierCurve2::getPointCount)
 			.def("realizeShape", &Procedural::BezierCurve2::realizeShape)
-			];
+		];
 
 		AddClassToCollection("BezierCurve2", "class", "Generates a procedural bezier curve spline2.");
 
 		module(lua)
-			[
-				class_<Procedural::BezierCurve3>("BezierCurve3")
-				// .def(constructor<>())
-				// .def(constructor<SimpleSpline&>())
+		[
+			class_<Procedural::BezierCurve3>("BezierCurve3")
+			// .def(constructor<>())
+			// .def(constructor<SimpleSpline&>())
 			.def("setNumSeg", &Procedural::BezierCurve3::setNumSeg)
 			.def("close", &Procedural::BezierCurve3::close)
 
@@ -7334,44 +7296,43 @@ namespace NOWA
 			.def("safeGetPoint", &Procedural::BezierCurve3::safeGetPoint)
 			.def("getPointCount", &Procedural::BezierCurve3::getPointCount)
 			.def("realizePath", &Procedural::BezierCurve3::realizePath)
-			];
+		];
 
 		AddClassToCollection("BezierCurve3", "class", "Generates a procedural bezier curve spline3.");
 
 		module(lua)
-			[
-				class_<Procedural::HelixPath>("HelixPath")
-				.def("setHeight", &Procedural::HelixPath::setHeight)
+		[
+			class_<Procedural::HelixPath>("HelixPath")
+			.def("setHeight", &Procedural::HelixPath::setHeight)
 			.def("setRadius", &Procedural::HelixPath::setRadius)
 
 			.def("setNumRound", &Procedural::HelixPath::setNumRound)
 			.def("setNumSegPath", &Procedural::HelixPath::setNumSegPath)
 			.def("realizePath", &Procedural::HelixPath::realizePath)
-			];
+		];
 
 		AddClassToCollection("HelixPath", "class", "Generates a procedural helix path.");
 
 		module(lua)
-			[
-				class_<Procedural::SvgLoader>("SvgLoader")
-				// Attention: May not work because of Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME const, define it!
-							// void parseSvgFile(MultiShape& out, const Ogre::String& fileName, const Ogre::String& groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, int segmentsNumber = 8);
+		[
+			class_<Procedural::SvgLoader>("SvgLoader")
+			// Attention: May not work because of Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME const, define it!
+						// void parseSvgFile(MultiShape& out, const Ogre::String& fileName, const Ogre::String& groupName = Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, int segmentsNumber = 8);
 			.def("parseSvgFile", &Procedural::SvgLoader::parseSvgFile)
-
-			];
+		];
 
 		AddClassToCollection("SvgLoader", "class", "Generates a procedural from svg file.");
 
 		module(lua)
-			[
-				class_<Procedural::Shape>("Shape")
-				.enum_("Side")
+		[
+			class_<Procedural::Shape>("Shape")
+			.enum_("Side")
 			[
 				value("SIDE_LEFT", Procedural::SIDE_LEFT),
 				value("SIDE_RIGHT", Procedural::SIDE_RIGHT)
 			]
-		// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
-		.def("addPoint", (Procedural::Shape & (Procedural::Shape::*)(const Vector2&)) & Procedural::Shape::addPoint)
+			// .def(constructor<const OgreNewt::World*, const OgreNewt::CollisionPtr&, Ogre::SceneMemoryMgrTypes memoryType, unsigned int>())
+			.def("addPoint", (Procedural::Shape & (Procedural::Shape::*)(const Vector2&)) & Procedural::Shape::addPoint)
 			.def("addPoint", (Procedural::Shape & (Procedural::Shape::*)(Real, Real)) & Procedural::Shape::addPoint)
 			.def("insertPoint", (Procedural::Shape & (Procedural::Shape::*)(std::size_t, Real, Real)) & Procedural::Shape::insertPoint)
 			.def("insertPoint", (Procedural::Shape & (Procedural::Shape::*)(std::size_t, const Vector2&)) & Procedural::Shape::insertPoint)
@@ -7423,57 +7384,57 @@ namespace NOWA
 			.def("getPosition", (Ogre::Vector2(Procedural::Shape::*)(Real) const) & Procedural::Shape::getPosition)
 			.def("findBoundingRadius", &Procedural::Shape::findBoundingRadius)
 			.def("thicken", &Procedural::Shape::thicken)
-			];
+		];
 
 		AddClassToCollection("Shape", "class", "Generates a custom procedural shape mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::RectangleShape>("RectangleShape")
-				.def("setWidth", &Procedural::RectangleShape::setWidth)
+		[
+			class_<Procedural::RectangleShape>("RectangleShape")
+			.def("setWidth", &Procedural::RectangleShape::setWidth)
 			.def("setHeight", &Procedural::RectangleShape::setHeight)
 			.def("realizeShape", &Procedural::RectangleShape::realizeShape)
-			];
+		];
 
 		AddClassToCollection("RectangleShape", "class", "Generates a procedural rectangle shape mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::CircleShape>("CircleShape")
-				.def("setRadius", &Procedural::CircleShape::setRadius)
+		[
+			class_<Procedural::CircleShape>("CircleShape")
+			.def("setRadius", &Procedural::CircleShape::setRadius)
 			.def("setNumSeg", &Procedural::CircleShape::setNumSeg)
 			.def("realizeShape", &Procedural::CircleShape::realizeShape)
-			];
+		];
 
 		AddClassToCollection("CircleShape", "class", "Generates a procedural circle shape mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::EllipseShape>("EllipseShape")
-				.def("setRadiusX", &Procedural::EllipseShape::setRadiusX)
+		[
+			class_<Procedural::EllipseShape>("EllipseShape")
+			.def("setRadiusX", &Procedural::EllipseShape::setRadiusX)
 			.def("setRadiusY", &Procedural::EllipseShape::setRadiusY)
 			.def("setNumSeg", &Procedural::EllipseShape::setNumSeg)
 			.def("realizeShape", &Procedural::EllipseShape::realizeShape)
-			];
+		];
 
 		AddClassToCollection("EllipseShape", "class", "Generates a procedural ellipse shape mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::TriangleShape>("TriangleShape")
-				.def("setLength", &Procedural::TriangleShape::setLength)
+		[
+			class_<Procedural::TriangleShape>("TriangleShape")
+			.def("setLength", &Procedural::TriangleShape::setLength)
 			.def("setLengthA", &Procedural::TriangleShape::setLengthA)
 			.def("setLengthB", &Procedural::TriangleShape::setLengthB)
 			.def("setLengthB", &Procedural::TriangleShape::setLengthC)
 			.def("realizeShape", &Procedural::TriangleShape::realizeShape)
-			];
+		];
 
 		AddClassToCollection("TriangleShape", "class", "Generates a procedural triangle shape mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::TextureBuffer>("TextureBuffer")
-				.def("setPixel", (void (Procedural::TextureBuffer::*)(size_t, size_t, Ogre::ColourValue)) & Procedural::TextureBuffer::setPixel)
+		[
+			class_<Procedural::TextureBuffer>("TextureBuffer")
+			.def("setPixel", (void (Procedural::TextureBuffer::*)(size_t, size_t, Ogre::ColourValue)) & Procedural::TextureBuffer::setPixel)
 			.def("setPixel", (void (Procedural::TextureBuffer::*)(size_t, size_t, unsigned char, unsigned char, unsigned char, unsigned char)) & Procedural::TextureBuffer::setPixel)
 			.def("setPixel", (void (Procedural::TextureBuffer::*)(size_t, size_t, Real, Real, Real, Real)) & Procedural::TextureBuffer::setPixel)
 			.def("setRed", (void (Procedural::TextureBuffer::*)(size_t, size_t, unsigned char)) & Procedural::TextureBuffer::setRed)
@@ -7502,7 +7463,7 @@ namespace NOWA
 			// .def("getImage", &Procedural::TextureBuffer::getImage) Ogre::Image not announced, necessary?
 			.def("saveImage", &Procedural::TextureBuffer::saveImage)
 			// .def("createTexture", &Procedural::TextureBuffer::createTexture) Ogre::TexturePtr missing and ptr must be converted to raw pointer, necessary?
-			];
+		];
 
 		AddClassToCollection("TextureBuffer", "class", "Textures a procedural mesh.");
 
@@ -7532,9 +7493,9 @@ namespace NOWA
 		];*/
 
 		module(lua)
-			[
-				class_<Procedural::TriangleBuffer>("TriangleBuffer")
-				.def("append", &Procedural::TriangleBuffer::append)
+		[
+			class_<Procedural::TriangleBuffer>("TriangleBuffer")
+			.def("append", &Procedural::TriangleBuffer::append)
 			.def("beginSection", &Procedural::TriangleBuffer::beginSection)
 			.def("endSection", &Procedural::TriangleBuffer::endSection)
 			.def("getFullSection", &Procedural::TriangleBuffer::getFullSection)
@@ -7558,14 +7519,14 @@ namespace NOWA
 			.def("invertNormals", &Procedural::TriangleBuffer::invertNormals)
 			.def("estimateVertexCount", &Procedural::TriangleBuffer::estimateVertexCount)
 			.def("estimateIndexCount", &Procedural::TriangleBuffer::estimateIndexCount)
-			];
+		];
 
 		AddClassToCollection("TriangleBuffer", "class", "Triangulates a procedural mesh.");
 
 		module(lua)
-			[
-				class_<Procedural::Triangulator>("Triangulator")
-				.def("setShapeToTriangulate", &Procedural::Triangulator::setShapeToTriangulate)
+		[
+			class_<Procedural::Triangulator>("Triangulator")
+			.def("setShapeToTriangulate", &Procedural::Triangulator::setShapeToTriangulate)
 			.def("setMultiShapeToTriangulate", &Procedural::Triangulator::setMultiShapeToTriangulate)
 
 			.def("setSegmentListToTriangulate", &Procedural::Triangulator::setSegmentListToTriangulate)
@@ -7573,7 +7534,7 @@ namespace NOWA
 			.def("setRemoveOutside", &Procedural::Triangulator::setRemoveOutside)
 			.def("triangulate", &Procedural::Triangulator::triangulate)
 			.def("addToTriangleBuffer", &Procedural::Triangulator::addToTriangleBuffer)
-			];
+		];
 
 		AddClassToCollection("Triangulator", "class", "Triangulator manages trianulgation operations on a procedural mesh.");
 	}
@@ -8307,16 +8268,10 @@ namespace NOWA
 	void bindDatablockComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<DatablockPbsComponent, GameObjectComponent>("DatablockPbsComponent")
-				.enum_("TransparencyModes")
-			[
-				value("NONE", Ogre::HlmsPbsDatablock::None),
-				value("TRANSPARENT", Ogre::HlmsPbsDatablock::Transparent),
-				value("FADE", Ogre::HlmsPbsDatablock::Fade)
-			]
-		// .def("getClassName", &DatablockPbsComponent::getClassName)
-		.def("getParentClassName", &DatablockPbsComponent::getParentClassName)
+		[
+			class_<DatablockPbsComponent, GameObjectComponent>("DatablockPbsComponent")
+			// .def("getClassName", &DatablockPbsComponent::getClassName)
+			.def("getParentClassName", &DatablockPbsComponent::getParentClassName)
 			.def("setSubEntityIndex", &DatablockPbsComponent::setSubEntityIndex)
 			.def("getSubEntityIndex", &DatablockPbsComponent::getSubEntityIndex)
 
@@ -8410,6 +8365,17 @@ namespace NOWA
 			.def("getBringToFront", &DatablockPbsComponent::getIsInFront)
 			.def("setCutOff", &DatablockPbsComponent::setCutOff)
 			.def("getCutOff", &DatablockPbsComponent::getCutOff)
+		];
+
+		module(lua)
+		[
+			class_<Ogre::HlmsPbsDatablock::TransparencyModes>("TransparencyModes")
+			.enum_("TransparencyModes")
+			[
+				value("NONE", Ogre::HlmsPbsDatablock::None),
+				value("TRANSPARENT", Ogre::HlmsPbsDatablock::Transparent),
+				value("FADE", Ogre::HlmsPbsDatablock::Fade)
+			]
 		];
 
 		AddClassToCollection("DatablockPbsComponent", "class inherits GameObjectComponent", DatablockPbsComponent::getStaticInfoText());
@@ -10031,10 +9997,10 @@ namespace NOWA
 	void bindPhysicsComponent(lua_State* lua)
 	{
 		module(lua)
-			[
-				class_<PhysicsComponent, GameObjectComponent>("PhysicsComponent")
-				//.def("getFromCast", &PhysicsObject::getFromCast)
-				// .def("getClassName", &PhysicsComponent::getClassName)
+		[
+			class_<PhysicsComponent, GameObjectComponent>("PhysicsComponent")
+			//.def("getFromCast", &PhysicsObject::getFromCast)
+			// .def("getClassName", &PhysicsComponent::getClassName)
 			.def("getParentClassName", &PhysicsComponent::getParentClassName)
 			// .def("clone", &PhysicsComponent::clone)
 			.def("isMovable", &PhysicsComponent::isMovable)
@@ -10066,7 +10032,7 @@ namespace NOWA
 			.def("getInitialPosition", &PhysicsComponent::getInitialPosition)
 			.def("getInitialScale", &PhysicsComponent::getInitialScale)
 			.def("getInitialOrientation", &PhysicsComponent::getInitialOrientation)
-			];
+		];
 
 		AddClassToCollection("PhysicsComponent", "class inherits GameObjectComponent", "Base class for some kind of physics components.");
 		// AddClassToCollection("PhysicsComponent", "String getClassName()", "Gets the class name of this component as string.");
@@ -11262,39 +11228,6 @@ namespace NOWA
 		module(lua)
 		[
 			class_<KI::MovingBehavior>("MovingBehavior")
-			.enum_("BehaviorType")
-			[
-				value("STOP", KI::MovingBehavior::BehaviorType::STOP),
-				value("NONE", KI::MovingBehavior::BehaviorType::NONE),
-				value("MOVE", KI::MovingBehavior::BehaviorType::MOVE),
-				value("MOVE_RANDOMLY", KI::MovingBehavior::BehaviorType::MOVE_RANDOMLY),
-				value("SEEK", KI::MovingBehavior::BehaviorType::SEEK),
-				value("FLEE", KI::MovingBehavior::BehaviorType::FLEE),
-				value("ARRIVE", KI::MovingBehavior::BehaviorType::ARRIVE),
-				value("WANDER", KI::MovingBehavior::BehaviorType::WANDER),
-				value("PATH_FINDING_WANDER", KI::MovingBehavior::BehaviorType::PATH_FINDING_WANDER),
-				value("PURSUIT", KI::MovingBehavior::BehaviorType::PURSUIT),
-				value("EVADE", KI::MovingBehavior::BehaviorType::EVADE),
-				value("HIDE", KI::MovingBehavior::BehaviorType::HIDE),
-				value("FOLLOW_PATH", KI::MovingBehavior::BehaviorType::FOLLOW_PATH),
-				value("OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::OBSTACLE_AVOIDANCE),
-				value("FLOCKING_COHESION", KI::MovingBehavior::BehaviorType::FLOCKING_COHESION),
-				value("FLOCKING_SEPARATION", KI::MovingBehavior::BehaviorType::FLOCKING_SEPARATION),
-				value("FLOCKING_SPREAD", KI::MovingBehavior::BehaviorType::FLOCKING_SPREAD),
-				value("FLOCKING_FORMATION_V_SHAPE", KI::MovingBehavior::BehaviorType::FLOCKING_FORMATION_V_SHAPE),
-				value("FLOCKING_ALIGNMENT", KI::MovingBehavior::BehaviorType::FLOCKING_ALIGNMENT),
-				value("FLOCKING_OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::FLOCKING_OBSTACLE_AVOIDANCE),
-				value("FLOCKING_FLEE", KI::MovingBehavior::BehaviorType::FLOCKING_FLEE),
-				value("FLOCKING_SEEK", KI::MovingBehavior::BehaviorType::FLOCKING_SEEK),
-				value("FLOCKING", KI::MovingBehavior::BehaviorType::FLOCKING),
-				value("SEEK_2D", KI::MovingBehavior::BehaviorType::SEEK_2D),
-				value("FLEE_2D", KI::MovingBehavior::BehaviorType::FLEE_2D),
-				value("ARRIVE_2D", KI::MovingBehavior::BehaviorType::ARRIVE_2D),
-				value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D),
-				value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D),
-				value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
-				value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)
-			]
 		    .def("getPath", &KI::MovingBehavior::getPath)
 			.def("setRotationSpeed", &KI::MovingBehavior::setRotationSpeed)
 			.def("isSwitchOn", &KI::MovingBehavior::isSwitchOn)
@@ -11367,6 +11300,44 @@ namespace NOWA
 			.def("setAutoOrientation", &KI::MovingBehavior::setAutoOrientation)
 			.def("setAutoAnimation", &KI::MovingBehavior::setAutoAnimation)
 			.def("setOffsetPosition", &KI::MovingBehavior::setOffsetPosition)
+		];
+
+		module(lua)
+		[
+			class_<KI::MovingBehavior::BehaviorType>("BehaviorType")
+			.enum_("BehaviorType")
+			[
+				value("STOP", KI::MovingBehavior::BehaviorType::STOP),
+				value("NONE", KI::MovingBehavior::BehaviorType::NONE),
+				value("MOVE", KI::MovingBehavior::BehaviorType::MOVE),
+				value("MOVE_RANDOMLY", KI::MovingBehavior::BehaviorType::MOVE_RANDOMLY),
+				value("SEEK", KI::MovingBehavior::BehaviorType::SEEK),
+				value("FLEE", KI::MovingBehavior::BehaviorType::FLEE),
+				value("ARRIVE", KI::MovingBehavior::BehaviorType::ARRIVE),
+				value("WANDER", KI::MovingBehavior::BehaviorType::WANDER),
+				value("PATH_FINDING_WANDER", KI::MovingBehavior::BehaviorType::PATH_FINDING_WANDER),
+				value("PURSUIT", KI::MovingBehavior::BehaviorType::PURSUIT),
+				value("EVADE", KI::MovingBehavior::BehaviorType::EVADE),
+				value("HIDE", KI::MovingBehavior::BehaviorType::HIDE),
+				value("FOLLOW_PATH", KI::MovingBehavior::BehaviorType::FOLLOW_PATH),
+				value("OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::OBSTACLE_AVOIDANCE),
+				value("FLOCKING_COHESION", KI::MovingBehavior::BehaviorType::FLOCKING_COHESION),
+				value("FLOCKING_SEPARATION", KI::MovingBehavior::BehaviorType::FLOCKING_SEPARATION),
+				value("FLOCKING_SPREAD", KI::MovingBehavior::BehaviorType::FLOCKING_SPREAD),
+				value("FLOCKING_FORMATION_V_SHAPE", KI::MovingBehavior::BehaviorType::FLOCKING_FORMATION_V_SHAPE),
+				value("FLOCKING_ALIGNMENT", KI::MovingBehavior::BehaviorType::FLOCKING_ALIGNMENT),
+				value("FLOCKING_OBSTACLE_AVOIDANCE", KI::MovingBehavior::BehaviorType::FLOCKING_OBSTACLE_AVOIDANCE),
+				value("FLOCKING_FLEE", KI::MovingBehavior::BehaviorType::FLOCKING_FLEE),
+				value("FLOCKING_SEEK", KI::MovingBehavior::BehaviorType::FLOCKING_SEEK),
+				value("FLOCKING", KI::MovingBehavior::BehaviorType::FLOCKING),
+				value("SEEK_2D", KI::MovingBehavior::BehaviorType::SEEK_2D),
+				value("FLEE_2D", KI::MovingBehavior::BehaviorType::FLEE_2D),
+				value("ARRIVE_2D", KI::MovingBehavior::BehaviorType::ARRIVE_2D),
+				value("PATROL_2D", KI::MovingBehavior::BehaviorType::PATROL_2D),
+				value("WANDER_2D", KI::MovingBehavior::BehaviorType::WANDER_2D),
+				value("FOLLOW_PATH_2D", KI::MovingBehavior::BehaviorType::FOLLOW_PATH_2D),
+				value("PURSUIT_2D", KI::MovingBehavior::BehaviorType::PURSUIT_2D)
+			]
 		];
 
 		AddClassToCollection("MovingBehavior", "class", "Moving behavior controls one or several game objects (agents) in a artificial intelligent manner. Note: Its possible to combine behaviors.");
@@ -12241,24 +12212,56 @@ namespace NOWA
 			]
 		];
 
-		AddClassToCollection("AudioProcessor", "class", "The audio processor for spectrum analysis.");
-		AddClassToCollection("AudioProcessor", "RAW", "The raw spectrum preparation.");
-		AddClassToCollection("AudioProcessor", "LINEAR", "The linear spectrum preparation.");
-		AddClassToCollection("AudioProcessor", "LOGARITHMIC", "The logarithmnic spectrum preparation.");
+		module(lua)
+		[
+			class_<OgreAL::AudioProcessor::SpectrumPreparationType>("SpectrumPreparationType")
+			.enum_("SpectrumPreparationType")
+			[
+				value("RAW", OgreAL::AudioProcessor::SpectrumPreparationType::RAW),
+				value("LINEAR", OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR),
+				value("LOGARITHMIC", OgreAL::AudioProcessor::SpectrumPreparationType::LOGARITHMIC)
+			]
+		];
 
-		AddClassToCollection("AudioProcessor", "KICK_DRUM", "Kick drum instrument (60hz-130hz).");
-		AddClassToCollection("AudioProcessor", "SNARE_DRUM", "Snare drum instrument (301hz-750hz).");
-		AddClassToCollection("AudioProcessor", "DEEP_BASS", "Deep bass spectrum area (20hz-40hz).");
-		AddClassToCollection("AudioProcessor", "LOW_BASS", "Low bass spectrum area (40hz-80hz).");
-		AddClassToCollection("AudioProcessor", "MID_BASS", "Mid bass spectrum area (80hz-160hz).");
-		AddClassToCollection("AudioProcessor", "UPPER_BASS", "Upper bass spectrum area (160hz-300hz).");
-		AddClassToCollection("AudioProcessor", "LOWER_MIDRANGE", "Lower mid range spectrum area (300hz-600hz).");
-		AddClassToCollection("AudioProcessor", "MIDDLE_MIDRANGE", "Middle mit range spectrum area (600hz-1200hz).");
-		AddClassToCollection("AudioProcessor", "UPPER_MIDRANGE", "Upper mit range spectrum area (1200hz-2400hz).");
-		AddClassToCollection("AudioProcessor", "PRESENCE_RANGE", "Presence range spectrum area (2400hz-5000hz).");
-		AddClassToCollection("AudioProcessor", "HIGH_END", "High end spectrum area (5000hz-10000hz).");
-		AddClassToCollection("AudioProcessor", "EXTREMELY_HIGH_END", "Extremely high end spectrum area (10000hz-20000hz).");
-		AddClassToCollection("AudioProcessor", "HI_HAT", "Hi-Hat detection using the PRESENCE RANGE (4-6 kHz), HIGH_END (6-12 kHz), and EXTREMELY_HIGH_END (12-20 kHz).");
+		module(lua)
+		[
+			class_<OgreAL::AudioProcessor::SpectrumArea>("SpectrumArea")
+			.enum_("SpectrumArea")
+			[
+				value("KICK_DRUM", OgreAL::AudioProcessor::SpectrumArea::KICK_DRUM),
+				value("SNARE_DRUM", OgreAL::AudioProcessor::SpectrumArea::SNARE_DRUM),
+				value("DEEP_BASS", OgreAL::AudioProcessor::SpectrumArea::DEEP_BASS),
+				value("LOW_BASS", OgreAL::AudioProcessor::SpectrumArea::LOW_BASS),
+				value("MID_BASS", OgreAL::AudioProcessor::SpectrumArea::MID_BASS),
+				value("UPPER_BASS", OgreAL::AudioProcessor::SpectrumArea::UPPER_BASS),
+				value("LOWER_MIDRANGE", OgreAL::AudioProcessor::SpectrumArea::LOWER_MIDRANGE),
+				value("MIDDLE_MIDRANGE", OgreAL::AudioProcessor::SpectrumArea::MIDDLE_MIDRANGE),
+				value("UPPER_MIDRANGE", OgreAL::AudioProcessor::SpectrumArea::UPPER_MIDRANGE),
+				value("PRESENCE_RANGE", OgreAL::AudioProcessor::SpectrumArea::PRESENCE_RANGE),
+				value("HIGH_END", OgreAL::AudioProcessor::SpectrumArea::HIGH_END),
+				value("EXTREMELY_HIGH_END", OgreAL::AudioProcessor::SpectrumArea::EXTREMELY_HIGH_END),
+				value("HI_HAT", OgreAL::AudioProcessor::SpectrumArea::HI_HAT)
+			]
+		];
+
+		AddClassToCollection("AudioProcessor", "class", "The audio processor for spectrum analysis.");
+		AddClassToCollection("SpectrumPreparationType", "RAW", "The raw spectrum preparation.");
+		AddClassToCollection("SpectrumPreparationType", "LINEAR", "The linear spectrum preparation.");
+		AddClassToCollection("SpectrumPreparationType", "LOGARITHMIC", "The logarithmnic spectrum preparation.");
+
+		AddClassToCollection("SpectrumArea", "KICK_DRUM", "Kick drum instrument (60hz-130hz).");
+		AddClassToCollection("SpectrumArea", "SNARE_DRUM", "Snare drum instrument (301hz-750hz).");
+		AddClassToCollection("SpectrumArea", "DEEP_BASS", "Deep bass spectrum area (20hz-40hz).");
+		AddClassToCollection("SpectrumArea", "LOW_BASS", "Low bass spectrum area (40hz-80hz).");
+		AddClassToCollection("SpectrumArea", "MID_BASS", "Mid bass spectrum area (80hz-160hz).");
+		AddClassToCollection("SpectrumArea", "UPPER_BASS", "Upper bass spectrum area (160hz-300hz).");
+		AddClassToCollection("SpectrumArea", "LOWER_MIDRANGE", "Lower mid range spectrum area (300hz-600hz).");
+		AddClassToCollection("SpectrumArea", "MIDDLE_MIDRANGE", "Middle mit range spectrum area (600hz-1200hz).");
+		AddClassToCollection("SpectrumArea", "UPPER_MIDRANGE", "Upper mit range spectrum area (1200hz-2400hz).");
+		AddClassToCollection("SpectrumArea", "PRESENCE_RANGE", "Presence range spectrum area (2400hz-5000hz).");
+		AddClassToCollection("SpectrumArea", "HIGH_END", "High end spectrum area (5000hz-10000hz).");
+		AddClassToCollection("SpectrumArea", "EXTREMELY_HIGH_END", "Extremely high end spectrum area (10000hz-20000hz).");
+		AddClassToCollection("SpectrumArea", "HI_HAT", "Hi-Hat detection using the PRESENCE RANGE (4-6 kHz), HIGH_END (6-12 kHz), and EXTREMELY_HIGH_END (12-20 kHz).");
 
 		module(lua)
 		[
@@ -13430,7 +13433,7 @@ namespace NOWA
 
 	Ogre::String LuaScriptApi::getLuaInitScriptContent(void) const
 	{
-		return	"-- A better random seed. This was taken from http://lua-users.org/wiki/MathLibraryTutorial"
+		return	"-- A better random seed. This was taken from http://lua-users.org/wiki/MathLibraryTutorial\n\n"
 			"math.randomseed(tonumber(tostring(os.time()):reverse():sub(1,6)))\n\n"
 			"function dump(o)\n"
 			"\tif type(o) == 'table' then\n"

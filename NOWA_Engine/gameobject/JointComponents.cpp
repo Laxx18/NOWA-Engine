@@ -1765,32 +1765,50 @@ namespace NOWA
 		{
 			bool targetAngleReached = false;
 
+			if (this->round == 2)
+			{
+				return;
+			}
+
 			OgreNewt::HingeActuator* hingeActuatorJoint = static_cast<OgreNewt::HingeActuator*>(this->joint);
 			if (nullptr != hingeActuatorJoint)
 			{
 				Ogre::Real angle = hingeActuatorJoint->GetActuatorAngle();
-				// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle));
-				Ogre::Real step = this->angleRate->getReal() * dt;
+				// Ogre::Real step = this->angleRate->getReal() * dt;
 				if (1.0f == this->oppositeDir)
 				{
-					if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), step))
+					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle) + " max angle limit: "
+					// 	+ Ogre::StringConverter::toString(this->maxAngleLimit->getReal()));
+					if (Ogre::Math::RealEqual(angle, this->maxAngleLimit->getReal(), 0.1f))
 					{
 						targetAngleReached = true;
 						if (true == this->internalDirectionChange)
 						{
 							this->oppositeDir *= -1.0f;
+							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->minAngleLimit->getReal()));
+						}
+						else if (true == this->repeat->getBool())
+						{
+							this->round = 0;
 						}
 						this->round++;
 					}
 				}
 				else
 				{
-					if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), step))
+					// Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Angle: " + Ogre::StringConverter::toString(angle) + " min angle limit: "
+					// 	+ Ogre::StringConverter::toString(this->minAngleLimit->getReal()));
+					if (Ogre::Math::RealEqual(angle, this->minAngleLimit->getReal(), 0.1f))
 					{
 						targetAngleReached = true;
 						if (true == this->internalDirectionChange)
 						{
 							this->oppositeDir *= -1.0f;
+							hingeActuatorJoint->SetTargetAngle(Ogre::Degree(this->maxAngleLimit->getReal()));
+						}
+						else if (true == this->repeat->getBool())
+						{
+							this->round = 0;
 						}
 						this->round++;
 					}
@@ -1802,9 +1820,9 @@ namespace NOWA
 				Ogre::Degree newAngle = Ogre::Degree(0.0f);
 
 				if (1.0f == this->oppositeDir)
-					newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
-				else
 					newAngle = Ogre::Degree(this->minAngleLimit->getReal());
+				else
+					newAngle = Ogre::Degree(this->maxAngleLimit->getReal());
 				hingeActuatorJoint->SetTargetAngle(newAngle);
 
 				if (this->targetAngleReachedClosureFunction.is_valid())
@@ -1861,7 +1879,7 @@ namespace NOWA
 			this->maxAngleLimit->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorgue")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorque")
 		{
 			this->maxTorque->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
@@ -1954,7 +1972,7 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorgue"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorque"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxTorque->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
@@ -2102,7 +2120,7 @@ namespace NOWA
 		hingeActuatorJoint->SetSpringAndDamping(this->asSpringDamper->getBool(), this->massIndependent->getBool(), this->springDamperRelaxation->getReal(), this->springK->getReal(), this->springD->getReal());
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[JointHingeActuatorComponent] Created joint: " + this->gameObjectPtr->getName());
 
-		if (0.0f < this->maxTorque->getReal())
+		if (this->maxTorque->getReal() > 0.0f)
 		{
 			hingeActuatorJoint->SetMaxTorque(this->maxTorque->getReal());
 		}
@@ -2294,7 +2312,9 @@ namespace NOWA
 	void JointHingeActuatorComponent::setMaxTorque(Ogre::Real maxTorque)
 	{
 		if (maxTorque < 0.0f)
+		{
 			return;
+		}
 		
 		this->maxTorque->setValue(maxTorque);
 		OgreNewt::HingeActuator* hingeActuatorJoint = dynamic_cast<OgreNewt::HingeActuator*>(this->joint);
@@ -11663,10 +11683,10 @@ namespace NOWA
 				if (nullptr != universalActuatorJoint)
 				{
 					Ogre::Real angle = universalActuatorJoint->GetActuatorAngle0();
-					Ogre::Real step = this->angleRate0->getReal() * dt;
+					// Ogre::Real step = this->angleRate0->getReal() * dt;
 					if (1.0f == this->oppositeDir0)
 					{
-						if (Ogre::Math::RealEqual(angle, this->maxAngleLimit0->getReal(), step))
+						if (Ogre::Math::RealEqual(angle, this->maxAngleLimit0->getReal(), 0.1f))
 						{
 							this->oppositeDir0 *= -1.0f;
 							this->round0++;
@@ -11674,7 +11694,7 @@ namespace NOWA
 					}
 					else
 					{
-						if (Ogre::Math::RealEqual(angle, this->minAngleLimit0->getReal(), step))
+						if (Ogre::Math::RealEqual(angle, this->minAngleLimit0->getReal(), 0.1f))
 						{
 							this->oppositeDir0 *= -1.0f;
 							this->round0++;
@@ -11711,10 +11731,10 @@ namespace NOWA
 				if (nullptr != universalActuatorJoint)
 				{
 					Ogre::Real angle = universalActuatorJoint->GetActuatorAngle1();
-					Ogre::Real step = this->angleRate1->getReal() * dt;
+					// Ogre::Real step = this->angleRate1->getReal() * dt;
 					if (1.0f == this->oppositeDir1)
 					{
-						if (Ogre::Math::RealEqual(angle, this->maxAngleLimit1->getReal(), step))
+						if (Ogre::Math::RealEqual(angle, this->maxAngleLimit1->getReal(), 0.1f))
 						{
 							this->oppositeDir1 *= -1.0f;
 							this->round1++;
@@ -11722,7 +11742,7 @@ namespace NOWA
 					}
 					else
 					{
-						if (Ogre::Math::RealEqual(angle, this->minAngleLimit1->getReal(), step))
+						if (Ogre::Math::RealEqual(angle, this->minAngleLimit1->getReal(), 0.1f))
 						{
 							this->oppositeDir1 *= -1.0f;
 							this->round1++;
@@ -11784,7 +11804,7 @@ namespace NOWA
 			this->maxAngleLimit0->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorgue0")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorque0")
 		{
 			this->maxTorque0->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
@@ -11819,7 +11839,7 @@ namespace NOWA
 			this->maxAngleLimit1->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
 		}
-		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorgue1")
+		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "MaxTorque1")
 		{
 			this->maxTorque1->setValue(XMLConverter::getAttribReal(propertyElement, "data"));
 			propertyElement = propertyElement->next_sibling("property");
@@ -11880,7 +11900,7 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorgue0"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorque0"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxTorque0->getReal())));
 		propertiesXML->append_node(propertyXML);
 		
@@ -11922,7 +11942,7 @@ namespace NOWA
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
-		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorgue1"));
+		propertyXML->append_attribute(doc.allocate_attribute("name", "MaxTorque1"));
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->maxTorque1->getReal())));
 		propertiesXML->append_node(propertyXML);
 		

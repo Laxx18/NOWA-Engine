@@ -115,7 +115,6 @@ namespace NOWA
 		isFallen(false),
 		fallThreshold(0.7f),
 		recoveryTime(2.0f),
-		animationBlenderObserver(nullptr),
 		debugWaypointNode(nullptr)
 	{
 		this->acceleration->setDescription("The acceleration rate, if set to 0, acceleration is disabled and player moves with full speed.");
@@ -126,13 +125,9 @@ namespace NOWA
 	{
 		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
 	
-		if (nullptr != this->animationBlenderObserver)
+		if (nullptr != this->animationBlender)
 		{
-			delete this->animationBlenderObserver;
-			this->animationBlenderObserver = nullptr;
-		}
-		if (this->animationBlender)
-		{
+			this->animationBlender->deleteAllObservers();
 			delete this->animationBlender;
 			this->animationBlender = nullptr;
 		}
@@ -258,6 +253,11 @@ namespace NOWA
 	bool PlayerControllerComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		if (nullptr != this->animationBlender)
+		{
+			this->animationBlender->init("", false);
+		}
 
 		AppStateManager::getSingletonPtr()->getGameObjectController()->removePlayerController(this->gameObjectPtr->getId());
 		this->cameraBehaviorComponent = nullptr;
@@ -920,18 +920,12 @@ namespace NOWA
 	void PlayerControllerComponent::reactOnAnimationFinished(luabind::object closureFunction, bool oneTime)
 	{
 		if (nullptr == this->animationBlender)
+		{
 			return;
+		}
 
-		if (nullptr == this->animationBlenderObserver)
-		{
-			this->animationBlenderObserver = new AnimationBlenderObserver(closureFunction, oneTime);
-		}
-		else
-		{
-			static_cast<AnimationBlenderObserver*>(this->animationBlenderObserver)->setNewFunctionName(closureFunction, oneTime);
-		}
-		// Note: animation blender will delete observer automatically
-		this->animationBlender->setAnimationBlenderObserver(this->animationBlenderObserver);
+		AnimationBlenderObserver* newObserver = new AnimationBlenderObserver(closureFunction, oneTime);
+		this->animationBlender->addAnimationBlenderObserver(newObserver);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

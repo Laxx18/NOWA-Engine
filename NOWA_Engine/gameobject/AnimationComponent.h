@@ -56,6 +56,11 @@ namespace NOWA
 		virtual bool disconnect(void) override;
 
 		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
+
+		/**
 		 * @see		GameObjectComponent::getClassName
 		 */
 		virtual Ogre::String getClassName(void) const override;
@@ -113,7 +118,7 @@ namespace NOWA
 		/**
 		 * @see  GameObjectComponent::createStaticApiForLua
 		 */
-		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController) { }
+		static void createStaticApiForLua(lua_State* lua, luabind::class_<GameObject>& gameObject, luabind::class_<GameObjectController>& gameObjectController);
 
 		virtual bool isActivated(void) const override;
 
@@ -175,7 +180,6 @@ namespace NOWA
 		Variant* showSkeleton;
 		AnimationBlender* animationBlender;
 		SkeletonVisualizer* skeletonVisualizer;
-		AnimationBlenderObserver* animationBlenderObserver;
 		bool bIsInSimulation;
 	};
 

@@ -290,7 +290,7 @@ namespace NOWA
 
 			static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 				this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), luaScript, this->ogreNewt,
+				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), luaScript, this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
 		}
@@ -309,7 +309,7 @@ namespace NOWA
 
 			static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 				this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 
 		}
@@ -334,7 +334,7 @@ namespace NOWA
 
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 					this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 						this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			}
 		}
@@ -539,7 +539,8 @@ namespace NOWA
 		{
 			this->physicsBody = new OgreNewt::PlayerControllerBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->initialOrientation, this->initialPosition,
 				this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), 
+				new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			this->physicsBody->attachNode(this->gameObjectPtr->getSceneNode());
 		}
@@ -554,7 +555,7 @@ namespace NOWA
 			}
 			static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 				this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+				this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 					this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 		}
 
@@ -634,7 +635,7 @@ namespace NOWA
 				this->initialPosition = castEventData->getNewPosition();
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 					this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 						this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			}
 		}
@@ -657,7 +658,7 @@ namespace NOWA
 				this->initialOrientation = castEventData->getNewOrientation();
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 					this->gameObjectPtr->getDefaultDirection(), this->mass->getReal(),
-					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 						this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			}
 		}
@@ -784,7 +785,7 @@ namespace NOWA
 			{
 				static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody)->reCreatePlayer(this->initialOrientation, this->initialPosition,
 					defaultDirection, this->mass->getReal(),
-					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+					this->radius->getReal(), this->height->getReal(), this->stepHeight->getReal(), this->collisionPosition->getVector3(), this->gameObjectPtr->getCategoryId(), new PhysicsPlayerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 						this->onContactFrictionFunctionName->getString(), this->onContactFunctionName->getString()));
 			}
 		}
@@ -844,11 +845,6 @@ namespace NOWA
 	void PhysicsPlayerControllerComponent::setCollisionPosition(const Ogre::Vector3& collisionPosition)
 	{
 		this->collisionPosition->setValue(collisionPosition);
-		OgreNewt::PlayerControllerBody* playerControllerBody = static_cast<OgreNewt::PlayerControllerBody*>(this->physicsBody);
-		if (nullptr != playerControllerBody)
-		{
-			playerControllerBody->setCollisionPositionOffset(collisionPosition);
-		}
 		this->createDynamicBody();
 	}
 

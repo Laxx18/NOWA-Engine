@@ -1635,7 +1635,7 @@ void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 	if (sender == this->upButton)
 	{
 		auto selectedIndex = this->listBox->getIndexSelected();
-		if (selectedIndex > 0)
+		if (selectedIndex != MyGUI::ITEM_NONE)
 		{
 			auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
 			if (nullptr != luaScriptComponent)
@@ -1654,7 +1654,7 @@ void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 		auto selectedIndex = this->listBox->getIndexSelected();
 		auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
-		if (selectedIndex >= 0 && selectedIndex < scripts.size() - 1)
+		if (selectedIndex != MyGUI::ITEM_NONE && selectedIndex < scripts.size() - 1)
 		{
 			auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
 			if (nullptr != luaScriptComponent)

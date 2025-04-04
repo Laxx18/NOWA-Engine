@@ -23,8 +23,6 @@ namespace NOWA
 		previousLoop(false),
 		complete(false),
 		debugLog(false),
-		animationBlenderObserver(nullptr),
-		skipReactOnAnimation(false),
 		canAnimate(true)
 	{
 		this->skeleton = this->item->getSkeletonInstance();
@@ -89,12 +87,6 @@ namespace NOWA
 
 		return animationNames;
 	}
-
-	void NOWA::AnimationBlenderV2::setAnimationBlenderObserver(IAnimationBlenderObserver* animationBlenderObserver)
-	{
-		this->animationBlenderObserver = animationBlenderObserver;
-		this->skipReactOnAnimation = false;
-	}
 	
 	void AnimationBlenderV2::internalInit(const Ogre::String& animationName, bool loop)
 	{
@@ -121,7 +113,7 @@ namespace NOWA
 			this->source->setEnabled(true);
 			this->source->mWeight = 1.0f;
 			this->timeleft = 0.0f;
-			this->duration = 1.0f;
+			this->duration = this->source->getDuration();
 			this->target = nullptr;
 			this->complete = false;
 			this->loop = loop;
@@ -468,18 +460,12 @@ namespace NOWA
 					this->internalInit(this->source->getName().getFriendlyText());
 
 					this->blend(this->source->getName().getFriendlyText(), this->transition, this->duration, this->loop);
+
+					this->source->setFrame(this->source->getDuration() * 0.5f);
 				}
 
-				// Check if there is an animation blender observer, and call when animation is finished
-				if (nullptr != this->animationBlenderObserver && false == skipReactOnAnimation)
-				{
-					this->animationBlenderObserver->onAnimationFinished();
-
-					if (true == this->animationBlenderObserver->shouldReactOneTime())
-					{
-						this->skipReactOnAnimation = true;
-					}
-				}
+				// Notifies all observers that the animation has finished
+				this->notifyObservers();
 			}
 			else
 			{
@@ -877,6 +863,145 @@ namespace NOWA
 		{
 			this->source->setEnabled(bEnable);
 		}
+	}
+
+	void AnimationBlenderV2::addAnimationBlenderObserver(IAnimationBlenderObserver* observer)
+	{
+		if (nullptr != observer)
+		{
+			// Avoid adding the same observer more than once
+			if (std::find(this->animationBlenderObservers.begin(), this->animationBlenderObservers.end(), observer) == this->animationBlenderObservers.end())
+			{
+				this->animationBlenderObservers.push_back(observer);
+			}
+		}
+	}
+
+	void AnimationBlenderV2::removeAnimationBlenderObserver(IAnimationBlenderObserver* observer)
+	{
+		auto it = std::remove(this->animationBlenderObservers.begin(), this->animationBlenderObservers.end(), observer);
+		animationBlenderObservers.erase(it, this->animationBlenderObservers.end());
+	}
+
+	void AnimationBlenderV2::queueAnimationFinishedCallback(std::function<void()> callback)
+	{
+		this->deferredCallbacks.push_back(callback);
+	}
+
+	void AnimationBlenderV2::processDeferredCallbacks(void)
+	{
+		for (auto& callback : this->deferredCallbacks)
+		{
+			callback();  // Execute each callback
+		}
+		this->deferredCallbacks.clear();  // Clear the queue once processed
+	}
+
+	// Process all deferred callbacks after notifying observers
+	/*
+	Deferred Callbacks :
+
+	The deferredCallbacks vector holds all the callbacks to be executed later, instead of executing them immediately when the animation finishes.This avoids issues with nested callbacks and ensures they are executed one after the other.
+
+	queueAnimationFinishedCallback :
+
+	This function adds a callback to the deferredCallbacks queue.It is called inside notifyObservers to add each observer’s callback.
+
+	processDeferredCallbacks :
+
+	This function processes each callback in the queue after the animation is complete, ensuring that callbacks are executed in order without interfering with each other.
+
+	In Lua :
+
+	The Lua script defines multiple reactOnAnimationFinished calls, which are now queued and executed sequentially, avoiding issues with nesting and callback interference.
+
+	timing is a critical aspect here, especially with chained animations where the second animation must only start after the first one finishes. With the deferred callback approach, the timing should be correct, but there are a few important things to ensure:
+
+	Sequential Callback Execution: Since the callbacks are queued up in the deferredCallbacks vector, they will execute in the order they were added. In your Lua code, each reactOnAnimationFinished callback will be executed only after the corresponding animation completes.
+
+	Processing Deferred Callbacks After notifyObservers: The key point is that the notifyObservers function calls processDeferredCallbacks after notifying all observers. This ensures that once the animation finishes and all observers are notified, the deferred callbacks (which could include other animation transitions) are processed in sequence. This guarantees that the inner animation won’t be triggered until the previous one finishes.
+
+	Key Points to Ensure Timing:
+	Animation Completion and Callback: Make sure that the first animation has fully completed before the second one is triggered. This relies on how reactOnAnimationFinished works in your system. If it fires at the right moment (i.e., when the animation is actually finished and ready for the next action), everything will stay in sync.
+
+	Chaining Callbacks: By chaining the reactOnAnimationFinished callbacks, you are already setting up a sequence. The inner animation callback will only be called after the outer animation completes.
+
+	Lua Code Example: The Lua code you've written is structured to ensure that each animation starts only after the previous one finishes:
+
+	lua
+	Kopieren
+	Bearbeiten
+	elseif (inputDeviceModule:isActionDown(NOWA_A_ACTION)) then
+		if (waypointReached and canPull) then
+			canPull = false;
+			pullAction = true;
+			log("--->Action!");
+
+			pathFollowComponent:getMovingBehavior():setBehavior(BehaviorType.NONE);
+
+			-- Start first animation
+			animationBlender:blendAndContinue1(AnimID.ANIM_PICKUP_1);
+
+			-- Queue the first callback
+			playerControllerComponent:reactOnAnimationFinished(function()
+				log("First animation finished (Pickup)");
+				currentBucket:getJointHingeActuatorComponent():setActivated(true);
+
+				-- Start second animation
+				animationBlender:blendAndContinue1(AnimID.ANIM_ACTION_1);
+
+				-- Queue the second callback
+				playerControllerComponent:reactOnAnimationFinished(function()
+					log("Second animation finished (Action)");
+					canPull = true;
+					log("--->hier");
+
+					-- Start idle animation
+					animationBlender:blend5(AnimID.ANIM_IDLE_1, BlendingTransition.BLEND_WHILE_ANIMATING, 0.1, false);
+				end);
+			end);
+		end
+	end
+	*/
+	void AnimationBlenderV2::notifyObservers(void)
+	{
+		std::vector<IAnimationBlenderObserver*> observersToRemove;
+
+		for (auto it = this->animationBlenderObservers.begin(); it != this->animationBlenderObservers.end(); ++it)
+		{
+			IAnimationBlenderObserver* observer = *it;
+
+			// Enqueue the observer's callback to be executed later
+			this->queueAnimationFinishedCallback([observer]() {
+				observer->onAnimationFinished();
+				});
+
+			// Handle one-time observers
+			if (observer->shouldReactOneTime())
+			{
+				observersToRemove.push_back(observer);  // Mark for removal later
+			}
+		}
+
+		// Process any deferred callbacks
+		this->processDeferredCallbacks();
+
+		// Remove one-time observers after the loop
+		for (IAnimationBlenderObserver* observer : observersToRemove)
+		{
+			this->animationBlenderObservers.erase(std::remove(this->animationBlenderObservers.begin(), this->animationBlenderObservers.end(), observer), this->animationBlenderObservers.end());
+
+			delete observer;
+		}
+	}
+
+	void AnimationBlenderV2::deleteAllObservers(void)
+	{
+		for (IAnimationBlenderObserver* observer : this->animationBlenderObservers)
+		{
+			delete observer;
+		}
+		this->animationBlenderObservers.clear();
 	}
 
 	Ogre::Vector3 AnimationBlenderV2::getLocalToWorldPosition(Ogre::Bone* bone)

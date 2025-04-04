@@ -575,6 +575,8 @@ namespace NOWA
 			if (eScriptAction::NEW == scriptAction || eScriptAction::LOAD == scriptAction)
 			{
 				this->compileScript();
+				boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), tempScriptFileName));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 			}
 		}
 		else if (eScriptAction::RENAME == scriptAction)

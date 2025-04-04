@@ -1385,6 +1385,82 @@ return {
 			{
 				type = "value"
 			},
+			ANIM_PULL =
+			{
+				type = "value"
+			},
+			ANIM_PUSH =
+			{
+				type = "value"
+			},
+			ANIM_KNOCK_DOWN =
+			{
+				type = "value"
+			},
+			ANIM_STAND_UP =
+			{
+				type = "value"
+			},
+			ANIM_TALK =
+			{
+				type = "value"
+			},
+			ANIM_POINT =
+			{
+				type = "value"
+			},
+			ANIM_LAUGH =
+			{
+				type = "value"
+			},
+			ANIM_LAND_1 =
+			{
+				type = "value"
+			},
+			ANIM_LAND_2 =
+			{
+				type = "value"
+			},
+			ANIM_SHOOT =
+			{
+				type = "value"
+			},
+			ANIM_START_CLIMB =
+			{
+				type = "value"
+			},
+			ANIM_TAKE_DAMAGE =
+			{
+				type = "value"
+			},
+			ANIM_SHRUG =
+			{
+				type = "value"
+			},
+			ANIM_SALTO =
+			{
+				type = "value"
+			},
+			ANIM_CRY =
+			{
+				type = "value"
+			},
+			ANIM_CHEER =
+			{
+				type = "value"
+			},
+			ANIM_CAST_SPELL_1 =
+			{
+				type = "value"
+			},
+			ANIM_CAST_SPELL_2 =
+			{
+				type = "value"
+			},
+			ANIM_CAST_SPELL_3 =
+			{
+				type = "value"
+			},
 			ANIM_NONE =
 			{
 				type = "value"
@@ -1397,6 +1473,18 @@ return {
 		description = "This class can be used for more complex animations and transitions between them.",
 		childs = 
 		{
+			BLEND_SWITCH =
+			{
+				type = "value"
+			},
+			BLEND_WHILE_ANIMATING =
+			{
+				type = "value"
+			},
+			BLEND_THEN_ANIMATE =
+			{
+				type = "value"
+			},
 			init1 =
 			{
 				type = "method",
@@ -2877,74 +2965,7 @@ return {
 	AudioProcessor =
 	{
 		type = "class",
-		description = "The audio processor for spectrum analysis.",
-		childs = 
-		{
-			RAW =
-			{
-				type = "value"
-			},
-			LINEAR =
-			{
-				type = "value"
-			},
-			LOGARITHMIC =
-			{
-				type = "value"
-			},
-			KICK_DRUM =
-			{
-				type = "value"
-			},
-			SNARE_DRUM =
-			{
-				type = "value"
-			},
-			DEEP_BASS =
-			{
-				type = "value"
-			},
-			LOW_BASS =
-			{
-				type = "value"
-			},
-			MID_BASS =
-			{
-				type = "value"
-			},
-			UPPER_BASS =
-			{
-				type = "value"
-			},
-			LOWER_MIDRANGE =
-			{
-				type = "value"
-			},
-			MIDDLE_MIDRANGE =
-			{
-				type = "value"
-			},
-			UPPER_MIDRANGE =
-			{
-				type = "value"
-			},
-			PRESENCE_RANGE =
-			{
-				type = "value"
-			},
-			HIGH_END =
-			{
-				type = "value"
-			},
-			EXTREMELY_HIGH_END =
-			{
-				type = "value"
-			},
-			HI_HAT =
-			{
-				type = "value"
-			}
-		}
+		description = "The audio processor for spectrum analysis."
 	},
 	Axis =
 	{
@@ -3173,26 +3194,6 @@ return {
 				args = "(Vector3 color)",
 				returns = "(nil)",
 				valuetype = "nil"
-			}
-		}
-	},
-	BlendingTransition =
-	{
-		type = "class",
-		description = "BlendingTransition class",
-		childs = 
-		{
-			BLEND_SWITCH =
-			{
-				type = "value"
-			},
-			BLEND_WHILE_ANIMATING =
-			{
-				type = "value"
-			},
-			BLEND_THEN_ANIMATE =
-			{
-				type = "value"
 			}
 		}
 	},
@@ -6991,22 +6992,6 @@ return {
 				returns = "(GameObjectTitleComponent)",
 				valuetype = "GameObjectTitleComponent"
 			},
-			getAnimationComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the animation component by the given occurence index, since a game object may have besides other components several animation components.",
-				args = "(number occurrenceIndex)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
-			getAnimationComponent =
-			{
-				type = "function",
-				description = "Gets the animation component. This can be used if the game object just has one animation component.",
-				args = "()",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
-			},
 			getAttributesComponent =
 			{
 				type = "function",
@@ -7719,22 +7704,6 @@ return {
 				returns = "(TagPointComponent)",
 				valuetype = "TagPointComponent"
 			},
-			getTimeTriggerComponentFromIndex =
-			{
-				type = "function",
-				description = "Gets the time trigger component by the given occurence index, since a game object may have besides other components several tag point components.",
-				args = "(number occurrenceIndex)",
-				returns = "(TimeTriggerComponent)",
-				valuetype = "TimeTriggerComponent"
-			},
-			getTimeTriggerComponent =
-			{
-				type = "function",
-				description = "Gets the time trigger component. This can be used if the game object just has one time trigger component.",
-				args = "()",
-				returns = "(TimeTriggerComponent)",
-				valuetype = "TimeTriggerComponent"
-			},
 			getMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -8070,14 +8039,6 @@ return {
 				args = "()",
 				returns = "(LuaScriptComponent)",
 				valuetype = "LuaScriptComponent"
-			},
-			getAnimationComponentFromName =
-			{
-				type = "function",
-				description = "Gets the animation component.",
-				args = "(string name)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
 			},
 			getAttributesComponentFromName =
 			{
@@ -8727,14 +8688,6 @@ return {
 				returns = "(TagPointComponent)",
 				valuetype = "TagPointComponent"
 			},
-			getTimeTriggerComponentFromName =
-			{
-				type = "function",
-				description = "Gets the time trigger component.",
-				args = "(string name)",
-				returns = "(TimeTriggerComponent)",
-				valuetype = "TimeTriggerComponent"
-			},
 			getMoveMathFunctionComponentFromName =
 			{
 				type = "function",
@@ -8966,6 +8919,30 @@ return {
 				args = "(string name)",
 				returns = "(AiLuaGoalComponent)",
 				valuetype = "AiLuaGoalComponent"
+			},
+			getAnimationComponent2 =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(AnimationComponent)",
+				valuetype = "AnimationComponent"
+			},
+			getAnimationComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(AnimationComponent)",
+				valuetype = "AnimationComponent"
+			},
+			getAnimationComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(AnimationComponent)",
+				valuetype = "AnimationComponent"
 			},
 			getAnimationComponentV22 =
 			{
@@ -9727,6 +9704,30 @@ return {
 				returns = "(TimeLineComponent)",
 				valuetype = "TimeLineComponent"
 			},
+			getTimeTriggerComponentFromIndex =
+			{
+				type = "function",
+				description = "Gets the component by the given occurence index, since a game object may this component maybe several times.",
+				args = "(number occurrenceIndex)",
+				returns = "(TimeTriggerComponent)",
+				valuetype = "TimeTriggerComponent"
+			},
+			getTimeTriggerComponent =
+			{
+				type = "function",
+				description = "Gets the component. This can be used if the game object this component just once.",
+				args = "()",
+				returns = "(TimeTriggerComponent)",
+				valuetype = "TimeTriggerComponent"
+			},
+			getTimeTriggerComponentFromName =
+			{
+				type = "function",
+				description = "Gets the component from name.",
+				args = "(string name)",
+				returns = "(TimeTriggerComponent)",
+				valuetype = "TimeTriggerComponent"
+			},
 			getTransformEaseComponentFromIndex =
 			{
 				type = "function",
@@ -10094,14 +10095,6 @@ return {
 				args = "(GameObject other)",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
-			},
-			castAnimationComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(AnimationComponent other)",
-				returns = "(AnimationComponent)",
-				valuetype = "AnimationComponent"
 			},
 			castAttributesComponent =
 			{
@@ -10815,14 +10808,6 @@ return {
 				returns = "(TagPointComponent)",
 				valuetype = "TagPointComponent"
 			},
-			castTimeTriggerComponent =
-			{
-				type = "function",
-				description = "Casts an incoming type from function for lua auto completion.",
-				args = "(TimeTriggerComponent other)",
-				returns = "(TimeTriggerComponent)",
-				valuetype = "TimeTriggerComponent"
-			},
 			castMoveMathFunctionComponent =
 			{
 				type = "function",
@@ -11046,6 +11031,14 @@ return {
 				args = "(GoalResult other)",
 				returns = "(GoalResult)",
 				valuetype = "GoalResult"
+			},
+			castAnimationComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(AnimationComponent other)",
+				returns = "(AnimationComponent)",
+				valuetype = "AnimationComponent"
 			},
 			castAnimationComponentV2 =
 			{
@@ -11342,6 +11335,14 @@ return {
 				args = "(TimeLineComponent other)",
 				returns = "(TimeLineComponent)",
 				valuetype = "TimeLineComponent"
+			},
+			castTimeTriggerComponent =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(TimeTriggerComponent other)",
+				returns = "(TimeTriggerComponent)",
+				valuetype = "TimeTriggerComponent"
 			},
 			castTransformEaseComponent =
 			{
@@ -18011,7 +18012,7 @@ return {
 	MeshModifyComponent =
 	{
 		type = "class",
-		description = "Usage: The mesh modify component can be used to modify the mesh of an game object with an Ogre::Item, in order e.g. to create hills on a sphere etc.  Note: This component can only be used, if the game object does possess an Ogre::Item and NOT an Ogre::v1::Entity.The Ogre::Item MUST just have one subItem!It will not work for several sub items yet.",
+		description = "Usage: My usage text.",
 		inherits = "GameObjectComponent",
 		childs = 
 		{
@@ -25296,6 +25297,86 @@ return {
 				args = "(func closure, spawnedGameObject, originGameObject)",
 				returns = "(nil)",
 				valuetype = "nil"
+			}
+		}
+	},
+	SpectrumArea =
+	{
+		type = "class",
+		description = "SpectrumArea class",
+		childs = 
+		{
+			KICK_DRUM =
+			{
+				type = "value"
+			},
+			SNARE_DRUM =
+			{
+				type = "value"
+			},
+			DEEP_BASS =
+			{
+				type = "value"
+			},
+			LOW_BASS =
+			{
+				type = "value"
+			},
+			MID_BASS =
+			{
+				type = "value"
+			},
+			UPPER_BASS =
+			{
+				type = "value"
+			},
+			LOWER_MIDRANGE =
+			{
+				type = "value"
+			},
+			MIDDLE_MIDRANGE =
+			{
+				type = "value"
+			},
+			UPPER_MIDRANGE =
+			{
+				type = "value"
+			},
+			PRESENCE_RANGE =
+			{
+				type = "value"
+			},
+			HIGH_END =
+			{
+				type = "value"
+			},
+			EXTREMELY_HIGH_END =
+			{
+				type = "value"
+			},
+			HI_HAT =
+			{
+				type = "value"
+			}
+		}
+	},
+	SpectrumPreparationType =
+	{
+		type = "class",
+		description = "SpectrumPreparationType class",
+		childs = 
+		{
+			RAW =
+			{
+				type = "value"
+			},
+			LINEAR =
+			{
+				type = "value"
+			},
+			LOGARITHMIC =
+			{
+				type = "value"
 			}
 		}
 	},
