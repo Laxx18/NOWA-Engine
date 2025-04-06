@@ -88,11 +88,12 @@ namespace NOWA
 		}
 
 		// Iterate through the cameraDataMap to find and remove the camera behavior
-		for (auto& entry : this->cameraDataMap)
+		for (auto mainIt = this->cameraDataMap.begin(); mainIt != this->cameraDataMap.end();)
 		{
-			CameraData& cameraData = entry.second;
+			CameraData& cameraData = mainIt->second;
+			bool noBehaviorLeft = false;
 
-			for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
+			for (auto it = mainIt->second.behaviorData.begin(); it != mainIt->second.behaviorData.end(); ++it)
 			{
 				if (it->cameraBehaviorKey == cameraBehaviorType)
 				{
@@ -100,28 +101,40 @@ namespace NOWA
 					// Clear the behavior data
 					cameraBehavior->onClearData();
 
-					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(entry.first));
+					boost::shared_ptr<EventDataRemoveCameraBehavior> eventDataRemoveCamera(new EventDataRemoveCameraBehavior(mainIt->first));
 					AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRemoveCamera);
 
 					delete cameraBehavior;
 
 					// Clear the camera behavior key
 					it->cameraBehaviorKey.clear();
-					entry.second.behaviorData.erase(it);
+					mainIt->second.behaviorData.erase(it);
 
 					// If the removed behavior was the current active one, attempt to restore another behavior
 					if (true == cameraData.isActive)
 					{
-						if (false == entry.second.behaviorData.empty())
+						if (false == mainIt->second.behaviorData.empty())
 						{
-							auto otherBehavior = entry.second.behaviorData.begin();
+							auto otherBehavior = mainIt->second.behaviorData.begin();
 							// Use setActiveCameraBehavior to set the new behavior
-							this->setActiveCameraBehavior(entry.first, entry.second.behaviorData.begin()->cameraBehaviorKey);
+							this->setActiveCameraBehavior(mainIt->first, mainIt->second.behaviorData.begin()->cameraBehaviorKey);
+						}
+						else
+						{
+							noBehaviorLeft = true;
 						}
 					}
-					
 					break;
 				}
+			}
+
+			if (false == noBehaviorLeft)
+			{
+				++mainIt;
+			}
+			else
+			{
+				mainIt = this->cameraDataMap.erase(mainIt);
 			}
 		}
 	}
@@ -405,7 +418,7 @@ namespace NOWA
 
 	Ogre::Camera* CameraManager::getActiveCamera(void) const
 	{
-		// Iterate through all cameras in the cameraDataMap
+		// Iterates through all cameras in the cameraDataMap
 		for (const auto& entry : this->cameraDataMap)
 		{
 			// Check if the camera is active
@@ -425,7 +438,7 @@ namespace NOWA
 
 	void CameraManager::setMoveCameraWeight(Ogre::Real moveCameraWeight)
 	{
-		// Set moveCameraWeight for all active cameras
+		// Sets moveCameraWeight for all active cameras
 		for (auto& cameraPair : this->cameraDataMap)
 		{
 			if (true == cameraPair.second.isActive) // Check if the camera is active
@@ -440,7 +453,8 @@ namespace NOWA
 		// Set rotateCameraWeight for all active cameras
 		for (auto& cameraPair : this->cameraDataMap)
 		{
-			if (true == cameraPair.second.isActive) // Check if the camera is active
+			// Checks if the camera is active
+			if (true == cameraPair.second.isActive)
 			{
 				cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCameraWeight = rotateCameraWeight;
 			}
@@ -454,15 +468,13 @@ namespace NOWA
 
 	void CameraManager::moveCamera(Ogre::Real dt)
 	{
-		// Move all active cameras using their camera behaviors
+		// Moves all active cameras using their camera behaviors
 		for (auto& cameraPair : this->cameraDataMap)
 		{
-			if (true == cameraPair.second.isActive) // Check if the camera is active
+			// Checks if the camera is active
+			if (true == cameraPair.second.isActive)
 			{
-				// You can access the position if needed
-				Ogre::Vector3 cameraPosition = cameraPair.first->getPosition();
-
-				// Move the camera using its behavior
+				// Moves the camera using its behavior
 				cameraPair.second.behaviorData.begin()->cameraBehavior->moveCamera(dt);
 			}
 		}
@@ -470,16 +482,12 @@ namespace NOWA
 
 	void CameraManager::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{
-		// Rotate all active cameras using their camera behaviors
+		// Rotates all active cameras using their camera behaviors
 		for (auto& cameraPair : this->cameraDataMap)
 		{
 			if (true == cameraPair.second.isActive) // Check if the camera is active
 			{
-				// You can access the position and orientation if needed
-				Ogre::Vector3 cameraPosition = cameraPair.first->getPosition();
-				Ogre::Quaternion cameraOrientation = cameraPair.first->getOrientation();
-
-				// Rotate the camera using its behavior
+				// Rotates the camera using its behavior
 				cameraPair.second.behaviorData.begin()->cameraBehavior->rotateCamera(dt, forJoyStick);
 			}
 		}
@@ -487,7 +495,7 @@ namespace NOWA
 
 	Ogre::Vector3 CameraManager::getPosition(void)
 	{
-		// Return the position of the first active camera (if any)
+		// Returns the position of the first active camera (if any)
 		for (auto& cameraPair : this->cameraDataMap)
 		{
 			if (true == cameraPair.second.isActive) // Check if the camera is active
@@ -495,12 +503,12 @@ namespace NOWA
 				return cameraPair.second.behaviorData.begin()->cameraBehavior->getPosition();
 			}
 		}
-		return Ogre::Vector3::ZERO; // Default return value if no active camera is found
+		return Ogre::Vector3::ZERO;
 	}
 
 	Ogre::Quaternion CameraManager::getOrientation(void)
 	{
-		// Return the orientation of the first active camera (if any)
+		// Returns the orientation of the first active camera (if any)
 		for (auto& cameraPair : this->cameraDataMap)
 		{
 			if (true == cameraPair.second.isActive) // Check if the camera is active
@@ -508,8 +516,7 @@ namespace NOWA
 				return cameraPair.second.behaviorData.begin()->cameraBehavior->getOrientation();
 			}
 		}
-		return Ogre::Quaternion::IDENTITY; // Default return value if no active camera is found
+		return Ogre::Quaternion::IDENTITY;
 	}
-
 
 }; //namespace end

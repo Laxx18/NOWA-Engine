@@ -35,7 +35,7 @@ namespace NOWA
 		this->activated->setVisible(false);
 
 		this->cameraGameObjectId->setDescription("Sets the camera game object id in order if this camera behavior shall be used for an other camera, e.g. Splitscreen. "
-			" If 0 (not set), the currently active camera is used.");
+			" If 0 (not set), the currently active camera is used. Which, depending e.g. on lua script execution order may be the wrong camera. So its better to have the camera id set.");
 	}
 
 	CameraBehaviorComponent::~CameraBehaviorComponent()
@@ -72,6 +72,12 @@ namespace NOWA
 		this->gameObjectPtr->setDynamic(true);
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
+		const auto cameraCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+		if (nullptr != cameraCompPtr)
+		{
+			this->cameraGameObjectId->setValue(this->gameObjectPtr->getId());
+		}
+		
 		return true;
 	}
 

@@ -267,6 +267,7 @@ namespace NOWA
 	{
 		if (nullptr != this->dummyEntity)
 		{
+			Ogre::String name = this->camera->getName();
 			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 			{
 				this->dummyEntity->setVisible(false);
@@ -650,12 +651,15 @@ namespace NOWA
 				{
 					// if ("MainCamera" == this->camera->getName())
 					{
+						this->baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(camera);
+						// ATTENTION: Since even there is another camera behavior, the base camera behavior would be used sometimes, hence this changes here
+						// So that only a base camera is created, if there no other behavior for this game object
 						if (nullptr == this->baseCamera)
 						{
 							this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+							AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
+							AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
 						}
-						AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
-						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
 
 						WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), this->camera, workspaceBaseCompPtr.get());
 					}

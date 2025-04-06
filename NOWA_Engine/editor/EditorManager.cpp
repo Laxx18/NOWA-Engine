@@ -547,31 +547,37 @@ namespace NOWA
 					// Add the plane component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockPbsComponent::getStaticClassName());
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::MIRROR == this->type)
 				{
 					// Add the planar reflection component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlanarReflectionComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::LIGHT_DIRECTIONAL == this->type)
 				{
 					// Add the light direcitional component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightDirectionalComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::LIGHT_SPOT == this->type)
 				{
 					// Add the light spot component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightSpotComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::LIGHT_POINT == this->type)
 				{
 					// Add the light point component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightPointComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::LIGHT_AREA == this->type)
 				{
 					// Add the light area component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightAreaComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::CAMERA == this->type)
 				{
@@ -581,6 +587,7 @@ namespace NOWA
 					// Add the camera component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, CameraComponent::getStaticClassName());
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, WorkspacePbsComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
 					CameraComponent::setJustCreated(true);
 				}
@@ -588,43 +595,51 @@ namespace NOWA
 				{
 					// Add the camera component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ReflectionCameraComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::SCENE_NODE == this->type)
 				{
 					// Add the scene node component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NodeComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::LINES == this->type)
 				{
 					// Add the lines component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LinesComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::MANUAL_OBJECT == this->type)
 				{
 					// Add the manual object component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ManualObjectComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::RECTANGLE == this->type)
 				{
 					// Add the manual object component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, RectangleComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::DECAL == this->type)
 				{
 					// Add the scene decal component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DecalComponent::getStaticClassName());
 					// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::OCEAN == this->type)
 				{
 					// Add the ocean component
 					// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				else if (GameObject::TERRA == this->type)
 				{
 					// Add the terra component
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, TerraComponent::getStaticClassName());
 					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
+					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 				}
 				// Register after the component has been created
 				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
