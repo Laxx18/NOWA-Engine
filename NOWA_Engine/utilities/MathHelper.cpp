@@ -354,35 +354,31 @@ namespace NOWA
 		const Ogre::Vector3& direction,
 		const Ogre::Vector3& defaultDirection,
 		Ogre::Real dt,
-		Ogre::Real rotationSpeed)
+		Ogre::Real rotationSpeedDegPerSec)
 	{
 		Ogre::Vector3 currentDirection = sourceOrientation * defaultDirection;
 
 		// Get rotation needed to face direction
 		Ogre::Quaternion deltaRotation = currentDirection.getRotationTo(direction);
-
-		// Compute the target orientation
 		Ogre::Quaternion destinationOrientation = deltaRotation * sourceOrientation;
 
-		// Ensure rotation does NOT introduce unwanted movement
-		Ogre::Quaternion rotationBetween = destinationOrientation * sourceOrientation.Inverse();
-
-		// Extract rotation angle
+		// Extract angle between orientations
 		Ogre::Radian angle;
 		Ogre::Vector3 axis;
+		Ogre::Quaternion rotationBetween = destinationOrientation * sourceOrientation.Inverse();
 		rotationBetween.ToAngleAxis(angle, axis);
 
-		// Ensure rotation happens around the character's vertical axis (Y-axis)
-		if (axis.isZeroLength())
+		// Clamp rotation per frame
+		Ogre::Real maxAngleThisFrame = Ogre::Degree(rotationSpeedDegPerSec * dt).valueRadians();
+
+		if (angle.valueRadians() < 1e-6f) // Already facing, or very close
 		{
-			axis = Ogre::Vector3::UNIT_Y; // Default to Y-axis if rotation axis is unstable
+			return sourceOrientation;
 		}
 
-		// Clamp rotation speed per frame
-		Ogre::Real maxAngleThisFrame = rotationSpeed * dt;
-		Ogre::Real ratio = (angle.valueDegrees() > maxAngleThisFrame) ? (maxAngleThisFrame / angle.valueDegrees()) : 1.0f;
+		Ogre::Real ratio = std::min<Ogre::Real>(1.0f, maxAngleThisFrame / angle.valueRadians());
 
-		// Apply interpolated rotation
+		// Interpolate by the clamped ratio
 		return Ogre::Quaternion::Slerp(ratio, sourceOrientation, destinationOrientation, true);
 	}
 #endif

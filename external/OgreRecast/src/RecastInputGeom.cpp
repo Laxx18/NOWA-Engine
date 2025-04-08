@@ -407,19 +407,10 @@ InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, con
 	i = 0;
 	for (std::vector<Ogre::v1::Entity*>::iterator iter = mSrcMeshes.begin(); iter != mSrcMeshes.end(); iter++)
 	{
-		bool isPlanet = false;
-
 		Ogre::String name = (*iter)->getMesh()->getName();
-		// Nothing is created anymore
-#if 0
-		if (name == "geosphere8000.mesh")
-		{
-			isPlanet = true;
-		}
-#endif
 
 		int ind = pagesTotal + i;
-		getMeshInformation((*iter)->getMesh(), meshVertexCount[ind], meshVertices[ind], meshIndexCount[ind], meshIndices[ind], isPlanet);
+		getMeshInformation((*iter)->getMesh(), meshVertexCount[ind], meshVertices[ind], meshIndexCount[ind], meshIndices[ind]);
 
 		//total number of verts
 		nverts += meshVertexCount[ind];
@@ -432,19 +423,10 @@ InputGeom::InputGeom(const std::vector<InputGeom::TerraData>& terraDataList, con
 	for (std::vector<Ogre::Item*>::iterator iter = mSrcItems.begin(); iter != mSrcItems.end(); iter++)
 	{
 		int ind = pagesTotal + i;
-		bool isPlanet = false;
 
 		Ogre::String name = (*iter)->getMesh()->getName();
 
-		// Nothing is created anymore
-#if 0
-		if (name == "geosphere8000.mesh")
-		{
-			isPlanet = true;
-		}
-#endif
-
-		getMeshInformation2((*iter)->getMesh(), meshVertexCount[ind], meshVertices[ind], meshIndexCount[ind], meshIndices[ind], isPlanet);
+		getMeshInformation2((*iter)->getMesh(), meshVertexCount[ind], meshVertices[ind], meshIndexCount[ind], meshIndices[ind]);
 
 		//total number of verts
 		nverts += meshVertexCount[ind];
@@ -654,19 +636,8 @@ void InputGeom::convertOgreEntities()
 	size_t i = 0;
 	for (std::vector<Ogre::v1::Entity*>::iterator iter = mSrcMeshes.begin(); iter != mSrcMeshes.end(); iter++)
 	{
-		bool isPlanet = false;
-
 		Ogre::String name = (*iter)->getMesh()->getName();
-
-		// Nothing is created anymore
-#if 0
-		if (name == "geosphere8000.mesh")
-		{
-			isPlanet = true;
-		}
-#endif
-
-		getMeshInformation((*iter)->getMesh(), meshVertexCount[i], meshVertices[i], meshIndexCount[i], meshIndices[i], isPlanet, Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY /*, (*iter)->getParentSceneNode()->getScale()*/);
+		getMeshInformation((*iter)->getMesh(), meshVertexCount[i], meshVertices[i], meshIndexCount[i], meshIndices[i], Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY /*, (*iter)->getParentSceneNode()->getScale()*/);
 		//total number of verts
 		nverts += meshVertexCount[i];
 		//total number of indices
@@ -677,19 +648,9 @@ void InputGeom::convertOgreEntities()
 
 	for (std::vector<Ogre::Item*>::iterator iter = mSrcItems.begin(); iter != mSrcItems.end(); iter++)
 	{
-		bool isPlanet = false;
-
 		Ogre::String name = (*iter)->getMesh()->getName();
 
-		// Nothing is created anymore
-#if 0
-		if (name == "geosphere8000.mesh")
-		{
-			isPlanet = true;
-		}
-#endif
-
-		getMeshInformation2((*iter)->getMesh(), meshVertexCount[i], meshVertices[i], meshIndexCount[i], meshIndices[i], isPlanet, Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY /*, (*iter)->getParentSceneNode()->getScale()*/);
+		getMeshInformation2((*iter)->getMesh(), meshVertexCount[i], meshVertices[i], meshIndexCount[i], meshIndices[i], Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY /*, (*iter)->getParentSceneNode()->getScale()*/);
 		//total number of verts
 		nverts += meshVertexCount[i];
 		//total number of indices
@@ -978,7 +939,6 @@ bool InputGeom::isEmpty()
 	return nverts <= 0 || ntris <= 0;
 }
 
-#if 0
 void InputGeom::getMeshInformation(const Ogre::v1::MeshPtr mesh,
 	size_t& vertex_count,
 	Ogre::Vector3*& vertices,
@@ -1095,130 +1055,7 @@ void InputGeom::getMeshInformation(const Ogre::v1::MeshPtr mesh,
 		current_offset = next_offset;
 	}
 };
-#else
-void InputGeom::getMeshInformation(const Ogre::v1::MeshPtr mesh,
-	size_t& vertex_count,
-	Ogre::Vector3*& vertices,
-	size_t& index_count,
-	unsigned long*& indices,
-	bool isPlanet,
-	const Ogre::Vector3& position,
-	const Ogre::Quaternion& orient,
-	const Ogre::Vector3& scale)
-{
-	bool added_shared = false;
-	size_t current_offset = 0;
-	size_t shared_offset = 0;
-	size_t next_offset = 0;
-	size_t index_offset = 0;
 
-	vertex_count = index_count = 0;
-
-	Ogre::AxisAlignedBox bbox = mesh->getBounds();
-	Ogre::Vector3 center = bbox.getCenter();
-	float radius = bbox.getHalfSize().length();  // You might want to use this for a geosphere, not bounding box.
-
-	for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
-	{
-		Ogre::v1::SubMesh* submesh = mesh->getSubMesh(i);
-		if (submesh->useSharedVertices)
-		{
-			if (!added_shared)
-			{
-				vertex_count += mesh->sharedVertexData[0]->vertexCount;
-				added_shared = true;
-			}
-		}
-		else
-		{
-			vertex_count += submesh->vertexData[0]->vertexCount;
-		}
-		index_count += submesh->indexData[0]->indexCount;
-	}
-
-	vertices = new Ogre::Vector3[vertex_count];
-	indices = new unsigned long[index_count];
-
-	added_shared = false;
-
-	for (unsigned short i = 0; i < mesh->getNumSubMeshes(); ++i)
-	{
-		Ogre::v1::SubMesh* submesh = mesh->getSubMesh(i);
-		Ogre::v1::VertexData* vertex_data = submesh->useSharedVertices ? mesh->sharedVertexData[0] : submesh->vertexData[0];
-
-		if ((!submesh->useSharedVertices) || (submesh->useSharedVertices && !added_shared))
-		{
-			if (submesh->useSharedVertices)
-			{
-				added_shared = true;
-				shared_offset = current_offset;
-			}
-
-			const Ogre::v1::VertexElement* posElem =
-				vertex_data->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
-
-			Ogre::v1::HardwareVertexBufferSharedPtr vbuf =
-				vertex_data->vertexBufferBinding->getBuffer(posElem->getSource());
-
-			unsigned char* vertex =
-				static_cast<unsigned char*>(vbuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-
-			float* pReal;
-
-			for (size_t j = 0; j < vertex_data->vertexCount; ++j, vertex += vbuf->getVertexSize())
-			{
-				posElem->baseVertexPointerToElement(vertex, &pReal);
-				Ogre::Vector3 pt(pReal[0], pReal[1], pReal[2]);
-
-				if (isPlanet)
-				{
-					// Normalize the vertex to the sphere surface
-					Ogre::Vector3 dir = (pt - center).normalisedCopy();
-					pt = center + dir * radius;  // Adjust based on radius
-				}
-
-				// Apply position and orientation transformation
-				vertices[current_offset + j] = (orient * (pt * scale)) + position;
-			}
-
-			vbuf->unlock();
-			next_offset += vertex_data->vertexCount;
-		}
-
-		Ogre::v1::IndexData* index_data = submesh->indexData[0];
-		size_t numTris = index_data->indexCount / 3;
-		Ogre::v1::HardwareIndexBufferSharedPtr ibuf = index_data->indexBuffer;
-
-		bool use32bitindexes = (ibuf->getType() == Ogre::v1::HardwareIndexBuffer::IT_32BIT);
-
-		unsigned long* pLong = static_cast<unsigned long*>(ibuf->lock(Ogre::v1::HardwareBuffer::HBL_READ_ONLY));
-		unsigned short* pShort = reinterpret_cast<unsigned short*>(pLong);
-
-		size_t offset = (submesh->useSharedVertices) ? shared_offset : current_offset;
-
-		if (use32bitindexes)
-		{
-			for (size_t k = 0; k < numTris * 3; ++k)
-			{
-				indices[index_offset++] = pLong[k] + static_cast<unsigned long>(offset);
-			}
-		}
-		else
-		{
-			for (size_t k = 0; k < numTris * 3; ++k)
-			{
-				indices[index_offset++] = static_cast<unsigned long>(pShort[k]) +
-					static_cast<unsigned long>(offset);
-			}
-		}
-
-		ibuf->unlock();
-		current_offset = next_offset;
-	}
-}
-#endif
-
-#if 0
 void InputGeom::getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
 	const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale)
 {
@@ -1348,122 +1185,6 @@ void InputGeom::getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCoun
 		subMeshIterator++;
 	}
 }
-#else
-void InputGeom::getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices, bool isPlanet,
-	const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale)
-{
-	unsigned int numVertices = 0;
-	unsigned int numIndices = 0;
-
-	Ogre::Aabb bbox = mesh->getAabb();
-	Ogre::Vector3 center = bbox.mCenter;
-	float radius = bbox.getRadius();
-
-	for (const auto& subMesh : mesh->getSubMeshes())
-	{
-		numVertices += static_cast<unsigned int>(subMesh->mVao[0][0]->getVertexBuffers()[0]->getNumElements());
-		numIndices += static_cast<unsigned int>(subMesh->mVao[0][0]->getIndexBuffer()->getNumElements());
-	}
-
-	vertices = OGRE_ALLOC_T(Ogre::Vector3, numVertices, Ogre::MEMCATEGORY_GEOMETRY);
-	indices = OGRE_ALLOC_T(unsigned long, numIndices, Ogre::MEMCATEGORY_GEOMETRY);
-
-	vertexCount = numVertices;
-	indexCount = numIndices;
-
-	unsigned int addedVertices = 0;
-	unsigned int addedIndices = 0;
-	unsigned int subMeshOffset = 0;
-
-	for (const auto& subMesh : mesh->getSubMeshes())
-	{
-		Ogre::VertexArrayObject* vao = subMesh->mVao[0][0];
-		bool indices32 = (vao->getIndexBuffer()->getIndexType() == Ogre::IndexBufferPacked::IT_32BIT);
-
-		Ogre::VertexArrayObject::ReadRequestsVec requests;
-		requests.push_back(Ogre::VertexArrayObject::ReadRequests(Ogre::VES_POSITION));
-
-		vao->readRequests(requests);
-		vao->mapAsyncTickets(requests);
-		unsigned int subMeshVerticesNum = static_cast<unsigned int>(requests[0].vertexBuffer->getNumElements());
-
-		if (requests[0].type == Ogre::VET_HALF4)
-		{
-			for (size_t i = 0; i < subMeshVerticesNum; ++i)
-			{
-				const Ogre::uint16* pos = reinterpret_cast<const Ogre::uint16*>(requests[0].data);
-				Ogre::Vector3 vec;
-				vec.x = Ogre::Bitwise::halfToFloat(pos[0]);
-				vec.y = Ogre::Bitwise::halfToFloat(pos[1]);
-				vec.z = Ogre::Bitwise::halfToFloat(pos[2]);
-
-				requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-				if (isPlanet)
-				{
-					Ogre::Vector3 dir = (vec - center).normalisedCopy();
-					vec = center + dir * radius;
-				}
-				vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
-			}
-		}
-		else if (requests[0].type == Ogre::VET_FLOAT3)
-		{
-			for (size_t i = 0; i < subMeshVerticesNum; ++i)
-			{
-				const float* pos = reinterpret_cast<const float*>(requests[0].data);
-				Ogre::Vector3 vec;
-				vec.x = *pos++;
-				vec.y = *pos++;
-				vec.z = *pos++;
-				requests[0].data += requests[0].vertexBuffer->getBytesPerElement();
-				if (isPlanet)
-				{
-					Ogre::Vector3 dir = (vec - center).normalisedCopy();
-					vec = center + dir * radius;
-				}
-				vertices[i + subMeshOffset] = (orientation * (vec * scale)) + position;
-			}
-		}
-		else
-		{
-			throw Ogre::Exception(0, "Vertex Buffer type not recognised", "getMeshInformation2");
-		}
-		subMeshOffset += subMeshVerticesNum;
-		vao->unmapAsyncTickets(requests);
-
-		Ogre::IndexBufferPacked* indexBuffer = vao->getIndexBuffer();
-		if (indexBuffer)
-		{
-			Ogre::AsyncTicketPtr asyncTicket = indexBuffer->readRequest(0, indexBuffer->getNumElements());
-			unsigned int* pIndices = nullptr;
-
-			if (indices32)
-			{
-				pIndices = (unsigned int*)asyncTicket->map();
-			}
-			else
-			{
-				unsigned short* pShortIndices = (unsigned short*)asyncTicket->map();
-				pIndices = new unsigned int[indexBuffer->getNumElements()];
-				for (size_t k = 0; k < indexBuffer->getNumElements(); k++)
-				{
-					pIndices[k] = static_cast<unsigned int>(pShortIndices[k]);
-				}
-			}
-
-			for (size_t i = 0; i < indexBuffer->getNumElements(); i++)
-			{
-				indices[addedIndices++] = pIndices[i] + subMeshOffset;
-			}
-
-			if (!indices32)
-				delete[] pIndices;
-
-			asyncTicket->unmap();
-		}
-	}
-}
-#endif
 
 void InputGeom::getManualMeshInformation(const Ogre::ManualObject* manual,
 	size_t& vertex_count,

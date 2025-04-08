@@ -277,13 +277,13 @@ public:
       *
       * Note that this code assumes sizeof(long) == sizeof(uint32_t), which is not true on AMD64 Linux.
      **/
-    static void getMeshInformation(const Ogre::v1::MeshPtr mesh, size_t &vertex_count, Ogre::Vector3* &vertices, size_t &index_count, unsigned long* &indices, bool isPlanet,
+    static void getMeshInformation(const Ogre::v1::MeshPtr mesh, size_t &vertex_count, Ogre::Vector3* &vertices, size_t &index_count, unsigned long* &indices,
                             const Ogre::Vector3 &position = Ogre::Vector3::ZERO,
                             const Ogre::Quaternion &orient = Ogre::Quaternion::IDENTITY,
                             const Ogre::Vector3 &scale = Ogre::Vector3::UNIT_SCALE);
 
 
-    static void getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices, bool isPlanet,
+    static void getMeshInformation2(const Ogre::MeshPtr mesh, size_t& vertexCount, Ogre::Vector3*& vertices, size_t& indexCount, unsigned long*& indices,
         const Ogre::Vector3& position = Ogre::Vector3::ZERO,
         const Ogre::Quaternion& orient = Ogre::Quaternion::IDENTITY,
         const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE);

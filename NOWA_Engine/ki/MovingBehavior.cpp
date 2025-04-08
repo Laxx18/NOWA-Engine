@@ -2507,32 +2507,8 @@ namespace NOWA
 					{
 						
 						// faceDirectionSlerp is corrupt, debug it!
-						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), dt, this->rotationSpeed);
+						Ogre::Quaternion resultOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->agent->getOrientation(), resultVelocity, this->agent->getOwner()->getDefaultDirection(), 1.0f / 60.0f, this->rotationSpeed);
 						heading = resultOrientation.getYaw();
-
-#if 0
-						Ogre::Vector3 forwardDirection = this->agent->getOwner()->getDefaultDirection();
-						Ogre::Vector3 velocityDirection = resultVelocity.normalisedCopy();
-
-						// Project both vectors to the XZ plane (ignore Y component)
-						forwardDirection.y = 0;
-						velocityDirection.y = 0;
-
-						// Ensure vectors are normalized
-						if (forwardDirection.isZeroLength() || velocityDirection.isZeroLength())
-						{
-							return;
-						}
-
-						// Compute rotation quaternion
-						Ogre::Quaternion rotationQuat = forwardDirection.getRotationTo(velocityDirection);
-
-						// Apply rotation directly to player's orientation
-						// this->agent->setOrientation(rotationQuat * this->agent->getOrientation());
-						heading = rotationQuat.getYaw();
-#endif
-
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MovingBehavior] ratio: " + Ogre::StringConverter::toString(ratio));
 					}
 				}
 

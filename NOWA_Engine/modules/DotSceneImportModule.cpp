@@ -487,16 +487,7 @@ namespace NOWA
 
 		if (AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements() && true == this->projectParameter.hasRecast)
 		{
-			bool skip = false;
-			if (true == this->showProgress)
-			{
-				Core::getSingletonPtr()->getEngineResourceListener()->scriptParseStarted("Navigation Mesh", skip);
-			}
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
-			if (true == this->showProgress)
-			{
-				Core::getSingletonPtr()->getEngineResourceListener()->scriptParseEnded("Navigation Mesh finished", skip);
-			}
+			// wrong transform values at this early stage
 		}
 		else
 		{

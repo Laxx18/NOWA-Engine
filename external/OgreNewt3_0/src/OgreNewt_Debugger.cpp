@@ -318,21 +318,9 @@ namespace OgreNewt
 				int idx2 = indexArray[i + 2] * 3;
 
 				// Calculate vertex positions considering scale
-				Ogre::Vector3 v0(
-					vertexArray[idx0] / scale.x,
-					vertexArray[idx0 + 1] / scale.y,
-					vertexArray[idx0 + 2] / scale.z
-				);
-				Ogre::Vector3 v1(
-					vertexArray[idx1] / scale.x,
-					vertexArray[idx1 + 1] / scale.y,
-					vertexArray[idx1 + 2] / scale.z
-				);
-				Ogre::Vector3 v2(
-					vertexArray[idx2] / scale.x,
-					vertexArray[idx2 + 1] / scale.y,
-					vertexArray[idx2 + 2] / scale.z
-				);
+				Ogre::Vector3 v0(vertexArray[idx0], vertexArray[idx0 + 1], vertexArray[idx0 + 2]);
+				Ogre::Vector3 v1(vertexArray[idx1], vertexArray[idx1 + 1], vertexArray[idx1 + 2]);
+				Ogre::Vector3 v2(vertexArray[idx2], vertexArray[idx2 + 1], vertexArray[idx2 + 2]);
 
 				// Draw the edges of the triangles
 				object->position(v0);
@@ -426,7 +414,7 @@ namespace OgreNewt
 
 		Ogre::Vector3 pos, vel, omega;
 		Ogre::Quaternion ori;
-		// bod->getVisualPositionOrientation(pos, ori);
+		Ogre::Vector3 scale = bod->getOgreNode()->getScale();
 		bod->getPositionOrientation(pos, ori);
 
 		vel = bod->getVelocity();
@@ -461,6 +449,7 @@ namespace OgreNewt
 			// set new position...
 			data->m_node->setPosition(pos);
 			data->m_node->setOrientation(ori);
+			data->m_node->setScale(scale);
 			data->m_updated = 1;
 			m_debugnode->addChild(data->m_node);
 		}
@@ -475,6 +464,7 @@ namespace OgreNewt
 				data->m_node->detachAllObjects();
 				data->m_node->setPosition(pos);
 				data->m_node->setOrientation(ori);
+				data->m_node->setScale(scale);
 			}
 			else
 			{

@@ -59,6 +59,10 @@ namespace MyGUI
 
 	TreeControl::Node* TreeControlItem::getNode() const
 	{
-		return *getUserData<TreeControl::Node*>();
+		TreeControl::Node** ppNode = getUserData<TreeControl::Node*>(false);
+		if (!ppNode || !*ppNode)
+			return nullptr;
+
+		return *ppNode;
 	}
 }

@@ -211,7 +211,8 @@ namespace MyGUI
 		{
 			for (size_t i = 0; i < mItemWidgets.size(); i++)
 			{
-				if (mItemWidgets[i]->getNode() == mpSelection)
+				TreeControl::Node* node = mItemWidgets[i]->getNode();
+				if (node && node == mpSelection)
 				{
 					if (i > 0)
 					{
@@ -224,7 +225,8 @@ namespace MyGUI
 		{
 			for (size_t i = 0; i < mItemWidgets.size(); i++)
 			{
-				if (mItemWidgets[i]->getNode() == mpSelection)
+				TreeControl::Node* node = mItemWidgets[i]->getNode();
+				if (node && node == mpSelection)
 				{
 					if (i < mItemWidgets.size() - 1)
 					{

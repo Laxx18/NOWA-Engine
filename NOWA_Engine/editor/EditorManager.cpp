@@ -25,6 +25,7 @@
 #include "gameobject/OceanComponent.h"
 #include "gameobject/TerraComponent.h"
 #include "gameobject/PhysicsTerrainComponent.h"
+#include "gameobject/NavMeshComponent.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
 #include "main/Core.h"
@@ -1660,6 +1661,8 @@ namespace NOWA
 
 	void EditorManager::handleMouseRelease(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
+		bool objectsTransformed = false;
+
 		if (id == this->mouseButtonId)
 		{
 			this->mouseIdPressed = false;
@@ -1747,10 +1750,12 @@ namespace NOWA
 				}
 				this->gizmo->setPosition(this->calculateCenter());
 				this->gizmo->hideLine();
+				objectsTransformed = true;
 			}
 			if (EDITOR_SCALE_MODE == this->manipulationMode)
 			{
 				this->gizmo->hideLine();
+				objectsTransformed = true;
 			}
 			else if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
 			{
@@ -1764,7 +1769,29 @@ namespace NOWA
 				this->gizmo->hideCircle();
 				this->absoluteAngle = 0.0f;
 				this->stepAngleDelta = 0.0f;
+				objectsTransformed = true;
 			}
+		}
+
+		if (true == objectsTransformed)
+		{
+			std::vector<unsigned long> gameObjectIds = this->getSelectedGameObjectIds();
+			if (gameObjectIds.size() > 0)
+			{
+				for (size_t i = 0; i < gameObjectIds.size(); i++)
+				{
+					GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(gameObjectIds[i]);
+					const auto& navMeshComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NavMeshComponent>());
+					{
+						if (nullptr != navMeshComponent)
+						{
+							boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
+							NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
+						}
+					}
+				}
+			}
+
 		}
 
 		this->isGizmoMoving = false;

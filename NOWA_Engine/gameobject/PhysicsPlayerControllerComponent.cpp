@@ -139,6 +139,8 @@ namespace NOWA
 		this->gyroscopicTorque->setValue(false);
 		this->gyroscopicTorque->setVisible(false);
 
+		this->collisionPosition = new Variant(PhysicsActiveComponent::AttrCollisionPosition(), Ogre::Vector3::UNIT_Y, this->attributes);
+
 		this->onContactFrictionFunctionName->setDescription("Sets the function name to react in lua script at the moment when a player controller has friction with a game object below. E.g. onContactFriction(gameObject0, gameObject1, playerContact)."
 													"The function should set in the player contact result friction. With that its possible to control how much friction the player will get on the ground.");
 		this->onContactFrictionFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onContactFrictionFunctionName->getString() + "(gameObject0, gameObject1, playerContact)");
