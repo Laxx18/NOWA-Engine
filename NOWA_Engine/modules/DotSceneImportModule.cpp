@@ -1949,7 +1949,10 @@ namespace NOWA
 				}
 
 				type = GameObject::ITEM;
-				DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+				if (nullptr != v2Mesh)
+				{
+					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
+				}
 			}
 		}
 

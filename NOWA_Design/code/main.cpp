@@ -23,6 +23,9 @@
 #include <sstream>
 
 
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
+
 void printStackTrace(const Ogre::String& errorMessage, const Ogre::String& title)
 {
 	const int max_frames = 128;
@@ -31,22 +34,48 @@ void printStackTrace(const Ogre::String& errorMessage, const Ogre::String& title
 	SymInitialize(process, NULL, TRUE);
 
 	USHORT frames = CaptureStackBackTrace(0, max_frames, stack, NULL);
+
 	SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 	symbol->MaxNameLen = 255;
 	symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
+	IMAGEHLP_LINE64 line;
+	line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+	DWORD displacement;
+
 	std::ostringstream oss;
 	oss << "Error: " << errorMessage << "\nStacktrace:\n";
+
 	for (USHORT i = 0; i < frames; ++i)
 	{
-		SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
-		oss << symbol->Name << " - 0x" << symbol->Address << std::endl;
+		DWORD64 addr = (DWORD64)(stack[i]);
+
+		if (SymFromAddr(process, addr, 0, symbol))
+		{
+			oss << symbol->Name;
+		}
+		else
+		{
+			oss << "[unknown symbol]";
+		}
+
+		if (SymGetLineFromAddr64(process, addr, &displacement, &line))
+		{
+			oss << " - 0x" << std::hex << addr
+				<< " in " << line.FileName
+				<< ":" << std::dec << line.LineNumber << "\n";
+		}
+		else
+		{
+			oss << " - 0x" << std::hex << addr << " (no line info)\n";
+		}
 	}
 
 	free(symbol);
 	SymCleanup(process);
 
 	Ogre::String message = oss.str();
+
 	MessageBoxA(0, message.c_str(), title.c_str(), MB_OK | MB_ICONERROR | MB_TASKMODAL);
 }
 

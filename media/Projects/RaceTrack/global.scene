@@ -62,6 +62,7 @@
 					<property type="7" name="Categories" data="Quat"/>
 					<property type="12" name="UseMultiSelection" data="false"/>
 					<property type="12" name="UseSelectionRectangle" data="false"/>
+					<property type="12" name="ActivatePlayerController" data="true"/>
 					<property type="7" name="ComponentMyGUITextComponent" data="MyGUITextComponent"/>
 					<property type="7" name="Name" data="SpeedText"/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -111,7 +112,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="Id" data="745077099"/>
-					<property type="12" name="Activated" data="true"/>
+					<property type="12" name="Activated" data="false"/>
 					<property type="8" name="Position" data="0.4 0"/>
 					<property type="8" name="Size" data="0.2 0.1"/>
 					<property type="7" name="Align" data="HCenter"/>

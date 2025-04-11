@@ -61,8 +61,6 @@ namespace NOWA
 	{
 		PhysicsArtifactCompPtr clonedCompPtr(boost::make_shared<PhysicsArtifactComponent>());
 
-		
-		clonedCompPtr->setSerialize(this->serialize->getBool());
 		// clonedCompPtr->setCollisionType(this->collisionType->getListSelectedValue());
 		clonedCompPtr->setMass(this->mass->getReal());
 		// Bug in newton, setting afterwards collidable to true, will not work, hence do not clone this property
@@ -70,6 +68,8 @@ namespace NOWA
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->setSerialize(this->serialize->getBool());
 
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;

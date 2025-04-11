@@ -30,7 +30,7 @@ namespace NOWA
 		useMipmaps(new Variant(PlanarReflectionComponent::AttrMipmaps(), true, this->attributes)),
 		useMipmapMethodCompute(new Variant(PlanarReflectionComponent::AttrMipmapMethodCompute(), true, this->attributes)),
 		mirrorSize(new Variant(PlanarReflectionComponent::AttrMirrorSize(), Ogre::Vector2(1.0f, 1.0f), this->attributes)),
-		datablockName(new Variant(PlanarReflectionComponent::AttrDatablockName(), "NOWAGlassRoughness2", this->attributes)),
+		datablockName(new Variant(PlanarReflectionComponent::AttrDatablockName(), "NOWAGlassRoughness", this->attributes)),
 		transformUpdateRateSec(new Variant(PlanarReflectionComponent::AttrTransformUpdateRateSec(), 0.5f, this->attributes))
 	{
 		this->useAccurateLighting->setDescription("When true, overall scene CPU usage may be higher, but lighting information in the reflections will"
@@ -203,7 +203,12 @@ namespace NOWA
 
 	void PlanarReflectionComponent::createPlane(void)
 	{
-		if ((nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated) 
+		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		{
+			return;
+		}
+
+		if ((nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections() && false == this->planarReflectionMeshCreated)
 			|| (nullptr == this->mirrorPlaneItem))
 		{
 			this->oldPosition = this->gameObjectPtr->getPosition();
@@ -316,6 +321,11 @@ namespace NOWA
 
 	void PlanarReflectionComponent::destroyPlane(void)
 	{
+		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		{
+			return;
+		}
+
 		// Note: This is enough, as in game object init(...) the old movable object is destroyed, if there comes in a new movable object pointer
 		this->mirrorPlaneItem = nullptr;
 		if (nullptr != this->trackedRenderable)
@@ -329,6 +339,11 @@ namespace NOWA
 
 	void PlanarReflectionComponent::actualizePlanarReflection(void)
 	{
+		if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+		{
+			return;
+		}
+
 		if (nullptr != this->gameObjectPtr && nullptr != WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->getPlanarReflections())
 		{
 			WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->setPlanarMaxReflections(this->gameObjectPtr->getId(), this->useAccurateLighting->getBool(),
@@ -502,16 +517,15 @@ namespace NOWA
 	{
 		this->datablockName->setValue(datablockName);
 
-		if (nullptr == this->gameObjectPtr || false == this->planarReflectionMeshCreated)
+		if (nullptr == this->gameObjectPtr)
 		{
 			return;
 		}
 
-		if (this->oldDatablockName != datablockName)
+		if (false == this->planarReflectionMeshCreated)
 		{
 			this->destroyPlane();
 			this->createPlane();
-			this->oldDatablockName = datablockName;
 		}
 
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();

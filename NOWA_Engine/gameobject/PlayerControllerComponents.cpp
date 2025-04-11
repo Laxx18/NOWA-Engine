@@ -586,6 +586,10 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
+		// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
+		// also hold shared by the game object controller
+		AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
+
 		// Must be done here, because in post init, it may be, that a component does not yet exist, if its added after this component!
 		auto& physicsPlayerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsPlayerControllerComponent>());
 		if (nullptr == physicsPlayerControllerCompPtr)
@@ -628,10 +632,6 @@ namespace NOWA
 		{
 			// In post init not all game objects are known, and so there are maybe no categories yet, so set the categories here
 			this->setCategories(this->categories->getString());
-
-			// Add the player controller to the player controller component map, but as weak ptr, because game object controller should not hold the life cycle of this components, because the game objects already do, which are
-			// also hold shared by the game object controller
-			AppStateManager::getSingletonPtr()->getGameObjectController()->addPlayerController(boost::dynamic_pointer_cast<PlayerControllerComponent>(shared_from_this()));
 
 			this->internalShowDebugData();
 

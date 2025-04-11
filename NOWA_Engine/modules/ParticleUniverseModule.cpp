@@ -54,60 +54,64 @@ namespace NOWA
 	void ParticleUniverseModule::createParticleSystem(const Ogre::String& name, const Ogre::String& templateName,
 		Ogre::Real playTimeMS, Ogre::Quaternion orientation, Ogre::Vector3 position, Ogre::Real scale)
 	{
-		//Partikeleffekt erstellen und abspielen
-		//Achtung: immer im SkriptOrdner nach system "Name" schauen, das ist der Templatename der benutzt werden kann
-		//Weil Name da nicht stand, ging kein Partikel!!
-
-		ParticleUniverseData particleUniverseData;
-		particleUniverseData.particleTemplateName = templateName;
-		particleUniverseData.particlePlayTime = playTimeMS;
-		particleUniverseData.particleInitialPlayTime = playTimeMS;
-		particleUniverseData.particleOffsetOrientation = orientation;
-		particleUniverseData.particleOffsetPosition = position;
-		particleUniverseData.particleScale = scale;
-
-		particleUniverseData.particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->getParticleSystem(name);
-		// Particle name must be unique and cannot be created twice
-		if (nullptr != particleUniverseData.particle)
+		auto it = this->particles.find(name);
+		if (it == this->particles.end())
 		{
-			ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particleUniverseData.particle, this->sceneManager);
+			//Partikeleffekt erstellen und abspielen
+			//Achtung: immer im SkriptOrdner nach system "Name" schauen, das ist der Templatename der benutzt werden kann
+			//Weil Name da nicht stand, ging kein Partikel!!
+
+			ParticleUniverseData particleUniverseData;
+			particleUniverseData.particleTemplateName = templateName;
+			particleUniverseData.particlePlayTime = playTimeMS;
+			particleUniverseData.particleInitialPlayTime = playTimeMS;
+			particleUniverseData.particleOffsetOrientation = orientation;
+			particleUniverseData.particleOffsetPosition = position;
+			particleUniverseData.particleScale = scale;
+
+			particleUniverseData.particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->getParticleSystem(name);
+			// Particle name must be unique and cannot be created twice
+			if (nullptr != particleUniverseData.particle)
+			{
+				ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particleUniverseData.particle, this->sceneManager);
+			}
+
+			particleUniverseData.particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->createParticleSystem(name,
+				particleUniverseData.particleTemplateName, this->sceneManager);
+
+			if (!particleUniverseData.particle)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleUniverseModule] Error: Could not create particle effect: " + name);
+				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[ParticleUniverseModule] Error: Could not create particle effect: " + name, "NOWA");
+			}
+
+			particleUniverseData.particleNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+			particleUniverseData.particleNode->setName(name + "_Node");
+
+			// particleUniverseData.particle->getResourceGroupName()
+			// Cannot find particle universe resource
+			// DeployResourceModule::getInstance()->tagResource(name, templateName);
+
+			particleUniverseData.particleNode->setOrientation(particleUniverseData.particleOffsetOrientation);
+			// just add the offset because the node is a child of the game object scene node and therefore relative to the parent position
+			particleUniverseData.particleNode->setPosition(particleUniverseData.particleOffsetPosition);
+			particleUniverseData.particleNode->attachObject(particleUniverseData.particle);
+			particleUniverseData.particle->setDefaultQueryFlags(0 << 0);
+			particleUniverseData.particle->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
+			particleUniverseData.particle->setCastShadows(false);
+
+			//Problem: Wenn partikeleffekt herunterskaliert wird, dann muss auch setScaleVelocity genauso skaliert werden!
+			//this->pParticleNode1->scale(0.01f, 0.01f, 0.01f);
+			particleUniverseData.particle->setScale(particleUniverseData.particleScale);
+			particleUniverseData.particle->setScaleVelocity(particleUniverseData.particleScale.x);
+			// Hack according to http://forums.ogre3d.org/viewtopic.php?f=25&t=82012&sid=05ff08d7c249d71d7f78ead03ce082d3&start=25
+			// Because else a crash may occur, when particle is just prepared and played in another frame
+			particleUniverseData.particle->prepare();
+			particleUniverseData.particle->start();
+			particleUniverseData.particle->stop();
+
+			this->particles.emplace(name, particleUniverseData);
 		}
-
-		particleUniverseData.particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->createParticleSystem(name,
-			particleUniverseData.particleTemplateName, this->sceneManager);
-
-		if (!particleUniverseData.particle)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleUniverseModule] Error: Could not create particle effect: " + name);
-			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[ParticleUniverseModule] Error: Could not create particle effect: " + name, "NOWA");
-		}
-	
-		particleUniverseData.particleNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-		particleUniverseData.particleNode->setName(name + "_Node");
-
-		// particleUniverseData.particle->getResourceGroupName()
-		// Cannot find particle universe resource
-		// DeployResourceModule::getInstance()->tagResource(name, templateName);
-
-		particleUniverseData.particleNode->setOrientation(particleUniverseData.particleOffsetOrientation);
-		// just add the offset because the node is a child of the game object scene node and therefore relative to the parent position
-		particleUniverseData.particleNode->setPosition(particleUniverseData.particleOffsetPosition);
-		particleUniverseData.particleNode->attachObject(particleUniverseData.particle);
-		particleUniverseData.particle->setDefaultQueryFlags(0 << 0);
-		particleUniverseData.particle->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
-		particleUniverseData.particle->setCastShadows(false);
-
-		//Problem: Wenn partikeleffekt herunterskaliert wird, dann muss auch setScaleVelocity genauso skaliert werden!
-		//this->pParticleNode1->scale(0.01f, 0.01f, 0.01f);
-		particleUniverseData.particle->setScale(particleUniverseData.particleScale);
-		particleUniverseData.particle->setScaleVelocity(particleUniverseData.particleScale.x);
-		// Hack according to http://forums.ogre3d.org/viewtopic.php?f=25&t=82012&sid=05ff08d7c249d71d7f78ead03ce082d3&start=25
-		// Because else a crash may occur, when particle is just prepared and played in another frame
-		particleUniverseData.particle->prepare();
-		particleUniverseData.particle->start();
-		particleUniverseData.particle->stop();
-
-		this->particles.emplace(name, particleUniverseData);
 	}
 
 	void ParticleUniverseModule::playParticleSystem(const Ogre::String& name)
@@ -243,7 +247,11 @@ namespace NOWA
 			ParticleUniverse::ParticleSystem* particle = it->second.particle;
 			DeployResourceModule::getInstance()->removeResource(it->second.particle->getName());
 			particle->stop();
-			it->second.particleNode->detachObject(particle);
+			if (it->second.particleNode->numAttachedObjects() > 0 &&
+				it->second.particleNode->getAttachedObject(particle->getName()) == particle)
+			{
+				it->second.particleNode->detachObject(particle);
+			}
 			this->sceneManager->getRootSceneNode()->removeAndDestroyChild(it->second.particleNode);
 			ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particle, this->sceneManager);
 			particle = nullptr;

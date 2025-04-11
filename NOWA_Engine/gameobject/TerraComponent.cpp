@@ -278,13 +278,22 @@ namespace NOWA
 				 this->terraWorkspaceListener = nullptr;
 			}
 
-			this->gameObjectPtr->sceneNode->detachObject(this->terra);
-			delete this->terra;
-			this->terra = nullptr;
-			if (nullptr != this->gameObjectPtr->boundingBoxDraw)
+			if (nullptr != this->gameObjectPtr->movableObject)
 			{
-				this->gameObjectPtr->sceneManager->destroyWireAabb(this->gameObjectPtr->boundingBoxDraw);
-				this->gameObjectPtr->boundingBoxDraw = nullptr;
+				this->gameObjectPtr->sceneNode->detachObject(this->terra);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: "
+					+ this->gameObjectPtr->movableObject->getName());
+
+				this->gameObjectPtr->movableObject = nullptr;
+
+				delete this->terra;
+				this->terra = nullptr;
+				if (nullptr != this->gameObjectPtr->boundingBoxDraw)
+				{
+					this->gameObjectPtr->sceneManager->destroyWireAabb(this->gameObjectPtr->boundingBoxDraw);
+					this->gameObjectPtr->boundingBoxDraw = nullptr;
+				}
 			}
 		}
 	}

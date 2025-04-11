@@ -6,7 +6,7 @@
 		<ambient>
 			<ambientLightUpperHemisphere r="0.3" g="0.5" b="0.7"/>
 			<ambientLightLowerHemisphere r="0.6" g="0.45" b="0.3" a="1"/>
-			<hemisphereDir x="0.57735" y="0.57735" z="0.57735"/>
+			<hemisphereDir x="0.577351" y="0.577351" z="0.57735"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -40,9 +40,6 @@
 		<defaultAngularDamping x="0.1" y="0.1" z="0.1"/>
 		<globalGravity x="0" y="-19.8" z="0"/>
 	</OgreNewt>
-	<OgreRecast CellSize="0.6" CellHeight="0.2" AgentMaxSlope="0.2" AgentMaxClimb="1" AgentHeight="2.5" AgentRadius="0.5" EdgeMaxLen="12" EdgeMaxError="1.3" RegionMinSize="20" RegionMergeSize="20" VertsPerPoly="6" DetailSampleDist="6" DetailSampleMaxError="1" KeepInterResults="false">
-		<PointExtends x="5" y="5" z="5"/>
-	</OgreRecast>
 	<nodes>
 		<node name="Brick1_3" id="1146681851">
 			<position x="26.6524" y="0.06703" z="23.3958"/>
@@ -372,7 +369,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -400,12 +397,12 @@
 					<property type="12" name="FixedYawAxis" data="true"/>
 					<property type="12" name="ShowDummyEntity" data="false"/>
 					<property type="7" name="ExcludeRenderCategories" data="All"/>
-					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
+					<property type="7" name="ComponentWorkspaceSkyComponent" data="WorkspaceSkyComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
-					<property type="10" name="ViewportRect" data="0 0 0.5 1"/>
+					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
 					<property type="12" name="UseHdr" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
@@ -414,7 +411,7 @@
 					<property type="12" name="UseSSAO" data="false"/>
 					<property type="12" name="UseDistortion" data="false"/>
 					<property type="12" name="UseMSAA" data="false"/>
-					<property type="12" name="UseTerra" data="true"/>
+					<property type="12" name="UseTerra" data="false"/>
 					<property type="12" name="UseOcean" data="false"/>
 					<property type="6" name="ShadowGlobalBias" data="1"/>
 					<property type="6" name="ShadowGlobalNormalOffset" data="168"/>
@@ -422,12 +419,13 @@
 					<property type="6" name="ShadowSplitBlend" data="0.125"/>
 					<property type="6" name="ShadowSplitFade" data="0.313"/>
 					<property type="6" name="ShadowSplitPadding" data="1"/>
+					<property type="7" name="SkyBoxName" data="bones_of_earth_cube.dds"/>
 				</userData>
 			</entity>
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="37.2738" z="50"/>
-			<rotation qw="0.22985" qx="0.229851" qy="0.398113" qz="0.857814"/>
+			<rotation qw="0.230874" qx="0.230874" qy="0.396337" qz="0.858086"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -501,6 +499,7 @@
 					<property type="7" name="Categories" data="Quat"/>
 					<property type="12" name="UseMultiSelection" data="false"/>
 					<property type="12" name="UseSelectionRectangle" data="false"/>
+					<property type="12" name="ActivatePlayerController" data="true"/>
 					<property type="7" name="ComponentSplitScreenComponent" data="SplitScreenComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -600,13 +599,14 @@
 					<property type="6" name="AnimationSpeed" data="1"/>
 					<property type="6" name="Acceleration" data="0"/>
 					<property type="7" name="Categories" data="All"/>
+					<property type="12" name="UseStandUp" data="false"/>
 					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="6" name="YOffset" data="2"/>
+					<property type="9" name="YOffset" data="0 2 0"/>
 					<property type="9" name="LookAtOffset" data="0 0 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
@@ -641,6 +641,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
+					<property type="12" name="IsExclusive" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -1278,6 +1279,30 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
@@ -1307,6 +1332,30 @@
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="Material/SOLID/TEX/Case3.png"/>
+					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
+					<property type="7" name="Name" data=""/>
+					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
+					<property type="12" name="Activated" data="true"/>
+					<property type="9" name="CollisionSize" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetDirection" data="0 0 0"/>
+					<property type="6" name="Mass" data="10"/>
+					<property type="9" name="MassOrigin" data="0 0 0"/>
+					<property type="6" name="LinearDamping" data="0.1"/>
+					<property type="9" name="AngularDamping" data="0.1 0.1 0.1"/>
+					<property type="9" name="Gravity" data="0 -19.8 0"/>
+					<property type="7" name="GravitySourceCategory" data=""/>
+					<property type="9" name="ConstraintDirection" data="0 0 0"/>
+					<property type="12" name="ContinuousCollision" data="false"/>
+					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
+					<property type="6" name="MaxSpeed" data="5"/>
+					<property type="7" name="CollisionType" data="ConvexHull"/>
+					<property type="9" name="ConstraintAxis" data="0 0 0"/>
+					<property type="12" name="EnableGyroscopicTorque" data="false"/>
+					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
 				</userData>
 			</item>
 		</node>
