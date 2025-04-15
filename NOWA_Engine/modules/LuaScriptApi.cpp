@@ -3720,6 +3720,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PlayerControllerClickToPointComponent getPlayerControllerClickToPointComponent()", "Gets the player controller click to point component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PhysicsComponent getPhysicsComponent()", "Gets the physics component, which is the base for all other physics components.");
 		AddClassToCollection("GameObject", "PhysicsActiveComponent getPhysicsActiveComponent()", "Gets the physics active component.");
+		AddClassToCollection("GameObject", "PhysicsTriggerComponent getPhysicsTriggerComponent()", "Gets the physics trigger component.");
 		AddClassToCollection("GameObject", "PhysicsActiveCompoundComponent getPhysicsActiveCompoundComponent()", "Gets the physics active compound component.");
 		AddClassToCollection("GameObject", "PhysicsActiveDestructibleComponent getPhysicsActiveDestructibleComponent()", "Gets the physics active destructable component.");
 		AddClassToCollection("GameObject", "PhysicsArtifactComponent getPhysicsArtifactComponent()", "Gets the physics artifact component.");
@@ -3850,6 +3851,7 @@ namespace NOWA
 		AddClassToCollection("GameObject", "PlayerControllerClickToPointComponent getPlayerControllerClickToPointComponentFromName(String name)", "Gets the player controller click to point component. Requirements: A physics active component.");
 		AddClassToCollection("GameObject", "PhysicsComponent getPhysicsComponentFromName(String name)", "Gets the physics component, which is the base for all other physics components.");
 		AddClassToCollection("GameObject", "PhysicsActiveComponent getPhysicsActiveComponentFromName(String name)", "Gets the physics active component.");
+		AddClassToCollection("GameObject", "PhysicsTriggerComponent getPhysicsTriggerComponentFromName(String name)", "Gets the physics trigger component.");
 		AddClassToCollection("GameObject", "PhysicsActiveCompoundComponent getPhysicsActiveCompoundComponentFromName(String name)", "Gets the physics active compound component.");
 		AddClassToCollection("GameObject", "PhysicsActiveDestructibleComponent getPhysicsActiveDestructibleComponentFromName(String name)", "Gets the physics active destructable component.");
 		AddClassToCollection("GameObject", "PhysicsArtifactComponent getPhysicsArtifactComponentFromName(String name)", "Gets the physics artifact component.");
@@ -5016,8 +5018,7 @@ namespace NOWA
 		AddClassToCollection("GameObjectController", "void redo()", "Does redo one step in the simulation,.");
 		AddClassToCollection("GameObjectController", "void undoAll()", "Does redo all steps in the simulation. Note: No idea, in which case to use this :).");
 
-		AddClassToCollection("GameObjectController", "void deleteDelayedGameObject(String gameObjectId, float delayMS)", "Deletes a game object by the given id after a delay of milliseconds.");
-		AddClassToCollection("GameObjectController", "void deleteDelayedGameObject(String gameObjectId)", "Deletes a game object by the given id after 1000 milliseconds.");
+		AddClassToCollection("GameObjectController", "void deleteDelayedGameObject(String gameObjectId, float delaySec)", "Deletes a game object by the given id after a delay of seconds.");
 		AddClassToCollection("GameObjectController", "void deleteGameObject(String gameObjectId)", "Deletes a game object by the given id immediately.");
 		AddClassToCollection("GameObjectController", "void deleteGameObjectWithUndo(String gameObjectId)", "Deletes the game object by id.Note: The game object by the given id will not be deleted immediately but in the next update turn. "
 														"This function can be used e.g. from a component of the game object, to delete it later, so that the component which calls this function will be deleted to.");
@@ -5056,6 +5057,7 @@ namespace NOWA
 			"The category ids for filtering. Using ALL_CATEGORIES_ID, everything is selectable.");
 		
 		AddClassToCollection("GameObjectController", "GameObject castGameObject(GameObject other)", "Casts an incoming type from function for lua auto completion.");
+		AddClassToCollection("GameObjectController", "Contact castContact(Contact other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "AttributesComponent castAttributesComponent(AttributesComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsBuoyancyComponent castPhysicsBuoyancyComponent(PhysicsBuoyancyComponent other)", "Casts an incoming type from function for lua auto completion.");
 		AddClassToCollection("GameObjectController", "PhysicsTriggerComponent castPhysicsTriggerComponent(PhysicsTriggerComponent other)", "Casts an incoming type from function for lua auto completion.");
@@ -5985,13 +5987,13 @@ namespace NOWA
 		AddClassToCollection("PhysicsBuoyancyComponent", "void setOffsetHeight(float offsetHeight)", "Sets the offset height, at which the area begins (default value is 0).");
 		AddClassToCollection("PhysicsBuoyancyComponent", "float getOffsetHeight()", "Gets the offset height, at which the area begins (default value is 0).");
 		// AddClassToCollection("PhysicsBuoyancyComponent", "void destroyBuoyancy()", "Destroys the buoyancy trigger, so that no fluid physics take place anymore.");
-		AddClassToCollection("PhysicsBuoyancyComponent", "class inherits PhysicsComponent", PhysicsTriggerComponent::getStaticInfoText());
+
 		// AddClassToCollection("PhysicsBuoyancyComponent", "void destroyTrigger()", "Destroys the trigger.");
 		AddClassToCollection("PhysicsBuoyancyComponent", "void reactOnEnter(func closure, visitorGameObject)",
 							 "Lua closure function gets called in order to react when a game object enters the trigger area.");
 		AddClassToCollection("PhysicsBuoyancyComponent", "void reactOnInside(func closure, visitorGameObject)",
 							 "Lua closure function gets called in order to react when a game object is inside the trigger area. Note: This function should only be used if really necessary, because this function gets triggered permanently.");
-		AddClassToCollection("PhysicsBuoyancyComponent", "void reactOnVanish(func closure, visitorGameObject)",
+		AddClassToCollection("PhysicsBuoyancyComponent", "void reactOnLeave(func closure, visitorGameObject)",
 							 "Lua closure function gets called in order to react when a game object leaves the trigger area.");
 	}
 
@@ -6012,7 +6014,7 @@ namespace NOWA
 														  "Lua closure function gets called in order to react when a game object enters the trigger area.");
 		AddClassToCollection("PhysicsTriggerComponent", "void reactOnInside(func closure, visitorGameObject)",
 							 "Lua closure function gets called in order to react when a game object is inside the trigger area. Note: This function should only be used if really necessary, because this function gets triggered permanently.");
-		AddClassToCollection("PhysicsTriggerComponent", "void reactOnVanish(func closure, visitorGameObject)",
+		AddClassToCollection("PhysicsTriggerComponent", "void reactOnLeave(func closure, visitorGameObject)",
 														  "Lua closure function gets called in order to react when a game object leaves the trigger area.");
 	}
 
@@ -11192,6 +11194,26 @@ namespace NOWA
 		return Ogre::StringConverter::toString(instance->getAgentId());
 	}
 
+	void addWayPoint(KI::Path* instance, const Ogre::Vector3& position)
+	{
+		instance->addWayPoint(position);
+	}
+
+	void addWayPoint2(KI::Path* instance, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+	{
+		instance->addWayPoint(position, orientation);
+	}
+
+	void setWayPoint(KI::Path* instance, const Ogre::Vector3& position)
+	{
+		instance->setWayPoint(position);
+	}
+
+	void setWayPoint2(KI::Path* instance, const Ogre::Vector3& position, const Ogre::Quaternion& orientation)
+	{
+		instance->setWayPoint(position, orientation);
+	}
+
 	void bindAiLuaComponent(lua_State* lua)
 	{
 		module(lua)
@@ -11204,8 +11226,10 @@ namespace NOWA
 			.def("getRepeat", &KI::Path::getRepeat)
 			.def("setDirectionChange", &KI::Path::setDirectionChange)
 			.def("getDirectionChange", &KI::Path::getDirectionChange)
-			.def("addWayPoint", &KI::Path::addWayPoint)
-			.def("setWayPoint", &KI::Path::setWayPoint)
+			.def("addWayPoint", &addWayPoint)
+			.def("addWayPoint2", &addWayPoint2)
+			.def("setWayPoint", &setWayPoint)
+			.def("setWayPoint2", &setWayPoint2)
 			.def("clear", &KI::Path::clear)
 			// .def("getWayPoints", &KI::Path::getWayPoints, return_stl_iterator)
 			.def("getWayPoints", &getWayPoints)
@@ -11220,7 +11244,9 @@ namespace NOWA
 		AddClassToCollection("Path", "void setDirectionChange(bool directionChange)", "Sets whether the traversal direction should be changed, if path is finished.");
 		AddClassToCollection("Path", "bool getDirectionChange()", "Gets whether the traversal direction should be changed, if path is finished.");
 		AddClassToCollection("Path", "void addWayPoint(Vector3 newPoint)", "Adds a new way point at the end of the list.");
+		AddClassToCollection("Path", "void addWayPoint2(Vector3 newPoint, Quaternion orientation)", "Adds a new way point at the end of the list.");
 		AddClassToCollection("Path", "void setWayPoint(Vector3 newPoint)", "Clears the list and sets a new way point.");
+		AddClassToCollection("Path", "void setWayPoint(Vector3 newPoint, Quaternion orientation)", "Clears the list and sets a new way point.");
 		AddClassToCollection("Path", "void clear()", "Clears the way point list.");
 		AddClassToCollection("Path", "Table[Vector3] getWayPoints()", "Gets the list of all waypoints.");
 		// AddClassToCollection("Path", "void setNextWaypoint(Vector3 nextPoint)", "Moves the internal iterator to the next waypoint.");

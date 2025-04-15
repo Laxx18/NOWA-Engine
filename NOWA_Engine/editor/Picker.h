@@ -212,6 +212,9 @@ namespace NOWA
 		virtual void destroyLine() override;
 
 		void dragCallback(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex);
+
+	private:
+		void deleteBodyDelegate(EventDataPtr eventData);
 	private:
 		bool active;
 		bool dragging;

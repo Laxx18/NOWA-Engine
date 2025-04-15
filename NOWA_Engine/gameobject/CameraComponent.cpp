@@ -560,14 +560,18 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraPosition"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->position->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->camera->getPositionForViewUpdate())));
 		propertiesXML->append_node(propertyXML);
+
+		this->setCameraPosition(this->camera->getPositionForViewUpdate());
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraOrientation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->orientation->getVector3())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, MathHelper::getInstance()->quatToDegrees(this->camera->getOrientationForViewUpdate()))));
 		propertiesXML->append_node(propertyXML);
+
+		this->setCameraOrientation(this->camera->getOrientationForViewUpdate());
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));

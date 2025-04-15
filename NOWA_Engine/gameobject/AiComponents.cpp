@@ -1141,9 +1141,9 @@ namespace NOWA
 
 	AiWanderComponent::AiWanderComponent()
 		: AiComponent(),
-		wanderJitter(new Variant(AiWanderComponent::AttrWanderJitter(), 1.0f, this->attributes)),
-		wanderRadius(new Variant(AiWanderComponent::AttrWanderRadius(), 1.2f, this->attributes)),
-		wanderDistance(new Variant(AiWanderComponent::AttrWanderDistance(), 20.0f, this->attributes))
+		wanderJitter(new Variant(AiWanderComponent::AttrWanderJitter(), 2.0f, this->attributes)),
+		wanderRadius(new Variant(AiWanderComponent::AttrWanderRadius(), 2.0f, this->attributes)),
+		wanderDistance(new Variant(AiWanderComponent::AttrWanderDistance(), 16.0f, this->attributes))
 	{
 		this->behaviorTypeId = KI::MovingBehavior::WANDER;
 	}

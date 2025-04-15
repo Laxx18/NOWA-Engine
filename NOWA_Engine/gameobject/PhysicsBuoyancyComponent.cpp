@@ -141,6 +141,11 @@ namespace NOWA
 		this->enterClosureFunction = enterClosureFunction;
 		this->insideClosureFunction = insideClosureFunction;
 		this->leaveClosureFunction = leaveClosureFunction;
+
+		if (false == this->insideClosureFunction.is_valid())
+		{
+			this->onInsideFunctionAvailable = false;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -529,16 +534,40 @@ namespace NOWA
 	void PhysicsBuoyancyComponent::reactOnEnter(luabind::object closureFunction)
 	{
 		this->enterClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			if (nullptr != this->physicsBuoyancyTriggerCallback)
+			{
+				this->physicsBuoyancyTriggerCallback->setTriggerFunctions(this->enterClosureFunction, this->insideClosureFunction, this->leaveClosureFunction);
+			}
+		}
 	}
 
 	void PhysicsBuoyancyComponent::reactOnInside(luabind::object closureFunction)
 	{
 		this->insideClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			if (nullptr != this->physicsBuoyancyTriggerCallback)
+			{
+				this->physicsBuoyancyTriggerCallback->setTriggerFunctions(this->enterClosureFunction, this->insideClosureFunction, this->leaveClosureFunction);
+			}
+		}
 	}
 
 	void PhysicsBuoyancyComponent::reactOnLeave(luabind::object closureFunction)
 	{
 		this->leaveClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			if (nullptr != this->physicsBuoyancyTriggerCallback)
+			{
+				this->physicsBuoyancyTriggerCallback->setTriggerFunctions(this->enterClosureFunction, this->insideClosureFunction, this->leaveClosureFunction);
+			}
+		}
 	}
 
 }; // namespace end

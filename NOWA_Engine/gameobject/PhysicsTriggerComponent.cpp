@@ -40,8 +40,8 @@ namespace NOWA
 	{
 		if (true == this->bDebugData)
 		{
-			static int enter = 0;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Enter: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(enter++));
+			// static int enter = 0;
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Enter: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(enter++));
 		}
 		// Note visitor is not the one that has created this trigger, but the one that enters it
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
@@ -125,8 +125,8 @@ namespace NOWA
 	{
 		if (true == this->bDebugData)
 		{
-			static int exit = 0;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Exit: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(exit++));
+			// static int exit = 0;
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Exit: " + visitor->getOgreNode()->getName() + " " + Ogre::StringConverter::toString(exit++));
 		}
 		PhysicsComponent* visitorPhysicsComponent = OgreNewt::any_cast<PhysicsComponent*>(visitor->getUserData());
 		if (nullptr != visitorPhysicsComponent)
@@ -187,6 +187,11 @@ namespace NOWA
 		this->enterClosureFunction = enterClosureFunction;
 		this->insideClosureFunction = insideClosureFunction;
 		this->leaveClosureFunction = leaveClosureFunction;
+
+		if (false == this->insideClosureFunction.is_valid())
+		{
+			this->onInsideFunctionAvailable = false;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +208,8 @@ namespace NOWA
 		this->asSoftBody->setVisible(false);
 		this->gyroscopicTorque->setValue(false);
 		this->gyroscopicTorque->setVisible(false);
+		this->collidable->setValue(false);
+		this->collidable->setVisible(false);
 	}
 
 	PhysicsTriggerComponent::~PhysicsTriggerComponent()
@@ -369,11 +376,32 @@ namespace NOWA
 
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
+		OgreNewt::CollisionPtr collistionPtr;
+		if (this->collisionType->getListSelectedValue() == "Tree")
+		{
+			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				collistionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, entity, true, this->gameObjectPtr->getCategoryId()));
+			}
+			else
+			{
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					collistionPtr = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::TreeCollision(this->ogreNewt, item, true, this->gameObjectPtr->getCategoryId()));
+				}
+			}
+		}
+		else
+		{
+			collistionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
+				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+		}
 
 		if (nullptr == this->physicsBody)
 		{
-			this->physicsBody = new OgreNewt::TriggerBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
-				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()),
+			this->physicsBody = new OgreNewt::TriggerBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collistionPtr,
 				new PhysicsTriggerCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(),
 														  this->enterClosureFunction,
 														  this->insideClosureFunction, this->leaveClosureFunction));
@@ -382,8 +410,7 @@ namespace NOWA
 		{
 			// Just re-create the trigger (internally the newton body will fortunately not change, so also this physics body remains the same, which avoids lots of problems, 
 			// when used in combination with joint, undo, redo :)
-			static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->reCreateTrigger(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
-				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
+			static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->reCreateTrigger(collistionPtr);
 		}
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
@@ -463,16 +490,43 @@ namespace NOWA
 	void PhysicsTriggerComponent::reactOnEnter(luabind::object closureFunction)
 	{
 		this->enterClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			auto triggerCallback = static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->getTriggerCallback();
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setTriggerFunctions(this->enterClosureFunction,
+				this->insideClosureFunction, this->leaveClosureFunction);
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setLuaScript(this->gameObjectPtr->getLuaScript());
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setCategoryId(this->categoriesId);
+		}
 	}
 
 	void PhysicsTriggerComponent::reactOnInside(luabind::object closureFunction)
 	{
 		this->insideClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			auto triggerCallback = static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->getTriggerCallback();
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setTriggerFunctions(this->enterClosureFunction,
+				this->insideClosureFunction, this->leaveClosureFunction);
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setLuaScript(this->gameObjectPtr->getLuaScript());
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setCategoryId(this->categoriesId);
+		}
 	}
 
 	void PhysicsTriggerComponent::reactOnLeave(luabind::object closureFunction)
 	{
 		this->leaveClosureFunction = closureFunction;
+
+		if (nullptr != this->physicsBody)
+		{
+			auto triggerCallback = static_cast<OgreNewt::TriggerBody*>(this->physicsBody)->getTriggerCallback();
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setTriggerFunctions(this->enterClosureFunction,
+				this->insideClosureFunction, this->leaveClosureFunction);
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setLuaScript(this->gameObjectPtr->getLuaScript());
+			static_cast<PhysicsTriggerComponent::PhysicsTriggerCallback*>(triggerCallback)->setCategoryId(this->categoriesId);
+		}
 	}
 
 }; // namespace end

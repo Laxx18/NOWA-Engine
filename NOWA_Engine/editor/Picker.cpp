@@ -41,6 +41,7 @@ namespace NOWA
 			this->active = false;
 		}
 		this->detachAndDestroyAllPickObserver();
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &Picker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 	}
 
 	void Picker::init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::Real maxDistance, unsigned int queryMask, bool drawLines)
@@ -58,6 +59,8 @@ namespace NOWA
 		}
 
 		this->active = true;
+
+		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &Picker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 	}
 
 	void Picker::attachPickObserver(IPickObserver* pickObserver)
@@ -301,6 +304,16 @@ namespace NOWA
 			}
 			// Add the picking spring force at the handle
 			body->addGlobalForce(dragForce, dragPos);
+		}
+	}
+
+	void Picker::deleteBodyDelegate(EventDataPtr eventData)
+	{
+		boost::shared_ptr<EventDataDeleteBody> castEventData = boost::static_pointer_cast<EventDataDeleteBody>(eventData);
+
+		if (castEventData->getBody() == this->hitBody)
+		{
+			this->release();
 		}
 	}
 

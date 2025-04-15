@@ -18,7 +18,10 @@ namespace OgreNewt
 	{
 		TriggerCallback* const callback = (TriggerCallback*)me->GetUserData();
 		const OgreNewt::Body* visitor = (const OgreNewt::Body*) NewtonBodyGetUserData(guess);
-		callback->OnEnter(visitor);
+		if (nullptr != visitor)
+		{
+			callback->OnEnter(visitor);
+		}
 		// m_world->criticalSectionLock();
 	}
 
@@ -26,14 +29,20 @@ namespace OgreNewt
 	{
 		TriggerCallback* const callback = (TriggerCallback*)me->GetUserData();
 		const OgreNewt::Body* visitor = (const OgreNewt::Body*) NewtonBodyGetUserData(guess);
-		callback->OnExit(visitor);
+		if (nullptr != visitor)
+		{
+			callback->OnExit(visitor);
+		}
 	}
 
 	void CustomTriggerManager::WhileIn(const dCustomTriggerController* const me, dFloat timestep, NewtonBody* const guess) const
 	{
 		TriggerCallback* const callback = (TriggerCallback*)me->GetUserData();
 		const OgreNewt::Body* visitor = (const OgreNewt::Body*) NewtonBodyGetUserData(guess);
-		callback->OnInside(visitor);
+		if (nullptr != visitor)
+		{
+			callback->OnInside(visitor);
+		}
 	}
 
 	void CustomTriggerManager::update(dFloat dt)

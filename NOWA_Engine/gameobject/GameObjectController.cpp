@@ -545,7 +545,7 @@ namespace NOWA
 		}
 
 		// Now that the gameobject has been fully created, run the post init phase
-		if (!clonedGameObjectPtr->postInit())
+		if (false == clonedGameObjectPtr->postInit())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Could not post init cloned game object: " + clonedGameObjectPtr->getSceneNode()->getName());
 			return GameObjectPtr();
@@ -559,8 +559,19 @@ namespace NOWA
 		for (auto& it = clonedGameObjectPtr->getComponents()->cbegin(); it != clonedGameObjectPtr->getComponents()->cend(); ++it)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Name: " + std::get<COMPONENT>(*it)->getClassName());
-		}
 
+			if (true == this->isSimulating)
+			{
+				const auto compPtr = std::get<COMPONENT>(*it);
+				if (nullptr != compPtr)
+				{
+					if (compPtr->getClassName() == LuaScriptComponent::getStaticClassName())
+					{
+						compPtr->connect();
+					}
+				}
+			}
+		}
 
 		boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(clonedGameObjectPtr->getId()));
 		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(newGameObjectEvent);

@@ -662,6 +662,11 @@ namespace NOWA
 
 	bool GameProgressModule::loadProgress(const Ogre::String& saveName, bool sceneSnapshot, bool showProgress)
 	{
+		if (true == saveName.empty())
+		{
+			return false;
+		}
+
 		this->setIsSceneLoading(true);
 
 		bool success = false;
@@ -677,6 +682,7 @@ namespace NOWA
 		auto streamData = this->getSaveFileContent(tempSaveName);
 		if (true == streamData.second.empty())
 		{
+			this->setIsSceneLoading(false);
 			return success;
 		}
 

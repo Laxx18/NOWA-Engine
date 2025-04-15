@@ -7544,6 +7544,14 @@ return {
 				returns = "(PhysicsActiveComponent)",
 				valuetype = "PhysicsActiveComponent"
 			},
+			getPhysicsTriggerComponent =
+			{
+				type = "function",
+				description = "Gets the physics trigger component.",
+				args = "()",
+				returns = "(PhysicsTriggerComponent)",
+				valuetype = "PhysicsTriggerComponent"
+			},
 			getPhysicsActiveCompoundComponent =
 			{
 				type = "function",
@@ -8559,6 +8567,14 @@ return {
 				args = "(string name)",
 				returns = "(PhysicsActiveComponent)",
 				valuetype = "PhysicsActiveComponent"
+			},
+			getPhysicsTriggerComponentFromName =
+			{
+				type = "function",
+				description = "Gets the physics trigger component.",
+				args = "(string name)",
+				returns = "(PhysicsTriggerComponent)",
+				valuetype = "PhysicsTriggerComponent"
 			},
 			getPhysicsActiveCompoundComponentFromName =
 			{
@@ -9859,16 +9875,8 @@ return {
 			deleteDelayedGameObject =
 			{
 				type = "method",
-				description = "Deletes a game object by the given id after a delay of milliseconds.",
-				args = "(string gameObjectId, number delayMS)",
-				returns = "(nil)",
-				valuetype = "nil"
-			},
-			deleteDelayedGameObject =
-			{
-				type = "method",
-				description = "Deletes a game object by the given id after 1000 milliseconds.",
-				args = "(string gameObjectId)",
+				description = "Deletes a game object by the given id after a delay of seconds.",
+				args = "(string gameObjectId, number delaySec)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -10095,6 +10103,14 @@ return {
 				args = "(GameObject other)",
 				returns = "(GameObject)",
 				valuetype = "GameObject"
+			},
+			castContact =
+			{
+				type = "function",
+				description = "Casts an incoming type from function for lua auto completion.",
+				args = "(Contact other)",
+				returns = "(Contact)",
+				valuetype = "Contact"
 			},
 			castAttributesComponent =
 			{
@@ -21205,11 +21221,27 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
+			addWayPoint2 =
+			{
+				type = "method",
+				description = "Adds a new way point at the end of the list.",
+				args = "(Vector3 newPoint, Quaternion orientation)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
 			setWayPoint =
 			{
 				type = "method",
 				description = "Clears the list and sets a new way point.",
 				args = "(Vector3 newPoint)",
+				returns = "(nil)",
+				valuetype = "nil"
+			},
+			setWayPoint =
+			{
+				type = "method",
+				description = "Clears the list and sets a new way point.",
+				args = "(Vector3 newPoint, Quaternion orientation)",
 				returns = "(nil)",
 				valuetype = "nil"
 			},
@@ -22004,7 +22036,7 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			reactOnVanish =
+			reactOnLeave =
 			{
 				type = "method",
 				description = "Lua closure function gets called in order to react when a game object leaves the trigger area.",
@@ -22691,7 +22723,7 @@ return {
 				returns = "(nil)",
 				valuetype = "nil"
 			},
-			reactOnVanish =
+			reactOnLeave =
 			{
 				type = "method",
 				description = "Lua closure function gets called in order to react when a game object leaves the trigger area.",
