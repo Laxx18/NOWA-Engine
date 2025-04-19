@@ -184,6 +184,8 @@ namespace NOWA
 			}
 		}
 
+		this->gameObjectPtr->actualizeDatablocks();
+
 		this->originalMacroblock = nullptr;
 		this->originalBlendblock = nullptr;
 	}
@@ -448,6 +450,8 @@ namespace NOWA
 
 		clonedGameObjectPtr->addComponent(clonedCompPtr);
 		clonedCompPtr->setOwner(clonedGameObjectPtr);
+
+		clonedCompPtr->isCloned = true;
 		
 		clonedCompPtr->setSubEntityIndex(this->subEntityIndex->getUInt());
 		clonedCompPtr->setWorkflow(this->workflow->getListSelectedValue());
@@ -499,8 +503,6 @@ namespace NOWA
 		clonedCompPtr->setShadowConstBias(this->shadowConstBias->getReal());
 		clonedCompPtr->setBringToFront(this->bringToFront->getBool());
 		clonedCompPtr->setCutOff(this->cutOff->getBool());
-
-		clonedCompPtr->isCloned = true;
 		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 		return clonedCompPtr;
@@ -855,7 +857,9 @@ namespace NOWA
 		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
 
 		if ("Missing" == originalDataBlockName)
+		{
 			return false;
+		}
 		
 		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
 		size_t found = originalDataBlockName.find("__");
@@ -883,7 +887,7 @@ namespace NOWA
 					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
 																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
 				}
-			} while (false == alreadyExists);
+			} while (true == alreadyExists);
 
 			this->alreadyCloned = true;
 		}
@@ -901,6 +905,13 @@ namespace NOWA
 
 		entity->getSubEntity(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
 		this->oldSubIndex = this->subEntityIndex->getUInt();
+
+		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+
+		if (nullptr != finalDatablockName)
+		{
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+		}
 
 		this->postReadDatablock();
 
@@ -964,7 +975,7 @@ namespace NOWA
 					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
 																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
 				}
-			} while (false == alreadyExists);
+			} while (true == alreadyExists);
 
 			this->alreadyCloned = true;
 		}
@@ -982,6 +993,13 @@ namespace NOWA
 
 		item->getSubItem(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
 		this->oldSubIndex = this->subEntityIndex->getUInt();
+
+		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+
+		if (nullptr != finalDatablockName)
+		{
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+		}
 
 		this->postReadDatablock();
 
@@ -1930,7 +1948,7 @@ namespace NOWA
 
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setWorkflow(this->mapStringToWorkflow(workflow));
 			else
 				this->workflow->setListSelectedValue(this->mapWorkflowToString(this->datablock->getWorkflow()));
@@ -1947,7 +1965,7 @@ namespace NOWA
 		this->metalness->setValue(metalness);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow == this->datablock->getWorkflow())
 				{
@@ -1955,7 +1973,9 @@ namespace NOWA
 				}
 			}
 			else
+			{
 				this->metalness->setValue(this->datablock->getMetalness());
+			}
 		}
 	}
 	
@@ -1974,7 +1994,7 @@ namespace NOWA
 		this->roughness->setValue(roughness);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setRoughness(roughness);
 			else
 				this->roughness->setValue(this->datablock->getRoughness());
@@ -1991,7 +2011,7 @@ namespace NOWA
 		this->fresnel->setValue(Ogre::Vector4(fresnel.x, fresnel.y, fresnel.z, static_cast<Ogre::Real>(separateFresnel)));
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
 				{
@@ -2017,7 +2037,7 @@ namespace NOWA
 		this->indexOfRefraction->setValue(Ogre::Vector4(refractionIdx.x, refractionIdx.y, refractionIdx.z, static_cast<Ogre::Real>(separateFresnel)));
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
 				{
@@ -2037,7 +2057,7 @@ namespace NOWA
 		this->refractionStrength->setValue(refractionStrength);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setRefractionStrength(refractionStrength);
 			else
 				this->refractionStrength->setValue(this->datablock->getRefractionStrength());
@@ -2060,7 +2080,7 @@ namespace NOWA
 			this->clearCoat->setVisible(isDefaultBrdf);
 			this->clearCoatRoughness->setVisible(isDefaultBrdf);
 
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setBrdf(brdfFlags);
 			else
 				this->brdf->setListSelectedValue(this->mapBrdfToString(static_cast<Ogre::PbsBrdf::PbsBrdf>(this->datablock->getBrdf())));
@@ -2077,7 +2097,7 @@ namespace NOWA
 		this->twoSidedLighting->setValue(twoSided);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setTwoSidedLighting(twoSided, true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
 			else
 				this->twoSidedLighting->setValue(this->datablock->getTwoSidedLighting());
@@ -2094,7 +2114,7 @@ namespace NOWA
 		this->oneSidedShadowCastCullingMode->setListSelectedValue(cullingMode);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				// true = default = change macro block
 				this->datablock->setTwoSidedLighting(this->twoSidedLighting->getBool(), true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
 			else
@@ -2112,7 +2132,7 @@ namespace NOWA
 		this->alphaTest->setListSelectedValue(alphaTest);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setAlphaTest(this->mapStringToAlphaTest(this->alphaTest->getListSelectedValue()));
 			else
 				this->alphaTest->setListSelectedValue(this->mapAlphaTestToString(this->datablock->getAlphaTest()));
@@ -2129,10 +2149,15 @@ namespace NOWA
 		this->alphaTestThreshold->setValue(threshold);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
+			{
 				this->datablock->setAlphaTestThreshold(threshold);
+			}
 			else
+			{
+
 				this->alphaTestThreshold->setValue(this->datablock->getAlphaTestThreshold());
+			}
 		}
 	}
 		
@@ -2146,7 +2171,7 @@ namespace NOWA
 		this->receiveShadows->setValue(receiveShadows);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setReceiveShadows(receiveShadows);
 			else
 				this->receiveShadows->setValue(this->datablock->getReceiveShadows());
@@ -2163,7 +2188,7 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setDiffuse(diffuseColor);
 			else
 				this->diffuseColor->setValue(this->datablock->getDiffuse());
@@ -2180,7 +2205,7 @@ namespace NOWA
 		this->backgroundColor->setValue(backgroundColor);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setBackgroundDiffuse(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
 			else
 			{
@@ -2201,7 +2226,7 @@ namespace NOWA
 		
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setSpecular(specularColor);
 			else
 				this->specularColor->setValue(this->datablock->getSpecular());
@@ -2219,7 +2244,7 @@ namespace NOWA
 		
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setEmissive(emissiveColor);
 			else
 				this->emissiveColor->setValue(this->datablock->getEmissive());
@@ -2256,7 +2281,7 @@ namespace NOWA
 		this->normalMapWeight->setValue(normalMapWeight);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setNormalMapWeight(normalMapWeight);
 			else
 				this->normalMapWeight->setValue(this->datablock->getNormalMapWeight());
@@ -2277,7 +2302,7 @@ namespace NOWA
 		this->clearCoat->setValue(clearCoat);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated && (this->datablock->getBrdf() & Ogre::PbsBrdf::BRDF_MASK) == Ogre::PbsBrdf::Default)
+			if ((false == newlyCreated || true == this->isCloned) && (this->datablock->getBrdf() & Ogre::PbsBrdf::BRDF_MASK) == Ogre::PbsBrdf::Default)
 			{
 				this->datablock->setClearCoat(clearCoat);
 			}
@@ -2300,7 +2325,7 @@ namespace NOWA
 		this->clearCoatRoughness->setValue(clearCoatRoughness);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setClearCoatRoughness(clearCoatRoughness);
 			else
 				this->clearCoat->setValue(this->datablock->getClearCoatRoughness());
@@ -2369,7 +2394,7 @@ namespace NOWA
 		this->blendMode0->setListSelectedValue(blendMode0);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setDetailMapBlendMode(0, this->mapStringToBlendMode(blendMode0));
 			else
 				this->blendMode0->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(0)));
@@ -2396,7 +2421,7 @@ namespace NOWA
 		this->blendMode1->setListSelectedValue(blendMode1);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setDetailMapBlendMode(1, this->mapStringToBlendMode(blendMode1));
 			else
 				this->blendMode1->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(1)));
@@ -2423,7 +2448,7 @@ namespace NOWA
 		this->blendMode2->setListSelectedValue(blendMode2);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setDetailMapBlendMode(2, this->mapStringToBlendMode(blendMode2));
 			else
 				this->blendMode2->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(2)));
@@ -2450,7 +2475,7 @@ namespace NOWA
 		this->blendMode3->setListSelectedValue(blendMode3);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setDetailMapBlendMode(3, this->mapStringToBlendMode(blendMode3));
 			else
 				this->blendMode3->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(3)));
@@ -2528,7 +2553,7 @@ namespace NOWA
 		this->transparencyMode->setListSelectedValue(transparencyMode);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(transparencyMode), this->useAlphaFromTextures->getBool());
 			else
 				this->transparencyMode->setListSelectedValue(this->mapTransparencyModeToString(this->datablock->getTransparencyMode()));
@@ -2545,7 +2570,7 @@ namespace NOWA
 		this->transparency->setValue(transparency);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 			{
 				this->datablock->setTransparency(transparency, this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), this->useAlphaFromTextures->getBool());
 				// Change render queue index, so that other game objects can be rendered correctly after this transparent game object
@@ -2575,7 +2600,7 @@ namespace NOWA
 		this->useAlphaFromTextures->setValue(useAlphaFromTextures);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), useAlphaFromTextures);
 			else
 				this->useAlphaFromTextures->setValue(this->datablock->getUseAlphaFromTextures());
@@ -2593,7 +2618,7 @@ namespace NOWA
 		// Causes endless exceptions!
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 			{
 				// Ogre::Matrix4 mat(Ogre::Matrix4::IDENTITY);
 				// mat.setScale(Ogre::Vector3(-1, 1, 1));
@@ -2649,7 +2674,7 @@ namespace NOWA
 		this->shadowConstBias->setValue(shadowConstBias);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->mShadowConstantBias = shadowConstBias;
 			else
 				this->shadowConstBias->setValue(this->datablock->mShadowConstantBias);
@@ -2730,7 +2755,7 @@ namespace NOWA
 		this->useEmissiveAsLightMap->setValue(useEmissiveAsLightMap);
 		if (nullptr != this->datablock)
 		{
-			if (false == newlyCreated)
+			if (false == newlyCreated || true == this->isCloned)
 				this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap);
 			else
 				this->useEmissiveAsLightMap->setValue(this->datablock->getUseEmissiveAsLightmap());

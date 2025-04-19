@@ -446,6 +446,13 @@ namespace NOWA
 			return false;
 		}
 
+		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+
+		if (nullptr != finalDatablockName)
+		{
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, 0);
+		}
+
 		this->postReadDatablock();
 
 		// Do not exchange blend weight map, as it has been generated in terra

@@ -160,14 +160,6 @@ namespace NOWA
 		}
 	}
 
-	void AppState::lateUpdate(Ogre::Real dt)
-	{
-		if (true == canUpdate)
-		{
-			this->lateUpdateModules(dt);
-		}
-	}
-
 	void AppState::render(Ogre::Real alpha)
 	{
 		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
@@ -461,15 +453,6 @@ namespace NOWA
 			this->particleUniverseModule->update(dt); // PlayerControllerComponents are using this directly for smoke effect etc.
 			// Update the GameObjects
 			this->gameObjectController->update(dt);
-		}
-	}
-
-	void AppState::lateUpdateModules(Ogre::Real dt)
-	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
-		{
-			// Late update the GameObjects
-			this->gameObjectController->lateUpdate(dt);
 		}
 	}
 

@@ -33,11 +33,6 @@ public:
 	virtual void update(Ogre::Real dt) override;
 
 	/**
-	 * @see AppState::lateUpdate()
-	 */
-	virtual void lateUpdate(Ogre::Real dt) override;
-
-	/**
 	 * @brief		Actions on key pressed event.
 	 * @see			OIS::KeyListener::keyPressed()
 	 * @param[in]	keyEventRef		The key event

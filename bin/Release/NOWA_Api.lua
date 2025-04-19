@@ -25174,7 +25174,7 @@ return {
 	SpawnComponent =
 	{
 		type = "class",
-		description = "Usage: With this component other game objects are spawned. E.g. creating a cannon that throws gold coins :). Note: If this game object contains a @LuaScriptComponent, its possible to react in script at the moment when a game object is spawned: function onSpawn(spawnedGameObject, originGameObject) or function onVanish(spawnedGameObject, originGameObject)",
+		description = "Usage: With this component other game objects are spawned. E.g. creating a cannon that throws gold coins :). Note: If this game object contains a @LuaScriptComponent, its possible to react in script at the moment when a game object is spawned: function onSpawn(spawnedGameObject, originGameObject) or function onVanish(spawnedGameObject, originGameObject). Also note: Think carefully, which components a to be cloned game object does possess. E.g. if each game object has a @SimpleSoundComponent, it will be cloned each time, which may cause frame drops. So maybe, since its the sound is always the same, use the @MainGameObject and play each time the sound from there",
 		inherits = "GameObjectComponent",
 		childs = 
 		{

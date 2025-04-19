@@ -8,6 +8,7 @@ namespace NOWA
 {
 	class PhysicsComponent;
 	class LuaScript;
+	class SpawnCloneTask;
 
 	/**
 	 * @class 	SpawnComponent
@@ -85,6 +86,11 @@ namespace NOWA
 		virtual bool onCloned(void) override;
 
 		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void) override;
+
+		/**
 		* @see		GameObjectComponent::getClassName
 		*/
 		virtual Ogre::String getClassName(void) const override;
@@ -120,7 +126,9 @@ namespace NOWA
 		static Ogre::String getStaticInfoText(void)
 		{
 			return "Usage: With this component other game objects are spawned. E.g. creating a cannon that throws gold coins :). Note: "
-				"If this game object contains a @LuaScriptComponent, its possible to react in script at the moment when a game object is spawned: function onSpawn(spawnedGameObject, originGameObject) or function onVanish(spawnedGameObject, originGameObject)";
+				"If this game object contains a @LuaScriptComponent, its possible to react in script at the moment when a game object is spawned: function onSpawn(spawnedGameObject, originGameObject) or function onVanish(spawnedGameObject, originGameObject). "
+				"Also note: Think carefully, which components a to be cloned game object does possess. E.g. if each game object has a @SimpleSoundComponent, it will be cloned each time, which may cause frame drops. "
+				"So maybe, since its the sound is always the same, use the @MainGameObject and play each time the sound from there";
 		}
 
 		/**
@@ -242,7 +250,17 @@ namespace NOWA
 		*/
 		unsigned long getSpawnTargetId(void) const;
 
+		/**
+		 * @brief Sets whether to clone a potential datablock, or use the just the same from the original one. This could be taken into account due to performance reasons.
+		 * @param[in] cloneDatablock The cloneDatablock flag to set.
+		 */
+		void setCloneDatablock(bool cloneDatablock);
 
+		/**
+		* @brief Gets whether a potential datablock is cloned, or the same from the original game object used.
+		* @return spawnTargetId The spawn target id to get
+		*/
+		bool getCloneDatablock(void) const;
 
 		/**
 		* @brief Sets the spawn observer to react at the moment when a game object has been spawned.
@@ -293,6 +311,7 @@ namespace NOWA
 			static const Ogre::String AttrOffsetOrientation(void) { return "Offset Orientation"; }
 			static const Ogre::String AttrSpawnAtOrigin(void) { return "Spawn At Origin"; }
 			static const Ogre::String AttrSpawnTargetId(void) { return "Spawn Target Id"; }
+			static const Ogre::String AttrCloneDatablock(void) { return "Clone Datablock"; }
 			static const Ogre::String AttrOnSpawnFunctionName(void) { return "On Spawn Function Name"; }
 			static const Ogre::String AttrOnVanishFunctionName(void) { return "On Vanish Function Name"; }
 	private:
@@ -301,6 +320,9 @@ namespace NOWA
 		bool initSpawnData(void);
 
 		void deleteGameObjectDelegate(EventDataPtr eventData);
+
+		void processCompletedClone(void);
+
 	protected:
 		Variant* activated;
 		Variant* interval;
@@ -310,6 +332,7 @@ namespace NOWA
 		Variant* offsetOrientation;
 		Variant* spawnAtOrigin;
 		Variant* spawnTargetId;
+		Variant* cloneDatablock;
 
 		Ogre::Vector3 initPosition;
 		Ogre::Quaternion initOrientation;
@@ -320,6 +343,10 @@ namespace NOWA
 		Ogre::Real spawnTimer;
 		std::list<std::pair<unsigned long, GameObject*>> lifeTimeQueue;
 		std::vector<GameObject*> clonedGameObjectsInScene;
+		std::mutex taskMutex;
+		bool taskPending;
+		SpawnCloneTask* currentTask;
+
 		bool keepAlive;
 
 		ISpawnObserver* spawnObserver;

@@ -137,17 +137,6 @@ namespace NOWA
 		virtual void update(Ogre::Real dt, bool notSimulating = false);
 
 		/**
-		* @brief		Called after all updates are called. This can be used for camera transform actions.
-		* @param[in]	dt								The delta time in seconds between two frames (update cycles).
-		* @param[in]	notSimulating	If set to true only graphics for the simulation is updated and shown, if set to false all graphics (even debug graphics, such as light mesh) is shown.
-		* @note		This function can be used to update periodically some data. When vsync is on, this function will be called approx. 60 times so at best
-		*				td is 0.016 seconds or 16 milliseconds
-		*				This can be used e.g. for a level editor, in which there is a play mode. If the play mode is on, everything is updated. If off, only necessary data like
-		*				game object bounding box is udpated.
-		*/
-		virtual void lateUpdate(Ogre::Real dt, bool notSimulating = false);
-
-		/**
 		* @brief		Called after all logic updates in order to render the final interpolated transforms.
 		* @param[in]	alpha								The interpolation alpha.
 		*/
@@ -708,6 +697,10 @@ namespace NOWA
 		* @note			This must be used when a movable object is created outside this game object and cannot be destroyed by the scene manager, like e.g. terra, or ocean etc.
 		*/
 		void setConnectPriority(bool bConnectPriority);
+
+		void actualizeDatablockName(const Ogre::String& datablockName, unsigned short index);
+
+		void actualizeDatablocks(void);
 	public:
 
 		/**

@@ -133,14 +133,6 @@ public:
 		}
 	}
 
-	void lateUpdate(Ogre::Real dt)
-	{
-		// Attention: What here?
-			// const OIS::MouseState& ms = NOWA::Core::getSingletonPtr()->getMouse()->getMouseState();
-
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->moveCamera(dt);
-	}
-
 	bool keyPressed(const OIS::KeyEvent& keyEventRef)
 	{
 		NOWA::Core::getSingletonPtr()->keyPressed(keyEventRef);

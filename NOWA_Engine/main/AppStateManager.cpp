@@ -307,11 +307,6 @@ namespace NOWA
 
 				accumulator -= frameTime;
 
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-				{
-					this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(frameTime));
-				}
-
 				// Does not work?
 				// if (this->slowMotionMS > 0)
 				// 	Ogre::Threads::Sleep(this->slowMotionMS);
@@ -379,12 +374,6 @@ namespace NOWA
 			Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
 			Core::getSingletonPtr()->update(static_cast<Ogre::Real>(dt));
 
-			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-			{
-				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
-			}
-
 			// Ogre::Root::getSingletonPtr()->_fireFrameRenderingQueued();
 			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<float>(dt));
 
@@ -451,12 +440,6 @@ namespace NOWA
 				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
 
 				accumulator -= FIXED_DT;
-			}
-
-			// Rendering comes last (always uses latest state)
-			if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-			{
-				this->activeStateStack.back()->lateUpdate(static_cast<Ogre::Real>(dt));
 			}
 
 			// Render one frame
@@ -605,12 +588,6 @@ namespace NOWA
 
 			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count() / 1000.0f) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
 
-			/******rendering comes after update, so its late update*****/
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-			{
-				this->activeStateStack.back()->lateUpdate(dt);
-			}
-
 			// Controls the shown fps in game! If in DefaultConfig.xml set to 0, go with as many as frames as possible (adaptive)
 			if (0 == this->desiredUpdates)
 			{
@@ -691,11 +668,6 @@ namespace NOWA
 
 					// Update core
 					Core::getSingletonPtr()->update(logicDeltaTime);
-
-					if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-					{
-						this->activeStateStack.back()->lateUpdate(logicDeltaTime);
-					}
 
 					// Update the renderwindow if the window is not active too, for server/client analysis
 					if (false == renderWindow->isVisible() && this->renderWhenInactive)

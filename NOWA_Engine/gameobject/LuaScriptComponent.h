@@ -112,8 +112,6 @@ namespace NOWA
 		 */
 		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
 
-		void lateUpdate(Ogre::Real dt, bool notSimulating);
-
 		/**
 		 * @see		GameObjectComponent::actualizeValue
 		 */

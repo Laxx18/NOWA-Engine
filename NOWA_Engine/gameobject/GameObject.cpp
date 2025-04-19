@@ -90,84 +90,7 @@ namespace NOWA
 		this->renderCategoryId = new Variant(GameObject::AttrRenderCategoryId(), static_cast<unsigned int>(GameObjectController::ALL_CATEGORIES_ID), this->attributes);
 		this->meshName = new Variant(GameObject::AttrMeshName(), Ogre::String(), this->attributes);
 		
-		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
-		{
-			Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
-			{
-				this->meshName->setValue(item->getMesh()->getName());
-
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
-				{
-					auto datablock = item->getSubItem(i)->getDatablock();
-					Ogre::String datablockName = "Missing";
-					if (nullptr != datablock)
-					{
-						datablockName = *datablock->getNameStr();
-					}
-					else
-					{
-						item->getSubItem(i)->setDatablock(datablockName);
-					}
-					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
-
-					const Ogre::String* fileName;
-					const Ogre::String* resourceGroup;
-					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-
-					if (false == (*fileName).empty())
-					{
-						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-						this->dataBlocks[i]->setDescription(data);
-					}
-				}
-			}
-			else
-			{
-				this->meshName->setVisible(false);
-			}
-		}
-		else
-		{
-			Ogre::v1::Entity* entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				this->meshName->setValue(entity->getMesh()->getName());
-
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-				{
-					auto datablock = entity->getSubEntity(i)->getDatablock();
-					Ogre::String datablockName = "Missing";
-					if (nullptr != datablock)
-					{
-						datablockName = *datablock->getNameStr();
-					}
-					else
-					{
-						entity->getSubEntity(i)->setDatablock(datablockName);
-					}
-					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
-
-					const Ogre::String* fileName;
-					const Ogre::String* resourceGroup;
-					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-
-					if (false == (*fileName).empty())
-					{
-						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-						this->dataBlocks[i]->setDescription(data);
-					}
-				}
-			}
-			else
-			{
-				this->meshName->setVisible(false);
-			}
-		}
-
-		this->meshName->setReadOnly(true);
+		this->actualizeDatablocks();
 
 		// Special treatement for category
 		{
@@ -460,6 +383,102 @@ namespace NOWA
 		}
 	}
 
+	void GameObject::actualizeDatablockName(const Ogre::String& datablockName, unsigned short index)
+	{
+		if (index < this->dataBlocks.size())
+		{	
+			if (false == datablockName.empty())
+			{
+				if (nullptr != this->dataBlocks[index])
+				{
+					this->dataBlocks[index]->setValue(datablockName);
+				}
+			}
+		}
+	}
+
+	void GameObject::actualizeDatablocks(void)
+	{
+		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+		{
+			Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+			if (nullptr != item)
+			{
+				this->meshName->setValue(item->getMesh()->getName());
+
+				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				{
+					auto datablock = item->getSubItem(i)->getDatablock();
+					Ogre::String datablockName = "Missing";
+					if (nullptr != datablock)
+					{
+						datablockName = *datablock->getNameStr();
+					}
+					else
+					{
+						item->getSubItem(i)->setDatablock(datablockName);
+					}
+					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+
+					const Ogre::String* fileName;
+					const Ogre::String* resourceGroup;
+					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+
+					if (false == (*fileName).empty())
+					{
+						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+						this->dataBlocks[i]->setDescription(data);
+					}
+				}
+			}
+			else
+			{
+				this->meshName->setVisible(false);
+			}
+		}
+		else
+		{
+			Ogre::v1::Entity* entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				this->meshName->setValue(entity->getMesh()->getName());
+
+				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+				{
+					auto datablock = entity->getSubEntity(i)->getDatablock();
+					Ogre::String datablockName = "Missing";
+					if (nullptr != datablock)
+					{
+						datablockName = *datablock->getNameStr();
+					}
+					else
+					{
+						entity->getSubEntity(i)->setDatablock(datablockName);
+					}
+					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+
+					const Ogre::String* fileName;
+					const Ogre::String* resourceGroup;
+					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+
+					if (false == (*fileName).empty())
+					{
+						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+						this->dataBlocks[i]->setDescription(data);
+					}
+				}
+			}
+			else
+			{
+				this->meshName->setVisible(false);
+			}
+		}
+
+		this->meshName->setReadOnly(true);
+	}
+
 	bool GameObject::postInit(void)
 	{
 		bool isInGame = Core::getSingletonPtr()->getIsGame();
@@ -720,20 +739,11 @@ namespace NOWA
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->sceneNode->getOrientation()));
 	}
 
-	void GameObject::lateUpdate(Ogre::Real dt, bool notSimulating)
-	{
-		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
-		{
-			if (std::get<COMPONENT>(*it)->getClassId() == LuaScriptComponent::getStaticClassId())
-			{
-				boost::static_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it))->lateUpdate(dt, notSimulating);
-			}
-		}
-	}
 	void GameObject::render(Ogre::Real alpha)
 	{
 		static_cast<TransformableSceneNode*>(this->sceneNode)->interpolate(alpha);
 	}
+
 	void GameObject::actualizeValue(Variant* attribute)
 	{
 		if (GameObject::AttrName() == attribute->getName())

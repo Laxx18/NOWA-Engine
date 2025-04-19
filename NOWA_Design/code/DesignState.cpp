@@ -1710,18 +1710,13 @@ void DesignState::update(Ogre::Real dt)
 			this->isMouseAtTop = false;
 		}
 	}
-}
 
-void DesignState::lateUpdate(Ogre::Real dt)
-{
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 	if (false == this->simulating && nullptr != MyGUI::InputManager::getInstance().getMouseFocusWidget() && false == ms.buttonDown(OIS::MB_Right) && nullptr == NOWA::InputDeviceCore::getSingletonPtr()->getJoystick())
 	{
 		return;
 	}
-
-	NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->lateUpdate(dt, false == this->simulating);
 
 	// Prevent rotation, when user does something in GUI, or control is pressed
 	if (true == validScene && 0 == GetAsyncKeyState(VK_LCONTROL)/* && false == this->playerInControl*/)

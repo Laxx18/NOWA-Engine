@@ -12,6 +12,7 @@
 #include "PhysicsRagDollComponent.h"
 #include "PhysicsActiveCompoundComponent.h"
 #include "PhysicsActiveDestructableComponent.h"
+#include "DatablockPbsComponent.h"
 #include "JointComponents.h"
 #include "PlayerControllerComponents.h"
 #include "PhysicsCompoundConnectionComponent.h"
@@ -368,7 +369,7 @@ namespace NOWA
 	}
 	
 	GameObjectPtr GameObjectController::clone(const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
-		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale)
+		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
 		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromName(originalGameObjectName);
 		if (nullptr == originalGameObjectPtr)
@@ -379,18 +380,18 @@ namespace NOWA
 	}
 
 	GameObjectPtr GameObjectController::clone(unsigned long originalGameObjectId, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
-		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale)
+		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
 		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromId(originalGameObjectId);
 		if (nullptr == originalGameObjectPtr)
 		{
 			return GameObjectPtr();
 		}
-		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale);
+		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 	}
 
 	GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
-		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale)
+		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
 		Ogre::SceneManager* sceneManager = originalGameObjectPtr->getSceneManager();
 		Ogre::SceneNode* originalSceneNode = originalGameObjectPtr->getSceneNode();
@@ -454,7 +455,9 @@ namespace NOWA
 				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
 				for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
 				{
-					static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock());
+					const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
+					const Ogre::String *datablockName = datablock->getNameStr();
+					static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
 				}
 			}
 			else if (GameObject::ITEM == originalGameObjectPtr->getType())
@@ -462,7 +465,9 @@ namespace NOWA
 				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
 				for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
 				{
-					static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock());
+					const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
+					const Ogre::String* datablockName = datablock->getNameStr();
+					static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
 				}
 			}
 		}
@@ -500,7 +505,10 @@ namespace NOWA
 
 		for (size_t i = 0; i < originalGameObjectPtr->dataBlocks.size(); i++)
 		{
-			clonedGameObjectPtr->setDatablock(originalGameObjectPtr->dataBlocks[i]);
+			const auto& datablock = originalGameObjectPtr->dataBlocks[i];
+			Ogre::String datablockName = datablock->getString();
+			// clonedGameObjectPtr->setDatablock(originalGameObjectPtr->dataBlocks[i]);
+			clonedGameObjectPtr->actualizeDatablockName(originalGameObjectPtr->dataBlocks[i]->getString(), i);
 		}
 
 		if (!clonedGameObjectPtr->init())
@@ -541,7 +549,18 @@ namespace NOWA
 
 		for (auto& it = gameobjectComponents->cbegin(); it != gameobjectComponents->cend(); ++it)
 		{
-			std::get<COMPONENT>(*it)->clone(clonedGameObjectPtr);
+			const auto compPtr = std::get<COMPONENT>(*it);
+			if (nullptr != compPtr)
+			{
+				if (compPtr->getClassName() == DatablockPbsComponent::getStaticClassName() && false == cloneDatablock)
+				{
+
+				}
+				else
+				{
+					compPtr->clone(clonedGameObjectPtr);
+				}
+			}
 		}
 
 		// Now that the gameobject has been fully created, run the post init phase
@@ -599,10 +618,6 @@ namespace NOWA
 				it->second->update(dt);
 			}*/
 		}
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			it->second->lateUpdate(dt, notSimulating);
-		}
 
 		// Looks if there are some GameObjects to delete post mortem and deletes them
 		// this has been solved this way because a distributed component cannot delete its whole game object within its class
@@ -625,14 +640,6 @@ namespace NOWA
 				}
 			}
 			this->delayedDeleterList.clear();
-		}
-	}
-
-	void GameObjectController::lateUpdate(Ogre::Real dt, bool notSimulating)
-	{
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			it->second->lateUpdate(dt, notSimulating);
 		}
 	}
 

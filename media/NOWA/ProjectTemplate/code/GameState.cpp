@@ -46,11 +46,6 @@ void GameState::update(Ogre::Real dt)
 	this->processUnbufferedMouseInput(dt);
 
 	NOWA::AppState::update(dt);
-}
-
-void GameState::lateUpdate(Ogre::Real dt)
-{
-	NOWA::AppState::lateUpdate(dt);
 	
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 		

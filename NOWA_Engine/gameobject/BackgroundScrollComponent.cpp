@@ -233,10 +233,10 @@ namespace NOWA
 
 				if (true == followGameObjectX)
 				{
-					absolutePos2D.x = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f);
+					absolutePos2D.x = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f * dt);
 					velocity.x = absolutePos2D.x - this->lastPosition.x;
 
-					this->xScroll += velocity.x * this->moveSpeedX->getReal();
+					this->xScroll += velocity.x * this->moveSpeedX->getReal() * dt;
 
 					if (this->xScroll >= 2.0f)
 					{
@@ -249,10 +249,10 @@ namespace NOWA
 				}
 				if (true == followGameObjectY || true == followGameObjectZ)
 				{
-					absolutePos2D.y = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f);
+					absolutePos2D.y = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f * dt);
 					velocity.y = absolutePos2D.y - this->lastPosition.y;
 
-					this->yScroll -= velocity.y * this->moveSpeedY->getReal();
+					this->yScroll -= velocity.y * this->moveSpeedY->getReal() * dt;
 
 					if (this->yScroll >= 2.0f)
 					{
@@ -267,8 +267,8 @@ namespace NOWA
 
 			if (false == followGameObjectX)
 			{
-				velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f);
-				this->xScroll += velocity.x;
+				velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f * dt);
+				this->xScroll += velocity.x * dt;
 
 				if (this->xScroll >= 2.0f)
 				{
@@ -282,8 +282,8 @@ namespace NOWA
 
 			if (false == followGameObjectY && false == followGameObjectZ)
 			{
-				velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f);
-				this->yScroll -= velocity.y;
+				velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f * dt);
+				this->yScroll -= velocity.y * dt;
 
 				if (this->yScroll >= 2.0f)
 				{

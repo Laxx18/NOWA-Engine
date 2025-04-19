@@ -236,6 +236,8 @@ namespace NOWA
 
 	void LuaScriptComponent::onRemoveComponent(void)
 	{
+		GameObjectComponent::onRemoveComponent();
+
 		boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(this->gameObjectPtr->getId(), ""));
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
 	}
@@ -278,20 +280,6 @@ namespace NOWA
 				 // this->luaScript->callFunction("update", dt);
 				 // Lots faster
 				this->luaScript->callTableFunction("update", dt);
-			}
-		}
-	}
-
-	void LuaScriptComponent::lateUpdate(Ogre::Real dt, bool notSimulating)
-	{
-		if (nullptr != this->luaScript && false == notSimulating && true == this->hasLateUpdateFunction)
-		{
-			// Only call lateUpdate permanently in lua when the function has been programmed in lua script
-			if (this->activated->getBool())
-			{
-				// this->luaScript->callFunction("update", dt);
-				// Lots faster
-				this->luaScript->callTableFunction("lateUpdate", dt);
 			}
 		}
 	}

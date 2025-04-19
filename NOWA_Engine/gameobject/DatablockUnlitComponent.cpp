@@ -160,6 +160,8 @@ namespace NOWA
 				}
 			}
 		}
+
+		this->gameObjectPtr->actualizeDatablocks();
 	}
 
 	bool DatablockUnlitComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -620,6 +622,13 @@ namespace NOWA
 
 		entity->getSubEntity(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
 		this->oldSubIndex = this->subEntityIndex->getUInt();
+
+		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+
+		if (nullptr != finalDatablockName)
+		{
+			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+		}
 
 		this->postReadDatablock();
 

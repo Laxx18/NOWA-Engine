@@ -98,17 +98,6 @@ namespace NOWA
 		virtual void update(Ogre::Real dt);
 
 		/**
-		* @brief		LateUpdate is called once per frame, after Update has finished. 
-		*				Any calculations that are performed in Update will have completed when LateUpdate begins. 
-		*				A common use for LateUpdate would be a following third-person camera. 
-		*				If you make your character move and turn inside Update, you can perform all camera movement and rotation calculations in LateUpdate. 
-		*				This will ensure that the character has moved completely before the camera tracks its position.
-		* @param[in]	dt The delta time in seconds. For example if the game runs with 60 fps.
-		*				The delta time between two update calls is 0.016 sec.
-		*/
-		virtual void lateUpdate(Ogre::Real dt);
-
-		/**
 		 * @brief	Pauses this application state (nothing is updated during this time)
 		 */
 		virtual bool pause(void);  

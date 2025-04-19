@@ -126,15 +126,6 @@ namespace NOWA
 		void update(Ogre::Real dt, bool notSimulating = false);
 
 		/**
-		 * @brief		Late updates all game objects and its components.
-		 * @param[in]	dt		The delta time in seconds between two frames (update cycles).
-		 * @param[in]	notSimulating	If set to true all data is updated, if set to false only necessary data is updated.
-		 * @note		This can be used e.g. for a level editor, in which there is a play mode. If the play mode is on, everything is updated. If off, only necessary data like
-		 *				game object bounding box is updated.
-		 */
-		void lateUpdate(Ogre::Real dt, bool notSimulating = false);
-
-		/**
 		 * @brief		Rendres all game objects and its components. Whichs means, their interpolated transforms are applied.
 		 * @param[in]	alphat		The interpolation alpha.
 		 */
@@ -225,6 +216,7 @@ namespace NOWA
 		 * @param[in]	targetPosition		The target position at which location the cloned game object should be spawned.
 		 * @param[in]	targetOrientation	The target orientation at which the cloned game object should be orientated.
 		 * @param[in]	targetScale			The target scale whether the game object should be bigger or smaller than the original game object.
+		 * @param[in]	cloneDataBlock		Whether to clone also a potential datablock component. This could be left off due to performance reasons, e.g.if always the same data block is used.
 		 * @note								If none location parameter are set the cloned game object will take the location parameter of the original game object.
 		 *									Important: Be careful what game object you will clone due to performance reasons. When a game object e.g. is composed of a lot of heavy components
 		 *									Everything inside will be cloned. Imagine a bomb which has 4 components:
@@ -235,13 +227,13 @@ namespace NOWA
 		 * @return		clonedGameObject	The cloned game object
 		 */
 		GameObjectPtr clone(const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
-			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
+			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
 
 		/**
 		 * @see		GameObjectController::clone()
 		 */
 		GameObjectPtr clone(unsigned long originalGameObjectId, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
-			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
+			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
 
 		/**
 		 * @brief		Registers a game object. Internally adds the game object to a map for management and sets a category id for scene queries.
@@ -989,7 +981,7 @@ namespace NOWA
 		static const unsigned long MAIN_LIGHT_ID = 1111111113L;
 	public:
 		GameObjectPtr internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
-			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f));
+			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
 	private:
 
 		/**
