@@ -137,12 +137,6 @@ namespace NOWA
 		virtual void update(Ogre::Real dt, bool notSimulating = false);
 
 		/**
-		* @brief		Called after all logic updates in order to render the final interpolated transforms.
-		* @param[in]	alpha								The interpolation alpha.
-		*/
-		virtual void render(Ogre::Real alpha);
-
-		/**
 		 * @brief		Actualizes the value for the given attribute
 		 * @param[in]	attribute	The attribute to trigger the actualization of a value of either the game object or a component
 		 */
@@ -1045,6 +1039,7 @@ namespace NOWA
 		bool bConnectPriority;
 
 		std::vector<std::pair<GameObjectCompPtr, bool>> delayedAddCommponentList;
+		Ogre::Real timeSinceLastUpdate;
 	};
 
 }; // namespace end

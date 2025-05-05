@@ -628,9 +628,6 @@
     <ClInclude Include="gameobject\PhysicsActiveVehicleComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="main\OgreCustom.h">
-      <Filter>main</Filter>
-    </ClInclude>
     <ClInclude Include="utilities\LowPassAngleFilter.h">
       <Filter>utilities</Filter>
     </ClInclude>
@@ -657,6 +654,9 @@
     </ClInclude>
     <ClInclude Include="ki\FormationBehavior.h">
       <Filter>ki</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\RenderCommandQueueModule.h">
+      <Filter>modules</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1188,9 +1188,6 @@
     <ClCompile Include="gameobject\PhysicsActiveVehicleComponent.cpp">
       <Filter>gameobject</Filter>
     </ClCompile>
-    <ClCompile Include="main\OgreCustom.cpp">
-      <Filter>main</Filter>
-    </ClCompile>
     <ClCompile Include="utilities\LowPassAngleFilter.cpp">
       <Filter>utilities</Filter>
     </ClCompile>
@@ -1217,6 +1214,9 @@
     </ClCompile>
     <ClCompile Include="ki\FormationBehavior.cpp">
       <Filter>ki</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\RenderCommandQueueModule.cpp">
+      <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

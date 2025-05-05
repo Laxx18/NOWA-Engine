@@ -211,15 +211,7 @@ void DesignState::createScene(void)
 		const size_t numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 	#endif
 	// Create the SceneManager, in this case a generic one
-
-	if (NOWA::AppStateManager::INTERPOLATED == NOWA::AppStateManager::getSingletonPtr()->getGameLoopMode())
-	{
-		this->sceneManager = Ogre::Root::getSingletonPtr()->createSceneManager("TransformableSceneManager", numThreads, "NOWA_SceneManager");
-	}
-	else
-	{
-		this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
-	}
+	this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
 
 	Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[DesignState]: Using " + Ogre::StringConverter::toString(numThreads) + " threads.");
 
@@ -1665,26 +1657,29 @@ void DesignState::update(Ogre::Real dt)
 	this->processUnbufferedMouseInput(dt);
 
 	NOWA::InputDeviceCore::getSingletonPtr()->getMainKeyboardInputDeviceModule()->update(dt);
+
+	if (true == this->simulating)
+	{
+		this->ogreNewt->update(dt);
+	}
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
 	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())
 	{
 		if (true == this->simulating)
 		{
-			this->ogreNewt->update(dt);
+			// this->ogreNewt->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->update(dt);
 			NOWA::AppStateManager::getSingletonPtr()->getParticleUniverseModule()->update(dt);
 		}
 
 		// Update the GameObjects
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->update(dt, false == this->simulating);
-
-		// this->dotSceneImportModule->update(dt);
 		
 		if (nullptr != this->editorManager)
+		{
 			this->editorManager->update(dt);
-
-		this->updateInfo(dt);
+		}
 	}
 
 	if (true == this->bQuit)
@@ -1762,6 +1757,11 @@ void DesignState::update(Ogre::Real dt)
 				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
 			}
 		}
+	}
+
+	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())
+	{
+		this->updateInfo(dt);
 	}
 }
 

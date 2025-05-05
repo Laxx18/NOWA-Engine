@@ -1,6 +1,5 @@
 #include "NOWAPrecompiled.h"
 #include "Core.h"
-#include "OgreCustom.h"
 
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsPbs.h"
@@ -764,10 +763,6 @@ namespace NOWA
 		// Adds factories
 		this->root->addMovableObjectFactory(OGRE_NEW MovableTextFactory());
 		this->root->addMovableObjectFactory(OGRE_NEW Ogre::v1::Rectangle2DFactory());
-
-		// Registers the custom SceneManagerFactory
-		TransformableSceneManagerFactory* transformableSceneManagerFactory = new TransformableSceneManagerFactory();
-		Ogre::SceneManagerEnumerator::getSingletonPtr()->addFactory(transformableSceneManagerFactory);
 
 		Ogre::String resourceGroupName;
 		Ogre::String type;

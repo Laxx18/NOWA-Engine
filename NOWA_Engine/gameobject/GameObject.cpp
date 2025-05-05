@@ -16,7 +16,6 @@
 #include "main/AppStateManager.h"
 #include "main/Events.h"
 #include "main/Core.h"
-#include "main/OgreCustom.h"
 
 #include "OgreMeshManager2.h"
 #include "OgreConfigFile.h"
@@ -58,7 +57,8 @@ namespace NOWA
 		doNotDestroyMovableObject(false),
 		bShowDebugData(false),
 		luaScript(nullptr),
-		bConnectPriority(false)
+		bConnectPriority(false),
+		timeSinceLastUpdate(2.0f)
 	{
 		this->name = new Variant(GameObject::AttrName(), "Default", this->attributes);
 		if (0 == id)
@@ -701,6 +701,14 @@ namespace NOWA
 
 	void GameObject::update(Ogre::Real dt, bool notSimulating)
 	{
+		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
+		{
+			if (true == std::get<COMPONENT>(*it)->bConnectedSuccess)
+			{
+				std::get<COMPONENT>(*it)->update(dt, notSimulating);
+			}
+		}
+
 		if (false == this->delayedAddCommponentList.empty())
 		{
 			for (auto& it = this->delayedAddCommponentList.cbegin(); it != this->delayedAddCommponentList.cend();)
@@ -708,7 +716,7 @@ namespace NOWA
 				GameObjectCompPtr gameObjectCompPtr = (*it).first;
 				bool bConnect = (*it).second;
 
-				if (gameObjectCompPtr)
+				if (nullptr != gameObjectCompPtr)
 				{
 					this->addComponent(gameObjectCompPtr);
 					if (true == bConnect)
@@ -724,24 +732,25 @@ namespace NOWA
 			}
 		}
 
-		for (auto& it = this->gameObjectComponents.cbegin(); it != this->gameObjectComponents.cend(); ++it)
+		if (this->timeSinceLastUpdate <= 0.0f)
 		{
-			if (true == std::get<COMPONENT>(*it)->bConnectedSuccess)
-				std::get<COMPONENT>(*it)->update(dt, notSimulating);
+			this->position->setValue(this->sceneNode->getPosition());
+			this->scale->setValue(this->sceneNode->getScale());
+			if (this->sceneNode->getScale() != this->oldScale)
+			{
+				this->refreshSize();
+			}
+
+			this->oldScale = this->sceneNode->getScale();
+			// Set in the form degreeX, degreeY, degreeZ
+			this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->sceneNode->getOrientation()));
+
+			this->timeSinceLastUpdate = 2.0f;
 		}
-		this->position->setValue(this->sceneNode->getPosition());
-		this->scale->setValue(this->sceneNode->getScale());
-		if (this->sceneNode->getScale() != this->oldScale)
-			this->refreshSize();
-
-		this->oldScale = this->sceneNode->getScale();
-		// Set in the form degreeX, degreeY, degreeZ
-		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->sceneNode->getOrientation()));
-	}
-
-	void GameObject::render(Ogre::Real alpha)
-	{
-		static_cast<TransformableSceneNode*>(this->sceneNode)->interpolate(alpha);
+		else
+		{
+			this->timeSinceLastUpdate -= dt;
+		}
 	}
 
 	void GameObject::actualizeValue(Variant* attribute)

@@ -8,7 +8,6 @@ namespace NOWA
 {
 	class PhysicsComponent;
 	class LuaScript;
-	class SpawnCloneTask;
 
 	/**
 	 * @class 	SpawnComponent
@@ -84,11 +83,6 @@ namespace NOWA
 		 * @see		GameObjectComponent::onCloned
 		 */
 		virtual bool onCloned(void) override;
-
-		/**
-		* @see		GameObjectComponent::onRemoveComponent
-		*/
-		virtual void onRemoveComponent(void) override;
 
 		/**
 		* @see		GameObjectComponent::getClassName
@@ -320,9 +314,6 @@ namespace NOWA
 		bool initSpawnData(void);
 
 		void deleteGameObjectDelegate(EventDataPtr eventData);
-
-		void processCompletedClone(void);
-
 	protected:
 		Variant* activated;
 		Variant* interval;
@@ -343,10 +334,6 @@ namespace NOWA
 		Ogre::Real spawnTimer;
 		std::list<std::pair<unsigned long, GameObject*>> lifeTimeQueue;
 		std::vector<GameObject*> clonedGameObjectsInScene;
-		std::mutex taskMutex;
-		bool taskPending;
-		SpawnCloneTask* currentTask;
-
 		bool keepAlive;
 
 		ISpawnObserver* spawnObserver;

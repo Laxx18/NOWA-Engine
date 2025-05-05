@@ -89,8 +89,8 @@ namespace NOWA
 
 		/**
 		 * @brief		Can be used to update all Objects and control logic. Updates also all modules and game object controller
-		 * @param[in] dt The delta time in seconds. For example if the game runs with 60 fps. 
-		 *				The delta time between two update calls is 0.016 sec.
+		 * @param[in]	dt The delta time in seconds. For example if the game runs with 60 fps. 
+		 *				The delta time between two update calls is 0.0016 sec.
 		 * @note		When you overwrite the update() function, call in your update function of your state: AppState::update(dt); too,
 		 *				because in the update() of the base application state are some updates of importent components executed, 
 		 *				like the ProcessManager to handle own processes.
@@ -189,23 +189,6 @@ namespace NOWA
 		 * @note	The scene manager must be valid!
 		 */
 		void destroyModules(void);
-
-		/**
-		* @brief	Updates all modules: WorkspaceModule, CameraManager, GameObjectController, LuaScriptApi, OgreNewtModule, OgreRecastModule
-		* @note	The scene manager must be valid!
-		*/
-		void updateModules(Ogre::Real dt);
-
-		/**
-		* @brief	Late updates all modules: GameObjectController
-		* @note	The scene manager must be valid!
-		*/
-		void lateUpdateModules(Ogre::Real dt);
-
-		/**
-		* @brief	Calls render for the game objects, to render the interpolated transforms
-		*/
-		void render(Ogre::Real alpha);
 	private:
 		void handleSceneLoaded(NOWA::EventDataPtr eventData);
 	protected:

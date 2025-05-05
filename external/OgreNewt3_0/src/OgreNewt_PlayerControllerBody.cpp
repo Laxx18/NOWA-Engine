@@ -199,12 +199,23 @@ namespace OgreNewt
 
 		NewtonBodySetUserData(m_body, this);
 
-		dMatrix collisionMatrix;
-		NewtonCollisionGetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
+		// Strange things going on here, as soone as collisionPositionOffset is set, the collisions hull is set strangely... and below the ground
+		if (Ogre::Vector3::ZERO != m_collisionPositionOffset)
+		{
+			dMatrix collisionMatrix;
+			NewtonCollisionGetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
 
-		collisionMatrix.m_posit = dVector(m_collisionPositionOffset.x, m_collisionPositionOffset.y, m_collisionPositionOffset.z, 0.0f);
+			collisionMatrix.m_posit = dVector(m_collisionPositionOffset.x, m_collisionPositionOffset.y, m_collisionPositionOffset.z, 0.0f);
 
-		NewtonCollisionSetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
+			NewtonCollisionSetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
+		}
+		else
+		{
+			dMatrix collisionMatrix;
+			NewtonCollisionGetMatrix(NewtonBodyGetCollision(m_body), &collisionMatrix[0][0]);
+
+			m_collisionPositionOffset = Ogre::Vector3(collisionMatrix.m_posit.m_x, collisionMatrix.m_posit.m_y, collisionMatrix.m_posit.m_z);
+		}
 
 		// set the transform callback
 		NewtonBodySetTransformCallback(m_body, Body::newtonTransformCallback);

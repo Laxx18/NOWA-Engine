@@ -3333,9 +3333,6 @@ ADD_NODE:
 
 	void EditorManager::update(Ogre::Real dt)
 	{
-		this->gizmo->update();
-		this->viewportGrid->update();
-
 		if (EDITOR_PLACE_MODE == this->manipulationMode)
 		{
 			this->rotatePlaceNode();
@@ -3366,6 +3363,9 @@ ADD_NODE:
 				}
 			}
 		}
+
+		this->gizmo->update();
+		this->viewportGrid->update();
 
 		if (this->timeSinceLastUpdate <= 0.0f)
 		{

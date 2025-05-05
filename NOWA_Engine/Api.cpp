@@ -125,7 +125,18 @@ public:
 		this->processUnbufferedMouseInput(dt);
 
 		if (true == canUpdate)
-			this->updateModules(dt);
+		{
+			if (false == NOWA::AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
+			{
+				this->ogreNewtModule->update(dt);
+				// Update the GameObjects
+				this->gameObjectController->update(dt);
+
+				this->ogreRecastModule->update(dt);
+				// PlayerControllerComponents are using this directly for smoke effect etc.
+				this->particleUniverseModule->update(dt);
+			}
+		}
 
 		if (true == this->bQuit)
 		{

@@ -27,8 +27,7 @@ namespace NOWA
 		{
 			ADAPTIVE = 0,
 			RESTRICTED_INTERPOLATED = 1,
-			FPS_INDEPENDENT = 2,
-			INTERPOLATED = 3
+			FPS_INDEPENDENT = 2
 		};
 
 		AppStateManager();
@@ -182,8 +181,6 @@ namespace NOWA
 		void restrictedInterpolatedFPSRendering(void);
 		void adaptiveFPSRendering(void);
 		void fpsIndependentRendering(void);
-
-		void interpolatedRendering(void);
 
 		void internalChangeAppState(AppState* state);
 		bool internalPushAppState(AppState* state);

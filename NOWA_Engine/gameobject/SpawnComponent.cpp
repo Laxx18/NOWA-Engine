@@ -10,57 +10,10 @@
 #include "main/EventManager.h"
 #include "main/AppStateManager.h"
 
-#include "Threading/OgreUniformScalableTask.h"
-
 namespace NOWA
 {
 	using namespace rapidxml;
 	using namespace luabind;
-
-	class SpawnCloneTask : public Ogre::UniformScalableTask
-	{
-	private:
-		GameObject* gameObjectToClone;
-		Ogre::Vector3 position;
-		Ogre::Quaternion orientation;
-		bool cloneDatablock;
-		GameObjectPtr clonedGameObject;
-		std::atomic<bool> taskCompleted;
-
-	public:
-		SpawnCloneTask(GameObject* gameObjectToClone, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, bool cloneDatablock) :
-			gameObjectToClone(gameObjectToClone),
-			position(position),
-			orientation(orientation),
-			cloneDatablock(cloneDatablock),
-			taskCompleted(false)
-		{
-		}
-
-		virtual void execute(size_t threadId, size_t numThreads) override
-		{
-			// Only let one thread handle the cloning
-			if (threadId == 0)
-			{
-				this->clonedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->gameObjectToClone->getId(), nullptr, 0,
-					this->position, this->orientation, Ogre::Vector3::UNIT_SCALE, this->cloneDatablock);
-			}
-
-			this->taskCompleted.store(true, std::memory_order_release);
-		}
-
-		bool isCompleted() const
-		{
-			return this->taskCompleted.load(std::memory_order_acquire);
-		}
-
-		GameObjectPtr getClonedGameObject() const
-		{
-			return this->clonedGameObject;
-		}
-	};
-
-	//////////////////////////////////////////////////////////////////////////////////
 
 	SpawnComponent::SpawnComponent()
 		: GameObjectComponent(),
@@ -78,8 +31,6 @@ namespace NOWA
 		spawnObserver(nullptr),
 		spawnTargetGameObject(nullptr),
 		firstTimeSetSpawnTarget(true),
-		taskPending(false),
-		currentTask(nullptr),
 		keepAlive(false),
 		currentCount(0),
 		spawnTimer(0)
@@ -105,7 +56,19 @@ namespace NOWA
 
 	SpawnComponent::~SpawnComponent()
 	{
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &SpawnComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
 		
+		if (this->spawnObserver)
+		{
+			delete this->spawnObserver;
+			this->spawnObserver = nullptr;
+		}
+		this->spawnTargetGameObject = nullptr;
+		this->keepAlive = false;
+		this->reset();
+
+		// this->spawnQueue.Clear(_FILE_AND_LINE_);
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpawnComponent] Destructor spawn component for game object: " + this->gameObjectPtr->getName());
 	}
 
 	bool SpawnComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -120,7 +83,7 @@ namespace NOWA
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpawnInterval")
 		{
 			this->setIntervalMS(XMLConverter::getAttribUnsignedInt(propertyElement, "data", 10000));
-
+			
 			propertyElement = propertyElement->next_sibling("property");
 		}
 		if (propertyElement && XMLConverter::getAttrib(propertyElement, "name") == "SpawnCount")
@@ -184,7 +147,7 @@ namespace NOWA
 		clonedCompPtr->setSpawnAtOrigin(this->spawnAtOrigin->getBool());
 		clonedCompPtr->setSpawnTargetId(this->spawnTargetId->getULong());
 		clonedCompPtr->setCloneDatablock(this->cloneDatablock->getBool());
-
+		
 		GameObjectComponent::cloneBase(boost::static_pointer_cast<GameObjectComponent>(clonedCompPtr));
 
 		return clonedCompPtr;
@@ -199,9 +162,9 @@ namespace NOWA
 		this->gameObjectPtr->getAttribute(GameObject::AttrDynamic())->setVisible(false);
 
 		this->setSpawnTargetId(this->spawnTargetId->getULong());
-
+		
 		// bool success = this->initSpawnData();
-
+		
 		return true;
 	}
 
@@ -218,7 +181,7 @@ namespace NOWA
 		this->keepAlive = false;
 		this->reset();
 		this->keepAlive = tempKeepAlive;
-
+		
 		// If the spawner is the same game object as this, set it visible to false
 		// if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
 		if (nullptr != spawnTargetGameObject)
@@ -245,38 +208,6 @@ namespace NOWA
 		return true;
 	}
 
-	void SpawnComponent::onRemoveComponent(void)
-	{
-		GameObjectComponent::onRemoveComponent();
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &SpawnComponent::deleteGameObjectDelegate), EventDataDeleteGameObject::getStaticEventType());
-
-		if (this->spawnObserver)
-		{
-			delete this->spawnObserver;
-			this->spawnObserver = nullptr;
-		}
-		this->spawnTargetGameObject = nullptr;
-		this->keepAlive = false;
-		this->reset();
-
-
-		// this->spawnQueue.Clear(_FILE_AND_LINE_);
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpawnComponent] Destructor spawn component for game object: " + this->gameObjectPtr->getName());
-
-		if (true == this->taskPending)
-		{
-			// Wait for any pending task to complete before destroying
-			this->gameObjectPtr->getSceneManager()->waitForPendingUserScalableTask();
-		}
-
-		if (nullptr != this->currentTask)
-		{
-			delete this->currentTask;
-			this->currentTask = nullptr;
-		}
-	}
-
 	bool SpawnComponent::initSpawnData(void)
 	{
 		// Store the init position
@@ -288,9 +219,9 @@ namespace NOWA
 		{
 			return false;
 		}
-
+		
 		this->spawnTargetGameObject = tempGameObjectPtr.get();
-
+		
 		return true;
 	}
 
@@ -345,7 +276,6 @@ namespace NOWA
 		}
 	}
 
-#if 1
 	void SpawnComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		if (this->activated->getBool() && false == notSimulating)
@@ -360,7 +290,7 @@ namespace NOWA
 				this->initPosition = this->gameObjectPtr->getPosition();
 				this->initOrientation = this->gameObjectPtr->getOrientation();
 			}
-
+			
 			// Search for spawn target game object here, because in post init it could be, that the target game object has not been loaded at that time!
 			if (true == this->firstTimeSetSpawnTarget)
 			{
@@ -385,7 +315,7 @@ namespace NOWA
 				// count fractions of time for spawning
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "t: " + Ogre::StringConverter::toString(this->spawnTimer) + " dt: " + Ogre::StringConverter::toString(static_cast<unsigned long>(dt * 1000.0f)));
 				this->spawnTimer += dt * 1000.0f;
-				// Attention: here floating error since timer is float and interval a whole number, so a rest must also be stored!
+// Attention: here floating error since timer is float and interval a whole number, so a rest must also be stored!
 				if (this->spawnTimer >= this->interval->getUInt())
 				{
 					// count 0 means infinity!
@@ -412,8 +342,8 @@ namespace NOWA
 							if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
 							{
 								clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-									this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3()),
-									this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),
+									this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3()), 
+									this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
 								clonedGameObjectPtr->setVisible(true);
 							}
@@ -422,8 +352,8 @@ namespace NOWA
 								// Special case, when the spawn target is different from this game object id, take the position and orientation of the 'This' game object
 								// so that the spawn will be processed at the current position
 								clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-									this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3()),
-									this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),
+									this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3()), 
+									this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
 									Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
 								clonedGameObjectPtr->setVisible(true);
 							}
@@ -460,7 +390,7 @@ namespace NOWA
 										msg << errorMsg;
 
 										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnSpawn' Error: " + Ogre::String(error.what())
-											+ " details: " + msg.str());
+																					+ " details: " + msg.str());
 									}
 								}
 							}
@@ -469,7 +399,7 @@ namespace NOWA
 								// else run the programed callback if it does exist
 								this->spawnObserver->onSpawn(clonedGameObjectPtr.get(), this->gameObjectPtr.get());
 							}
-
+						
 							// only add to life time queue if the spawned game object has a life time
 							if (0 != this->lifeTime->getUInt())
 							{
@@ -512,7 +442,7 @@ namespace NOWA
 				if (0 < this->lifeTimeQueue.size())
 				{
 					std::pair<unsigned long, GameObject*> clonedGameObjectPair = this->lifeTimeQueue.front();
-
+					
 					long dt = clonedGameObjectPair.first - Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
 					// if the delta is positive, it has not enough time passed to delete the object
 					if (dt > 0)
@@ -538,7 +468,7 @@ namespace NOWA
 								msg << errorMsg;
 
 								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
-									+ " details: " + msg.str());
+																			+ " details: " + msg.str());
 							}
 						}
 					}
@@ -550,256 +480,6 @@ namespace NOWA
 					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(clonedGameObjectPair.second->getId());
 				}
 			}
-		}
-	}
-
-#else
-
-	struct SpawnCloneRequest
-	{
-		SpawnComponent* component;
-	};
-
-	void SpawnComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (this->activated->getBool() && false == notSimulating)
-		{
-			if (nullptr == this->spawnTargetGameObject)
-			{
-				return;
-			}
-
-			if (this->taskPending && this->currentTask != nullptr)
-			{
-				if (this->currentTask->isCompleted())
-				{
-					auto* request = new SpawnCloneRequest();
-					request->component = this;
-
-					Ogre::Root::getSingleton().getWorkQueue()->addRequest(
-						0,                             // channel
-						0,                             // requestType
-						Ogre::Any(request),           // request data
-						0,                             // retry count
-						false,                         // force sync
-						true                           // idle thread (like in Ogre example)
-					);
-
-					this->taskPending = false;
-				}
-			}
-			else if (true == this->taskPending)
-			{
-				// Task was deleted but flag not reset
-				this->taskPending = false;
-			}
-
-			if (false == this->spawnAtOrigin->getBool())
-			{
-				this->initPosition = this->gameObjectPtr->getPosition();
-				this->initOrientation = this->gameObjectPtr->getOrientation();
-			}
-
-			// Search for spawn target game object here, because in post init it could be, that the target game object has not been loaded at that time!
-			if (true == this->firstTimeSetSpawnTarget)
-			{
-				if (this->spawnTargetId->getULong() != this->gameObjectPtr->getId())
-				{
-					auto& tempGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->spawnTargetId->getULong());
-					if (nullptr == tempGameObjectPtr)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " does not exist!");
-						// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " does not exist!", "NOWA");
-						return;
-					}
-					else
-					{
-						this->spawnTargetGameObject = tempGameObjectPtr.get();
-					}
-					this->firstTimeSetSpawnTarget = false;
-				}
-			}
-			if (this->currentCount <= this->count->getUInt())
-			{
-				// count fractions of time for spawning
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "t: " + Ogre::StringConverter::toString(this->spawnTimer) + " dt: " + Ogre::StringConverter::toString(static_cast<unsigned long>(dt * 1000.0f)));
-				this->spawnTimer += dt * 1000.0f;
-				// Attention: here floating error since timer is float and interval a whole number, so a rest must also be stored!
-				if (this->spawnTimer >= this->interval->getUInt())
-				{
-					// count 0 means infinity!
-					if (this->count->getUInt() != 0)
-					{
-						this->currentCount += 1;
-					}
-					if (this->currentCount <= this->count->getUInt())
-					{
-						this->spawnTimer = (this->spawnTimer - static_cast<Ogre::Real>(this->interval->getUInt()));
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "f: " + Ogre::StringConverter::toString(this->spawnTimer));
-
-						 // Determine position and orientation for cloning
-						Ogre::Vector3 position;
-						Ogre::Quaternion orientation;
-
-						if (true == this->spawnAtOrigin->getBool())
-						{
-							position = this->initPosition + (this->initOrientation * this->offsetPosition->getVector3());
-							orientation = this->initOrientation * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-						}
-						else
-						{
-							if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
-							{
-								position = this->spawnTargetGameObject->getPosition() +
-									(this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3());
-								orientation = this->spawnTargetGameObject->getOrientation() *
-									MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-							}
-							else
-							{
-								position = this->gameObjectPtr->getPosition() +
-									(this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3());
-								orientation = this->gameObjectPtr->getOrientation() *
-									MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-							}
-						}
-
-
-						// Create a new clone task
-						this->currentTask = new SpawnCloneTask(this->spawnTargetGameObject, position, orientation, this->cloneDatablock->getBool());
-
-
-						// Let the scene manager execute our task
-						// Note: This is non-blocking and will be executed by worker threads
-						this->gameObjectPtr->getSceneManager()->executeUserScalableTask(this->currentTask, false);
-
-						// Mark that we have a pending task
-						this->taskPending = true;
-					}
-				}
-
-				// 0 means the game object will never be deleted!
-				if (0 != this->lifeTime->getUInt())
-				{
-					if (0 < this->lifeTimeQueue.size())
-					{
-						std::pair<unsigned long, GameObject*> clonedGameObjectPair = this->lifeTimeQueue.front();
-
-						long dt = clonedGameObjectPair.first - Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
-						// if the delta is positive, it has not enough time passed to delete the object
-						if (dt > 0)
-						{
-							return;
-						}
-						// now is the right time
-						this->lifeTimeQueue.pop_front();
-
-						unsigned long id = clonedGameObjectPair.second->getId();
-						if (nullptr != this->gameObjectPtr->getLuaScript())
-						{
-							if (this->vanishClosureFunction.is_valid())
-							{
-								try
-								{
-									luabind::call_function<void>(this->vanishClosureFunction, clonedGameObjectPair.second, this->gameObjectPtr.get());
-								}
-								catch (luabind::error& error)
-								{
-									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-									std::stringstream msg;
-									msg << errorMsg;
-
-									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
-										+ " details: " + msg.str());
-								}
-							}
-						}
-						else if (this->spawnObserver)
-						{
-							this->spawnObserver->onVanish(clonedGameObjectPair.second, this->gameObjectPtr.get());
-						}
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpawnComponent] Deleting gameobject: " + clonedGameObjectPair.second->getName() + " because it has no life time anymore");
-						AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(clonedGameObjectPair.second->getId());
-					}
-				}
-			}
-		}
-	}
-
-#endif
-
-	void SpawnComponent::processCompletedClone(void)
-	{
-		if (nullptr != this->currentTask)
-		{
-			GameObjectPtr clonedGameObjectPtr = this->currentTask->getClonedGameObject();
-			if (nullptr != clonedGameObjectPtr)
-			{
-
-				// Process completed clones
-
-					// Make the game object visible
-				clonedGameObjectPtr->setVisible(true);
-
-				// Handle physics components
-				auto& physicsCompPtr = makeStrongPtr(clonedGameObjectPtr->getComponent<PhysicsComponent>());
-				if (nullptr != physicsCompPtr)
-				{
-					physicsCompPtr->setCollidable(true);
-				}
-
-				// Connect the cloned game object
-				clonedGameObjectPtr->connect();
-
-				// Handle Lua callbacks
-				if (nullptr != this->gameObjectPtr->getLuaScript())
-				{
-					if (this->spawnClosureFunction.is_valid())
-					{
-						try
-						{
-							luabind::call_function<void>(this->spawnClosureFunction, clonedGameObjectPtr.get(), this->gameObjectPtr.get());
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
-
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
-								"[LuaScript] Caught error in 'reactOnSpawn' Error: " +
-								Ogre::String(error.what()) + " details: " + msg.str());
-						}
-					}
-				}
-				else if (this->spawnObserver)
-				{
-					this->spawnObserver->onSpawn(clonedGameObjectPtr.get(), this->gameObjectPtr.get());
-				}
-
-				// Handle lifetime management
-				if (0 != this->lifeTime->getUInt())
-				{
-					unsigned long currentTimeMS = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds() +
-						static_cast<unsigned long>(this->lifeTime->getUInt());
-
-					this->lifeTimeQueue.push_back(std::make_pair(currentTimeMS + this->lifeTime->getUInt(),
-						clonedGameObjectPtr.get()));
-				}
-				else
-				{
-					this->clonedGameObjectsInScene.emplace_back(clonedGameObjectPtr.get());
-				}
-			}
-			else
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
-					"[SpawnComponent] Clone operation delivered null game object!");
-			}
-
-			// Delete the current task
-			delete this->currentTask;
-			this->currentTask = nullptr;
 		}
 	}
 

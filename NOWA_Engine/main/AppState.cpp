@@ -151,20 +151,21 @@ namespace NOWA
 	{
 		if (true == this->canUpdate)
 		{
-			this->updateModules(dt);
+			if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
+			{
+				this->ogreNewtModule->update(dt);
+				// Update the GameObjects
+				this->gameObjectController->update(dt);
+
+				this->ogreRecastModule->update(dt);
+				// PlayerControllerComponents are using this directly for smoke effect etc.
+				this->particleUniverseModule->update(dt);
+			}
 		}
 
 		if (true == this->bQuit)
 		{
 			this->shutdown();
-		}
-	}
-
-	void AppState::render(Ogre::Real alpha)
-	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
-		{
-			this->gameObjectController->render(alpha);
 		}
 	}
 
@@ -441,18 +442,6 @@ namespace NOWA
 			this->ogreNewtModule->destroyContent();
 			delete this->ogreNewtModule;
 			this->ogreNewtModule = nullptr;
-		}
-	}
-
-	void AppState::updateModules(Ogre::Real dt)
-	{
-		if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
-		{
-			this->ogreNewtModule->update(dt);
-			this->ogreRecastModule->update(dt);
-			this->particleUniverseModule->update(dt); // PlayerControllerComponents are using this directly for smoke effect etc.
-			// Update the GameObjects
-			this->gameObjectController->update(dt);
 		}
 	}
 

@@ -52,7 +52,6 @@ extern "C"
 #include "main/PauseStateMyGui.h"
 #include "main/IntroState.h"
 #include "main/ProjectParameter.h"
-#include "main/OgreCustom.h"
 
 #include "main/ProcessManager.h"
 #include "main/Events.h"

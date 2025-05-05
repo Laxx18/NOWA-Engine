@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="400"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -49,7 +49,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_30" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__3891592794"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3891592794"/>
@@ -69,7 +69,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__3891592794"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -188,7 +188,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_12" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__1721966430"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1721966430"/>
@@ -208,7 +208,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__1721966430"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -327,7 +327,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_9" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__1262470000"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1262470000"/>
@@ -347,7 +347,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__1262470000"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -466,7 +466,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_20" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__2705782115"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2705782115"/>
@@ -486,7 +486,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__2705782115"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -605,7 +605,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_10" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__1570142495"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1570142495"/>
@@ -625,7 +625,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__1570142495"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -744,7 +744,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_17" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__2398119293"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2398119293"/>
@@ -764,7 +764,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__2398119293"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -982,7 +982,7 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="11"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="400"/>
 					<property type="6" name="LodDistance" data="100"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
@@ -1215,8 +1215,8 @@
 			</entity>
 		</node>
 		<node name="MainCamera" id="4010617415">
-			<position x="0.683313" y="5.96213" z="27.1329"/>
-			<rotation qw="0.727823" qx="-0.122539" qy="0.665363" qz="0.112023"/>
+			<position x="1.79743" y="6.54517" z="14.8438"/>
+			<rotation qw="0.998592" qx="0.00871458" qy="-0.052334" qz="0.000456712"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="MainCamera" meshFile="Camera.mesh" castShadows="false" visible="false">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -1245,8 +1245,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="0.683313 5.96213 27.1329"/>
-					<property type="9" name="CameraOrientation" data="-19.1138 84.866 -2.43969e-05"/>
+					<property type="9" name="CameraPosition" data="1.79743 6.54517 14.8438"/>
+					<property type="9" name="CameraOrientation" data="1 -6 0"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -1416,7 +1416,7 @@
 			<entity name="Flubber_1" meshFile="Flubber.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
 				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2838543028"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2838543028"/>
@@ -1438,7 +1438,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/mouth.png"/>
 					<property type="7" name="DataBlock1" data="SOLID/TEX/eyes.png"/>
-					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png"/>
+					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png__2838543028"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1630,7 +1630,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 2 5"/>
+					<property type="9" name="YOffset" data="0 5 5"/>
 					<property type="9" name="LookAtOffset" data="0 -1 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
@@ -1651,7 +1651,7 @@
 			<entity name="Flubber_0" meshFile="Flubber.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
 				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2671502223"/>
@@ -1673,7 +1673,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/mouth.png"/>
 					<property type="7" name="DataBlock1" data="SOLID/TEX/eyes.png"/>
-					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png"/>
+					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png__2671502223"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1865,7 +1865,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 2 5"/>
+					<property type="9" name="YOffset" data="0 5 5"/>
 					<property type="9" name="LookAtOffset" data="0 -1 0"/>
 					<property type="6" name="SpringForce" data="0.1"/>
 					<property type="6" name="Friction" data="0.5"/>
@@ -1926,7 +1926,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_22" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__2928991972"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2928991972"/>
@@ -1946,7 +1946,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__2928991972"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2065,7 +2065,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_23" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__3039842720"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3039842720"/>
@@ -2085,7 +2085,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__3039842720"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2498,7 +2498,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_31" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__4100614460"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="4100614460"/>
@@ -2518,7 +2518,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__4100614460"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2637,7 +2637,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_18" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__2664658111"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2664658111"/>
@@ -2657,7 +2657,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__2664658111"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -2772,13 +2772,13 @@
 			</entity>
 		</node>
 		<node name="Flubber_2" id="2650476628">
-			<position x="17.0249" y="2.40406" z="7.15323"/>
+			<position x="17.0249" y="2.40405" z="7.15323"/>
 			<rotation qw="0.422618" qx="0" qy="0.906308" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="Flubber_2" meshFile="Flubber.mesh" castShadows="true" visible="true">
 				<subentity index="0" datablockName="SOLID/TEX/mouth.png"/>
 				<subentity index="1" datablockName="SOLID/TEX/eyes.png"/>
-				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__2671502223"/>
+				<subentity index="2" datablockName="SOLID/TEX/bodysurface.png__3968932022"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3968932022"/>
@@ -2800,7 +2800,7 @@
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
 					<property type="7" name="DataBlock0" data="SOLID/TEX/mouth.png"/>
 					<property type="7" name="DataBlock1" data="SOLID/TEX/eyes.png"/>
-					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png__2671502223"/>
+					<property type="7" name="DataBlock2" data="SOLID/TEX/bodysurface.png__3968932022"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3001,7 +3001,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_0" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__232063367"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="232063367"/>
@@ -3021,7 +3021,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__232063367"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -3140,7 +3140,7 @@
 			<rotation qw="0.707107" qx="0" qy="-0.707107" qz="0"/>
 			<scale x="0.5" y="0.5" z="0.5"/>
 			<entity name="Name_4" meshFile="Coin2.mesh" castShadows="true" visible="true">
-				<subentity index="0" datablockName="Gold1Mat"/>
+				<subentity index="0" datablockName="Gold1Mat__1041248716"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1041248716"/>
@@ -3160,7 +3160,7 @@
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="30"/>
-					<property type="7" name="DataBlock0" data="Gold1Mat"/>
+					<property type="7" name="DataBlock0" data="Gold1Mat__1041248716"/>
 					<property type="7" name="ComponentPhysicsActiveKinematicComponent" data="PhysicsActiveKinematicComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

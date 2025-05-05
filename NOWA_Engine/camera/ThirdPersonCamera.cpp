@@ -208,8 +208,8 @@ namespace NOWA
 		Ogre::Vector3 targetPosition = playerViewPosition - (playerForwardProjected * this->cameraSpringLength);
 
 		// Normalize spring parameters based on frame time
-		Ogre::Real normalizedSpring = this->cameraSpring * dt * 100.0f;
-		Ogre::Real normalizedFriction = this->cameraFriction * dt * 100.0f;
+		Ogre::Real normalizedSpring = this->cameraSpring * dt * 60.0f;
+		Ogre::Real normalizedFriction = this->cameraFriction * dt * 60.0f;
 
 		// Apply spring physics for smooth camera movement
 		Ogre::Vector3 displacement = targetPosition - cameraPosition;
