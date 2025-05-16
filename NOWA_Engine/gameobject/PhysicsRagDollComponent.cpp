@@ -504,38 +504,44 @@ namespace NOWA
 		// On disconnect, the debug data must be hidden in any case, because almost everything will be destroyed
 		if (false == this->ragDataList.empty())
 		{
-			for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::internalShowDebugData", _1(activate),
 			{
-				if (true == activate)
+				for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
 				{
-					(*it).ragBone->getBody()->showDebugCollision(false, this->bShowDebugData && activate);
-					if (nullptr != (*it).ragBone->getJointComponent())
+					if (true == activate)
 					{
-						(*it).ragBone->getJointComponent()->showDebugData();
-						(*it).ragBone->getJointComponent()->forceShowDebugData(this->bShowDebugData && activate);
+						(*it).ragBone->getBody()->showDebugCollision(false, this->bShowDebugData && activate);
+						if (nullptr != (*it).ragBone->getJointComponent())
+						{
+							(*it).ragBone->getJointComponent()->showDebugData();
+							(*it).ragBone->getJointComponent()->forceShowDebugData(this->bShowDebugData && activate);
+
+						}
 
 					}
-
-				}
-				else
-				{
-					(*it).ragBone->getBody()->showDebugCollision(false, false);
-					if (nullptr != (*it).ragBone->getJointComponent())
+					else
 					{
-						(*it).ragBone->getJointComponent()->showDebugData();
-						(*it).ragBone->getJointComponent()->forceShowDebugData(false);
+						(*it).ragBone->getBody()->showDebugCollision(false, false);
+						if (nullptr != (*it).ragBone->getJointComponent())
+						{
+							(*it).ragBone->getJointComponent()->showDebugData();
+							(*it).ragBone->getJointComponent()->forceShowDebugData(false);
+						}
 					}
 				}
-			}
+			});
 		}
 		else
 		{
 			if (nullptr != this->physicsBody)
 			{
-				if (true == activate)
-					this->physicsBody->showDebugCollision(false, this->bShowDebugData && activate);
-				else
-					this->physicsBody->showDebugCollision(false, false);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::showDebugData", _1(activate),
+				{
+					if (true == activate)
+						this->physicsBody->showDebugCollision(false, this->bShowDebugData && activate);
+					else
+						this->physicsBody->showDebugCollision(false, false);
+				});
 			}
 		}
 	}
@@ -1996,8 +2002,11 @@ namespace NOWA
 			{
 				if (nullptr != this->ogreBone)
 				{
-					collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY,
-						this->physicsRagDollComponent->initialScale);
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::getWeightedBoneConvexHull", _6(mesh, size, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+					{
+						collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY,
+							this->physicsRagDollComponent->initialScale);
+					});
 				}
 				else
 				{
@@ -2011,6 +2020,7 @@ namespace NOWA
 		}
 
 		this->body = new OgreNewt::Body(this->physicsRagDollComponent->ogreNewt, this->physicsRagDollComponent->gameObjectPtr->getSceneManager(), collisionPtr);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->body);
 
 		this->body->setGravity(this->physicsRagDollComponent->gravity->getVector3());
 

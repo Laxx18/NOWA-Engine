@@ -1,5 +1,6 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "OgreNewtModule.h"
+#include "RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -180,30 +181,36 @@ namespace NOWA
 
 	void OgreNewtModule::destroyContent(void)
 	{
-		if (this->ogreNewt)
+		ENQUEUE_RENDER_COMMAND_WAIT("OgreNewtModule::destroyContent",
 		{
-			delete this->ogreNewt;
-			this->ogreNewt = 0;
-		}
+			if (this->ogreNewt)
+			{
+				delete this->ogreNewt;
+				this->ogreNewt = 0;
+			}
+		});
 	}
 
 	void OgreNewtModule::showOgreNewtCollisionLines(bool enabled)
 	{
 		if (this->ogreNewt)
 		{
-			OgreNewt::Debugger& debug = this->ogreNewt->getDebugger();
-			if (enabled)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreNewtModule::showOgreNewtCollisionLines", _1(enabled),
 			{
-				debug.showDebugInformation();
-				debug.startRaycastRecording();
-				debug.clearRaycastsRecorded();
-			}
-			else
-			{
-				debug.hideDebugInformation();
-				debug.clearRaycastsRecorded();
-				debug.stopRaycastRecording();
-			}
+				OgreNewt::Debugger & debug = this->ogreNewt->getDebugger();
+				if (enabled)
+				{
+					debug.showDebugInformation();
+					debug.startRaycastRecording();
+					debug.clearRaycastsRecorded();
+				}
+				else
+				{
+					debug.hideDebugInformation();
+					debug.clearRaycastsRecorded();
+					debug.stopRaycastRecording();
+				}
+			});
 		}
 	}
 
@@ -256,7 +263,10 @@ namespace NOWA
 			// Cycle through colors
 			colorIndex = (colorIndex + 1) % colorPalette.size();
 
-			debug.setMaterialColor(material, tempColour);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreNewtModule::setMaterialIdForDebugger", _3(&debug, material, tempColour),
+			{
+				debug.setMaterialColor(material, tempColour);
+			});
 		}
 	}
 
@@ -276,4 +286,75 @@ namespace NOWA
 		return this->globalGravity;
 	}
 
+	void OgreNewtModule::registerRenderCallbackForBody(OgreNewt::Body* body)
+	{
+		if (nullptr == body)
+		{
+			return;
+		}
+
+#if 0
+		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
+		{
+			if (nullptr == node)
+			{
+				return;
+			}
+
+			Ogre::Node* parent = node->getParent();
+
+			if (nullptr == parent)
+			{
+				return;
+			}
+
+			if (false == node->isStatic())
+			{
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+			}
+			if (true == updateRot)
+			{
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
+			}
+			else if (true == updateStatic)
+			{
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
+			}
+		});
+#else
+
+		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
+			{
+				if (nullptr == node)
+				{
+					return;
+				}
+
+				Ogre::Node* parent = node->getParent();
+
+				if (nullptr == parent)
+				{
+					return;
+				}
+
+				NOWA::RenderCommandQueueModule::getInstance()->enqueue([=]() {
+
+					if (false == node->isStatic())
+					{
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+					}
+					if (true == updateRot)
+					{
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
+					}
+					else if (true == updateStatic)
+					{
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
+					}
+				});
+			});
+#endif
+	}
 } // namespace end

@@ -491,7 +491,10 @@ namespace NOWA
 		}
 		else
 		{
-			AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+			ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::postInitData",
+			{
+				AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+			});
 		}
 
 		if (nullptr != this->sceneLoaderCallback)
@@ -921,16 +924,22 @@ namespace NOWA
 		rapidxml::xml_node<> *pElement;
 
 		// Process resource locations (?)
-#if 1
+
 		pElement = xmlRoot->first_node("resourceLocations");
 		if (pElement)
+		{
 			this->processResourceLocations(pElement);
-#endif
+		}
 
 		// Process environment (?)
 		pElement = xmlRoot->first_node("environment");
 		if (pElement)
-			this->processEnvironment(pElement);
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processScene1", _1(&pElement),
+			{
+				this->processEnvironment(pElement);
+			});
+		}
 
 		// Process OgreNewt
 		pElement = xmlRoot->first_node("OgreNewt");
@@ -943,7 +952,10 @@ namespace NOWA
 		pElement = xmlRoot->first_node("OgreRecast");
 		if (nullptr != pElement)
 		{
-			this->processOgreRecast(pElement);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processScene2", _1(&pElement),
+			{
+				this->processOgreRecast(pElement);
+			});
 		}
 
 		// Process nodes (?)
@@ -1300,7 +1312,7 @@ namespace NOWA
 			rapidxml::xml_node<>* pElement;
 			pElement = xmlNode->first_node("PointExtends");
 			this->projectParameter.pointExtends = XMLConverter::parseVector3(pElement);
-
+ 
 			AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, this->projectParameter.pointExtends);
 		}
 	}
@@ -1363,14 +1375,10 @@ namespace NOWA
 		Ogre::SceneNode* pNode = 0;
 		if (true == name.empty())
 		{
-			if (nullptr != parent)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode", _2(parent, &pNode),
 			{
-				pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
-			}
-			else
-			{
-				pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-			}
+			   pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
+			});
 		}
 		else
 		{
@@ -1414,16 +1422,11 @@ namespace NOWA
 			{
 				// Must not set values, because node does not exist and game object does also not exist and must be created!
 				justSetValues = false;
-				if (nullptr != parent)
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode1", _3(parent, name, &pNode),
 				{
-					pNode = parent->createChildSceneNode(Ogre::SCENE_STATIC);
+					pNode = (parent != nullptr) ? parent->createChildSceneNode(Ogre::SCENE_STATIC) : this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 					pNode->setName(name);
-				}
-				else
-				{
-					pNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-					pNode->setName(name);
-				}
+				});
 			}
 		}
 
@@ -1437,22 +1440,32 @@ namespace NOWA
 		pElement = xmlNode->first_node("position");
 		if (pElement)
 		{
-			pNode->setPosition(XMLConverter::parseVector3(pElement));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode2", _2(pElement, &pNode),
+			{
+				pNode->setPosition(XMLConverter::parseVector3(pElement));
+			});
 		}
 
 		// Rotation (?)
 		pElement = xmlNode->first_node("rotation");
 		if (pElement)
 		{
-			pNode->setOrientation(XMLConverter::parseQuaternion(pElement));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode3", _2(pElement, &pNode),
+			{
+				pNode->setOrientation(XMLConverter::parseQuaternion(pElement));
+			});
 		}
 
 		// Scale (?)
 		pElement = xmlNode->first_node("scale");
 		if (pElement)
 		{
-			pNode->setScale(XMLConverter::parseVector3(pElement));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode4", _2(pElement, &pNode),
+			{
+				pNode->setScale(XMLConverter::parseVector3(pElement));
+			});
 		}
+
 		// callback to react on postload
 		if (this->sceneLoaderCallback)
 		{
@@ -1475,7 +1488,11 @@ namespace NOWA
 		pElement = xmlNode->first_node("entity");
 		while (pElement)
 		{
-			this->processEntity(pElement, pNode, justSetValues);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode4", _3(justSetValues, pElement, &pNode),
+			{
+				this->processEntity(pElement, pNode, justSetValues);
+			});
+
 			pElement = pElement->next_sibling("entity");
 		}
 
@@ -1483,21 +1500,32 @@ namespace NOWA
 		pElement = xmlNode->first_node("item");
 		while (pElement)
 		{
-			this->processItem(pElement, pNode, justSetValues);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode5", _3(justSetValues, pElement, &pNode),
+			{
+				this->processItem(pElement, pNode, justSetValues);
+			});
+
 			pElement = pElement->next_sibling("item");
 		}
 		// Process manual object (*)
 		pElement = xmlNode->first_node("manualObject");
 		while (pElement)
 		{
-			this->processManualObject(pElement, pNode);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode6", _2(pElement, &pNode),
+			{
+				this->processManualObject(pElement, pNode);
+			});
+			
 			pElement = pElement->next_sibling("manualObject");
 		}
 		// Process terra (*)
 		pElement = xmlNode->first_node("terra");
 		while (pElement)
 		{
-			this->processTerra(pElement, pNode, justSetValues);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode7", _3(justSetValues, pElement, &pNode),
+			{
+					this->processTerra(pElement, pNode, justSetValues);
+			});
 			pElement = pElement->next_sibling("terra");
 		}
 
@@ -1510,7 +1538,11 @@ namespace NOWA
 		pElement = xmlNode->first_node("plane");
 		while (pElement)
 		{
-			processPlane(pElement, pNode, justSetValues);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processNode8", _3(justSetValues, pElement, &pNode),
+			{
+				this->processPlane(pElement, pNode, justSetValues);
+			});
+
 			pElement = pElement->next_sibling("plane");
 		}
 

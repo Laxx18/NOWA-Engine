@@ -2,6 +2,7 @@
 #include "ProjectManager.h"
 #include "GuiEvents.h"
 #include "modules/WorkspaceModule.h"
+#include "modules/RenderCommandQueueModule.h"
 
 #include "OpenSaveFileDialog/DialogManager.cpp"
 #include "OpenSaveFileDialog/Dialog.cpp"
@@ -18,12 +19,15 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
 	openSaveFileDialog(nullptr),
 	editorManager(nullptr)
 {
-	new tools::DialogManager();
-	tools::DialogManager::getInstance().initialise();
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager InitOpenSaveDialog",
+	{
+		new tools::DialogManager();
+		tools::DialogManager::getInstance().initialise();
 
-	this->openSaveFileDialog = new OpenSaveFileDialogExtended();
-	this->openSaveFileDialog->setFileMask("*.scene");
-	this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
+		this->openSaveFileDialog = new OpenSaveFileDialogExtended();
+		this->openSaveFileDialog->setFileMask("*.scene");
+		this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &ProjectManager::notifyEndDialog);
+	});
 }
 
 ProjectManager::~ProjectManager()
@@ -65,115 +69,140 @@ NOWA::EditorManager* ProjectManager::getEditorManager(void) const
 Ogre::Light* ProjectManager::createSunLight(void)
 {
 	Ogre::Light* sunLight = nullptr;
-	// There must be a main light in order to prevent render errors, so SunLight, is the main mandantory light! Which may not be deleted
-	Ogre::SceneNode* lightNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-	lightNode->setPosition(0, 35.0f, 50.0f);
-	lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
 
-	Ogre::v1::Entity* newEntity = this->sceneManager->createEntity("LightDirectional.mesh");
-	lightNode->attachObject(newEntity);
-
-	Ogre::String gameObjectName = "SunLight";
-	newEntity->setName(gameObjectName);
-	lightNode->setName(gameObjectName);
-
-	NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, lightNode, newEntity, NOWA::GameObject::LIGHT_DIRECTIONAL, NOWA::GameObjectController::MAIN_LIGHT_ID);
-	if (nullptr != gameObjectPtr)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::createSunLight", _1(&sunLight),
 	{
-		// Do not permit to change the name of the sun light
-		gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
-		// Add also the light direcitional component
-		NOWA::LightDirectionalCompPtr lightComponentPtr = boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(
-			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
+		try
+		{
+			Ogre::SceneNode* lightNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+			lightNode->setPosition(0, 35.0f, 50.0f);
+			lightNode->setOrientation(NOWA::MathHelper::getInstance()->degreesToQuat(Ogre::Vector3(-45.0f, 0.0f, 0.0f)));
 
-		lightComponentPtr->setPowerScale(Ogre::Math::PI);
-		// lightComponentPtr->setDirection(Ogre::Vector3(-1, -1, -1).normalisedCopy());
-		lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
-		sunLight = lightComponentPtr->getOgreLight();
-		sunLight->setName("SunLight");
+			Ogre::v1::Entity* newEntity = this->sceneManager->createEntity("LightDirectional.mesh");
+			lightNode->attachObject(newEntity);
 
-		// Add also hdr effect compponent by default
-		// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::HdrEffectComponent::getStaticClassName());
+			Ogre::String gameObjectName = "SunLight";
+			newEntity->setName(gameObjectName);
+			lightNode->setName(gameObjectName);
 
-		// Register after the component has been created
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-	}
+			NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(
+				this->sceneManager, lightNode, newEntity, NOWA::GameObject::LIGHT_DIRECTIONAL,
+				NOWA::GameObjectController::MAIN_LIGHT_ID);
+
+			if (nullptr != gameObjectPtr)
+			{
+				gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+
+				NOWA::LightDirectionalCompPtr lightComponentPtr = boost::dynamic_pointer_cast<NOWA::LightDirectionalComponent>(
+					NOWA::GameObjectFactory::getInstance()->createComponent(
+						gameObjectPtr, NOWA::LightDirectionalComponent::getStaticClassName()));
+
+				lightComponentPtr->setPowerScale(Ogre::Math::PI);
+				lightComponentPtr->setSpecularColor(Ogre::Vector3(0.8f, 0.8f, 0.8f));
+
+				sunLight = lightComponentPtr->getOgreLight();
+				sunLight->setName("SunLight");
+
+				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+			}
+		}
+		catch (const Ogre::Exception& exception)
+		{
+			Ogre::String message = "[ProjectManager] Failed to create sun light: " + exception.getDescription();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+			boost::shared_ptr<NOWA::EventDataFeedback> eventData(new NOWA::EventDataFeedback(false, message));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventData);
+		}
+	});
+
 	return sunLight;
 }
+
 
 Ogre::Camera* ProjectManager::createMainCamera(void)
 {
 	Ogre::Camera* mainCamera = nullptr;
-	// There must be a main camera which may not be deleted
-	Ogre::SceneNode* cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 
-	Ogre::v1::Entity* newEntity = this->sceneManager->createEntity("Camera.mesh");
-	cameraNode->attachObject(newEntity);
-
-	Ogre::String gameObjectName = "MainCamera";
-	newEntity->setName(gameObjectName);
-	cameraNode->setName(gameObjectName);
-
-	NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newEntity, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
-	if (nullptr != gameObjectPtr)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::createMainCamera", _1(&mainCamera),
 	{
-		// Do not permit to change the name of the sun light
-		gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
-		// Add also the light direcitional component
-		NOWA::CameraCompPtr cameraComponentPtr = boost::dynamic_pointer_cast<NOWA::CameraComponent>(
-			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::CameraComponent::getStaticClassName()));
+		// There must be a main camera which may not be deleted
+		Ogre::SceneNode * cameraNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 
-		mainCamera = cameraComponentPtr->getCamera();
-		mainCamera->setName("MainCamera");
-		// Set camera a bit away from zero so that new added game objects can be seen
-		cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+		Ogre::v1::Entity * newEntity = this->sceneManager->createEntity("Camera.mesh");
+		cameraNode->attachObject(newEntity);
 
-		NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::WorkspacePbsComponent::getStaticClassName());
-		cameraComponentPtr->setActivated(true);
-		
-		// Register after the component has been created
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+		Ogre::String gameObjectName = "MainCamera";
+		newEntity->setName(gameObjectName);
+		cameraNode->setName(gameObjectName);
 
-		// Sent when a name has changed, so that the resources panel can be refreshed with new values
-		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-	}
+		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, cameraNode, newEntity, NOWA::GameObject::CAMERA, NOWA::GameObjectController::MAIN_CAMERA_ID);
+		if (nullptr != gameObjectPtr)
+		{
+			// Do not permit to change the name of the sun light
+			gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+			// Add also the light direcitional component
+			NOWA::CameraCompPtr cameraComponentPtr = boost::dynamic_pointer_cast<NOWA::CameraComponent>(
+				NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::CameraComponent::getStaticClassName()));
+
+			mainCamera = cameraComponentPtr->getCamera();
+			mainCamera->setName("MainCamera");
+			// Set camera a bit away from zero so that new added game objects can be seen
+			cameraComponentPtr->setCameraPosition(Ogre::Vector3(0.0f, 5.0f, -2.0f));
+
+			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::WorkspacePbsComponent::getStaticClassName());
+			cameraComponentPtr->setActivated(true);
+
+			// Register after the component has been created
+			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+
+			// Sent when a name has changed, so that the resources panel can be refreshed with new values
+			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshResourcesPanel);
+		}
+
+	});
 	return mainCamera;
 }
 
 void ProjectManager::createMainGameObject(void)
 {
-	Ogre::SceneNode* mainGameObjectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-	// Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
-	mainGameObjectNode->setPosition(0, 0, 0);
-
-	Ogre::v1::Entity* mainGameObjectEntity = this->sceneManager->createEntity("Node.mesh");
-	// mainGameObjectEntity->setStatic(true);
-	mainGameObjectNode->attachObject(mainGameObjectEntity);
-	mainGameObjectNode->setVisible(false);
-
-	Ogre::String gameObjectName = "MainGameObject";
-	mainGameObjectEntity->setName(gameObjectName);
-	mainGameObjectNode->setName(gameObjectName);
-
-	NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectEntity, NOWA::GameObject::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
-	if (nullptr != gameObjectPtr)
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::createMainGameObject",
 	{
-		// Do not permit to change the name of the sun light
-		gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+		Ogre::SceneNode * mainGameObjectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+		// Attention: Never set to huge coordinates like -1000 -1000 -1000, else shadows will be corrupted, because the game object would be to far away from all other game objects!
+		mainGameObjectNode->setPosition(0, 0, 0);
 
-		// Add also the light direcitional component
-		NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(
-			NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));
+		Ogre::v1::Entity * mainGameObjectEntity = this->sceneManager->createEntity("Node.mesh");
+		// mainGameObjectEntity->setStatic(true);
+		mainGameObjectNode->attachObject(mainGameObjectEntity);
+		mainGameObjectNode->setVisible(false);
 
-		// Register after the component has been created
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-	}
+		Ogre::String gameObjectName = "MainGameObject";
+		mainGameObjectEntity->setName(gameObjectName);
+		mainGameObjectNode->setName(gameObjectName);
+
+		NOWA::GameObjectPtr gameObjectPtr = NOWA::GameObjectFactory::getInstance()->createGameObject(this->sceneManager, mainGameObjectNode, mainGameObjectEntity, NOWA::GameObject::SCENE_NODE, NOWA::GameObjectController::MAIN_GAMEOBJECT_ID);
+		if (nullptr != gameObjectPtr)
+		{
+			// Do not permit to change the name of the sun light
+			gameObjectPtr->getAttribute(NOWA::GameObject::AttrName())->setReadOnly(true);
+
+			// Add also the light direcitional component
+			NOWA::DescriptionCompPtr descriptionComponentPtr = boost::dynamic_pointer_cast<NOWA::DescriptionComponent>(
+				NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NOWA::DescriptionComponent::getStaticClassName()));
+
+			// Register after the component has been created
+			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
+		}
+	});
 }
 
 void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParameter)
 {
-	this->destroyScene();
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::destroyScene",
+	{
+		this->destroyScene();
+	});
 
 	this->additionalMeshResources.clear();
 
@@ -184,7 +213,7 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 	this->internalApplySettings();
 	this->projectParameter = projectParameter;
 
-	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
+	// NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
 	
 	NOWA::Core::getSingletonPtr()->setProjectName(this->projectParameter.projectName);
 
@@ -206,8 +235,11 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 	}
 	catch (const std::runtime_error& e)
 	{
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"),
+		ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject",
+		{
+			MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"),
 			MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+		});
 		return;
 	}
 
@@ -311,9 +343,13 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 {
 	Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
 	MyGUI::PointerManager::getInstancePtr()->setPointer("link");
-	this->destroyScene();
 
-	NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::loadProject",
+	{
+		this->destroyScene();
+	
+		NOWA::AppStateManager::getSingletonPtr()->getGpuParticlesModule()->init(this->sceneManager);
+	});
 
 	this->additionalMeshResources.clear();
 
@@ -357,9 +393,12 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 
 			this->createDummyCamera();
 
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design",
-				MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}: " + projectFilePathName),
-				MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::failedToCreateProject", _1(projectFilePathName),
+			{
+				MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("NOWA-Design",
+					MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}: " + projectFilePathName),
+					MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+			});
 
 			return;
 		}
@@ -422,113 +461,120 @@ void ProjectManager::applySettings(const NOWA::ProjectParameter& projectParamete
 
 void ProjectManager::internalApplySettings(void)
 {
-	if (nullptr != this->sunLight)
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::internalApplySettings",
 	{
-		/*
-		Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
-            to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
-            direction of your main directional light for a convincing look.
-		*/
-		this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-			Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, -this->sunLight->getDirection()/* + Ogre::Vector3::UNIT_Y * 0.2f*/, this->projectParameter.envmapScale);
-	}
-	else
-	{
-		this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
-			Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, this->projectParameter.hemisphereDir.normalisedCopy(), this->projectParameter.envmapScale);
-	}
-
-	//Set sane defaults for proper shadow mapping
-	this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
-	this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
-	this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
-
-	// this->sceneManager->setShadowTextureFadeStart(0.8f);
-	// this->sceneManager->setShadowTextureFadeEnd(0.9f);
-
-	// Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
-	Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-	Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
-
-	if (0 == this->projectParameter.forwardMode)
-	{
-		hlmsPbs->setUseLightBuffers(false);
-		this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-			this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-		this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-			10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-	}
-	else if (1 == this->projectParameter.forwardMode)
-	{
-		hlmsPbs->setUseLightBuffers(true);
-		this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-                                            this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-	}
-	else if (2 == this->projectParameter.forwardMode)
-	{
-		hlmsPbs->setUseLightBuffers(true);
-		this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
-                                            10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-	}
-
-	NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
-
-	OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
-	if (nullptr != ogreNewt)
-	{
-		ogreNewt->setSolverModel(this->projectParameter.solverModel);
-		ogreNewt->setMultithreadSolverOnSingleIsland(true == this->projectParameter.solverForSingleIsland ? 1 : 0);
-		ogreNewt->setBroadPhaseAlgorithm(this->projectParameter.broadPhaseAlgorithm);
-		ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 5);
-		ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
-		ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);
-		ogreNewt->setDefaultAngularDamping(this->projectParameter.angularDamping);
-		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
-	}
-
-	if (true == this->projectParameter.hasRecast)
-	{
-		OgreRecastConfigParams params;
-
-		params.setCellSize(projectParameter.cellSize);
-		params.setCellHeight(projectParameter.cellHeight);
-		params.setAgentMaxSlope(projectParameter.agentMaxSlope);
-		params.setAgentMaxClimb(projectParameter.agentMaxClimb);
-		params.setAgentHeight(projectParameter.agentHeight);
-		params.setAgentRadius(projectParameter.agentRadius);
-		params.setEdgeMaxLen(projectParameter.edgeMaxLen);
-		params.setEdgeMaxError(projectParameter.edgeMaxError);
-		params.setRegionMinSize(projectParameter.regionMinSize);
-		params.setRegionMergeSize(projectParameter.regionMergeSize);
-		params.setVertsPerPoly(projectParameter.vertsPerPoly);
-		params.setDetailSampleDist(projectParameter.detailSampleDist);
-		params.setDetailSampleMaxError(projectParameter.detailSampleMaxError);
-		params.setKeepInterResults(projectParameter.keepInterResults);
-
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
-
-		const auto& navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
-
-		// Nav mesh terra components, must be re-applied in order to re-create nav mesh
-		for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
+		if (nullptr != this->sunLight)
 		{
-			navMeshTerraComponents[i]->postInit();
+			/*
+			Tip: Set the upperHemisphere to a cold colour (e.g. blueish sky) and lowerHemisphere
+				to a warm colour (e.g. sun-yellowish, orange) and the hemisphereDir in the opposite
+				direction of your main directional light for a convincing look.
+			*/
+			this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
+				Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, -this->sunLight->getDirection()/* + Ogre::Vector3::UNIT_Y * 0.2f*/, this->projectParameter.envmapScale);
+		}
+		else
+		{
+			this->sceneManager->setAmbientLight(Ogre::ColourValue(this->projectParameter.ambientLightUpperHemisphere.r, this->projectParameter.ambientLightUpperHemisphere.g, this->projectParameter.ambientLightUpperHemisphere.b),
+				Ogre::ColourValue(this->projectParameter.ambientLightLowerHemisphere.r, this->projectParameter.ambientLightLowerHemisphere.g, this->projectParameter.ambientLightLowerHemisphere.b)/* * 0.065f * 0.75f*/, this->projectParameter.hemisphereDir.normalisedCopy(), this->projectParameter.envmapScale);
 		}
 
-		const auto& navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
+		//Set sane defaults for proper shadow mapping
+		this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
+		this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
+		this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
 
-		// Nav mesh components, must be re-applied in order to re-create nav mesh
-		for (size_t i = 0; i < navMeshComponents.size(); i++)
+		// this->sceneManager->setShadowTextureFadeStart(0.8f);
+		// this->sceneManager->setShadowTextureFadeEnd(0.9f);
+
+		// Just a test: https://forums.ogre3d.org/viewtopic.php?t=96470
+		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+		Ogre::HlmsPbs* hlmsPbs = static_cast<Ogre::HlmsPbs*>(hlmsManager->getHlms(Ogre::HLMS_PBS));
+
+		if (0 == this->projectParameter.forwardMode)
 		{
-			navMeshComponents[i]->postInit();
+			hlmsPbs->setUseLightBuffers(false);
+			this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+				this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+			this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+				10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 		}
-		
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
-	}
-	else
-	{
-		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
-	}
+		else if (1 == this->projectParameter.forwardMode)
+		{
+			hlmsPbs->setUseLightBuffers(true);
+			this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+												this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+		}
+		else if (2 == this->projectParameter.forwardMode)
+		{
+			hlmsPbs->setUseLightBuffers(true);
+			this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, this->projectParameter.lightsPerCell,
+												10, 10, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
+		}
+
+		NOWA::Core::getSingletonPtr()->setGlobalRenderDistance(this->projectParameter.renderDistance);
+
+		OgreNewt::World* ogreNewt = NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt();
+		if (nullptr != ogreNewt)
+		{
+			ogreNewt->setSolverModel(this->projectParameter.solverModel);
+			ogreNewt->setMultithreadSolverOnSingleIsland(true == this->projectParameter.solverForSingleIsland ? 1 : 0);
+			ogreNewt->setBroadPhaseAlgorithm(this->projectParameter.broadPhaseAlgorithm);
+			ogreNewt->setUpdateFPS(this->projectParameter.physicsUpdateRate, 5);
+			ogreNewt->setThreadCount(this->projectParameter.physicsThreadCount);
+			ogreNewt->setDefaultLinearDamping(this->projectParameter.linearDamping);
+			ogreNewt->setDefaultAngularDamping(this->projectParameter.angularDamping);
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->setGlobalGravity(this->projectParameter.gravity);
+		}
+
+		if (true == this->projectParameter.hasRecast)
+		{
+			OgreRecastConfigParams params;
+
+			params.setCellSize(projectParameter.cellSize);
+			params.setCellHeight(projectParameter.cellHeight);
+			params.setAgentMaxSlope(projectParameter.agentMaxSlope);
+			params.setAgentMaxClimb(projectParameter.agentMaxClimb);
+			params.setAgentHeight(projectParameter.agentHeight);
+			params.setAgentRadius(projectParameter.agentRadius);
+			params.setEdgeMaxLen(projectParameter.edgeMaxLen);
+			params.setEdgeMaxError(projectParameter.edgeMaxError);
+			params.setRegionMinSize(projectParameter.regionMinSize);
+			params.setRegionMergeSize(projectParameter.regionMergeSize);
+			params.setVertsPerPoly(projectParameter.vertsPerPoly);
+			params.setDetailSampleDist(projectParameter.detailSampleDist);
+			params.setDetailSampleMaxError(projectParameter.detailSampleMaxError);
+			params.setKeepInterResults(projectParameter.keepInterResults);
+
+			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->createOgreRecast(this->sceneManager, params, projectParameter.pointExtends);
+
+			const auto& navMeshTerraComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshTerraComponent>();
+
+			// Nav mesh terra components, must be re-applied in order to re-create nav mesh
+			for (size_t i = 0; i < navMeshTerraComponents.size(); i++)
+			{
+				navMeshTerraComponents[i]->postInit();
+			}
+
+			const auto& navMeshComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::NavMeshComponent>();
+
+			// Nav mesh components, must be re-applied in order to re-create nav mesh
+			for (size_t i = 0; i < navMeshComponents.size(); i++)
+			{
+				navMeshComponents[i]->postInit();
+			}
+
+			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->buildNavigationMesh();
+		}
+		else
+		{
+			NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->destroyContent();
+		}
+
+		this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
+		NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
+		NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
+	});
 
 	// Sent event that scene has been modified
 	boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
@@ -544,13 +590,6 @@ void ProjectManager::internalApplySettings(void)
 		this->projectParameter.sceneName = this->projectParameter.sceneName.substr(0, this->projectParameter.sceneName.size() - 6);
 	}
 	this->projectParameter.projectName = NOWA::Core::getSingletonPtr()->getProjectName();
-
-	this->sceneManager->setShadowColour(Ogre::ColourValue(this->projectParameter.shadowColor.r, this->projectParameter.shadowColor.g, this->projectParameter.shadowColor.b, 1.0f));
-	NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), true);
-	NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
-
-	boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
 }
 
 void ProjectManager::destroyScene(void)
@@ -577,6 +616,7 @@ void ProjectManager::destroyScene(void)
 	if (nullptr != camera && false == foundCorrectCameraComponent)
 	{
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
+		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(camera);
 		this->sceneManager->destroyCamera(camera);
 		camera = nullptr;
 	}
@@ -601,21 +641,24 @@ void ProjectManager::destroyScene(void)
 
 void ProjectManager::createDummyCamera(void)
 {
-	Ogre::Camera* camera = this->sceneManager->createCamera("GamePlayCamera");
-	NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
-	camera->setFOVy(Ogre::Degree(90.0f));
-	camera->setNearClipDistance(0.1f);
-	camera->setFarClipDistance(500.0f);
-	camera->setQueryFlags(0 << 0);
-	// camera->setPosition(0.0f, 5.0f, -2.0f);
-	camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::failedToCreateProject",
+	{
+		Ogre::Camera * camera = this->sceneManager->createCamera("GamePlayCamera");
+		NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(camera);
+		camera->setFOVy(Ogre::Degree(90.0f));
+		camera->setNearClipDistance(0.1f);
+		camera->setFarClipDistance(500.0f);
+		camera->setQueryFlags(0 << 0);
+		// camera->setPosition(0.0f, 5.0f, -2.0f);
+		camera->setPosition(camera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 5.0f, -2.0f)));
 
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-	auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, baseCamera);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
-	// Create dummy workspace
-	NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
+		auto baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, baseCamera);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, baseCamera->getBehaviorType());
+		// Create dummy workspace
+		NOWA::WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, camera, nullptr);
+	});
 }
 
 void ProjectManager::saveGroup(const Ogre::String& filePathName)
@@ -663,14 +706,17 @@ void ProjectManager::showFileSaveDialog(const Ogre::String& action, const Ogre::
 	if ("*.group" == fileMask)
 		targetFolder += "/Groups";
 
-	// Set the target folder specified in scene resource group
-	this->openSaveFileDialog->setCurrentFolder(targetFolder);
-	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
-	this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveFile}"),
-		MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveAs}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
-	this->openSaveFileDialog->setMode(action);
-	this->openSaveFileDialog->setFileMask(fileMask);
-	this->openSaveFileDialog->doModal();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::showFileSaveDialog", _3(targetFolder, action, fileMask),
+	{
+		// Set the target folder specified in scene resource group
+		this->openSaveFileDialog->setCurrentFolder(targetFolder);
+		// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+		this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveFile}"),
+			MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SaveAs}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
+		this->openSaveFileDialog->setMode(action);
+		this->openSaveFileDialog->setFileMask(fileMask);
+		this->openSaveFileDialog->doModal();
+	});
 }
 
 bool ProjectManager::showFileOpenDialog(const Ogre::String& action, const Ogre::String& fileMask)
@@ -714,17 +760,20 @@ bool ProjectManager::showFileOpenDialog(const Ogre::String& action, const Ogre::
 		}
 	}
 
-	// Set the target folder specified in scene resource group
-	this->openSaveFileDialog->setCurrentFolder(targetFolder);
-	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::showFileOpenDialog", _4(targetFolder, action, fileMask, folderMode),
+	{
+		// Set the target folder specified in scene resource group
+		this->openSaveFileDialog->setCurrentFolder(targetFolder);
+		// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 
-	this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"),
-		MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), folderMode);
+		this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"),
+			MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), folderMode);
 
-	this->openSaveFileDialog->setMode(action);
-	this->openSaveFileDialog->setFileMask(fileMask);
-	this->openSaveFileDialog->setFileName("");
-	this->openSaveFileDialog->doModal();
+		this->openSaveFileDialog->setMode(action);
+		this->openSaveFileDialog->setFileMask(fileMask);
+		this->openSaveFileDialog->setFileName("");
+		this->openSaveFileDialog->doModal();
+	});
 
 	return true;
 }
@@ -776,7 +825,11 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 				this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
 			}
 			std::vector<unsigned long> gameObjectIds = this->dotSceneImportModule->parseGroup(tempFileName, "Projects");
-			this->editorManager->attachGroupToPlaceNode(gameObjectIds);
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::attachGroupToPlaceNode", _1(gameObjectIds),
+			{
+				this->editorManager->attachGroupToPlaceNode(gameObjectIds);
+			});
 			boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
 		}
@@ -791,10 +844,10 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 			}
 			
 			Ogre::String defaultPointer = MyGUI::PointerManager::getInstancePtr()->getDefaultPointer();
-			MyGUI::PointerManager::getInstancePtr()->setPointer("beam");
+			// MyGUI::PointerManager::getInstancePtr()->setPointer("beam");
 			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(meshResourcesFolder, "FileSystem", resourceName);
 			Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(resourceName, false);
-			MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
+			// MyGUI::PointerManager::getInstancePtr()->setPointer(defaultPointer);
 
 			this->additionalMeshResources.emplace_back(resourceName);
 
@@ -842,35 +895,40 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 		}
 	}
 
-	this->openSaveFileDialog->endModal();
+	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::openSaveFileDialog::endModal",
+	{
+		this->openSaveFileDialog->endModal();
+	});
 	// MyGUI::InputManager::getInstancePtr()->removeWidgetModal(sender);
 }
 
 bool ProjectManager::checkProjectExists(const Ogre::String& fileName)
 {
-	Ogre::String filePathName;
-
-	Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
-	Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-	Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
-
-	for (; it != itEnd; ++it)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _1(fileName),
 	{
-		// Project is always: "projects/projectName/sceneName.scene"
-		filePathName = (*it)->archive->getName() + "/" + fileName;
-	
-		// Check if a project with the same name does already exist
-		std::ifstream ifs(filePathName);
-		if (true == ifs.good())
-		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+		Ogre::String filePathName;
+		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
+		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
+		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
 
-			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ProjectManager::notifyMessageBoxEnd);
-			return true;
+		for (; it != itEnd; ++it)
+		{
+			// Project is always: "projects/projectName/sceneName.scene"
+			filePathName = (*it)->archive->getName() + "/" + fileName;
+
+			// Check if a project with the same name does already exist
+			std::ifstream ifs(filePathName);
+			if (true == ifs.good())
+			{
+				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
+					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ProjectManager::notifyMessageBoxEnd);
+				return true;
+			}
+			break;
 		}
-		break;
-	}
+	});
 	return false;
 }
 

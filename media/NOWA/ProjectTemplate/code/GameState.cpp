@@ -42,10 +42,13 @@ void GameState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxSt
 
 void GameState::update(Ogre::Real dt)
 {
+	NOWA::AppState::update(dt);
+}
+
+void GameState::renderUpdate(Ogre::Real dt)
+{
 	this->processUnbufferedKeyInput(dt);
 	this->processUnbufferedMouseInput(dt);
-
-	NOWA::AppState::update(dt);
 	
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 		
@@ -73,14 +76,17 @@ bool GameState::keyPressed(const OIS::KeyEvent &keyEventRef)
 	{
 		case OIS::KC_ESCAPE:
 		{
-			MyGUI::PointerManager::getInstancePtr()->setVisible(true);
-			this->canUpdate = false;
-			// Stop simulation if simulating
-			// Ask user whether he really wants to quit the application
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+			ENQUEUE_RENDER_COMMAND_WAIT("GameState::exit",
+			{
+				MyGUI::PointerManager::getInstancePtr()->setVisible(true);
+				this->canUpdate = false;
+				// Stop simulation if simulating
+				// Ask user whether he really wants to quit the application
+				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
+					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &GameState::notifyMessageBoxEnd);
+				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &GameState::notifyMessageBoxEnd);
+			});
 			return true;
 		}
 		case OIS::KC_TAB:

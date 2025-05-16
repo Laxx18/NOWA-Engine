@@ -440,23 +440,27 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectFactory] Skipping creation for game object: " + sceneNode->getName() +
 					" because it will be replicated later.");
 				
-				// also delete the already created entity, and node etc.
-// Attention: is that correct?
-				if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy", _3(sceneManager, movableObject, &sceneNode),
 				{
-					sceneManager->destroyMovableObject(movableObject);
-				}
+					// also delete the already created entity, and node etc.
+					if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
+					{
+						sceneManager->destroyMovableObject(movableObject);
+					}
 
-				auto nodeIt = sceneNode->getChildIterator();
-				while (nodeIt.hasMoreElements())
-				{
-					//go through all scenenodes in the scene
-					Ogre::Node* subNode = nodeIt.getNext();
-					subNode->removeAllChildren();
-					//add them to the tree as parents
-				}
-				sceneNode->detachAllObjects();
-				sceneManager->destroySceneNode(sceneNode);
+					auto nodeIt = sceneNode->getChildIterator();
+					while (nodeIt.hasMoreElements())
+					{
+						//go through all scenenodes in the scene
+						Ogre::Node* subNode = nodeIt.getNext();
+						subNode->removeAllChildren();
+						//add them to the tree as parents
+					}
+					sceneNode->detachAllObjects();
+					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+					sceneManager->destroySceneNode(sceneNode);
+				});
+
 				sceneNode = nullptr;
 				return nullptr;
 			}
@@ -576,14 +580,18 @@ namespace NOWA
 					}
 					else
 					{
-						// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
-						// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
-						// will fall out of scope with nothing else pointing to it.
-						sceneNode->removeAndDestroyAllChildren();
-						sceneManager->destroySceneNode(sceneNode);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-																		+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
+						ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy2", _2(sceneManager, &sceneNode),
+							{
+								// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
+								// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
+								// will fall out of scope with nothing else pointing to it.
+								sceneNode->removeAndDestroyAllChildren();
+								NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+								sceneManager->destroySceneNode(sceneNode);
+							});
 
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
+							+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
 						sceneNode = nullptr;
 						return nullptr;
 					}
@@ -594,10 +602,6 @@ namespace NOWA
 																	+ "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "' in component: '" + componentName + "'.");
 
 					propertyElement = propertyElement->next_sibling("property");
-					/*throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[GameObjectFactory] GameObject '" + gameObjectPtr->getName()
-						 + "': Expected XML attribute: '" + XMLConverter::getAttrib(propertyElement, "name") + "'\n", "NOWA");*/
-
-						 // break;
 				}
 			}
 
@@ -629,9 +633,14 @@ namespace NOWA
 		}
 		else
 		{
-			// If game object could not be initialized, destroy ogre data
-			sceneNode->removeAndDestroyAllChildren();
-			sceneManager->destroySceneNode(sceneNode);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy3", _2(sceneManager, &sceneNode),
+				{
+					// If game object could not be initialized, destroy ogre data
+					sceneNode->removeAndDestroyAllChildren();
+					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+					sceneManager->destroySceneNode(sceneNode);
+				});
+			sceneNode = nullptr;
 			return nullptr;
 		}
 

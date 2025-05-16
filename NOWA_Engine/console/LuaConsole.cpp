@@ -2,6 +2,7 @@
 #include "LuaConsole.h"
 #include "main/InputDeviceCore.h"
 #include "main/AppStateManager.h"
+#include "modules/RenderCommandQueueModule.h"
 
 #include <OgreOverlay.h>
 
@@ -62,32 +63,35 @@ namespace NOWA
 		this->print(this->pInterpreter->getOutput());
 		this->pInterpreter->clearOutput();
 
-		this->pTextbox = overlayManager.createOverlayElement("TextArea", "ConsoleText");
-		this->pTextbox->setMetricsMode(Ogre::v1::GMM_RELATIVE);
-		this->pTextbox->setPosition(0, 0);
-		this->pTextbox->setParameter("font_name", "LuaConsole");
-		this->pTextbox->setParameter("colour_top", "1 1 1");
-		this->pTextbox->setParameter("colour_bottom", "1 1 1");
-		this->pTextbox->setParameter("char_height", "0.03");
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LuaConsole::init", _1(&overlayManager),
+		{
+			this->pTextbox = overlayManager.createOverlayElement("TextArea", "ConsoleText");
+			this->pTextbox->setMetricsMode(Ogre::v1::GMM_RELATIVE);
+			this->pTextbox->setPosition(0, 0);
+			this->pTextbox->setParameter("font_name", "LuaConsole");
+			this->pTextbox->setParameter("colour_top", "1 1 1");
+			this->pTextbox->setParameter("colour_bottom", "1 1 1");
+			this->pTextbox->setParameter("char_height", "0.03");
 
-		this->pPanel = static_cast<Ogre::v1::OverlayContainer*>(overlayManager.createOverlayElement("Panel", "ConsolePanel"));
-		this->pPanel->setMetricsMode(Ogre::v1::GMM_RELATIVE);
-		this->pPanel->setPosition(0, 0);
-		this->pPanel->setDimensions(1, 0);
-		// this->pPanel->setMaterialName("Console/background");
-		this->pPanel->setMaterialName("Materials/OverlayMaterial");
+			this->pPanel = static_cast<Ogre::v1::OverlayContainer*>(overlayManager.createOverlayElement("Panel", "ConsolePanel"));
+			this->pPanel->setMetricsMode(Ogre::v1::GMM_RELATIVE);
+			this->pPanel->setPosition(0, 0);
+			this->pPanel->setDimensions(1, 0);
+			// this->pPanel->setMaterialName("Console/background");
+			this->pPanel->setMaterialName("Materials/OverlayMaterial");
 
-		this->pPanel->addChild(this->pTextbox);
+			this->pPanel->addChild(this->pTextbox);
 
-		// this->pPanel->setPosition(0.0f, 0.0f);
+			// this->pPanel->setPosition(0.0f, 0.0f);
 
-		this->pOverlay = overlayManager.create("Console");
-		this->pOverlay->add2D(this->pPanel);
-		this->pOverlay->show();
+			this->pOverlay = overlayManager.create("Console");
+			this->pOverlay->add2D(this->pPanel);
+			this->pOverlay->show();
 
-		Ogre::LogManager::getSingleton().getDefaultLog()->addListener(this);
+			Ogre::LogManager::getSingleton().getDefaultLog()->addListener(this);
 
-		this->initialised = true;
+			this->initialised = true;
+		});
 	}
 
 	void LuaConsole::shutdown(void)
@@ -157,8 +161,13 @@ namespace NOWA
 		if (this->visible && this->height < 1.0f)
 		{
 			this->height += dt * 10.0f;
-			this->pPanel->show();
-			this->pTextbox->show();
+
+			ENQUEUE_RENDER_COMMAND("LuaConsole::update1",
+			{
+				this->pPanel->show();
+				this->pTextbox->show();
+			});
+
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
 
@@ -173,15 +182,21 @@ namespace NOWA
 			if (this->height <= 0.0f)
 			{
 				this->height = 0.0f;
-				this->pPanel->hide();
-				this->pTextbox->hide();
+				ENQUEUE_RENDER_COMMAND("LuaConsole::update2",
+					{
+						this->pPanel->hide();
+						this->pTextbox->hide();
+					});
 				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 			}
 		}
 
-		this->pTextbox->setPosition(0.0f, (this->height - 1.0f) * 0.5f);
-		this->pPanel->setDimensions(1.0f, this->height * 0.5f);
+		ENQUEUE_RENDER_COMMAND("LuaConsole::update3",
+		{
+			this->pTextbox->setPosition(0.0f, (this->height - 1.0f) * 0.5f);
+			this->pPanel->setDimensions(1.0f, this->height * 0.5f);
+		});
 
 		if (this->textChanged)
 		{
@@ -231,15 +246,18 @@ namespace NOWA
 			}
 			text += this->pInterpreter->getPrompt() + editLineText;
 
-			try
+			ENQUEUE_RENDER_COMMAND_MULTI("LuaConsole::update4", _1(text),
 			{
-				// bad UTF-8 continuation byte may happen at any time, when a specifig log is printed :( so catch it
-				this->pTextbox->setCaption(text);
-			}
-			catch (std::exception& exception)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Error in set text for Log console: " + Ogre::String(exception.what()));
-			}
+				try
+				{
+					// bad UTF-8 continuation byte may happen at any time, when a specifig log is printed :( so catch it
+					this->pTextbox->setCaption(text);
+				}
+				catch (std::exception& exception)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Error in set text for Log console: " + Ogre::String(exception.what()));
+				}
+			});
 			this->textChanged = false;
 		}
 	}

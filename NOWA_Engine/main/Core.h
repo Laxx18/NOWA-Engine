@@ -495,14 +495,6 @@ namespace NOWA
 		Ogre::StringVector getSectionPath(const Ogre::String& strSection);
 
 		/**
-		 * @brief		Creates a camera with some menue settings like far/near clip distance etc.
-		 * @param[in]	sceneManager	The current scene manager for Ogre graphics
-		 * @param[in]	strCameraName	The camera name
-		 * @return		camera			The camera with menue settings
-		 */
-		Ogre::Camera* createCameraWithMenuSettings(Ogre::SceneManager* sceneManager, const Ogre::String& strCameraName);
-
-		/**
 		* @brief		Sets the configured menu quality settings (LOD bias, Mipmaps, texture filtering, anisotropy)
 		* @param[in]	camera		The camera to set the settings to
 		*/
@@ -797,6 +789,10 @@ namespace NOWA
 		std::vector<Ogre::String> getAllPluginNames(void);
 
 		std::vector<Ogre::String> getAvailablePluginNames(void);
+
+		void setRenderThreadId(std::thread::id id);
+
+		bool isInRenderThread(void) const;
 	public:
 
 		enum PhysicsType
@@ -872,6 +868,7 @@ namespace NOWA
 		Ogre::CompositorWorkspace* myGuiWorkspace;
 		PluginFactory* pluginFactory;
 		Ogre::Timer* timer;
+		std::thread::id renderThreadId;
 		
 		Ogre::String writeAccessFolder;
 		bool isGame;

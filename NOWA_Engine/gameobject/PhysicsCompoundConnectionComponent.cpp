@@ -220,7 +220,10 @@ namespace NOWA
 				physicsActiveRootCompPtr->destroyCollision();
 			}
 
-			physicsActiveRootCompPtr->createCompoundBody(this->physicsActiveComponentList);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsCompoundConnectionComponent::createCompoundCollision", _1(physicsActiveRootCompPtr),
+			{
+				physicsActiveRootCompPtr->createCompoundBody(this->physicsActiveComponentList);
+			});
 		}
 		return true;
 	}

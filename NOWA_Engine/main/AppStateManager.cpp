@@ -5,6 +5,7 @@
 #include "Events.h"
 #include "modules/GameProgressModule.h"
 #include "modules/InputDeviceModule.h"
+#include "modules/RenderCommandQueueModule.h"
 #include "ProcessManager.h"
 #include "gameobject/AttributesComponent.h"
 
@@ -22,6 +23,30 @@ namespace
 
 namespace NOWA
 {
+
+	class Timer
+	{
+	public:
+		Timer()
+			: lastTime(std::chrono::high_resolution_clock::now())
+		{
+
+		}
+
+		// Get delta time between the last frame and the current one
+		Ogre::Real getDeltaTime(void)
+		{
+			auto currentTime = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<Ogre::Real> delta = currentTime - lastTime;
+			lastTime = currentTime;
+			return delta.count();  // Return the delta time in seconds
+		}
+
+	private:
+		std::chrono::high_resolution_clock::time_point lastTime;
+	};
+
+	//////////////////////////////////////////////////////////////
 
 	class ChangeAppStateProcess : public NOWA::Process
 	{
@@ -179,6 +204,10 @@ namespace NOWA
 			{
 				this->adaptiveFPSRendering();
 			}
+			else if (GameLoopMode::MULTI_THREADED == this->gameLoopMode)
+			{
+				this->multiThreadedRendering();
+			}
 			else
 			{
 				this->restrictedInterpolatedFPSRendering();
@@ -328,6 +357,109 @@ namespace NOWA
 			if (temp != hWnd && false == this->renderWhenInactive)
 			{
 				// Core::getSingletonPtr()->getOgreRenderWindow()->update();
+				// Do not burn CPU cycles unnecessary when minimized etc.
+				Ogre::Threads::Sleep(500);
+			}
+		}
+	}
+
+	void AppStateManager::multiThreadedRendering(void)
+	{
+		// Default 30 ticks per second
+		const Ogre::Real simulationTickCount = 1.0f / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
+
+		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
+
+		Ogre::Real monitorRefreshRate = static_cast<Ogre::Real>(Core::getSingletonPtr()->getScreenRefreshRate());
+
+		if (0 == monitorRefreshRate)
+		{
+			monitorRefreshRate = 1.0f / static_cast<Ogre::Real>(simulationTickCount);
+		}
+
+		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
+		{
+			monitorRefreshRate = 1.0f / static_cast<Ogre::Real>(this->desiredUpdates);
+		}
+
+		// This keeps track of time (seconds to keep it easy)
+		double currentTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+
+		// Add an accumulator for fixed time step
+		double accumulator = 0.0;
+		double lastLogicFrameTime = currentTime;
+
+		// Maximum delta time to prevent spiral of death
+		const double maxDeltaTime = 0.25;
+
+		// Set the frame time in the render command queue module
+		RenderCommandQueueModule::getInstance()->setFrameTime(simulationTickCount);
+
+		while (false == this->bShutdown)
+		{
+			// Process signals from system
+			Ogre::WindowEventUtilities::messagePump();
+
+			// Calculate time between 2 frames
+			double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
+			double frameTime = newTime - currentTime;
+			currentTime = newTime;
+
+			// Cap the delta time to prevent spiral of death
+			frameTime = std::min(frameTime, maxDeltaTime);
+
+			// Add to accumulator
+			accumulator += frameTime;
+
+			// Calculate time since last logic frame for interpolation
+			// Is done in render thread
+			// double timeSinceLastLogicFrame = currentTime - lastLogicFrameTime;
+			// RenderCommandQueueModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
+
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+			{
+				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
+
+				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
+			}
+
+			// Update with fixed time step
+			bool didUpdate = false;
+			while (accumulator >= simulationTickCount)
+			{
+				// Before updating logic, begin the logic frame
+				// This advances the transform buffer
+				if (false == didUpdate)
+				{
+					RenderCommandQueueModule::getInstance()->beginLogicFrame();
+					didUpdate = true;
+				}
+
+				// Update input devices
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+				{
+					// Update the active state with fixed time step
+					this->activeStateStack.back()->update(simulationTickCount);
+				}
+
+				// Update core with fixed time step
+				Core::getSingletonPtr()->updateFrameStats(simulationTickCount);
+				Core::getSingletonPtr()->update(simulationTickCount);
+
+				accumulator -= simulationTickCount;
+				lastLogicFrameTime = currentTime - accumulator;
+			}
+
+			if (true == didUpdate)
+			{
+				// End the logic frame
+				RenderCommandQueueModule::getInstance()->endLogicFrame();
+			}
+
+			// Update the renderwindow if the window is not active too, for server/client analysis
+			if (false == renderWindow->isVisible() && this->renderWhenInactive)
+			{
 				// Do not burn CPU cycles unnecessary when minimized etc.
 				Ogre::Threads::Sleep(500);
 			}
@@ -769,6 +901,43 @@ namespace NOWA
 		}
 	}
 
+	void AppStateManager::signalLogicFrameFinished(void)
+	{
+		{
+			std::lock_guard<std::mutex> lock(this->logicFrameMutex);
+			this->logicFrameFinished = true;
+		}
+		this->logicFrameCondVar.notify_all(); // Notify the rendering thread
+	}
+
+#if 1
+	void AppStateManager::waitForLogicFrameFinish()
+	{
+		std::unique_lock<std::mutex> lock(logicFrameMutex);
+		bool wasSignaled = logicFrameCondVar.wait_for(lock, std::chrono::milliseconds(100), [this]
+		{
+			return this->logicFrameFinished;
+		});
+
+		if (wasSignaled)
+		{
+			this->logicFrameFinished = false; // Reset for next frame
+		}
+		else
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "WARNING: Logic frame sync timeout.Proceeding without signal.");
+		}
+	}
+#else
+	void AppStateManager::waitForLogicFrameFinish()
+	{
+		std::unique_lock<std::mutex> lock(logicFrameMutex);
+		logicFrameCondVar.wait(lock, [this] { return logicFrameFinished; });
+		logicFrameFinished = false; // Reset the flag for the next frame
+	}
+#endif
+
+
 	void AppStateManager::changeAppState(AppState* state)
 	{
 		if (nullptr == state)
@@ -963,6 +1132,7 @@ namespace NOWA
 	void AppStateManager::shutdown(void)
 	{
 		this->bShutdown = true;
+		Core::getSingletonPtr()->setShutdown(this->bShutdown);
 	}
 
 	bool AppStateManager::getIsShutdown(void) const

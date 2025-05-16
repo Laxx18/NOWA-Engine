@@ -71,419 +71,422 @@ namespace NOWA
 
 	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& sceneResourceGroupName, bool crypted)
 	{
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
-		// Announce the current scene path to core
-		Core::getSingletonPtr()->setCurrentScenePath(projectPath + "/" + projectName + "/" + sceneName + "/" + sceneName + ".scene");
-
-		// Project is always: "projects/projectName/sceneName/sceneName.scene"
-		Ogre::String filePath = projectPath + "/" + projectName;
-		Ogre::String filePathName = filePath + "/" + sceneName + "/" + sceneName + ".scene";
-
-		// Maybe create a folder
-		Core::getSingletonPtr()->createFolders(filePathName);
-
-		if (filePathName.empty())
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::exportScene", _4(projectName, sceneName, sceneResourceGroupName, crypted),
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
-		}
-		
-		xml_document<> doc;
-		xml_node<>* decl = doc.allocate_node(node_declaration);
-		decl->append_attribute(doc.allocate_attribute("version", "1.0"));
-		decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-		doc.append_node(decl);
+			Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
+			// Announce the current scene path to core
+			Core::getSingletonPtr()->setCurrentScenePath(projectPath + "/" + projectName + "/" + sceneName + "/" + sceneName + ".scene");
 
-		// Scene element
-		{
-			xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
-			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
-			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
-			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, sceneName)));
+			// Project is always: "projects/projectName/sceneName/sceneName.scene"
+			Ogre::String filePath = projectPath + "/" + projectName;
+			Ogre::String filePathName = filePath + "/" + sceneName + "/" + sceneName + ".scene";
 
-			// ResourceLocations element
-			// Is no more required
-#if 1
-			xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
-			this->exportResourceLocations(resourceLocationsXML, doc);
-			sceneXML->append_node(resourceLocationsXML);
-#endif
+			// Maybe create a folder
+			Core::getSingletonPtr()->createFolders(filePathName);
 
-			// Environment element
-			xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
-			this->exportEnvironment(environmentXML, doc);
-			sceneXML->append_node(environmentXML);
-
-			doc.append_node(sceneXML);
-
-			//// MainCamera element
-			//{
-			//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
-			//	this->exportMainCamera(cameraXML, doc);
-			//	sceneXML->append_node(cameraXML);
-			//}
-
-			// OgreNewt element
+			if (filePathName.empty())
 			{
-				xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
-				this->exportOgreNewt(ogreNewtXML, doc);
-				sceneXML->append_node(ogreNewtXML);
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName);
+				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not export scene, because there is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
 			}
 
-			// OgreRecast element
+			xml_document<> doc;
+			xml_node<>* decl = doc.allocate_node(node_declaration);
+			decl->append_attribute(doc.allocate_attribute("version", "1.0"));
+			decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
+			doc.append_node(decl);
+
+			// Scene element
 			{
-				if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+				xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
+				sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
+				sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
+				sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, sceneName)));
+
+				// ResourceLocations element
+				// Is no more required
+				xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
+				this->exportResourceLocations(resourceLocationsXML, doc);
+				sceneXML->append_node(resourceLocationsXML);
+
+				// Environment element
+				xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
+				this->exportEnvironment(environmentXML, doc);
+				sceneXML->append_node(environmentXML);
+
+				doc.append_node(sceneXML);
+
+				//// MainCamera element
+				//{
+				//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
+				//	this->exportMainCamera(cameraXML, doc);
+				//	sceneXML->append_node(cameraXML);
+				//}
+
+				// OgreNewt element
 				{
-					xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
-					this->exportOgreRecast(ogreRecastXML, doc);
-					sceneXML->append_node(ogreRecastXML);
+					xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
+					this->exportOgreNewt(ogreNewtXML, doc);
+					sceneXML->append_node(ogreNewtXML);
 				}
+
+				// OgreRecast element
+				{
+					if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+					{
+						xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
+						this->exportOgreRecast(ogreRecastXML, doc);
+						sceneXML->append_node(ogreRecastXML);
+					}
+				}
+
+				//// Light element
+				//{
+				//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
+				//	this->exportMainLight(lightXML, doc);
+				//	sceneXML->append_node(lightXML);
+				//}
+
+				// Nodes element
+				{
+					xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
+					// Export local game objects (false)
+					this->exportSceneNodes(nodesXML, doc, false);
+					sceneXML->append_node(nodesXML);
+				}
+
+				// Export all global game objects in projectName/global.scene separately
+				this->exportGlobalScene(sceneResourceGroupName, projectName);
+
+				// Bounds element (after bounds have been calculated for each object
+				{
+					xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
+					boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
+					boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
+					environmentXML->append_node(boundsXML);
+				}
+
+				// Send event and set bounds for current scene
+				boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
+				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
+				Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 			}
 
-			//// Light element
-			//{
-			//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
-			//	this->exportMainLight(lightXML, doc);
-			//	sceneXML->append_node(lightXML);
-			//}
+			std::stringstream stream;
+			stream << doc;
 
-			// Nodes element
+			if (true == crypted)
 			{
-				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
-				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false);
-				sceneXML->append_node(nodesXML);
-			}
-			
-			// Export all global game objects in projectName/global.scene separately
-			this->exportGlobalScene(sceneResourceGroupName, projectName);
-
-			// Bounds element (after bounds have been calculated for each object
-			{
-				xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
-				boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
-				boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
-				environmentXML->append_node(boundsXML);
+				stream << Core::getSingletonPtr()->encode64(stream.str(), true);
 			}
 
-			// Send event and set bounds for current scene
-			boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
-			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
-			Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
-		}
+			std::ofstream file;
+			file.open(filePathName);
+			file << stream.str();
 
-		std::stringstream stream;
-		stream << doc;
-
-		if (true == crypted)
-		{
-			stream << Core::getSingletonPtr()->encode64(stream.str(), true);
-		}
-
-		std::ofstream file;
-		file.open(filePathName);
-		file << stream.str();
-
-		file.close();
+			file.close();
+		});
 	}
 
 	void DotSceneExportModule::saveSceneSnapshot(const Ogre::String& filePathName, bool crypted)
 	{
-		Ogre::String tempFilePathName = Core::getSingletonPtr()->removePartsFromString(filePathName, ".sav").second;
-		// Maybe create a folder
-		Core::getSingletonPtr()->createFolders(tempFilePathName);
-
-		if (tempFilePathName.empty())
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::saveSceneSnapshot", _2(filePathName, crypted),
 		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.");
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.\n", "NOWA");
-		}
+			Ogre::String tempFilePathName = Core::getSingletonPtr()->removePartsFromString(filePathName, ".sav").second;
+			// Maybe create a folder
+			Core::getSingletonPtr()->createFolders(tempFilePathName);
 
-		xml_document<> doc;
-		xml_node<>* decl = doc.allocate_node(node_declaration);
-		decl->append_attribute(doc.allocate_attribute("version", "1.0"));
-		decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-		doc.append_node(decl);
-
-		// Scene element
-		{
-			xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
-			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
-			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
-			sceneXML->append_attribute(doc.allocate_attribute("projectName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getProjectName())));
-			sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getSceneName())));
-
-			// ResourceLocations element
-			// Is no more required
-#if 1
-			xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
-			this->exportResourceLocations(resourceLocationsXML, doc);
-			sceneXML->append_node(resourceLocationsXML);
-#endif
-
-			// Environment element
-			xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
-			this->exportEnvironment(environmentXML, doc);
-			sceneXML->append_node(environmentXML);
-
-			doc.append_node(sceneXML);
-
-			//// MainCamera element
-			//{
-			//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
-			//	this->exportMainCamera(cameraXML, doc);
-			//	sceneXML->append_node(cameraXML);
-			//}
-
-			// OgreNewt element
+			if (tempFilePathName.empty())
 			{
-				xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
-				this->exportOgreNewt(ogreNewtXML, doc);
-				sceneXML->append_node(ogreNewtXML);
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.");
+				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: Could not save scene snapshot, because the file path name is empty.\n", "NOWA");
 			}
 
-			// OgreRecast element
+			xml_document<> doc;
+			xml_node<>* decl = doc.allocate_node(node_declaration);
+			decl->append_attribute(doc.allocate_attribute("version", "1.0"));
+			decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
+			doc.append_node(decl);
+
+			// Scene element
 			{
-				if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+				xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
+				sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
+				sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
+				sceneXML->append_attribute(doc.allocate_attribute("projectName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getProjectName())));
+				sceneXML->append_attribute(doc.allocate_attribute("sceneName", XMLConverter::ConvertString(doc, Core::getSingletonPtr()->getSceneName())));
+
+				// ResourceLocations element
+				// Is no more required
+				xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
+				this->exportResourceLocations(resourceLocationsXML, doc);
+				sceneXML->append_node(resourceLocationsXML);
+
+				// Environment element
+				xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
+				this->exportEnvironment(environmentXML, doc);
+				sceneXML->append_node(environmentXML);
+
+				doc.append_node(sceneXML);
+
+				//// MainCamera element
+				//{
+				//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
+				//	this->exportMainCamera(cameraXML, doc);
+				//	sceneXML->append_node(cameraXML);
+				//}
+
+				// OgreNewt element
 				{
-					xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
-					this->exportOgreRecast(ogreRecastXML, doc);
-					sceneXML->append_node(ogreRecastXML);
+					xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
+					this->exportOgreNewt(ogreNewtXML, doc);
+					sceneXML->append_node(ogreNewtXML);
+				}
+
+				// OgreRecast element
+				{
+					if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+					{
+						xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
+						this->exportOgreRecast(ogreRecastXML, doc);
+						sceneXML->append_node(ogreRecastXML);
+					}
+				}
+
+				//// Light element
+				//{
+				//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
+				//	this->exportMainLight(lightXML, doc);
+				//	sceneXML->append_node(lightXML);
+				//}
+
+				// Nodes element
+				{
+					xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
+					// Export local game objects (true)! Also global!
+					this->exportSceneNodes(nodesXML, doc, true, false);
+					sceneXML->append_node(nodesXML);
+				}
+
+				// Bounds element (after bounds have been calculated for each object
+				{
+					xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
+					boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
+					boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
+					environmentXML->append_node(boundsXML);
 				}
 			}
 
-			//// Light element
-			//{
-			//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
-			//	this->exportMainLight(lightXML, doc);
-			//	sceneXML->append_node(lightXML);
-			//}
+			std::stringstream stream;
+			stream << doc;
 
-			// Nodes element
+			if (true == crypted)
 			{
-				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
-				// Export local game objects (true)! Also global!
-				this->exportSceneNodes(nodesXML, doc, true, false);
-				sceneXML->append_node(nodesXML);
+				stream << Core::getSingletonPtr()->encode64(stream.str(), true);
 			}
 
-			// Bounds element (after bounds have been calculated for each object
-			{
-				xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
-				boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
-				boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
-				environmentXML->append_node(boundsXML);
-			}
-		}
+			std::ofstream file;
+			file.open(tempFilePathName);
+			file << stream.str();
 
-		std::stringstream stream;
-		stream << doc;
-
-		if (true == crypted)
-		{
-			stream << Core::getSingletonPtr()->encode64(stream.str(), true);
-		}
-
-		std::ofstream file;
-		file.open(tempFilePathName);
-		file << stream.str();
-
-		file.close();
+			file.close();
+		});
 	}
 
 	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)
 	{
-		Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
-
-		// Project is always: "projects/projectName/sceneName/sceneName.scene"
-		Ogre::String filePathName = newSceneFilePathName;
-
-		Ogre::String tempFileNameWithoutEnding = newSceneFilePathName;
-
-		size_t found = tempFileNameWithoutEnding.rfind("/");
-		if (Ogre::String::npos != found)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::copyScene", _3(oldSeneName, newSceneFilePathName, sceneResourceGroupName),
 		{
-			tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(found + 1, tempFileNameWithoutEnding.size() - 1);
-		}
+			Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 
-		found = tempFileNameWithoutEnding.rfind(".");
-		if (Ogre::String::npos != found)
-		{
-			tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(0, found);
-		}
+			// Project is always: "projects/projectName/sceneName/sceneName.scene"
+			Ogre::String filePathName = newSceneFilePathName;
 
-		Ogre::String tempFilePath = newSceneFilePathName;
-		found = tempFilePath.rfind("/");
-		if (Ogre::String::npos != found)
-		{
-			tempFilePath = tempFilePath.substr(0, found);
-		}
+			Ogre::String tempFileNameWithoutEnding = newSceneFilePathName;
 
-		// Maybe create a folder
-		Core::getSingletonPtr()->createFolders(filePathName);
-
-		if (true == filePathName.empty())
-		{
-			Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
-			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
-		}
-
-		for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
-		{
-			GameObjectPtr gameObjectPtr = it->second;
-			if (nullptr != gameObjectPtr)
+			size_t found = tempFileNameWithoutEnding.rfind("/");
+			if (Ogre::String::npos != found)
 			{
-				// Sorry, no copy for global game objects, because they do not belong to a scene, but to the whole project
-				if (true == gameObjectPtr->getGlobal())
-				{
-					continue;
-				}
+				tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(found + 1, tempFileNameWithoutEnding.size() - 1);
+			}
 
-				GameObjectComponents* components = gameObjectPtr->getComponents();
-				for (auto& it = components->begin(); it != components->end(); ++it)
+			found = tempFileNameWithoutEnding.rfind(".");
+			if (Ogre::String::npos != found)
+			{
+				tempFileNameWithoutEnding = tempFileNameWithoutEnding.substr(0, found);
+			}
+
+			Ogre::String tempFilePath = newSceneFilePathName;
+			found = tempFilePath.rfind("/");
+			if (Ogre::String::npos != found)
+			{
+				tempFilePath = tempFilePath.substr(0, found);
+			}
+
+			// Maybe create a folder
+			Core::getSingletonPtr()->createFolders(filePathName);
+
+			if (true == filePathName.empty())
+			{
+				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName);
+				throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[DotSceneExportModule] Error: There is no such group name resource: " + sceneResourceGroupName + "\n", "NOWA");
+			}
+
+			for (auto it = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cbegin(); it != AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->cend(); ++it)
+			{
+				GameObjectPtr gameObjectPtr = it->second;
+				if (nullptr != gameObjectPtr)
 				{
-					auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != luaScriptCompPtr)
+					// Sorry, no copy for global game objects, because they do not belong to a scene, but to the whole project
+					if (true == gameObjectPtr->getGlobal())
 					{
-						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
-						Ogre::String targetFilePathName = tempFilePath + "/" + luaScriptCompPtr->getScriptFile();
-						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+						continue;
 					}
 
-					// Copy any .col file
-					auto physicsArtifactCompPtr = boost::dynamic_pointer_cast<PhysicsArtifactComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != physicsArtifactCompPtr)
+					GameObjectComponents* components = gameObjectPtr->getComponents();
+					for (auto& it = components->begin(); it != components->end(); ++it)
 					{
-						Ogre::String meshName;
-						Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-						if (nullptr != entity)
+						auto luaScriptCompPtr = boost::dynamic_pointer_cast<LuaScriptComponent>(std::get<COMPONENT>(*it));
+						if (nullptr != luaScriptCompPtr)
 						{
-							meshName = entity->getMesh()->getName();
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + luaScriptCompPtr->getScriptFile();
+							Ogre::String targetFilePathName = tempFilePath + "/" + luaScriptCompPtr->getScriptFile();
+							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 						}
-						else
+
+						// Copy any .col file
+						auto physicsArtifactCompPtr = boost::dynamic_pointer_cast<PhysicsArtifactComponent>(std::get<COMPONENT>(*it));
+						if (nullptr != physicsArtifactCompPtr)
 						{
-							Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
-							if (nullptr != item)
+							Ogre::String meshName;
+							Ogre::v1::Entity* entity = gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+							if (nullptr != entity)
 							{
-								meshName = item->getMesh()->getName();
+								meshName = entity->getMesh()->getName();
 							}
+							else
+							{
+								Ogre::Item* item = gameObjectPtr->getMovableObject<Ogre::Item>();
+								if (nullptr != item)
+								{
+									meshName = item->getMesh()->getName();
+								}
+							}
+							// Note: Col files are outside the scene folders in the parent project folder
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
+							Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".col";
+							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 						}
-						// Note: Col files are outside the scene folders in the parent project folder
-						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + meshName + ".col";
-						Ogre::String targetFilePathName = tempFilePath + "/" + meshName + ".col";
-						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
-					}
 
-					// Copy a terra .col file, if it does exist
-					auto physicsTerrainCompPtr = boost::dynamic_pointer_cast<PhysicsTerrainComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != physicsTerrainCompPtr)
-					{
-						Ogre::String name = gameObjectPtr->getName();
-						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + name + ".col";
-						Ogre::String targetFilePathName = tempFilePath + "/" + name + ".col";
-						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
-					}
+						// Copy a terra .col file, if it does exist
+						auto physicsTerrainCompPtr = boost::dynamic_pointer_cast<PhysicsTerrainComponent>(std::get<COMPONENT>(*it));
+						if (nullptr != physicsTerrainCompPtr)
+						{
+							Ogre::String name = gameObjectPtr->getName();
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + name + ".col";
+							Ogre::String targetFilePathName = tempFilePath + "/" + name + ".col";
+							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+						}
 
-					// Copy a terra map image file if does exist
-					auto terraCompPtr = boost::dynamic_pointer_cast<TerraComponent>(std::get<COMPONENT>(*it));
-					if (nullptr != terraCompPtr)
-					{
-						Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_detailMap.png";
-						Ogre::String targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_detailMap.png";
-						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+						// Copy a terra map image file if does exist
+						auto terraCompPtr = boost::dynamic_pointer_cast<TerraComponent>(std::get<COMPONENT>(*it));
+						if (nullptr != terraCompPtr)
+						{
+							Ogre::String sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_detailMap.png";
+							Ogre::String targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_detailMap.png";
+							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
 
-						sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_heightMap.png";
-						targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_heightMap.png";
-						CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+							sourceFilePathName = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName() + "/" + oldSeneName + "_heightMap.png";
+							targetFilePathName = tempFilePath + "/" + tempFileNameWithoutEnding + "_heightMap.png";
+							CopyFile(sourceFilePathName.data(), targetFilePathName.data(), TRUE);
+						}
 					}
 				}
 			}
-		}
-		
-		xml_document<> doc;
-		xml_node<>* decl = doc.allocate_node(node_declaration);
-		decl->append_attribute(doc.allocate_attribute("version", "1.0"));
-		decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-		doc.append_node(decl);
 
-		// Scene element
-		{
-			xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
-			sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
-			sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
+			xml_document<> doc;
+			xml_node<>* decl = doc.allocate_node(node_declaration);
+			decl->append_attribute(doc.allocate_attribute("version", "1.0"));
+			decl->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
+			doc.append_node(decl);
 
-			// ResourceLocations element
-			// Is no more required
-#if 1
-			xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
-			this->exportResourceLocations(resourceLocationsXML, doc);
-			sceneXML->append_node(resourceLocationsXML);
-#endif
-
-			// Environment element
-			xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
-			this->exportEnvironment(environmentXML, doc);
-			sceneXML->append_node(environmentXML);
-
-			doc.append_node(sceneXML);
-
-			//// MainCamera element
-			//{
-			//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
-			//	this->exportMainCamera(cameraXML, doc);
-			//	sceneXML->append_node(cameraXML);
-			//}
-
-			// OgreNewt element
+			// Scene element
 			{
-				xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
-				this->exportOgreNewt(ogreNewtXML, doc);
-				sceneXML->append_node(ogreNewtXML);
-			}
+				xml_node<>* sceneXML = doc.allocate_node(node_element, "scene");
+				sceneXML->append_attribute(doc.allocate_attribute("formatVersion", NOWA_DOT_SCENE_FILEVERSION_STR));
+				sceneXML->append_attribute(doc.allocate_attribute("generator", "NOWA-Engine"));
 
-			// OgreRecast element
-			{
-				if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+				// ResourceLocations element
+				// Is no more required
+				xml_node<>* resourceLocationsXML = doc.allocate_node(node_element, "resourceLocations");
+				this->exportResourceLocations(resourceLocationsXML, doc);
+				sceneXML->append_node(resourceLocationsXML);
+
+				// Environment element
+				xml_node<>* environmentXML = doc.allocate_node(node_element, "environment");
+				this->exportEnvironment(environmentXML, doc);
+				sceneXML->append_node(environmentXML);
+
+				doc.append_node(sceneXML);
+
+				//// MainCamera element
+				//{
+				//	xml_node<>* cameraXML = doc.allocate_node(node_element, "camera");
+				//	this->exportMainCamera(cameraXML, doc);
+				//	sceneXML->append_node(cameraXML);
+				//}
+
+				// OgreNewt element
 				{
-					xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
-					this->exportOgreRecast(ogreRecastXML, doc);
-					sceneXML->append_node(ogreRecastXML);
+					xml_node<>* ogreNewtXML = doc.allocate_node(node_element, "OgreNewt");
+					this->exportOgreNewt(ogreNewtXML, doc);
+					sceneXML->append_node(ogreNewtXML);
 				}
+
+				// OgreRecast element
+				{
+					if (nullptr != AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+					{
+						xml_node<>* ogreRecastXML = doc.allocate_node(node_element, "OgreRecast");
+						this->exportOgreRecast(ogreRecastXML, doc);
+						sceneXML->append_node(ogreRecastXML);
+					}
+				}
+
+				//// Light element
+				//{
+				//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
+				//	this->exportMainLight(lightXML, doc);
+				//	sceneXML->append_node(lightXML);
+				//}
+
+				// Nodes element
+				{
+					xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
+					// Export local game objects (false)
+					this->exportSceneNodes(nodesXML, doc, false);
+					sceneXML->append_node(nodesXML);
+				}
+
+				// Bounds element (after bounds have been calculated for each object
+				{
+					xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
+					boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
+					boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
+					environmentXML->append_node(boundsXML);
+				}
+
+				// Send event and set bounds for current scene
+				boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
+				AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
+				Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
 			}
 
-			//// Light element
-			//{
-			//	xml_node<>* lightXML = doc.allocate_node(node_element, "light");
-			//	this->exportMainLight(lightXML, doc);
-			//	sceneXML->append_node(lightXML);
-			//}
-
-			// Nodes element
-			{
-				xml_node<>* nodesXML = doc.allocate_node(node_element, "nodes");
-				// Export local game objects (false)
-				this->exportSceneNodes(nodesXML, doc, false);
-				sceneXML->append_node(nodesXML);
-			}
-
-			// Bounds element (after bounds have been calculated for each object
-			{
-				xml_node<>* boundsXML = doc.allocate_node(node_element, "bounds");
-				boundsXML->append_attribute(doc.allocate_attribute("mostLeftNearPosition", XMLConverter::ConvertString(doc, this->mostLeftNearPosition)));
-				boundsXML->append_attribute(doc.allocate_attribute("mostRightFarPosition", XMLConverter::ConvertString(doc, this->mostRightFarPosition)));
-				environmentXML->append_node(boundsXML);
-			}
-
-			// Send event and set bounds for current scene
-			boost::shared_ptr<EventDataBoundsUpdated> eventDataBoundsUpdated(boost::make_shared<EventDataBoundsUpdated>(this->mostLeftNearPosition, this->mostRightFarPosition));
-			AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataBoundsUpdated);
-			Core::getSingletonPtr()->setCurrentSceneBounds(this->mostLeftNearPosition, this->mostRightFarPosition);
-		}
-
-		std::ofstream file;
-		file.open(filePathName);
-		file << doc;
-		file.close();
+			std::ofstream file;
+			file.open(filePathName);
+			file << doc;
+			file.close();
+		});
 	}
 
 	void DotSceneExportModule::exportGlobalScene(const Ogre::String& sceneResourceGroupName, const Ogre::String& projectName, bool crypted)

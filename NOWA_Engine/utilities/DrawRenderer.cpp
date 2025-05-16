@@ -75,8 +75,8 @@ namespace NOWA
 
 	DrawRenderer::~DrawRenderer()
 	{
+		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->sceneNodeLines);
 		this->sceneManager->destroySceneNode(this->sceneNodeLines);
-
 	}
 
 	const Ogre::String& DrawRenderer::getMovableType(void) const

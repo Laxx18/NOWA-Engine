@@ -24,34 +24,42 @@ namespace NOWA
 
 	void MiniMapToolTip::show(const MyGUI::IntPoint& point, const Ogre::String& description)
 	{
-		// First fetch the viewport size.  (Do not try to getParent()->getSize().
-		// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
-		const MyGUI::IntSize& viewSize = this->toolTip->getParentSize();
-		// Then set our tooltip panel size to something excessive...
-		this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
-		// ... update its caption to whatever the sender widget has for tooltip text
-		// (You did use setUserString(), right?)...
-		MyGUI::UString toolTipText = description;
-		if (true == toolTipText.empty())
+		// TODO: No wait
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MiniMapToolTip::show", _2(point, description),
 		{
-			return;
-		}
-		this->textDescription->setCaption(toolTipText);
-		// ... fetch the new text size from the tooltip's Edit control...
-		const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
-		// ... and resize the tooltip panel to match it.  The Stretch property on the Edit
-		// control will see to it that the Edit control resizes along with it.
-		// The constants are padding to fit in the edges of the PanelSmall skin; adjust as
-		// necessary for your theme.
-		this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
-		// You can fade it in smooth if you like, but that gets obnoxious.
-		this->toolTip->setVisible(true);
+			// First fetch the viewport size.  (Do not try to getParent()->getSize().
+			// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
+			const MyGUI::IntSize & viewSize = this->toolTip->getParentSize();
+			// Then set our tooltip panel size to something excessive...
+			this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
+			// ... update its caption to whatever the sender widget has for tooltip text
+			// (You did use setUserString(), right?)...
+			MyGUI::UString toolTipText = description;
+			if (true == toolTipText.empty())
+			{
+				return;
+			}
+			this->textDescription->setCaption(toolTipText);
+			// ... fetch the new text size from the tooltip's Edit control...
+			const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
+			// ... and resize the tooltip panel to match it.  The Stretch property on the Edit
+			// control will see to it that the Edit control resizes along with it.
+			// The constants are padding to fit in the edges of the PanelSmall skin; adjust as
+			// necessary for your theme.
+			this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
+			// You can fade it in smooth if you like, but that gets obnoxious.
+			this->toolTip->setVisible(true);
+		});
+
 		boundedMove(this->toolTip, point);
 	}
 
 	void MiniMapToolTip::hide()
 	{
-		this->toolTip->setVisible(false);
+		ENQUEUE_RENDER_COMMAND("MiniMapToolTip::hide",
+		{
+			this->toolTip->setVisible(false);
+		});
 	}
 
 	void MiniMapToolTip::move(const MyGUI::IntPoint& point)
@@ -77,7 +85,11 @@ namespace NOWA
 			boundedpoint.top -= offset.top + offset.top + size.height;
 		}
 
-		moving->setPosition(boundedpoint);
+		// TODO: Wait?
+		ENQUEUE_RENDER_COMMAND_MULTI("MiniMapToolTip::boundedMove", _2(moving, boundedpoint),
+		{
+			moving->setPosition(boundedpoint);
+		});
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -97,15 +97,18 @@ namespace NOWA
 			delete this->selectionObserver;
 			this->selectionObserver = nullptr;
 		}
-		if (nullptr != this->selectionRect)
+		ENQUEUE_RENDER_COMMAND_WAIT("SelectionManager::~SelectionManager",
 		{
-			this->selectionNode->detachObject(this->selectionRect);
-			delete this->selectionRect;
-			this->selectionRect = nullptr;
-		}
+			if (nullptr != this->selectionRect)
+			{
+				this->selectionNode->detachObject(this->selectionRect);
+				delete this->selectionRect;
+				this->selectionRect = nullptr;
+			}
 
-		this->sceneManager->destroyQuery(this->selectQuery);
-		this->sceneManager->destroyQuery(this->volumeQuery);
+			this->sceneManager->destroyQuery(this->selectQuery);
+			this->sceneManager->destroyQuery(this->volumeQuery);
+		});
 	}
 
 
@@ -129,12 +132,15 @@ namespace NOWA
 	
 		this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(this->categories);
 
-		this->selectionRect = new SelectionRectangle("SelectionRectangle", this->sceneManager, this->camera);
-		this->selectionNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-		this->selectionNode->attachObject(this->selectionRect);
-		this->volumeQuery = this->sceneManager->createPlaneBoundedVolumeQuery(Ogre::PlaneBoundedVolumeList(), this->categoryId);
-		this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), this->categoryId);
-		this->selectQuery->setSortByDistance(true);
+		ENQUEUE_RENDER_COMMAND_WAIT("SelectionManager::init",
+		{
+			this->selectionRect = new SelectionRectangle("SelectionRectangle", this->sceneManager, this->camera);
+			this->selectionNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+			this->selectionNode->attachObject(this->selectionRect);
+			this->volumeQuery = this->sceneManager->createPlaneBoundedVolumeQuery(Ogre::PlaneBoundedVolumeList(), this->categoryId);
+			this->selectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), this->categoryId);
+			this->selectQuery->setSortByDistance(true);
+		});
 
 		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &SelectionManager::handleDeleteGameObject), EventDataDeleteGameObject::getStaticEventType());
 	}
@@ -316,8 +322,11 @@ namespace NOWA
 	{
 		this->categories = categories;
 		this->categoryId = AppStateManager::getSingletonPtr()->getGameObjectController()->generateCategoryId(categories);
-		this->volumeQuery->setQueryMask(this->categoryId);
-		this->selectQuery->setQueryMask(this->categoryId);
+		ENQUEUE_RENDER_COMMAND("SelectionManager::filterCategories",
+		{
+			this->volumeQuery->setQueryMask(this->categoryId);
+			this->selectQuery->setQueryMask(this->categoryId);
+		});
 		return this->categoryId;
 	}
 
@@ -362,188 +371,193 @@ namespace NOWA
 
 	void SelectionManager::selectGameObjects(const Ogre::Vector2& leftTopCorner, const Ogre::Vector2& bottomRightCorner)
 	{
-		// Build the 2D rectangle
-		Ogre::Real left = leftTopCorner.x;
-		Ogre::Real right = bottomRightCorner.x;
-		Ogre::Real top = leftTopCorner.y;
-		Ogre::Real bottom = bottomRightCorner.y;
+			// Build the 2D rectangle
+			Ogre::Real left = leftTopCorner.x;
+			Ogre::Real right = bottomRightCorner.x;
+			Ogre::Real top = leftTopCorner.y;
+			Ogre::Real bottom = bottomRightCorner.y;
 
-		Ogre::Real frontDistance = 3.0f;
-		Ogre::Real backDistance = 3.0f + 500.0f;
+			Ogre::Real frontDistance = 3.0f;
+			Ogre::Real backDistance = 3.0f + 500.0f;
 
-		if (left > right)
-		{
-			std::swap(left, right);
-		}
-		if (top > bottom)
-		{
-			std::swap(top, bottom);
-		}
-
-		//if its too small leave the function
-		if ((right - left) * (bottom - top) < 0.0001f)
-		{
-			return;
-		}
-
-		Ogre::Ray topLeft, topRight, bottomLeft, bottomRight;
-
-		topLeft = this->camera->getCameraToViewportRay(left, top);
-		topRight = this->camera->getCameraToViewportRay(right, top);
-		bottomLeft = this->camera->getCameraToViewportRay(left, bottom);
-		bottomRight = this->camera->getCameraToViewportRay(right, bottom);
-
-		Ogre::PlaneBoundedVolume vol;
-		// front plane
-		vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), topRight.getPoint(frontDistance), bottomLeft.getPoint(frontDistance)));
-		// back plane
-		vol.planes.push_back(Ogre::Plane(topLeft.getPoint(backDistance), bottomLeft.getPoint(backDistance), topRight.getPoint(backDistance)));
-		// top plane
-		vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), topLeft.getPoint(backDistance), topRight.getPoint(frontDistance)));
-		// bottom plane
-		vol.planes.push_back(Ogre::Plane(bottomLeft.getPoint(frontDistance), bottomRight.getPoint(frontDistance), bottomLeft.getPoint(backDistance)));
-		// left plane
-		vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), bottomLeft.getPoint(frontDistance), topLeft.getPoint(backDistance)));
-		// right plane
-		vol.planes.push_back(Ogre::Plane(topRight.getPoint(frontDistance), topRight.getPoint(backDistance), bottomRight.getPoint(frontDistance)));
-
-		Ogre::PlaneBoundedVolumeList volList;
-		volList.push_back(vol);
-		this->volumeQuery->setVolumes(volList);
-
-		Ogre::SceneQueryResult qryresult = this->volumeQuery->execute();
-
-		Ogre::Matrix4 viewMatrix = this->camera->getViewMatrix(true);
-		Ogre::Matrix4 projMatrix = this->camera->getProjectionMatrix();
-		Ogre::Vector3 camPos = this->camera->getDerivedPosition();
-
-		left = (2.0f * left) - 1.0f;
-		right = (2.0f * right) - 1.0f;
-		top = (2.0f * (1.0f - top)) - 1.0f;
-		bottom = (2.0f * (1.0f - bottom)) - 1.0f;
-
-		Ogre::SceneQueryResultMovableList::iterator itr;
-		for (itr = qryresult.movables.begin(); itr != qryresult.movables.end(); ++itr)
-		{
-			// get the mesh information
-			size_t vertexCount;
-			size_t indexCount;
-			Ogre::Vector3* vertices = nullptr;
-			unsigned long* indices = nullptr;
-
-			// only check this result if its a hit against an entity
-			if ((*itr)->getMovableType().compare("Entity") == 0 || (*itr)->getMovableType().compare("Item") == 0)
+			if (left > right)
 			{
-				if ((*itr)->getMovableType().compare("Entity") == 0)
+				std::swap(left, right);
+			}
+			if (top > bottom)
+			{
+				std::swap(top, bottom);
+			}
+
+			//if its too small leave the function
+			if ((right - left) * (bottom - top) < 0.0001f)
+			{
+				return;
+			}
+
+			Ogre::Ray topLeft, topRight, bottomLeft, bottomRight;
+
+			topLeft = this->camera->getCameraToViewportRay(left, top);
+			topRight = this->camera->getCameraToViewportRay(right, top);
+			bottomLeft = this->camera->getCameraToViewportRay(left, bottom);
+			bottomRight = this->camera->getCameraToViewportRay(right, bottom);
+
+			Ogre::PlaneBoundedVolume vol;
+			// front plane
+			vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), topRight.getPoint(frontDistance), bottomLeft.getPoint(frontDistance)));
+			// back plane
+			vol.planes.push_back(Ogre::Plane(topLeft.getPoint(backDistance), bottomLeft.getPoint(backDistance), topRight.getPoint(backDistance)));
+			// top plane
+			vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), topLeft.getPoint(backDistance), topRight.getPoint(frontDistance)));
+			// bottom plane
+			vol.planes.push_back(Ogre::Plane(bottomLeft.getPoint(frontDistance), bottomRight.getPoint(frontDistance), bottomLeft.getPoint(backDistance)));
+			// left plane
+			vol.planes.push_back(Ogre::Plane(topLeft.getPoint(frontDistance), bottomLeft.getPoint(frontDistance), topLeft.getPoint(backDistance)));
+			// right plane
+			vol.planes.push_back(Ogre::Plane(topRight.getPoint(frontDistance), topRight.getPoint(backDistance), bottomRight.getPoint(frontDistance)));
+
+			Ogre::Matrix4 viewMatrix = this->camera->getViewMatrix(true);
+			Ogre::Matrix4 projMatrix = this->camera->getProjectionMatrix();
+			Ogre::Vector3 camPos = this->camera->getDerivedPosition();
+
+			left = (2.0f * left) - 1.0f;
+			right = (2.0f * right) - 1.0f;
+			top = (2.0f * (1.0f - top)) - 1.0f;
+			bottom = (2.0f * (1.0f - bottom)) - 1.0f;
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SelectionManager::selectGameObjects1", _10(left, right, top, bottom, viewMatrix, projMatrix, camPos, vol, frontDistance, backDistance),
+			{
+				Ogre::PlaneBoundedVolumeList volList;
+				volList.push_back(vol);
+				this->volumeQuery->setVolumes(volList);
+				Ogre::SceneQueryResult qryresult = this->volumeQuery->execute();
+
+				Ogre::SceneQueryResultMovableList::iterator itr;
+				for (itr = qryresult.movables.begin(); itr != qryresult.movables.end(); ++itr)
 				{
-					// get the entity to check
-					Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(*itr);
+					// get the mesh information
+					size_t vertexCount;
+					size_t indexCount;
+					Ogre::Vector3* vertices = nullptr;
+					unsigned long* indices = nullptr;
 
-					// TODO: Select invisible objects? To know where they are?
-					if (!entity->getVisible())
+					// only check this result if its a hit against an entity
+					if ((*itr)->getMovableType().compare("Entity") == 0 || (*itr)->getMovableType().compare("Item") == 0)
 					{
-						continue;
-					}
+						if ((*itr)->getMovableType().compare("Entity") == 0)
+						{
+							// get the entity to check
+							Ogre::v1::Entity* entity = static_cast<Ogre::v1::Entity*>(*itr);
 
-					// Get the mesh information
-					MathHelper::getInstance()->getMeshInformation(entity->getMesh(), vertexCount, vertices,
-																  indexCount, indices, entity->getParentNode()->_getDerivedPosition(), entity->getParentNode()->_getDerivedOrientation(), entity->getParentNode()->getScale());
-				}
-				else
-				{
-					if ((*itr)->getMovableType().compare("Item") == 0)
-					{
-						Ogre::Item* item = static_cast<Ogre::Item*>(*itr);
+							// TODO: Select invisible objects? To know where they are?
+							if (!entity->getVisible())
+							{
+								continue;
+							}
 
-						// TODO: Select invisible objects? To know where they are?
-						if (!item->getVisible())
+							// Get the mesh information
+							MathHelper::getInstance()->getMeshInformation(entity->getMesh(), vertexCount, vertices,
+																			indexCount, indices, entity->getParentNode()->_getDerivedPosition(), entity->getParentNode()->_getDerivedOrientation(), entity->getParentNode()->getScale());
+						}
+						else
+						{
+							if ((*itr)->getMovableType().compare("Item") == 0)
+							{
+								Ogre::Item* item = static_cast<Ogre::Item*>(*itr);
+
+								// TODO: Select invisible objects? To know where they are?
+								if (!item->getVisible())
+								{
+									continue;
+								}
+
+								// Get the mesh information
+								MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices,
+																				indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->getScale());
+							}
+						}
+
+						bool hitfound = false;
+						for (int i = 0; i < static_cast<int>(indexCount); i++)
+						{
+							Ogre::Vector3 vertexPos = vertices[indices[i]];
+
+							if ((vertexPos - camPos).length() > backDistance)
+							{
+								continue;
+							}
+							Ogre::Vector3 eyeSpacePos = viewMatrix * vertexPos;
+							// z < 0 means in front of cam
+							if (eyeSpacePos.z < 0)
+							{
+								// calculate projected pos
+								Ogre::Vector3 screenSpacePos = projMatrix * eyeSpacePos;
+
+								if (screenSpacePos.x > left && screenSpacePos.x < right && screenSpacePos.y < top && screenSpacePos.y > bottom)
+								{
+									hitfound = true;
+
+									GameObject* gameObject = nullptr;
+									try
+									{
+										// Here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+										gameObject = Ogre::any_cast<GameObject*>((*itr)->getUserObjectBindings().getUserAny());
+									}
+									catch (...)
+									{
+
+									}
+
+									if (nullptr != gameObject)
+									{
+										auto& it = this->selectedGameObjects.find(gameObject->getId());
+										if (it != this->selectedGameObjects.end())
+										{
+											this->selectionObserver->onHandleSelection(it->second.gameObject, false);
+											it->second.gameObject->selected = false;
+											this->isSelecting = false;
+											this->selectedGameObjects.erase(it);
+										}
+										else
+										{
+											this->selectionObserver->onHandleSelection(gameObject, true);
+											gameObject->selected = true;
+
+											SelectionManager::SelectionData selectionData;
+											selectionData.gameObject = gameObject;
+											// Store initial state
+											selectionData.initiallyDynamic = gameObject->isDynamic();
+
+											// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
+											if (false == gameObject->isDynamic())
+											{
+												gameObject->setDynamic(true);
+											}
+											this->isSelecting = true;
+
+											this->selectedGameObjects.emplace(gameObject->getId(), selectionData);
+										}
+									}
+									break;
+								}
+							}
+						}
+
+						if (!hitfound)
 						{
 							continue;
 						}
-
-						// Get the mesh information
-						MathHelper::getInstance()->getMeshInformation2(item->getMesh(), vertexCount, vertices,
-																	  indexCount, indices, item->getParentNode()->_getDerivedPosition(), item->getParentNode()->_getDerivedOrientation(), item->getParentNode()->getScale());
+						// free the verticies and indicies memory
+						OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
+						OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 					}
 				}
+			});
 
-				bool hitfound = false;
-				for (int i = 0; i < static_cast<int>(indexCount); i++)
-				{
-					Ogre::Vector3 vertexPos = vertices[indices[i]];
-
-					if ((vertexPos - camPos).length() > backDistance)
-					{
-						continue;
-					}
-					Ogre::Vector3 eyeSpacePos = viewMatrix * vertexPos;
-					// z < 0 means in front of cam
-					if (eyeSpacePos.z < 0)
-					{
-						// calculate projected pos
-						Ogre::Vector3 screenSpacePos = projMatrix * eyeSpacePos;
-                
-						if (screenSpacePos.x > left && screenSpacePos.x < right && screenSpacePos.y < top && screenSpacePos.y > bottom)
-						{
-							hitfound = true;
-
-							GameObject* gameObject = nullptr;
-							try
-							{
-								// Here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-								gameObject = Ogre::any_cast<GameObject*>((*itr)->getUserObjectBindings().getUserAny());
-
-							}
-							catch (...)
-							{
-
-							}
-
-							if (nullptr != gameObject)
-							{
-								auto& it = this->selectedGameObjects.find(gameObject->getId());
-								if (it != this->selectedGameObjects.end())
-								{
-									this->selectionObserver->onHandleSelection(it->second.gameObject, false);
-									it->second.gameObject->selected = false;
-									this->isSelecting = false;
-									this->selectedGameObjects.erase(it);
-								}
-								else
-								{
-									this->selectionObserver->onHandleSelection(gameObject, true);
-									gameObject->selected = true;
-
-									SelectionManager::SelectionData selectionData;
-									selectionData.gameObject = gameObject;
-									// Store initial state
-									selectionData.initiallyDynamic = gameObject->isDynamic();
-
-									// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
-									if (false == gameObject->isDynamic())
-									{
-										gameObject->setDynamic(true);
-									}
-									this->isSelecting = true;
-									
-									this->selectedGameObjects.emplace(gameObject->getId(), selectionData);
-								}
-							}
-							break;
-						}
-					}
-				}
-
-				if (!hitfound)
-				{
-					continue;
-				}
-				// free the verticies and indicies memory
-				OGRE_FREE(vertices, Ogre::MEMCATEGORY_GEOMETRY);
-				OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
-			}
-		}
-		this->volumeQuery->clearResults();
+			ENQUEUE_RENDER_COMMAND("SelectionManager::selectGameObjects2",
+			{
+				this->volumeQuery->clearResults();
+			});
 	}
 
 	std::unordered_map<unsigned long, SelectionManager::SelectionData>& SelectionManager::getSelectedGameObjects(void)

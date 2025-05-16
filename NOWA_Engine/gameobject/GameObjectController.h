@@ -229,6 +229,14 @@ namespace NOWA
 		GameObjectPtr clone(unsigned long originalGameObjectId, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
 			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
 
+		using GameObjectCreationCallback = std::function<void(GameObjectPtr)>;
+
+		void cloneWithCallback(GameObjectCreationCallback callback, const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
+			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
+
+		void cloneWithCallback(GameObjectCreationCallback callback, unsigned long originalGameObjectId, Ogre::SceneNode* parentNode = nullptr, unsigned long targetId = 0, const Ogre::Vector3& targetPosition = Ogre::Vector3::ZERO,
+			const Ogre::Quaternion& targetOrientation = Ogre::Quaternion::IDENTITY, const Ogre::Vector3& targetScale = Ogre::Vector3(1.0f, 1.0f, 1.0f), bool cloneDatablock = true);
+
 		/**
 		 * @brief		Registers a game object. Internally adds the game object to a map for management and sets a category id for scene queries.
 		 * @param[in]	gameObjectPtr	The game object to register

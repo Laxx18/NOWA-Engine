@@ -1,10 +1,8 @@
 #ifndef DOT_SCENE_IMPORT_MODULE_H
 #define DOT_SCENE_IMPORT_MODULE_H
 
-// #include "modules/CaelumModule.h"
-// #include "modules/PagedGeometryModule.h"
 #include "modules/OgreRecastModule.h"
-// #include "modules/HydraxModule.h"
+#include "modules/RenderCommandQueueModule.h"
 #include "utilities/rapidxml.hpp"
 #include "main/Events.h"
 

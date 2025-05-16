@@ -147,6 +147,11 @@ namespace NOWA
 		this->gameObjectController->resume();
 	}
 
+	void AppState::renderUpdate(Ogre::Real dt)
+	{
+
+	}
+
 	void AppState::update(Ogre::Real dt)
 	{
 		if (true == this->canUpdate)

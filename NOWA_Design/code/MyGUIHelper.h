@@ -3,6 +3,7 @@
 
 #include "MyGUI.h"
 #include "OgreString.h"
+#include "modules/RenderCommandQueueModule.h"
 
 class MyGUIHelper
 {
@@ -155,46 +156,25 @@ public:
 
 	void adaptFocus(MyGUI::Widget* sender, MyGUI::KeyCode code, const MyGUI::VectorWidgetPtr& items)
 	{
-		// Accept value
-		if (code == MyGUI::KeyCode::Return || code == MyGUI::KeyCode::Tab)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyguiHelper::adaptFocus", _3(sender, code, items),
 		{
-			MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
-			MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(sender);
-			sender->eventRootMouseChangeFocus(sender, false);
-		}
-
-		// Propagate via tab to next widget
-		if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && code == MyGUI::KeyCode::Tab)
-		{
-			for (size_t i = 0; i < items.size(); i++)
+			// Accept value
+			if (code == MyGUI::KeyCode::Return || code == MyGUI::KeyCode::Tab)
 			{
-				if (items[i] == sender && i < items.size() - 1)
-				{
-					MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i + 1]);
-					MyGUI::EditBox* editBox = items[i + 1]->castType<MyGUI::EditBox>(false);
-					if (nullptr != editBox)
-					{
-						editBox->setTextSelection(0, editBox->getTextLength());
-					}
-					MyGUI::EditBox* priorBox = items[i]->castType<MyGUI::EditBox>(false);
-					if (nullptr != priorBox)
-					{
-						priorBox->setTextSelection(0, 0);
-					}
-					break;
-				}
+				MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
+				MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(sender);
+				sender->eventRootMouseChangeFocus(sender, false);
 			}
-		}
-		else if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && code == MyGUI::KeyCode::Tab)
-		{
-			if (false == items.empty())
+
+			// Propagate via tab to next widget
+			if (false == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && code == MyGUI::KeyCode::Tab)
 			{
-				for (size_t i = items.size() - 1; i > 0; i--)
+				for (size_t i = 0; i < items.size(); i++)
 				{
-					if (items[i] == sender && i > 0)
+					if (items[i] == sender && i < items.size() - 1)
 					{
-						MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i - 1]);
-						MyGUI::EditBox* editBox = items[i - 1]->castType<MyGUI::EditBox>(false);
+						MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i + 1]);
+						MyGUI::EditBox* editBox = items[i + 1]->castType<MyGUI::EditBox>(false);
 						if (nullptr != editBox)
 						{
 							editBox->setTextSelection(0, editBox->getTextLength());
@@ -208,7 +188,32 @@ public:
 					}
 				}
 			}
-		}
+			else if (true == NOWA::InputDeviceCore::getSingletonPtr()->getKeyboard()->isKeyDown(OIS::KC_LSHIFT) && code == MyGUI::KeyCode::Tab)
+			{
+				if (false == items.empty())
+				{
+					for (size_t i = items.size() - 1; i > 0; i--)
+					{
+						if (items[i] == sender && i > 0)
+						{
+							MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i - 1]);
+							MyGUI::EditBox* editBox = items[i - 1]->castType<MyGUI::EditBox>(false);
+							if (nullptr != editBox)
+							{
+								editBox->setTextSelection(0, editBox->getTextLength());
+							}
+							MyGUI::EditBox* priorBox = items[i]->castType<MyGUI::EditBox>(false);
+							if (nullptr != priorBox)
+							{
+								priorBox->setTextSelection(0, 0);
+							}
+							break;
+
+						}
+					}
+				}
+			}
+		});
 	}
 
 	void resetTextSelection(MyGUI::Widget* sender, const MyGUI::VectorWidgetPtr& items)
@@ -216,18 +221,21 @@ public:
 		/*MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
 		MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget(sender);*/
 
-		for (size_t i = 0; i < items.size(); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIHelper::resetTextSelection", _2(sender, items),
 		{
-			if (items[i] != sender && i < items.size() - 1)
+			for (size_t i = 0; i < items.size(); i++)
 			{
-				// MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i + 1]);
-				MyGUI::EditBox* otherEditBox = items[i]->castType<MyGUI::EditBox>(false);
-				if (nullptr != otherEditBox)
+				if (items[i] != sender && i < items.size() - 1)
 				{
-					otherEditBox->setTextSelection(0, 0);
+					// MyGUI::InputManager::getInstance().setKeyFocusWidget(items[i + 1]);
+					MyGUI::EditBox* otherEditBox = items[i]->castType<MyGUI::EditBox>(false);
+					if (nullptr != otherEditBox)
+					{
+						otherEditBox->setTextSelection(0, 0);
+					}
 				}
 			}
-		}
+		});
 	}
 
 	void setScrollPosition(unsigned long id, int scrollPosition)
@@ -260,9 +268,12 @@ public:
 	{
 		if (nullptr == this->toolTip)
 		{
-			MyGUI::LayoutManager::getInstance().loadLayout("ToolTip2.layout");
-			this->toolTip = MyGUI::Gui::getInstance().findWidget<MyGUI::Widget>("tooltipPanel");
-			this->textDescription = MyGUI::Gui::getInstance().findWidget<MyGUI::EditBox>("text_Desc");
+			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIHelper::initToolTipData",
+			{
+				MyGUI::LayoutManager::getInstance().loadLayout("ToolTip2.layout");
+				this->toolTip = MyGUI::Gui::getInstance().findWidget<MyGUI::Widget>("tooltipPanel");
+				this->textDescription = MyGUI::Gui::getInstance().findWidget<MyGUI::EditBox>("text_Desc");
+			});
 		}
 	}
 
@@ -270,33 +281,39 @@ public:
 	{
 		if (info.type == MyGUI::ToolTipInfo::Show)
 		{
-			// First fetch the viewport size.  (Do not try to getParent()->getSize().
-			// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
-			const MyGUI::IntSize& viewSize = this->toolTip->getParentSize();
-			// Then set our tooltip panel size to something excessive...
-			this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
-			// ... update its caption to whatever the sender widget has for tooltip text
-			// (You did use setUserString(), right?)...
-			MyGUI::UString toolTipText = sender->getUserString("tooltip");
-			if (true == toolTipText.empty())
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::notifyToolTip1", _2(sender, info),
 			{
-				return;
-			}
-			this->textDescription->setCaption(toolTipText);
-			// ... fetch the new text size from the tooltip's Edit control...
-			const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
-			// ... and resize the tooltip panel to match it.  The Stretch property on the Edit
-			// control will see to it that the Edit control resizes along with it.
-			// The constants are padding to fit in the edges of the PanelSmall skin; adjust as
-			// necessary for your theme.
-			this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
-			// You can fade it in smooth if you like, but that gets obnoxious.
-			this->toolTip->setVisible(true);
-			boundedMove(this->toolTip, info.point);
+				// First fetch the viewport size.  (Do not try to getParent()->getSize().
+				// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
+				const MyGUI::IntSize & viewSize = this->toolTip->getParentSize();
+				// Then set our tooltip panel size to something excessive...
+				this->toolTip->setSize(viewSize.width / 2, viewSize.height / 2);
+				// ... update its caption to whatever the sender widget has for tooltip text
+				// (You did use setUserString(), right?)...
+				MyGUI::UString toolTipText = sender->getUserString("tooltip");
+				if (true == toolTipText.empty())
+				{
+					return;
+				}
+				this->textDescription->setCaption(toolTipText);
+				// ... fetch the new text size from the tooltip's Edit control...
+				const MyGUI::IntSize& textSize = this->textDescription->getTextSize();
+				// ... and resize the tooltip panel to match it.  The Stretch property on the Edit
+				// control will see to it that the Edit control resizes along with it.
+				// The constants are padding to fit in the edges of the PanelSmall skin; adjust as
+				// necessary for your theme.
+				this->toolTip->setSize(textSize.width + 6, textSize.height + 6);
+				// You can fade it in smooth if you like, but that gets obnoxious.
+				this->toolTip->setVisible(true);
+				boundedMove(this->toolTip, info.point);
+			});
 		}
 		else if (info.type == MyGUI::ToolTipInfo::Hide)
 		{
-			this->toolTip->setVisible(false);
+			ENQUEUE_RENDER_COMMAND("MyGUIHelper::notifyToolTip2",
+			{
+				this->toolTip->setVisible(false);
+			});
 		}
 		else if (info.type == MyGUI::ToolTipInfo::Move)
 		{
@@ -327,24 +344,34 @@ public:
 			boundedpoint.top -= offset.top + offset.top + size.height;
 		}
 
-		moving->setPosition(boundedpoint);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::boundedMove", _2(moving, boundedpoint),
+		{
+			moving->setPosition(boundedpoint);
+		});
 	}
 
 	void showAcceptedImage(const Ogre::Vector2& position, const Ogre::Vector2& size, Ogre::Real duration)
 	{
-		acceptedImageBox->setPosition(static_cast<int>(position.x), static_cast<int>(position.y));
-		acceptedImageBox->setSize(static_cast<int>(size.x), static_cast<int>(size.y));
-		acceptedImageBox->setVisible(true);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::showAcceptedImage1", _2(position, size),
+		{
+			acceptedImageBox->setPosition(static_cast<int>(position.x), static_cast<int>(position.y));
+			acceptedImageBox->setSize(static_cast<int>(size.x), static_cast<int>(size.y));
+			acceptedImageBox->setVisible(true);
+		});
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(duration));
 		// Shows for a specific amount of time
 		auto ptrFunction = [this]()
+		{
+			ENQUEUE_RENDER_COMMAND("MyGUIHelper::showAcceptedImage2",
 			{
 				acceptedImageBox->setVisible(false);
-			};
+			});
+		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+
 	}
 
 	void setCanMousePress(bool canMousePress)
@@ -369,9 +396,12 @@ private:
 		acceptedImageBox(nullptr),
 		canMousePress(true)
 	{
-		acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
-		acceptedImageBox->setImageTexture("circleGlow.png");
-		acceptedImageBox->setVisible(false);
+		ENQUEUE_RENDER_COMMAND_WAIT("MyGUIHelper::constructor",
+		{
+			acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
+			acceptedImageBox->setImageTexture("circleGlow.png");
+			acceptedImageBox->setVisible(false);
+		});
 	}
 
 private:

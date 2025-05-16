@@ -76,25 +76,28 @@ void ConfigPanel::destroyContent(void)
 
 void ConfigPanel::setVisible(bool show)
 {
-	this->mMainWidget->setVisible(show);
-	// Set main window as modal
-	if (true == show)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanel::setVisible", _1(show),
 	{
-		MyGUI::InputManager::getInstancePtr()->addWidgetModal(this->mMainWidget);
-		// New project
-		if (false == this->forSettings)
+		this->mMainWidget->setVisible(show);
+		// Set main window as modal
+		if (true == show)
 		{
-			this->configPanelProject->resetSettings();
+			MyGUI::InputManager::getInstancePtr()->addWidgetModal(this->mMainWidget);
+			// New project
+			if (false == this->forSettings)
+			{
+				this->configPanelProject->resetSettings();
+			}
+			else
+			{
+				this->applySettings();
+			}
 		}
 		else
 		{
-			this->applySettings();
+			MyGUI::InputManager::getInstancePtr()->removeWidgetModal(this->mMainWidget);
 		}
-	}
-	else
-	{
-		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(this->mMainWidget);
-	}
+	});
 }
 
 MyGUI::Widget* ConfigPanel::getMainWidget(void) const
@@ -269,10 +272,13 @@ bool ConfigPanel::checkProjectExists(const Ogre::String& projectName, const Ogre
 		std::ifstream ifs(filePathName);
 		if (true == ifs.good())
 		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+			ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanel::checkProjectExists",
+			{
+				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
+					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ConfigPanel::notifyMessageBoxEnd);
+				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ConfigPanel::notifyMessageBoxEnd);
+			});
 			return true;
 		}
 		break;
@@ -366,19 +372,22 @@ void ConfigPanelProject::initialise()
 
 void ConfigPanelProject::resetSettings(void)
 {
-	this->projectAutoCompleteSearch.reset();
+	ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::resetSettings",
+	{
+		this->projectAutoCompleteSearch.reset();
 
-	this->projectNameEdit->removeAllItems();
-	this->sceneNameEdit->removeAllItems();
-	this->projectNameEdit->setOnlyText("Project1");
-	this->sceneNameEdit->setOnlyText("Scene1");
-	this->createProjectCheck->setStateCheck(false);
-	this->openProjectCheck->setStateCheck(false);
-	this->createStateCheck->setStateCheck(false);
-	this->createStateCheck->setEnabled(true);
+		this->projectNameEdit->removeAllItems();
+		this->sceneNameEdit->removeAllItems();
+		this->projectNameEdit->setOnlyText("Project1");
+		this->sceneNameEdit->setOnlyText("Scene1");
+		this->createProjectCheck->setStateCheck(false);
+		this->openProjectCheck->setStateCheck(false);
+		this->createStateCheck->setStateCheck(false);
+		this->createStateCheck->setEnabled(true);
 
-	this->ignoreGlobalSceneCheck->setStateCheck(false);
-	this->useV2ItemCheck->setStateCheck(!NOWA::Core::getSingletonPtr()->getUseEntityType());
+		this->ignoreGlobalSceneCheck->setStateCheck(false);
+		this->useV2ItemCheck->setStateCheck(!NOWA::Core::getSingletonPtr()->getUseEntityType());
+	});
 
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", "", "/*");
 	for (auto filePathName : filePathNames)
@@ -395,127 +404,146 @@ void ConfigPanelProject::resetSettings(void)
 
 void ConfigPanelProject::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
-	if (this->themeBox == sender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::notifyComboChangedPosition", _2(sender, index),
 	{
-		if (index == 0)
+		if (this->themeBox == sender)
 		{
-			MyGUI::ResourceManager::getInstance().load("MyGUI_BlueWhiteTheme.xml");
+			if (index == 0)
+			{
+				MyGUI::ResourceManager::getInstance().load("MyGUI_BlueWhiteTheme.xml");
+			}
+			else if (index == 1)
+			{
+				MyGUI::ResourceManager::getInstance().load("MyGUI_BlackBlueTheme.xml");
+			}
+			else if (index == 2)
+			{
+				MyGUI::ResourceManager::getInstance().load("MyGUI_BlackOrangeTheme.xml");
+			}
+			else if (index == 3)
+			{
+				MyGUI::ResourceManager::getInstance().load("MyGUI_Skin_BlackTheme.xml");
+			}
 		}
-		else if (index == 1)
+		else if (this->projectNameEdit == sender)
 		{
-			MyGUI::ResourceManager::getInstance().load("MyGUI_BlackBlueTheme.xml");
+			this->projectNameEdit->setOnlyText(this->projectNameEdit->getItem(this->projectNameEdit->getIndexSelected()));
+			this->fillScenesSearchList();
 		}
-		else if (index == 2)
+		else if (this->sceneNameEdit == sender)
 		{
-			MyGUI::ResourceManager::getInstance().load("MyGUI_BlackOrangeTheme.xml");
+			this->sceneNameEdit->hideList();
 		}
-		else if (index == 3)
-		{
-			MyGUI::ResourceManager::getInstance().load("MyGUI_Skin_BlackTheme.xml");
-		}
-	}
-	else if (this->projectNameEdit == sender)
-	{
-		this->projectNameEdit->setOnlyText(this->projectNameEdit->getItem(this->projectNameEdit->getIndexSelected()));
-		this->fillScenesSearchList();
-	}
-	else if (this->sceneNameEdit == sender)
-	{
-		this->sceneNameEdit->hideList();
-	}
+	});
 }
 
 void ConfigPanelProject::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c)
 {
-	if (this->projectNameEdit == sender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onKeyButtonPressed", _2(sender, code),
 	{
-		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->projectNameEdit);
-	}
-	else if (this->sceneNameEdit == sender)
-	{
-		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->sceneNameEdit);
-	}
-	if (code == MyGUI::KeyCode::Tab || code == MyGUI::KeyCode::Return)
-	{
-		this->projectNameEdit->hideList();
-		this->sceneNameEdit->hideList();
-	}
-	MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
+		if (this->projectNameEdit == sender)
+		{
+			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->projectNameEdit);
+		}
+		else if (this->sceneNameEdit == sender)
+		{
+			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->sceneNameEdit);
+		}
+		if (code == MyGUI::KeyCode::Tab || code == MyGUI::KeyCode::Return)
+		{
+			this->projectNameEdit->hideList();
+			this->sceneNameEdit->hideList();
+		}
+		MyGUIHelper::getInstance()->adaptFocus(sender, code, this->itemsEdit);
+	});
 }
 
 void ConfigPanelProject::buttonHit(MyGUI::Widget* sender)
 {
-	MyGUI::Button* button = sender->castType<MyGUI::Button>();
-	// Invert the state
-	button->setStateCheck(!button->getStateCheck());
-
-	if (sender == this->createProjectCheck)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::buttonHit", _1(sender),
 	{
-		if (false == this->createProjectCheck->getStateCheck())
+		MyGUI::Button * button = sender->castType<MyGUI::Button>();
+		// Invert the state
+		button->setStateCheck(!button->getStateCheck());
+
+		if (sender == this->createProjectCheck)
 		{
-			this->createProjectCheck->setStateCheck(false);
-			// Note: when create project is is on, state must not be created!! Because its created anyways via create project! This behavior would collide!
-			this->createStateCheck->setEnabled(true);
+			if (false == this->createProjectCheck->getStateCheck())
+			{
+				this->createProjectCheck->setStateCheck(false);
+				// Note: when create project is is on, state must not be created!! Because its created anyways via create project! This behavior would collide!
+				this->createStateCheck->setEnabled(true);
+			}
+			else
+			{
+				this->createStateCheck->setStateCheck(false);
+				this->createStateCheck->setEnabled(false);
+			}
 		}
-		else
-		{
-			this->createStateCheck->setStateCheck(false);
-			this->createStateCheck->setEnabled(false);
-		}
-	}
+	});
 }
 
 void ConfigPanelProject::onEditSelectAccepted(MyGUI::Widget* sender)
 {
-	if (this->projectNameEdit == sender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onEditSelectAccepted", _1(sender),
 	{
-		this->fillScenesSearchList();
-	}
-	else if (this->sceneNameEdit == sender)
-	{
-		this->sceneNameEdit->hideList();
-	}
+		if (this->projectNameEdit == sender)
+		{
+			this->fillScenesSearchList();
+		}
+		else if (this->sceneNameEdit == sender)
+		{
+			this->sceneNameEdit->hideList();
+		}
+	});
 }
 
 void ConfigPanelProject::onEditTextChanged(MyGUI::Widget* sender)
 {
-	if (this->projectNameEdit == sender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onEditTextChanged", _1(sender),
 	{
-		auto& matchedNames = this->projectAutoCompleteSearch.findMatchedItemWithInText(this->projectNameEdit->getOnlyText());
-		this->projectNameEdit->removeAllItems();
-		if (false == matchedNames.getResults().empty())
+		if (this->projectNameEdit == sender)
 		{
-			for (size_t i = 0; i < matchedNames.getResults().size(); i++)
+			auto& matchedNames = this->projectAutoCompleteSearch.findMatchedItemWithInText(this->projectNameEdit->getOnlyText());
+			this->projectNameEdit->removeAllItems();
+			if (false == matchedNames.getResults().empty())
 			{
-				this->projectNameEdit->addItem(matchedNames.getResults()[i].getMatchedItemText());
+				for (size_t i = 0; i < matchedNames.getResults().size(); i++)
+				{
+					this->projectNameEdit->addItem(matchedNames.getResults()[i].getMatchedItemText());
+				}
+				this->projectNameEdit->showList();
 			}
-			this->projectNameEdit->showList();
+			else
+			{
+				this->projectNameEdit->hideList();
+			}
 		}
-		else
+		else if (this->sceneNameEdit == sender)
 		{
-			this->projectNameEdit->hideList();
-		}		
-	}
-	else if (this->sceneNameEdit == sender)
-	{
-		if (this->sceneNameEdit->getTextLength() > 0)
-			this->sceneNameEdit->showList();
-		else
-			this->sceneNameEdit->hideList();
-	}
+			if (this->sceneNameEdit->getTextLength() > 0)
+				this->sceneNameEdit->showList();
+			else
+				this->sceneNameEdit->hideList();
+		}
+	});
 }
 
 void ConfigPanelProject::onMouseButtonClicked(MyGUI::Widget* sender)
 {
 	if (this->getMainWidget() == sender)
 	{
-		this->projectNameEdit->hideList();
-		this->sceneNameEdit->hideList();
+		ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::onMouseButtonClicked",
+		{
+			this->projectNameEdit->hideList();
+			this->sceneNameEdit->hideList();
+		});
 	}
 }
 
 void ConfigPanelProject::fillScenesSearchList(void)
 {
+	// Threadsafety outside
 	auto filePathNames = NOWA::Core::getSingletonPtr()->getFilePathNames("Projects", this->projectNameEdit->getOnlyText(), "*.scene");
 	for (auto& filePathName : filePathNames)
 	{
@@ -537,22 +565,25 @@ void ConfigPanelProject::shutdown()
 
 void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item)
 {
-	if (true == projectName.empty())
-		this->projectNameEdit->setOnlyText("Project1");
-	else
-		this->projectNameEdit->setOnlyText(projectName);
-	
-	if (true == sceneName.empty())
-		this->sceneNameEdit->setOnlyText("Scene1");
-	else
-		this->sceneNameEdit->setOnlyText(sceneName);
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::setParameter", _8(projectName, sceneName, createProject, openProject, createOwnState, key, ignoreGlobalScene, useV2Item),
+	{
+		if (true == projectName.empty())
+			this->projectNameEdit->setOnlyText("Project1");
+		else
+			this->projectNameEdit->setOnlyText(projectName);
 
-	this->createProjectCheck->setStateCheck(createProject);
-	this->openProjectCheck->setStateCheck(openProject);
-	this->createStateCheck->setStateCheck(createOwnState);
-	this->keyEdit->setOnlyText(Ogre::StringConverter::toString(key));
-	this->ignoreGlobalSceneCheck->setStateCheck(ignoreGlobalScene);
-	this->useV2ItemCheck->setStateCheck(useV2Item);
+		if (true == sceneName.empty())
+			this->sceneNameEdit->setOnlyText("Scene1");
+		else
+			this->sceneNameEdit->setOnlyText(sceneName);
+
+		this->createProjectCheck->setStateCheck(createProject);
+		this->openProjectCheck->setStateCheck(openProject);
+		this->createStateCheck->setStateCheck(createOwnState);
+		this->keyEdit->setOnlyText(Ogre::StringConverter::toString(key));
+		this->ignoreGlobalSceneCheck->setStateCheck(ignoreGlobalScene);
+		this->useV2ItemCheck->setStateCheck(useV2Item);
+	});
 }
 
 std::tuple<Ogre::String, Ogre::String, bool, bool, bool, int, bool, bool> ConfigPanelProject::getParameter(void) const
@@ -669,47 +700,54 @@ void ConfigPanelSceneManager::shutdown()
 	this->itemsEdit.clear();
 }
 
-void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLightUpperHemisphere, const Ogre::ColourValue& ambientLightLowerHemisphere, Ogre::Real shadowFarDistance, Ogre::Real shadowDirectionalLightExtrusionDistance,
-	Ogre::Real shadowDirLightTextureOffset, const Ogre::ColourValue& shadowColor, unsigned short shadowQuality, unsigned short ambientLightMode, unsigned short forwardMode, unsigned int lightWidth,
-		unsigned int lightHeight, unsigned int numLightSlices, unsigned int lightsPerCell, Ogre::Real minLightDistance, Ogre::Real maxLightDistance, Ogre::Real renderDistance)
+void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLightUpperHemisphere, const Ogre::ColourValue& ambientLightLowerHemisphere, Ogre::Real shadowFarDistance, 
+	Ogre::Real shadowDirectionalLightExtrusionDistance, Ogre::Real shadowDirLightTextureOffset, const Ogre::ColourValue& shadowColor, unsigned short shadowQuality, unsigned short ambientLightMode, 
+	unsigned short forwardMode, unsigned int lightWidth, unsigned int lightHeight, unsigned int numLightSlices, unsigned int lightsPerCell, Ogre::Real minLightDistance, 
+	Ogre::Real maxLightDistance, Ogre::Real renderDistance)
 {
-	Ogre::Vector3 tempAmbientLightUpperHemisphere = Ogre::Vector3(ambientLightUpperHemisphere.r, ambientLightUpperHemisphere.g, ambientLightUpperHemisphere.b);
-	Ogre::Vector3 tempAmbientLowerUpperHemisphere = Ogre::Vector3(ambientLightLowerHemisphere.r, ambientLightLowerHemisphere.g, ambientLightLowerHemisphere.b);
-	Ogre::Vector3 tempShadowColour = Ogre::Vector3(shadowColor.r, shadowColor.g, shadowColor.b);
-
-	this->ambientLightEdit1->setOnlyText(Ogre::StringConverter::toString(tempAmbientLightUpperHemisphere));
-	this->ambientLightEdit2->setOnlyText(Ogre::StringConverter::toString(tempAmbientLowerUpperHemisphere));
-	this->shadowFarDistanceEdit->setOnlyText(Ogre::StringConverter::toString(shadowFarDistance));
-	this->shadowDirectionalLightExtrusionDistanceEdit->setOnlyText(Ogre::StringConverter::toString(shadowDirectionalLightExtrusionDistance));
-	this->shadowDirLightTextureOffsetEdit->setOnlyText(Ogre::StringConverter::toString(shadowDirLightTextureOffset));
-	this->shadowColorEdit->setOnlyText(Ogre::StringConverter::toString(tempShadowColour));
-	this->shadowQualityCombo->setIndexSelected(shadowQuality);
-	this->ambientLightModeCombo->setIndexSelected(ambientLightMode);
-	
-	this->forwardModeCombo->setIndexSelected(forwardMode);
-	this->notifyComboChangedPosition(this->forwardModeCombo, this->forwardModeCombo->getIndexSelected());
-
-	// Ogre tells that width/height must be modular devideable by 4
-	if (lightWidth % ARRAY_PACKED_REALS != 0)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::setParameter", _16(ambientLightUpperHemisphere, ambientLightLowerHemisphere, shadowFarDistance,
+		shadowDirectionalLightExtrusionDistance, shadowDirLightTextureOffset, shadowColor, shadowQuality, ambientLightMode, 
+		forwardMode, &lightWidth, &lightHeight, numLightSlices, lightsPerCell, minLightDistance,
+		maxLightDistance, &renderDistance),
 	{
-		lightWidth = 4;
-	}
-	if (lightHeight % ARRAY_PACKED_REALS != 0)
-	{
-		lightHeight = 4;
-	}
+		Ogre::Vector3 tempAmbientLightUpperHemisphere = Ogre::Vector3(ambientLightUpperHemisphere.r, ambientLightUpperHemisphere.g, ambientLightUpperHemisphere.b);
+		Ogre::Vector3 tempAmbientLowerUpperHemisphere = Ogre::Vector3(ambientLightLowerHemisphere.r, ambientLightLowerHemisphere.g, ambientLightLowerHemisphere.b);
+		Ogre::Vector3 tempShadowColour = Ogre::Vector3(shadowColor.r, shadowColor.g, shadowColor.b);
 
-	this->lightWidthEditBox->setOnlyText(Ogre::StringConverter::toString(lightWidth));
-	this->lightHeightEditBox->setOnlyText(Ogre::StringConverter::toString(lightHeight));
-	this->numLightSlicesEditBox->setOnlyText(Ogre::StringConverter::toString(numLightSlices));
-	this->lightsPerCellEditBox->setOnlyText(Ogre::StringConverter::toString(lightsPerCell));
-	this->minLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(minLightDistance));
-	this->maxLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(maxLightDistance));
-	if (renderDistance <= 0)
-	{
-		renderDistance = 100;
-	}
-	this->renderDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(renderDistance));
+		this->ambientLightEdit1->setOnlyText(Ogre::StringConverter::toString(tempAmbientLightUpperHemisphere));
+		this->ambientLightEdit2->setOnlyText(Ogre::StringConverter::toString(tempAmbientLowerUpperHemisphere));
+		this->shadowFarDistanceEdit->setOnlyText(Ogre::StringConverter::toString(shadowFarDistance));
+		this->shadowDirectionalLightExtrusionDistanceEdit->setOnlyText(Ogre::StringConverter::toString(shadowDirectionalLightExtrusionDistance));
+		this->shadowDirLightTextureOffsetEdit->setOnlyText(Ogre::StringConverter::toString(shadowDirLightTextureOffset));
+		this->shadowColorEdit->setOnlyText(Ogre::StringConverter::toString(tempShadowColour));
+		this->shadowQualityCombo->setIndexSelected(shadowQuality);
+		this->ambientLightModeCombo->setIndexSelected(ambientLightMode);
+
+		this->forwardModeCombo->setIndexSelected(forwardMode);
+		this->notifyComboChangedPosition(this->forwardModeCombo, this->forwardModeCombo->getIndexSelected());
+
+		// Ogre tells that width/height must be modular devideable by 4
+		if (lightWidth % ARRAY_PACKED_REALS != 0)
+		{
+			lightWidth = 4;
+		}
+		if (lightHeight % ARRAY_PACKED_REALS != 0)
+		{
+			lightHeight = 4;
+		}
+
+		this->lightWidthEditBox->setOnlyText(Ogre::StringConverter::toString(lightWidth));
+		this->lightHeightEditBox->setOnlyText(Ogre::StringConverter::toString(lightHeight));
+		this->numLightSlicesEditBox->setOnlyText(Ogre::StringConverter::toString(numLightSlices));
+		this->lightsPerCellEditBox->setOnlyText(Ogre::StringConverter::toString(lightsPerCell));
+		this->minLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(minLightDistance));
+		this->maxLightDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(maxLightDistance));
+		if (renderDistance <= 0)
+		{
+			renderDistance = 100;
+		}
+		this->renderDistanceEditBox->setOnlyText(Ogre::StringConverter::toString(renderDistance));
+	});
 }
 
 std::tuple<Ogre::ColourValue, Ogre::ColourValue, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::ColourValue, unsigned short,
@@ -739,84 +777,96 @@ void ConfigPanelSceneManager::notifyComboChangedPosition(MyGUI::ComboBox* sender
 {
 	if (sender == this->forwardModeCombo)
 	{
-		if (0 == index || 1 == index)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyComboChangedPosition", _1(index),
 		{
-			this->lightWidthEditBox->setVisible(false);
-			this->lightHeightEditBox->setVisible(false);
-			this->numLightSlicesEditBox->setVisible(false);
-			this->lightsPerCellEditBox->setVisible(false);
-			this->minLightDistanceEditBox->setVisible(false);
-			this->maxLightDistanceEditBox->setVisible(false);
-			this->renderDistanceEditBox->setVisible(false);
-			this->lightWidthTextBox->setVisible(false);
-			this->lightHeightTextBox->setVisible(false);
-			this->numLightSlicesTextBox->setVisible(false);
-			this->lightsPerCellTextBox->setVisible(false);
-			this->minLightDistanceTextBox->setVisible(false);
-			this->maxLightDistanceTextBox->setVisible(false);
-			this->renderDistanceTextBox->setVisible(false);
-		}
-		else
-		{
-			this->lightWidthEditBox->setVisible(true);
-			this->lightHeightEditBox->setVisible(true);
-			this->numLightSlicesEditBox->setVisible(true);
-			this->lightsPerCellEditBox->setVisible(true);
-			this->minLightDistanceEditBox->setVisible(true);
-			this->maxLightDistanceEditBox->setVisible(true);
-			this->renderDistanceEditBox->setVisible(true);
-			this->lightWidthTextBox->setVisible(true);
-			this->lightHeightTextBox->setVisible(true);
-			this->numLightSlicesTextBox->setVisible(true);
-			this->lightsPerCellTextBox->setVisible(true);
-			this->minLightDistanceTextBox->setVisible(true);
-			this->maxLightDistanceTextBox->setVisible(true);
-			this->renderDistanceTextBox->setVisible(true);
-		}
+			if (0 == index || 1 == index)
+			{
+				this->lightWidthEditBox->setVisible(false);
+				this->lightHeightEditBox->setVisible(false);
+				this->numLightSlicesEditBox->setVisible(false);
+				this->lightsPerCellEditBox->setVisible(false);
+				this->minLightDistanceEditBox->setVisible(false);
+				this->maxLightDistanceEditBox->setVisible(false);
+				this->renderDistanceEditBox->setVisible(false);
+				this->lightWidthTextBox->setVisible(false);
+				this->lightHeightTextBox->setVisible(false);
+				this->numLightSlicesTextBox->setVisible(false);
+				this->lightsPerCellTextBox->setVisible(false);
+				this->minLightDistanceTextBox->setVisible(false);
+				this->maxLightDistanceTextBox->setVisible(false);
+				this->renderDistanceTextBox->setVisible(false);
+			}
+			else
+			{
+				this->lightWidthEditBox->setVisible(true);
+				this->lightHeightEditBox->setVisible(true);
+				this->numLightSlicesEditBox->setVisible(true);
+				this->lightsPerCellEditBox->setVisible(true);
+				this->minLightDistanceEditBox->setVisible(true);
+				this->maxLightDistanceEditBox->setVisible(true);
+				this->renderDistanceEditBox->setVisible(true);
+				this->lightWidthTextBox->setVisible(true);
+				this->lightHeightTextBox->setVisible(true);
+				this->numLightSlicesTextBox->setVisible(true);
+				this->lightsPerCellTextBox->setVisible(true);
+				this->minLightDistanceTextBox->setVisible(true);
+				this->maxLightDistanceTextBox->setVisible(true);
+				this->renderDistanceTextBox->setVisible(true);
+			}
+		});
 	}
 }
 
 void ConfigPanelSceneManager::buttonHit(MyGUI::Widget* sender)
 {
-	if (this->ambientLightColour1 == sender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::buttonHit", _1(sender),
 	{
-		ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(Ogre::String("colour1")));
-	}
-	else if (this->ambientLightColour2 == sender)
-	{
-		ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(Ogre::String("colour2")));
-	}
+		if (this->ambientLightColour1 == sender)
+		{
+			ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(Ogre::String("colour1")));
+		}
+		else if (this->ambientLightColour2 == sender)
+		{
+			ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(Ogre::String("colour2")));
+		}
 
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
 
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(parent->getMainWidget());
-	MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &ConfigPanelSceneManager::notifyColourAccept);
-	ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate(this, &ConfigPanelSceneManager::notifyColourCancel);
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(parent->getMainWidget());
+		MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &ConfigPanelSceneManager::notifyColourAccept);
+		ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate(this, &ConfigPanelSceneManager::notifyColourCancel);
+	});
 }
 
 void ConfigPanelSceneManager::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	Ogre::String* colourSender = sender->getWidget()->getUserData<Ogre::String>();
-	Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
-	if (nullptr != colourSender)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyColourAccept", _1(sender),
 	{
-		if ("colour1" == *colourSender)
-			this->ambientLightEdit1->setOnlyText(Ogre::StringConverter::toString(colour));
-		else if ("colour2" == *colourSender)
-			this->ambientLightEdit2->setOnlyText(Ogre::StringConverter::toString(colour));
-	}
+		Ogre::String * colourSender = sender->getWidget()->getUserData<Ogre::String>();
+		Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
+		if (nullptr != colourSender)
+		{
+			if ("colour1" == *colourSender)
+				this->ambientLightEdit1->setOnlyText(Ogre::StringConverter::toString(colour));
+			else if ("colour2" == *colourSender)
+				this->ambientLightEdit2->setOnlyText(Ogre::StringConverter::toString(colour));
+		}
 
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	MyGUI::InputManager::getInstancePtr()->addWidgetModal(parent->getMainWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		MyGUI::InputManager::getInstancePtr()->addWidgetModal(parent->getMainWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+	});
 }
 
 void ConfigPanelSceneManager::notifyColourCancel(MyGUI::ColourPanel* sender)
 {
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	MyGUI::InputManager::getInstancePtr()->addWidgetModal(parent->getMainWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyColourCancel", _1(sender),
+	{
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		MyGUI::InputManager::getInstancePtr()->addWidgetModal(parent->getMainWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+	});
 }
 
 
@@ -871,9 +921,12 @@ void ConfigPanelOgreNewt::shutdown()
 
 void ConfigPanelOgreNewt::buttonHit(MyGUI::Widget* sender)
 {
-	MyGUI::Button* button = sender->castType<MyGUI::Button>();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _1(sender),
+	{
+		MyGUI::Button * button = sender->castType<MyGUI::Button>();
 		// Invert the state
-	button->setStateCheck(!button->getStateCheck());
+		button->setStateCheck(!button->getStateCheck());
+	});
 }
 
 void ConfigPanelOgreNewt::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c)
@@ -884,15 +937,18 @@ void ConfigPanelOgreNewt::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCo
 void ConfigPanelOgreNewt::setParameter(Ogre::Real updateRate, unsigned short solverModel, bool solverForSingleIsland, unsigned short broadPhaseAlgorithm, unsigned short threadCount, Ogre::Real linearDamping,
 	const Ogre::Vector3& angularDamping, const Ogre::Vector3& gravity)
 {
-	this->updateRateEdit->setOnlyText(Ogre::StringConverter::toString(updateRate));
-	this->solverModelCombo->setIndexSelected(solverModel);
-	this->solverForSingleIslandCheck->setStateSelected(solverForSingleIsland);
-	this->broadPhaseAlgorithmCombo->setIndexSelected(broadPhaseAlgorithm);
-	size_t index = this->threadCountCombo->findItemIndexWith(Ogre::StringConverter::toString(threadCount));
-	this->threadCountCombo->setIndexSelected(index);
-	this->linearDampingEdit->setOnlyText(Ogre::StringConverter::toString(linearDamping));
-	this->angularDampingEdit->setOnlyText(Ogre::StringConverter::toString(angularDamping));
-	this->gravityEdit->setOnlyText(Ogre::StringConverter::toString(gravity));
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::setParameter", _8(updateRate, solverModel, solverForSingleIsland, broadPhaseAlgorithm, threadCount, linearDamping, angularDamping, gravity),
+	{
+		this->updateRateEdit->setOnlyText(Ogre::StringConverter::toString(updateRate));
+		this->solverModelCombo->setIndexSelected(solverModel);
+		this->solverForSingleIslandCheck->setStateSelected(solverForSingleIsland);
+		this->broadPhaseAlgorithmCombo->setIndexSelected(broadPhaseAlgorithm);
+		size_t index = this->threadCountCombo->findItemIndexWith(Ogre::StringConverter::toString(threadCount));
+		this->threadCountCombo->setIndexSelected(index);
+		this->linearDampingEdit->setOnlyText(Ogre::StringConverter::toString(linearDamping));
+		this->angularDampingEdit->setOnlyText(Ogre::StringConverter::toString(angularDamping));
+		this->gravityEdit->setOnlyText(Ogre::StringConverter::toString(gravity));
+	});
 }
 
 std::tuple<Ogre::Real, unsigned short, bool, unsigned short, unsigned short, Ogre::Real, Ogre::Vector3, Ogre::Vector3> ConfigPanelOgreNewt::getParameter(void) const
@@ -979,9 +1035,12 @@ void ConfigPanelRecast::shutdown()
 
 void ConfigPanelRecast::buttonHit(MyGUI::Widget* sender)
 {
-	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	// Invert the state
-	button->setStateCheck(!button->getStateCheck());
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _1(sender),
+	{
+		MyGUI::Button* button = sender->castType<MyGUI::Button>();
+		button->setStateCheck(!button->getStateCheck());
+	});
 }
 
 void ConfigPanelRecast::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c)
@@ -1004,173 +1063,176 @@ void ConfigPanelRecast::setParameter(bool hasRecast,
 										Ogre::Real detailSampleDist,
 										Ogre::Real detailSampleMaxError,
 										Ogre::Vector3 pointExtends,
-										bool keepInterResults
-									)
+										bool keepInterResults)
 {
-	MyGUI::TextBox* textBox = findWidgetBySuffix(mWidgetClient, "cellSizeText");
-	// Do not call that twice
-	if (true == textBox->getNeedToolTip())
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _16(hasRecast, cellSize, cellHeight, agentMaxSlope, agentMaxClimb, 
+		agentHeight, agentRadius, edgeMaxLen, edgeMaxError, regionMinSize, regionMergeSize, vertsPerPoly, detailSampleDist, detailSampleMaxError, pointExtends, keepInterResults),
 	{
-		return;
-	}
+		MyGUI::TextBox * textBox = findWidgetBySuffix(mWidgetClient, "cellSizeText");
+		// Do not call that twice
+		if (true == textBox->getNeedToolTip())
+		{
+			return;
+		}
 
-	this->navigationCheck->setStateCheck(hasRecast);
-	this->navigationCheck->setNeedToolTip(true);
-	this->navigationCheck->setUserString("tooltip", "Use recast navigation mesh feature for this scene?");
-	this->navigationCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-	this->cellSizeEdit->setOnlyText(Ogre::StringConverter::toString(cellSize));
+		this->navigationCheck->setStateCheck(hasRecast);
+		this->navigationCheck->setNeedToolTip(true);
+		this->navigationCheck->setUserString("tooltip", "Use recast navigation mesh feature for this scene?");
+		this->navigationCheck->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->cellSizeEdit->setOnlyText(Ogre::StringConverter::toString(cellSize));
 
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Cellsize (cs) is the width and depth resolution used when sampling the source geometry. "
-		"The width and depth of the cell columns that make up voxel fields. "
-		"Cells are laid out on the width / depth plane of voxel fields. Width is associated with the x - axis of the source geometry.Depth is associated with the z - axis. "
-		"A lower value allows for the generated meshes to more closely match the source geometry, but at a higher processing and memory cost. "
-		"The xz - plane cell size to use for fields. [Limit:> 0][Units:wu]. "
-		"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
-		"The minimum value for this parameter depends on the platform's ");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Cellsize (cs) is the width and depth resolution used when sampling the source geometry. "
+			"The width and depth of the cell columns that make up voxel fields. "
+			"Cells are laid out on the width / depth plane of voxel fields. Width is associated with the x - axis of the source geometry.Depth is associated with the z - axis. "
+			"A lower value allows for the generated meshes to more closely match the source geometry, but at a higher processing and memory cost. "
+			"The xz - plane cell size to use for fields. [Limit:> 0][Units:wu]. "
+			"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
+			"The minimum value for this parameter depends on the platform's ");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-	this->cellHeightEdit->setOnlyText(Ogre::StringConverter::toString(cellHeight));
-	textBox = findWidgetBySuffix(mWidgetClient, "cellHeightText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Cellheight (ch) is the height resolution used when sampling the source geometry. The height of the voxels in voxel fields. "
-		"Height is associated with the y - axis of the source geometry. "
-		"A smaller value allows for the final meshes to more closely match the source geometry at a potentially higher processing cost. "
-		"(Unlike cellSize, using a lower value for cellHeight does not significantly increase memory use.) "
-		"The y - axis cell size to use for fields. [Limit:> 0][Units:wu]. "
-		"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
-		"The minimum value for this parameter depends on the platform's floating point accuracy, with the practical minimum usually around 0.05. "
-		"Setting ch lower will result in more accurate detection of areas the agent can still pass under, as min walkable height is discretisized "
-		"in number of cells. Note: If several levels (e.g. in a house) are involved, this value should be at least 0.4, else It can happen, that the player does stand on the level 2 but navigation points are calculated for level 1.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-
-
-	this->agentMaxSlopeEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxSlope));
-	textBox = findWidgetBySuffix(mWidgetClient, "agentMaxSlopeText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "* The maximum slope that is considered traversable (in degrees). "
-		"[Limits:0 <= value < 180] "
-		"The practical upper limit for this parameter is usually around 85 degrees. All higher values will result in performance issues during nav mesh generation.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->cellHeightEdit->setOnlyText(Ogre::StringConverter::toString(cellHeight));
+		textBox = findWidgetBySuffix(mWidgetClient, "cellHeightText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Cellheight (ch) is the height resolution used when sampling the source geometry. The height of the voxels in voxel fields. "
+			"Height is associated with the y - axis of the source geometry. "
+			"A smaller value allows for the final meshes to more closely match the source geometry at a potentially higher processing cost. "
+			"(Unlike cellSize, using a lower value for cellHeight does not significantly increase memory use.) "
+			"The y - axis cell size to use for fields. [Limit:> 0][Units:wu]. "
+			"cs and ch define voxel / grid / cell size. So their values have significant side effects on all parameters defined in voxel units. "
+			"The minimum value for this parameter depends on the platform's floating point accuracy, with the practical minimum usually around 0.05. "
+			"Setting ch lower will result in more accurate detection of areas the agent can still pass under, as min walkable height is discretisized "
+			"in number of cells. Note: If several levels (e.g. in a house) are involved, this value should be at least 0.4, else It can happen, that the player does stand on the level 2 but navigation points are calculated for level 1.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
-
-	this->agentMaxClimbEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxClimb));
-	textBox = findWidgetBySuffix(mWidgetClient, "agentHeightText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The Maximum ledge height that is considered to still be traversable. "
-		"This parameter serves at setting walkableClimb(maxTraversableStep) parameter, precision of this parameter is determined by cellHeight(ch). "
-		"[Limit:>= 0] "
-		"Allows the mesh to flow over low lying obstructions such as curbs and up / down stairways. The value is usually set to how far up / down an agent can step.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->agentMaxSlopeEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxSlope));
+		textBox = findWidgetBySuffix(mWidgetClient, "agentMaxSlopeText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "* The maximum slope that is considered traversable (in degrees). "
+			"[Limits:0 <= value < 180] "
+			"The practical upper limit for this parameter is usually around 85 degrees. All higher values will result in performance issues during nav mesh generation.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
 
-	this->agentHeightEdit->setOnlyText(Ogre::StringConverter::toString(agentHeight));
-	textBox = findWidgetBySuffix(mWidgetClient, "agentMaxClimbText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The height of an agent. Defines the minimum height that "
-		"agents can walk under. Parts of the navmesh with lower ceilings will be pruned off.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->agentMaxClimbEdit->setOnlyText(Ogre::StringConverter::toString(agentMaxClimb));
+		textBox = findWidgetBySuffix(mWidgetClient, "agentHeightText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The Maximum ledge height that is considered to still be traversable. "
+			"This parameter serves at setting walkableClimb(maxTraversableStep) parameter, precision of this parameter is determined by cellHeight(ch). "
+			"[Limit:>= 0] "
+			"Allows the mesh to flow over low lying obstructions such as curbs and up / down stairways. The value is usually set to how far up / down an agent can step.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
-	this->agentRadiusEdit->setOnlyText(Ogre::StringConverter::toString(agentRadius));
-	textBox = findWidgetBySuffix(mWidgetClient, "agentRadiusText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The radius on the xz (ground) plane of the circle that describes the agent (character) size. "
-		"Serves at setting walkableRadius(traversableAreaBorderSize) parameter, the precision of walkableRadius is affected by cellSize(cs). "
-		"This parameter is also used by DetourCrowd to determine the area other agents have to avoid in order not to collide with an agent. "
-		"The distance to erode / shrink the walkable area of the heightfield away from obstructions. "
-		"[Limit:>= 0] "
-		"In general, this is the closest any part of the final mesh should get to an obstruction in the source geometry. It is usually set to the maximum agent radius. "
-		"While a value of zero is legal, it is not recommended and can result in odd edge case issues.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+		this->agentHeightEdit->setOnlyText(Ogre::StringConverter::toString(agentHeight));
+		textBox = findWidgetBySuffix(mWidgetClient, "agentMaxClimbText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The height of an agent. Defines the minimum height that "
+			"agents can walk under. Parts of the navmesh with lower ceilings will be pruned off.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
-	this->edgeMaxLenEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxLen));
-	textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxLenText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The maximum allowed length for contour edges along the border of the mesh. "
-		"[Limit:>= 0] "
-		"Extra vertices will be inserted as needed to keep contour edges below this length. A value of zero effectively disables this feature. "
-		"Serves at setting maxEdgeLen, the precision of maxEdgeLen is affected by cellSize(cs).");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-
-	this->edgeMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxError));
-	textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxErrorText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The maximum distance a simplfied contour's border edges should deviate the original raw contour. (edge matching) "
-		"[Limit:>= 0][Units:wu] "
-		"The effect of this parameter only applies to the xz - plane. "
-		"The maximum distance the edges of meshes may deviate from the source geometry. "
-		"A lower value will result in mesh edges following the xz - plane geometry contour more accurately at the expense of an increased triangle count. "
-		"A value to zero is not recommended since it can result in a large increase in the number of polygons in the final meshes at a high processing cost.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-
-	this->regionMinSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMinSize));
-	textBox = findWidgetBySuffix(mWidgetClient, "regionMinSizeText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The minimum number of cells allowed to form isolated island areas (size). "
-		"[Limit:>= 0] "
-		"Any regions that are smaller than this area will be marked as unwalkable. This is useful in removing useless regions that can sometimes form on geometry such as table tops, box tops, etc.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-	
-	this->regionMergeSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMergeSize));
-	textBox = findWidgetBySuffix(mWidgetClient, "regionMergeSizeText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Any regions with a span count smaller than this value will, if possible, be merged with larger regions. [Limit:>= 0][Units:vx]");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->agentRadiusEdit->setOnlyText(Ogre::StringConverter::toString(agentRadius));
+		textBox = findWidgetBySuffix(mWidgetClient, "agentRadiusText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The radius on the xz (ground) plane of the circle that describes the agent (character) size. "
+			"Serves at setting walkableRadius(traversableAreaBorderSize) parameter, the precision of walkableRadius is affected by cellSize(cs). "
+			"This parameter is also used by DetourCrowd to determine the area other agents have to avoid in order not to collide with an agent. "
+			"The distance to erode / shrink the walkable area of the heightfield away from obstructions. "
+			"[Limit:>= 0] "
+			"In general, this is the closest any part of the final mesh should get to an obstruction in the source geometry. It is usually set to the maximum agent radius. "
+			"While a value of zero is legal, it is not recommended and can result in odd edge case issues.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
-	this->vertsPerPolyCombo->setIndexSelected(vertsPerPoly - 1);
-	textBox = findWidgetBySuffix(mWidgetClient, "vertsPerPolyText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The maximum number of vertices allowed for polygons generated during the contour to polygon conversion process. "
-		"[Limit:>= 3] "
-		"If the mesh data is to be used to construct __declspec(dllexport) a Detour navigation mesh, then the upper limit is limited to <= DT_VERTS_PER_POLYGON(= 6). "
-		"The maximum number of vertices per polygon for polygons generated during the voxel to polygon conversion process. "
-		"Higher values increase processing cost, but can also result in better formed polygons in the final meshes. A value of around 6 is generally adequate with diminishing returns for higher values.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->edgeMaxLenEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxLen));
+		textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxLenText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The maximum allowed length for contour edges along the border of the mesh. "
+			"[Limit:>= 0] "
+			"Extra vertices will be inserted as needed to keep contour edges below this length. A value of zero effectively disables this feature. "
+			"Serves at setting maxEdgeLen, the precision of maxEdgeLen is affected by cellSize(cs).");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-	this->detailSampleDistEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleDist));
-	textBox = findWidgetBySuffix(mWidgetClient, "detailSampleDistText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Sets the sampling distance to use when generating the detail mesh. "
-		"(For height detail only.) [Limits:0 or >= 0.9][Units:wu] "
-		"Sets the sampling distance to use when matching the detail mesh to the surface of the original geometry. "
-		"Impacts how well the final detail mesh conforms to the surface contour of the original geometry. "
-		"Higher values result in a detail mesh which conforms more closely to the original geometry's surface at the cost of a higher final triangle count and higher processing cost. "
-		"Setting this argument to less than 0.9 disables this functionality.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->edgeMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(edgeMaxError));
+		textBox = findWidgetBySuffix(mWidgetClient, "edgeMaxErrorText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The maximum distance a simplfied contour's border edges should deviate the original raw contour. (edge matching) "
+			"[Limit:>= 0][Units:wu] "
+			"The effect of this parameter only applies to the xz - plane. "
+			"The maximum distance the edges of meshes may deviate from the source geometry. "
+			"A lower value will result in mesh edges following the xz - plane geometry contour more accurately at the expense of an increased triangle count. "
+			"A value to zero is not recommended since it can result in a large increase in the number of polygons in the final meshes at a high processing cost.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
+		this->regionMinSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMinSize));
+		textBox = findWidgetBySuffix(mWidgetClient, "regionMinSizeText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The minimum number of cells allowed to form isolated island areas (size). "
+			"[Limit:>= 0] "
+			"Any regions that are smaller than this area will be marked as unwalkable. This is useful in removing useless regions that can sometimes form on geometry such as table tops, box tops, etc.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
-	this->detailSampleMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleMaxError));
-	textBox = findWidgetBySuffix(mWidgetClient, "detailSampleMaxErrorText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "The maximum distance the detail mesh surface should deviate from heightfield data. "
-		"(For height detail only.) [Limit:>= 0][Units:wu] "
-		"The maximum distance the surface of the detail mesh may deviate from the surface of the original geometry. "
-		"The accuracy is impacted by contourSampleDistance. "
-		"The value of this parameter has no meaning if contourSampleDistance is set to zero. "
-		"Setting the value to zero is not recommended since it can result in a large increase in the number of triangles in the final detail mesh at a high processing cost. "
-		"Stronly related to detailSampleDist(contourSampleDistance).");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-
-
-	this->pointExtendsEdit->setOnlyText(Ogre::StringConverter::toString(pointExtends));
-	textBox = findWidgetBySuffix(mWidgetClient, "pointExtendsText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Set the offset size (box) around points used to look for nav polygons. "
-		"This offset is used in all search for points on the navmesh. "
-		"The maximum offset that a specified point can be off from the navmesh.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->regionMergeSizeEdit->setOnlyText(Ogre::StringConverter::toString(regionMergeSize));
+		textBox = findWidgetBySuffix(mWidgetClient, "regionMergeSizeText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Any regions with a span count smaller than this value will, if possible, be merged with larger regions. [Limit:>= 0][Units:vx]");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
 
 
-	this->keepInterResultsCheck->setStateSelected(keepInterResults);
-	textBox = findWidgetBySuffix(mWidgetClient, "keepInterResultsText");
-	textBox->setNeedToolTip(true);
-	textBox->setUserString("tooltip", "Determines whether intermediary results are stored in OgreRecast or whether they are removed after navmesh creation.");
-	textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->vertsPerPolyCombo->setIndexSelected(vertsPerPoly - 1);
+		textBox = findWidgetBySuffix(mWidgetClient, "vertsPerPolyText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The maximum number of vertices allowed for polygons generated during the contour to polygon conversion process. "
+			"[Limit:>= 3] "
+			"If the mesh data is to be used to construct __declspec(dllexport) a Detour navigation mesh, then the upper limit is limited to <= DT_VERTS_PER_POLYGON(= 6). "
+			"The maximum number of vertices per polygon for polygons generated during the voxel to polygon conversion process. "
+			"Higher values increase processing cost, but can also result in better formed polygons in the final meshes. A value of around 6 is generally adequate with diminishing returns for higher values.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+		this->detailSampleDistEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleDist));
+		textBox = findWidgetBySuffix(mWidgetClient, "detailSampleDistText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Sets the sampling distance to use when generating the detail mesh. "
+			"(For height detail only.) [Limits:0 or >= 0.9][Units:wu] "
+			"Sets the sampling distance to use when matching the detail mesh to the surface of the original geometry. "
+			"Impacts how well the final detail mesh conforms to the surface contour of the original geometry. "
+			"Higher values result in a detail mesh which conforms more closely to the original geometry's surface at the cost of a higher final triangle count and higher processing cost. "
+			"Setting this argument to less than 0.9 disables this functionality.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
+		this->detailSampleMaxErrorEdit->setOnlyText(Ogre::StringConverter::toString(detailSampleMaxError));
+		textBox = findWidgetBySuffix(mWidgetClient, "detailSampleMaxErrorText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "The maximum distance the detail mesh surface should deviate from heightfield data. "
+			"(For height detail only.) [Limit:>= 0][Units:wu] "
+			"The maximum distance the surface of the detail mesh may deviate from the surface of the original geometry. "
+			"The accuracy is impacted by contourSampleDistance. "
+			"The value of this parameter has no meaning if contourSampleDistance is set to zero. "
+			"Setting the value to zero is not recommended since it can result in a large increase in the number of triangles in the final detail mesh at a high processing cost. "
+			"Stronly related to detailSampleDist(contourSampleDistance).");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
+		this->pointExtendsEdit->setOnlyText(Ogre::StringConverter::toString(pointExtends));
+		textBox = findWidgetBySuffix(mWidgetClient, "pointExtendsText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Set the offset size (box) around points used to look for nav polygons. "
+			"This offset is used in all search for points on the navmesh. "
+			"The maximum offset that a specified point can be off from the navmesh.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+
+		this->keepInterResultsCheck->setStateSelected(keepInterResults);
+		textBox = findWidgetBySuffix(mWidgetClient, "keepInterResultsText");
+		textBox->setNeedToolTip(true);
+		textBox->setUserString("tooltip", "Determines whether intermediary results are stored in OgreRecast or whether they are removed after navmesh creation.");
+		textBox->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+	});
 }
 
 std::tuple<bool, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, Ogre::Real, 

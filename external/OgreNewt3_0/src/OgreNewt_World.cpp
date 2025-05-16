@@ -9,7 +9,6 @@
 
 namespace OgreNewt
 {
-
 	/*WorldTriggerManager::WorldTriggerManager(World* const world)
 		: dCustomTriggerManager(world->getNewtonWorld())
 	{

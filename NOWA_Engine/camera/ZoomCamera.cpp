@@ -4,6 +4,7 @@
 #include "gameobject/GameObject.h"
 #include "main/Core.h"
 #include "main/AppStateManager.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -38,22 +39,24 @@ namespace NOWA
 
 		// Camera must be orthographic!
 		this->oldProjectionType = this->camera->getProjectionType();
-		this->camera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
+		ENQUEUE_RENDER_COMMAND("ZoomCamera::onSetData",
+		{
+			this->camera->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
 
-		// Calcluates the desired position.
-		this->calcAveragePosition();
+			// Calcluates the desired position.
+			this->calcAveragePosition();
 
-		// Sets the camera's position to the desired position without damping.
-		this->camera->setPosition(this->desiredPosition);
+			// Sets the camera's position to the desired position without damping.
+			this->camera->setPosition(this->desiredPosition);
 
-		this->oldOrthogonalSize.x = this->camera->getOrthoWindowWidth();
-		this->oldOrthogonalSize.y = this->camera->getOrthoWindowHeight();
+			this->oldOrthogonalSize.x = this->camera->getOrthoWindowWidth();
+			this->oldOrthogonalSize.y = this->camera->getOrthoWindowHeight();
 
-		// Find and set the required size of the camera.
-		// Note: Internally in setOrthoWindowWidth the value is / aspectRatio
-		Ogre::Real size = this->calcRequiredSize();
-
-		this->camera->setOrthoWindowWidth(size);
+			// Find and set the required size of the camera.
+			// Note: Internally in setOrthoWindowWidth the value is / aspectRatio
+			Ogre::Real size = this->calcRequiredSize();
+			this->camera->setOrthoWindowWidth(size);
+		});
 
 		// Optimal position: -16 18 3
 		// Optimal orientation: -80 -60 0
@@ -61,9 +64,12 @@ namespace NOWA
 
 	void ZoomCamera::onClearData(void)
 	{
-		this->camera->setProjectionType(this->oldProjectionType);
-		this->camera->setOrthoWindowWidth(this->oldOrthogonalSize.x);
-		this->camera->setOrthoWindowHeight(this->oldOrthogonalSize.y);
+		ENQUEUE_RENDER_COMMAND("ZoomCamera::onClearData",
+		{
+			this->camera->setProjectionType(this->oldProjectionType);
+			this->camera->setOrthoWindowWidth(this->oldOrthogonalSize.x);
+			this->camera->setOrthoWindowHeight(this->oldOrthogonalSize.y);
+		});
 	}
 	
 	void ZoomCamera::setCategory(const Ogre::String& category)
@@ -161,12 +167,14 @@ namespace NOWA
 
 	void ZoomCamera::zoomCamera(void)
 	{
-		// Find the required size based on the desired position and smoothly transition to that size.
-		Ogre::Real requiredSize = calcRequiredSize();
-		// TODO: Set from outside?
-		Ogre::Real dampTime = 0.2f;
-
-		this->camera->setOrthoWindowWidth(MathHelper::getInstance()->smoothDamp(this->camera->getOrthoWindowWidth(), requiredSize, this->zoomSpeed, dampTime));
+		ENQUEUE_RENDER_COMMAND("ZoomCamera::zoomCamera",
+		{
+			// Find the required size based on the desired position and smoothly transition to that size.
+			Ogre::Real requiredSize = calcRequiredSize();
+			// TODO: Set from outside?
+			Ogre::Real dampTime = 0.2f;
+			this->camera->setOrthoWindowWidth(MathHelper::getInstance()->smoothDamp(this->camera->getOrthoWindowWidth(), requiredSize, this->zoomSpeed, dampTime));
+		});
 	}
 
 	void ZoomCamera::moveCamera(Ogre::Real dt)
@@ -177,7 +185,8 @@ namespace NOWA
 		{
 			// TODO: Set from outside?
 			Ogre::Real dampTime = 0.2f;
-			this->camera->setPosition(MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
+			// this->camera->setPosition(MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
+			NOWA::RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
 		}
 		this->lastMoveValue = this->camera->getPosition();
 

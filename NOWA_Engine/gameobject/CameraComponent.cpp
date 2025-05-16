@@ -77,8 +77,15 @@ namespace NOWA
 		{
 			AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
 			// this->gameObjectPtr->getSceneNode()->detachObject(this->camera);
-			this->camera->getParentSceneNode()->detachObject(this->camera);
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
+
+			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(this->camera);
+
+			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::~CameraComponent",
+			{
+				this->camera->getParentSceneNode()->detachObject(this->camera);
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
+			});
+
 			this->camera = nullptr;
 			this->dummyEntity = nullptr;
 		}
@@ -270,11 +277,17 @@ namespace NOWA
 			Ogre::String name = this->camera->getName();
 			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 			{
-				this->dummyEntity->setVisible(false);
+				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect1",
+				{
+					this->dummyEntity->setVisible(false);
+				});
 			}
 			else
 			{
-				this->dummyEntity->setVisible(true);
+				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect2",
+				{
+					this->dummyEntity->setVisible(true);
+				});
 			}
 		}
 		this->bIsInSimulation = false;
@@ -407,86 +420,72 @@ namespace NOWA
 	{
 		if (nullptr == this->camera)
 		{
-			this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
-
-			// Attach camera to a moving e.g. slider will work, but no camera behaviors will work anymore! Need different approach
-#if 0
-			Ogre::SceneNode* cameraParentNode = this->camera->getParentSceneNode();
-			this->camera->detachFromParent();
-			// this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(cameraParentNode);
-			this->camera->setPosition(Ogre::Vector3::ZERO);
-			this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
-			this->camera->setStatic(!this->gameObjectPtr->isDynamic());
-			this->gameObjectPtr->getSceneNode()->attachObject(this->camera);
-#endif
-
-			// As attribute? because it should be set to false, when several viewports are used
-			// this->camera->setAutoAspectRatio(true);
-
-			this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
-			this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
-			this->camera->setNearClipDistance(this->nearClipDistance->getReal());
-			this->camera->setFarClipDistance(this->farClipDistance->getReal());
-			this->camera->setQueryFlags(0 << 0);
-			this->setOrthographic(this->orthographic->getBool());
-
-			// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-			// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
-			if (true == CameraComponent::justCreated)
+			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::createCamera",
 			{
-				// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
-				this->position->setValue(this->gameObjectPtr->getSceneNode()->getPosition());
-				this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->gameObjectPtr->getSceneNode()->getOrientation()));
-			}
+				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 
-			this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+				// As attribute? because it should be set to false, when several viewports are used
+				// this->camera->setAutoAspectRatio(true);
 
-			// Really necessary, so that camera is always up to date with its parent node!
+				this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
+				this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
+				this->camera->setNearClipDistance(this->nearClipDistance->getReal());
+				this->camera->setFarClipDistance(this->farClipDistance->getReal());
+				this->camera->setQueryFlags(0 << 0);
+				this->setOrthographic(this->orthographic->getBool());
 
-			
-
-			// Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
-			// Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
-
-			Ogre::Vector3 position = this->position->getVector3();
-			Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3());
-
-			this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-			this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
-
-			// Borrow the entity from the game object
-			this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != this->dummyEntity)
-			{
-				this->dummyEntity->setCastShadows(false);
-			}
-
-			// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
-			// So if its the main camera add the camera to the camera manager to have public available
-			if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
-			{
-				// Delete camera that existed, before a project was loaded
-				Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
-				if (nullptr != previousCamera)
+				// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
+				// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
+				if (true == CameraComponent::justCreated)
 				{
-					NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
-					this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
-					previousCamera = nullptr;
+					// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+					this->position->setValue(this->gameObjectPtr->getSceneNode()->getPosition());
+					this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->gameObjectPtr->getSceneNode()->getOrientation()));
 				}
 
-				this->dummyEntity->setVisible(false);
+				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
+				this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
 
-				if (nullptr == this->baseCamera)
+				Ogre::Vector3 position = this->position->getVector3();
+				Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3());
+
+				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+
+				// Borrow the entity from the game object
+				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != this->dummyEntity)
 				{
-					this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 40.0f, 0.01f);
+					this->dummyEntity->setCastShadows(false);
 				}
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
-				AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
-			}
-			
-			// Call activation, because e.g. new workspace must be set
-			this->setActivated(this->active->getBool());
+
+				// Special treatment: A camera must be created at an early stage, because other game objects and components are relying on this
+				// So if its the main camera add the camera to the camera manager to have public available
+				if (this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
+				{
+					// Delete camera that existed, before a project was loaded
+					Ogre::Camera* previousCamera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+					if (nullptr != previousCamera)
+					{
+						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
+						NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(previousCamera);
+						this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
+						previousCamera = nullptr;
+					}
+
+					this->dummyEntity->setVisible(false);
+
+					if (nullptr == this->baseCamera)
+					{
+						this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 40.0f, 0.01f);
+					}
+					AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
+					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
+				}
+
+				// Call activation, because e.g. new workspace must be set
+				this->setActivated(this->active->getBool());
+			});
 		}
 	}
 
@@ -639,16 +638,18 @@ namespace NOWA
 			// Hide entity for active camera
 			if (nullptr != this->camera)
 			{
-				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-				this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+				this->gameObjectPtr->setAttributePosition(this->position->getVector3());
+				this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
 
 				// Really necessary, so that camera is always up to date with its parent node!
+				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivated",
+				{
+					Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
+					Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
-				Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
-				Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
-
-				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+					this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+					this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+				});
 
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
@@ -730,16 +731,25 @@ namespace NOWA
 		{
 			if (true == this->bIsInSimulation)
 			{
-				this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag1",
+				{
+					this->dummyEntity->setVisible(this->showDummyEntity->getBool());
+				});
 			}
 			else
 			{
-				this->dummyEntity->setVisible(true);
+				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag2",
+				{
+					this->dummyEntity->setVisible(true);
+				});
 			}
 
 			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
 			{
-				this->dummyEntity->setVisible(false);
+				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag3",
+				{
+					this->dummyEntity->setVisible(false);
+				});
 			}
 
 			if (false == activated)
@@ -794,8 +804,11 @@ namespace NOWA
 		this->position->setValue(position);
 		if (nullptr != this->gameObjectPtr)
 		{
-			this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
-			this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+			this->gameObjectPtr->setAttributePosition(this->position->getVector3());
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraPosition", _1(position),
+			{
+				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+			});
 		}
 	}
 
@@ -810,8 +823,11 @@ namespace NOWA
 		this->orientation->setValue(orientation);
 		if (nullptr != this->gameObjectPtr)
 		{
-			this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(orientation));
-			this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
+			this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(orientation));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraDegreeOrientation", _1(orientation),
+			{
+				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
+			});
 		}
 	}
 
@@ -820,8 +836,11 @@ namespace NOWA
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(orientation));
 		if (nullptr != this->gameObjectPtr)
 		{
-			this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
-			this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+			this->gameObjectPtr->setAttributeOrientation(orientation);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraOrientation", _1(orientation),
+			{
+				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+			});
 		}
 	}
 
@@ -836,7 +855,10 @@ namespace NOWA
 		this->nearClipDistance->setValue(nearClipDistance);
 		if (nullptr != this->camera)
 		{
-			this->camera->setNearClipDistance(nearClipDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setNearClipDistance", _1(nearClipDistance),
+			{
+				this->camera->setNearClipDistance(nearClipDistance);
+			});
 		}
 	}
 
@@ -850,7 +872,10 @@ namespace NOWA
 		this->farClipDistance->setValue(farClipDistance);
 		if (nullptr != this->camera)
 		{
-			this->camera->setFarClipDistance(farClipDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFarClipDistance", _1(farClipDistance),
+			{
+				this->camera->setFarClipDistance(farClipDistance);
+			});
 		}
 	}
 
@@ -864,7 +889,10 @@ namespace NOWA
 		this->fovy->setValue(fovy.valueDegrees());
 		if (nullptr != this->camera)
 		{
-			this->camera->setFOVy(fovy);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFovy", _1(fovy),
+			{
+				this->camera->setFOVy(fovy);
+			});
 		}
 	}
 
@@ -878,8 +906,12 @@ namespace NOWA
 		this->orthographic->setValue(orthographic);
 		if (nullptr != this->camera)
 		{
-			this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
 			this->orthoWindowSize->setVisible(this->orthographic->getBool());
+
+			ENQUEUE_RENDER_COMMAND("CameraComponent::setOrthographic",
+			{
+				this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
+			});
 			this->setOrthoWindowSize(this->orthoWindowSize->getVector2());
 		}
 	}
@@ -896,7 +928,10 @@ namespace NOWA
 		{
 			if (true == this->orthographic->getBool())
 			{
-				this->camera->setOrthoWindow(orthoWindowSize.x, orthoWindowSize.y);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setOrthoWindowSize", _1(orthoWindowSize),
+				{
+					this->camera->setOrthoWindow(orthoWindowSize.x, orthoWindowSize.y);
+				});
 			}
 		}
 	}
@@ -946,7 +981,10 @@ namespace NOWA
 		this->fixedYawAxis->setValue(fixedYawAxis);
 		if (nullptr != this->camera)
 		{
-			this->camera->setFixedYawAxis(fixedYawAxis);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFixedYawAxis", _1(fixedYawAxis),
+			{
+				this->camera->setFixedYawAxis(fixedYawAxis);
+			});
 		}
 	}
 

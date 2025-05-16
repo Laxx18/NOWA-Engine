@@ -149,35 +149,38 @@ namespace NOWA
 
 	void AnimationComponent::createAnimationBlender(void)
 	{
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		ENQUEUE_RENDER_COMMAND("AnimationComponent::createAnimationBlender",
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] List all animations for mesh '" + entity->getMesh()->getName() + "':");
-			std::vector<Ogre::String> animationNames;
-			Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
-			if (nullptr != set)
+			Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
 			{
-				Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-				// list all animations
-				while (it.hasMoreElements())
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] List all animations for mesh '" + entity->getMesh()->getName() + "':");
+				std::vector<Ogre::String> animationNames;
+				Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
+				if (nullptr != set)
 				{
-					Ogre::v1::AnimationState* anim = it.getNext();
-					animationNames.emplace_back(anim->getAnimationName());
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim->getAnimationName()
-						+ " length: " + Ogre::StringConverter::toString(anim->getLength()) + " seconds");
+					Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
+					// list all animations
+					while (it.hasMoreElements())
+					{
+						Ogre::v1::AnimationState* anim = it.getNext();
+						animationNames.emplace_back(anim->getAnimationName());
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AnimationComponent] Animation name: " + anim->getAnimationName()
+							+ " length: " + Ogre::StringConverter::toString(anim->getLength()) + " seconds");
+					}
+					// Add all available animation names to list
+					this->animationName->setValue(animationNames);
 				}
-				// Add all available animation names to list
-				this->animationName->setValue(animationNames);
-			}
 
-			this->animationBlender = new NOWA::AnimationBlender(entity);
-			this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] It seems, that this game object: '" + this->gameObjectPtr->getName() 
-				+ "' is using the wrong animation component type, as it has no v1::entity but item. Please use AnimationComponent! So no animations will work so far.");
-		}
+				this->animationBlender = new NOWA::AnimationBlender(entity);
+				this->animationBlender->init(this->animationName->getListSelectedValue(), this->animationRepeat->getBool());
+			}
+			else
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] It seems, that this game object: '" + this->gameObjectPtr->getName()
+					+ "' is using the wrong animation component type, as it has no v1::entity but item. Please use AnimationComponent! So no animations will work so far.");
+			}
+		});
 	}
 
 	bool AnimationComponent::connect(void)

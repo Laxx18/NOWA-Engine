@@ -286,7 +286,10 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsBuoyancyComponent::showDebugData",
+			{
+				this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			});
 		}
 	}
 	
@@ -300,48 +303,51 @@ namespace NOWA
 		// Collision for static objects
 		OgreNewt::CollisionPtr collision;
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsBuoyancyComponent::createStaticBody", _2(&meshName, &collision),
 		{
-			meshName = entity->getMesh()->getName();
-			if (Ogre::StringUtil::match(meshName, "Plane*", true))
+			Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
 			{
-				Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
-				size.y = 0.001f;
-				collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
-			}
-			else
-			{
-				// Note: Even if its a static body, collision hull must be convex hull and not tree collision! Because e.g. if a bottle is used, it is hollow inside so tree would not
-				// fill the hollow and buoyancy just work on the border and maybe depending on what entity type, other objects would collide
-				collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, this->gameObjectPtr->getCategoryId()));
-			}
-		}
-		else
-		{
-			Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
-			{
-				meshName = item->getMesh()->getName();
+				meshName = entity->getMesh()->getName();
 				if (Ogre::StringUtil::match(meshName, "Plane*", true))
 				{
-					Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+					Ogre::Vector3 size = entity->getMesh()->getBounds().getSize() * this->initialScale;
 					size.y = 0.001f;
 					collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
 				}
 				else
 				{
 					// Note: Even if its a static body, collision hull must be convex hull and not tree collision! Because e.g. if a bottle is used, it is hollow inside so tree would not
-					// fill the hollow and buoyancy just work on the border and maybe depending on what item type, other objects would collide
-					collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, this->gameObjectPtr->getCategoryId()));
+					// fill the hollow and buoyancy just work on the border and maybe depending on what entity type, other objects would collide
+					collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, entity, this->gameObjectPtr->getCategoryId()));
 				}
 			}
 			else
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
-				return false;
+				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+				if (nullptr != item)
+				{
+					meshName = item->getMesh()->getName();
+					if (Ogre::StringUtil::match(meshName, "Plane*", true))
+					{
+						Ogre::Vector3 size = item->getMesh()->getAabb().getSize() * this->initialScale;
+						size.y = 0.001f;
+						collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::Box(this->ogreNewt, size, this->gameObjectPtr->getCategoryId(), Ogre::Quaternion::IDENTITY, Ogre::Vector3::ZERO));
+					}
+					else
+					{
+						// Note: Even if its a static body, collision hull must be convex hull and not tree collision! Because e.g. if a bottle is used, it is hollow inside so tree would not
+						// fill the hollow and buoyancy just work on the border and maybe depending on what item type, other objects would collide
+						collision = OgreNewt::CollisionPtr(new OgreNewt::CollisionPrimitives::ConvexHull(this->ogreNewt, item, this->gameObjectPtr->getCategoryId()));
+					}
+				}
+				else
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent] Error cannot create static body, because the game object has no entity/item with mesh for game object: " + this->gameObjectPtr->getName());
+					return false;
+				}
 			}
-		}
+		});
 
 		if (nullptr == collision)
 		{

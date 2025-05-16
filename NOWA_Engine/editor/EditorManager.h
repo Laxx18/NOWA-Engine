@@ -298,6 +298,7 @@ namespace NOWA
 		Ogre::Vector3 calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject);
 		Ogre::Vector3 rotateAroundPoint(const Ogre::Vector3& point, const Ogre::Vector3& center, const Ogre::Quaternion& rotation);
 
+		void createMeshPlaceNode(GameObject::eType type);
 	private:
 		void handleTerraModifyEnd(EventDataPtr eventData);
 

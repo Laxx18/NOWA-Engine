@@ -2,8 +2,10 @@
 #include "BasePhysicsCamera.h"
 #include "gameobject/GameObjectComponent.h"
 #include "main/InputDeviceCore.h"
+#include "main/AppStateManager.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -29,23 +31,25 @@ namespace NOWA
 		this->firstTimeValueSet = true;
 		Ogre::Vector3 resultPosition = this->camera->getPosition();
 		Ogre::Quaternion resultOrientation = this->camera->getOrientation();
-		this->cameraNode = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-		this->cameraNode->setName("PhysicsCameraNode");
-		this->cameraNode->setStatic(false);
-		this->camera->setStatic(false);
-		this->camera->setPosition(Ogre::Vector3::ZERO);
-		this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
 
-		// Camera is always attached to root node when created, so must be first detached
-		if (true == this->camera->isAttached())
+		ENQUEUE_RENDER_COMMAND_WAIT("BasePhysicsCamera::onSetData",
 		{
-			this->camera->detachFromParent();
-		}
-		this->cameraNode->attachObject(this->camera);
-		
+			this->cameraNode = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+			this->cameraNode->setName("PhysicsCameraNode");
+			this->cameraNode->setStatic(false);
+			this->camera->setStatic(false);
+			this->camera->setPosition(Ogre::Vector3::ZERO);
+			this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
 
-		// Define it's scale 
-		this->cameraNode->setScale(this->cameraSize);
+			// Camera is always attached to root node when created, so must be first detached
+			if (true == this->camera->isAttached())
+			{
+				this->camera->detachFromParent();
+			}
+			this->cameraNode->attachObject(this->camera);
+			// Define it's scale 
+			this->cameraNode->setScale(this->cameraSize);
+		});
 
 		OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->ogreNewt, this->cameraSize, 0);
 		Ogre::Vector3 inertia;
@@ -54,6 +58,7 @@ namespace NOWA
 		OgreNewt::CollisionPtr collisionPtr = OgreNewt::CollisionPtr(col);
 
 		this->cameraBody = new OgreNewt::Body(this->ogreNewt, this->sceneManager, collisionPtr, Ogre::SCENE_DYNAMIC);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->cameraBody);
 
 		inertia *= 50.0f;
 		this->cameraBody->setMassMatrix(50.0f, inertia);
@@ -72,15 +77,19 @@ namespace NOWA
 
 	void BasePhysicsCamera::onClearData(void)
 	{
-		if (this->cameraNode->getAttachedObjectIterator().hasMoreElements())
+		ENQUEUE_RENDER_COMMAND_WAIT("BasePhysicsCamera::onClearData",
 		{
-			this->cameraNode->detachObject(this->camera);
-		}
-		if (nullptr != this->cameraNode)
-		{
-			this->sceneManager->destroySceneNode(this->cameraNode);
-			this->cameraNode = nullptr;
-		}
+			if (this->cameraNode->getAttachedObjectIterator().hasMoreElements())
+			{
+				this->cameraNode->detachObject(this->camera);
+			}
+			if (nullptr != this->cameraNode)
+			{
+				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->cameraNode);
+				this->sceneManager->destroySceneNode(this->cameraNode);
+				this->cameraNode = nullptr;
+			}
+		});
 		if (nullptr != this->upVector)
 		{
 			this->upVector->destroyJoint(this->ogreNewt);
@@ -165,9 +174,13 @@ namespace NOWA
 		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, this->smoothValue);
 		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, this->smoothValue);
 		// Silly shit, this node is as dynamic as can be, but still the assert will throw, so since this node is just for the camera, this expensive method may be called
-		this->cameraNode->_getFullTransformUpdated();
-		this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.x), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);
-		this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.y), Ogre::Vector3::UNIT_X), Ogre::Node::TS_LOCAL);
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BasePhysicsCamera::rotateCamera", _1(rotationValue),
+		{
+			this->cameraNode->_getFullTransformUpdated();
+			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.x), Ogre::Vector3::UNIT_Y), Ogre::Node::TS_WORLD);
+			this->cameraNode->rotate(Ogre::Quaternion(Ogre::Degree(rotationValue.y), Ogre::Vector3::UNIT_X), Ogre::Node::TS_LOCAL);
+		});
 
 		this->lastValue = rotationValue;
 	}

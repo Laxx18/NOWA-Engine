@@ -30,39 +30,49 @@ void ComponentsPanel::setEditorManager(NOWA::EditorManager* editorManager)
 void ComponentsPanel::destroyContent(void)
 {
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ComponentsPanel::handleShowComponentsPanel), EventDataShowComponentsPanel::getStaticEventType());
-	this->componentsPanelView->removeAllItems();
+	
+	ENQUEUE_RENDER_COMMAND_WAIT("ComponentsPanel::destroyContent",
+	{
+		this->componentsPanelView->removeAllItems();
 
-	if (nullptr != this->componentsPanelSearch)
-	{
-		delete this->componentsPanelSearch;
-		this->componentsPanelSearch = nullptr;
-	}
+		if (nullptr != this->componentsPanelSearch)
+		{
+			delete this->componentsPanelSearch;
+			this->componentsPanelSearch = nullptr;
+		}
 
-	if (nullptr != this->componentsPanelInfo)
-	{
-		delete this->componentsPanelInfo;
-		this->componentsPanelInfo = nullptr;
-	}
-// Attention: Is this panel always destroyed and re-created?
-	if (nullptr != this->componentsPanelDynamic)
-	{
-		delete this->componentsPanelDynamic;
-		this->componentsPanelDynamic = nullptr;
-	}
+		if (nullptr != this->componentsPanelInfo)
+		{
+			delete this->componentsPanelInfo;
+			this->componentsPanelInfo = nullptr;
+		}
+		// Attention: Is this panel always destroyed and re-created?
+		if (nullptr != this->componentsPanelDynamic)
+		{
+			delete this->componentsPanelDynamic;
+			this->componentsPanelDynamic = nullptr;
+		}
+	});
 }
 
 void ComponentsPanel::clearComponents(void)
 {
-	if (nullptr != this->componentsPanelDynamic)
+	ENQUEUE_RENDER_COMMAND_WAIT("ComponentsPanel::clearComponents",
 	{
-		this->componentsPanelDynamic->clear();
-		this->componentsPanelView->removeAllItems();
-	}
+		if (nullptr != this->componentsPanelDynamic)
+		{
+			this->componentsPanelDynamic->clear();
+			this->componentsPanelView->removeAllItems();
+		}
+	});
 }
 
 void ComponentsPanel::setVisible(bool show)
 {
-	this->mMainWidget->setVisible(show);
+	ENQUEUE_RENDER_COMMAND_MULTI("ComponentsPanel::setVisible", _1(show),
+	{
+		this->mMainWidget->setVisible(show);
+	});
 }
 
 void ComponentsPanel::notifyWindowButtonPressed(MyGUI::Window* sender, const std::string& button)
@@ -84,60 +94,63 @@ void ComponentsPanel::showComponents(int index)
 {
 	this->clearComponents();
 
-	// Show all components for selected game objects
-	unsigned int i = 0;
-	auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-	unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
-	std::vector<NOWA::GameObject*> gameObjects;
-	if (count > 0)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanel::showComponents", _1(index),
 	{
-		gameObjects.resize(count);
-		for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+		// Show all components for selected game objects
+		unsigned int i = 0;
+		auto & selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+		unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
+		std::vector<NOWA::GameObject*> gameObjects;
+		if (count > 0)
 		{
-			gameObjects[i] = it->second.gameObject;
-			i++;
+			gameObjects.resize(count);
+			for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+			{
+				gameObjects[i] = it->second.gameObject;
+				i++;
+			}
 		}
-	}
 
-	// Create components panel for info
-	if (nullptr != this->componentsPanelInfo)
-	{
-		delete this->componentsPanelInfo;
-		this->componentsPanelInfo = nullptr;
-	}
-	this->componentsPanelInfo = new ComponentsPanelInfo();
+		// Create components panel for info
+		if (nullptr != this->componentsPanelInfo)
+		{
+			delete this->componentsPanelInfo;
+			this->componentsPanelInfo = nullptr;
+		}
+		this->componentsPanelInfo = new ComponentsPanelInfo();
 
-	if (nullptr != this->componentsPanelDynamic)
-	{
-		delete this->componentsPanelDynamic;
-		this->componentsPanelDynamic = nullptr;
-	}
+		if (nullptr != this->componentsPanelDynamic)
+		{
+			delete this->componentsPanelDynamic;
+			this->componentsPanelDynamic = nullptr;
+		}
 
-	// Create components panel for info
-	if (nullptr != this->componentsPanelSearch)
-	{
-		delete this->componentsPanelSearch;
-		this->componentsPanelSearch = nullptr;
-	}
-	// Create components panel
-	this->componentsPanelDynamic = new ComponentsPanelDynamic(gameObjects, "", this);
+		// Create components panel for info
+		if (nullptr != this->componentsPanelSearch)
+		{
+			delete this->componentsPanelSearch;
+			this->componentsPanelSearch = nullptr;
+		}
+		// Create components panel
+		this->componentsPanelDynamic = new ComponentsPanelDynamic(gameObjects, "", this);
 
-	this->componentsPanelSearch = new ComponentsPanelSearch(componentsPanelDynamic);
+		this->componentsPanelSearch = new ComponentsPanelSearch(componentsPanelDynamic);
 
-	assert(this->editorManager != nullptr);
+		assert(this->editorManager != nullptr);
 
-	this->componentsPanelDynamic->setEditorManager(this->editorManager);
-	this->componentsPanelDynamic->setComponentsPanelInfo(this->componentsPanelInfo);
+		this->componentsPanelDynamic->setEditorManager(this->editorManager);
+		this->componentsPanelDynamic->setComponentsPanelInfo(this->componentsPanelInfo);
 
-	// Add to the view
-	this->componentsPanelView->addItem(componentsPanelSearch);
-	this->componentsPanelView->addItem(componentsPanelDynamic);
-	this->componentsPanelView->addItem(componentsPanelInfo);
+		// Add to the view
+		this->componentsPanelView->addItem(componentsPanelSearch);
+		this->componentsPanelView->addItem(componentsPanelDynamic);
+		this->componentsPanelView->addItem(componentsPanelInfo);
 
-	this->componentsPanelDynamic->setIndex(index);
-	this->componentsPanelDynamic->showComponents();
+		this->componentsPanelDynamic->setIndex(index);
+		this->componentsPanelDynamic->showComponents();
 
-	this->setVisible(true);
+		this->setVisible(true);
+	});
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -170,7 +183,6 @@ void ComponentsPanelSearch::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	this->componentsPanelDynamic->clear();
 	// Start a new search each time for components that do match the search caption string
 	this->componentsPanelDynamic->showComponents(editBox->getOnlyText());
 }
@@ -266,276 +278,279 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 	if (true == this->gameObjects.empty())
 		return;
 
-	const int height = 24;
-	const int heightStep = 26;
-	const int widthStep = 3;
-
-	const int valueLeft = 4;
-	const int valueWidth = static_cast<int>(mWidgetClient->getWidth() - 0.1f);
-
-	this->autoCompleteSearch.reset();
-	this->clear();
-
-	// Add all registered comopnents to the search
-	for (auto componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanelDynamic::showComponents", _1(searchText),
 	{
-		this->autoCompleteSearch.addSearchText(componentInfo.first);
-	}
+		const int height = 24;
+		const int heightStep = 26;
+		const int widthStep = 3;
 
-	// Get the matched results
-	auto& matchedComponents = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
-	
-	for (size_t i = 0; i < matchedComponents.getResults().size(); i++)
-	{
-		this->heightCurrent += heightStep;
-		
-		Ogre::String componentName = matchedComponents.getResults()[i].getMatchedItemText();
-		Ogre::String tempComponentName = componentName;
-		
-		// If its a kind of physics component, act as parent, so that if the game object has an physics active component, e.g. a phyiscs artifact component may not appear in the list
-		size_t foundPhysicsComponent = componentName.find("Physics");
-		if (Ogre::String::npos != foundPhysicsComponent)
+		const int valueLeft = 4;
+		const int valueWidth = static_cast<int>(mWidgetClient->getWidth() - 0.1f);
+
+		this->autoCompleteSearch.reset();
+		this->clear();
+
+		// Add all registered comopnents to the search
+		for (auto componentInfo : NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getRegisteredComponentNames())
 		{
-			tempComponentName = NOWA::PhysicsComponent::getStaticClassName();
+			this->autoCompleteSearch.addSearchText(componentInfo.first);
 		}
 
-		size_t foundJointComponent = componentName.find("Joint");
-		size_t foundPlayerControllerComponent = componentName.find("PlayerController");
-		size_t foundCameraBehaviorComponent = componentName.find("CameraBehavior");
-		size_t foundCameraComponent = componentName.find("CameraComponent");
-		size_t foundMyGUIComponent = componentName.find("MyGUI");
-		size_t foundCompositorEffectComponent = componentName.find("CompositorEffect");
-		size_t foundWorkspaceComponent = componentName.find("Workspace");
+		// Get the matched results
+		auto& matchedComponents = this->autoCompleteSearch.findMatchedItemWithInText(searchText);
 
-		if (Ogre::String::npos != foundWorkspaceComponent)
+		for (size_t i = 0; i < matchedComponents.getResults().size(); i++)
 		{
-			tempComponentName = NOWA::WorkspaceBaseComponent::getStaticClassName();
-		}
+			this->heightCurrent += heightStep;
 
-		bool validToEnable = false;
+			Ogre::String componentName = matchedComponents.getResults()[i].getMatchedItemText();
+			Ogre::String tempComponentName = componentName;
 
-		// If the user selected several game objects, list only the components which are valid for all selected game objects!
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
-		{
-			validToEnable = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->canAddComponent(NOWA::getIdFromName(componentName), this->gameObjects[i]);
-
-			// Here check if there is already those component, and if its an animation-, or particle universe- or simple sound-component, its possible to create severals, else do not show those component
-			NOWA::GameObjectCompPtr gameObjectComponentPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::GameObjectComponent>(componentName));
-
-			// MyGUIItemBoxComponent: A player may have an inventory, or a shop, or another trader
-			if (NOWA::PhysicsMaterialComponent::getStaticClassName() == componentName)
+			// If its a kind of physics component, act as parent, so that if the game object has an physics active component, e.g. a phyiscs artifact component may not appear in the list
+			size_t foundPhysicsComponent = componentName.find("Physics");
+			if (Ogre::String::npos != foundPhysicsComponent)
 			{
-				// Physics material only possible to add to main game object, because special treatment, it will be connected a last, to have all components connect prior
-				// to get valid data
-				// if (1111111111L == this->gameObjects[i]->getId())
-				validToEnable = true;
+				tempComponentName = NOWA::PhysicsComponent::getStaticClassName();
 			}
-			else if (NOWA::TagPointComponent::getStaticClassName() == tempComponentName)
+
+			size_t foundJointComponent = componentName.find("Joint");
+			size_t foundPlayerControllerComponent = componentName.find("PlayerController");
+			size_t foundCameraBehaviorComponent = componentName.find("CameraBehavior");
+			size_t foundCameraComponent = componentName.find("CameraComponent");
+			size_t foundMyGUIComponent = componentName.find("MyGUI");
+			size_t foundCompositorEffectComponent = componentName.find("CompositorEffect");
+			size_t foundWorkspaceComponent = componentName.find("Workspace");
+
+			if (Ogre::String::npos != foundWorkspaceComponent)
 			{
-				Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
+				tempComponentName = NOWA::WorkspaceBaseComponent::getStaticClassName();
+			}
+
+			bool validToEnable = false;
+
+			// If the user selected several game objects, list only the components which are valid for all selected game objects!
+			for (size_t i = 0; i < this->gameObjects.size(); i++)
+			{
+				validToEnable = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->canAddComponent(NOWA::getIdFromName(componentName), this->gameObjects[i]);
+
+				// Here check if there is already those component, and if its an animation-, or particle universe- or simple sound-component, its possible to create severals, else do not show those component
+				NOWA::GameObjectCompPtr gameObjectComponentPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::GameObjectComponent>(componentName));
+
+				// MyGUIItemBoxComponent: A player may have an inventory, or a shop, or another trader
+				if (NOWA::PhysicsMaterialComponent::getStaticClassName() == componentName)
 				{
-					// Only show TagPointComponent if there is a skeleton and bones
-					Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
-					if (nullptr != skeleton)
+					// Physics material only possible to add to main game object, because special treatment, it will be connected a last, to have all components connect prior
+					// to get valid data
+					// if (1111111111L == this->gameObjects[i]->getId())
+					validToEnable = true;
+				}
+				else if (NOWA::TagPointComponent::getStaticClassName() == tempComponentName)
+				{
+					Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
+					if (nullptr != entity)
 					{
-						unsigned short numBones = entity->getSkeleton()->getNumBones();
-						if (numBones > 0)
+						// Only show TagPointComponent if there is a skeleton and bones
+						Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
+						if (nullptr != skeleton)
+						{
+							unsigned short numBones = entity->getSkeleton()->getNumBones();
+							if (numBones > 0)
+								validToEnable = true;
+						}
+					}
+				}
+				else if (NOWA::NavMeshComponent::getStaticClassName() == tempComponentName)
+				{
+					if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
+						validToEnable = true;
+				}
+				else if (NOWA::NavMeshTerraComponent::getStaticClassName() == tempComponentName)
+				{
+					if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast() && nullptr != this->gameObjects[i]->getMovableObject<Ogre::Terra>())
+						validToEnable = true;
+				}
+				// Can only be added once
+				else if (NOWA::LuaScriptComponent::getStaticClassName() == tempComponentName)
+				{
+					NOWA::LuaScriptCompPtr luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::LuaScriptComponent>());
+					if (nullptr != luaScriptCompPtr)
+					{
+						validToEnable = false;
+					}
+					else
+					{
+						validToEnable = true;
+					}
+				}
+				else if (NOWA::HdrEffectComponent::getStaticClassName() == tempComponentName)
+				{
+					NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
+					if (nullptr != workspaceCompPtr)
+					{
+						validToEnable = true;
+					}
+				}
+				else if (Ogre::String::npos != foundJointComponent)
+				{
+					NOWA::PhysicsCompoundConnectionCompPtr physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsCompoundConnectionComponent>());
+					if (nullptr != physicsCompoundConnectionCompPtr)
+					{
+						// Only root of compound has a body an can add a joint
+						if (0 == physicsCompoundConnectionCompPtr->getRootId())
+						{
+							validToEnable = true;
+						}
+					}
+					else
+					{
+						// If its a kind of joint component, a physics component is required (but not a kinematic one!
+						NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+						if (nullptr != physicsCompPtr && (nullptr == boost::dynamic_pointer_cast<NOWA::PhysicsActiveKinematicComponent>(physicsCompPtr) ||
+							(nullptr != boost::dynamic_pointer_cast<NOWA::PhysicsActiveKinematicComponent>(physicsCompPtr) && NOWA::JointKinematicComponent::getStaticClassName() == componentName)))
+						{
+							validToEnable = true;
+						}
+					}
+				}
+				else if (NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName) // Attention here componentName, because tempComponentName delivers parent PhysicsComponent, instead of sub type
+				{
+					auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>());
+					if (nullptr != terraCompPtr)
+					{
+						auto& physicsTerrainCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsTerrainComponent>());
+						if (nullptr == physicsTerrainCompPtr)
 							validToEnable = true;
 					}
 				}
-			}
-			else if (NOWA::NavMeshComponent::getStaticClassName() == tempComponentName)
-			{
-				if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast())
-					validToEnable = true;
-			}
-			else if (NOWA::NavMeshTerraComponent::getStaticClassName() == tempComponentName)
-			{
-				if (nullptr != NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->getOgreRecast() && nullptr != this->gameObjects[i]->getMovableObject<Ogre::Terra>())
-					validToEnable = true;
-			}
-			// Can only be added once
-			else if (NOWA::LuaScriptComponent::getStaticClassName() == tempComponentName)
-			{
-				NOWA::LuaScriptCompPtr luaScriptCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::LuaScriptComponent>());
-				if (nullptr != luaScriptCompPtr)
+				else if (NOWA::PhysicsArtifactComponent::getStaticClassName() == componentName)
 				{
-					validToEnable = false;
-				}
-				else
-				{
-					validToEnable = true;
-				}
-			}
-			else if (NOWA::HdrEffectComponent::getStaticClassName() == tempComponentName)
-			{
-				NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
-				if (nullptr != workspaceCompPtr)
-				{
-					validToEnable = true;
-				}
-			}
-			else if (Ogre::String::npos != foundJointComponent)
-			{
-				NOWA::PhysicsCompoundConnectionCompPtr physicsCompoundConnectionCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsCompoundConnectionComponent>());
-				if (nullptr != physicsCompoundConnectionCompPtr)
-				{
-					// Only root of compound has a body an can add a joint
-					if (0 == physicsCompoundConnectionCompPtr->getRootId())
+					auto& aiLuaCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AiLuaComponent>());
+					if (nullptr != aiLuaCompPtr)
 					{
-						validToEnable = true;
+						validToEnable = false;
 					}
 				}
-				else
+				// Kinematic may not have any joint besides kinematic controller
+				else if (NOWA::PhysicsActiveKinematicComponent::getStaticClassName() == componentName)
 				{
-					// If its a kind of joint component, a physics component is required (but not a kinematic one!
+					auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::JointComponent>());
+					if (nullptr != jointCompPtr && nullptr == boost::dynamic_pointer_cast<NOWA::JointKinematicComponent>(jointCompPtr))
+					{
+						validToEnable = false;
+					}
+				}
+				else if (0 == foundPlayerControllerComponent)
+				{
+					// If its a kind of player controller component, a physics component is required, an entity and a skeleton
 					NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-					if (nullptr != physicsCompPtr && (nullptr == boost::dynamic_pointer_cast<NOWA::PhysicsActiveKinematicComponent>(physicsCompPtr) ||
-						(nullptr != boost::dynamic_pointer_cast<NOWA::PhysicsActiveKinematicComponent>(physicsCompPtr) && NOWA::JointKinematicComponent::getStaticClassName() == componentName)))
+					// NOWA::AnimationCompPtr animationCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AnimationComponent>());
+
+					Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
+					if (nullptr != entity)
+					{
+						Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
+
+						if (nullptr != physicsCompPtr && nullptr != entity && nullptr != skeleton)
+							validToEnable = true;
+					}
+				}
+				else if (Ogre::String::npos != foundCameraBehaviorComponent)
+				{
+					validToEnable = true;
+					/*NOWA::PlayerControllerCompPtr playerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PlayerControllerComponent>());
+					if (nullptr != playerControllerCompPtr)
+						validToEnable = true;*/
+				}
+				else if (Ogre::String::npos != foundMyGUIComponent)
+				{
+					validToEnable = true;
+				}
+				else if (Ogre::String::npos != foundCompositorEffectComponent)
+				{
+					// NOWA::CameraCompPtr cameraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::CameraComponent>());
+					// if (nullptr != cameraCompPtr)
 					{
 						validToEnable = true;
 					}
 				}
-			}
-			else if (NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName) // Attention here componentName, because tempComponentName delivers parent PhysicsComponent, instead of sub type
-			{
-				auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>());
-				if (nullptr != terraCompPtr)
+				// No constraints to this components, may be added as often as needed
+				else if ((NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
+					|| (NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
+					|| (NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
+					|| (NOWA::SpawnComponent::getStaticClassName() == tempComponentName))
 				{
-					auto& physicsTerrainCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsTerrainComponent>());
-					if (nullptr == physicsTerrainCompPtr)
+					validToEnable = true;
+				}
+				else if (NOWA::WorkspaceBaseComponent::getStaticClassName() == tempComponentName)
+				{
+					validToEnable = false;
+					NOWA::CameraCompPtr cameraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::CameraComponent>());
+					NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
+					if (nullptr != cameraCompPtr && nullptr == workspaceCompPtr)
+					{
+						validToEnable = true;
+					}
+				}
+				else if (NOWA::BackgroundScrollComponent::getStaticClassName() == componentName)
+				{
+					NOWA::WorkspaceBackgroundCompPtr workspaceBackgroundCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBackgroundComponent>());
+					if (nullptr != workspaceBackgroundCompPtr)
+					{
+						validToEnable = true;
+					}
+				}
+				else if (NOWA::DatablockPbsComponent::getStaticClassName() == tempComponentName)
+				{
+					validToEnable = true;
+				}
+				else if (/*NOWA::DatablockTerraComponent::getStaticClassName() == tempComponentName || */NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName)
+				{
+					auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>(tempComponentName));
+					if (nullptr != terraCompPtr)
+						validToEnable = true;
+				}
+				else if (NOWA::LineMeshScaleComponent::getStaticClassName() == componentName)
+				{
+					NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
+					// No physics component
+					if (nullptr == physicsCompPtr)
+						validToEnable = true;
+				}
+				else
+				{
+					NOWA::NodeCompPtr nodeComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::NodeComponent>(tempComponentName));
+					if (nullptr != nodeComponent)
 						validToEnable = true;
 				}
 			}
-			else if (NOWA::PhysicsArtifactComponent::getStaticClassName() == componentName)
-			{
-				auto& aiLuaCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AiLuaComponent>());
-				if (nullptr != aiLuaCompPtr)
-				{
-					validToEnable = false;
-				}
-			}
-			// Kinematic may not have any joint besides kinematic controller
-			else if (NOWA::PhysicsActiveKinematicComponent::getStaticClassName() == componentName)
-			{
-				auto& jointCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::JointComponent>());
-				if (nullptr != jointCompPtr && nullptr == boost::dynamic_pointer_cast<NOWA::JointKinematicComponent>(jointCompPtr))
-				{
-					validToEnable = false;
-				}
-			}
-			else if (0 == foundPlayerControllerComponent)
-			{
-				// If its a kind of player controller component, a physics component is required, an entity and a skeleton
-				NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-				// NOWA::AnimationCompPtr animationCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::AnimationComponent>());
 
-				Ogre::v1::Entity* entity = this->gameObjects[i]->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
+			MyGUI::Button* componentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, componentName + "Button");
+			componentButton->setCaption(componentName);
+			// componentButton->setEnabled(validToEnable);
 
-					if (nullptr != physicsCompPtr && nullptr != entity && nullptr != skeleton)
-						validToEnable = true;
-				}
-			}
-			else if (Ogre::String::npos != foundCameraBehaviorComponent)
+
+			// Damn it, how to show tool tip on disabled widget??
+			componentButton->setNeedToolTip(true);
+			componentButton->setUserString("tooltip", NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(componentName));
+			componentButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+
+			// Button may not be disabled, because else tooltips will not work, so a hack is, to change the button style
+			if (false == validToEnable)
 			{
-				validToEnable = true;
-				/*NOWA::PlayerControllerCompPtr playerControllerCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PlayerControllerComponent>());
-				if (nullptr != playerControllerCompPtr)
-					validToEnable = true;*/
-			}
-			else if (Ogre::String::npos != foundMyGUIComponent)
-			{
-				validToEnable = true;
-			}
-			else if (Ogre::String::npos != foundCompositorEffectComponent)
-			{
-				// NOWA::CameraCompPtr cameraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::CameraComponent>());
-				// if (nullptr != cameraCompPtr)
-				{
-					validToEnable = true;
-				}
-			}
-			// No constraints to this components, may be added as often as needed
-			else if ((NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
-				|| (NOWA::SimpleSoundComponent::getStaticClassName() == tempComponentName)
-				|| (NOWA::ParticleUniverseComponent::getStaticClassName() == tempComponentName)
-				|| (NOWA::SpawnComponent::getStaticClassName() == tempComponentName))
-			{
-				validToEnable = true;
-			}
-			else if (NOWA::WorkspaceBaseComponent::getStaticClassName() == tempComponentName)
-			{
-				validToEnable = false;
-				NOWA::CameraCompPtr cameraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::CameraComponent>());
-				NOWA::WorkspaceBaseCompPtr workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBaseComponent>());
-				if (nullptr != cameraCompPtr && nullptr == workspaceCompPtr)
-				{
-					validToEnable = true;
-				}
-			}
-			else if (NOWA::BackgroundScrollComponent::getStaticClassName() == componentName)
-			{
-				NOWA::WorkspaceBackgroundCompPtr workspaceBackgroundCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::WorkspaceBackgroundComponent>());
-				if (nullptr != workspaceBackgroundCompPtr)
-				{
-					validToEnable = true;
-				}
-			}
-			else if (NOWA::DatablockPbsComponent::getStaticClassName() == tempComponentName)
-			{
-				validToEnable = true;
-			}
-			else if (/*NOWA::DatablockTerraComponent::getStaticClassName() == tempComponentName || */NOWA::PhysicsTerrainComponent::getStaticClassName() == componentName)
-			{
-				auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::TerraComponent>(tempComponentName));
-				if (nullptr != terraCompPtr)
-					validToEnable = true;
-			}
-			else if (NOWA::LineMeshScaleComponent::getStaticClassName() == componentName)
-			{
-				NOWA::PhysicsCompPtr physicsCompPtr = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::PhysicsComponent>());
-				// No physics component
-				if (nullptr == physicsCompPtr)
-					validToEnable = true;
+				componentButton->setColour(MyGUI::Colour(0.18f, 0.18f, 0.18f));
+				componentButton->setTextColour(MyGUI::Colour(0.7f, 0.7f, 0.7f));
 			}
 			else
 			{
-				NOWA::NodeCompPtr nodeComponent = NOWA::makeStrongPtr(this->gameObjects[i]->getComponent<NOWA::NodeComponent>(tempComponentName));
-				if (nullptr != nodeComponent)
-					validToEnable = true;
+				componentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ComponentsPanelDynamic::buttonHit);
 			}
-		}
 
-		MyGUI::Button* componentButton = mPanelCell->getMainWidget()->createWidget<MyGUI::Button>("Button", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top, componentName + "Button");
-		componentButton->setCaption(componentName);
-		// componentButton->setEnabled(validToEnable);
-		
+			// componentButton->setUserString("Description", "Show component");
+			this->componentsButtons.push_back(componentButton);
 
-		// Damn it, how to show tool tip on disabled widget??
-		componentButton->setNeedToolTip(true);
-		componentButton->setUserString("tooltip", NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(componentName));
-		componentButton->eventToolTip += MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-
-		// Button may not be disabled, because else tooltips will not work, so a hack is, to change the button style
-		if (false == validToEnable)
-		{
-			componentButton->setColour(MyGUI::Colour(0.18f, 0.18f, 0.18f));
-			componentButton->setTextColour(MyGUI::Colour(0.7f, 0.7f, 0.7f));
+			mPanelCell->setClientHeight(heightCurrent, false);
 		}
-		else
-		{
-			componentButton->eventMouseButtonClick += MyGUI::newDelegate(this, &ComponentsPanelDynamic::buttonHit);
-		}
-			
-		// componentButton->setUserString("Description", "Show component");
-		this->componentsButtons.push_back(componentButton);
-		
-		mPanelCell->setClientHeight(heightCurrent, false);
-	}
+	});
 }
 
 void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
@@ -543,35 +558,39 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		Ogre::String componentName = button->getCaption();
-
-		// This should be handled via editormanager due to undo/redo functionality
-		// GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
-		// Ogre would hold those shared ptrs in user any
-		
-		std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-		size_t i = 0;
-		// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanelDynamic::buttonHit", _1(button),
 		{
-			gameObjectIds[i] = this->gameObjects[i]->getId();
-		}
-		if (0 == gameObjectIds.size())
-		{
-			return;
-		}
+			Ogre::String componentName = button->getCaption();
 
-		this->editorManager->addComponent(gameObjectIds, componentName);
-		if (this->index != -1)
-		{
-			this->gameObjects[0]->moveComponent(this->index + 1);
-		}
+			// This should be handled via editormanager due to undo/redo functionality
+			// GameObjectPtr is required, so get it from game object. Note: Only game object was available because of selection result, which never may be shared_ptr! because of reference count mess when
+			// Ogre would hold those shared ptrs in user any
 
-		this->parentPanel->setVisible(false);
-		this->clear();
+			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+			size_t i = 0;
+			// Do not delete directly via selection manager, because when internally deleted, an event is sent out to selection manager to remove from map
+			for (size_t i = 0; i < this->gameObjects.size(); i++)
+			{
+				gameObjectIds[i] = this->gameObjects[i]->getId();
+			}
+			if (0 == gameObjectIds.size())
+			{
+				return;
+			}
 
-		// Sent when a component has been added, so that the properties panel can be refreshed with new values
-		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+			this->editorManager->addComponent(gameObjectIds, componentName);
+			if (this->index != -1)
+			{
+				this->gameObjects[0]->moveComponent(this->index + 1);
+			}
+
+
+			this->parentPanel->setVisible(false);
+			this->clear();
+
+			// Sent when a component has been added, so that the properties panel can be refreshed with new values
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		});
 	}
 }

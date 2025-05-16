@@ -3,6 +3,7 @@
 #include "OgreOverlayManager.h"
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsManager.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -19,99 +20,102 @@ namespace NOWA
 		overlay(nullptr),
 		calledFirstTime(true)
 	{
-		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-		Ogre::HlmsUnlit* hlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
-
-		// this->datablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock("FadeEffect", "FadeEffect", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
-		this->datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(hlmsManager->getDatablock("Materials/OverlayMaterial"));
-		if (nullptr == datablock)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::FaderProcess", _6(fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier),
 		{
-			OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Material name 'Materials/OverlayMaterial' cannot be found for 'FaderProcess'.", "FaderProcess::FaderProcess");
-		}
+			Ogre::HlmsManager * hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+			Ogre::HlmsUnlit* hlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
 
-		this->datablock->setUseColour(true);
-
-		// http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82797 blendblock, wie macht man unlit transparent
-
-		// Get the _overlay
-		this->overlay = Ogre::v1::OverlayManager::getSingleton().getByName("Overlays/FadeInOut");
-		this->overlay->setRenderQueueGroup(RENDER_QUEUE_MAX);
-
-		if (this->eFadeOperation == FadeOperation::FADE_IN)
-		{
-			if (duration < 0.0f)
+			// this->datablock = static_cast<Ogre::HlmsUnlitDatablock*>(hlmsUnlit->createDatablock("FadeEffect", "FadeEffect", Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+			this->datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(hlmsManager->getDatablock("Materials/OverlayMaterial"));
+			if (nullptr == datablock)
 			{
-				duration = -duration;
-			}
-			if (duration < 0.000001f)
-			{
-				duration = 1.0f;
+				OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Material name 'Materials/OverlayMaterial' cannot be found for 'FaderProcess'.", "FaderProcess::FaderProcess");
 			}
 
-			if (0.0f == continueAlpha)
+			this->datablock->setUseColour(true);
+
+			// http://www.ogre3d.org/forums/viewtopic.php?f=25&t=82797 blendblock, wie macht man unlit transparent
+
+			// Get the _overlay
+			this->overlay = Ogre::v1::OverlayManager::getSingleton().getByName("Overlays/FadeInOut");
+			this->overlay->setRenderQueueGroup(RENDER_QUEUE_MAX);
+
+			if (this->eFadeOperation == FadeOperation::FADE_IN)
 			{
-				this->currentAlpha = 1.0f;
+				if (duration < 0.0f)
+				{
+					duration = -duration;
+				}
+				if (duration < 0.000001f)
+				{
+					duration = 1.0f;
+				}
+
+				if (0.0f == continueAlpha)
+				{
+					this->currentAlpha = 1.0f;
+				}
+				else
+				{
+					this->currentAlpha = continueAlpha;
+				}
+
+				if (0.0f == continueDuration)
+				{
+					this->currentDuration = duration;
+				}
+				else
+				{
+					this->currentDuration = continueDuration;
+				}
+
+				this->totalDuration = duration;
+				this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
+				this->overlay->show();
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay show");
 			}
-			else
+			else if (this->eFadeOperation == FadeOperation::FADE_OUT)
 			{
-				this->currentAlpha = continueAlpha;
+				if (duration < 0.0f)
+				{
+					duration = -duration;
+				}
+				if (duration < 0.000001f)
+				{
+					duration = 1.0f;
+				}
+
+				if (0.0f == continueAlpha)
+				{
+					this->currentAlpha = 0.0f;
+				}
+				else
+				{
+					this->currentAlpha = continueAlpha;
+				}
+
+				if (0.0f == continueDuration)
+				{
+					this->currentDuration = 0.0f;
+				}
+				else
+				{
+					this->currentDuration = continueDuration;
+				}
+
+				this->totalDuration = duration;
+				this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
+				this->overlay->show();
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade out Overlay show");
 			}
 
-			if (0.0f == continueDuration)
+			if (0.0f == this->currentDuration)
 			{
-				this->currentDuration = duration;
-			}
-			else
-			{
-				this->currentDuration = continueDuration;
+				this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f));
 			}
 
-			this->totalDuration = duration;
-			this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
-			this->overlay->show();
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay show");
-		}
-		else if (this->eFadeOperation == FadeOperation::FADE_OUT)
-		{
-			if (duration < 0.0f)
-			{
-				duration = -duration;
-			}
-			if (duration < 0.000001f)
-			{
-				duration = 1.0f;
-			}
-
-			if (0.0f == continueAlpha)
-			{
-				this->currentAlpha = 0.0f;
-			}
-			else
-			{
-				this->currentAlpha = continueAlpha;
-			}
-
-			if (0.0f == continueDuration)
-			{
-				this->currentDuration = 0.0f;
-			}
-			else
-			{
-				this->currentDuration = continueDuration;
-			}
-
-			this->totalDuration = duration;
-			this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, this->currentAlpha));
-			this->overlay->show();
-			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade out Overlay show");
-		}
-
-		if (0.0f == this->currentDuration)
-		{
-			this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, 0.0f));
-		}
-
-		Ogre::Root::getSingletonPtr()->renderOneFrame();
+			Ogre::Root::getSingletonPtr()->renderOneFrame();
+		});
 	}
 
 	FaderProcess::~FaderProcess()
@@ -138,7 +142,11 @@ namespace NOWA
 					if (this->currentAlpha < 0.0f)
 					{
 						this->currentAlpha = 0.0f;
-						this->overlay->hide();
+
+						ENQUEUE_RENDER_COMMAND_WAIT("FaderProcess::onUpdate1",
+						{
+							this->overlay->hide();
+						});
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay hide");
 						this->eFadeOperation = FadeOperation::FADE_NONE;
 						// Finish the process
@@ -148,7 +156,11 @@ namespace NOWA
 
 					Ogre::Real t = this->currentDuration / this->totalDuration;
 					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-					this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
+
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::onUpdate2", _1(resultValue),
+					{
+						this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
+					});
 				}
 			}
 			// If fading out, increase the _alpha until it reaches 1.0
@@ -172,7 +184,10 @@ namespace NOWA
 					Ogre::Real t = this->currentDuration / this->totalDuration;
 					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(resultValue) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-					this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::onUpdate3", _1(resultValue),
+					{
+						this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
+					});
 				}
 			}
 		}

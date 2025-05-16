@@ -207,12 +207,15 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->removeBillboard(this->billboard);
-			this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
-			// In debug mode ogre is ill: there is an assert which wants to access a nullptr datablock just to check alpha :( and because of that, the application does crash
-			this->gameObjectPtr->getSceneManager()->destroyBillboardSet(this->billboardSet);
-			this->billboardSet = nullptr;
-			this->billboard = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::onRemoveComponent", 
+			{
+				this->billboardSet->removeBillboard(this->billboard);
+				this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
+				// In debug mode ogre is ill: there is an assert which wants to access a nullptr datablock just to check alpha :( and because of that, the application does crash
+				this->gameObjectPtr->getSceneManager()->destroyBillboardSet(this->billboardSet);
+				this->billboardSet = nullptr;
+				this->billboard = nullptr;
+			});
 		}
 	}
 
@@ -220,35 +223,38 @@ namespace NOWA
 	{
 		if (nullptr == this->billboard)
 		{
-			// https://forums.ogre3d.org/viewtopic.php?t=83421
-			this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet();
-			
-			this->billboardSet->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
-			this->billboardSet->setDatablock(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock(this->datablockName->getListSelectedValue()));
-			// Must be set to false, else an ugly depthRange vertex shader error occurs, because an unlit material is used
-			this->billboardSet->setCastShadows(false);
-			this->billboardSet->setQueryFlags(0);
+			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::createBillboard",
+			{
+				// https://forums.ogre3d.org/viewtopic.php?t=83421
+				this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet();
 
-			auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
+				this->billboardSet->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
+				this->billboardSet->setDatablock(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock(this->datablockName->getListSelectedValue()));
+				// Must be set to false, else an ugly depthRange vertex shader error occurs, because an unlit material is used
+				this->billboardSet->setCastShadows(false);
+				this->billboardSet->setQueryFlags(0);
 
-			DeployResourceModule::getInstance()->tagResource(this->datablockName->getString(), data.first, data.second);
+				auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
 
-			this->billboardSet->setBillboardOrigin(this->mapStringToOrigin(this->origin->getListSelectedValue()));
-			this->billboardSet->setBillboardRotationType(this->mapStringToRotationType(this->rotationType->getListSelectedValue()));
-			this->billboardSet->setBillboardType(this->mapStringToType(this->type->getListSelectedValue()));
+				DeployResourceModule::getInstance()->tagResource(this->datablockName->getString(), data.first, data.second);
+
+				this->billboardSet->setBillboardOrigin(this->mapStringToOrigin(this->origin->getListSelectedValue()));
+				this->billboardSet->setBillboardRotationType(this->mapStringToRotationType(this->rotationType->getListSelectedValue()));
+				this->billboardSet->setBillboardType(this->mapStringToType(this->type->getListSelectedValue()));
 
 
-			// this->billboard->setCastShadows(this->castShadows->getBool());
-			// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
-			this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
-			
-			this->billboard = billboardSet->createBillboard(this->position->getVector3());
-			this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
-			Ogre::Vector3 tempColor = this->color->getVector3();
-			this->billboard->setColour(Ogre::ColourValue(tempColor.x, tempColor.y, tempColor.z, 1.0f));
-			this->billboardSet->setRenderingDistance(this->renderDistance->getReal());
+				// this->billboard->setCastShadows(this->castShadows->getBool());
+				// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
+				this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
 
-			this->billboardSet->setVisible(this->activated->getBool());
+				this->billboard = billboardSet->createBillboard(this->position->getVector3());
+				this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+				Ogre::Vector3 tempColor = this->color->getVector3();
+				this->billboard->setColour(Ogre::ColourValue(tempColor.x, tempColor.y, tempColor.z, 1.0f));
+				this->billboardSet->setRenderingDistance(this->renderDistance->getReal());
+
+				this->billboardSet->setVisible(this->activated->getBool());
+			});
 		}
 	}
 
@@ -375,7 +381,10 @@ namespace NOWA
 		this->activated->setValue(activated);
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setVisible(activated);
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setActivated", _1(activated),
+			{
+				this->billboardSet->setVisible(activated);
+			});
 		}
 	}
 
@@ -524,7 +533,10 @@ namespace NOWA
 		this->datablockName->setListSelectedValue(datablockName);
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setDatablock(Ogre::Root::getSingleton().getHlmsManager()->getDatablock(datablockName));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BillboardComponent::setDatablockName", _1(datablockName),
+			{
+				this->billboardSet->setDatablock(Ogre::Root::getSingleton().getHlmsManager()->getDatablock(datablockName));
+			});
 		}
 	}
 
@@ -538,7 +550,10 @@ namespace NOWA
 		this->position->setValue(position);
 		if (nullptr != this->billboard)
 		{
-			this->billboard->setPosition(this->position->getVector3());
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setPosition", _1(position),
+			{
+				this->billboard->setPosition(this->position->getVector3());
+			});
 		}
 	}
 
@@ -552,7 +567,10 @@ namespace NOWA
 		this->origin->setListSelectedValue(this->mapOriginToString(origin));
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setBillboardOrigin(origin);
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setOrigin", _1(origin),
+			{
+				this->billboardSet->setBillboardOrigin(origin);
+			});
 		}
 	}
 
@@ -566,7 +584,10 @@ namespace NOWA
 		this->dimensions->setValue(dimensions);
 		if (nullptr != this->billboard)
 		{
-			this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+			ENQUEUE_RENDER_COMMAND("BillboardComponent::setDimensions",
+			{
+				this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+			});
 		}
 	}
 
@@ -580,7 +601,10 @@ namespace NOWA
 		this->color->setValue(color);
 		if (nullptr != this->billboard)
 		{
-			this->billboard->setColour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setDimensions", _1(color),
+			{
+				this->billboard->setColour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			});
 		}
 	}
 
@@ -594,7 +618,10 @@ namespace NOWA
 		this->rotationType->setListSelectedValue(this->mapRotationTypeToString(rotationType));
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setBillboardRotationType(rotationType);
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setRotationType", _1(rotationType),
+			{
+				this->billboardSet->setBillboardRotationType(rotationType);
+			});
 		}
 	}
 
@@ -608,7 +635,10 @@ namespace NOWA
 		this->type->setListSelectedValue(this->mapTypeToString(type));
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setBillboardType(type);
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setType", _1(type),
+			{
+				this->billboardSet->setBillboardType(type);
+			});
 		}
 	}
 
@@ -622,7 +652,10 @@ namespace NOWA
 		this->renderDistance->setValue(renderDistance);
 		if (nullptr != this->billboardSet)
 		{
-			this->billboardSet->setRenderingDistance(renderDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI("BillboardComponent::setRenderDistance", _1(renderDistance),
+			{
+				this->billboardSet->setRenderingDistance(renderDistance);
+			});
 		}
 	}
 

@@ -119,14 +119,17 @@ namespace NOWA
 
 	void Picker::createLine(void)
 	{
-		this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-		// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-		this->dragLineObject = this->sceneManager->createManualObject();
-		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->dragLineObject->setName("PickerDragLines");
-		this->dragLineObject->setQueryFlags(0 << 0);
-		this->dragLineObject->setCastShadows(false);
-		this->dragLineNode->attachObject(this->dragLineObject);
+		ENQUEUE_RENDER_COMMAND_WAIT("Picker::createLine",
+		{
+			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+			// this->dragLineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+			this->dragLineObject = this->sceneManager->createManualObject();
+			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->dragLineObject->setName("PickerDragLines");
+			this->dragLineObject->setQueryFlags(0 << 0);
+			this->dragLineObject->setCastShadows(false);
+			this->dragLineNode->attachObject(this->dragLineObject);
+		});
 	}
 
 	void Picker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -135,29 +138,35 @@ namespace NOWA
 		{
 			this->createLine();
 		}
-		// Draw a 3D line between these points for visual effect
-		this->dragLineObject->clear();
-		this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-		this->dragLineObject->position(startPosition);
-		this->dragLineObject->index(0);
-		this->dragLineObject->position(endPosition);
-		this->dragLineObject->index(1);
-		this->dragLineObject->end();
+		ENQUEUE_RENDER_COMMAND_MULTI("Picker::drawLine", _2(startPosition, endPosition),
+		{
+			// Draw a 3D line between these points for visual effect
+			this->dragLineObject->clear();
+			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+			this->dragLineObject->position(startPosition);
+			this->dragLineObject->index(0);
+			this->dragLineObject->position(endPosition);
+			this->dragLineObject->index(1);
+			this->dragLineObject->end();
+		});
 	}
 
 	void Picker::destroyLine()
 	{
 		if (this->dragLineNode != nullptr)
 		{
-			this->dragLineNode->detachAllObjects();
-			if (this->dragLineObject != nullptr)
+			ENQUEUE_RENDER_COMMAND_WAIT("Picker::destroyLine",
 			{
-				this->sceneManager->destroyManualObject(this->dragLineObject);
-				// delete this->dragLineObject;
-				this->dragLineObject = nullptr;
-			}
-			this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
-			this->dragLineNode = nullptr;
+				this->dragLineNode->detachAllObjects();
+				if (this->dragLineObject != nullptr)
+				{
+					this->sceneManager->destroyManualObject(this->dragLineObject);
+					// delete this->dragLineObject;
+					this->dragLineObject = nullptr;
+				}
+				this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
+				this->dragLineNode = nullptr;
+			});
 		}
 	}
 
@@ -521,12 +530,15 @@ namespace NOWA
 
 	void GameObjectPicker::createLine(void)
 	{
-		this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-		this->dragLineObject = this->sceneManager->createManualObject();
-		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->dragLineObject->setQueryFlags(0 << 0);
-		this->dragLineObject->setCastShadows(false);
-		this->dragLineNode->attachObject(this->dragLineObject);
+		ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
+		{
+			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+			this->dragLineObject = this->sceneManager->createManualObject();
+			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->dragLineObject->setQueryFlags(0 << 0);
+			this->dragLineObject->setCastShadows(false);
+			this->dragLineNode->attachObject(this->dragLineObject);
+		});
 	}
 
 	void GameObjectPicker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -535,29 +547,35 @@ namespace NOWA
 		{
 			this->createLine();
 		}
-		// Draw a 3D line between these points for visual effect
-		this->dragLineObject->clear();
-		this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-		this->dragLineObject->position(startPosition);
-		this->dragLineObject->index(0);
-		this->dragLineObject->position(endPosition);
-		this->dragLineObject->index(1);
-		this->dragLineObject->end();
+		ENQUEUE_RENDER_COMMAND_MULTI("Picker::drawLine", _2(startPosition, endPosition),
+		{
+			// Draw a 3D line between these points for visual effect
+			this->dragLineObject->clear();
+			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+			this->dragLineObject->position(startPosition);
+			this->dragLineObject->index(0);
+			this->dragLineObject->position(endPosition);
+			this->dragLineObject->index(1);
+			this->dragLineObject->end();
+		});
 	}
 
 	void GameObjectPicker::destroyLine()
 	{
 		if (this->dragLineNode != nullptr)
 		{
-			this->dragLineNode->detachAllObjects();
-			if (this->dragLineObject != nullptr)
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
 			{
-				this->sceneManager->destroyManualObject(this->dragLineObject);
-				// delete this->dragLineObject;
-				this->dragLineObject = nullptr;
-			}
-			this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
-			this->dragLineNode = nullptr;
+				this->dragLineNode->detachAllObjects();
+				if (this->dragLineObject != nullptr)
+				{
+					this->sceneManager->destroyManualObject(this->dragLineObject);
+					// delete this->dragLineObject;
+					this->dragLineObject = nullptr;
+				}
+				this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
+				this->dragLineNode = nullptr;
+			});
 		}
 	}
 

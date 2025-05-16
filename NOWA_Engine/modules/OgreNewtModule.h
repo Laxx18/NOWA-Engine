@@ -90,6 +90,8 @@ namespace NOWA
 		void setGlobalGravity(const Ogre::Vector3& globalGravity);
 
 		Ogre::Vector3 getGlobalGravity(void) const;
+
+		void registerRenderCallbackForBody(OgreNewt::Body* body);
 	private:
 		OgreNewtModule(const Ogre::String& appStateName);
 		~OgreNewtModule();

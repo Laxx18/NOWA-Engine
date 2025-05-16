@@ -327,150 +327,6 @@ namespace NOWA
 		}
 	}
 
-	void Core::loadHlmsDiskCache(void)
-	{
-		Ogre::HlmsManager* hlmsManager = this->root->getHlmsManager();
-		Ogre::HlmsDiskCache diskCache(hlmsManager);
-
-		Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
-
-		Ogre::Archive* rwAccessFolderArchive = archiveManager.load(this->writeAccessFolder, "FileSystem", true);
-
-		// Load texture cache
-		try
-		{
-			const Ogre::String filename = "NOWA_Engine.json";
-			if (rwAccessFolderArchive->exists(filename))
-			{
-				Ogre::DataStreamPtr stream = rwAccessFolderArchive->open(filename);
-				std::vector<char> fileData;
-				fileData.resize(stream->size() + 1);
-				if (!fileData.empty())
-				{
-					stream->read(&fileData[0], stream->size());
-					// Add null terminator just in case (to prevent bad input)
-					fileData.back() = '\0';
-					Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-					textureManager->importTextureMetadataCache(stream->getName(), &fileData[0], false);
-				}
-			}
-			else
-			{
-				Ogre::LogManager::getSingleton().logMessage(LML_CRITICAL, "[INFO] Texture cache not found at " + this->writeAccessFolder + "/textureMetadataCache.json");
-			}
-		}
-		catch (Ogre::Exception& e)
-		{
-			Ogre::LogManager::getSingleton().logMessage(e.getFullDescription());
-		}
-
-		//Make sure the microcode cache is enabled.
-		Ogre::GpuProgramManager::getSingleton().setSaveMicrocodesToCache(true);
-		const Ogre::String filename = "NOWA_Engine.cache";
-		if (rwAccessFolderArchive->exists(filename))
-		{
-			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->open(filename);
-			Ogre::GpuProgramManager::getSingleton().loadMicrocodeCache(shaderCacheFile);
-
-			const size_t numThreads = std::max<size_t>(1u, Ogre::PlatformInformation::getNumLogicalCores());
-			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
-			{
-				Ogre::Hlms *hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
-				if (hlms)
-				{
-					Ogre::String filename = "NOWA_Engine" + Ogre::StringConverter::toString(i) + ".bin";
-
-					try
-					{
-						if (rwAccessFolderArchive->exists(filename))
-						{
-							Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->open(filename);
-							diskCache.loadFrom(diskCacheFile);
-							diskCache.applyTo(hlms, numThreads);
-						}
-					}
-					catch (Ogre::Exception&)
-					{
-						Ogre::LogManager::getSingleton().logMessage("Error loading cache from '" + this->writeAccessFolder + filename + "' ! If you have issues, try deleting the file and restarting the app");
-					}
-				}
-			}
-		}
-
-		archiveManager.unload(rwAccessFolderArchive);
-	}
-	
-	void Core::saveHlmsDiskCache(void)
-	{
-		if (nullptr == this->root)
-		{
-			return;
-		}
-
-		if (this->root->getRenderSystem() && Ogre::GpuProgramManager::getSingletonPtr())
-		{
-			Ogre::HlmsManager* hlmsManager = this->root->getHlmsManager();
-			Ogre::HlmsDiskCache diskCache(hlmsManager);
-
-			Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
-
-			Ogre::Archive* rwAccessFolderArchive = archiveManager.load(this->writeAccessFolder, "FileSystem", false);
-
-			Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-			if (textureManager)
-			{
-				Ogre::String jsonString;
-				textureManager->exportTextureMetadataCache(jsonString);
-				const Ogre::String path = this->writeAccessFolder + "/NOWA_Engine.json";
-				std::ofstream file(path.c_str(), std::ios::binary | std::ios::out);
-				if (file.is_open())
-					file.write(jsonString.c_str(), static_cast<std::streamsize>(jsonString.size()));
-				file.close();
-			}
-
-			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
-			{
-				Ogre::Hlms* hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
-				if (hlms && hlms->isShaderCodeCacheDirty())
-				{
-					diskCache.copyFrom(hlms);
-
-					Ogre::String filename = "NOWA_Engine" + Ogre::StringConverter::toString(i) + ".bin";
-					Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->create(filename);
-					diskCache.saveTo(diskCacheFile);
-				}
-			}
-
-			if (true == Ogre::GpuProgramManager::getSingleton().isCacheDirty())
-			{
-				try
-				{
-					// Save shader cache
-					const Ogre::String filename = "NOWA_Engine.cache";
-					Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->create(filename);
-					Ogre::GpuProgramManager::getSingleton().saveMicrocodeCache(shaderCacheFile);
-				}
-				catch (std::exception&)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Something went wrong during GPU shader cache saving.");
-				}
-			}
-
-			archiveManager.unload(this->writeAccessFolder);
-		}
-	}
-
-	Core* Core::getSingletonPtr(void)
-	{
-		return msSingleton;
-	}
-
-	Core& Core::getSingleton(void)
-	{
-		assert(msSingleton);
-		return (*msSingleton);
-	}
-
 	bool Core::initialize(const CoreConfiguration& coreConfiguration)
 	{
 		this->graphicsConfigName = coreConfiguration.graphicsConfigName;
@@ -906,6 +762,7 @@ namespace NOWA
 		this->myGuiWorkspace = nullptr;
 
 		dummySceneManager->removeRenderQueueListener(this->overlaySystem);
+		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(dummyCamera);
 		dummySceneManager->destroyCamera(dummyCamera);
 		dummyCamera = nullptr;
 		this->root->destroySceneManager(dummySceneManager);
@@ -977,6 +834,150 @@ namespace NOWA
 		MathHelper::getInstance()->tweakUnlitDatablock("GreenNoLighting");
 
 		return true;
+	}
+
+	void Core::loadHlmsDiskCache(void)
+	{
+		Ogre::HlmsManager* hlmsManager = this->root->getHlmsManager();
+		Ogre::HlmsDiskCache diskCache(hlmsManager);
+
+		Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+
+		Ogre::Archive* rwAccessFolderArchive = archiveManager.load(this->writeAccessFolder, "FileSystem", true);
+
+		// Load texture cache
+		try
+		{
+			const Ogre::String filename = "NOWA_Engine.json";
+			if (rwAccessFolderArchive->exists(filename))
+			{
+				Ogre::DataStreamPtr stream = rwAccessFolderArchive->open(filename);
+				std::vector<char> fileData;
+				fileData.resize(stream->size() + 1);
+				if (!fileData.empty())
+				{
+					stream->read(&fileData[0], stream->size());
+					// Add null terminator just in case (to prevent bad input)
+					fileData.back() = '\0';
+					Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+					textureManager->importTextureMetadataCache(stream->getName(), &fileData[0], false);
+				}
+			}
+			else
+			{
+				Ogre::LogManager::getSingleton().logMessage(LML_CRITICAL, "[INFO] Texture cache not found at " + this->writeAccessFolder + "/textureMetadataCache.json");
+			}
+		}
+		catch (Ogre::Exception& e)
+		{
+			Ogre::LogManager::getSingleton().logMessage(e.getFullDescription());
+		}
+
+		//Make sure the microcode cache is enabled.
+		Ogre::GpuProgramManager::getSingleton().setSaveMicrocodesToCache(true);
+		const Ogre::String filename = "NOWA_Engine.cache";
+		if (rwAccessFolderArchive->exists(filename))
+		{
+			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->open(filename);
+			Ogre::GpuProgramManager::getSingleton().loadMicrocodeCache(shaderCacheFile);
+
+			const size_t numThreads = std::max<size_t>(1u, Ogre::PlatformInformation::getNumLogicalCores());
+			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
+			{
+				Ogre::Hlms* hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
+				if (hlms)
+				{
+					Ogre::String filename = "NOWA_Engine" + Ogre::StringConverter::toString(i) + ".bin";
+
+					try
+					{
+						if (rwAccessFolderArchive->exists(filename))
+						{
+							Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->open(filename);
+							diskCache.loadFrom(diskCacheFile);
+							diskCache.applyTo(hlms, numThreads);
+						}
+					}
+					catch (Ogre::Exception&)
+					{
+						Ogre::LogManager::getSingleton().logMessage("Error loading cache from '" + this->writeAccessFolder + filename + "' ! If you have issues, try deleting the file and restarting the app");
+					}
+				}
+			}
+		}
+
+		archiveManager.unload(rwAccessFolderArchive);
+	}
+
+	void Core::saveHlmsDiskCache(void)
+	{
+		if (nullptr == this->root)
+		{
+			return;
+		}
+
+		if (this->root->getRenderSystem() && Ogre::GpuProgramManager::getSingletonPtr())
+		{
+			Ogre::HlmsManager* hlmsManager = this->root->getHlmsManager();
+			Ogre::HlmsDiskCache diskCache(hlmsManager);
+
+			Ogre::ArchiveManager& archiveManager = Ogre::ArchiveManager::getSingleton();
+
+			Ogre::Archive* rwAccessFolderArchive = archiveManager.load(this->writeAccessFolder, "FileSystem", false);
+
+			Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+			if (textureManager)
+			{
+				Ogre::String jsonString;
+				textureManager->exportTextureMetadataCache(jsonString);
+				const Ogre::String path = this->writeAccessFolder + "/NOWA_Engine.json";
+				std::ofstream file(path.c_str(), std::ios::binary | std::ios::out);
+				if (file.is_open())
+					file.write(jsonString.c_str(), static_cast<std::streamsize>(jsonString.size()));
+				file.close();
+			}
+
+			for (size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i)
+			{
+				Ogre::Hlms* hlms = hlmsManager->getHlms(static_cast<Ogre::HlmsTypes>(i));
+				if (hlms && hlms->isShaderCodeCacheDirty())
+				{
+					diskCache.copyFrom(hlms);
+
+					Ogre::String filename = "NOWA_Engine" + Ogre::StringConverter::toString(i) + ".bin";
+					Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->create(filename);
+					diskCache.saveTo(diskCacheFile);
+				}
+			}
+
+			if (true == Ogre::GpuProgramManager::getSingleton().isCacheDirty())
+			{
+				try
+				{
+					// Save shader cache
+					const Ogre::String filename = "NOWA_Engine.cache";
+					Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->create(filename);
+					Ogre::GpuProgramManager::getSingleton().saveMicrocodeCache(shaderCacheFile);
+				}
+				catch (std::exception&)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[Core]: Something went wrong during GPU shader cache saving.");
+				}
+			}
+
+			archiveManager.unload(this->writeAccessFolder);
+		}
+	}
+
+	Core* Core::getSingletonPtr(void)
+	{
+		return msSingleton;
+	}
+
+	Core& Core::getSingleton(void)
+	{
+		assert(msSingleton);
+		return (*msSingleton);
 	}
 
 	void Core::cleanPluginsCfg(bool isDebug)
@@ -1104,6 +1105,16 @@ namespace NOWA
 
 		inputFile.close();
 		return pluginNames;
+	}
+
+	void Core::setRenderThreadId(std::thread::id id)
+	{
+		this->renderThreadId = id;
+	}
+
+	bool Core::isInRenderThread(void) const
+	{
+		return std::this_thread::get_id() == this->renderThreadId;
 	}
 
 	void Core::registerHlms(void)
@@ -1722,53 +1733,43 @@ namespace NOWA
 		return this->pluginFactory;
 	}
 
-	Ogre::Camera* Core::createCameraWithMenuSettings(Ogre::SceneManager* sceneManager, const Ogre::String& strCameraName)
-	{
-		Ogre::Camera *camera = sceneManager->createCamera(strCameraName);
-		// set query flags to unused mask
-		camera->setQueryFlags(0 << 0);
-
-		camera->setNearClipDistance(0.01f);
-		//camera->setAutoAspectRatio(true);
-		camera->setLodBias(this->optionLODBias);
-		// Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(0);
-		// Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(static_cast<Ogre::TextureFilterOptions>(this->optionTextureFiltering));
-		// Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(this->optionAnisotropyLevel);
-
-		return camera;
-	}
-
 	void Core::setMenuSettingsForCamera(Ogre::Camera* camera)
 	{
-		// camera->setNearClipDistance(0.01f);
-// to be removed
-		// camera->setFarClipDistance(this->optionViewRange);
-		//camera->setAutoAspectRatio(true);
-		camera->setLodBias(this->optionLODBias);
-		// Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(0);
-		// Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering((Ogre::TextureFilterOptions)this->optionTextureFiltering);
-		// Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(this->optionAnisotropyLevel);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::setMenuSettingsForCamera", _1(camera),
+		{
+			// camera->setNearClipDistance(0.01f);
+			// to be removed
+			// camera->setFarClipDistance(this->optionViewRange);
+			//camera->setAutoAspectRatio(true);
+			camera->setLodBias(this->optionLODBias);
+			// Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(0);
+			// Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering((Ogre::TextureFilterOptions)this->optionTextureFiltering);
+			// Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(this->optionAnisotropyLevel);
+		});
 	}
 
 	void Core::setPolygonMode(unsigned short mode)
 	{
-		Ogre::HlmsPbs* hlmsPbs =  dynamic_cast<Ogre::HlmsPbs*>(NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS));
-		if (nullptr != hlmsPbs)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::setPolygonMode", _1(mode),
 		{
-			Ogre::Hlms::HlmsDatablockMap::const_iterator itor = hlmsPbs->getDatablockMap().begin();
-			Ogre::Hlms::HlmsDatablockMap::const_iterator end = hlmsPbs->getDatablockMap().end();
-			while (itor != end)
+			Ogre::HlmsPbs * hlmsPbs = dynamic_cast<Ogre::HlmsPbs*>(NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS));
+			if (nullptr != hlmsPbs)
 			{
-				HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(itor->second.datablock);
-				Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
-				macroblock.mPolygonMode = static_cast<Ogre::PolygonMode>(mode);
+				Ogre::Hlms::HlmsDatablockMap::const_iterator itor = hlmsPbs->getDatablockMap().begin();
+				Ogre::Hlms::HlmsDatablockMap::const_iterator end = hlmsPbs->getDatablockMap().end();
+				while (itor != end)
+				{
+					HlmsPbsDatablock* datablock = static_cast<Ogre::HlmsPbsDatablock*>(itor->second.datablock);
+					Ogre::HlmsMacroblock macroblock = *datablock->getMacroblock();
+					macroblock.mPolygonMode = static_cast<Ogre::PolygonMode>(mode);
 
-				const Ogre::HlmsMacroblock* finalMacroblock = root->getHlmsManager()->getMacroblock(macroblock);
-				datablock->setMacroblock(finalMacroblock);
+					const Ogre::HlmsMacroblock* finalMacroblock = root->getHlmsManager()->getMacroblock(macroblock);
+					datablock->setMacroblock(finalMacroblock);
 
-				++itor;
+					++itor;
+				}
 			}
-		}
+		});
 	}
 
 	void Core::changeWindowTitle(const Ogre::String& title)
@@ -3844,35 +3845,35 @@ namespace NOWA
 			bool canBeV2Mesh = false;
 			if (serializerVersion == "1.100")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.8")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.7")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.4")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.41")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.3")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.2")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "1.1")
 			{
-				canBeV2Mesh = true;
+				canBeV2Mesh = false;
 			}
 			else if (serializerVersion == "2.1 R0 LEGACYV1")
 			{

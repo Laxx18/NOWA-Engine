@@ -936,14 +936,19 @@ namespace NOWA
 
 	Ogre::SceneNode* LineMeshComponent::addSceneNode(void)
 	{
-		// Creating out from root, else transform is relative, which is ugly
-		Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-		// sceneNode->setOrientation(this->tagPointNode->getOrientation() * this->gameObjectPtr->getSceneNode()->getOrientation());
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getSceneManager()->createEntity(this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getMesh());
-		entity->setQueryFlags(0 << 0);
-		entity->setCastShadows(this->gameObjectPtr->getMovableObject()->getCastShadows());
-		sceneNode->attachObject(entity);
-		sceneNode->setScale(this->gameObjectPtr->getScale());
+		Ogre::SceneNode* sceneNode = nullptr;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LineMeshComponent::addSceneNode", _1(&sceneNode),
+		{
+			// Creating out from root, else transform is relative, which is ugly
+			sceneNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+			// sceneNode->setOrientation(this->tagPointNode->getOrientation() * this->gameObjectPtr->getSceneNode()->getOrientation());
+			Ogre::v1::Entity * entity = this->gameObjectPtr->getSceneManager()->createEntity(this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getMesh());
+			entity->setQueryFlags(0 << 0);
+			entity->setCastShadows(this->gameObjectPtr->getMovableObject()->getCastShadows());
+			sceneNode->attachObject(entity);
+			sceneNode->setScale(this->gameObjectPtr->getScale());
+		});
 
 		return sceneNode;
 	}
@@ -952,25 +957,28 @@ namespace NOWA
 	{
 		if (nullptr != sceneNode)
 		{
-			Ogre::MovableObject* movableObject = sceneNode->getAttachedObject(0);
-
-			auto nodeIt = sceneNode->getChildIterator();
-			while (nodeIt.hasMoreElements())
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LineMeshComponent::deleteSceneNode", _1(&sceneNode),
 			{
-				//go through all scenenodes in the scene
-				Ogre::Node* subNode = nodeIt.getNext();
-				subNode->removeAllChildren();
-			}
+				Ogre::MovableObject* movableObject = sceneNode->getAttachedObject(0);
 
-			sceneNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(sceneNode);
-			sceneNode = nullptr;
+				auto nodeIt = sceneNode->getChildIterator();
+				while (nodeIt.hasMoreElements())
+				{
+					//go through all scenenodes in the scene
+					Ogre::Node* subNode = nodeIt.getNext();
+					subNode->removeAllChildren();
+				}
 
-			if (this->gameObjectPtr->getSceneManager()->hasMovableObject(movableObject))
-			{
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(movableObject);
-				movableObject = nullptr;
-			}
+				sceneNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(sceneNode);
+				sceneNode = nullptr;
+
+				if (this->gameObjectPtr->getSceneManager()->hasMovableObject(movableObject))
+				{
+					this->gameObjectPtr->getSceneManager()->destroyMovableObject(movableObject);
+					movableObject = nullptr;
+				}
+			});
 		}
 	}
 

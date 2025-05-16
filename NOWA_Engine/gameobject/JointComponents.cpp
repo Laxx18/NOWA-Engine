@@ -96,20 +96,28 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->detachAllObjects();
-			this->sceneManager->destroySceneNode(this->debugGeometryNode);
-			this->debugGeometryNode = nullptr;
-			this->sceneManager->destroyMovableObject(this->debugGeometryEntity);
-			this->debugGeometryEntity = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
+			{
+				this->debugGeometryNode->detachAllObjects();
+				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
+				this->sceneManager->destroySceneNode(this->debugGeometryNode);
+				this->debugGeometryNode = nullptr;
+				this->sceneManager->destroyMovableObject(this->debugGeometryEntity);
+				this->debugGeometryEntity = nullptr;
+			});
 		}
 
 		if (nullptr != this->debugGeometryNode2)
 		{
-			this->debugGeometryNode2->detachAllObjects();
-			this->sceneManager->destroySceneNode(this->debugGeometryNode2);
-			this->debugGeometryNode2 = nullptr;
-			this->sceneManager->destroyMovableObject(this->debugGeometryEntity2);
-			this->debugGeometryEntity2 = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
+			{
+				this->debugGeometryNode2->detachAllObjects();
+				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
+				this->sceneManager->destroySceneNode(this->debugGeometryNode2);
+				this->debugGeometryNode2 = nullptr;
+				this->sceneManager->destroyMovableObject(this->debugGeometryEntity2);
+				this->debugGeometryEntity2 = nullptr;
+			});
 		}
 
 		// Do not remote here, because this destructor will not be called anyway, if its in the joint map!
@@ -624,42 +632,21 @@ namespace NOWA
 			{
 				if (nullptr == this->debugGeometryNode)
 				{
-					// For hinge
-					if (0 == type)
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("JointComponent::internalShowDebugData", _4(activate, type, value1, value2),
 					{
-						if (nullptr != this->body->getOgreNode())
+						// For hinge
+						if (0 == type)
 						{
-							this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-							this->debugGeometryNode->setPosition(value1);
-							this->debugGeometryNode->setDirection(value2);
-							// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-							this->debugGeometryNode->setInheritScale(false);
-							this->debugGeometryNode->setScale(0.05f, 0.05f, 0.025f);
-							this->debugGeometryNode->setName(this->getClassName() + "_Node");
-							this->debugGeometryEntity = this->sceneManager->createEntity("Arrow.mesh");
-							this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
-							this->debugGeometryEntity->setDatablock("BaseRedLine");
-							this->debugGeometryEntity->setQueryFlags(0 << 0);
-							this->debugGeometryEntity->setCastShadows(false);
-							this->debugGeometryNode->attachObject(this->debugGeometryEntity);
-						}
-					}
-
-					// For ball and socket
-					else if (1 == type)
-					{
-						if (true == this->bShowDebugData)
-						{
-							if (nullptr == this->debugGeometryNode)
+							if (nullptr != this->body->getOgreNode())
 							{
 								this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 								this->debugGeometryNode->setPosition(value1);
-								// this->debugGeometryNode->setDirection(value2);
-								this->debugGeometryNode->setName(this->getClassName() + "_Node");
+								this->debugGeometryNode->setDirection(value2);
 								// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 								this->debugGeometryNode->setInheritScale(false);
-								this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
-								this->debugGeometryEntity = this->sceneManager->createEntity("gizmosphere.mesh");
+								this->debugGeometryNode->setScale(0.05f, 0.05f, 0.025f);
+								this->debugGeometryNode->setName(this->getClassName() + "_Node");
+								this->debugGeometryEntity = this->sceneManager->createEntity("Arrow.mesh");
 								this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
 								this->debugGeometryEntity->setDatablock("BaseRedLine");
 								this->debugGeometryEntity->setQueryFlags(0 << 0);
@@ -667,11 +654,9 @@ namespace NOWA
 								this->debugGeometryNode->attachObject(this->debugGeometryEntity);
 							}
 						}
-					}
-					// For point to point
-					else if (2 == type)
-					{
-						if (nullptr != this->gameObjectPtr)
+
+						// For ball and socket
+						else if (1 == type)
 						{
 							if (true == this->bShowDebugData)
 							{
@@ -679,6 +664,7 @@ namespace NOWA
 								{
 									this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 									this->debugGeometryNode->setPosition(value1);
+									// this->debugGeometryNode->setDirection(value2);
 									this->debugGeometryNode->setName(this->getClassName() + "_Node");
 									// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
 									this->debugGeometryNode->setInheritScale(false);
@@ -689,23 +675,48 @@ namespace NOWA
 									this->debugGeometryEntity->setQueryFlags(0 << 0);
 									this->debugGeometryEntity->setCastShadows(false);
 									this->debugGeometryNode->attachObject(this->debugGeometryEntity);
-
-									this->debugGeometryNode2 = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-									this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
-									this->debugGeometryNode2->setPosition(value2);
-									// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
-									this->debugGeometryNode2->setInheritScale(false);
-									this->debugGeometryNode2->setScale(0.05f, 0.05f, 0.05f);
-									this->debugGeometryEntity2 = this->gameObjectPtr->getSceneManager()->createEntity("gizmosphere.mesh");
-									this->debugGeometryEntity2->setName(this->getClassName() + "_Entity2");
-									this->debugGeometryEntity2->setDatablock("BaseRedLine");
-									this->debugGeometryEntity2->setQueryFlags(0 << 0);
-									this->debugGeometryEntity2->setCastShadows(false);
-									this->debugGeometryNode2->attachObject(this->debugGeometryEntity2);
 								}
 							}
 						}
-					}
+						// For point to point
+						else if (2 == type)
+						{
+							if (nullptr != this->gameObjectPtr)
+							{
+								if (true == this->bShowDebugData)
+								{
+									if (nullptr == this->debugGeometryNode)
+									{
+										this->debugGeometryNode = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+										this->debugGeometryNode->setPosition(value1);
+										this->debugGeometryNode->setName(this->getClassName() + "_Node");
+										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
+										this->debugGeometryNode->setInheritScale(false);
+										this->debugGeometryNode->setScale(0.05f, 0.05f, 0.05f);
+										this->debugGeometryEntity = this->sceneManager->createEntity("gizmosphere.mesh");
+										this->debugGeometryEntity->setName(this->getClassName() + "_Entity");
+										this->debugGeometryEntity->setDatablock("BaseRedLine");
+										this->debugGeometryEntity->setQueryFlags(0 << 0);
+										this->debugGeometryEntity->setCastShadows(false);
+										this->debugGeometryNode->attachObject(this->debugGeometryEntity);
+
+										this->debugGeometryNode2 = static_cast<Ogre::SceneNode*>(this->body->getOgreNode())->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+										this->debugGeometryNode2->setName(this->getClassName() + "_Node2");
+										this->debugGeometryNode2->setPosition(value2);
+										// Do not inherit, because if parent node is scaled, then this scale is relative and debug data may be to small or to big
+										this->debugGeometryNode2->setInheritScale(false);
+										this->debugGeometryNode2->setScale(0.05f, 0.05f, 0.05f);
+										this->debugGeometryEntity2 = this->gameObjectPtr->getSceneManager()->createEntity("gizmosphere.mesh");
+										this->debugGeometryEntity2->setName(this->getClassName() + "_Entity2");
+										this->debugGeometryEntity2->setDatablock("BaseRedLine");
+										this->debugGeometryEntity2->setQueryFlags(0 << 0);
+										this->debugGeometryEntity2->setCastShadows(false);
+										this->debugGeometryNode2->attachObject(this->debugGeometryEntity2);
+									}
+								}
+							}
+						}
+					});
 				}
 			}
 		}
@@ -714,19 +725,25 @@ namespace NOWA
 		{
 			if (nullptr != this->debugGeometryNode)
 			{
-				this->debugGeometryNode->detachAllObjects();
-				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
-				this->debugGeometryNode = nullptr;
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
-				this->debugGeometryEntity = nullptr;
+				ENQUEUE_RENDER_COMMAND_WAIT("Destroy debugGeometryNode",
+				{
+					this->debugGeometryNode->detachAllObjects();
+					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode);
+					this->debugGeometryNode = nullptr;
+					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity);
+					this->debugGeometryEntity = nullptr;
+				});
 			}
 			if (nullptr != this->debugGeometryNode2)
 			{
-				this->debugGeometryNode2->detachAllObjects();
-				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
-				this->debugGeometryNode2 = nullptr;
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
-				this->debugGeometryEntity2 = nullptr;
+				ENQUEUE_RENDER_COMMAND_WAIT("Destroy debugGeometryNode2",
+				{
+					this->debugGeometryNode2->detachAllObjects();
+					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
+					this->debugGeometryNode2 = nullptr;
+					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
+					this->debugGeometryEntity2 = nullptr;
+				});
 			}
 		}
 	}
@@ -1475,7 +1492,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointHingeComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -1489,7 +1509,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointHingeComponent::setPin debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 
@@ -2226,7 +2249,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointHingeActuatorComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -2240,7 +2266,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointHingeActuatorComponent::setAnchorPosition debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 
@@ -2776,7 +2805,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointBallAndSocketComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -3208,11 +3240,14 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryNode2)
 		{
-			this->debugGeometryNode2->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
-			this->debugGeometryNode2 = nullptr;
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
-			this->debugGeometryEntity2 = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("JointPointToPointComponent::~JointPointToPointComponent",
+			{
+				this->debugGeometryNode2->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryNode2);
+				this->debugGeometryNode2 = nullptr;
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryEntity2);
+				this->debugGeometryEntity2 = nullptr;
+			});
 		}
 	}
 
@@ -3429,10 +3464,6 @@ namespace NOWA
 	void JointPointToPointComponent::setAnchorPosition1(const Ogre::Vector3& anchorPosition1)
 	{
 		this->anchorPosition1->setValue(anchorPosition1);
-		if (nullptr != this->debugGeometryNode)
-		{
-			this->debugGeometryNode->setPosition(anchorPosition1);
-		}
 		// Calculate here joint position for debug data
 		if (nullptr != this->body)
 		{
@@ -3441,6 +3472,14 @@ namespace NOWA
 			Ogre::Vector3 offset = (this->anchorPosition1->getVector3() * size);
 			this->jointPosition = (this->body->getPosition() + offset);
 			this->jointAlreadyCreated = false;
+		}
+
+		if (nullptr != this->debugGeometryNode)
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI("JointPointToPointComponent::setAnchorPosition1 debugGeometryNode", _1(anchorPosition1),
+			{
+				this->debugGeometryNode->setPosition(anchorPosition1);
+			});
 		}
 	}
 
@@ -4613,42 +4652,52 @@ namespace NOWA
 		// boost::shared_ptr<NOWA::EventDataSpringRelease> eventDataSpringReleaseEvent(new NOWA::EventDataSpringRelease(this->id->getULong()));
 		// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSpringReleaseEvent);
 
-		if (nullptr != this->dragLineNode)
+		ENQUEUE_RENDER_COMMAND_WAIT("JointSpringComponent::releaseSpring",
 		{
-			this->dragLineNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->dragLineNode);
-			this->dragLineNode = nullptr;
-		}
-		if (nullptr != this->dragLineObject)
-		{
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->dragLineObject);
-			this->dragLineObject = nullptr;
-		}
+			if (nullptr != this->dragLineNode)
+			{
+				this->dragLineNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->dragLineNode);
+				this->dragLineNode = nullptr;
+
+				if (nullptr != this->dragLineObject)
+				{
+					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->dragLineObject);
+					this->dragLineObject = nullptr;
+				}
+			}
+		});
 	}
 
 	void  JointSpringComponent::createLine(void)
 	{
 		if (nullptr == this->dragLineNode)
 		{
-			this->dragLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-			this->dragLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setName("SpringLine");
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineNode->attachObject(this->dragLineObject);
+			ENQUEUE_RENDER_COMMAND_WAIT("JointSpringComponent::createLine",
+			{
+				this->dragLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				this->dragLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				this->dragLineObject->setName("SpringLine");
+				this->dragLineObject->setQueryFlags(0 << 0);
+				this->dragLineNode->attachObject(this->dragLineObject);
+			});
 		}
 	}
 
 	void JointSpringComponent::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
 	{
-		// Draw a 3D line between these points for visual effect
-		this->dragLineObject->clear();
-		this->dragLineObject->begin("BaseWhiteNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		this->dragLineObject->position(startPosition);
-		this->dragLineObject->index(0);
-		this->dragLineObject->position(endPosition);
-		this->dragLineObject->index(1);
-		this->dragLineObject->end();
+		ENQUEUE_RENDER_COMMAND_MULTI("JointSpringComponent::drawLine", _2(startPosition, endPosition),
+		{
+			// Draw a 3D line between these points for visual effect
+			this->dragLineObject->clear();
+			this->dragLineObject->begin("BaseWhiteNoLighting", Ogre::OperationType::OT_LINE_LIST);
+			this->dragLineObject->position(startPosition);
+			this->dragLineObject->index(0);
+			this->dragLineObject->position(endPosition);
+			this->dragLineObject->index(1);
+			this->dragLineObject->end();
+		});
 	}
 
 	/*******************************JointSpringComponent*******************************/
@@ -5266,7 +5315,10 @@ namespace NOWA
 		this->jointAlreadyCreated = false;
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(anchorPosition);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointCorkScrewComponent::setAnchorPosition debugGeometryNode", _1(anchorPosition),
+			{
+				this->debugGeometryNode->setPosition(anchorPosition);
+			});
 		}
 	}
 
@@ -6324,7 +6376,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointSliderActuatorComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -6338,7 +6393,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointCorkScrewComponent::setPin debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 
@@ -9358,7 +9416,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointPathFollowComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -9511,13 +9572,16 @@ namespace NOWA
 	{
 		this->destroyLines();
 
-		this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-		this->lineObjects = this->gameObjectPtr->getSceneManager()->createManualObject();
-		this->lineObjects->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->lineObjects->setName("Lines_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-		this->lineObjects->setQueryFlags(0 << 0);
-		this->lineNode->attachObject(this->lineObjects);
-		this->lineObjects->setCastShadows(false);
+		ENQUEUE_RENDER_COMMAND_WAIT("JointPathFollowComponent::createLines",
+		{
+			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+			this->lineObjects = this->gameObjectPtr->getSceneManager()->createManualObject();
+			this->lineObjects->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->lineObjects->setName("Lines_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+			this->lineObjects->setQueryFlags(0 << 0);
+			this->lineNode->attachObject(this->lineObjects);
+			this->lineObjects->setCastShadows(false);
+		});
 	}
 
 	void JointPathFollowComponent::drawLines(void)
@@ -9527,41 +9591,47 @@ namespace NOWA
 			return;
 		}
 
-		const auto& spline = this->predecessorJointCompPtr->getBody()->getSpline();
-
-		this->lineObjects->clear();
-		this->lineObjects->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-
-		const Ogre::Real resolution = 50.0f;
-		Ogre::Real scale = 1.0f / resolution;
-
-		int index = 0;
-		dBigVector p0(spline.CurvePoint(0.0f));
-		for (int i = 1; i <= resolution; i++)
+		ENQUEUE_RENDER_COMMAND("JointPathFollowComponent::drawLines",
 		{
-			dBigVector p1(spline.CurvePoint(i * scale));
-			this->lineObjects->position(p0.m_x, p0.m_y, p0.m_z);
-			this->lineObjects->colour(Ogre::ColourValue::White);
-			this->lineObjects->index(index++);
+			const auto & spline = this->predecessorJointCompPtr->getBody()->getSpline();
 
-			this->lineObjects->position(p1.m_x, p1.m_y, p1.m_z);
-			this->lineObjects->colour(Ogre::ColourValue::White);
-			this->lineObjects->index(index++);
-			p0 = p1;
-		}
+			this->lineObjects->clear();
+			this->lineObjects->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
 
-		this->lineObjects->end();
+			const Ogre::Real resolution = 50.0f;
+			Ogre::Real scale = 1.0f / resolution;
+
+			int index = 0;
+			dBigVector p0(spline.CurvePoint(0.0f));
+			for (int i = 1; i <= resolution; i++)
+			{
+				dBigVector p1(spline.CurvePoint(i * scale));
+				this->lineObjects->position(p0.m_x, p0.m_y, p0.m_z);
+				this->lineObjects->colour(Ogre::ColourValue::White);
+				this->lineObjects->index(index++);
+
+				this->lineObjects->position(p1.m_x, p1.m_y, p1.m_z);
+				this->lineObjects->colour(Ogre::ColourValue::White);
+				this->lineObjects->index(index++);
+				p0 = p1;
+			}
+
+			this->lineObjects->end();
+		});
 	}
 
 	void JointPathFollowComponent::destroyLines(void)
 	{
 		if (this->lineNode != nullptr)
 		{
-			this->lineNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObjects);
-			this->lineObjects = nullptr;
-			this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-			this->lineNode = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("JointPathFollowComponent::destroyLines",
+			{
+				this->lineNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObjects);
+				this->lineObjects = nullptr;
+				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+				this->lineNode = nullptr;
+			});
 		}
 	}
 
@@ -11347,7 +11417,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointUniversalComponent::setPin debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 
@@ -12172,7 +12245,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointUniversalActuatorComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -13557,7 +13633,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointWheelComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -13571,7 +13650,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointWheelComponent::setPin debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 
@@ -14569,7 +14651,10 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setPosition(this->jointPosition);
+			ENQUEUE_RENDER_COMMAND("JointVehicleTireComponent::setAnchorPosition debugGeometryNode",
+			{
+				this->debugGeometryNode->setPosition(this->jointPosition);
+			});
 		}
 	}
 
@@ -14583,7 +14668,10 @@ namespace NOWA
 		this->pin->setValue(pin);
 		if (nullptr != this->debugGeometryNode)
 		{
-			this->debugGeometryNode->setDirection(pin);
+			ENQUEUE_RENDER_COMMAND_MULTI("JointVehicleTireComponent::setPin debugGeometryNode", _1(pin),
+			{
+				this->debugGeometryNode->setDirection(pin);
+			});
 		}
 	}
 

@@ -48,7 +48,8 @@ namespace OgreNewt
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_isSoftBody(false)
+		m_isSoftBody(false),
+		m_renderUpdateCallback(nullptr)
 	{
 		float matrix[16] = { 1,0,0,0,
 							0,1,0,0,
@@ -103,7 +104,8 @@ namespace OgreNewt
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_isSoftBody(false)
+		m_isSoftBody(false),
+		m_renderUpdateCallback(nullptr)
 	{
 		if (nullptr != m_body)
 		{
@@ -144,7 +146,8 @@ namespace OgreNewt
 		m_buoyancycallback(nullptr),
 		m_nodeupdatenotifycallback(nullptr),
 		m_contactCallback(nullptr),
-		m_isSoftBody(false)
+		m_isSoftBody(false),
+		m_renderUpdateCallback(nullptr)
 	{
 
 	}
@@ -313,7 +316,7 @@ namespace OgreNewt
 	}
 
 	// attachToNode
-	void Body::attachNode(Ogre::Node* node, bool updateRotation)
+	void Body::attachNode(Ogre::SceneNode* node, bool updateRotation)
 	{
 		m_node = node;
 		m_updateRotation = updateRotation;
@@ -783,84 +786,101 @@ namespace OgreNewt
 
 	void Body::updateNode(Ogre::Real interpolatParam)
 	{
-		if (m_node)
+		if (!m_node)
+			return;
+
+		m_lastPosit = m_node->getPosition();
+		m_lastOrientation = m_node->getOrientation();
+
+		const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
+		m_nodePosit = m_prevPosit + velocity * interpolatParam;
+
+		if (m_updateRotation)
 		{
-			m_lastPosit = m_node->getPosition();
-			m_lastOrientation = m_node->getOrientation();
+			m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
+		}
 
-			const Ogre::Vector3 velocity = m_curPosit - m_prevPosit;
+		// --- Move SceneNode transform to render thread ---
+		Ogre::Vector3 nodePosit = m_nodePosit;
+		Ogre::Quaternion nodeRot = m_nodeRotation;
+		bool updateRot = m_updateRotation;
+		bool updateStatic = m_validToUpdateStatic;
+		Ogre::SceneNode* node = m_node;
+		Ogre::Node* parent = node->getParent();
 
-			m_nodePosit = m_prevPosit + velocity * interpolatParam;
-			if (m_updateRotation)
+		if (!parent)
+			return;
+
+		if (!node->isStatic())
+		{
+			if (nullptr != m_renderUpdateCallback)
 			{
-				m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
-			}
-
-			m_world->m_ogreMutex.lock();
-
-			// Set position in global space
-			Ogre::Node* m_nodeParent = m_node->getParent();
-			// If its a dynamic body, the _getDerived function can be used, because the interal Ogre cache is updated
-			if (false == m_node->isStatic())
-			{
-				m_node->setPosition((m_nodeParent->_getDerivedOrientation().Inverse() * (m_nodePosit - m_nodeParent->_getDerivedPosition()) / m_nodeParent->_getDerivedScale()));
-				if (m_updateRotation)
-				{
-					m_node->setOrientation((m_nodeParent->_getDerivedOrientation().Inverse() * m_nodeRotation));
-				}
+				m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
 			}
 			else
 			{
-				// Else the cache must be updated manually, but this is expensive if there are a lot of nodes, so only update if position/orientation changed
-				// but only if position orientation function has been called, to replace the object manually
-				if (true == m_validToUpdateStatic)
+				node->setPosition((parent->_getDerivedOrientation().Inverse() * (nodePosit - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+
+				if (updateRot)
 				{
-					m_node->setPosition((m_nodeParent->_getDerivedOrientationUpdated().Inverse() * (m_nodePosit - m_nodeParent->_getDerivedPositionUpdated())
-						/ m_nodeParent->_getDerivedScaleUpdated()));
-					// m_node->_getFullTransformUpdated();
-					m_node->setOrientation((m_nodeParent->_getDerivedOrientationUpdated().Inverse() * m_nodeRotation));
+					node->setOrientation(parent->_getDerivedOrientation().Inverse() * nodeRot);
 				}
-				m_validToUpdateStatic = false;
 			}
-
-			if (m_nodeupdatenotifycallback)
+		}
+		else if (updateStatic)
+		{
+			if (nullptr != m_renderUpdateCallback)
 			{
-				m_nodeupdatenotifycallback(this);
+				m_renderUpdateCallback(m_node, m_nodePosit, m_nodeRotation, m_updateRotation, m_validToUpdateStatic);
 			}
-
-			if (m_contactCallback)
+			else
 			{
-				int count = 0;
+				node->setPosition((parent->_getDerivedOrientationUpdated().Inverse() * (nodePosit - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+				node->setOrientation(parent->_getDerivedOrientationUpdated().Inverse() * nodeRot);
+			}
+		}
 
-				for (NewtonJoint* joint = NewtonBodyGetFirstContactJoint(m_body); joint; joint = NewtonBodyGetNextContactJoint(m_body, joint))
+		m_validToUpdateStatic = false;
+
+		// --- Optional user callback ---
+		if (m_nodeupdatenotifycallback)
+		{
+			m_nodeupdatenotifycallback(this);
+		}
+
+		// --- Contact callback ---
+		if (m_contactCallback)
+		{
+			int count = 0;
+
+			for (NewtonJoint* joint = NewtonBodyGetFirstContactJoint(m_body);
+				joint;
+				joint = NewtonBodyGetNextContactJoint(m_body, joint))
+			{
+				if (NewtonJointIsActive(joint))
 				{
-					if (NewtonJointIsActive(joint))
+					NewtonBody* const body0 = NewtonJointGetBody0(joint);
+					NewtonBody* const body1 = NewtonJointGetBody1(joint);
+					const NewtonBody* const otherBody = (body0 == m_body) ? body1 : body0;
+
+					OgreNewt::Body* body = (OgreNewt::Body*)NewtonBodyGetUserData(otherBody);
+
+					for (void* contact = NewtonContactJointGetFirstContact(joint); contact; contact = NewtonContactJointGetNextContact(joint, contact))
 					{
-						NewtonBody* const newtonBody0 = NewtonJointGetBody0(joint);
-						NewtonBody* const newtonBody1 = NewtonJointGetBody1(joint);
+						OgreNewt::ContactJoint contactJoint(joint);
+						OgreNewt::Contact ogreNewtContact(contact, &contactJoint);
+						count++;
 
-						const NewtonBody* const otherBody = (newtonBody0 == m_body) ? newtonBody1 : newtonBody0;
-						OgreNewt::Body* body = (OgreNewt::Body*)NewtonBodyGetUserData(otherBody);
-
-						// Does only work if collisionmode is set on! If required without collision, checkout KinematicBody!
-						for (void* contact = NewtonContactJointGetFirstContact(joint); contact; contact = NewtonContactJointGetNextContact(joint, contact))
-						{
-							OgreNewt::ContactJoint contactJoint(joint);
-							OgreNewt::Contact ogreNewtContact(contact, &contactJoint);
-							count++;
-
-							m_contactCallback(body, &ogreNewtContact);
-						}
+						m_contactCallback(body, &ogreNewtContact);
 					}
 				}
 			}
+		}
 
-			if (true == m_isSoftBody)
-			{
-				this->updateDeformableCollision();
-			}
-
-			m_world->m_ogreMutex.unlock();
+		// --- Soft body update ---
+		if (m_isSoftBody)
+		{
+			this->updateDeformableCollision();
 		}
 	}
 
@@ -900,6 +920,16 @@ namespace OgreNewt
 	bool Body::getIsSoftBody(void) const
 	{
 		return m_isSoftBody;
+	}
+
+	void Body::setRenderUpdateCallback(RenderUpdateCallback renderUpdateCallback)
+	{
+		m_renderUpdateCallback = std::move(renderUpdateCallback);
+	}
+
+	bool Body::hasRenderUpdateCallback(void) const
+	{
+		return false;
 	}
 
 #if 0

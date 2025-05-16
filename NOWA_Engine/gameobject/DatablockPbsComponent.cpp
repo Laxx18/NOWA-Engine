@@ -148,40 +148,43 @@ namespace NOWA
 		// If a datablock has been cloned, it must be destroyed manually
 		if (true == this->alreadyCloned)
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND_WAIT("DatablockPbsComponent::onRemoveComponent",
 			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-				if (nullptr != this->originalDatablock)
+				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-					// Set back the default datablock
-					entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					Ogre::String dataBlockName = *this->datablock->getNameStr();
+					if (nullptr != this->originalDatablock)
+					{
+						Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
+						// Set back the default datablock
+						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					}
 				}
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
+				else
 				{
-					// Set back the default datablock
-					item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (nullptr != item)
+					{
+						// Set back the default datablock
+						item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					}
 				}
-			}
 
-			if (nullptr != this->datablock)
-			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-
-				auto& linkedRenderabled = this->datablock->getLinkedRenderables();
-
-				// Only destroy if the datablock is not used else where
-				if (true == linkedRenderabled.empty())
+				if (nullptr != this->datablock)
 				{
-					this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-					this->datablock = nullptr;
+					Ogre::String dataBlockName = *this->datablock->getNameStr();
+
+					auto& linkedRenderabled = this->datablock->getLinkedRenderables();
+
+					// Only destroy if the datablock is not used else where
+					if (true == linkedRenderabled.empty())
+					{
+						this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
+						this->datablock = nullptr;
+					}
 				}
-			}
+			});
 		}
 
 		this->gameObjectPtr->actualizeDatablocks();
@@ -810,108 +813,111 @@ namespace NOWA
 
 	bool DatablockPbsComponent::readDatablockEntity(Ogre::v1::Entity* entity)
 	{
-		// Two data block components with the same entity index can not exist
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::readDatablockEntity", _1(entity),
 		{
-			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
-			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
+			// Two data block components with the same entity index can not exist
+			for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 			{
-				if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+				auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+				if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 				{
-					this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+					{
+						this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					}
 				}
 			}
-		}
-		
-		if (this->subEntityIndex->getUInt() >= static_cast<unsigned int>(entity->getNumSubEntities()))
-		{
-			this->datablock = nullptr;
-			Ogre::String message = "[DatablockPbsComponent] Datablock reading failed, because there is no such sub entity index: "
-				+ Ogre::StringConverter::toString(this->subEntityIndex->getUInt()) + " for game object: "
-				+ this->gameObjectPtr->getName();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 
-			boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
-			return false;
-		}
-
-		// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
-		if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
-		{
-			this->alreadyCloned = true;
-			this->gameObjectPtr->setCustomDataString("");
-		}
-
-		// Get the cloned data block, so that it can be manipulated individually
-		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
-		// Datablock could not be received, pbs entity got unlit data block component?
-		if (nullptr == this->originalDatablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Warning: Could not use datablock pbs component, because this game object has a unlit data block for game object: "
-															+ this->gameObjectPtr->getName());
-			return false;
-		}
-
-		// Store also the original name
-		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-
-		if ("Missing" == originalDataBlockName)
-		{
-			return false;
-		}
-		
-		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
-		size_t found = originalDataBlockName.find("__");
-		if (found != Ogre::String::npos)
-		{
-			originalDataBlockName = originalDataBlockName.substr(0, found);
-		}
-
-		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
-		{
-			bool alreadyExists = false;
-			unsigned char index = 0;
-			do
+			if (this->subEntityIndex->getUInt() >= static_cast<unsigned int>(entity->getNumSubEntities()))
 			{
-				try
+				this->datablock = nullptr;
+				Ogre::String message = "[DatablockPbsComponent] Datablock reading failed, because there is no such sub entity index: "
+					+ Ogre::StringConverter::toString(this->subEntityIndex->getUInt()) + " for game object: "
+					+ this->gameObjectPtr->getName();
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+
+				boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataFeedback);
+				return false;
+			}
+
+			// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
+			if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
+			{
+				this->alreadyCloned = true;
+				this->gameObjectPtr->setCustomDataString("");
+			}
+
+			// Get the cloned data block, so that it can be manipulated individually
+			this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
+			// Datablock could not be received, pbs entity got unlit data block component?
+			if (nullptr == this->originalDatablock)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Warning: Could not use datablock pbs component, because this game object has a unlit data block for game object: "
+																+ this->gameObjectPtr->getName());
+				return false;
+			}
+
+			// Store also the original name
+			Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
+
+			if ("Missing" == originalDataBlockName)
+			{
+				return false;
+			}
+
+			// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
+			size_t found = originalDataBlockName.find("__");
+			if (found != Ogre::String::npos)
+			{
+				originalDataBlockName = originalDataBlockName.substr(0, found);
+			}
+
+			if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
+			{
+				bool alreadyExists = false;
+				unsigned char index = 0;
+				do
 				{
-					alreadyExists = false;
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-				catch (const Ogre::Exception& exception)
-				{
-					alreadyExists = true;
-					// Already exists, try again:
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-			} while (true == alreadyExists);
+					try
+					{
+						alreadyExists = false;
+						this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
+																				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+					}
+					catch (const Ogre::Exception& exception)
+					{
+						alreadyExists = true;
+						// Already exists, try again:
+						this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
+																				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+					}
+				} while (true == alreadyExists);
 
-			this->alreadyCloned = true;
-		}
-		else
-		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
-		}
+				this->alreadyCloned = true;
+			}
+			else
+			{
+				this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(this->subEntityIndex->getUInt())->getDatablock());
+			}
 
-		if (nullptr == this->datablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Datablock reading failed, because there is no data block for game object: "
-				+ this->gameObjectPtr->getName());
-			return false;
-		}
+			if (nullptr == this->datablock)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Datablock reading failed, because there is no data block for game object: "
+					+ this->gameObjectPtr->getName());
+				return false;
+			}
 
-		entity->getSubEntity(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
-		this->oldSubIndex = this->subEntityIndex->getUInt();
+			entity->getSubEntity(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
+			this->oldSubIndex = this->subEntityIndex->getUInt();
 
-		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+			const Ogre::String* finalDatablockName = this->datablock->getNameStr();
 
-		if (nullptr != finalDatablockName)
-		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
-		}
+			if (nullptr != finalDatablockName)
+			{
+				this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+			}
+		});
 
 		this->postReadDatablock();
 
@@ -920,86 +926,89 @@ namespace NOWA
 
 	bool DatablockPbsComponent::readDatablockItem(Ogre::Item* item)
 	{
-		// Two data block components with the same entity index can not exist
-		for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::readDatablockEntity", _1(item),
 		{
-			auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
-			if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
+			// Two data block components with the same entity index can not exist
+			for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 			{
-				if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+				auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+				if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 				{
-					this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					if (this->subEntityIndex->getUInt() == priorPbsComponent->getSubEntityIndex())
+					{
+						this->subEntityIndex->setValue(priorPbsComponent->getSubEntityIndex() + 1);
+					}
 				}
 			}
-		}
 
-		// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
-		if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
-		{
-			this->alreadyCloned = true;
-			this->gameObjectPtr->setCustomDataString("");
-		}
+			// If a prior component set this custom data string, with this content, do not clone the datablock (see. PlaneComponent)
+			if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
+			{
+				this->alreadyCloned = true;
+				this->gameObjectPtr->setCustomDataString("");
+			}
 
-		// Get the cloned data block, so that it can be manipulated individually
-		this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
+			// Get the cloned data block, so that it can be manipulated individually
+			this->originalDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
 
-		// Store also the original name
-		Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
+			// Store also the original name
+			Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
 
-		/*if ("Missing" == originalDataBlockName)
+			/*if ("Missing" == originalDataBlockName)
 			return false;*/
 
-		// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
-		size_t found = originalDataBlockName.find("__");
-		if (found != Ogre::String::npos)
-		{
-			originalDataBlockName = originalDataBlockName.substr(0, found);
-		}
-
-		if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
-		{
-			bool alreadyExists = false;
-			unsigned char index = 0;
-			do
+			// If its already a cloned data block (with __ + id extension), this one will be then adapted by properties from this component
+			size_t found = originalDataBlockName.find("__");
+			if (found != Ogre::String::npos)
 			{
-				try
+				originalDataBlockName = originalDataBlockName.substr(0, found);
+			}
+
+			if (false == this->alreadyCloned && false == this->isCloned && nullptr != this->originalDatablock)
+			{
+				bool alreadyExists = false;
+				unsigned char index = 0;
+				do
 				{
-					alreadyExists = false;
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-				catch (const Ogre::Exception& exception)
-				{
-					alreadyExists = true;
-					// Already exists, try again:
-					this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
-																			+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-				}
-			} while (true == alreadyExists);
+					try
+					{
+						alreadyExists = false;
+						this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__"
+																				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+					}
+					catch (const Ogre::Exception& exception)
+					{
+						alreadyExists = true;
+						// Already exists, try again:
+						this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(this->originalDatablock->clone(originalDataBlockName + "__" + Ogre::StringConverter::toString(index++)
+																				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+					}
+				} while (true == alreadyExists);
 
-			this->alreadyCloned = true;
-		}
-		else
-		{
-			this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
-		}
+				this->alreadyCloned = true;
+			}
+			else
+			{
+				this->datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(this->subEntityIndex->getUInt())->getDatablock());
+			}
 
-		if (nullptr == this->datablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Datablock reading failed, because there is no data block for game object: "
-															+ this->gameObjectPtr->getName());
-			return false;
-		}
+			if (nullptr == this->datablock)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Datablock reading failed, because there is no data block for game object: "
+																+ this->gameObjectPtr->getName());
+				return false;
+			}
 
-		item->getSubItem(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
-		this->oldSubIndex = this->subEntityIndex->getUInt();
+			item->getSubItem(this->subEntityIndex->getUInt())->setDatablock(this->datablock);
+			this->oldSubIndex = this->subEntityIndex->getUInt();
 
-		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+			const Ogre::String* finalDatablockName = this->datablock->getNameStr();
 
-		if (nullptr != finalDatablockName)
-		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
-		}
+			if (nullptr != finalDatablockName)
+			{
+				this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, this->subEntityIndex->getUInt());
+			}
+		});
 
 		this->postReadDatablock();
 
@@ -1648,195 +1657,199 @@ namespace NOWA
 
 	void DatablockPbsComponent::internalSetTextureName(Ogre::PbsTextureTypes pbsTextureType, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
 	{
-		Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-		Ogre::String previousTextureName = attribute->getString();
-
-		// If the data block component has just been created, get texture name from existing data block
-		Ogre::String tempTextureName = textureName;
-		
-		if (Ogre::PBSM_REFLECTION != pbsTextureType)
+		// TODO: Wait?
+		ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::internalSetTextureName", _4(pbsTextureType, textureType, attribute, textureName),
 		{
+			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+
+			Ogre::String previousTextureName = attribute->getString();
+
 			// If the data block component has just been created, get texture name from existing data block
-			if (true == newlyCreated && nullptr != this->datablock)
+			Ogre::String tempTextureName = textureName;
+
+			if (Ogre::PBSM_REFLECTION != pbsTextureType)
 			{
-				tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
-			}
-			attribute->setValue(tempTextureName);
-			this->addAttributeFilePathData(attribute);
-		}
-		else
-		{
-			// If dynamic cubemap is used, skip texture creation as a reflection scenario with dynamic cubemap and camera is used!
-			if ("cubemap" == textureName)
-			{
-				attribute->getList().clear();
-				attribute->getList().emplace_back("cubemap");
-				attribute->setListSelectedValue("cubemap");
-				attribute->setReadOnly(true);
-				return;
+				// If the data block component has just been created, get texture name from existing data block
+				if (true == newlyCreated && nullptr != this->datablock)
+				{
+					tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
+				}
+				attribute->setValue(tempTextureName);
+				this->addAttributeFilePathData(attribute);
 			}
 			else
 			{
-				this->setReflectionTextureNames();
-				attribute->setListSelectedValue(textureName);
-				attribute->setReadOnly(false);
-
-				/*Ogre::TextureGpu* reflectionTexture = datablock->getTexture(pbsTextureType);
-				if (nullptr != reflectionTexture)
+				// If dynamic cubemap is used, skip texture creation as a reflection scenario with dynamic cubemap and camera is used!
+				if ("cubemap" == textureName)
 				{
-					hlmsTextureManager->destroyTexture(reflectionTexture);
-				}*/
-			}
-		}
-		
-		// Store the old texture name as user data
-		if (false == tempTextureName.empty())
-		{
-			attribute->addUserData("OldTexture", tempTextureName);
-		}
-		else if (nullptr != this->datablock)
-		{
-			attribute->addUserData("OldTexture", this->getPbsTextureName(this->datablock, pbsTextureType));
-		}
-
-		if (nullptr != this->datablock /*&& false == newlyCreated*/)
-		{
-			// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
-			if (true == attribute->getUserDataValue("OldTexture").empty())
-			{
-				tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
-				attribute->addUserData(tempTextureName);
-			}
-
-			// createOrRetrieveTexture crashes, when texture alias name is empty
-			Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
-			if (false == oldTextureName.empty())
-			{
-				if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Cannot set texture: '" + oldTextureName + 
-						"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
-					attribute->setValue(previousTextureName);
-					this->addAttributeFilePathData(attribute);
+					attribute->getList().clear();
+					attribute->getList().emplace_back("cubemap");
+					attribute->setListSelectedValue("cubemap");
+					attribute->setReadOnly(true);
 					return;
-				}
-
-				Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
-
-				if (this->datablock->suggestUsingSRGB(pbsTextureType))
-				{
-					textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
-				}
-
-				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
-				if (Ogre::PBSM_REFLECTION == pbsTextureType)
-				{
-					textureFlags |= ~Ogre::TextureFlags::AutomaticBatching;
-					textureFlags |= Ogre::TextureFlags::RenderToTexture;
-					textureFlags |= Ogre::TextureFlags::AllowAutomipmaps;
-					internalTextureType = Ogre::TextureTypes::TypeCube;
-				}
-
-				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-				filters |= this->datablock->suggestFiltersForType(pbsTextureType);
-
-				// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
-				// it will be filled with correct data when setDataBlock is called
-				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
-					Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
-					Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
-				
-				// Check if its a valid texture
-				if (nullptr != texture)
-				{
-					if (Ogre::PBSM_REFLECTION == pbsTextureType)
-					{
-						texture->setResolution(1024u, 1024u);
-						texture->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(1024u, 1024u));
-						texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
-					}
-
-					if (nullptr != texture)
-					{
-						try
-						{
-							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-							/*if (false == this->newlyCreated)
-							{
-								hlmsTextureManager->waitForStreamingCompletion();
-							}*/
-						}
-						catch (const Ogre::Exception& exception)
-						{
-							Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
-							Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
-							attribute->setValue(previousTextureName);
-							this->addAttributeFilePathData(attribute);
-							return;
-						}
-					}
-
-					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
-					if (0 == texture->getWidth())
-					{
-						hlmsTextureManager->waitForStreamingCompletion();
-					}
-					// Invalid texture skip
-					if (0 == texture->getWidth())
-					{
-						 attribute->setValue(previousTextureName);
-						 this->addAttributeFilePathData(attribute);
-						 return;
-					}
-					// If texture has been removed, set null texture, so that it will be removed from data block
-					if (true == tempTextureName.empty())
-					{
-						hlmsTextureManager->destroyTexture(texture);
-						texture = nullptr;
-						return;
-					}
-
-					const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);
-					if (nullptr != tempSamplerBlock)
-					{
-						Ogre::HlmsSamplerblock samplerblock(*tempSamplerBlock);
-						samplerblock.mU = Ogre::TAM_WRAP;
-						samplerblock.mV = Ogre::TAM_WRAP;
-						samplerblock.mW = Ogre::TAM_WRAP;
-
-						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-						this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
-					}
-					else
-					{
-						Ogre::HlmsSamplerblock samplerblock;
-						samplerblock.mU = Ogre::TAM_WRAP;
-						samplerblock.mV = Ogre::TAM_WRAP;
-						samplerblock.mW = Ogre::TAM_WRAP;
-
-						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-						this->datablock->setSamplerblock(pbsTextureType, samplerblock);
-						this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
-
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
-					}
 				}
 				else
 				{
-					attribute->setValue("");
-					attribute->removeUserData("OldTexture");
+					this->setReflectionTextureNames();
+					attribute->setListSelectedValue(textureName);
+					attribute->setReadOnly(false);
+
+					/*Ogre::TextureGpu* reflectionTexture = datablock->getTexture(pbsTextureType);
+					if (nullptr != reflectionTexture)
+					{
+						hlmsTextureManager->destroyTexture(reflectionTexture);
+					}*/
 				}
 			}
-		}
+
+			// Store the old texture name as user data
+			if (false == tempTextureName.empty())
+			{
+				attribute->addUserData("OldTexture", tempTextureName);
+			}
+			else if (nullptr != this->datablock)
+			{
+				attribute->addUserData("OldTexture", this->getPbsTextureName(this->datablock, pbsTextureType));
+			}
+
+			if (nullptr != this->datablock /*&& false == newlyCreated*/)
+			{
+				// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
+				if (true == attribute->getUserDataValue("OldTexture").empty())
+				{
+					tempTextureName = this->getPbsTextureName(this->datablock, pbsTextureType);
+					attribute->addUserData(tempTextureName);
+				}
+
+				// createOrRetrieveTexture crashes, when texture alias name is empty
+				Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
+				if (false == oldTextureName.empty())
+				{
+					if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Cannot set texture: '" + oldTextureName +
+							"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
+						attribute->setValue(previousTextureName);
+						this->addAttributeFilePathData(attribute);
+						return;
+					}
+
+					Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
+
+					if (this->datablock->suggestUsingSRGB(pbsTextureType))
+					{
+						textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
+					}
+
+					Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
+					if (Ogre::PBSM_REFLECTION == pbsTextureType)
+					{
+						textureFlags |= ~Ogre::TextureFlags::AutomaticBatching;
+						textureFlags |= Ogre::TextureFlags::RenderToTexture;
+						textureFlags |= Ogre::TextureFlags::AllowAutomipmaps;
+						internalTextureType = Ogre::TextureTypes::TypeCube;
+					}
+
+					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+					filters |= this->datablock->suggestFiltersForType(pbsTextureType);
+
+					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+					// it will be filled with correct data when setDataBlock is called
+					Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
+						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
+						Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
+
+					// Check if its a valid texture
+					if (nullptr != texture)
+					{
+						if (Ogre::PBSM_REFLECTION == pbsTextureType)
+						{
+							texture->setResolution(1024u, 1024u);
+							texture->setNumMipmaps(Ogre::PixelFormatGpuUtils::getMaxMipmapCount(1024u, 1024u));
+							texture->setPixelFormat(Ogre::PFG_RGBA8_UNORM_SRGB);
+						}
+
+						if (nullptr != texture)
+						{
+							try
+							{
+								texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+								/*if (false == this->newlyCreated)
+								{
+									hlmsTextureManager->waitForStreamingCompletion();
+								}*/
+							}
+							catch (const Ogre::Exception& exception)
+							{
+								Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
+								Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+								attribute->setValue(previousTextureName);
+								this->addAttributeFilePathData(attribute);
+								return;
+							}
+						}
+
+						// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
+						if (0 == texture->getWidth())
+						{
+							hlmsTextureManager->waitForStreamingCompletion();
+						}
+						// Invalid texture skip
+						if (0 == texture->getWidth())
+						{
+							 attribute->setValue(previousTextureName);
+							 this->addAttributeFilePathData(attribute);
+							 return;
+						}
+						// If texture has been removed, set null texture, so that it will be removed from data block
+						if (true == tempTextureName.empty())
+						{
+							hlmsTextureManager->destroyTexture(texture);
+							texture = nullptr;
+							return;
+						}
+
+						const Ogre::HlmsSamplerblock* tempSamplerBlock = this->datablock->getSamplerblock(pbsTextureType);
+						if (nullptr != tempSamplerBlock)
+						{
+							Ogre::HlmsSamplerblock samplerblock(*tempSamplerBlock);
+							samplerblock.mU = Ogre::TAM_WRAP;
+							samplerblock.mV = Ogre::TAM_WRAP;
+							samplerblock.mW = Ogre::TAM_WRAP;
+
+							samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
+							this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
+						}
+						else
+						{
+							Ogre::HlmsSamplerblock samplerblock;
+							samplerblock.mU = Ogre::TAM_WRAP;
+							samplerblock.mV = Ogre::TAM_WRAP;
+							samplerblock.mW = Ogre::TAM_WRAP;
+
+							samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
+							this->datablock->setSamplerblock(pbsTextureType, samplerblock);
+							this->datablock->setTexture(pbsTextureType, texture, &samplerblock);
+
+							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockPbsComponent] Can not apply texture for this datablock, because it has no sampler block for game object: " + this->gameObjectPtr->getName());
+						}
+					}
+					else
+					{
+						attribute->setValue("");
+						attribute->removeUserData("OldTexture");
+					}
+				}
+			}
+		});
 	}
 
 	void DatablockPbsComponent::setSubEntityIndex(unsigned int subEntityIndex)
@@ -1846,76 +1859,79 @@ namespace NOWA
 		// 	return;
 		// }
 
-		this->subEntityIndex->setValue(subEntityIndex);
-
-		if (nullptr != this->gameObjectPtr)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockPbsComponent::setSubEntityIndex", _1(&subEntityIndex),
 		{
-			// Two data block components with the same entity index can not exist
-			for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
-			{
-				auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
-				if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
-				{
-					if (subEntityIndex == priorPbsComponent->getSubEntityIndex())
-					{
-						subEntityIndex = priorPbsComponent->getSubEntityIndex() + 1;
-					}
-				}
-			}
+			this->subEntityIndex->setValue(subEntityIndex);
 
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			Ogre::Item* item = nullptr;
-			if (nullptr != entity)
+			if (nullptr != this->gameObjectPtr)
 			{
-				if (subEntityIndex >= static_cast<unsigned int>(entity->getNumSubEntities()))
+				// Two data block components with the same entity index can not exist
+				for (unsigned int i = 0; i < static_cast<unsigned int>(this->gameObjectPtr->getComponents()->size()); i++)
 				{
-					subEntityIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
-				}
-			}
-			else
-			{
-				item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					if (subEntityIndex >= static_cast<unsigned int>(item->getNumSubItems()))
+					auto& priorPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>(DatablockPbsComponent::getStaticClassName(), i));
+					if (nullptr != priorPbsComponent && priorPbsComponent.get() != this)
 					{
-						subEntityIndex = static_cast<unsigned int>(item->getNumSubItems()) - 1;
-					}
-				}
-			}
-
-			if (this->oldSubIndex != subEntityIndex)
-			{
-				// Read everything from the beginning, if a new sub index has been set
-				this->newlyCreated = true;
-
-				// Old data block must be destroyed
-				if (true == this->alreadyCloned)
-				{
-					// Set back the default datablock
-					if (nullptr != entity)
-					{
-						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
-					}
-					else if (nullptr != item)
-					{
-						item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
-					}
-					
-					if (nullptr != this->datablock)
-					{
-						Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
-						hlmsPbs->destroyDatablock(this->datablock->getName());
-						this->datablock = nullptr;
+						if (subEntityIndex == priorPbsComponent->getSubEntityIndex())
+						{
+							subEntityIndex = priorPbsComponent->getSubEntityIndex() + 1;
+						}
 					}
 				}
 
-				this->alreadyCloned = false;
-			}
-			this->preReadDatablock();
+				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				Ogre::Item* item = nullptr;
+				if (nullptr != entity)
+				{
+					if (subEntityIndex >= static_cast<unsigned int>(entity->getNumSubEntities()))
+					{
+						subEntityIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
+					}
+				}
+				else
+				{
+					item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (nullptr != item)
+					{
+						if (subEntityIndex >= static_cast<unsigned int>(item->getNumSubItems()))
+						{
+							subEntityIndex = static_cast<unsigned int>(item->getNumSubItems()) - 1;
+						}
+					}
+				}
 
-			this->oldSubIndex = subEntityIndex;
-		}
+				if (this->oldSubIndex != subEntityIndex)
+				{
+					// Read everything from the beginning, if a new sub index has been set
+					this->newlyCreated = true;
+
+					// Old data block must be destroyed
+					if (true == this->alreadyCloned)
+					{
+						// Set back the default datablock
+						if (nullptr != entity)
+						{
+							entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+						}
+						else if (nullptr != item)
+						{
+							item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+						}
+
+						if (nullptr != this->datablock)
+						{
+							Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
+							hlmsPbs->destroyDatablock(this->datablock->getName());
+							this->datablock = nullptr;
+						}
+					}
+
+					this->alreadyCloned = false;
+				}
+				this->preReadDatablock();
+
+				this->oldSubIndex = subEntityIndex;
+			}
+		});
 	}
 
 	unsigned int DatablockPbsComponent::getSubEntityIndex(void) const
@@ -1949,9 +1965,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setWorkflow(this->mapStringToWorkflow(workflow));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setWorkflow", _1(workflow),
+				{
+					this->datablock->setWorkflow(this->mapStringToWorkflow(workflow));
+				});
+			}
 			else
+			{
 				this->workflow->setListSelectedValue(this->mapWorkflowToString(this->datablock->getWorkflow()));
+			}
 		}
 	}
 	
@@ -1969,7 +1992,10 @@ namespace NOWA
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow == this->datablock->getWorkflow())
 				{
-					this->datablock->setMetalness(metalness);
+					ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness", _1(metalness),
+					{
+						this->datablock->setMetalness(metalness);
+					});
 				}
 			}
 			else
@@ -1995,9 +2021,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setRoughness(roughness);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness", _1(roughness),
+				{
+					this->datablock->setRoughness(roughness);
+				});
+			}
 			else
+			{
 				this->roughness->setValue(this->datablock->getRoughness());
+			}
 		}
 	}
 
@@ -2015,7 +2048,10 @@ namespace NOWA
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
 				{
-					this->datablock->setFresnel(Ogre::Vector3(fresnel.x, fresnel.y, fresnel.z), separateFresnel);
+					ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setFresnel", _2(fresnel, separateFresnel),
+					{
+						this->datablock->setFresnel(Ogre::Vector3(fresnel.x, fresnel.y, fresnel.z), separateFresnel);
+					});
 				}
 			}
 			// Do not read from datablock because it will look ugly, set default values
@@ -2041,7 +2077,10 @@ namespace NOWA
 			{
 				if (Ogre::HlmsPbsDatablock::MetallicWorkflow != this->datablock->getWorkflow())
 				{
-					this->datablock->setIndexOfRefraction(Ogre::Vector3(refractionIdx.x, refractionIdx.y, refractionIdx.z), separateFresnel);
+					ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setIndexOfRefraction", _2(refractionIdx, separateFresnel),
+					{
+						this->datablock->setIndexOfRefraction(Ogre::Vector3(refractionIdx.x, refractionIdx.y, refractionIdx.z), separateFresnel);
+					});
 				}
 			}
 		}
@@ -2058,9 +2097,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setRefractionStrength(refractionStrength);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRefractionStrength", _1(refractionStrength),
+				{
+					this->datablock->setRefractionStrength(refractionStrength);
+				});
+			}
 			else
+			{
 				this->refractionStrength->setValue(this->datablock->getRefractionStrength());
+			}
 		}
 	}
 
@@ -2081,9 +2127,16 @@ namespace NOWA
 			this->clearCoatRoughness->setVisible(isDefaultBrdf);
 
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setBrdf(brdfFlags);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBrdf", _1(brdfFlags),
+				{
+					this->datablock->setBrdf(brdfFlags);
+				});
+			}
 			else
+			{
 				this->brdf->setListSelectedValue(this->mapBrdfToString(static_cast<Ogre::PbsBrdf::PbsBrdf>(this->datablock->getBrdf())));
+			}
 		}
 	}
 	
@@ -2098,9 +2151,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setTwoSidedLighting(twoSided, true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTwoSidedLighting", _1(twoSided),
+				{
+					this->datablock->setTwoSidedLighting(twoSided, true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
+				});
+			}
 			else
+			{
 				this->twoSidedLighting->setValue(this->datablock->getTwoSidedLighting());
+			}
 		}
 	}
 		
@@ -2115,10 +2175,17 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
+			{
 				// true = default = change macro block
-				this->datablock->setTwoSidedLighting(this->twoSidedLighting->getBool(), true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
+				ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setOneSidedShadowCastCullingMode",
+				{
+					this->datablock->setTwoSidedLighting(this->twoSidedLighting->getBool(), true, this->mapStringToCullingMode(this->oneSidedShadowCastCullingMode->getListSelectedValue()));
+				});
+			}
 			else
+			{
 				this->oneSidedShadowCastCullingMode->setListSelectedValue("CULL_ANTICLOCKWISE");
+			}
 		}
 	}
 		
@@ -2133,9 +2200,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setAlphaTest(this->mapStringToAlphaTest(this->alphaTest->getListSelectedValue()));
+			{
+				ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setAlphaTest",
+				{
+					this->datablock->setAlphaTest(this->mapStringToAlphaTest(this->alphaTest->getListSelectedValue()));
+				});
+			}
 			else
+			{
 				this->alphaTest->setListSelectedValue(this->mapAlphaTestToString(this->datablock->getAlphaTest()));
+			}
 		}
 	}
 
@@ -2151,7 +2225,10 @@ namespace NOWA
 		{
 			if (false == newlyCreated || true == this->isCloned)
 			{
-				this->datablock->setAlphaTestThreshold(threshold);
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setAlphaTestThreshold", _1(threshold),
+				{
+					this->datablock->setAlphaTestThreshold(threshold);
+				});
 			}
 			else
 			{
@@ -2172,9 +2249,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setReceiveShadows(receiveShadows);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setReceiveShadows", _1(receiveShadows),
+				{
+					this->datablock->setReceiveShadows(receiveShadows);
+				});
+			}
 			else
+			{
 				this->receiveShadows->setValue(this->datablock->getReceiveShadows());
+			}
 		}
 	}
 		
@@ -2189,9 +2273,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setDiffuse(diffuseColor);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setDiffuseColor", _1(diffuseColor),
+				{
+					this->datablock->setDiffuse(diffuseColor);
+				});
+			}
 			else
+			{
 				this->diffuseColor->setValue(this->datablock->getDiffuse());
+			}
 		}
 	}
 
@@ -2206,7 +2297,12 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setBackgroundDiffuse(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBackgroundColor", _1(backgroundColor),
+				{
+					this->datablock->setBackgroundDiffuse(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
+				});
+			}
 			else
 			{
 				this->backgroundColor->setValue(Ogre::Vector4(this->datablock->getBackgroundDiffuse().r, this->datablock->getBackgroundDiffuse().g,
@@ -2227,9 +2323,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setSpecular(specularColor);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setSpecularColor", _1(specularColor),
+				{
+					this->datablock->setSpecular(specularColor);
+				});
+			}
 			else
+			{
 				this->specularColor->setValue(this->datablock->getSpecular());
+			}
 		}
 	}
 
@@ -2245,9 +2348,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setEmissive(emissiveColor);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setEmissiveColor", _1(emissiveColor),
+				{
+					this->datablock->setEmissive(emissiveColor);
+				});
+			}
 			else
+			{
 				this->emissiveColor->setValue(this->datablock->getEmissive());
+			}
 		}
 	}
 
@@ -2282,9 +2392,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setNormalMapWeight(normalMapWeight);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setNormalMapWeight", _1(normalMapWeight),
+				{
+					this->datablock->setNormalMapWeight(normalMapWeight);
+				});
+			}
 			else
+			{
 				this->normalMapWeight->setValue(this->datablock->getNormalMapWeight());
+			}
 		}
 	}
 
@@ -2304,10 +2421,15 @@ namespace NOWA
 		{
 			if ((false == newlyCreated || true == this->isCloned) && (this->datablock->getBrdf() & Ogre::PbsBrdf::BRDF_MASK) == Ogre::PbsBrdf::Default)
 			{
-				this->datablock->setClearCoat(clearCoat);
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setClearCoat", _1(clearCoat),
+				{
+					this->datablock->setClearCoat(clearCoat);
+				});
 			}
 			else
+			{
 				this->clearCoat->setValue(this->datablock->getClearCoat());
+			}
 		}
 	}
 
@@ -2326,9 +2448,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setClearCoatRoughness(clearCoatRoughness);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setClearCoatRoughness", _1(clearCoatRoughness),
+				{
+					this->datablock->setClearCoatRoughness(clearCoatRoughness);
+				});
+			}
 			else
+			{
 				this->clearCoat->setValue(this->datablock->getClearCoatRoughness());
+			}
 		}
 	}
 
@@ -2395,9 +2524,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setDetailMapBlendMode(0, this->mapStringToBlendMode(blendMode0));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode0", _1(blendMode0),
+				{
+					this->datablock->setDetailMapBlendMode(0, this->mapStringToBlendMode(blendMode0));
+				});
+			}
 			else
+			{
 				this->blendMode0->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(0)));
+			}
 		}
 	}
 	
@@ -2422,9 +2558,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setDetailMapBlendMode(1, this->mapStringToBlendMode(blendMode1));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode1", _1(blendMode1),
+				{
+					this->datablock->setDetailMapBlendMode(1, this->mapStringToBlendMode(blendMode1));
+				});
+			}
 			else
+			{
 				this->blendMode1->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(1)));
+			}
 		}
 	}
 	
@@ -2449,9 +2592,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setDetailMapBlendMode(2, this->mapStringToBlendMode(blendMode2));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode2", _1(blendMode2),
+				{
+						this->datablock->setDetailMapBlendMode(2, this->mapStringToBlendMode(blendMode2));
+				});
+			}
 			else
+			{
 				this->blendMode2->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(2)));
+			}
 		}
 	}
 	
@@ -2476,9 +2626,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setDetailMapBlendMode(3, this->mapStringToBlendMode(blendMode3));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBlendMode3", _1(blendMode3),
+				{
+					this->datablock->setDetailMapBlendMode(3, this->mapStringToBlendMode(blendMode3));
+				});
+			}
 			else
+			{
 				this->blendMode3->setListSelectedValue(this->mapBlendModeToString(this->datablock->getDetailMapBlendMode(3)));
+			}
 		}
 	}
 
@@ -2554,9 +2711,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(transparencyMode), this->useAlphaFromTextures->getBool());
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTransparencyMode", _1(transparencyMode),
+				{
+					this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(transparencyMode), this->useAlphaFromTextures->getBool());
+				});
+			}
 			else
+			{
 				this->transparencyMode->setListSelectedValue(this->mapTransparencyModeToString(this->datablock->getTransparencyMode()));
+			}
 		}
 	}
 
@@ -2572,7 +2736,10 @@ namespace NOWA
 		{
 			if (false == newlyCreated || true == this->isCloned)
 			{
-				this->datablock->setTransparency(transparency, this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), this->useAlphaFromTextures->getBool());
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setTransparency", _1(transparency),
+				{
+					this->datablock->setTransparency(transparency, this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), this->useAlphaFromTextures->getBool());
+				});
 				// Change render queue index, so that other game objects can be rendered correctly after this transparent game object
 				if (this->transparency->getReal() < 1.0f)
 				{
@@ -2601,9 +2768,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), useAlphaFromTextures);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseAlphaFromTextures", _1(useAlphaFromTextures),
+				{
+					this->datablock->setTransparency(this->transparency->getReal(), this->mapStringToTransparencyMode(this->transparencyMode->getListSelectedValue()), useAlphaFromTextures);
+				});
+			}
 			else
+			{
 				this->useAlphaFromTextures->setValue(this->datablock->getUseAlphaFromTextures());
+			}
 		}
 	}
 	
@@ -2675,9 +2849,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->mShadowConstantBias = shadowConstBias;
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setShadowConstBias", _1(shadowConstBias),
+				{
+					this->datablock->mShadowConstantBias = shadowConstBias;
+				});
+			}
 			else
+			{
 				this->shadowConstBias->setValue(this->datablock->mShadowConstantBias);
+			}
 		}
 	}
 
@@ -2692,18 +2873,24 @@ namespace NOWA
 		
 		if (true == bringToFront)
 		{
-			this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
-			Ogre::HlmsMacroblock macroblock;
-			macroblock.mDepthWrite = true;
-			macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
-			macroblock.mScissorTestEnabled = true;
-			this->datablock->setMacroblock(macroblock);
+			ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setBringToFront1", _1(bringToFront),
+			{
+				this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
+				Ogre::HlmsMacroblock macroblock;
+				macroblock.mDepthWrite = true;
+				macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
+				macroblock.mScissorTestEnabled = true;
+				this->datablock->setMacroblock(macroblock);
+			});
 		}
 		else
 		{
 			if (nullptr != this->originalMacroblock)
 			{
-				this->datablock->setMacroblock(*this->originalMacroblock);
+				ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setBringToFront2",
+				{
+					this->datablock->setMacroblock(*this->originalMacroblock);
+				});
 			}
 		}
 	}
@@ -2719,29 +2906,35 @@ namespace NOWA
 
 		if (true == cutOff)
 		{
-			this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
-			this->originalBlendblock = const_cast<Ogre::HlmsBlendblock*>(this->datablock->getBlendblock());
-			Ogre::HlmsMacroblock macroblock;
-			macroblock.mDepthWrite = true;
-			macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
-			// macroblock.mScissorTestEnabled = true;
-			this->datablock->setMacroblock(macroblock);
+			ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setCutOff1", _1(cutOff),
+			{
+				this->originalMacroblock = const_cast<Ogre::HlmsMacroblock*>(this->datablock->getMacroblock());
+				this->originalBlendblock = const_cast<Ogre::HlmsBlendblock*>(this->datablock->getBlendblock());
+				Ogre::HlmsMacroblock macroblock;
+				macroblock.mDepthWrite = true;
+				macroblock.mDepthFunc = Ogre::CompareFunction::CMPF_ALWAYS_PASS;
+				// macroblock.mScissorTestEnabled = true;
+				this->datablock->setMacroblock(macroblock);
 
-			Ogre::HlmsBlendblock blendblock;
-			blendblock.mBlendChannelMask = Ogre::HlmsBlendblock::BlendChannelForceDisabled;
+				Ogre::HlmsBlendblock blendblock;
+				blendblock.mBlendChannelMask = Ogre::HlmsBlendblock::BlendChannelForceDisabled;
 
-			this->datablock->setBlendblock(blendblock);
+				this->datablock->setBlendblock(blendblock);
+			});
 		}
 		else
 		{
-			if (nullptr != this->originalMacroblock)
+			ENQUEUE_RENDER_COMMAND("DatablockPbsComponent::setCutOff2",
 			{
-				this->datablock->setMacroblock(*this->originalMacroblock);
-			}
-			if (nullptr != this->originalBlendblock)
-			{
-				this->datablock->setBlendblock(*this->originalBlendblock);
-			}
+				if (nullptr != this->originalMacroblock)
+				{
+					this->datablock->setMacroblock(*this->originalMacroblock);
+				}
+				if (nullptr != this->originalBlendblock)
+				{
+					this->datablock->setBlendblock(*this->originalBlendblock);
+				}
+			});
 		}
 	}
 
@@ -2756,9 +2949,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated || true == this->isCloned)
-				this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setUseEmissiveAsLightMap", _1(useEmissiveAsLightMap),
+				{
+					this->datablock->setUseEmissiveAsLightmap(useEmissiveAsLightMap);
+				});
+			}
 			else
+			{
 				this->useEmissiveAsLightMap->setValue(this->datablock->getUseEmissiveAsLightmap());
+			}
 		}
 	}
 

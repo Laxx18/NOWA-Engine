@@ -2,6 +2,7 @@
 #include "InputDeviceCore.h"
 #include "main/Core.h"
 #include "modules/InputDeviceModule.h"
+#include "modules/RenderCommandQueueModule.h"
 #include "console/LuaConsole.h"
 #include "MyGUI_InputManager.h"
 
@@ -501,7 +502,10 @@ namespace NOWA
 			this->bSelectDown = true;
 		}
 
-		MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::keyPressed", _1(tempKeyEvent),
+		{
+			MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
+		});
 
 		//// Do not react on input if there is any interaction with a mygui widget
 		//MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
@@ -531,7 +535,10 @@ namespace NOWA
 			this->bSelectDown = false;
 		}
 
-		MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::keyReleased", _1(e),
+		{
+			MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
+		});
 
 		// Do not react on input if there is any interaction with a mygui widget
 		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
@@ -591,8 +598,14 @@ namespace NOWA
 		//key.mPos.x = key.mPosAbs.x / ou.render.getScreenWidth();
 		//key.mPos.y = key.mPosAbs.y / ou.render.getScreenHeight();
 
+		int mX = e.state.X.abs;
+		int mY = e.state.Y.abs;
+		int mZ = e.state.Z.abs;
 
-		MyGUI::InputManager::getInstancePtr()->injectMouseMove(e.state.X.abs, e.state.Y.abs, e.state.Z.abs);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mouseMoved", _3(mX, mY, mZ),
+		{
+			MyGUI::InputManager::getInstancePtr()->injectMouseMove(mX, mY, mZ);
+		});
 
 		auto& itMouseListener = this->mouseListeners.begin();
 		auto& itMouseListenerEnd = this->mouseListeners.end();
@@ -616,7 +629,13 @@ namespace NOWA
 	{
 		this->bSelectDown = this->getKeyboard()->isKeyDown(NOWA_K_SELECT);
 
-		MyGUI::InputManager::getInstancePtr()->injectMousePress(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
+		int mX = e.state.X.abs;
+		int mY = e.state.Y.abs;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mousePressed", _3(mX, mY, id),
+		{
+			MyGUI::InputManager::getInstancePtr()->injectMousePress(mX, mY, MyGUI::MouseButton::Enum(id));
+		});
 
 		//// Do not react on input if there is any interaction with a mygui widget
 		//MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
@@ -645,7 +664,13 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseReleased(const OIS::MouseEvent& e, OIS::MouseButtonID id)
 	{
-		MyGUI::InputManager::getInstancePtr()->injectMouseRelease(e.state.X.abs, e.state.Y.abs, MyGUI::MouseButton::Enum(id));
+		int mX = e.state.X.abs;
+		int mY = e.state.Y.abs;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mouseReleased", _3(mX, mY, id),
+		{
+			MyGUI::InputManager::getInstancePtr()->injectMouseRelease(mX, mY, MyGUI::MouseButton::Enum(id));
+		});
 
 		// Do not react on input if there is any interaction with a mygui widget
 		/*MyGUI::Widget* widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();

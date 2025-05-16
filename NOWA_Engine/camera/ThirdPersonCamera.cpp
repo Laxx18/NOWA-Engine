@@ -3,6 +3,7 @@
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
 #include "main/Core.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -30,8 +31,11 @@ namespace NOWA
 		this->firstTimeMoveValueSet = true;
 		if (this->sceneNode)
 		{
-			this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
-			this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
+			ENQUEUE_RENDER_COMMAND("ThirdPersonCamera::onSetData",
+			{
+				this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
+				this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
+			});
 		}
 		else
 		{
@@ -228,14 +232,18 @@ namespace NOWA
 			newCameraPosition = playerViewPosition - (cameraToPlayer.normalisedCopy() * this->cameraSpringLength * 0.5f);
 		}
 
-		// Set camera position
-		this->camera->setPosition(newCameraPosition);
+		// TODO: How to use queue interpolation?
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ThirdPersonCamera::moveCamera", _3(newCameraPosition, playerViewPosition, localUp),
+		{
+			// Set camera position
+			this->camera->setPosition(newCameraPosition);
 
-		// Make camera look at player with offset
-		this->camera->lookAt(playerViewPosition + this->lookAtOffset);
+			// Make camera look at player with offset
+			this->camera->lookAt(playerViewPosition + this->lookAtOffset);
 
-		// Ensure camera's up vector is aligned with the local up vector
-		this->camera->setFixedYawAxis(true, localUp);
+			// Ensure camera's up vector is aligned with the local up vector
+			this->camera->setFixedYawAxis(true, localUp);
+		});
 	}
 #endif
 

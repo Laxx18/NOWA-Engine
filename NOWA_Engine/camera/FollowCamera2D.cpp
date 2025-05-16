@@ -5,6 +5,7 @@
 #include "gameobject/GameObjectController.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -37,7 +38,10 @@ namespace NOWA
 		this->sceneNode = nullptr;
 		if (this->raySceneQuery)
 		{
-			this->sceneManager->destroyQuery(this->raySceneQuery);
+			ENQUEUE_RENDER_COMMAND_WAIT("FollowCamera2D::~FollowCamera2D",
+			{
+				this->sceneManager->destroyQuery(this->raySceneQuery);
+			});
 		}
 	}
 
@@ -96,23 +100,26 @@ namespace NOWA
 
 	void FollowCamera2D::alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager)
 	{
-		this->showGameObject = show;
-		this->category = category;
-		this->sceneManager = sceneManager;
-		if (!this->showGameObject)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::alwaysShowGameObject", _3(show, category, sceneManager),
 		{
-			if (this->raySceneQuery)
+			this->showGameObject = show;
+			this->category = category;
+			this->sceneManager = sceneManager;
+			if (!this->showGameObject)
 			{
-				this->sceneManager->destroyQuery(this->raySceneQuery);
+				if (this->raySceneQuery)
+				{
+					this->sceneManager->destroyQuery(this->raySceneQuery);
+				}
 			}
-		}
-		else
-		{
-			// Check if the game object should be always shown,
-			// if this is the case create ray scene query to throw a ray and check if the player will always be hit
-			// hide all game objects that are in front of the player
-			this->raySceneQuery = this->sceneManager->createRayQuery(Ogre::Ray());
-		}
+			else
+			{
+				// Check if the game object should be always shown,
+				// if this is the case create ray scene query to throw a ray and check if the player will always be hit
+				// hide all game objects that are in front of the player
+				this->raySceneQuery = this->sceneManager->createRayQuery(Ogre::Ray());
+			}
+		});
 	}
 
 	void FollowCamera2D::setSceneNode(Ogre::SceneNode * sceneNode)
@@ -393,11 +400,13 @@ namespace NOWA
 		if (true == this->firstTimeMoveValueSet)
 		{
 			this->lastMoveValue = Ogre::Vector3::ZERO;
-			// set the camera position to the target one for the first time
-			this->camera->setPosition(this->sceneNode->getPosition());
-			// this->camera->lookAt(this->sceneNode->getPosition());
-			// this->camera->moveRelative(this->offset);
-			this->camera->move(this->offset);
+
+			ENQUEUE_RENDER_COMMAND("FollowCamera2D::moveCamera start",
+			{
+				// set the camera position to the target one for the first time
+				this->camera->setPosition(this->sceneNode->getPosition());
+				this->camera->move(this->offset);
+			});
 
 			/*this->pDebugLine = this->sceneManager->createManualObject("DebugRayLineFlubber");
 			this->pDebugLine->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
@@ -453,7 +462,10 @@ namespace NOWA
 		velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.x, this->lastMoveValue.x, this->smoothValue);
 		velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(velocity.y, this->lastMoveValue.y, this->smoothValue);
 
-		this->camera->move(velocity * this->moveCameraWeight);
+		// TODO: cameraUpdate in queue
+		// this->camera->move(velocity * this->moveCameraWeight);
+		Ogre::Vector3 newMove = this->camera->getPosition() + (velocity * this->moveCameraWeight);
+		NOWA::RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, newMove);
 
 		this->lastMoveValue = velocity;
 
@@ -466,22 +478,34 @@ namespace NOWA
 		Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
 		if (borderXRight > this->maximumBounds.x/* + this->borderOffset.x*/)
 		{
-			this->camera->setPosition(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max x bounds", _1(cameraPosition),
+			{
+				this->camera->setPosition(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z);
+			});
 		}
 		else if (borderXLeft < this->minimumBounds.x/* - this->borderOffset.x*/)
 		{
 			Ogre::Vector3 newPos = Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x/* + this->borderOffset.x*/, cameraPosition.y, cameraPosition.z);
-			this->camera->setPosition(newPos);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min x bounds", _1(newPos),
+			{
+				this->camera->setPosition(newPos);
+			});
 		}
 
 		// y bounds
 		if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y/* + this->borderOffset.y*/)
 		{
-			this->camera->setPosition(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max y bounds", _1(cameraPosition),
+			{
+				this->camera->setPosition(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z);
+			});
 		}
 		else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y/* - this->borderOffset.y*/)
 		{
-			this->camera->setPosition(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min y bounds", _1(cameraPosition),
+			{
+				this->camera->setPosition(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z);
+			});
 		}
 
 		//////////////////////////////////////////////////////////////////////////////////////////////

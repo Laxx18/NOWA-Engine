@@ -289,7 +289,10 @@ namespace NOWA
 
 		if (nullptr != this->physicsBody && true == this->bShowDebugData)
 		{
-			this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveVehicleComponent::showDebugData",
+			{
+				this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			});
 		}
 
 		return success;
@@ -522,8 +525,16 @@ namespace NOWA
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 		Ogre::Real weightedMass = this->mass->getReal(); /** scale.x * scale.y * scale.z;*/ // scale is not used anymore, because if big game objects are scaled down, the mass is to low!
 
-		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
-												  collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()), weightedMass, this->massOrigin->getVector3(), this->collisionPosition->getVector3(), new PhysicsVehicleCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
+
+		OgreNewt::CollisionPtr collisionPtr;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
+		{
+			collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
+												collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+		});
+
+		this->physicsBody = new OgreNewt::Vehicle(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->gameObjectPtr->getDefaultDirection(), collisionPtr, weightedMass, this->massOrigin->getVector3(), this->collisionPosition->getVector3(), new PhysicsVehicleCallback(this->gameObjectPtr.get(), this->gameObjectPtr->getLuaScript(), this->ogreNewt,
 												  this->onSteerAngleChangedFunctionName->getString(), this->onMotorForceChangedFunctionName->getString(), this->onHandBrakeChangedFunctionName->getString(), 
 												  this->onBrakeChangedFunctionName->getString(), this->onTireContactFunctionName->getString()));
 

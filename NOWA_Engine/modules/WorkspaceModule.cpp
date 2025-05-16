@@ -6,6 +6,8 @@
 #include "main/AppStateManager.h"
 #include "gameObject/WorkspaceComponents.h"
 #include "camera/CameraManager.h"
+#include "RenderCommandQueueModule.h"
+
 #include "Compositor/OgreCompositorWorkspaceListener.h"
 #include "OgrePixelFormatGpu.h"
 #include "OgreHlmsCompute.h"
@@ -43,19 +45,22 @@ namespace NOWA
 
 	void WorkspaceModule::destroyContent(void)
 	{
-		for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceModule::destroyContent",
 		{
-			// If there is a dummy workspace, it must be deleted
-			if (true == it->second.isDummy)
+			for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
 			{
-				// cannot be used anymore, still necessary?
-				// it->second.workspace->setListener(nullptr);
-				// it->second.workspace->removeListener()
-				this->compositorManager->removeWorkspace(it->second.workspace);
+				// If there is a dummy workspace, it must be deleted
+				if (true == it->second.isDummy)
+				{
+					// cannot be used anymore, still necessary?
+					// it->second.workspace->setListener(nullptr);
+					// it->second.workspace->removeListener()
+					this->compositorManager->removeWorkspace(it->second.workspace);
+				}
 			}
-		}
-		this->workspaceMap.clear();
-		this->splitScreenScenarioActive = false;
+			this->workspaceMap.clear();
+			this->splitScreenScenarioActive = false;
+		});
 	}
 
 	WorkspaceModule* WorkspaceModule::getInstance()
@@ -92,129 +97,126 @@ namespace NOWA
 
 	void WorkspaceModule::setShadowQuality(Ogre::HlmsPbs::ShadowFilter shadowFilter, bool recreateWorkspace)
 	{
-		this->shadowFilter = shadowFilter;
-		if (nullptr == this->pbs)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setShadowQuality", _1(shadowFilter),
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Cannot set shadow quality, because there is no valid workspace. Please create first a workspace!");
-			return;
-		}
-//#ifndef _DEBUG
-//		this->pbs->setShadowSettings(shadowFilter);
-//#else
-//		this->pbs->setShadowSettings(Ogre::HlmsPbs::PCF_2x2);
-//#endif
-
-		this->pbs->setShadowSettings(shadowFilter);
-
-		// Causes with Ogre2.2 ugly memory crash with OgreHlmsPbs and mIrradianceVolume
-//		if (Ogre::HlmsPbs::ExponentialShadowMaps == shadowFilter)
-//		{
-//			/** Sets the 'K' parameter of ESM filter. Defaults to 600.
-//            Small values will give weak shadows, and light bleeding (specially if the
-//            caster is close to the receiver; particularly noticeable at contact points).
-//            It also gives the chance of over darkening to appear (the shadow of a small
-//            caster in front of a large caster looks darker; thus the large caster appers
-//            like if it were made of glass instead of being solid).
-//            Large values give strong, dark shadows; but the higher the value, the more
-//            you push floating point limits.
-//            This value is related to K in MiscUtils::setGaussianLogFilterParams. You don't
-//            have to set them to the same value; but you'll notice that if you change this
-//            value here, you'll likely have to change the log filter's too.
-//        @param K
-//            In range (0; infinite).
-//        */
-//// Attention: Make this configurable?
-//			this->pbs->setEsmK(10000);
-//			this->unlit->setEsmK(10000);
-//			this->unlit->setShadowSettings(true); // use exponential shadow map
-//			// "QUALITY WARNING: It is highly recommended that you call mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential Shadow Maps (HlmsUnlit::setShadowSettings)
-//			this->hlmsManager->setShadowMappingUseBackFaces(false);
-//		}
-//		else
-//		{
-//			this->pbs->setEsmK(600);
-//			this->unlit->setEsmK(600);
-//			this->unlit->setShadowSettings(false); // use exponential shadow map
-//			// "QUALITY WARNING: It is highly recommended that you call mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential Shadow Maps (HlmsUnlit::setShadowSettings)
-//			this->hlmsManager->setShadowMappingUseBackFaces(true);
-//		}
-
-		// When set to exponential, set use back faces false was recommended in function setShadowSettings
-		/*if (3 == shadowFilter)
-		{
-		// Does crash
-			this->hlmsManager->setShadowMappingUseBackFaces(false);
-		}*/
-
-		if (Ogre::HlmsPbs::ExponentialShadowMaps == shadowFilter)
-		{
-			/*
-			Note: Exponential shadows and outdoors aren't a good fit.
-			However sometimes it works well. Assuming this is the case:
-			The exact problem is caused by Terra not casting regular shadows; which works fine with most solutions like PCF, but it doesn't with exponential shadow maps dislike large depth discontinuities (which are caused by having no 'floor' in the shadow map)
-			To workaround the problems you're having, you could try drawing a very large plane (or multiples ones if you have lots of mountains) below the terrain, casting shadows but invisible to screen (use visibility masks or render queues to have it only cast shadows without being on screen).
-			That should solve the exponential shadow map issues; but I can't guarantee exp. shadow maps will look good on exteriors.
-			*/
-			
-			Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
-			Ogre::HlmsCompute* hlmsCompute = hlmsManager->getComputeHlms();
-
-			// hlmsManager->setShadowMappingUseBackFaces(false);
-
-			/*if(hlmsManager->getShadowMappingUseBackFaces())
+			this->shadowFilter = shadowFilter;
+			if (nullptr == this->pbs)
 			{
-				Ogre::LogManager::getSingleton().logMessage("[WorkspaceModule]: QUALITY WARNING: It is highly recommended that you call "
-							"mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential "
-							"Shadow Maps (HlmsPbs::setShadowSettings)" );
-			}*/
-
-			//For ESM, setup the filter settings (radius and gaussian deviation).
-			//It controls how blurry the shadows will look.
-			
-
-			Ogre::uint8 kernelRadius = 8;
-			float gaussianDeviationFactor = 0.5f;
-			Ogre::uint16 K = 80;
-			Ogre::HlmsComputeJob* job = 0;
-
-			//Setup compute shader filter (faster for large kernels; but
-			//beware of mobile hardware where compute shaders are slow)
-			//For reference large kernels means kernelRadius > 2 (approx)
-			job = hlmsCompute->findComputeJob("ESM/GaussianLogFilterH");
-			this->setGaussianLogFilterParams(job, kernelRadius, gaussianDeviationFactor, K);
-			job = hlmsCompute->findComputeJob("ESM/GaussianLogFilterV");
-			this->setGaussianLogFilterParams(job, kernelRadius, gaussianDeviationFactor, K);
-
-			//Setup pixel shader filter (faster for small kernels, also to use as a fallback
-			//on GPUs that don't support compute shaders, or where compute shaders are slow).
-			this->setGaussianLogFilterParams("ESM/GaussianLogFilterH", kernelRadius, gaussianDeviationFactor, K);
-			this->setGaussianLogFilterParams("ESM/GaussianLogFilterV", kernelRadius, gaussianDeviationFactor, K);
-
-			Ogre::RenderSystem* renderSystem = Core::getSingletonPtr()->getOgreRoot()->getRenderSystem();
-
-			const Ogre::RenderSystemCapabilities* capabilities = renderSystem->getCapabilities();
-			bool hasCompute = capabilities->hasCapability(Ogre::RSC_COMPUTE_PROGRAM);
-
-			if(!hasCompute)
-			{
-				//There's no choice.
-				this->shadowNodeName = "NOWAESMShadowNodePixelShader";
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Cannot set shadow quality, because there is no valid workspace. Please create first a workspace!");
+				return;
 			}
-			else
-			{
-	#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
-				//On iOS, the A7 GPUs have slow compute shaders.
-				Ogre::DriverVersion driverVersion = capabilities->getDriverVersion();
-				if( driverVersion.major == 1 );
-					return "ShadowMapDebuggingEsmShadowNodePixelShader";
-	#endif
-				this->shadowNodeName = "NOWAESMShadowNodeCompute";
-			}
-		}
-		else
-		{
-			this->shadowNodeName = "NOWAShadowNode";
-		}
+			//#ifndef _DEBUG
+			//		this->pbs->setShadowSettings(shadowFilter);
+			//#else
+			//		this->pbs->setShadowSettings(Ogre::HlmsPbs::PCF_2x2);
+			//#endif
+
+					this->pbs->setShadowSettings(shadowFilter);
+
+					// Causes with Ogre2.2 ugly memory crash with OgreHlmsPbs and mIrradianceVolume
+			//		if (Ogre::HlmsPbs::ExponentialShadowMaps == shadowFilter)
+			//		{
+			//			/** Sets the 'K' parameter of ESM filter. Defaults to 600.
+			//            Small values will give weak shadows, and light bleeding (specially if the
+			//            caster is close to the receiver; particularly noticeable at contact points).
+			//            It also gives the chance of over darkening to appear (the shadow of a small
+			//            caster in front of a large caster looks darker; thus the large caster appers
+			//            like if it were made of glass instead of being solid).
+			//            Large values give strong, dark shadows; but the higher the value, the more
+			//            you push floating point limits.
+			//            This value is related to K in MiscUtils::setGaussianLogFilterParams. You don't
+			//            have to set them to the same value; but you'll notice that if you change this
+			//            value here, you'll likely have to change the log filter's too.
+			//        @param K
+			//            In range (0; infinite).
+			//        */
+			//// Attention: Make this configurable?
+			//			this->pbs->setEsmK(10000);
+			//			this->unlit->setEsmK(10000);
+			//			this->unlit->setShadowSettings(true); // use exponential shadow map
+			//			// "QUALITY WARNING: It is highly recommended that you call mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential Shadow Maps (HlmsUnlit::setShadowSettings)
+			//			this->hlmsManager->setShadowMappingUseBackFaces(false);
+			//		}
+			//		else
+			//		{
+			//			this->pbs->setEsmK(600);
+			//			this->unlit->setEsmK(600);
+			//			this->unlit->setShadowSettings(false); // use exponential shadow map
+			//			// "QUALITY WARNING: It is highly recommended that you call mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential Shadow Maps (HlmsUnlit::setShadowSettings)
+			//			this->hlmsManager->setShadowMappingUseBackFaces(true);
+			//		}
+
+				// When set to exponential, set use back faces false was recommended in function setShadowSettings
+				/*if (3 == shadowFilter)
+				{
+				// Does crash
+					this->hlmsManager->setShadowMappingUseBackFaces(false);
+				}*/
+
+				if (Ogre::HlmsPbs::ExponentialShadowMaps == shadowFilter)
+				{
+					/*
+					Note: Exponential shadows and outdoors aren't a good fit.
+					However sometimes it works well. Assuming this is the case:
+					The exact problem is caused by Terra not casting regular shadows; which works fine with most solutions like PCF, but it doesn't with exponential shadow maps dislike large depth discontinuities (which are caused by having no 'floor' in the shadow map)
+					To workaround the problems you're having, you could try drawing a very large plane (or multiples ones if you have lots of mountains) below the terrain, casting shadows but invisible to screen (use visibility masks or render queues to have it only cast shadows without being on screen).
+					That should solve the exponential shadow map issues; but I can't guarantee exp. shadow maps will look good on exteriors.
+					*/
+
+					Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+					Ogre::HlmsCompute* hlmsCompute = hlmsManager->getComputeHlms();
+
+					// hlmsManager->setShadowMappingUseBackFaces(false);
+
+					/*if(hlmsManager->getShadowMappingUseBackFaces())
+					{
+						Ogre::LogManager::getSingleton().logMessage("[WorkspaceModule]: QUALITY WARNING: It is highly recommended that you call "
+									"mHlmsManager->setShadowMappingUseBackFaces( false ) when using Exponential "
+									"Shadow Maps (HlmsPbs::setShadowSettings)" );
+					}*/
+
+					//For ESM, setup the filter settings (radius and gaussian deviation).
+					//It controls how blurry the shadows will look.
+
+
+					Ogre::uint8 kernelRadius = 8;
+					float gaussianDeviationFactor = 0.5f;
+					Ogre::uint16 K = 80;
+					Ogre::HlmsComputeJob* job = 0;
+
+					//Setup compute shader filter (faster for large kernels; but
+					//beware of mobile hardware where compute shaders are slow)
+					//For reference large kernels means kernelRadius > 2 (approx)
+					job = hlmsCompute->findComputeJob("ESM/GaussianLogFilterH");
+					this->setGaussianLogFilterParams(job, kernelRadius, gaussianDeviationFactor, K);
+					job = hlmsCompute->findComputeJob("ESM/GaussianLogFilterV");
+					this->setGaussianLogFilterParams(job, kernelRadius, gaussianDeviationFactor, K);
+
+					//Setup pixel shader filter (faster for small kernels, also to use as a fallback
+					//on GPUs that don't support compute shaders, or where compute shaders are slow).
+					this->setGaussianLogFilterParams("ESM/GaussianLogFilterH", kernelRadius, gaussianDeviationFactor, K);
+					this->setGaussianLogFilterParams("ESM/GaussianLogFilterV", kernelRadius, gaussianDeviationFactor, K);
+
+					Ogre::RenderSystem* renderSystem = Core::getSingletonPtr()->getOgreRoot()->getRenderSystem();
+
+					const Ogre::RenderSystemCapabilities* capabilities = renderSystem->getCapabilities();
+					bool hasCompute = capabilities->hasCapability(Ogre::RSC_COMPUTE_PROGRAM);
+
+					if (!hasCompute)
+					{
+						//There's no choice.
+						this->shadowNodeName = "NOWAESMShadowNodePixelShader";
+					}
+					else
+					{
+						this->shadowNodeName = "NOWAESMShadowNodeCompute";
+					}
+				}
+				else
+				{
+					this->shadowNodeName = "NOWAShadowNode";
+				}
+		});
 
 		if (true == recreateWorkspace)
 		{
@@ -239,7 +241,10 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] cannot set ambient light mode, because there is no valid workspace. Please create first a workspace!");
 			return;
 		}
-		this->pbs->setAmbientLightMode(ambientLightMode);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setAmbientLightMode", _1(ambientLightMode),
+		{
+			this->pbs->setAmbientLightMode(ambientLightMode);
+		});
 	}
 
 	Ogre::HlmsPbs::AmbientLightMode WorkspaceModule::getAmbientLightMode(void) const
@@ -428,10 +433,13 @@ namespace NOWA
 			// If there is no external workspace, create a dummy one
 			if (nullptr == workspaceBaseComponent)
 			{
-				found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
-				found->second.workspaceBaseComponent = nullptr;
-				// Its a dummy workspace
-				found->second.isDummy = true;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _3(found, sceneManager, camera),
+				{
+					found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+					found->second.workspaceBaseComponent = nullptr;
+					// Its a dummy workspace
+					found->second.isDummy = true;
+				});
 			}
 			else
 			{
@@ -441,9 +449,14 @@ namespace NOWA
 					// cannot be used anymore, still necessary?
 					// found->second.workspace->setListener(nullptr);
 					// found->second.workspace->removeListener()
-					this->compositorManager->removeWorkspace(found->second.workspace);
-					found->second.workspace = nullptr;
-					found->second.workspaceBaseComponent->setWorkspace(nullptr);
+
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setPrimaryWorkspace removeWorkspace", _1(found),
+					{
+						this->compositorManager->removeWorkspace(found->second.workspace);
+					
+						found->second.workspace = nullptr;
+						found->second.workspaceBaseComponent->setWorkspace(nullptr);
+					});
 				}
 
 				found->second.workspaceBaseComponent = workspaceBaseComponent;
@@ -468,11 +481,13 @@ namespace NOWA
 			// If there is no external workspace, create a dummy one
 			if (nullptr == workspaceBaseComponent)
 			{
-				WorkspaceData workspaceData;
-				workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
-				workspaceData.isDummy = true;
-
-				this->workspaceMap.emplace(camera, workspaceData);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _2(sceneManager, camera),
+				{
+					WorkspaceData workspaceData;
+					workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
+					workspaceData.isDummy = true;
+					this->workspaceMap.emplace(camera, workspaceData);
+				});
 			}
 			else
 			{
@@ -485,9 +500,12 @@ namespace NOWA
 					}
 					else
 					{
-						this->compositorManager->removeWorkspace(it->second.workspace);
-						found->second.workspace = nullptr;
-						// it->second.workspaceBaseComponent->setWorkspace(nullptr);
+						ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setPrimaryWorkspace removeWorkspace", _2(it, found),
+						{
+							this->compositorManager->removeWorkspace(it->second.workspace);
+							found->second.workspace = nullptr;
+							// it->second.workspaceBaseComponent->setWorkspace(nullptr);
+						});
 					}
 				}
 
@@ -524,12 +542,15 @@ namespace NOWA
 			// If there is a dummy workspace, it must be first removed
 			if (true == found->second.isDummy)
 			{
-				// cannot be used anymore, still necessary?
-				// found->second.workspace->setListener(nullptr);
-				// found->second.workspace->removeListener()
-				this->compositorManager->removeWorkspace(found->second.workspace);
-				found->second.workspace = nullptr;
-				found->second.workspaceBaseComponent->setWorkspace(nullptr);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setPrimaryWorkspace2", _1(found),
+				{
+					// cannot be used anymore, still necessary?
+					// found->second.workspace->setListener(nullptr);
+					// found->second.workspace->removeListener()
+					this->compositorManager->removeWorkspace(found->second.workspace);
+					found->second.workspace = nullptr;
+					found->second.workspaceBaseComponent->setWorkspace(nullptr);
+				});
 			}
 
 			found->second.workspaceBaseComponent = nullptr;
@@ -547,9 +568,12 @@ namespace NOWA
 				}
 				else
 				{
-					this->compositorManager->removeWorkspace(it->second.workspace);
-					found->second.workspace = nullptr;
-					// it->second.workspaceBaseComponent->setWorkspace(nullptr);
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::setPrimaryWorkspace2 removeWorkspace", _2(it, found),
+					{
+						this->compositorManager->removeWorkspace(it->second.workspace);
+						found->second.workspace = nullptr;
+						// it->second.workspaceBaseComponent->setWorkspace(nullptr);
+					});
 				}
 			}
 
@@ -570,10 +594,13 @@ namespace NOWA
 			// If there is no external workspace, create a dummy one
 			if (nullptr == workspaceBaseComponent)
 			{
-				found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
-				found->second.workspaceBaseComponent = nullptr;
-				// Its a dummy workspace
-				found->second.isDummy = true;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _3(found, sceneManager, camera),
+				{
+					found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+					found->second.workspaceBaseComponent = nullptr;
+					// Its a dummy workspace
+					found->second.isDummy = true;
+				});
 			}
 			else
 			{
@@ -589,11 +616,14 @@ namespace NOWA
 			// If there is no external workspace, create a dummy one
 			if (nullptr == workspaceBaseComponent)
 			{
-				WorkspaceData workspaceData;
-				workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
-				workspaceData.isDummy = true;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _2(sceneManager, camera),
+				{
+					WorkspaceData workspaceData;
+					workspaceData.workspace = this->createDummyWorkspace(sceneManager, camera);
+					workspaceData.isDummy = true;
 
-				this->workspaceMap.emplace(camera, workspaceData);
+					this->workspaceMap.emplace(camera, workspaceData);
+				});
 			}
 			else
 			{
@@ -718,16 +748,22 @@ namespace NOWA
 				// cannot be used anymore, still necessary?
 				// found->second.workspace->setListener(nullptr);
 				// found->second.workspace->removeListener()
-				this->compositorManager->removeWorkspace(found->second.workspace);
-				found->second.workspace = nullptr;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::removeWorkspace", _1(found),
+				{
+					this->compositorManager->removeWorkspace(found->second.workspace);
+					found->second.workspace = nullptr;
+				});
 			}
 
 			if (this->workspaceMap.size() == 1)
 			{
-				found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
-				found->second.workspaceBaseComponent = nullptr;
-				// Its a dummy workspace
-				found->second.isDummy = true;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _3(found, sceneManager, camera),
+				{
+					found->second.workspace = this->createDummyWorkspace(sceneManager, camera);
+					found->second.workspaceBaseComponent = nullptr;
+					// Its a dummy workspace
+					found->second.isDummy = true;
+				});
 			}
 
 			this->workspaceMap.erase(camera);
@@ -747,8 +783,11 @@ namespace NOWA
 				// found->second.workspace->removeListener()
 				if (nullptr != found->second.workspace)
 				{
-					this->compositorManager->removeWorkspace(found->second.workspace);
-					found->second.workspace = nullptr;
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceModule::createDummyWorkspace", _1(found),
+					{
+						this->compositorManager->removeWorkspace(found->second.workspace);
+						found->second.workspace = nullptr;
+					});
 				}
 			}
 
@@ -808,8 +847,9 @@ namespace NOWA
 				if (nullptr != it->second.workspace)
 				{
 					this->compositorManager->removeWorkspace(it->second.workspace);
+					it->second.workspace = nullptr;
 				}
-				it->second.workspace = nullptr;
+				
 				// it->second.workspaceBaseComponent->setWorkspace(nullptr);
 			}
 		}

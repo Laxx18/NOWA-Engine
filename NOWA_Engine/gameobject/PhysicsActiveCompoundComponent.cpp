@@ -370,23 +370,27 @@ namespace NOWA
 				Ogre::String sceneNodeName = "CompoundNode" + Ogre::StringConverter::toString(partsCount++) + "_" + this->gameObjectPtr->getName();
 				Ogre::String meshName = childElement->Attribute("name");
 
-				Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-				sceneNode->setName(sceneNodeName);
-
 				Ogre::v1::Entity* entity = nullptr;
 				Ogre::Item* item = nullptr;
 
-				if (GameObject::ENTITY == this->gameObjectPtr->getType())
-				{
-					entity = this->gameObjectPtr->getSceneManager()->createEntity(meshName);
-					sceneNode->attachObject(entity);
-				}
-				else if (GameObject::ITEM == this->gameObjectPtr->getType())
-				{
-					item = this->gameObjectPtr->getSceneManager()->createItem(meshName);
-					sceneNode->attachObject(item);
-				}
-				sceneNode->setScale(this->initialScale);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveCompoundComponent::createDynamicBody", _4(sceneNodeName, meshName, &entity, &item), {
+
+					Ogre::SceneNode* sceneNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+					sceneNode->setName(sceneNodeName);
+
+					if (GameObject::ENTITY == this->gameObjectPtr->getType())
+					{
+						entity = this->gameObjectPtr->getSceneManager()->createEntity(meshName);
+						sceneNode->attachObject(entity);
+					}
+					else if (GameObject::ITEM == this->gameObjectPtr->getType())
+					{
+						item = this->gameObjectPtr->getSceneManager()->createItem(meshName);
+						sceneNode->attachObject(item);
+					}
+					sceneNode->setScale(this->initialScale);
+
+				});
 				
 				// scaling also does reposition the collision parts! how nice! Use the created entity part for the convex hull!
 				OgreNewt::CollisionPrimitives::ConvexHull* col = nullptr;
@@ -416,18 +420,21 @@ namespace NOWA
 		}
 		else
 		{
-			for (auto& collisionData : this->collisionDataList)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createCollisionPrimitive", _3(&inertia, &partVolume, &collisionList),
 			{
-				// create the collision primitive and push it to the collision list
-				OgreNewt::CollisionPtr collisionPtr = this->createCollisionPrimitive(collisionData.collisionType, collisionData.collisionPosition,
-					collisionData.collisionOrientation, collisionData.collisionSize, inertia, massOrigin->getVector3(), this->gameObjectPtr->getCategoryId());
-				// volume will be calculated inside of createCollisionPrimitive
-				partVolume += this->volume;
-				if (nullptr != collisionPtr)
+				for (auto& collisionData : this->collisionDataList)
 				{
-					collisionList.emplace_back(collisionPtr);
+					// create the collision primitive and push it to the collision list
+					OgreNewt::CollisionPtr collisionPtr = this->createCollisionPrimitive(collisionData.collisionType, collisionData.collisionPosition,
+						collisionData.collisionOrientation, collisionData.collisionSize, inertia, this->massOrigin->getVector3(), this->gameObjectPtr->getCategoryId());
+					// volume will be calculated inside of createCollisionPrimitive
+					partVolume += this->volume;
+					if (nullptr != collisionPtr)
+					{
+						collisionList.emplace_back(collisionPtr);
+					}
 				}
-			}
+			});
 		}
 		// get the whole volume
 		this->volume = partVolume;
@@ -442,6 +449,7 @@ namespace NOWA
 		convexCollisionPtr->calculateInertialMatrix(inertia, calculatedMassOrigin);
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), convexCollisionPtr);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
 		this->setPosition(this->initialPosition);
 		this->setOrientation(this->initialOrientation);

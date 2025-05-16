@@ -211,11 +211,14 @@ void PropertiesPanel::destroyContent(void)
 
 void PropertiesPanel::clearProperties(void)
 {
-	// Schrott MyGUI, those events do not work at all
-	// this->propertiesPanelView1->getScrollView()->eventMouseWheel -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
-	// this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
-	this->propertiesPanelView1->removeAllItems();
-	this->propertiesPanelView2->removeAllItems();
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanel::clearProperties",
+	{
+		// Schrott MyGUI, those events do not work at all
+		// this->propertiesPanelView1->getScrollView()->eventMouseWheel -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
+		// this->propertiesPanelView1->getScrollView()->eventMouseButtonReleased -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseRelease);
+		this->propertiesPanelView1->removeAllItems();
+		this->propertiesPanelView2->removeAllItems();
+	});
 }
 
 void PropertiesPanel::setVisible(bool show)
@@ -250,33 +253,36 @@ void PropertiesPanel::showProperties(unsigned int componentIndex)
 
 	// Get data from selected game objects for properties panel
 
-	// First clear the properties
-	this->clearProperties();
-	// Show all properties for selected game objects
-	unsigned int i = 0;
-	auto& selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
-	unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
-	std::vector<NOWA::GameObject*> gameObjects;
-	if (count > 0)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanel::showProperties", _1(componentIndex),
 	{
-		gameObjects.resize(count);
-		for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+		// First clear the properties
+		this->clearProperties();
+		// Show all properties for selected game objects
+		unsigned int i = 0;
+		auto & selectedGameObjects = this->editorManager->getSelectionManager()->getSelectedGameObjects();
+		unsigned int count = static_cast<unsigned int>(selectedGameObjects.size());
+		std::vector<NOWA::GameObject*> gameObjects;
+		if (count > 0)
 		{
-			gameObjects[i] = it->second.gameObject;
-			i++;
-		}
-		this->showProperties(gameObjects, componentIndex);
+			gameObjects.resize(count);
+			for (auto& it = selectedGameObjects.cbegin(); it != selectedGameObjects.cend(); ++it)
+			{
+				gameObjects[i] = it->second.gameObject;
+				i++;
+			}
+			this->showProperties(gameObjects, componentIndex);
 
-		// Set remembered scroll position after everything has been reloaded (with delay), else the scrollviewer range is 0
-		int scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
+			// Set remembered scroll position after everything has been reloaded (with delay), else the scrollviewer range is 0
+			int scrollPosition = MyGUIHelper::getInstance()->getScrollPosition(gameObjects[0]->getId());
 
-		if (-1 != scrollPosition)
-		{
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
-			delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, scrollPosition)));
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			if (-1 != scrollPosition)
+			{
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
+				delayProcess->attachChild(NOWA::ProcessPtr(new SetScrollPositionProcess(this->propertiesPanelView1, scrollPosition)));
+				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			}
 		}
-	}
+	});
 }
 
 void PropertiesPanel::showProperties(std::vector<NOWA::GameObject*> gameObjects, unsigned int componentIndex)
@@ -551,302 +557,314 @@ PropertiesPanelInfo::PropertiesPanelInfo()
 
 void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 {
-	this->propertyInfo->setOnlyText(info);
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelInfo::setInfo", _1(info),
+	{
+		this->propertyInfo->setOnlyText(info);
+	});
 }
 
 void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 {
-	const int height = 26;
-	const int heightStep = 28;
-	const int widthStep = 3;
-
-	const int keyLeft = 1;
-	const int keyWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f);
-	const int valueLeft = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f + widthStep);
-	const int valueWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.3f);
-
-	for (size_t i = 0; i < gameObject->getComponents()->size(); i++)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelInfo::listData", _1(gameObject),
 	{
-		const int informationHeight = 256;
+		const int height = 26;
+		const int heightStep = 28;
+		const int widthStep = 3;
 
-		Ogre::String className = NOWA::makeStrongPtr(gameObject->getComponentByIndex(i))->getClassName();
+		const int keyLeft = 1;
+		const int keyWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f);
+		const int valueLeft = static_cast<int>(this->mWidgetClient->getWidth() * 0.8f + widthStep);
+		const int valueWidth = static_cast<int>(this->mWidgetClient->getWidth() * 0.3f);
 
-		Ogre::String information = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(className);
-		MyGUI::IntCoord coord = MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(this->mWidgetClient->getWidth() * 0.9f), informationHeight);
-		MyGUI::EditBox* informationEdit = this->mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", coord, MyGUI::Align::HStretch | MyGUI::Align::Top);
-		informationEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-		informationEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-		informationEdit->setEditMultiLine(true);
-		informationEdit->setEditWordWrap(true);
-		informationEdit->showHScroll(true);
-		informationEdit->setCaptionWithReplacing(className + "\n\n" + information);
-		informationEdit->setEditReadOnly(true);
-		informationEdit->setEditStatic(false);
-		this->itemsText.push_back(informationEdit);
-		this->heightCurrent += informationHeight + 2;
-	}
-
-	Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-	if (nullptr != entity)
-	{
-		///////////////////////////////List all animations///////////////////////////////////////////////////////
-		std::vector<Ogre::String> animationNames;
-		Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
-		if (nullptr != set)
+		for (size_t i = 0; i < gameObject->getComponents()->size(); i++)
 		{
-			MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Animations:");
+			const int informationHeight = 256;
 
-			this->itemsText.push_back(keyTextBox);
+			Ogre::String className = NOWA::makeStrongPtr(gameObject->getComponentByIndex(i))->getClassName();
 
-			this->heightCurrent += heightStep;
-
-			unsigned int i = 0;
-			Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-			// list all animations
-			while (it.hasMoreElements())
-			{
-				Ogre::v1::AnimationState* anim = it.getNext();
-
-				// Set the key of the property
-				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-				keyTextBox->setCaption("Animation: " + Ogre::StringConverter::toString(i));
-
-				this->itemsText.push_back(keyTextBox);
-
-				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setMouseHitThreshold(6, 6, 3, 3);
-				edit->setOnlyText(anim->getAnimationName());
-				edit->setEditReadOnly(true);
-
-				this->itemsEdit.push_back(edit);
-
-				this->heightCurrent += heightStep;
-				i++;
-			}
-
-			MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			this->itemsText.push_back(separator);
-			this->heightCurrent += heightStep / 2;
+			Ogre::String information = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(className);
+			MyGUI::IntCoord coord = MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(this->mWidgetClient->getWidth() * 0.9f), informationHeight);
+			MyGUI::EditBox* informationEdit = this->mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", coord, MyGUI::Align::HStretch | MyGUI::Align::Top);
+			informationEdit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+			informationEdit->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+			informationEdit->setEditMultiLine(true);
+			informationEdit->setEditWordWrap(true);
+			informationEdit->showHScroll(true);
+			informationEdit->setCaptionWithReplacing(className + "\n\n" + information);
+			informationEdit->setEditReadOnly(true);
+			informationEdit->setEditStatic(false);
+			this->itemsText.push_back(informationEdit);
+			this->heightCurrent += informationHeight + 2;
 		}
 
-		///////////////////////////////List all bones///////////////////////////////////////////////////////
-		Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
-		if (nullptr != skeleton)
+		Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
+		if (nullptr != entity)
 		{
-			std::vector<Ogre::String> boneNames;
-
-			MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, 100, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Bones of Skeleton: " + skeleton->getName());
-
-			this->itemsText.push_back(keyTextBox);
-			this->heightCurrent += heightStep;
-
-			unsigned short numBones = entity->getSkeleton()->getNumBones();
-			for (unsigned short iBone = 0; iBone < numBones; iBone++)
+			///////////////////////////////List all animations///////////////////////////////////////////////////////
+			std::vector<Ogre::String> animationNames;
+			Ogre::v1::AnimationStateSet* set = entity->getAllAnimationStates();
+			if (nullptr != set)
 			{
-				Ogre::v1::OldBone* bone = entity->getSkeleton()->getBone(iBone);
-				if (nullptr == bone)
-				{
-					continue;
-				}
-
-				// Absolutely HAVE to create bone representations first. Otherwise we would get the wrong child count
-				// because an attached object counts as a child
-				// Would be nice to have a function that only gets the children that are bones...
-				unsigned short numChildren = bone->numChildren();
-				if (numChildren == 0)
-				{
-					bool unique = true;
-					for (size_t i = 0; i < boneNames.size(); i++)
-					{
-						if (boneNames[i] == bone->getName())
-						{
-							unique = false;
-							break;
-						}
-					}
-					if (true == unique)
-					{
-						boneNames.emplace_back(bone->getName());
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
-					}
-				}
-				else
-				{
-					bool unique = true;
-					for (size_t i = 0; i < boneNames.size(); i++)
-					{
-						if (boneNames[i] == bone->getName())
-						{
-							unique = false;
-							break;
-						}
-					}
-					if (true == unique)
-					{
-						boneNames.emplace_back(bone->getName());
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
-					}
-				}
-			}
-
-			// Add all available tag names to list
-
-			for (size_t j = 0; j < boneNames.size(); j++)
-			{
-				// Set the key of the property
 				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
 				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
 				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-				keyTextBox->setCaption("Bone: " + Ogre::StringConverter::toString(j));
+				keyTextBox->setCaption("Animations:");
 
+				this->itemsText.push_back(keyTextBox);
+
+				this->heightCurrent += heightStep;
+
+				unsigned int i = 0;
+				Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
+				// list all animations
+				while (it.hasMoreElements())
+				{
+					Ogre::v1::AnimationState* anim = it.getNext();
+
+					// Set the key of the property
+					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+					keyTextBox->setCaption("Animation: " + Ogre::StringConverter::toString(i));
+
+					this->itemsText.push_back(keyTextBox);
+
+					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					edit->setMouseHitThreshold(6, 6, 3, 3);
+					edit->setOnlyText(anim->getAnimationName());
+					edit->setEditReadOnly(true);
+
+					this->itemsEdit.push_back(edit);
+
+					this->heightCurrent += heightStep;
+					i++;
+				}
+
+				MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				this->itemsText.push_back(separator);
+				this->heightCurrent += heightStep / 2;
+			}
+
+			///////////////////////////////List all bones///////////////////////////////////////////////////////
+			Ogre::v1::Skeleton* skeleton = entity->getSkeleton();
+			if (nullptr != skeleton)
+			{
+				std::vector<Ogre::String> boneNames;
+
+				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, 100, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Bones of Skeleton: " + skeleton->getName());
+
+				this->itemsText.push_back(keyTextBox);
+				this->heightCurrent += heightStep;
+
+				unsigned short numBones = entity->getSkeleton()->getNumBones();
+				for (unsigned short iBone = 0; iBone < numBones; iBone++)
+				{
+					Ogre::v1::OldBone* bone = entity->getSkeleton()->getBone(iBone);
+					if (nullptr == bone)
+					{
+						continue;
+					}
+
+					// Absolutely HAVE to create bone representations first. Otherwise we would get the wrong child count
+					// because an attached object counts as a child
+					// Would be nice to have a function that only gets the children that are bones...
+					unsigned short numChildren = bone->numChildren();
+					if (numChildren == 0)
+					{
+						bool unique = true;
+						for (size_t i = 0; i < boneNames.size(); i++)
+						{
+							if (boneNames[i] == bone->getName())
+							{
+								unique = false;
+								break;
+							}
+						}
+						if (true == unique)
+						{
+							boneNames.emplace_back(bone->getName());
+							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
+						}
+					}
+					else
+					{
+						bool unique = true;
+						for (size_t i = 0; i < boneNames.size(); i++)
+						{
+							if (boneNames[i] == bone->getName())
+							{
+								unique = false;
+								break;
+							}
+						}
+						if (true == unique)
+						{
+							boneNames.emplace_back(bone->getName());
+							// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[TagPointComponent] Bone name: " + bone->getName());
+						}
+					}
+				}
+
+				// Add all available tag names to list
+
+				for (size_t j = 0; j < boneNames.size(); j++)
+				{
+					// Set the key of the property
+					MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+					keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+					keyTextBox->setCaption("Bone: " + Ogre::StringConverter::toString(j));
+
+					this->itemsText.push_back(keyTextBox);
+
+					MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+					edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+					edit->setOnlyText(boneNames[j]);
+					edit->setEditReadOnly(true);
+					this->itemsEdit.push_back(edit);
+
+					this->heightCurrent += heightStep;
+				}
+
+				MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				this->itemsText.push_back(separator);
+				this->heightCurrent += heightStep / 2;
+			}
+
+			int j = 0;
+
+			auto& simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
+			while (simpleSoundComponent != nullptr && simpleSoundComponent->getSound() != nullptr)
+			{
+				MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("SoundName: ");
 				this->itemsText.push_back(keyTextBox);
 
 				MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
 				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-				edit->setOnlyText(boneNames[j]);
+				edit->setOnlyText(simpleSoundComponent->getSoundName());
 				edit->setEditReadOnly(true);
 				this->itemsEdit.push_back(edit);
-
 				this->heightCurrent += heightStep;
+
+				///////////////////////////////////////////////////
+
+				keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Length: ");
+				this->itemsText.push_back(keyTextBox);
+
+				edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getLength()) + " Seconds");
+				edit->setEditReadOnly(true);
+				this->itemsEdit.push_back(edit);
+				this->heightCurrent += heightStep;
+
+				///////////////////////////////////////////////////
+
+				keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Frequency: ");
+				this->itemsText.push_back(keyTextBox);
+
+				edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getFrequency()));
+				edit->setEditReadOnly(true);
+				this->itemsEdit.push_back(edit);
+				this->heightCurrent += heightStep;
+
+				///////////////////////////////////////////////////
+
+				keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Channels: ");
+				this->itemsText.push_back(keyTextBox);
+
+				edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getChannelCount()));
+				edit->setEditReadOnly(true);
+				this->itemsEdit.push_back(edit);
+				this->heightCurrent += heightStep;
+
+				///////////////////////////////////////////////////
+
+				keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Bits per sample: ");
+				this->itemsText.push_back(keyTextBox);
+
+				edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getBitsPerSample()));
+				edit->setEditReadOnly(true);
+				this->itemsEdit.push_back(edit);
+				this->heightCurrent += heightStep;
+
+				///////////////////////////////////////////////////
+
+				keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
+				keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+				keyTextBox->setCaption("Data size: ");
+				this->itemsText.push_back(keyTextBox);
+
+				edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+				edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getDataSize()));
+				edit->setEditReadOnly(true);
+				this->itemsEdit.push_back(edit);
+				this->heightCurrent += heightStep;
+
+				j++;
+				simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
+
+				MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
+				this->itemsText.push_back(separator);
+				this->heightCurrent += heightStep / 2;
 			}
 
-			MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			this->itemsText.push_back(separator);
-			this->heightCurrent += heightStep / 2;
 		}
 
-		int j = 0;
-
-		auto& simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
-		while (simpleSoundComponent != nullptr && simpleSoundComponent->getSound() != nullptr)
-		{
-			MyGUI::TextBox* keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("SoundName: ");
-			this->itemsText.push_back(keyTextBox);
-
-			MyGUI::EditBox* edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(simpleSoundComponent->getSoundName());
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			///////////////////////////////////////////////////
-
-			keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Length: ");
-			this->itemsText.push_back(keyTextBox);
-
-			edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getLength()) + " Seconds");
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			///////////////////////////////////////////////////
-
-			keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Frequency: ");
-			this->itemsText.push_back(keyTextBox);
-
-			edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getFrequency()));
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			///////////////////////////////////////////////////
-
-			keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Channels: ");
-			this->itemsText.push_back(keyTextBox);
-
-			edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getChannelCount()));
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			///////////////////////////////////////////////////
-
-			keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Bits per sample: ");
-			this->itemsText.push_back(keyTextBox);
-
-			edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getBitsPerSample()));
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			///////////////////////////////////////////////////
-
-			keyTextBox = mWidgetClient->createWidget<MyGUI::TextBox>("TextBox", MyGUI::IntCoord(keyLeft, heightCurrent, keyWidth, height), MyGUI::Align::Left | MyGUI::Align::Top);
-			keyTextBox->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			keyTextBox->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-			keyTextBox->setCaption("Data size: ");
-			this->itemsText.push_back(keyTextBox);
-
-			edit = mWidgetClient->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(valueLeft, heightCurrent, valueWidth, height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			edit->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-			edit->setOnlyText(Ogre::StringConverter::toString(simpleSoundComponent->getSound()->getDataSize()));
-			edit->setEditReadOnly(true);
-			this->itemsEdit.push_back(edit);
-			this->heightCurrent += heightStep;
-
-			j++;
-			simpleSoundComponent = NOWA::makeStrongPtr(gameObject->getComponent<NOWA::SimpleSoundComponent>(j));
-
-			MyGUI::Widget* separator = mWidgetClient->createWidget<MyGUI::Widget>("Separator3", MyGUI::IntCoord(keyLeft, this->heightCurrent, static_cast<int>(mWidgetClient->getWidth()), height), MyGUI::Align::HStretch | MyGUI::Align::Top);
-			this->itemsText.push_back(separator);
-			this->heightCurrent += heightStep / 2;
-		}
-
-	}
-
-	mPanelCell->setClientHeight(this->heightCurrent, false);
+		mPanelCell->setClientHeight(this->heightCurrent, false);
+	});
 }
 
 void PropertiesPanelInfo::initialise()
 {
-	mPanelCell->setCaption("Info");
-	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	assignWidget(this->propertyInfo, "propertyInfo");
-	this->propertyInfo->setEditMultiLine(true);
-	this->propertyInfo->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
-	this->propertyInfo->setEditWordWrap(true);
-	this->propertyInfo->setEditStatic(false);
-	this->propertyInfo->setEditReadOnly(true);
-	this->propertyInfo->showVScroll(true);
-	this->propertyInfo->showHScroll(true);
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelInfo::initialise",
+	{
+		mPanelCell->setCaption("Info");
+		mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		assignWidget(this->propertyInfo, "propertyInfo");
+		this->propertyInfo->setEditMultiLine(true);
+		this->propertyInfo->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
+		this->propertyInfo->setEditWordWrap(true);
+		this->propertyInfo->setEditStatic(false);
+		this->propertyInfo->setEditReadOnly(true);
+		this->propertyInfo->showVScroll(true);
+		this->propertyInfo->showHScroll(true);
+	});
 }
 
 void PropertiesPanelInfo::shutdown()
 {
-	this->itemsText.clear();
-	this->itemsEdit.clear();
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelInfo::listData",
+	{
+		this->itemsText.clear();
+		this->itemsEdit.clear();
+	});
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -884,65 +902,74 @@ void PropertiesPanelDynamic::setPropertiesPanelInfo(PropertiesPanelInfo* propert
 
 void PropertiesPanelDynamic::initialise()
 {
-	mPanelCell->setCaption(this->name);
-	mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
-	this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEndDialog);
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelDynamic::initialise",
+	{
+		mPanelCell->setCaption(this->name);
+		mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
+		this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelDynamic::notifyEndDialog);
+	});
 }
 
 void PropertiesPanelDynamic::shutdown()
 {
-	this->itemsText.clear();
-
-	for (size_t i = 0; i < this->itemsEdit.size(); i++)
+	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelDynamic::shutdown",
 	{
-		auto widget = this->itemsEdit[i];
-		MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
-		if (nullptr != itemBox)
+		this->itemsText.clear();
+
+		for (size_t i = 0; i < this->itemsEdit.size(); i++)
 		{
-			size_t count = itemBox->getItemCount();
-			for (size_t pos = 0; pos < count; ++pos)
+			auto widget = this->itemsEdit[i];
+			MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
+			if (nullptr != itemBox)
 			{
-				auto widget = itemBox->getWidgetByIndex(pos);
-				if (nullptr != widget)
+				size_t count = itemBox->getItemCount();
+				for (size_t pos = 0; pos < count; ++pos)
 				{
-					ImageData** data = widget->getUserData<ImageData*>(false);
-					if (nullptr != data)
+					auto widget = itemBox->getWidgetByIndex(pos);
+					if (nullptr != widget)
 					{
-						delete (*data);
+						ImageData** data = widget->getUserData<ImageData*>(false);
+						if (nullptr != data)
+						{
+							delete (*data);
+						}
 					}
 				}
 			}
 		}
-	}
 
-	this->itemsEdit.clear();
-	this->gameObject = nullptr;
-	if (this->openSaveFileDialog)
-	{
-		delete this->openSaveFileDialog;
-		this->openSaveFileDialog = nullptr;
-	}
+		this->itemsEdit.clear();
+		this->gameObject = nullptr;
+		if (this->openSaveFileDialog)
+		{
+			delete this->openSaveFileDialog;
+			this->openSaveFileDialog = nullptr;
+		}
+	});
 }
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {
-	const int heightStep = 28;
-	int heightCurrent = 0;
-	for (unsigned int pos = 0; pos < 16; ++pos)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::setVisibleCount", _1(count),
 	{
-		if (pos < count)
+		const int heightStep = 28;
+		int heightCurrent = 0;
+		for (unsigned int pos = 0; pos < 16; ++pos)
 		{
-			this->itemsText[pos]->setVisible(true);
-			this->itemsEdit[pos]->setVisible(true);
-			heightCurrent += heightStep;
+			if (pos < count)
+			{
+				this->itemsText[pos]->setVisible(true);
+				this->itemsEdit[pos]->setVisible(true);
+				heightCurrent += heightStep;
+			}
+			else
+			{
+				this->itemsText[pos]->setVisible(false);
+				this->itemsEdit[pos]->setVisible(false);
+			}
 		}
-		else
-		{
-			this->itemsText[pos]->setVisible(false);
-			this->itemsEdit[pos]->setVisible(false);
-		}
-	}
-	mPanelCell->setClientHeight(heightCurrent, true);
+		mPanelCell->setClientHeight(heightCurrent, true);
+	});
 }
 
 void PropertiesPanelDynamic::addProperty(const Ogre::String& name, NOWA::Variant* attribute, bool allValuesSame)
@@ -1933,18 +1960,21 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 	// Adds new line if shift + enter is pressed
 	else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
 	{
-		MyGUI::EditBox* editBox = sender->castType<MyGUI::EditBox>(false);
-		if (nullptr != editBox && true == editBox->getEditMultiLine())
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onKeyButtonPressed", _1(sender),
 		{
-			//// Insert a new line at the current cursor position
-			size_t cursorPos = editBox->getTextCursor();
-			Ogre::String text = editBox->getCaption();
-			text.insert(cursorPos + 1, "\\n");
+			MyGUI::EditBox * editBox = sender->castType<MyGUI::EditBox>(false);
+			if (nullptr != editBox && true == editBox->getEditMultiLine())
+			{
+				//// Insert a new line at the current cursor position
+				size_t cursorPos = editBox->getTextCursor();
+				Ogre::String text = editBox->getCaption();
+				text.insert(cursorPos + 1, "\\n");
 
-			// Update the EditBox content and set the cursor position
-			editBox->setCaptionWithReplacing(text);
-			editBox->setTextCursor(cursorPos + 1);  // Move the cursor after the new line
-		}
+				// Update the EditBox content and set the cursor position
+				editBox->setCaptionWithReplacing(text);
+				editBox->setTextCursor(cursorPos + 1);  // Move the cursor after the new line
+			}
+		});
 	}
 	else
 	{
@@ -1968,7 +1998,10 @@ void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
 		MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
 		if (nullptr != editBox)
 		{
-			editBox->setTextSelection(0, editBox->getCaption().size());
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onMouseDoubleClick", _1(editBox),
+			{
+				editBox->setTextSelection(0, editBox->getCaption().size());
+			});
 		}
 	}
 }
@@ -2011,8 +2044,11 @@ MyGUI::Widget* PropertiesPanelDynamic::addSeparator(void)
 
 void PropertiesPanelDynamic::notifyColourCancel(MyGUI::ColourPanel* sender)
 {
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::notifyColourCancel", _1(sender),
+	{
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
+	});
 }
 
 bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, const Ogre::String& fileMask, Ogre::String& resourceGroupName)
@@ -2051,23 +2087,26 @@ bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, cons
 		return false;
 	}
 
-	// Set the target folder specified in scene resource group
-	this->openSaveFileDialog->setCurrentFolder(targetFolder);
-	// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::showFileOpenDialog", _3(targetFolder, action, fileMask),
+	{
+		// Set the target folder specified in scene resource group
+		this->openSaveFileDialog->setCurrentFolder(targetFolder);
+		// this->openSaveFileDialog->setRecentFolders(RecentFilesManager::getInstance().getRecentFolders());
 
-	this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"),
-		MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
+		this->openSaveFileDialog->setDialogInfo(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{OpenFile}"),
+			MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Open}"), MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{UpFolder}"), false);
 
-	this->openSaveFileDialog->setMode(action);
-	this->openSaveFileDialog->setFileMask(fileMask);
-	this->openSaveFileDialog->setFileName("");
-	this->openSaveFileDialog->doModal();
-	MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-	MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-	
-	// If user is in dialog prevent camera movement (asdf)
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+		this->openSaveFileDialog->setMode(action);
+		this->openSaveFileDialog->setFileMask(fileMask);
+		this->openSaveFileDialog->setFileName("");
+		this->openSaveFileDialog->doModal();
+		MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+		MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+
+		// If user is in dialog prevent camera movement (asdf)
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(0.0f);
+	});
 
 	return true;
 }
@@ -2365,7 +2404,10 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 			}
 		}
 
-		sender->setCaption("");
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::notifyEditSelectAccept1", _1(sender),
+		{
+			sender->setCaption("");
+		});
 		// Regenerate categories
 		boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
@@ -2393,7 +2435,10 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 			}
 		}
 
-		sender->setCaption("");
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::notifyEditSelectAccept2", _1(sender),
+		{
+			sender->setCaption("");
+		});
 
 		// Sent when a name has changed, so that the resources panel can be refreshed with new values
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
@@ -2404,7 +2449,10 @@ void PropertiesPanelGameObject::notifyEditSelectAccept(MyGUI::EditBox* sender)
 		// Validation of name is required, to remain unique
 		Ogre::String gameObjectName = (*attribute)->getString();
 		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
-		sender->setOnlyText(gameObjectName);
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::notifyEditSelectAccept3", _2(sender, gameObjectName),
+		{
+			sender->setOnlyText(gameObjectName);
+		});
 		(*attribute)->setValue(gameObjectName);
 		this->gameObject->actualizeValue(*attribute);
 
@@ -2440,71 +2488,78 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
-		// ColorDialog handling
-		if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelGameObject::buttonHit", _1(button),
 		{
-			// Button hit results in showing properties again, which should not be
-			PropertiesPanel::setShowPropertiesFlag(false);
-			// Must be copied, because the properties are re-created and so the original attribute is gone
-			NOWA::Variant* variantCopy = (*attribute)->clone();
-			ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
-			if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
-				ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
-			else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
-				ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
-			ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
-			// MyGUI::InputManager::getInstancePtr()->removeWidgetModal(parent->getMainWidget());
-			MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-			ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyColourAccept);
-			ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelGameObject::notifyColourCancel);
-		}
-		// FileOpenDialog handling
-		else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
-		{
-			// Button hit results in showing properties again, which should not be
-			PropertiesPanel::setShowPropertiesFlag(false);
-			// Must be copied, because the properties are re-created and so the original attribute is gone
-			NOWA::Variant* variantCopy = (*attribute)->clone();
+			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
+			// ColorDialog handling
+			if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
+			{
+				// Button hit results in showing properties again, which should not be
+				PropertiesPanel::setShowPropertiesFlag(false);
+				// Must be copied, because the properties are re-created and so the original attribute is gone
+				NOWA::Variant* variantCopy = (*attribute)->clone();
+				ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
+				if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
+				{
+					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
+				}
+				else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
+				{
+					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
+				}
+				ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
+				// MyGUI::InputManager::getInstancePtr()->removeWidgetModal(parent->getMainWidget());
+				MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+				ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelGameObject::notifyColourAccept);
+				ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelGameObject::notifyColourCancel);
+			}
+			// FileOpenDialog handling
+			else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
+			{
+				// Button hit results in showing properties again, which should not be
+				PropertiesPanel::setShowPropertiesFlag(false);
+				// Must be copied, because the properties are re-created and so the original attribute is gone
+				NOWA::Variant* variantCopy = (*attribute)->clone();
 
-			Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
-			this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
+				Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
+				this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
 
-			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+				MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+				MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
 
-			this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
-		}
-		else
-		{
-			// Invert the state
-			button->setStateCheck(!button->getStateCheck());
-		}
+				this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+			}
+			else
+			{
+				// Invert the state
+				button->setStateCheck(!button->getStateCheck());
+			}
 
-		if (nullptr == attribute)
-		{
-			return;
-		}
+			if (nullptr == attribute)
+			{
+				return;
+			}
 
-		// Snapshot the old attribute name
-		this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
+			// Snapshot the old attribute name
+			this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*attribute)->getName());
 
-		for (size_t i = 0; i < this->gameObjects.size(); i++)
-		{
-			auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
-			currentAttribute->setValue(button->getStateCheck());
-			this->gameObjects[i]->actualizeValue(*attribute);
-		}
+			for (size_t i = 0; i < this->gameObjects.size(); i++)
+			{
+				auto currentAttribute = this->gameObjects[i]->getAttribute((*attribute)->getName());
+				currentAttribute->setValue(button->getStateCheck());
+				this->gameObjects[i]->actualizeValue(*attribute);
+			}
 
-		// Snapshot the new attribute
-		this->editorManager->snapshotNewGameObjectAttribute(*attribute);
+			// Snapshot the new attribute
+			this->editorManager->snapshotNewGameObjectAttribute(*attribute);
 
-		if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-		{
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-		}
+			if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+			{
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
+				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+			}
+		});
 	}
 }
 
@@ -2534,28 +2589,31 @@ void PropertiesPanelGameObject::notifyComboChangedPosition(MyGUI::ComboBox* send
 
 void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
-
-	NOWA::Variant** copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
-	(*copiedAttribute)->setValue(colour);
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
-
-	// Snapshot the old attribute name
-	this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*copiedAttribute)->getName());
-
-	for (size_t i = 0; i < this->gameObjects.size(); i++)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelGameObject::notifyColourAccept", _1(sender),
 	{
-		auto currentAttribute = this->gameObjects[i]->getAttribute((*copiedAttribute)->getName());
-		this->gameObjects[i]->actualizeValue(*copiedAttribute);
-	}
+		Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
 
-	// Snapshot the new attribute
-	this->editorManager->snapshotNewGameObjectAttribute(*copiedAttribute);
+		NOWA::Variant * *copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
+		(*copiedAttribute)->setValue(colour);
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		// Snapshot the old attribute name
+		this->editorManager->snapshotOldGameObjectAttribute(this->gameObjects, (*copiedAttribute)->getName());
+
+		for (size_t i = 0; i < this->gameObjects.size(); i++)
+		{
+			auto currentAttribute = this->gameObjects[i]->getAttribute((*copiedAttribute)->getName());
+			this->gameObjects[i]->actualizeValue(*copiedAttribute);
+		}
+
+		// Snapshot the new attribute
+		this->editorManager->snapshotNewGameObjectAttribute(*copiedAttribute);
+
+		// Sent when a property has changed, so that the properties panel can be refreshed with new values
+		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+	});
 }
 
 void PropertiesPanelGameObject::notifyEndDialog(tools::Dialog* sender, bool result)
@@ -2754,128 +2812,131 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
-	// Let the camera move again
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-	// Send the text box change to the game object and internally actualize the data
-	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
-	NOWA::Variant* variantCopy = (*attribute)->clone();
-
-	Ogre::String editCaption = sender->getOnlyText();
-	// Range adaptation
-	Ogre::Real editValue = Ogre::StringConverter::parseReal(editCaption);
-	// Check if the edit is paired with a slider, to actualize the slider value
-	Ogre::String sliderName = sender->getUserString("slider" + sender->getName());
-	if (false == sliderName.empty())
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
 	{
-		if (editValue < (*attribute)->getConstraints().first)
-		{
-			editValue = (*attribute)->getConstraints().first;
-			editCaption = Ogre::StringConverter::toString(editValue);
-			sender->setOnlyText(editCaption);
-		}
-		else if (editValue > (*attribute)->getConstraints().second)
-		{
-			editValue = (*attribute)->getConstraints().second;
-			editCaption = Ogre::StringConverter::toString(editValue);
-			sender->setOnlyText(editCaption);
-		}
+		// Let the camera move again
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+		// Send the text box change to the game object and internally actualize the data
+		NOWA::Variant * *attribute = sender->getUserData<NOWA::Variant*>();
+		NOWA::Variant * variantCopy = (*attribute)->clone();
 
-		MyGUI::ScrollBar* slider = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ScrollBar>(sliderName, false);
-		if (nullptr != slider)
+		Ogre::String editCaption = sender->getOnlyText();
+		// Range adaptation
+		Ogre::Real editValue = Ogre::StringConverter::parseReal(editCaption);
+		// Check if the edit is paired with a slider, to actualize the slider value
+		Ogre::String sliderName = sender->getUserString("slider" + sender->getName());
+		if (false == sliderName.empty())
 		{
-			Ogre::Real lowBorder = (*attribute)->getConstraints().first;
-			Ogre::Real highBorder = (*attribute)->getConstraints().second;
-
-			// Checks if int slider or real slider
-			if ((*attribute)->getType() == NOWA::Variant::VAR_INT
-				|| (*attribute)->getType() == NOWA::Variant::VAR_UINT
-				|| (*attribute)->getType() == NOWA::Variant::VAR_ULONG)
+			if (editValue < (*attribute)->getConstraints().first)
 			{
-				int value;
-				std::istringstream iss(editCaption);
-				if (iss >> value)
-				{
-					NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+				editValue = (*attribute)->getConstraints().first;
+				editCaption = Ogre::StringConverter::toString(editValue);
+				sender->setOnlyText(editCaption);
+			}
+			else if (editValue > (*attribute)->getConstraints().second)
+			{
+				editValue = (*attribute)->getConstraints().second;
+				editCaption = Ogre::StringConverter::toString(editValue);
+				sender->setOnlyText(editCaption);
+			}
 
-					if (value < lowBorder)
+			MyGUI::ScrollBar* slider = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ScrollBar>(sliderName, false);
+			if (nullptr != slider)
+			{
+				Ogre::Real lowBorder = (*attribute)->getConstraints().first;
+				Ogre::Real highBorder = (*attribute)->getConstraints().second;
+
+				// Checks if int slider or real slider
+				if ((*attribute)->getType() == NOWA::Variant::VAR_INT
+					|| (*attribute)->getType() == NOWA::Variant::VAR_UINT
+					|| (*attribute)->getType() == NOWA::Variant::VAR_ULONG)
+				{
+					int value;
+					std::istringstream iss(editCaption);
+					if (iss >> value)
 					{
-						value = lowBorder;
+						NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
+
+						if (value < lowBorder)
+						{
+							value = lowBorder;
+						}
+						if (value > highBorder)
+						{
+							value = highBorder;
+						}
+						size_t newPosition = static_cast<size_t>(value - lowBorder);
+						slider->setScrollPosition(newPosition);
 					}
-					if (value > highBorder)
+				}
+				else
+				{
+					Ogre::Real value;
+					std::istringstream iss(editCaption);
+					if (iss >> value)
 					{
-						value = highBorder;
+						if (value < lowBorder)
+						{
+							value = lowBorder;
+						}
+						if (value > highBorder)
+						{
+							value = highBorder;
+						}
+						size_t newPosition = static_cast<size_t>((value - lowBorder) / (highBorder - lowBorder) * 1000.0f);
+						slider->setScrollPosition(newPosition);
 					}
-					size_t newPosition = static_cast<size_t>(value - lowBorder);
-					slider->setScrollPosition(newPosition);
 				}
 			}
-			else
+		}
+
+		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
+		{
+			// Do nothing but jump over the next condition, so that the value will be reset, even its the same value
+		}
+		else
+		{
+			// Only proceed if a value changed
+			if ((*attribute)->getString() == editCaption)
 			{
-				Ogre::Real value;
-				std::istringstream iss(editCaption);
-				if (iss >> value)
-				{
-					if (value < lowBorder)
-					{
-						value = lowBorder;
-					}
-					if (value > highBorder)
-					{
-						value = highBorder;
-					}
-					size_t newPosition = static_cast<size_t>((value - lowBorder) / (highBorder - lowBorder) * 1000.0f);
-					slider->setScrollPosition(newPosition);
-				}
+				return;
 			}
 		}
-	}
 
-	if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
-	{
-		// Do nothing but jump over the next condition, so that the value will be reset, even its the same value
-	}
-	else
-	{
-		// Only proceed if a value changed
-		if ((*attribute)->getString() == editCaption)
+		// If its a list, check the selected value if it has changed
+		if ((*attribute)->getList().size() > 0)
 		{
-			return;
+			if ((*attribute)->getListSelectedValue() == editCaption)
+			{
+				return;
+			}
 		}
-	}
 
-	// If its a list, check the selected value if it has changed
-	if ((*attribute)->getList().size() > 0)
-	{
-		if ((*attribute)->getListSelectedValue() == editCaption)
+		// Snapshot the old attribute name
+		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+
+		this->setNewAttributeValue(sender, variantCopy);
+
+		for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
 		{
-			return;
+			this->gameObjectComponents[i]->actualizeValue(variantCopy);
 		}
-	}
 
-	// Snapshot the old attribute name
-	this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+		delete variantCopy;
 
-	this->setNewAttributeValue(sender, variantCopy);
+		this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
 
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		this->gameObjectComponents[i]->actualizeValue(variantCopy);
-	}
+		if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+		{
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+		}
 
-	delete variantCopy;
-
-	this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
-
-	if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
-	{
-		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-	}
-
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	// boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-	// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		// Sent when a property has changed, so that the properties panel can be refreshed with new values
+		// boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+	});
 }
 
 void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* sender, size_t position)
@@ -2898,7 +2959,10 @@ void PropertiesPanelComponent::notifyScrollChangePosition(MyGUI::ScrollBar* send
 				value = position + (*attribute)->getConstraints().first;
 			}
 
-			(*editPair)->setOnlyText(Ogre::StringConverter::toString(value));
+			ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyScrollChangePosition", _2(editPair, value),
+			{
+				(*editPair)->setOnlyText(Ogre::StringConverter::toString(value));
+			});
 
 			if (true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionForceSet()))
 			{
@@ -3027,240 +3091,250 @@ void PropertiesPanelComponent::notifySetItemBoxData(MyGUI::ItemBox* sender, cons
 
 void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 {
-	this->showDescription(sender);
-
-	MyGUI::Button* button = sender->castType<MyGUI::Button>();
-	bool hasAttribute = false;
-	if (nullptr != button)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::buttonHit", _1(sender),
 	{
-		NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
-		if (nullptr != attribute)
+		this->showDescription(sender);
+
+		MyGUI::Button * button = sender->castType<MyGUI::Button>();
+		bool hasAttribute = false;
+		if (nullptr != button)
 		{
-			hasAttribute = true;
-		}
-
-		if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
-		{
-			// Button hit results in showing properties again, which should not be
-			PropertiesPanel::setShowPropertiesFlag(false);
-			// Must be copied, because the properties are re-created and so the original attribute is gone
-			NOWA::Variant* variantCopy = (*attribute)->clone();
-			ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
-			if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
-				ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
-			else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
-				ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
-			ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
-			MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-			ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyColourAccept);
-			ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelDynamic::notifyColourCancel);
-		}
-		// FileOpenDialog handling
-		else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
-		{
-			// Button hit results in showing properties again, which should not be
-			PropertiesPanel::setShowPropertiesFlag(false);
-
-			// Must be copied, because the properties are re-created and so the original attribute is gone
-			NOWA::Variant* variantCopy = (*attribute)->clone();
-
-			Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
-			if (true == resourceGroupName.empty())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name is empty!");
-				return;
-			}
-
-			this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
-			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-			// this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyEndDialog);
-
-			this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
-		}
-		else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
-		{
-			Ogre::String absoluteLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
-			bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
-		}
-		else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
-		{
-			if (nullptr != this->gameObject->getLuaScript())
-			{
-				NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()), this->gameObject->getGlobal());
-			}
-		}
-		else if (button == this->appendComponentButton)
-		{
-			// Deletes the component
-			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				gameObjectIds[i] = this->gameObjects[i]->getId();
-			}
-
-			int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
-			if (-1 != index)
-			{
-				// Sent when a component panel with all components should be shown
-				boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataShowComponentsPanel);
-			}
-		}
-		else if (button == this->deleteComponentButton)
-		{
-			// Deletes the component
-			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				// Prevent deleting a component of a kind main game object
-				Ogre::String className = this->gameObjectComponents[0]->getClassName();
-
-				if (NOWA::GameObjectController::MAIN_GAMEOBJECT_ID == this->gameObjects[i]->getId())
-				{
-					if (className == NOWA::NodeComponent::getStaticClassName())
-					{
-						return;
-					}
-				}
-				else if (NOWA::GameObjectController::MAIN_LIGHT_ID == this->gameObjects[i]->getId())
-				{
-					if (className == NOWA::LightDirectionalComponent::getStaticClassName())
-					{
-						return;
-					}
-				}
-				else if (NOWA::GameObjectController::MAIN_CAMERA_ID == this->gameObjects[i]->getId())
-				{
-					if (className == NOWA::CameraComponent::getStaticClassName())
-					{
-						return;
-					}
-				}
-
-				gameObjectIds[i] = this->gameObjects[i]->getId();
-			}
-
-			int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
-			if (-1 != index)
-			{
-				this->editorManager->deleteComponent(gameObjectIds, static_cast<unsigned int>(index));
-			}
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-			// Regenerate categories
-			boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-		}
-		else if (button == this->debugDataComponentButton)
-		{
-			// Show debug data if pushed
-			for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-			{
-				this->gameObjectComponents[i]->showDebugData();
-			}
-			this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
-		}
-		else if (button == this->moveUpComponentButton)
-		{
-			// Move up component
-			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				gameObjectIds[i] = this->gameObjects[i]->getId();
-				int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
-				if (-1 != index)
-				{
-					this->gameObjects[i]->moveComponentUp(index);
-				}
-			}
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-			// Regenerate categories
-			boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-		}
-		else if (button == this->moveDownComponentButton)
-		{
-			// Move down component
-			std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
-			for (size_t i = 0; i < this->gameObjects.size(); i++)
-			{
-				gameObjectIds[i] = this->gameObjects[i]->getId();
-				int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
-				if (-1 != index)
-				{
-					this->gameObjects[i]->moveComponentDown(index);
-				}
-			}
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-			// Regenerate categories
-			boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataGenerateCategories);
-		}
-		else
-		{
-			// Invert the state
-			button->setStateCheck(!button->getStateCheck());
-			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>();
+			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
 			if (nullptr != attribute)
 			{
 				hasAttribute = true;
 			}
 
-			if (true == hasAttribute)
+			if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionColorDialog()))
 			{
-				// Do not store sleep state for undo redo, because it may become nasty
-				if (NOWA::PhysicsActiveComponent::AttrSleep() == (*attribute)->getName())
+				// Button hit results in showing properties again, which should not be
+				PropertiesPanel::setShowPropertiesFlag(false);
+				// Must be copied, because the properties are re-created and so the original attribute is gone
+				NOWA::Variant* variantCopy = (*attribute)->clone();
+				ColourPanelManager::getInstance()->getColourPanel()->getWidget()->setUserData(MyGUI::Any(variantCopy));
+				if (NOWA::Variant::VAR_VEC3 == variantCopy->getType())
 				{
+					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector3().x, variantCopy->getVector3().y, variantCopy->getVector3().z, 1.0f));
+				}
+				else if (NOWA::Variant::VAR_VEC4 == variantCopy->getType())
+				{
+					ColourPanelManager::getInstance()->getColourPanel()->setColour(MyGUI::Colour(variantCopy->getVector4().x, variantCopy->getVector4().y, variantCopy->getVector4().z, variantCopy->getVector4().w));
+				}
+				ColourPanelManager::getInstance()->getColourPanel()->setVisible(true);
+				MyGUI::InputManager::getInstancePtr()->addWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+				ColourPanelManager::getInstance()->getColourPanel()->eventColourAccept = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyColourAccept);
+				ColourPanelManager::getInstance()->getColourPanel()->eventColourCancel = MyGUI::newDelegate((PropertiesPanelDynamic*)this, &PropertiesPanelDynamic::notifyColourCancel);
+			}
+			// FileOpenDialog handling
+			else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionFileOpenDialog()))
+			{
+				// Button hit results in showing properties again, which should not be
+				PropertiesPanel::setShowPropertiesFlag(false);
+
+				// Must be copied, because the properties are re-created and so the original attribute is gone
+				NOWA::Variant* variantCopy = (*attribute)->clone();
+
+				Ogre::String resourceGroupName = variantCopy->getUserDataValue(NOWA::GameObject::AttrActionFileOpenDialog());
+				if (true == resourceGroupName.empty())
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ImageData] ERROR: Could not open file dialog because the resource name is empty!");
 					return;
 				}
 
-				if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+				this->openSaveFileDialog->getMainWidget()->setUserData(MyGUI::Any(variantCopy));
+				MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+				MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+				// this->openSaveFileDialog->eventEndDialog = MyGUI::newDelegate(this, &PropertiesPanelComponent::notifyEndDialog);
+
+				this->showFileOpenDialog("FileOpen", "*.*", resourceGroupName);
+			}
+			else if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionLuaScript()))
+			{
+				Ogre::String absoluteLuaScriptFilePathName = (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionLuaScript());
+				bool success = NOWA::DeployResourceModule::getInstance()->openNOWALuaScriptEditor(absoluteLuaScriptFilePathName);
+			}
+			else if (true == hasAttribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionGenerateLuaFunction()))
+			{
+				if (nullptr != this->gameObject->getLuaScript())
 				{
-					// Snapshot the old attribute name
-					this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+					NOWA::AppStateManager::getSingletonPtr()->getLuaScriptModule()->generateLuaFunctionName(this->gameObject->getLuaScript()->getScriptName(), (*attribute)->getUserDataValue(NOWA::GameObject::AttrActionGenerateLuaFunction()), this->gameObject->getGlobal());
+				}
+			}
+			else if (button == this->appendComponentButton)
+			{
+				// Deletes the component
+				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+
+				for (size_t i = 0; i < this->gameObjects.size(); i++)
+				{
+					gameObjectIds[i] = this->gameObjects[i]->getId();
 				}
 
+				int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
+				if (-1 != index)
+				{
+					// Sent when a component panel with all components should be shown
+					boost::shared_ptr<EventDataShowComponentsPanel> eventDataShowComponentsPanel(new EventDataShowComponentsPanel(index));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataShowComponentsPanel);
+				}
+			}
+			else if (button == this->deleteComponentButton)
+			{
+				// Deletes the component
+				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+
+				for (size_t i = 0; i < this->gameObjects.size(); i++)
+				{
+					// Prevent deleting a component of a kind main game object
+					Ogre::String className = this->gameObjectComponents[0]->getClassName();
+
+					if (NOWA::GameObjectController::MAIN_GAMEOBJECT_ID == this->gameObjects[i]->getId())
+					{
+						if (className == NOWA::NodeComponent::getStaticClassName())
+						{
+							return;
+						}
+					}
+					else if (NOWA::GameObjectController::MAIN_LIGHT_ID == this->gameObjects[i]->getId())
+					{
+						if (className == NOWA::LightDirectionalComponent::getStaticClassName())
+						{
+							return;
+						}
+					}
+					else if (NOWA::GameObjectController::MAIN_CAMERA_ID == this->gameObjects[i]->getId())
+					{
+						if (className == NOWA::CameraComponent::getStaticClassName())
+						{
+							return;
+						}
+					}
+
+					gameObjectIds[i] = this->gameObjects[i]->getId();
+				}
+
+				int index = this->gameObjects[0]->getIndexFromComponent(this->gameObjectComponents[0]);
+				if (-1 != index)
+				{
+					this->editorManager->deleteComponent(gameObjectIds, static_cast<unsigned int>(index));
+				}
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
+				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+
+				// Regenerate categories
+				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+			}
+			else if (button == this->debugDataComponentButton)
+			{
+				// Show debug data if pushed
 				for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
 				{
-					auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
-					currentAttribute->setValue(button->getStateCheck());
-					this->gameObjectComponents[i]->actualizeValue(*attribute);
+					this->gameObjectComponents[i]->showDebugData();
 				}
-
-				if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-				{
-					// Snapshot the new attribute
-					this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
-				}
+				this->debugDataComponentButton->setStateCheck(this->gameObjectComponents[0]->getShowDebugData());
 			}
-		}
-
-		if (true == hasAttribute && (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo())))
-		{
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+			else if (button == this->moveUpComponentButton)
 			{
+				// Move up component
+				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+				for (size_t i = 0; i < this->gameObjects.size(); i++)
+				{
+					gameObjectIds[i] = this->gameObjects[i]->getId();
+					int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
+					if (-1 != index)
+					{
+						this->gameObjects[i]->moveComponentUp(index);
+					}
+				}
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+
+				// Regenerate categories
+				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+			}
+			else if (button == this->moveDownComponentButton)
+			{
+				// Move down component
+				std::vector<unsigned long> gameObjectIds(this->gameObjects.size());
+				for (size_t i = 0; i < this->gameObjects.size(); i++)
+				{
+					gameObjectIds[i] = this->gameObjects[i]->getId();
+					int index = this->gameObjects[i]->getIndexFromComponent(this->gameObjectComponents[0]);
+					if (-1 != index)
+					{
+						this->gameObjects[i]->moveComponentDown(index);
+					}
+				}
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
+				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+
+				// Regenerate categories
+				boost::shared_ptr<NOWA::EventDataGenerateCategories> eventDataGenerateCategories(new NOWA::EventDataGenerateCategories());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataGenerateCategories);
+			}
+			else
+			{
+				// Invert the state
+				button->setStateCheck(!button->getStateCheck());
+				NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>();
+				if (nullptr != attribute)
+				{
+					hasAttribute = true;
+				}
+
+				if (true == hasAttribute)
+				{
+					// Do not store sleep state for undo redo, because it may become nasty
+					if (NOWA::PhysicsActiveComponent::AttrSleep() == (*attribute)->getName())
+					{
+						return;
+					}
+
+					if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+					{
+						// Snapshot the old attribute name
+						this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*attribute)->getName());
+					}
+
+					for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+					{
+						auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*attribute)->getName());
+						currentAttribute->setValue(button->getStateCheck());
+						this->gameObjectComponents[i]->actualizeValue(*attribute);
+					}
+
+					if (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+					{
+						// Snapshot the new attribute
+						this->editorManager->snapshotNewGameObjectComponentAttribute(*attribute);
+					}
+				}
+			}
+
+			if (true == hasAttribute && (false == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo())))
+			{
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
+				if (nullptr != attribute && true == (*attribute)->hasUserDataKey(NOWA::GameObject::AttrActionNeedRefresh()))
+				{
+					boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+				}
 			}
 		}
-	}
+	});
 }
 
 void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
-	this->showDescription(sender);
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyComboChangedPosition", _1(sender),
+	{
+		this->showDescription(sender);
+	});
 
 	// Send the combo box change to the game object and internally actualize the data
 	NOWA::Variant** attribute = sender->getUserData<NOWA::Variant*>();
@@ -3301,87 +3375,93 @@ void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sende
 
 void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	Ogre::Vector4 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue, sender->getColour().alpha);
-
-	NOWA::Variant** copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
-	if (NOWA::Variant::VAR_VEC3 == (*copiedAttribute)->getType())
-		(*copiedAttribute)->setValue(Ogre::Vector3(colour.x, colour.y, colour.z));
-	else
-		(*copiedAttribute)->setValue(colour);
-
-	MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
-	ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
-
-	if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyColourAccept", _1(sender),
 	{
-		// Snapshot the old attribute name
-		this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
-	}
+		Ogre::Vector4 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue, sender->getColour().alpha);
 
-	for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-	{
-		auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
-		this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
-	}
+		NOWA::Variant * *copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
+		if (NOWA::Variant::VAR_VEC3 == (*copiedAttribute)->getType())
+			(*copiedAttribute)->setValue(Ogre::Vector3(colour.x, colour.y, colour.z));
+		else
+			(*copiedAttribute)->setValue(colour);
 
-	if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-	{
-		// Snapshot the new attribute
-		this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
-	}
-	// Delete the copied attribute
-	delete (*copiedAttribute);
+		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
+		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
 
-	// Sent when a property has changed, so that the properties panel can be refreshed with new values
-	boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+		if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+		{
+			// Snapshot the old attribute name
+			this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
+		}
+
+		for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+		{
+			auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
+			this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
+		}
+
+		if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+		{
+			// Snapshot the new attribute
+			this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
+		}
+		// Delete the copied attribute
+		delete (*copiedAttribute);
+
+		// Sent when a property has changed, so that the properties panel can be refreshed with new values
+		boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
+	});
 }
 
 void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-	if (true == result)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyEndDialog", _2(sender, result),
 	{
-		PropertiesPanel::setShowPropertiesFlag(true);
-		if (this->openSaveFileDialog->getMode() == "FileOpen")
+		if (true == result)
 		{
-			MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
-			MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
-			NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
-			Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
-			(*copiedAttribute)->setValue(tempFileName);
-
-			if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+			PropertiesPanel::setShowPropertiesFlag(true);
+			if (this->openSaveFileDialog->getMode() == "FileOpen")
 			{
-				// Snapshot the old attribute name
-				this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
-			}
+				MyGUI::InputManager::getInstancePtr()->setMouseFocusWidget(this->openSaveFileDialog->getMainWidget());
+				MyGUI::InputManager::getInstancePtr()->setKeyFocusWidget(this->openSaveFileDialog->getMainWidget());
+				NOWA::Variant** copiedAttribute = sender->getMainWidget()->getUserData<NOWA::Variant*>();
+				Ogre::String tempFileName = this->openSaveFileDialog->getFileName();
+				(*copiedAttribute)->setValue(tempFileName);
 
-			for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
-			{
-				auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
-				this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
-			}
+				if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+				{
+					// Snapshot the old attribute name
+					this->editorManager->snapshotOldGameObjectComponentAttribute(this->gameObjects, this->gameObjectComponents, (*copiedAttribute)->getName());
+				}
 
-			if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
-			{
-				// Snapshot the new attribute
-				this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
-			}
-			// Delete the copied attribute
-			delete (*copiedAttribute);
+				for (size_t i = 0; i < this->gameObjectComponents.size(); i++)
+				{
+					auto currentAttribute = this->gameObjectComponents[i]->getAttribute((*copiedAttribute)->getName());
+					this->gameObjectComponents[i]->actualizeValue(*copiedAttribute);
+				}
 
-			// Sent when a property has changed, so that the properties panel can be refreshed with new values
-			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+				if (false == (*copiedAttribute)->hasUserDataKey(NOWA::GameObject::AttrActionNoUndo()))
+				{
+					// Snapshot the new attribute
+					this->editorManager->snapshotNewGameObjectComponentAttribute(*copiedAttribute);
+				}
+				// Delete the copied attribute
+				delete (*copiedAttribute);
+
+				// Sent when a property has changed, so that the properties panel can be refreshed with new values
+				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+			}
 		}
-	}
-	if (nullptr != this->openSaveFileDialog)
-	{
-		this->openSaveFileDialog->endModal();
-		MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
-		MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget();
-		// Lets the camera move again
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
-		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
-	}
+		if (nullptr != this->openSaveFileDialog)
+		{
+			this->openSaveFileDialog->endModal();
+			MyGUI::InputManager::getInstancePtr()->_resetMouseFocusWidget();
+			MyGUI::InputManager::getInstancePtr()->resetKeyFocusWidget();
+			// Lets the camera move again
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
+			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
+		}
+	});
 }

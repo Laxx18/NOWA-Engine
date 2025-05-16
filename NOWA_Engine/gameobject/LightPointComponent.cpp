@@ -37,8 +37,11 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightPointComponent] Destructor light point component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->light);
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+			ENQUEUE_RENDER_COMMAND_WAIT("LightPointComponent::~LightPointComponent",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->light);
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+			});
 			this->light = nullptr;
 			this->dummyEntity = nullptr;
 		}
@@ -151,7 +154,10 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::connect setVisible", _1(visible),
+			{
+				this->dummyEntity->setVisible(visible);
+			});
 		}
 
 		return true;
@@ -162,7 +168,10 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::disconnect setVisible", _1(visible),
+			{
+				this->dummyEntity->setVisible(visible);
+			});
 		}
 
 		return true;
@@ -177,46 +186,40 @@ namespace NOWA
 	{
 		if (nullptr == this->light)
 		{
-			this->light = this->gameObjectPtr->getSceneManager()->createLight();
-
-			this->light->setType(Ogre::Light::LightTypes::LT_POINT);
-			this->light->setCastShadows(true);
-			this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-			this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-			this->light->setPowerScale(this->powerScale->getReal());
-			if ("Range" == this->attenuationMode->getListSelectedValue())
-				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
-			else
-				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-			this->light->setCastShadows(this->castShadows->getBool());
-			
-			this->gameObjectPtr->getSceneNode()->attachObject(light);
-
-#if 0
-			// Optionally, create a visual representation of the light (e.g., a sphere)
-			Ogre::v1::Entity* lightSphere = this->gameObjectPtr->getSceneManager()->createEntity(Ogre::SceneManager::PT_SPHERE);
-			Ogre::SceneNode* sphereNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-			sphereNode->attachObject(lightSphere);
-
-			// Scale down the sphere to make it smaller
-			sphereNode->setScale(0.01f, 0.01f, 0.01f);
-#endif
-
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND_WAIT("LightPointComponent::createLight",
 			{
-				entity->setCastShadows(false);
-				// Borrow the entity from the game object
-				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (item != nullptr)
+				this->light = this->gameObjectPtr->getSceneManager()->createLight();
+
+				this->light->setType(Ogre::Light::LightTypes::LT_POINT);
+				this->light->setCastShadows(true);
+				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+				this->light->setPowerScale(this->powerScale->getReal());
+				if ("Range" == this->attenuationMode->getListSelectedValue())
+					this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+				else
+					this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+				this->light->setCastShadows(this->castShadows->getBool());
+
+				this->gameObjectPtr->getSceneNode()->attachObject(light);
+
+
+				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					item->setCastShadows(false);
+					entity->setCastShadows(false);
+					// Borrow the entity from the game object
+					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 				}
-			}
+				else
+				{
+					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (item != nullptr)
+					{
+						item->setCastShadows(false);
+					}
+				}
+			});
 		}
 	}
 
@@ -386,7 +389,10 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->light)
 		{
-			this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightPointComponent::setDiffuseColor", _1(diffuseColor),
+			{
+				this->light->setDiffuseColour(diffuseColor.x, diffuseColor.y, diffuseColor.z);
+			});
 		}
 	}
 
@@ -400,7 +406,10 @@ namespace NOWA
 		this->specularColor->setValue(specularColor);
 		if (nullptr != this->light)
 		{
-			this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightPointComponent::setSpecularColor", _1(specularColor),
+			{
+				this->light->setSpecularColour(specularColor.x, specularColor.y, specularColor.z);
+			});
 		}
 	}
 
@@ -414,7 +423,10 @@ namespace NOWA
 		this->powerScale->setValue(powerScale);
 		if (nullptr != this->light)
 		{
-			this->light->setPowerScale(this->powerScale->getReal());
+			ENQUEUE_RENDER_COMMAND_MULTI("LightPointComponent::setPowerScale", _1(powerScale),
+			{
+				this->light->setPowerScale(powerScale);
+			});
 		}
 	}
 
@@ -437,7 +449,10 @@ namespace NOWA
 			this->attenuationLumThreshold->setVisible(false);
 			if (nullptr != this->light)
 			{
-				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+				ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationMode1",
+				{
+					this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+				});
 			}
 		}
 		else
@@ -450,7 +465,10 @@ namespace NOWA
 			this->attenuationLumThreshold->setVisible(true);
 			if (nullptr != this->light)
 			{
-				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+				ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationMode2",
+				{
+					this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+				});
 			}
 		}
 	}
@@ -465,7 +483,10 @@ namespace NOWA
 		this->attenuationRange->setValue(attenuationRange);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationRange",
+			{
+				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			});
 		}
 	}
 
@@ -479,7 +500,10 @@ namespace NOWA
 		this->attenuationConstant->setValue(attenuationConstant);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationConstant",
+			{
+				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			});
 		}
 	}
 
@@ -493,7 +517,10 @@ namespace NOWA
 		this->attenuationLinear->setValue(attenuationLinear);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationLinear",
+			{
+				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			});
 		}
 	}
 
@@ -507,7 +534,10 @@ namespace NOWA
 		this->attenuationQuadratic->setValue(attenuationQuadratic);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationQuadratic",
+			{
+				this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+			});
 		}
 	}
 
@@ -521,7 +551,10 @@ namespace NOWA
 		this->attenuationRadius->setValue(attenuationRadius);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationRadius",
+			{
+				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			});
 		}
 	}
 
@@ -535,7 +568,10 @@ namespace NOWA
 		this->attenuationLumThreshold->setValue(attenuationLumThreshold);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setAttenuationLumThreshold",
+			{
+				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			});
 		}
 	}
 
@@ -549,7 +585,10 @@ namespace NOWA
 		this->castShadows->setValue(castShadows);
 		if (nullptr != this->light)
 		{
-			this->light->setCastShadows(this->castShadows->getBool());
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::setCastShadows",
+			{
+				this->light->setCastShadows(this->castShadows->getBool());
+			});
 		}
 	}
 

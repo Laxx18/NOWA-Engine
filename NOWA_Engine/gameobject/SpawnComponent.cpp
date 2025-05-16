@@ -310,12 +310,13 @@ namespace NOWA
 					this->firstTimeSetSpawnTarget = false;
 				}
 			}
+
 			if (this->currentCount <= this->count->getUInt())
 			{
 				// count fractions of time for spawning
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "t: " + Ogre::StringConverter::toString(this->spawnTimer) + " dt: " + Ogre::StringConverter::toString(static_cast<unsigned long>(dt * 1000.0f)));
 				this->spawnTimer += dt * 1000.0f;
-// Attention: here floating error since timer is float and interval a whole number, so a rest must also be stored!
+				// Attention: here floating error since timer is float and interval a whole number, so a rest must also be stored!
 				if (this->spawnTimer >= this->interval->getUInt())
 				{
 					// count 0 means infinity!
@@ -328,55 +329,45 @@ namespace NOWA
 						this->spawnTimer = (this->spawnTimer - static_cast<Ogre::Real>(this->interval->getUInt()));
 						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "f: " + Ogre::StringConverter::toString(this->spawnTimer));
 
-						GameObjectPtr clonedGameObjectPtr;
+
+						Ogre::Vector3 spawnPosition;
+						Ogre::Quaternion spawnOrientation;
+
 						if (true == this->spawnAtOrigin->getBool())
 						{
-							clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-								this->initPosition + (this->initOrientation * this->offsetPosition->getVector3()),
-								this->initOrientation * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),
-								Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
-							clonedGameObjectPtr->setVisible(true);
+							spawnPosition = this->initPosition + (this->initOrientation * this->offsetPosition->getVector3());
+							spawnOrientation = this->initOrientation * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+						}
+						else if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
+						{
+							spawnPosition = this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3());
+							spawnOrientation = this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 						}
 						else
 						{
-							if (this->spawnTargetId->getULong() == this->gameObjectPtr->getId())
-							{
-								clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-									this->spawnTargetGameObject->getPosition() + (this->spawnTargetGameObject->getOrientation() * this->offsetPosition->getVector3()), 
-									this->spawnTargetGameObject->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
-									Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
-								clonedGameObjectPtr->setVisible(true);
-							}
-							else
-							{
-								// Special case, when the spawn target is different from this game object id, take the position and orientation of the 'This' game object
-								// so that the spawn will be processed at the current position
-								clonedGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->spawnTargetGameObject->getId(), nullptr, 0,
-									this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3()), 
-									this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), 
-									Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
-								clonedGameObjectPtr->setVisible(true);
-							}
+							spawnPosition = this->gameObjectPtr->getPosition() + (this->gameObjectPtr->getOrientation() * this->offsetPosition->getVector3());
+							spawnOrientation = this->gameObjectPtr->getOrientation() * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 						}
-						if (nullptr != clonedGameObjectPtr)
+
+						AppStateManager::getSingletonPtr()->getGameObjectController()->cloneWithCallback([this](GameObjectPtr clonedGameObjectPtr)
 						{
-							auto& physicsCompPtr = makeStrongPtr(clonedGameObjectPtr->getComponent<PhysicsComponent>());
-							// Activate collision detection for physics, if game object with a physics component has been spawned
-							if (nullptr != physicsCompPtr)
+							if (!clonedGameObjectPtr)
+							{
+								Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Clone operation returned null!");
+								throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[SpawnComponent] Clone operation returned null!", "NOWA");
+							}
+
+							clonedGameObjectPtr->setVisible(true);
+
+							if (auto physicsCompPtr = makeStrongPtr(clonedGameObjectPtr->getComponent<PhysicsComponent>()))
 							{
 								physicsCompPtr->setCollidable(true);
 							}
 
-							// Call connect manually for the cloned game object
 							clonedGameObjectPtr->connect();
 
-							// call callback function at the moment, a new game object will be spawned
-							// http://stackoverflow.com/questions/9431297/luabind-cant-call-basic-lua-functions-like-print-tostring
-
-							// if a script file is set
-							if (nullptr != this->gameObjectPtr->getLuaScript())
+							if (this->gameObjectPtr->getLuaScript())
 							{
-								// call the onSpawn callback function with the cloned game object on lua and run the script file
 								if (this->spawnClosureFunction.is_valid())
 								{
 									try
@@ -388,97 +379,72 @@ namespace NOWA
 										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
 										std::stringstream msg;
 										msg << errorMsg;
-
-										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnSpawn' Error: " + Ogre::String(error.what())
-																					+ " details: " + msg.str());
+										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Error in 'reactOnSpawn': " + Ogre::String(error.what()) + " details: " + msg.str());
 									}
 								}
 							}
 							else if (this->spawnObserver)
 							{
-								// else run the programed callback if it does exist
 								this->spawnObserver->onSpawn(clonedGameObjectPtr.get(), this->gameObjectPtr.get());
 							}
-						
-							// only add to life time queue if the spawned game object has a life time
-							if (0 != this->lifeTime->getUInt())
+
+							if (this->lifeTime->getUInt() != 0)
 							{
-								// add the current time ms + life time in ms and push in a queue
-								unsigned long currentTimeMS = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds() + static_cast<unsigned long>(this->lifeTime->getUInt());
-
-								// only push the cloned objects never the original one!
-								// do not take ownership but give the raw pointer, because the RakNet queue some how does not release the ptr when calling pop, so the 
-								// reference count remains the same! And the game object cannot be destroyed properly!
-
-								// Do not emplace_back here since:
-								// when emplace_back is done, internally move is done, so the clonedGameObjectPtr will become null, and the one in the queue's is correct and the reference count
-								// will not be incremented
-								// http://stackoverflow.com/questions/29643974/using-stdmove-with-stdshared-ptr
-								// https://books.google.de/books?id=MmCWCwAAQBAJ&pg=PA535&lpg=PA535&dq=vector+emplace_back+a+shared_ptr&source=bl&ots=fS9F74AWJ_&sig=3AWF1FuG8_PJ1U34XjEtJSIbcZc&hl=de&sa=X&ved=0ahUKEwj_qqT38cXLAhUG9g4KHTlAC6wQ6AEITzAF#v=onepage&q=vector%20emplace_back%20a%20shared_ptr&f=false
-								// But most critical, when clonedGameObjectPtr would hold a null address and those address is set for the lua script
-								// especially in onVanish for script
-								this->lifeTimeQueue.push_back(std::make_pair(currentTimeMS + this->lifeTime->getUInt(), clonedGameObjectPtr.get()));
+								unsigned long vanishTime = Core::getSingletonPtr()->getOgreTimer()->getMilliseconds() + static_cast<unsigned long>(this->lifeTime->getUInt());
+								this->lifeTimeQueue.push_back(std::make_pair(vanishTime, clonedGameObjectPtr.get()));
 							}
 							else
 							{
-								// If the game object should life for ever put it in another list, to clear the list when disconnecting this component
 								this->clonedGameObjectsInScene.emplace_back(clonedGameObjectPtr.get());
 							}
-						}
-						else
-						{
-							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] The game object: "
-								+ this->gameObjectPtr->getName() + " could not be spawned because the clone operation delivered null!");
-							throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[SpawnComponent] The game object: "
-								+ this->gameObjectPtr->getName() + " could not be spawned because the clone operation delivered null!", "NOWA");
-						}
+						}, this->spawnTargetGameObject->getId(), nullptr, 0, spawnPosition, spawnOrientation, Ogre::Vector3::UNIT_SCALE,this->cloneDatablock->getBool());
 					}
 				}
 			}
+		}
 
-			// 0 means the game object will never be deleted!
-			if (0 != this->lifeTime->getUInt())
+		// 0 means the game object will never be deleted!
+		if (0 != this->lifeTime->getUInt())
+		{
+			if (0 < this->lifeTimeQueue.size())
 			{
-				if (0 < this->lifeTimeQueue.size())
-				{
-					std::pair<unsigned long, GameObject*> clonedGameObjectPair = this->lifeTimeQueue.front();
+				std::pair<unsigned long, GameObject*> clonedGameObjectPair = this->lifeTimeQueue.front();
 					
-					long dt = clonedGameObjectPair.first - Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
-					// if the delta is positive, it has not enough time passed to delete the object
-					if (dt > 0)
-					{
-						return;
-					}
-					// now is the right time
-					this->lifeTimeQueue.pop_front();
+				long dt = clonedGameObjectPair.first - Core::getSingletonPtr()->getOgreTimer()->getMilliseconds();
+				// if the delta is positive, it has not enough time passed to delete the object
+				if (dt > 0)
+				{
+					return;
+				}
+				// now is the right time
+				this->lifeTimeQueue.pop_front();
 
-					unsigned long id = clonedGameObjectPair.second->getId();
-					if (nullptr != this->gameObjectPtr->getLuaScript())
+				unsigned long id = clonedGameObjectPair.second->getId();
+				if (nullptr != this->gameObjectPtr->getLuaScript())
+				{
+					if (this->vanishClosureFunction.is_valid())
 					{
-						if (this->vanishClosureFunction.is_valid())
+						try
 						{
-							try
-							{
-								luabind::call_function<void>(this->vanishClosureFunction, clonedGameObjectPair.second, this->gameObjectPtr.get());
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
+							luabind::call_function<void>(this->vanishClosureFunction, clonedGameObjectPair.second, this->gameObjectPtr.get());
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
-																			+ " details: " + msg.str());
-							}
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
+																		+ " details: " + msg.str());
 						}
 					}
-					else if (this->spawnObserver)
-					{
-						this->spawnObserver->onVanish(clonedGameObjectPair.second, this->gameObjectPtr.get());
-					}
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpawnComponent] Deleting gameobject: " + clonedGameObjectPair.second->getName() + " because it has no life time anymore");
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(clonedGameObjectPair.second->getId());
 				}
+				else if (this->spawnObserver)
+				{
+					this->spawnObserver->onVanish(clonedGameObjectPair.second, this->gameObjectPtr.get());
+				}
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[SpawnComponent] Deleting gameobject: " + clonedGameObjectPair.second->getName() + " because it has no life time anymore");
+				AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(clonedGameObjectPair.second->getId());
 			}
 		}
 	}

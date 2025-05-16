@@ -206,8 +206,11 @@ void ResourcesPanelMeshes::initialise()
 
 void ResourcesPanelMeshes::shutdown()
 {
-	this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
-	this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::shutdown",
+	{
+		this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
+		this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
+	});
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelMeshes::handleRefreshMeshResources), EventDataRefreshMeshResources::getStaticEventType());
 }
 
@@ -215,16 +218,22 @@ void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	// Start a new search each time for resources that do match the search caption string
-	this->autoCompleteSearch.reset();
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelMeshes::editTextChange", _1(editBox),
+	{
+			// Start a new search each time for resources that do match the search caption string
+			this->autoCompleteSearch.reset();
+			this->clear();
 
-	this->loadMeshes(editBox->getOnlyText());
+			this->loadMeshes(editBox->getOnlyText());
+	});
 }
 
 void ResourcesPanelMeshes::handleRefreshMeshResources(NOWA::EventDataPtr eventData)
 {
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::handleRefreshMeshResources",
+	{
+		this->clear();
+	});
 }
 
 void ResourcesPanelMeshes::loadMeshes(const Ogre::String& filter)
@@ -390,79 +399,81 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 		return;
 	}
 
-	if ("Plane" == Ogre::String(node->getText()))
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelMeshes::notifyTreeNodeSelected", _2(treeControl, node),
 	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::PLANE);
-	}
-	else if ("Mirror" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MIRROR);
-	}
-	else if ("Light (Directional)" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_DIRECTIONAL);
-		// Later attachLightToPlaceNode: Internally like Ogitor a light mesh is created
-	}
-	else if ("Light (Spot)" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_SPOT);
-	}
-	else if ("Light (Point)" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_POINT);
-	}
-	else if ("Light (Area)" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_AREA);
-	}
-	else if ("Camera" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::CAMERA);
-	}
-	else if ("Reflection Camera" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::REFLECTION_CAMERA);
-	}
-	else if ("Node" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::SCENE_NODE);
-	}
-	else if ("Lines" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LINES);
-	}
-	else if ("ManualObject" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MANUAL_OBJECT);
-	}
-	else if ("Rectangle" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::RECTANGLE);
-	}
-	else if ("Decal" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::DECAL);
-	}
-	else if ("Ocean" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::OCEAN);
-	}
-	else if ("Terra" == Ogre::String(node->getText()))
-	{
-		this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::TERRA);
-	}
-	else
-	{
-		Ogre::String meshName = node->getText();
-		size_t pos = meshName.rfind(".mesh");
-		if (Ogre::String::npos != pos)
+		if ("Plane" == Ogre::String(node->getText()))
 		{
-			this->editorManager->attachMeshToPlaceNode(meshName, NOWA::GameObject::ENTITY);
-			// Escape should detach, and if attached and in place mode, all other modes must be disabled
-			// when clicking in place mode in editor, a new game object etc. must be created
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::PLANE);
 		}
-	}
-	// node->setText("");
+		else if ("Mirror" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MIRROR);
+		}
+		else if ("Light (Directional)" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_DIRECTIONAL);
+			// Later attachLightToPlaceNode: Internally like Ogitor a light mesh is created
+		}
+		else if ("Light (Spot)" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_SPOT);
+		}
+		else if ("Light (Point)" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_POINT);
+		}
+		else if ("Light (Area)" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LIGHT_AREA);
+		}
+		else if ("Camera" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::CAMERA);
+		}
+		else if ("Reflection Camera" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::REFLECTION_CAMERA);
+		}
+		else if ("Node" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::SCENE_NODE);
+		}
+		else if ("Lines" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::LINES);
+		}
+		else if ("ManualObject" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::MANUAL_OBJECT);
+		}
+		else if ("Rectangle" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::RECTANGLE);
+		}
+		else if ("Decal" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::DECAL);
+		}
+		else if ("Ocean" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::OCEAN);
+		}
+		else if ("Terra" == Ogre::String(node->getText()))
+		{
+			this->editorManager->attachOtherResourceToPlaceNode(NOWA::GameObject::TERRA);
+		}
+		else
+		{
+			Ogre::String meshName = node->getText();
+			size_t pos = meshName.rfind(".mesh");
+			if (Ogre::String::npos != pos)
+			{
+				this->editorManager->attachMeshToPlaceNode(meshName, NOWA::GameObject::ENTITY);
+				// Escape should detach, and if attached and in place mode, all other modes must be disabled
+				// when clicking in place mode in editor, a new game object etc. must be created
+			}
+		}
+	});
 }
 
 void ResourcesPanelMeshes::notifyTreeNodePrepare(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -575,13 +586,16 @@ void ResourcesPanelGameObjects::initialise()
 
 void ResourcesPanelGameObjects::shutdown()
 {
-	this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-	this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
-	this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
-	this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
-	this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
-	this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::shutdown",
+	{
+		this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+		this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+		this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
+		this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+		this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
+		this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
+	});
 
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), EventDataRefreshResourcesPanel::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataNewGameObject::getStaticEventType());
@@ -592,11 +606,14 @@ void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	// Start a new search each time for resources that do match the search caption string
-	this->autoCompleteSearch.reset();
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::editTextChange", _1(editBox),
+	{
+		// Start a new search each time for resources that do match the search caption string
+		this->autoCompleteSearch.reset();
+		this->clear();
 
-	this->refresh(editBox->getOnlyText());
+		this->refresh(editBox->getOnlyText());
+	});
 
 	// If user is entering something, do not move camera, if the user entered something like asdf
 	NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
@@ -769,10 +786,13 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 
 void ResourcesPanelGameObjects::clear(void)
 {
-	MyGUI::TreeControl::Node* root = this->gameObjectsTree->getRoot();
-	root->removeAll();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::clear",
+	{
+		MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
+		root->removeAll();
 
-	this->refresh("");
+		this->refresh("");
+	});
 }
 
 void ResourcesPanelGameObjects::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -899,40 +919,48 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 	if (this->ctrlPressed && key == MyGUI::KeyCode::A)
 	{
-		MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
-		this->selectAll = true;
-		selectAllNodes(treeControl);
-		this->selectAll = false;
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::selectAll", _1(sender),
+		{
+			MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
+			this->selectAll = true;
+			selectAllNodes(treeControl);
+			this->selectAll = false;
+		});
 	}
 }
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
-	// this->refresh("");
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
+	{
+		this->clear();
+	});
 }
 
 void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
 {
-	auto rootNodes = treeControl->getRoot();
-	for (const auto node : rootNodes->getChildren())
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::selectAllNodes", _1(treeControl),
 	{
-		this->notifyTreeNodeSelected(treeControl, node);
-		// Optionally, traverse child nodes if necessary
-		std::stack<MyGUI::TreeControl::Node*> nodeStack;
-		nodeStack.push(node);
-		while (!nodeStack.empty())
+		auto rootNodes = treeControl->getRoot();
+		for (const auto node : rootNodes->getChildren())
 		{
-			MyGUI::TreeControl::Node* currentNode = nodeStack.top();
-			nodeStack.pop();
-			this->notifyTreeNodeSelected(treeControl, currentNode);
-			auto childNodes = currentNode->getChildren();
-			for (auto childNode : childNodes)
+			this->notifyTreeNodeSelected(treeControl, node);
+			// Optionally, traverse child nodes if necessary
+			std::stack<MyGUI::TreeControl::Node*> nodeStack;
+			nodeStack.push(node);
+			while (!nodeStack.empty())
 			{
-				nodeStack.push(childNode);
+				MyGUI::TreeControl::Node* currentNode = nodeStack.top();
+				nodeStack.pop();
+				this->notifyTreeNodeSelected(treeControl, currentNode);
+				auto childNodes = currentNode->getChildren();
+				for (auto childNode : childNodes)
+				{
+					nodeStack.push(childNode);
+				}
 			}
 		}
-	}
+	});
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -981,21 +1009,27 @@ void ResourcesPanelDataBlocks::initialise()
 
 void ResourcesPanelDataBlocks::shutdown()
 {
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
-	this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
-	this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
-	this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::shutdown",
+	{
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
+		this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
+		this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
+		this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
+	});
 }
 
 void ResourcesPanelDataBlocks::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	// Start a new search each time for resources that do match the search caption string
-	this->autoCompleteSearch.reset();
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelDataBlocks::editTextChange", _1(editBox),
+	{
+		// Start a new search each time for resources that do match the search caption string
+		this->autoCompleteSearch.reset();
+		this->clear();
 
-	this->loadDataBlocks(editBox->getOnlyText());
+		this->loadDataBlocks(editBox->getOnlyText());
+	});
 }
 
 void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
@@ -1055,10 +1089,13 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 void ResourcesPanelDataBlocks::clear(void)
 {
-	MyGUI::TreeControl::Node* root = this->dataBlocksTree->getRoot();
-	root->removeAll();
-	
-	this->loadDataBlocks("");
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::clear",
+	{
+		MyGUI::TreeControl::Node * root = this->dataBlocksTree->getRoot();
+		root->removeAll();
+
+		this->loadDataBlocks("");
+	});
 }
 
 void ResourcesPanelDataBlocks::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -1070,16 +1107,19 @@ void ResourcesPanelDataBlocks::notifyTreeNodeSelected(MyGUI::TreeControl* treeCo
 
 	this->selectedText = node->getText();
 
-	Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
-	Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
-	if (nullptr != pbsDataBlock)
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::editTextChange",
 	{
-		Ogre::TextureGpu* texture = pbsDataBlock->getTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE);
-		if (nullptr != texture)
+		Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
+		Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
+		if (nullptr != pbsDataBlock)
 		{
-			this->datablockPreview->setImageTexture(texture->getNameStr());
+			Ogre::TextureGpu* texture = pbsDataBlock->getTexture(Ogre::PbsTextureTypes::PBSM_DIFFUSE);
+			if (nullptr != texture)
+			{
+				this->datablockPreview->setImageTexture(texture->getNameStr());
+			}
 		}
-	}
+	});
 }
 
 void ResourcesPanelDataBlocks::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1102,23 +1142,26 @@ void ResourcesPanelDataBlocks::notifyTreeContextMenu(MyGUI::TreeControl* treeCon
 
 	this->selectedText = node->getText();
 
-	Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
-	Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
-	if (nullptr != pbsDataBlock)
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::notifyTGreeContextMenu",
 	{
-		const Ogre::String* fileName;
-		const Ogre::String* resourceGroup;
-		datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-
-		if (false == (*fileName).empty())
+		Ogre::HlmsDatablock * datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
+		Ogre::HlmsPbsDatablock * pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
+		if (nullptr != pbsDataBlock)
 		{
-			 Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-			 MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
-				 MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-		}
+			const Ogre::String* fileName;
+			const Ogre::String* resourceGroup;
+			datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
 
-		
-	}
+			if (false == (*fileName).empty())
+			{
+				 Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+				 MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
+					 MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+			}
+
+
+		}
+	});
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1164,21 +1207,27 @@ void ResourcesPanelTextures::initialise()
 
 void ResourcesPanelTextures::shutdown()
 {
-	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
-	this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
-	this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
-	this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::shutdown",
+	{
+		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
+		this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
+		this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
+		this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
+	});
 }
 
 void ResourcesPanelTextures::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	// Start a new search each time for resources that do match the search caption string
-	this->autoCompleteSearch.reset();
-	this->clear();
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelTextures::editTextChange", _1(editBox),
+	{
+		// Start a new search each time for resources that do match the search caption string
+		this->autoCompleteSearch.reset();
+		this->clear();
 
-	this->loadTextures(editBox->getOnlyText());
+		this->loadTextures(editBox->getOnlyText());
+	});
 }
 
 void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
@@ -1223,10 +1272,13 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 
 void ResourcesPanelTextures::clear(void)
 {
-	MyGUI::TreeControl::Node* root = this->texturesTree->getRoot();
-	root->removeAll();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::clear",
+	{
+		MyGUI::TreeControl::Node * root = this->texturesTree->getRoot();
+		root->removeAll();
 
-	this->loadTextures("");
+		this->loadTextures("");
+	});
 }
 
 void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeControl, MyGUI::TreeControl::Node* node)
@@ -1236,13 +1288,17 @@ void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeCont
 		return;
 	}
 	this->selectedText = node->getText();
-	// Ogre::TexturePtr texturePtr = Ogre::TextureManager::getSingleton().getByName(this->selectedText);
-	// if (nullptr != texturePtr)
+
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::notifyTreeNodeSelected",
 	{
-		// Does not work, because only textures of mygui are added somehow, and even create texture creates texture, but internal pointer is zero
-		this->texturePreview->setImageTexture(this->selectedText);
-	}
-	// this->texturePreview->setItemResource(this->selectedText);
+		// Ogre::TexturePtr texturePtr = Ogre::TextureManager::getSingleton().getByName(this->selectedText);
+		// if (nullptr != texturePtr)
+		{
+			// Does not work, because only textures of mygui are added somehow, and even create texture creates texture, but internal pointer is zero
+			this->texturePreview->setImageTexture(this->selectedText);
+		}
+		// this->texturePreview->setItemResource(this->selectedText);
+	});
 }
 
 void ResourcesPanelTextures::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1265,14 +1321,17 @@ void ResourcesPanelTextures::notifyTreeContextMenu(MyGUI::TreeControl* treeContr
 
 	this->selectedText = node->getText();
 
-	Ogre::String textureFilePathName = NOWA::Core::getSingletonPtr()->getResourceFilePathName(this->selectedText);
-
-	if (false == textureFilePathName.empty())
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::notifyTreeContextMenu", 
 	{
-		Ogre::String data = "Location: '" + textureFilePathName + "'";
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
-			MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-	}
+		Ogre::String textureFilePathName = NOWA::Core::getSingletonPtr()->getResourceFilePathName(this->selectedText);
+
+		if (false == textureFilePathName.empty())
+		{
+			Ogre::String data = "Location: '" + textureFilePathName + "'";
+			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
+				MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+		}
+	});
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1330,49 +1389,58 @@ void ResourcesPanelProject::shutdown(void)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
 
-	this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-	this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
-	this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::shutdown",
+	{
+		this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+		this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+		this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
+	});
 }
 
 void ResourcesPanelProject::clear(void)
 {
-	this->selectedText.clear();
-	MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
-	root->removeAll();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
+	{
+		this->selectedText.clear();
+		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
+		root->removeAll();
+	});
 }
 
 void ResourcesPanelProject::populateFilesTree(const Ogre::String& folderPath)
 {
 	this->clear();
 
-	MyGUI::TreeControl::Node* root = this->filesTreeControl->getRoot();
-
-	for (const auto& entry : std::filesystem::directory_iterator(folderPath))
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelProject::populateFilesTree", _1(folderPath),
 	{
-		if (entry.is_directory())
-		{
-			MyGUI::TreeControl::Node* folderNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
-			folderNode->setExpanded(true);
-			root->add(folderNode);
+		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
 
-			for (const auto& subEntry : std::filesystem::directory_iterator(entry.path()))
+		for (const auto& entry : std::filesystem::directory_iterator(folderPath))
+		{
+			if (entry.is_directory())
 			{
-				if (subEntry.is_regular_file())
+				MyGUI::TreeControl::Node* folderNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+				folderNode->setExpanded(true);
+				root->add(folderNode);
+
+				for (const auto& subEntry : std::filesystem::directory_iterator(entry.path()))
 				{
-					MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(subEntry.path().filename().string(), "Data");
-					folderNode->add(fileNode);
+					if (subEntry.is_regular_file())
+					{
+						MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(subEntry.path().filename().string(), "Data");
+						folderNode->add(fileNode);
+					}
 				}
 			}
+			else if (entry.is_regular_file())
+			{
+				MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
+				root->add(fileNode);
+			}
 		}
-		else if (entry.is_regular_file())
-		{
-			MyGUI::TreeControl::Node* fileNode = new MyGUI::TreeControl::Node(entry.path().filename().string(), "Data");
-			root->add(fileNode);
-		}
-	}
 
-	this->sortTreeNodesByName(root);
+		this->sortTreeNodesByName(root);
+	});
 }
 
 void ResourcesPanelProject::notifyKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode key, MyGUI::Char ch)
@@ -1498,10 +1566,13 @@ void ResourcesPanelProject::handleDoubleClick(MyGUI::TreeControl::Node* node)
 
 				if (true == this->hasSceneChanges)
 				{
-					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
-						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+					ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::MessageBoxSceneModified",
+					{
+						MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
+							MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
-					messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyMessageBoxEndLoad);
+						messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ResourcesPanelProject::notifyMessageBoxEndLoad);
+					});
 				}
 				else
 				{
@@ -1610,64 +1681,73 @@ void ResourcesPanelLuaScript::shutdown(void)
 
 void ResourcesPanelLuaScript::clear(void)
 {
-	this->selectedText.clear();
-	this->listBox->removeAllItems();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
+	{
+		this->selectedText.clear();
+		this->listBox->removeAllItems();
+	});
 }
 
 void ResourcesPanelLuaScript::populateListBox(void)
 {
 	this->clear();
 
-	auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
-
-	for (const auto& weakScript : luaScripts)
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
 	{
-		if (auto luaScriptComponent = NOWA::makeStrongPtr(weakScript))
+		auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
+
+		for (const auto& weakScript : luaScripts)
 		{
-			Ogre::String identifier = "Id: " + Ogre::StringConverter::toString(luaScriptComponent->getOwner()->getId()) + " - " + luaScriptComponent->getScriptFile();
-			this->listBox->addItem(identifier);
+			if (auto luaScriptComponent = NOWA::makeStrongPtr(weakScript))
+			{
+				Ogre::String identifier = "Id: " + Ogre::StringConverter::toString(luaScriptComponent->getOwner()->getId()) + " - " + luaScriptComponent->getScriptFile();
+				this->listBox->addItem(identifier);
+			}
 		}
-	}
+	});
 }
 
 void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 {
-	if (sender == this->upButton)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelLuaScript::buttonHit", _1(sender),
 	{
-		auto selectedIndex = this->listBox->getIndexSelected();
-		if (selectedIndex != MyGUI::ITEM_NONE)
+		if (sender == this->upButton)
 		{
-			auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
-			if (nullptr != luaScriptComponent)
+			auto selectedIndex = this->listBox->getIndexSelected();
+			if (selectedIndex != MyGUI::ITEM_NONE)
 			{
-				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptUp(luaScriptComponent);
-				this->populateListBox();
+				auto luaScriptComponent = NOWA::makeStrongPtr(NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts()[selectedIndex]);
+				if (nullptr != luaScriptComponent)
+				{
+					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptUp(luaScriptComponent);
+					this->populateListBox();
 
-				// After updating the list, set the selected index back
-				// If the script moved up, the selected index should decrease by 1
-				this->listBox->setItemSelect(selectedIndex - 1);
+					// After updating the list, set the selected index back
+					// If the script moved up, the selected index should decrease by 1
+					this->listBox->setItemSelect(selectedIndex - 1);
+				}
 			}
 		}
-	}
-	else if (sender == this->downButton)
-	{
-		auto selectedIndex = this->listBox->getIndexSelected();
-		auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
-
-		if (selectedIndex != MyGUI::ITEM_NONE && selectedIndex < scripts.size() - 1)
+		else if (sender == this->downButton)
 		{
-			auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
-			if (nullptr != luaScriptComponent)
-			{
-				NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptDown(luaScriptComponent);
-				this->populateListBox();
+			auto selectedIndex = this->listBox->getIndexSelected();
+			auto scripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
-				// After updating the list, set the selected index back
-				// If the script moved down, the selected index should increase by 1
-				this->listBox->setItemSelect(selectedIndex + 1);
+			if (selectedIndex != MyGUI::ITEM_NONE && selectedIndex < scripts.size() - 1)
+			{
+				auto luaScriptComponent = NOWA::makeStrongPtr(scripts[selectedIndex]);
+				if (nullptr != luaScriptComponent)
+				{
+					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->moveScriptDown(luaScriptComponent);
+					this->populateListBox();
+
+					// After updating the list, set the selected index back
+					// If the script moved down, the selected index should increase by 1
+					this->listBox->setItemSelect(selectedIndex + 1);
+				}
 			}
 		}
-	}
+	});
 }
 
 void ResourcesPanelLuaScript::handleLuaScriptModified(NOWA::EventDataPtr eventData)
@@ -1732,69 +1812,81 @@ void ResourcesPanelPlugins::initialise(void)
 
 void ResourcesPanelPlugins::shutdown(void)
 {
-	this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::shutdown",
+	{
+		this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
+	});
 }
 
 void ResourcesPanelPlugins::clear(void)
 {
-	this->selectedText.clear();
-	this->listBox->removeAllItems();
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::clear",
+	{
+		this->selectedText.clear();
+		this->listBox->removeAllItems();
+	});
 }
 
 void ResourcesPanelPlugins::populateListBox(void)
 {
 	this->clear();
 
-	// Get all available plugin names
-	std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
-	std::vector<Ogre::String> availablePlugins = NOWA::Core::getSingletonPtr()->getAvailablePluginNames();
-
-	// Iterate through registered components
-	for (const auto& componentName : allPlugins)
+	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::populateListBox",
 	{
-		bool isPluginAvailable = std::find(availablePlugins.begin(), availablePlugins.end(), componentName) != availablePlugins.end();
+			// Get all available plugin names
+		std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
+		std::vector<Ogre::String> availablePlugins = NOWA::Core::getSingletonPtr()->getAvailablePluginNames();
 
-		// Add item to the list box
-		this->listBox->addItem(componentName);
-
-		// Get the index of the last added item
-		size_t itemIndex = this->listBox->getItemCount() - 1;
-
-		// If the plugin is not available, change the text color to red
-		if (false == isPluginAvailable)
+		// Iterate through registered components
+		for (const auto& componentName : allPlugins)
 		{
-			Ogre::String text = this->listBox->getItem(itemIndex) + " - (Not Available)";
-			this->listBox->setItemNameAt(itemIndex, text);
+			bool isPluginAvailable = std::find(availablePlugins.begin(), availablePlugins.end(), componentName) != availablePlugins.end();
+
+			// Add item to the list box
+			this->listBox->addItem(componentName);
+
+			// Get the index of the last added item
+			size_t itemIndex = this->listBox->getItemCount() - 1;
+
+			// If the plugin is not available, change the text color to red
+			if (false == isPluginAvailable)
+			{
+				Ogre::String text = this->listBox->getItem(itemIndex) + " - (Not Available)";
+				this->listBox->setItemNameAt(itemIndex, text);
+			}
 		}
-	}
+	});
 }
 
 void ResourcesPanelPlugins::onListBoxItemSelected(MyGUI::ListBox* sender, size_t index)
 {
-	if (index == MyGUI::ITEM_NONE)
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelPlugins::onListBoxItemSelected", _2(sender, index),
 	{
-		this->selectedText.clear();
-		this->infoTextBox->setCaption("");
-		return;
-	}
+		if (index == MyGUI::ITEM_NONE)
+		{
+			this->selectedText.clear();
+			this->infoTextBox->setCaption("");
+			return;
+		}
 
-	Ogre::String fullText = this->listBox->getItemNameAt(index);
-	size_t spacePos = fullText.find(" -");
+		Ogre::String fullText = this->listBox->getItemNameAt(index);
+		size_t spacePos = fullText.find(" -");
 
-	// Extract substring up to the first space
-	if (spacePos != Ogre::String::npos)
-	{
-		// Since space found, the component is not available , see: " - (Not Available)");
-		this->selectedText = fullText.substr(0, spacePos);
-		this->buyButton->setEnabled(true);
-	}
-	else
-	{
-		this->selectedText = fullText; // No space found, use full text
-		this->buyButton->setEnabled(false);
-	}
+		// Extract substring up to the first space
+		if (spacePos != Ogre::String::npos)
+		{
+			// Since space found, the component is not available , see: " - (Not Available)");
+			this->selectedText = fullText.substr(0, spacePos);
+			this->buyButton->setEnabled(true);
+		}
+		else
+		{
+			this->selectedText = fullText; // No space found, use full text
+			this->buyButton->setEnabled(false);
+		}
 
-	// Update infoTextBox
-	Ogre::String infoText = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(this->selectedText);
-	this->infoTextBox->setCaption(infoText);
+		// Update infoTextBox
+		Ogre::String infoText = NOWA::GameObjectFactory::getInstance()->getComponentFactory()->getComponentInfoText(this->selectedText);
+		this->infoTextBox->setCaption(infoText);
+	});
 }

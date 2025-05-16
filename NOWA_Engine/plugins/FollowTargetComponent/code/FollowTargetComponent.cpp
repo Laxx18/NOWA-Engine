@@ -336,14 +336,12 @@ namespace NOWA
 					// Directly position the object behind the target.
 					Ogre::Vector3 tVector = playerPosition - (playerOrientation * this->targetGameObject->getDefaultDirection() * this->springLength->getReal());
 					tVector.y += this->yOffset->getReal();
-					this->gameObjectPtr->getSceneNode()->setPosition(tVector);
-					this->gameObjectPtr->getSceneNode()->setOrientation(targetOrientation);
+					NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), tVector, targetOrientation);
 					this->firstTime = false;
 				}
 				else
 				{
-					this->gameObjectPtr->getSceneNode()->setPosition(positionVector);
-					this->gameObjectPtr->getSceneNode()->setOrientation(targetOrientation);
+					NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), positionVector, targetOrientation);
 				}
 			}
 			else if (nullptr != this->physicsActiveComponent)

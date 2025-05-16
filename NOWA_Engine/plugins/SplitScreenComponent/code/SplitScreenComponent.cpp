@@ -350,262 +350,267 @@ namespace NOWA
 			return;
 		}
 
-		auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
-
-		// Only use activated components
-		std::vector<boost::shared_ptr<SplitScreenComponent>> tempSplitScreenComponents;
-		for (size_t i = 0; i < splitScreenComponents.size(); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
 		{
-			if (true == splitScreenComponents[i]->isActivated())
+			auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
+
+			// Only use activated components
+			std::vector<boost::shared_ptr<SplitScreenComponent>> tempSplitScreenComponents;
+			for (size_t i = 0; i < splitScreenComponents.size(); i++)
 			{
-				tempSplitScreenComponents.emplace_back(splitScreenComponents[i]);
-			}
-		}
-
-		if (tempSplitScreenComponents.size() > 4)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, there are more than 4 cameras. Only 4 cameras are supported!");
-			return;
-		}
-
-		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
-		this->cameraComponent->applySplitScreen(true, tempSplitScreenComponents.size());
-		
-		this->workspaceBaseComponent = workspaceBaseCompPtr.get();
-
-		this->splitScreenTexture = this->createSplitScreenTexture("SplitScreenTexture_" + this->gameObjectPtr->getName());
-
-		this->externalChannels.resize(1);
-		this->externalChannels[0] = this->splitScreenTexture;
-
-		// Set the this external channels as custom external channels to create custom workspace
-		this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
-		this->workspaceBaseComponent->setInvolvedInSplitScreen(true);
-		this->workspaceBaseComponent->createWorkspace();
-
-		this->externalChannels.clear();
-		this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
-
-		Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
-
-		// Iterate through Compositor Managers resources
-		auto& it = nodeDefs.begin();
-		auto& end = nodeDefs.end();
-
-		// Goes through all passes for the given workspace and set the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
-		// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
-		while (it != end)
-		{
-			if (it->second->getNameStr() == this->workspaceBaseComponent->getRenderingNodeName() ||
-				it->second->getNameStr() == this->workspaceBaseComponent->getFinalRenderingNodeName())
-			{
-				for (size_t i = 0; i < it->second->getNumTargetPasses(); i++)
+				if (true == splitScreenComponents[i]->isActivated())
 				{
-					for (size_t j = 0; j < it->second->getTargetPass(i)->getCompositorPasses().size(); j++)
+					tempSplitScreenComponents.emplace_back(splitScreenComponents[i]);
+				}
+			}
+
+			if (tempSplitScreenComponents.size() > 4)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, there are more than 4 cameras. Only 4 cameras are supported!");
+				return;
+			}
+
+			WorkspaceModule::getInstance()->setSplitScreenScenarioActive(true);
+			this->cameraComponent->applySplitScreen(true, tempSplitScreenComponents.size());
+
+			this->workspaceBaseComponent = workspaceBaseCompPtr.get();
+
+			this->splitScreenTexture = this->createSplitScreenTexture("SplitScreenTexture_" + this->gameObjectPtr->getName());
+
+			this->externalChannels.resize(1);
+			this->externalChannels[0] = this->splitScreenTexture;
+
+			// Set the this external channels as custom external channels to create custom workspace
+			this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
+			this->workspaceBaseComponent->setInvolvedInSplitScreen(true);
+			this->workspaceBaseComponent->createWorkspace();
+
+			this->externalChannels.clear();
+			this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
+
+			Ogre::CompositorManager2::CompositorNodeDefMap nodeDefs = WorkspaceModule::getInstance()->getCompositorManager()->getNodeDefinitions();
+
+			// Iterate through Compositor Managers resources
+			auto& it = nodeDefs.begin();
+			auto& end = nodeDefs.end();
+
+			// Goes through all passes for the given workspace and set the corresponding render category. All game objects which do not match that category, will not be rendered for this camera
+			// Note: MyGui is added to the final split combined workspace, so it does not make sense to exclude mygui objects from rendering
+			while (it != end)
+			{
+				if (it->second->getNameStr() == this->workspaceBaseComponent->getRenderingNodeName() ||
+					it->second->getNameStr() == this->workspaceBaseComponent->getFinalRenderingNodeName())
+				{
+					for (size_t i = 0; i < it->second->getNumTargetPasses(); i++)
 					{
-						const auto& pass = it->second->getTargetPass(i)->getCompositorPasses()[j];
-						if (pass->getType() == Ogre::PASS_SCENE)
+						for (size_t j = 0; j < it->second->getTargetPass(i)->getCompositorPasses().size(); j++)
 						{
-							Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
-							unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
-							passScene->setVisibilityMask(finalRenderMask);
+							const auto& pass = it->second->getTargetPass(i)->getCompositorPasses()[j];
+							if (pass->getType() == Ogre::PASS_SCENE)
+							{
+								Ogre::CompositorPassSceneDef* passScene = static_cast<Ogre::CompositorPassSceneDef*>(pass);
+								unsigned int finalRenderMask = AppStateManager::getSingletonPtr()->getGameObjectController()->generateRenderCategoryId(this->cameraComponent->getExcludeRenderCategories());
+								passScene->setVisibilityMask(finalRenderMask);
+							}
 						}
 					}
 				}
+
+				++it;
 			}
 
-			++it;
-		}
+			bool isLastComponent = false;
 
-		bool isLastComponent = false;
-		
-		if (tempSplitScreenComponents.size() > 0)
-		{
-			isLastComponent = this == tempSplitScreenComponents[tempSplitScreenComponents.size() - 1].get();
-		}
-
-		if (true == isLastComponent)
-		{
-			std::vector<Ogre::String> textureNames;
-			std::vector<Ogre::Vector4> geometryVectors;
-
-			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
+			if (tempSplitScreenComponents.size() > 0)
 			{
-				textureNames.emplace_back(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
-				geometryVectors.emplace_back(tempSplitScreenComponents[i]->getGeometry());
+				isLastComponent = this == tempSplitScreenComponents[tempSplitScreenComponents.size() - 1].get();
 			}
 
-			Ogre::String materialName = "DynamicSplitMaterial";
-			auto splitMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
-			Ogre::GpuProgramParametersSharedPtr fragmentParams = splitMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
-			for (size_t i = 0; i < geometryVectors.size(); ++i)
+			if (true == isLastComponent)
 			{
-				Ogre::String paramName = "geomData" + Ogre::StringConverter::toString(i + 1); // Match shader uniform
-				if (fragmentParams->_findNamedConstantDefinition(paramName, false))
-				{
-					fragmentParams->setNamedConstant(paramName, geometryVectors[i]);
-				}
-				else
-				{
-					Ogre::LogManager::getSingleton().logMessage("[SplitScreenComponent]: Shader uniform not found: " + paramName, Ogre::LML_CRITICAL);
-				}
-			}
-
-			Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
-
-			Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-			Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(finalRenderingNodeName);
-
-			// Add render window as input
-			finalNodeDef->addTextureSourceName("rt_renderwindow", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-
-			// Add split textures as inputs
-			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
-			{
-				finalNodeDef->addTextureSourceName(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr(), i + 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
-			}
-
-			finalNodeDef->setNumTargetPass(1);
-			Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("rt_renderwindow");
-
-			targetDef->setNumPasses(2);
-
-			// Quad pass to combine split textures
-			{
-				auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-				passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
-				passQuad->mMaterialName = materialName;
-				// passQuad->mMaterialName = "SplitScreen_2h";
-				passQuad->mProfilingId = "QuadPass_DynamicSplitMaterial";
+				std::vector<Ogre::String> textureNames;
+				std::vector<Ogre::Vector4> geometryVectors;
 
 				for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
 				{
-					passQuad->addQuadTextureSource(i, tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+					textureNames.emplace_back(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+					geometryVectors.emplace_back(tempSplitScreenComponents[i]->getGeometry());
 				}
-			}
 
-			// MyGUI pass
-			{
-				auto pass = targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI");
-				pass->mProfilingId = "Split_MyGUI_Pass_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-			}
-
-			Ogre::String finalWorkspaceName = "finalCombinedSplitScreenWorkspace_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-			Ogre::CompositorWorkspaceDef* workspaceDef = compositorManager->addWorkspaceDefinition(finalWorkspaceName);
-
-			workspaceDef->connectExternal(0, finalRenderingNodeName, 0);
-
-			// Connect all split textures
-			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
-			{
-				workspaceDef->connectExternal(i + 1, finalRenderingNodeName, i + 1);
-			}
-
-			Ogre::CompositorChannelVec finalExternalChannels;
-
-			// Add render window as the first channel
-			finalExternalChannels.push_back(Core::getSingletonPtr()->getOgreRenderWindow()->getTexture());
-
-			// Add split RTTs
-			for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
-			{
-				finalExternalChannels.push_back(tempSplitScreenComponents[i]->getSplitScreenTexture());
-			}
-
-			// Is not used, just a dummy, also the finalRenderingNodeName is just a node without a scene, which just combines the textures in a shader
-			this->tempCamera = this->gameObjectPtr->getSceneManager()->createCamera("FinalSplitScreenDummyCamera_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-			NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(tempCamera);
-			this->tempCamera->setFOVy(Ogre::Degree(90.0f));
-			this->tempCamera->setNearClipDistance(0.1f);
-			this->tempCamera->setFarClipDistance(500.0f);
-			this->tempCamera->setQueryFlags(0 << 0);
-			this->tempCamera->setPosition(this->tempCamera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 1.0f, -2.0f)));
-
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
-			if (nullptr != gameObjectPtr)
-			{
-				const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
-				if (nullptr != cameraBehaviorCompPtr)
+				Ogre::String materialName = "DynamicSplitMaterial";
+				auto splitMaterial = Ogre::MaterialManager::getSingletonPtr()->getByName(materialName);
+				Ogre::GpuProgramParametersSharedPtr fragmentParams = splitMaterial->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+				for (size_t i = 0; i < geometryVectors.size(); ++i)
 				{
-					cameraBehaviorCompPtr->setActivated(true);
-					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(cameraCompPtr->getCamera(), true, true);
+					Ogre::String paramName = "geomData" + Ogre::StringConverter::toString(i + 1); // Match shader uniform
+					if (fragmentParams->_findNamedConstantDefinition(paramName, false))
+					{
+						fragmentParams->setNamedConstant(paramName, geometryVectors[i]);
+					}
+					else
+					{
+						Ogre::LogManager::getSingleton().logMessage("[SplitScreenComponent]: Shader uniform not found: " + paramName, Ogre::LML_CRITICAL);
+					}
 				}
+
+				Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+
+				Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+				Ogre::CompositorNodeDef* finalNodeDef = compositorManager->addNodeDefinition(finalRenderingNodeName);
+
+				// Add render window as input
+				finalNodeDef->addTextureSourceName("rt_renderwindow", 0, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+
+				// Add split textures as inputs
+				for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
+				{
+					finalNodeDef->addTextureSourceName(tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr(), i + 1, Ogre::TextureDefinitionBase::TEXTURE_INPUT);
+				}
+
+				finalNodeDef->setNumTargetPass(1);
+				Ogre::CompositorTargetDef* targetDef = finalNodeDef->addTargetPass("rt_renderwindow");
+
+				targetDef->setNumPasses(2);
+
+				// Quad pass to combine split textures
+				{
+					auto* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
+					passQuad->setAllLoadActions(Ogre::LoadAction::DontCare);
+					passQuad->mMaterialName = materialName;
+					// passQuad->mMaterialName = "SplitScreen_2h";
+					passQuad->mProfilingId = "QuadPass_DynamicSplitMaterial";
+
+					for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
+					{
+						passQuad->addQuadTextureSource(i, tempSplitScreenComponents[i]->getSplitScreenTexture()->getNameStr());
+					}
+				}
+
+				// MyGUI pass
+				{
+					auto pass = targetDef->addPass(Ogre::PASS_CUSTOM, "MYGUI");
+					pass->mProfilingId = "Split_MyGUI_Pass_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+				}
+
+				Ogre::String finalWorkspaceName = "finalCombinedSplitScreenWorkspace_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+				Ogre::CompositorWorkspaceDef* workspaceDef = compositorManager->addWorkspaceDefinition(finalWorkspaceName);
+
+				workspaceDef->connectExternal(0, finalRenderingNodeName, 0);
+
+				// Connect all split textures
+				for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
+				{
+					workspaceDef->connectExternal(i + 1, finalRenderingNodeName, i + 1);
+				}
+
+				Ogre::CompositorChannelVec finalExternalChannels;
+
+				// Add render window as the first channel
+				finalExternalChannels.push_back(Core::getSingletonPtr()->getOgreRenderWindow()->getTexture());
+
+				// Add split RTTs
+				for (size_t i = 0; i < tempSplitScreenComponents.size(); i++)
+				{
+					finalExternalChannels.push_back(tempSplitScreenComponents[i]->getSplitScreenTexture());
+				}
+
+				// Is not used, just a dummy, also the finalRenderingNodeName is just a node without a scene, which just combines the textures in a shader
+				this->tempCamera = this->gameObjectPtr->getSceneManager()->createCamera("FinalSplitScreenDummyCamera_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+				NOWA::Core::getSingletonPtr()->setMenuSettingsForCamera(tempCamera);
+				this->tempCamera->setFOVy(Ogre::Degree(90.0f));
+				this->tempCamera->setNearClipDistance(0.1f);
+				this->tempCamera->setFarClipDistance(500.0f);
+				this->tempCamera->setQueryFlags(0 << 0);
+				this->tempCamera->setPosition(this->tempCamera->getParentSceneNode()->convertLocalToWorldPositionUpdated(Ogre::Vector3(0.0f, 1.0f, -2.0f)));
+
+				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
+				if (nullptr != gameObjectPtr)
+				{
+					const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
+					if (nullptr != cameraBehaviorCompPtr)
+					{
+						cameraBehaviorCompPtr->setActivated(true);
+						AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->cameraComponent->getCamera(), true, true);
+					}
+				}
+
+				this->finalCombinedWorkspace = compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), finalExternalChannels, this->tempCamera, finalWorkspaceName, true, -1);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceSplitComponent] Creating final combined workspace: " + finalWorkspaceName);
+
+				WorkspaceModule::getInstance()->setPrimaryWorkspace2(this->gameObjectPtr->getSceneManager(), this->tempCamera, this->finalCombinedWorkspace);
 			}
-
-			this->finalCombinedWorkspace = compositorManager->addWorkspace(this->gameObjectPtr->getSceneManager(), finalExternalChannels, this->tempCamera, finalWorkspaceName, true, -1);
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceSplitComponent] Creating final combined workspace: " + finalWorkspaceName);
-
-			WorkspaceModule::getInstance()->setPrimaryWorkspace2(this->gameObjectPtr->getSceneManager(), this->tempCamera, this->finalCombinedWorkspace);
-		}
+		});
 	}
 
 	void SplitScreenComponent::cleanupSplitScreen(void)
 	{
 		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(false);
 
-		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
-
-		if (nullptr != this->tempCamera)
+		ENQUEUE_RENDER_COMMAND_WAIT("SplitScreenComponent::cleanupSplitScreen",
 		{
-			const auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
-			if (nullptr == cameraCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, because the game object: " + this->gameObjectPtr->getName() + " is the main camera. Choose a different camera!");
-				return;
-			}
+			Ogre::CompositorManager2 * compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
-			if (nullptr != gameObjectPtr)
+			if (nullptr != this->tempCamera)
 			{
-				const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
-				if (nullptr != cameraBehaviorCompPtr)
+				const auto& cameraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<CameraComponent>());
+				if (nullptr == cameraCompPtr || this->gameObjectPtr->getId() == GameObjectController::MAIN_CAMERA_ID)
 				{
-					AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(cameraCompPtr->getCamera());
-				}
-			}
-
-			if (nullptr != this->finalCombinedWorkspace)
-			{
-				WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->tempCamera);
-
-				Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-				if (true == compositorManager->hasNodeDefinition(finalRenderingNodeName))
-				{
-					compositorManager->removeNodeDefinition(finalRenderingNodeName);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SplitScreenComponent] Error setting up split screen workspace, because the game object: " + this->gameObjectPtr->getName() + " is the main camera. Choose a different camera!");
+					return;
 				}
 
-				Ogre::String finalWorkspaceName = "finalCombinedSplitScreenWorkspace_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-				if (true == compositorManager->hasWorkspaceDefinition(finalWorkspaceName))
+				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->cameraBehaviorGameObjectId->getULong());
+				if (nullptr != gameObjectPtr)
 				{
-					compositorManager->removeWorkspaceDefinition(finalWorkspaceName);
+					const auto cameraBehaviorCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<CameraBehaviorComponent>());
+					if (nullptr != cameraBehaviorCompPtr)
+					{
+						AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(cameraCompPtr->getCamera());
+					}
 				}
 
-				WorkspaceModule::getInstance()->getPrimaryCameraComponent()->setActivated(true);
+				if (nullptr != this->finalCombinedWorkspace)
+				{
+					WorkspaceModule::getInstance()->removeWorkspace(this->gameObjectPtr->getSceneManager(), this->tempCamera);
 
-				this->finalCombinedWorkspace = nullptr;
+					Ogre::String finalRenderingNodeName = "FinalSplitScreenCombineNode_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+					if (true == compositorManager->hasNodeDefinition(finalRenderingNodeName))
+					{
+						compositorManager->removeNodeDefinition(finalRenderingNodeName);
+					}
+
+					Ogre::String finalWorkspaceName = "finalCombinedSplitScreenWorkspace_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+					if (true == compositorManager->hasWorkspaceDefinition(finalWorkspaceName))
+					{
+						compositorManager->removeWorkspaceDefinition(finalWorkspaceName);
+					}
+
+					WorkspaceModule::getInstance()->getPrimaryCameraComponent()->setActivated(true);
+
+					this->finalCombinedWorkspace = nullptr;
+				}
+
+				this->gameObjectPtr->getSceneManager()->destroyCamera(this->tempCamera);
+				this->tempCamera = nullptr;
 			}
 
-			this->gameObjectPtr->getSceneManager()->destroyCamera(this->tempCamera);
-			this->tempCamera = nullptr;
-		}
+			if (nullptr != this->cameraComponent)
+			{
+				this->cameraComponent->applySplitScreen(false, -1);
+			}
 
-		if (nullptr != this->cameraComponent)
-		{
-			this->cameraComponent->applySplitScreen(false, -1);
-		}
+			this->cameraComponent = nullptr;
 
-		this->cameraComponent = nullptr;
+			if (nullptr != this->workspaceBaseComponent)
+			{
+				this->workspaceBaseComponent->setInvolvedInSplitScreen(false);
+				this->workspaceBaseComponent->removeWorkspace();
+				this->workspaceBaseComponent = nullptr;
+			}
+			this->externalChannels.clear();
 
-		if (nullptr != this->workspaceBaseComponent)
-		{
-			this->workspaceBaseComponent->setInvolvedInSplitScreen(false);
-			this->workspaceBaseComponent->removeWorkspace();
-			this->workspaceBaseComponent = nullptr;
-		}
-		this->externalChannels.clear();
-
-		// WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent()->createWorkspace();
+		});
 	}
 
 	// Lua registration part

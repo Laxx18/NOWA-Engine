@@ -4,6 +4,8 @@
 #include "AppState.h"
 #include "defines.h"
 #include <chrono>
+#include <mutex>
+#include <condition_variable>
 
 namespace NOWA
 {
@@ -27,7 +29,8 @@ namespace NOWA
 		{
 			ADAPTIVE = 0,
 			RESTRICTED_INTERPOLATED = 1,
-			FPS_INDEPENDENT = 2
+			FPS_INDEPENDENT = 2,
+			MULTI_THREADED
 		};
 
 		AppStateManager();
@@ -119,6 +122,9 @@ namespace NOWA
 		 */
 		bool getIsStalled(void) const;
 
+		// Rendering thread should wait until logic frame is ready
+		void waitForLogicFrameFinish(void);
+
 		size_t getAppStatesCount(void) const;
 
 		GameObjectController* getGameObjectController(void) const;
@@ -181,12 +187,16 @@ namespace NOWA
 		void restrictedInterpolatedFPSRendering(void);
 		void adaptiveFPSRendering(void);
 		void fpsIndependentRendering(void);
+		void multiThreadedRendering(void);
 
 		void internalChangeAppState(AppState* state);
 		bool internalPushAppState(AppState* state);
 		void internalPopAppState(void);
 		void internalPopAllAndPushAppState(AppState* state);
 		void internalExitGame(void);
+
+		// Signals that one logic frame is complete
+		void signalLogicFrameFinished(void);
 
 		/**
 		* @brief		Gets the Variant global value from attribute name.
@@ -244,6 +254,10 @@ namespace NOWA
 
 		// For user defined attributes, without the need for a game objects attributes component
 		std::map<Ogre::String, Variant*> globalAttributesMap;
+
+		std::mutex logicFrameMutex;
+		std::condition_variable logicFrameCondVar;
+		bool logicFrameFinished = false;
 	};
 
 }; // namespace end

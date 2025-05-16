@@ -60,53 +60,56 @@ namespace NOWA
 
 	void OgreRecastModule::destroyContent(void)
 	{
-		this->debugDrawNavMesh(false);
-
-		auto& it = this->dynamicObstacles.begin();
-
-		while (it != this->dynamicObstacles.end())
+		ENQUEUE_RENDER_COMMAND_WAIT("OgreRecastModule::destroyContent",
 		{
-			auto dataPair = it->second;
-			InputGeom* inputPair = dataPair.first;
-			ConvexVolume* convexVolume = dataPair.second;
-			this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+			this->debugDrawNavMesh(false);
 
-			delete inputPair;
-			inputPair = nullptr;
+			auto & it = this->dynamicObstacles.begin();
 
-			delete convexVolume;
-			convexVolume = nullptr;
+			while (it != this->dynamicObstacles.end())
+			{
+				auto dataPair = it->second;
+				InputGeom* inputPair = dataPair.first;
+				ConvexVolume* convexVolume = dataPair.second;
+				this->detourTileCache->removeConvexShapeObstacle(convexVolume);
 
-			++it;
-		}
+				delete inputPair;
+				inputPair = nullptr;
 
-		auto& it2 = this->terraInputGeomCells.begin();
+				delete convexVolume;
+				convexVolume = nullptr;
 
-		while (it2 != this->terraInputGeomCells.end())
-		{
-			InputGeom* inputGeom = it2->second;
+				++it;
+			}
 
-			delete inputGeom;
-			inputGeom = nullptr;
+			auto& it2 = this->terraInputGeomCells.begin();
 
-			++it2;
-		}
-		
-		if (nullptr != this->ogreRecast)
-		{
-			delete this->ogreRecast;
-			this->ogreRecast = nullptr;
-		}
-		if (nullptr != this->detourTileCache)
-		{
-			delete this->detourTileCache;
-			this->detourTileCache = nullptr;
-		}
-		if (nullptr != this->detourCrowd)
-		{
-			delete this->detourCrowd;
-			this->detourCrowd = 0;
-		}
+			while (it2 != this->terraInputGeomCells.end())
+			{
+				InputGeom* inputGeom = it2->second;
+
+				delete inputGeom;
+				inputGeom = nullptr;
+
+				++it2;
+			}
+
+			if (nullptr != this->ogreRecast)
+			{
+				delete this->ogreRecast;
+				this->ogreRecast = nullptr;
+			}
+			if (nullptr != this->detourTileCache)
+			{
+				delete this->detourTileCache;
+				this->detourTileCache = nullptr;
+			}
+			if (nullptr != this->detourCrowd)
+			{
+				delete this->detourCrowd;
+				this->detourCrowd = 0;
+			}
+		});
 		this->hasValidNavMesh = false;
 		this->mustRegenerate = true;
 		this->staticObstacles.clear();
@@ -519,11 +522,14 @@ namespace NOWA
 			this->buildNavigationMesh();
 		}
 
-		if (true == this->hasValidNavMesh)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::debugDrawNavMesh", _1(draw),
 		{
-			// this->ogreRecast->drawNavMesh(draw);
-			this->detourTileCache->drawNavMesh(draw);
-		}
+			if (true == this->hasValidNavMesh)
+			{
+				// this->ogreRecast->drawNavMesh(draw);
+				this->detourTileCache->drawNavMesh(draw);
+			}
+		});
 	}
 
 	void OgreRecastModule::update(Ogre::Real dt)

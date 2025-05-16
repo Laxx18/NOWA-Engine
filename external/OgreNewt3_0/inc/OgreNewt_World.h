@@ -509,6 +509,7 @@ namespace OgreNewt
 	private:
 
 		static void _CDECL newtonLeaveWorld(const NewtonBody* body, int threadIndex);
+	private:
 
 		// Ogre::AxisAlignedBox m_limits;
 		int solverModel;

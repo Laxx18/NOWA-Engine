@@ -341,73 +341,77 @@ namespace NOWA
 			return;
 		}
 
-		this->loop = loop;
-
-		if (transition == AnimationBlender::BlendSwitch)
+		// TODO Wait?
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::internalBlend", _4(animationName, transition, duration, loop),
 		{
-			if (this->source != nullptr)
-			{
-				this->source->setEnabled(false);
-			}
-			this->source = this->entity->getAnimationState(animationName);
-			this->source->setEnabled(true);
-			this->source->setWeight(1.0f);
-			this->source->setTimePosition(0.0f);
-			this->timeleft = 0.0f;
-		}
-		else
-		{
-			Ogre::v1::AnimationState* newTarget = entity->getAnimationState(animationName);
+			this->loop = loop;
 
-			if (this->timeleft > 0.0f)
+			if (transition == AnimationBlender::BlendSwitch)
 			{
-				// oops, weren't finished yet
-				if (newTarget == this->target)
+				if (this->source != nullptr)
 				{
-					// nothing to do! (ignoring duration here)
+					this->source->setEnabled(false);
 				}
-				else if (newTarget == this->source)
-				{
-					// going back to the source state, so let's switch
-					this->source = this->target;
-					this->target = newTarget;
-					this->timeleft = this->duration - this->timeleft; // i'm ignoring the new duration here
-				}
-				else
-				{
-					// ok, newTarget is really new, so either we simply replace the target with this one, or
-					// we make the target the new source 
-// Attention:
-					if (this->timeleft < this->duration * 0.5f)
-					// if (this->timeleft <= this->duration)
-					{
-						// simply replace the target with this one
-						this->target->setEnabled(false);
-						this->target->setWeight(0.0f);
-					}
-					else
-					{
-						// old target becomes new source
-						this->source->setEnabled(false);
-						this->source->setWeight(0.0f);
-						this->source = this->target;
-					}
-					this->target = newTarget;
-					this->target->setEnabled(true);
-					this->target->setWeight(1.0f - this->timeleft / this->duration);
-					this->target->setTimePosition(0.0f);
-				}
+				this->source = this->entity->getAnimationState(animationName);
+				this->source->setEnabled(true);
+				this->source->setWeight(1.0f);
+				this->source->setTimePosition(0.0f);
+				this->timeleft = 0.0f;
 			}
 			else
 			{
-				this->transition = transition;
-				this->timeleft = this->duration = duration;
-				this->target = newTarget;
-				this->target->setEnabled(true);
-				this->target->setWeight(0.0f);
-				this->target->setTimePosition(0.0f);
+				Ogre::v1::AnimationState* newTarget = entity->getAnimationState(animationName);
+
+				if (this->timeleft > 0.0f)
+				{
+					// oops, weren't finished yet
+					if (newTarget == this->target)
+					{
+						// nothing to do! (ignoring duration here)
+					}
+					else if (newTarget == this->source)
+					{
+						// going back to the source state, so let's switch
+						this->source = this->target;
+						this->target = newTarget;
+						this->timeleft = this->duration - this->timeleft; // i'm ignoring the new duration here
+					}
+					else
+					{
+						// ok, newTarget is really new, so either we simply replace the target with this one, or
+						// we make the target the new source 
+	// Attention:
+						if (this->timeleft < this->duration * 0.5f)
+							// if (this->timeleft <= this->duration)
+							{
+							// simply replace the target with this one
+							this->target->setEnabled(false);
+							this->target->setWeight(0.0f);
+						}
+						else
+						{
+							// old target becomes new source
+							this->source->setEnabled(false);
+							this->source->setWeight(0.0f);
+							this->source = this->target;
+						}
+						this->target = newTarget;
+						this->target->setEnabled(true);
+						this->target->setWeight(1.0f - this->timeleft / this->duration);
+						this->target->setTimePosition(0.0f);
+					}
+				}
+				else
+				{
+					this->transition = transition;
+					this->timeleft = this->duration = duration;
+					this->target = newTarget;
+					this->target->setEnabled(true);
+					this->target->setWeight(0.0f);
+					this->target->setTimePosition(0.0f);
+				}
 			}
-		}
+		});
 	}
 
 	void AnimationBlender::addTime(Ogre::Real time)
@@ -419,92 +423,95 @@ namespace NOWA
 			return;
 		}
 
-		if (this->source != nullptr)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::addTime", _1(time),
 		{
-			bool weightChange = false;
-			if (this->timeleft > 0.0f)
+			if (this->source != nullptr)
 			{
-				this->timeleft -= time;
-				if (this->timeleft <= 0.0f)
+				bool weightChange = false;
+				if (this->timeleft > 0.0f)
 				{
-					// finish blending
-					this->source->setEnabled(false);
-					this->source->setWeight(0.0f);
-					this->source = this->target;
-					this->source->setEnabled(true);
-					this->source->setWeight(1.0f);
-					this->target = nullptr;
+					this->timeleft -= time;
+					if (this->timeleft <= 0.0f)
+					{
+						// finish blending
+						this->source->setEnabled(false);
+						this->source->setWeight(0.0f);
+						this->source = this->target;
+						this->source->setEnabled(true);
+						this->source->setWeight(1.0f);
+						this->target = nullptr;
+					}
+					else
+					{
+						// still blending, advance weights
+						this->source->setWeight(this->timeleft / this->duration);
+						this->target->setWeight(1.0f - this->timeleft / this->duration);
+						weightChange = true;
+						if (this->transition == AnimationBlender::BlendWhileAnimating)
+						{
+							this->target->addTime(time);
+						}
+					}
+				}
+
+				this->source->addTime(time);
+
+				// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
+				if (this->source->getTimePosition() + 0.02f >= this->source->getLength())
+				{
+					this->complete = true;
+
+					if (nullptr != this->previousSource)
+					{
+						this->source = this->previousSource;
+						this->loop = this->previousLoop;
+						this->transition = this->previousTransition;
+						this->duration = this->previousDuration;
+						this->previousSource = nullptr;
+
+						this->internalInit(this->source->getAnimationName());
+
+						this->blend(this->source->getAnimationName(), this->transition, this->duration, this->loop);
+
+						this->source->setTimePosition(this->source->getLength() * 0.5f);
+					}
+
+					// Notifies all observers that the animation has finished
+					this->notifyObservers();
 				}
 				else
 				{
-					// still blending, advance weights
-					this->source->setWeight(this->timeleft / this->duration);
-					this->target->setWeight(1.0f - this->timeleft / this->duration);
-					weightChange = true;
-					if (this->transition == AnimationBlender::BlendWhileAnimating)
+					this->complete = false;
+					if (false == weightChange)
 					{
-						this->target->addTime(time);
+						this->source->setWeight(1.0f);
+						if (false == this->source->getEnabled())
+						{
+							this->source->setEnabled(true);
+						}
+						/*if (nullptr != this->target)
+						{
+							this->target->setWeight(1.0f);
+						}*/
 					}
 				}
-			}
 
-			this->source->addTime(time);
-
-			// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
-			if (this->source->getTimePosition() + 0.02f >= this->source->getLength())
-			{
-				this->complete = true;
-
-				if (nullptr != this->previousSource)
+				if (true == this->debugLog)
 				{
-					this->source = this->previousSource;
-					this->loop = this->previousLoop;
-					this->transition = this->previousTransition;
-					this->duration = this->previousDuration;
-					this->previousSource = nullptr;
-
-					this->internalInit(this->source->getAnimationName());
-
-					this->blend(this->source->getAnimationName(), this->transition, this->duration, this->loop);
-
-					this->source->setTimePosition(this->source->getLength() * 0.5f);
-				}
-
-				// Notifies all observers that the animation has finished
-				this->notifyObservers();
-			}
-			else
-			{
-				this->complete = false;
-				if (false == weightChange)
-				{
-					this->source->setWeight(1.0f);
-					if (false == this->source->getEnabled())
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Source Animation : " + this->source->getAnimationName()
+						+ " timePosition: " + Ogre::StringConverter::toString(this->source->getTimePosition())
+						+ " length: " + Ogre::StringConverter::toString(this->source->getLength())
+						+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->getWeight()));
+					if (target != nullptr)
 					{
-						this->source->setEnabled(true);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Target Animation: " + this->target->getAnimationName()
+							+ " timePosition: " + Ogre::StringConverter::toString(this->target->getTimePosition())
+							+ " length: " + Ogre::StringConverter::toString(this->target->getLength()) + " weight: " + Ogre::StringConverter::toString(this->target->getWeight()));
 					}
-					/*if (nullptr != this->target)
-					{
-						this->target->setWeight(1.0f);
-					}*/
 				}
+				this->source->setLoop(this->loop);
 			}
-
-			if (true == this->debugLog)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Source Animation : " + this->source->getAnimationName()
-					+ " timePosition: " + Ogre::StringConverter::toString(this->source->getTimePosition())
-					+ " length: " + Ogre::StringConverter::toString(this->source->getLength())
-					+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->getWeight()));
-				if (target != nullptr)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Name: " + this->entity->getParentSceneNode()->getName() + " Target Animation: " + this->target->getAnimationName()
-						+ " timePosition: " + Ogre::StringConverter::toString(this->target->getTimePosition())
-						+ " length: " + Ogre::StringConverter::toString(this->target->getLength()) + " weight: " + Ogre::StringConverter::toString(this->target->getWeight()));
-				}
-			}
-			this->source->setLoop(this->loop);
-		}
+		});
 	}
 
 	void AnimationBlender::blendAndContinue(AnimID animationId, Ogre::Real duration)
@@ -795,7 +802,10 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			this->source->setTimePosition(timePosition);
+			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::setTimePosition", _1(timePosition),
+			{
+				this->source->setTimePosition(timePosition);
+			});
 		}
 	}
 
@@ -822,7 +832,10 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			this->source->setWeight(weight);
+			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::setWeight", _1(weight),
+			{
+				this->source->setWeight(weight);
+			});
 		}
 	}
 
@@ -866,35 +879,39 @@ namespace NOWA
 		{
 			return;
 		}
-		bone->reset(); // _pBone is Ogre::Bone*
 
-		auto boneHandle = bone->getHandle();
-		Ogre::v1::Skeleton* skeleton = this->entity->getSkeleton();
-		if (nullptr != skeleton)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::setBoneWeight", _2(bone, weight),
 		{
-			auto animStateIt = this->entity->getAllAnimationStates()->getAnimationStateIterator();
-			while (animStateIt.hasMoreElements())
+			bone->reset(); // _pBone is Ogre::Bone*
+
+			auto boneHandle = bone->getHandle();
+			Ogre::v1::Skeleton * skeleton = this->entity->getSkeleton();
+			if (nullptr != skeleton)
 			{
-				Ogre::v1::AnimationState* animationState = animStateIt.getNext();
+				auto animStateIt = this->entity->getAllAnimationStates()->getAnimationStateIterator();
+				while (animStateIt.hasMoreElements())
+				{
+					Ogre::v1::AnimationState* animationState = animStateIt.getNext();
 
-				// ignore disabled animations
-				if (!animationState->getEnabled())
-					continue;
+					// ignore disabled animations
+					if (!animationState->getEnabled())
+						continue;
 
-				// get animation
-				auto animation = skeleton->getAnimation(animationState->getAnimationName());
-				// if (!animation->hasNodeTrack(boneHandle))
-				// 	continue;
+					// get animation
+					auto animation = skeleton->getAnimation(animationState->getAnimationName());
+					// if (!animation->hasNodeTrack(boneHandle))
+					// 	continue;
 
-				auto nodeAnimTrack = animation->getNodeTrack(boneHandle);
+					auto nodeAnimTrack = animation->getNodeTrack(boneHandle);
 
-				Ogre::Real time = animationState->getTimePosition();
-				Ogre::Real tempWeight = animationState->getWeight();
+					Ogre::Real time = animationState->getTimePosition();
+					Ogre::Real tempWeight = animationState->getWeight();
 
-				// apply animation to bone
-				nodeAnimTrack->apply(time, weight);
+					// apply animation to bone
+					nodeAnimTrack->apply(time, weight);
+				}
 			}
-		}
+		});
 	}
 
 	void AnimationBlender::resetBones(void)
@@ -911,7 +928,10 @@ namespace NOWA
 			Ogre::v1::Skeleton* skeleton = this->entity->getSkeleton();
 			if (nullptr != skeleton)
 			{
-				skeleton->reset(true);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::resetBones", _1(skeleton),
+				{
+					skeleton->reset(true);
+				});
 			}
 		}
 	}
@@ -925,7 +945,10 @@ namespace NOWA
 	{
 		if (nullptr != this->source)
 		{
-			this->source->setEnabled(bEnable);
+			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::setSourceEnabled", _1(bEnable),
+			{
+				this->source->setEnabled(bEnable);
+			});
 		}
 	}
 

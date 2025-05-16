@@ -82,26 +82,30 @@ namespace NOWA
 
 		// Collision for static objects
 		OgreNewt::CollisionPtr staticCollision;
-		if (false == this->serialize->getBool())
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createHeightFieldCollision", _3(terra, overwrite, &staticCollision),
 		{
-			staticCollision = this->createHeightFieldCollision(terra);
-		}
-		else
-		{
-			// Note: Terra collision file is located in the corresponding scene folder
-			Ogre::String projectFilePath;
-			if (false == this->gameObjectPtr->getGlobal())
+			if (false == this->serialize->getBool())
 			{
-				projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+				staticCollision = this->createHeightFieldCollision(terra);
 			}
 			else
 			{
-				projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-			}
+				// Note: Terra collision file is located in the corresponding scene folder
+				Ogre::String projectFilePath;
+				if (false == this->gameObjectPtr->getGlobal())
+				{
+					projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath() + "/" + Core::getSingletonPtr()->getSceneName();
+				}
+				else
+				{
+					projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+				}
 
-			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
-			staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
-		}
+				// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
+				staticCollision = OgreNewt::CollisionPtr(this->serializeHeightFieldCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), terra, overwrite));
+			}
+		});
 
 		if (nullptr == staticCollision)
 		{
@@ -114,6 +118,7 @@ namespace NOWA
 		if (nullptr == this->physicsBody)
 		{
 			this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 			// Set mass to 0 = infinity = static
 			this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
 

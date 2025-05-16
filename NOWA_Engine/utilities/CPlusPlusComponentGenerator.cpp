@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "CPlusPlusComponentGenerator.h"
 #include "modules/DeployResourceModule.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace
 {
@@ -16,6 +17,7 @@ namespace NOWA
 		: wraps::BaseLayout("", parent),
 		currentVariableIndex(0) // Initialize current index
 	{
+		// Threadsafe from the outside
 		assignWidget(this->classNameEdit, "ClassNameEdit");
 		assignWidget(this->generateButton, "GenerateButton");
 		assignWidget(this->okButton, "OkButton");
@@ -755,45 +757,51 @@ namespace NOWA
 
 	void CPlusPlusComponentGenerator::onOkButtonClick(MyGUI::Widget* _sender)
 	{
-		this->mMainWidget->setVisible(false);
+		ENQUEUE_RENDER_COMMAND_WAIT("CPlusPlusComponentGenerator::onOkButtonClick",
+		{
+			this->mMainWidget->setVisible(false);
+		});
 	}
 
 	void CPlusPlusComponentGenerator::onAddVariableButtonClick(MyGUI::Widget* _sender)
 	{
-		// Create a new variable input field
-		MyGUI::ComboBox* typeCombo = this->variantContainer->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(0, this->currentVariableIndex * 40, 180, 30), MyGUI::Align::Default, "TypeCombo" + std::to_string(this->currentVariableIndex));
-		typeCombo->setEditStatic(true);
-		
-		const auto& allStrTypes = Variant::getAllStrTypes();
-		for (size_t i = 0; i < allStrTypes.size(); i++)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CPlusPlusComponentGenerator::onAddVariableButtonClick", _1(_sender),
 		{
-			typeCombo->addItem(allStrTypes[i]);
-		}
+			// Create a new variable input field
+			MyGUI::ComboBox * typeCombo = this->variantContainer->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(0, this->currentVariableIndex * 40, 180, 30), MyGUI::Align::Default, "TypeCombo" + std::to_string(this->currentVariableIndex));
+			typeCombo->setEditStatic(true);
 
-		MyGUI::EditBox* nameEdit = this->variantContainer->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(290, this->currentVariableIndex * 40, 180, 30), MyGUI::Align::Default, "NameEdit" + std::to_string(this->currentVariableIndex));
+			const auto & allStrTypes = Variant::getAllStrTypes();
+			for (size_t i = 0; i < allStrTypes.size(); i++)
+			{
+				typeCombo->addItem(allStrTypes[i]);
+			}
 
-		// Attach event listeners to validate input
-		typeCombo->eventComboAccept += MyGUI::newDelegate(this, &CPlusPlusComponentGenerator::onInputChanged);
-		nameEdit->eventEditTextChange += MyGUI::newDelegate(this, &CPlusPlusComponentGenerator::onInputChanged);
+			MyGUI::EditBox* nameEdit = this->variantContainer->createWidget<MyGUI::EditBox>("EditBox", MyGUI::IntCoord(290, this->currentVariableIndex * 40, 180, 30), MyGUI::Align::Default, "NameEdit" + std::to_string(this->currentVariableIndex));
+
+			// Attach event listeners to validate input
+			typeCombo->eventComboAccept += MyGUI::newDelegate(this, &CPlusPlusComponentGenerator::onInputChanged);
+			nameEdit->eventEditTextChange += MyGUI::newDelegate(this, &CPlusPlusComponentGenerator::onInputChanged);
 
 
-		++this->currentVariableIndex; // Increment index for next variable
+			++this->currentVariableIndex; // Increment index for next variable
 
-		{
-			const auto& position = this->generateButton->getPosition();
-			this->generateButton->setPosition(position.left, position.top + 40);
-		}
+			{
+				const auto& position = this->generateButton->getPosition();
+				this->generateButton->setPosition(position.left, position.top + 40);
+			}
 
-		{
-			const auto& position = this->okButton->getPosition();
-			this->okButton->setPosition(position.left, position.top + 40);
-		}
+			{
+				const auto& position = this->okButton->getPosition();
+				this->okButton->setPosition(position.left, position.top + 40);
+			}
 
-		this->getMainWidget()->setSize(this->getMainWidget()->getWidth(), this->getMainWidget()->getHeight() + 40);
-		this->variantContainer->setSize(this->variantContainer->getWidth(), this->variantContainer->getHeight() + 40);
+			this->getMainWidget()->setSize(this->getMainWidget()->getWidth(), this->getMainWidget()->getHeight() + 40);
+			this->variantContainer->setSize(this->variantContainer->getWidth(), this->variantContainer->getHeight() + 40);
 
-		// Checks if we can enable the generate button
-		this->validateInputs();
+			// Checks if we can enable the generate button
+			this->validateInputs();
+		});
 	}
 
 	void CPlusPlusComponentGenerator::generateCode(void)

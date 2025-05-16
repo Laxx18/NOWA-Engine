@@ -5,6 +5,7 @@
 #include "utilities/rapidxml.hpp"
 #include "utilities/BoundingBoxDraw.h"
 #include "utilities/Variant.h"
+#include "modules/RenderCommandQueueModule.h"
 #include "OgreWireAabb.h"
 #include <tuple>
 
@@ -974,6 +975,11 @@ namespace NOWA
 		void resetVariants();
 		void resetChanges();
 		void actualizeComponentsIndices(void);
+		void applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance);
+		void applyLodDistanceToEntity(Ogre::v1::Entity* entity, Ogre::Real lodDistance);
+		bool generateLodForMesh(const Ogre::String& meshName, Ogre::v1::MeshPtr v1Mesh, Ogre::Real lodDistance);
+		void saveV1MeshToFile(const Ogre::String& meshName, Ogre::v1::Mesh* mesh);
+		void saveV2MeshToFile(const Ogre::String& meshName, Ogre::Mesh* mesh);
 
 		bool connectPriority(void);
 

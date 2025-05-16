@@ -390,6 +390,39 @@ namespace NOWA
 		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 	}
 
+	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition, 
+		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
+	{
+		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromName(originalGameObjectName);
+		if (nullptr == originalGameObjectPtr)
+		{
+			return;
+		}
+
+		GameObjectPtr clonedGameObject;
+
+		RenderCommandQueueModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
+
+			callback(clonedGameObject);
+		});
+	}
+
+	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, unsigned long originalGameObjectId, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
+	{
+		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromId(originalGameObjectId);
+		if (nullptr == originalGameObjectPtr)
+		{
+			return;
+		}
+
+		RenderCommandQueueModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
+
+			callback(clonedGameObject);
+		});
+	}
+
 	GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
@@ -418,65 +451,70 @@ namespace NOWA
 		if (Ogre::Vector3::UNIT_SCALE != targetScale)
 			scale = targetScale;
 
-		if (nullptr != parentNode)
-		{
-			clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
-				position, orientation);
-			clonedSceneNode->setName(validatedName);
-			clonedSceneNode->setScale(scale);
-		}
-		else
-		{
-			clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
-				position, orientation);
-			clonedSceneNode->setName(validatedName);
-			clonedSceneNode->setScale(scale);
-		}
-
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
-
-
 		Ogre::MovableObject* clonedMovableObject = nullptr;
-			
-		if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
-		{
-			clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
-		}
-		else if (GameObject::ITEM == originalGameObjectPtr->getType())
-		{
-			clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
-		}
-		clonedMovableObject->setName(validatedName);
-		clonedSceneNode->attachObject(clonedMovableObject);
-		if (nullptr != clonedMovableObject)
-		{
-			if (GameObject::ENTITY == originalGameObjectPtr->getType())
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::internalClone", _11(parentNode, &clonedSceneNode, position, orientation, scale, validatedName, sceneManager, 
+			&clonedMovableObject, originalMovableObject, originalSceneNode, originalGameObjectPtr), {
+
+			if (nullptr != parentNode)
 			{
-				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
-				for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
-				{
-					const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
-					const Ogre::String *datablockName = datablock->getNameStr();
-					static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
-				}
+				clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
+					position, orientation);
+				clonedSceneNode->setName(validatedName);
+				clonedSceneNode->setScale(scale);
+			}
+			else
+			{
+				clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
+					position, orientation);
+				clonedSceneNode->setName(validatedName);
+				clonedSceneNode->setScale(scale);
+			}
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
+
+
+			if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
+			{
+				clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
 			}
 			else if (GameObject::ITEM == originalGameObjectPtr->getType())
 			{
-				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
-				for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
+				clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
+			}
+			clonedMovableObject->setName(validatedName);
+			clonedSceneNode->attachObject(clonedMovableObject);
+			if (nullptr != clonedMovableObject)
+			{
+				if (GameObject::ENTITY == originalGameObjectPtr->getType())
 				{
-					const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
-					const Ogre::String* datablockName = datablock->getNameStr();
-					static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
+					// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
+					for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
+					{
+						const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
+						const Ogre::String* datablockName = datablock->getNameStr();
+						static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
+					}
+				}
+				else if (GameObject::ITEM == originalGameObjectPtr->getType())
+				{
+					// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
+					for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
+					{
+						const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
+						const Ogre::String* datablockName = datablock->getNameStr();
+						static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
+					}
 				}
 			}
-		}
 
-		clonedSceneNode->setVisible(originalMovableObject->getVisible());
-		clonedMovableObject->setVisible(originalMovableObject->getVisible());
-		clonedMovableObject->setCastShadows(originalMovableObject->getCastShadows());
-		clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
-		clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
+			clonedSceneNode->setVisible(originalMovableObject->getVisible());
+			clonedMovableObject->setVisible(originalMovableObject->getVisible());
+			clonedMovableObject->setCastShadows(originalMovableObject->getCastShadows());
+			clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
+			clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
+
+		});
 
 		// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
 		GameObjectPtr clonedGameObjectPtr(boost::make_shared<GameObject>(sceneManager, clonedSceneNode, clonedMovableObject,
@@ -593,7 +631,7 @@ namespace NOWA
 		}
 
 		boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(clonedGameObjectPtr->getId()));
-		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(newGameObjectEvent);
+		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->threadSafeQueueEvent(newGameObjectEvent);
 
 		return clonedGameObjectPtr;
 	}
@@ -750,100 +788,103 @@ namespace NOWA
 	{
 		if (false == this->alreadyDestroyed)
 		{
-			AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
-
-			this->bIsDestroying = true;
-			auto& it = this->materialIDMap.begin();
-			while (it != this->materialIDMap.end())
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::destroyContent", _1(&excludeGameObjectNames),
 			{
-				delete it->second;
-				it->second = nullptr;
-				++it;
-			}
-			this->materialIDMap.erase(this->materialIDMap.begin(), this->materialIDMap.end());
-			this->materialIDMap.clear();
+				AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
 
-			this->managedLuaScripts.clear();
-
-			AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
-
-			// do not delete with iterator since the iterator changes then during the loop
-			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-			{
-				it->second->setActivated(false);
-				it->second->disconnect();
-
-				bool canDestroy = true;
-				// Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
-				for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
+				this->bIsDestroying = true;
+				auto& it = this->materialIDMap.begin();
+				while (it != this->materialIDMap.end())
 				{
-					if (it->second->getName() == *it2)
+					delete it->second;
+					it->second = nullptr;
+					++it;
+				}
+				this->materialIDMap.erase(this->materialIDMap.begin(), this->materialIDMap.end());
+				this->materialIDMap.clear();
+
+				this->managedLuaScripts.clear();
+
+				AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
+
+				// do not delete with iterator since the iterator changes then during the loop
+				for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+				{
+					it->second->setActivated(false);
+					it->second->disconnect();
+
+					bool canDestroy = true;
+					// Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
+					for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
 					{
-						canDestroy = false;
-						it2 = excludeGameObjectNames.erase(it2);
-						break;
+						if (it->second->getName() == *it2)
+						{
+							canDestroy = false;
+							it2 = excludeGameObjectNames.erase(it2);
+							break;
+						}
+						else
+						{
+							++it2;
+						}
 					}
-					else
+
+					if (true == canDestroy)
 					{
-						++it2;
+						// signal the event, so that other game objects have the chance to react if necessary
+						boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
+						AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
+						assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
+						it->second->destroy();
 					}
 				}
-				
-				if (true == canDestroy)
+
+				// Joints must be destroyed here, because a joint depends on its 2 bodies, which must live at this point, so this must be called, before the destructors of all components are called!
+				// this->disconnectJoints();
+				this->jointComponentMap.clear();
+				this->playerControllerComponentMap.clear();
+				this->physicsCompoundConnectionComponentMap.clear();
+				this->commandModule.clear(); // Must be cleared, because shared ptr's are used and GOC lives to long, because its a singleton
+
+				this->vehicleCollisionMap.clear();
+				this->tempVehicleObjectMap.clear();
+				this->vehicleChildTempMap.clear();
+				this->delayedDeleterList.clear();
+				this->triggeredGameObjects.clear();
+				this->movingBehaviors.clear();
+				// this->movingBehaviors2D.clear();
+				this->shiftIndex = 0;
+				this->triggerUpdateTimer = 0.0f;
+				this->sphereQueryUpdateFrequency = 0.5f;
+				this->isSimulating = false;
+
+				// delete the sphere scene query
+				if (this->currentSceneManager)
 				{
-					// signal the event, so that other game objects have the chance to react if necessary
-					boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
-					AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
-					assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
-					it->second->destroy();
+					if (this->sphereSceneQuery)
+					{
+						this->currentSceneManager->destroyQuery(this->sphereSceneQuery);
+						this->sphereSceneQuery = nullptr;
+					}
+					this->currentSceneManager = nullptr;
+
+					this->detachAndDestroyAllTriggerObserver();
 				}
-			}
 
-			// Joints must be destroyed here, because a joint depends on its 2 bodies, which must live at this point, so this must be called, before the destructors of all components are called!
-			// this->disconnectJoints();
-			this->jointComponentMap.clear();
-			this->playerControllerComponentMap.clear();
-			this->physicsCompoundConnectionComponentMap.clear();
-			this->commandModule.clear(); // Must be cleared, because shared ptr's are used and GOC lives to long, because its a singleton
+				// this->pActiveGameObjects->erase(this->pActiveGameObjects->begin(), this->pActiveGameObjects->end());
+				this->gameObjects->clear();
+				this->typeDBMap.clear();
+				this->renderTypeDBMap.clear();
+				this->shiftIndex = 0;
+				this->renderShiftIndex = 0;
+				this->triggeredGameObjects.clear();
 
-			this->vehicleCollisionMap.clear();
-			this->tempVehicleObjectMap.clear();
-			this->vehicleChildTempMap.clear();
-			this->delayedDeleterList.clear();
-			this->triggeredGameObjects.clear();
-			this->movingBehaviors.clear();
-			// this->movingBehaviors2D.clear();
-			this->shiftIndex = 0;
-			this->triggerUpdateTimer = 0.0f;
-			this->sphereQueryUpdateFrequency = 0.5f;
-			this->isSimulating = false;
+				// Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
+				// That means, if an AppState is exited and started and GameObjects are created
 
-			// delete the sphere scene query
-			if (this->currentSceneManager)
-			{
-				if (this->sphereSceneQuery)
-				{
-					this->currentSceneManager->destroyQuery(this->sphereSceneQuery);
-					this->sphereSceneQuery = nullptr;
-				}
-				this->currentSceneManager = nullptr;
-
-				this->detachAndDestroyAllTriggerObserver();
-			}
-
-			// this->pActiveGameObjects->erase(this->pActiveGameObjects->begin(), this->pActiveGameObjects->end());
-			this->gameObjects->clear();
-			this->typeDBMap.clear();
-			this->renderTypeDBMap.clear();
-			this->shiftIndex = 0;
-			this->renderShiftIndex = 0;
-			this->triggeredGameObjects.clear();
-
-			// Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
-			// That means, if an AppState is exited and started and GameObjects are created
-
-			this->alreadyDestroyed = true;
+				this->alreadyDestroyed = true;
+			});
 		}
 		else
 		{
@@ -3076,66 +3117,69 @@ namespace NOWA
 
 	void GameObjectController::createAllGameObjectsForShaderCacheGeneration(Ogre::SceneManager* sceneManager)
 	{
-		// Get all meshes from all available resource groups
-		Ogre::StringVector groups = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceGroups();
-		std::vector<Ogre::String>::iterator groupIt = groups.begin();
-		while (groupIt != groups.end())
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::createAllGameObjectsForShaderCacheGeneration", _1(sceneManager),
 		{
-			Ogre::String resourceGroupName = (*groupIt);
-			if (resourceGroupName != "Essential" && resourceGroupName != "General" && resourceGroupName != "PostProcessing" && resourceGroupName != "Hlms"
-				&& resourceGroupName != "NOWA" && resourceGroupName != "Internal" && resourceGroupName != "AutoDetect" && resourceGroupName != "Lua")
+			// Get all meshes from all available resource groups
+			Ogre::StringVector groups = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceGroups();
+			std::vector<Ogre::String>::iterator groupIt = groups.begin();
+			while (groupIt != groups.end())
 			{
-
-				Ogre::StringVectorPtr dirs = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames((*groupIt), "*.mesh");
-				std::vector<Ogre::String>::iterator meshIt = dirs->begin();
-
-				int x = 0;
-				// int z = 0;
-
-				while (meshIt != dirs->end())
+				Ogre::String resourceGroupName = (*groupIt);
+				if (resourceGroupName != "Essential" && resourceGroupName != "General" && resourceGroupName != "PostProcessing" && resourceGroupName != "Hlms"
+					&& resourceGroupName != "NOWA" && resourceGroupName != "Internal" && resourceGroupName != "AutoDetect" && resourceGroupName != "Lua")
 				{
-					Ogre::SceneNode* node = sceneManager->getRootSceneNode()->createChildSceneNode();
-					Ogre::v1::Entity* entity = sceneManager->createEntity(*meshIt);
-					MathHelper::getInstance()->substractOutTangentsForShader(entity);
 
-					node->attachObject(entity);
+					Ogre::StringVectorPtr dirs = Ogre::ResourceGroupManager::getSingletonPtr()->findResourceNames((*groupIt), "*.mesh");
+					std::vector<Ogre::String>::iterator meshIt = dirs->begin();
 
-					/*if (x % 100 == 0)
+					int x = 0;
+					// int z = 0;
+
+					while (meshIt != dirs->end())
 					{
-						z++;
-					}*/
+						Ogre::SceneNode* node = sceneManager->getRootSceneNode()->createChildSceneNode();
+						Ogre::v1::Entity* entity = sceneManager->createEntity(*meshIt);
+						MathHelper::getInstance()->substractOutTangentsForShader(entity);
 
-					node->setPosition(Ogre::Vector3(static_cast<Ogre::Real>(x) * entity->getWorldRadius() * 2.0f, 0.0f, 0.0f/*static_cast<Ogre::Real>(z) * entity->getWorldRadius() * 2.0f*/));
+						node->attachObject(entity);
 
-					Ogre::String meshName = entity->getMesh()->getName();
+						/*if (x % 100 == 0)
+						{
+							z++;
+						}*/
 
-					// Get name without .mesh
-					size_t found = meshName.find(".");
-					if (Ogre::String::npos != found)
-					{
-						meshName = meshName.substr(0, found);
+						node->setPosition(Ogre::Vector3(static_cast<Ogre::Real>(x) * entity->getWorldRadius() * 2.0f, 0.0f, 0.0f/*static_cast<Ogre::Real>(z) * entity->getWorldRadius() * 2.0f*/));
+
+						Ogre::String meshName = entity->getMesh()->getName();
+
+						// Get name without .mesh
+						size_t found = meshName.find(".");
+						if (Ogre::String::npos != found)
+						{
+							meshName = meshName.substr(0, found);
+						}
+
+						// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
+						Ogre::String gameObjectName = meshName + "_0";
+						this->getValidatedGameObjectName(gameObjectName);
+
+						entity->setName(gameObjectName);
+						node->setName(gameObjectName);
+						GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, entity, GameObject::ENTITY);
+						if (nullptr == newGameObjectPtr)
+						{
+							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Could not create game object for mesh name: '"
+								+ meshName + "'");
+						}
+
+						++meshIt;
+						x++;
 					}
 
-					// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
-					Ogre::String gameObjectName = meshName + "_0";
-					this->getValidatedGameObjectName(gameObjectName);
-
-					entity->setName(gameObjectName);
-					node->setName(gameObjectName);
-					GameObjectPtr newGameObjectPtr = GameObjectFactory::getInstance()->createGameObject(sceneManager, node, entity, GameObject::ENTITY);
-					if (nullptr == newGameObjectPtr)
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController]: Could not create game object for mesh name: '"
-							+ meshName + "'");
-					}
-
-					++meshIt;
-					x++;
 				}
-
+				++groupIt;
 			}
-			++groupIt;
-		}
+		});
 	}
 
 	bool GameObjectController::getIsDestroying(void) const
@@ -3315,101 +3359,96 @@ namespace NOWA
 	{
 		GameObject* gameObject = nullptr;
 		
-		if (true == raycastFromPoint)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::selectGameObject", _6(x, y, camera, raySceneQuery, raycastFromPoint, &gameObject),
 		{
-			Ogre::MovableObject* targetMovableObject = nullptr;
-			Ogre::Vector3 result = Ogre::Vector3::ZERO;
-			Ogre::Real closestDistance = -1.0f;
-			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-			//check if there is an hit with an polygon of an entity
-			if (MathHelper::getInstance()->getRaycastFromPoint(x, y, camera, Core::getSingletonPtr()->getOgreRenderWindow(),
-				raySceneQuery, result, (size_t&)targetMovableObject, closestDistance, normal))
+			if (true == raycastFromPoint)
 			{
-				try
+				Ogre::MovableObject* targetMovableObject = nullptr;
+				Ogre::Vector3 result = Ogre::Vector3::ZERO;
+				Ogre::Real closestDistance = -1.0f;
+				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+				//check if there is an hit with an polygon of an entity
+				if (MathHelper::getInstance()->getRaycastFromPoint(x, y, camera, Core::getSingletonPtr()->getOgreRenderWindow(),
+					raySceneQuery, result, (size_t&)targetMovableObject, closestDistance, normal))
 				{
-					gameObject = Ogre::any_cast<GameObject*>((targetMovableObject)->getUserObjectBindings().getUserAny());
-					return gameObject;
-				}
-				catch (...)
-				{
-					return nullptr;
+					try
+					{
+						gameObject = Ogre::any_cast<GameObject*>((targetMovableObject)->getUserObjectBindings().getUserAny());
+					}
+					catch (...)
+					{
+					}
 				}
 			}
-		}
-		else
-		{
-			Ogre::Real resultX;
-			Ogre::Real resultY;
-			MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
-			Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
-			raySceneQuery->setRay(selectRay);
-			Ogre::RaySceneQueryResult& result = raySceneQuery->execute();
-
-			for (const auto& it : result)
+			else
 			{
-				// Store the relevant picking information
-				try
+				Ogre::Real resultX;
+				Ogre::Real resultY;
+				MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
+				Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
+				raySceneQuery->setRay(selectRay);
+				Ogre::RaySceneQueryResult& result = raySceneQuery->execute();
+
+				for (const auto& it : result)
 				{
-					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-					gameObject = Ogre::any_cast<GameObject*>(it.movable->getUserObjectBindings().getUserAny());
-					// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-					return gameObject;
-				}
-				catch (...)
-				{
-					// if its a game object or else, catch the throw and return from the function
-					return nullptr;
+					// Store the relevant picking information
+					try
+					{
+						// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+						gameObject = Ogre::any_cast<GameObject*>(it.movable->getUserObjectBindings().getUserAny());
+					}
+					catch (...)
+					{
+					}
 				}
 			}
-		}
-		return nullptr;
+		});
+
+		return gameObject;
 	}
 
 	GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* camera, OgreNewt::World* ogreNewt, unsigned int categoryIds, Ogre::Real maxDistance, bool sorted)
 	{
 		GameObject* gameObject = nullptr;
 
-		Ogre::Real resultX;
-		Ogre::Real resultY;
-		MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
-		// Get a world space ray as cast from the camera through a viewport position
-		Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
-		Ogre::Vector3 startPoint = selectRay.getOrigin();
-		Ogre::Vector3 endPoint = selectRay.getPoint(maxDistance);
-
-		Ogre::Vector3 pos = Ogre::Vector3::ZERO;
-		OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
-		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-		if (info.mBody)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::selectGameObject2", _8(x, y, camera, ogreNewt, categoryIds, maxDistance, sorted, &gameObject),
 		{
-			unsigned int type = info.mBody->getType();
-			unsigned int finalType = type & categoryIds;
-			if (type == finalType)
+			Ogre::Real resultX;
+			Ogre::Real resultY;
+			MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
+			// Get a world space ray as cast from the camera through a viewport position
+			Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
+			Ogre::Vector3 startPoint = selectRay.getOrigin();
+			Ogre::Vector3 endPoint = selectRay.getPoint(maxDistance);
+
+			Ogre::Vector3 pos = Ogre::Vector3::ZERO;
+			OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
+			OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+			if (info.mBody)
 			{
-				try
+				unsigned int type = info.mBody->getType();
+				unsigned int finalType = type & categoryIds;
+				if (type == finalType)
 				{
-					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-					if (tempNode)
+					try
 					{
-						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
-						// PhysicsComponent* physicsComponent = Ogre::any_cast<PhysicsComponent*>(info.mBody->getUserData());
-						// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-						// return physicsComponent->getOwner().get();
+						// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+						Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+						if (nullptr != tempNode)
+						{
+							gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
+							// PhysicsComponent* physicsComponent = Ogre::any_cast<PhysicsComponent*>(info.mBody->getUserData());
+							// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
+							// return physicsComponent->getOwner().get();
+						}
 					}
-					else
+					catch (...)
 					{
-						return nullptr;
 					}
-				}
-				catch (...)
-				{
-					// if its a game object or else, catch the throw and return from the function
-					return nullptr;
 				}
 			}
-		}
+		});
 		return gameObject;
 	}
 
@@ -3481,6 +3520,7 @@ namespace NOWA
 
 	void GameObjectController::checkAreaForActiveObjects(const Ogre::Vector3& position, Ogre::Real dt, Ogre::Real distance, unsigned int categoryIds)
 	{
+		// TODO: Threadsafe queue command?
 		if (0.0f < this->sphereQueryUpdateFrequency)
 		{
 			this->triggerUpdateTimer += dt;
@@ -3516,7 +3556,7 @@ namespace NOWA
 						auto& it = this->triggeredGameObjects.find(gameObject->getId());
 						if (it == this->triggeredGameObjects.end())
 						{
-// here also set the script to be called, so that in ActiveObjectsResultCallback can be run in script and call spawn callback for another script?
+							// here also set the script to be called, so that in ActiveObjectsResultCallback can be run in script and call spawn callback for another script?
 							for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
 							{
 								// notify the observer

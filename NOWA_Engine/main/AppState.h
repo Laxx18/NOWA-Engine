@@ -17,6 +17,7 @@
 #include "modules/GameProgressModule.h"
 #include "modules/ParticleUniverseModule.h"
 #include "modules/LuaScriptModule.h"
+#include "modules/RenderCommandQueueModule.h"
 #include "gameobject/GameObjectController.h"
 #include "camera/CameraManager.h"
 #include "main/EventManager.h"
@@ -86,6 +87,12 @@ namespace NOWA
 		 * @note							 If no scene has been loaded, there is no ogrenewt and user must create via @OgreNewtModule::createPhysics(...) its own physics instance.
 		 */
 		virtual void start(const NOWA::SceneParameter& sceneParameter) { };
+
+		/**
+		 * @brief		Can be used to update e.g. camera transform. Its called as often as graphics is rendered.
+		 * @param[in]	dt The delta time in seconds. For example if the game runs with 700 fps.
+		 */
+		virtual void renderUpdate(Ogre::Real dt);
 
 		/**
 		 * @brief		Can be used to update all Objects and control logic. Updates also all modules and game object controller

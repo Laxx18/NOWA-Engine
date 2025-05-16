@@ -35,8 +35,11 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->light);
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::~LightDirectionalComponent",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->light);
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+			});
 			this->light = nullptr;
 			this->dummyEntity = nullptr;
 		}
@@ -133,7 +136,10 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::connect setVisible", _1(visible),
+			{
+				this->dummyEntity->setVisible(visible);
+			});
 		}
 
 		return true;
@@ -165,52 +171,57 @@ namespace NOWA
 				{
 					if (nullptr != this->light)
 					{
-						// Actualize the ambient light, when the direction changed
-						this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
-							this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+						ENQUEUE_RENDER_COMMAND("LightDirectionalComponent::update",
+						{
+							// Actualize the ambient light, when the direction changed
+							this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
+								this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+						});
 					}
 				}
 
 				this->oldOrientation = this->gameObjectPtr->getOrientation();
 			}
 		}
-		
 	}
 
 	void LightDirectionalComponent::createLight(void)
 	{
 		if (nullptr == this->light)
 		{
-			this->light = this->gameObjectPtr->getSceneManager()->createLight();
-
-			this->light->setType(Ogre::Light::LightTypes::LT_DIRECTIONAL);
-			this->light->setCastShadows(true);
-			this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
-			this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
-			this->light->setPowerScale(this->powerScale->getReal());
-			this->light->setAffectParentNode(this->affectParentNode->getBool());
-			this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
-			// this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
-			this->light->setCastShadows(this->castShadows->getBool());
-			// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
-			this->gameObjectPtr->getSceneNode()->attachObject(this->light);
-
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::createLight",
 			{
-				entity->setCastShadows(false);
-				// Borrow the entity from the game object
-				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (item != nullptr)
+				this->light = this->gameObjectPtr->getSceneManager()->createLight();
+
+				this->light->setType(Ogre::Light::LightTypes::LT_DIRECTIONAL);
+				this->light->setCastShadows(true);
+				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+				this->light->setPowerScale(this->powerScale->getReal());
+				this->light->setAffectParentNode(this->affectParentNode->getBool());
+				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+				// this->light->setAttenuation(this->attenuationRange->getReal(), this->attenuationConstant->getReal(), this->attenuationLinear->getReal(), this->attenuationQuadratic->getReal());
+				this->light->setCastShadows(this->castShadows->getBool());
+				// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
+				this->gameObjectPtr->getSceneNode()->attachObject(this->light);
+
+				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					item->setCastShadows(false);
+					entity->setCastShadows(false);
+					// Borrow the entity from the game object
+					this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 				}
-			}
-			this->setDirection(this->direction->getVector3());
+				else
+				{
+					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (item != nullptr)
+					{
+						item->setCastShadows(false);
+					}
+				}
+				this->setDirection(this->direction->getVector3());
+			});
 		}
 	}
 
@@ -322,7 +333,10 @@ namespace NOWA
 	{
 		if (nullptr != this->light)
 		{
-			this->light->setVisible(activated);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setActivated", _1(activated),
+			{
+				this->light->setVisible(activated);
+			});
 		}
 	}
 
@@ -350,7 +364,10 @@ namespace NOWA
 		this->diffuseColor->setValue(diffuseColor);
 		if (nullptr != this->light)
 		{
-			this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setDiffuseColor", _1(diffuseColor),
+			{
+				this->light->setDiffuseColour(this->diffuseColor->getVector3().x, this->diffuseColor->getVector3().y, this->diffuseColor->getVector3().z);
+			});
 		}
 	}
 
@@ -364,7 +381,10 @@ namespace NOWA
 		this->specularColor->setValue(specularColor);
 		if (nullptr != this->light)
 		{
-			this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setSpecularColor", _1(specularColor),
+			{
+				this->light->setSpecularColour(this->specularColor->getVector3().x, this->specularColor->getVector3().y, this->specularColor->getVector3().z);
+			});
 		}
 	}
 
@@ -378,7 +398,10 @@ namespace NOWA
 		this->powerScale->setValue(powerScale);
 		if (nullptr != this->light)
 		{
-			this->light->setPowerScale(this->powerScale->getReal());
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setPowerScale", _1(powerScale),
+			{
+				this->light->setPowerScale(powerScale);
+			});
 		}
 	}
 
@@ -392,10 +415,13 @@ namespace NOWA
 		this->direction->setValue(direction);
 		if (nullptr != this->light)
 		{
-			this->light->setDirection(this->direction->getVector3());
-			// Actualize the ambient light, when the direction changed
-			this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
-				this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setDirection", _1(direction),
+			{
+				this->light->setDirection(this->direction->getVector3());
+				// Actualize the ambient light, when the direction changed
+				this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
+					this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
+			});
 		}
 	}
 
@@ -409,7 +435,10 @@ namespace NOWA
 		this->affectParentNode->setValue(affectParentNode);
 		if (nullptr != this->light)
 		{
-			this->light->setAffectParentNode(this->affectParentNode->getBool());
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightDirectionalComponent::setAffectParentNode", _1(affectParentNode),
+			{
+				this->light->setAffectParentNode(this->affectParentNode->getBool());
+			});
 		}
 	}
 
@@ -423,7 +452,10 @@ namespace NOWA
 		this->attenuationRadius->setValue(attenuationRadius);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setAttenuationRadius", _1(attenuationRadius),
+			{
+				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			});
 		}
 	}
 
@@ -437,7 +469,10 @@ namespace NOWA
 		this->attenuationLumThreshold->setValue(attenuationLumThreshold);
 		if (nullptr != this->light)
 		{
-			this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setAttenuationLumThreshold", _1(attenuationLumThreshold),
+			{
+				this->light->setAttenuationBasedOnRadius(this->attenuationRadius->getReal(), this->attenuationLumThreshold->getReal());
+			});
 		}
 	}
 
@@ -451,7 +486,10 @@ namespace NOWA
 		this->castShadows->setValue(castShadows);
 		if (nullptr != this->light)
 		{
-			this->light->setCastShadows(this->castShadows->getBool());
+			ENQUEUE_RENDER_COMMAND_MULTI("LightDirectionalComponent::setCastShadows", _1(castShadows),
+			{
+				this->light->setCastShadows(castShadows);
+			});
 		}
 	}
 

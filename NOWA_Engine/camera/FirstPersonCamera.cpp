@@ -3,6 +3,7 @@
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
 #include "main/Core.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -96,9 +97,6 @@ namespace NOWA
         // Apply smooth rotation
         Ogre::Quaternion delta = Ogre::Quaternion::Slerp(dt * 60.0f * this->rotateSpeed * this->rotateCameraWeight, this->camera->getOrientation(), targetOrientation, true);
 
-        // Set camera orientation
-        this->camera->setOrientation(delta);
-
         // Calculate camera position based on player position and offset
         // Transform offset by the delta orientation to get the correct position in world space
         Ogre::Vector3 transformedOffset = delta * this->offsetPosition;
@@ -109,8 +107,7 @@ namespace NOWA
         // Apply smooth movement
         Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
 
-        // Set camera position
-        this->camera->setPosition(smoothedPosition);
+        NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, smoothedPosition, delta);
     }
 #else
     void FirstPersonCamera::moveCamera(Ogre::Real dt)
@@ -173,8 +170,7 @@ namespace NOWA
         // Apply smooth rotation with frame-independent interpolation
         Ogre::Quaternion delta = Ogre::Quaternion::Slerp(normalizedRotateSpeed, this->camera->getOrientation(), targetOrientation, true);
 
-        // Set camera orientation
-        this->camera->setOrientation(delta);
+
 
         // Transform offset by the delta orientation to get the correct position in world space
         Ogre::Vector3 transformedOffset = delta * this->offsetPosition;
@@ -186,11 +182,15 @@ namespace NOWA
         Ogre::Vector3 targetVector = playerPosition + (transformedOffset * normalizedMoveWeight);
 
         // Apply smooth movement with frame-independent interpolation
-        Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) +
-            (this->camera->getPosition() * (1.0f - this->smoothValue));
+        Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
 
-        // Set camera position
-        this->camera->setPosition(smoothedPosition);
+        ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FirstPersonCamera::moveCamera", _2(delta, smoothedPosition),
+        {
+            // Set camera orientation
+            this->camera->setOrientation(delta);
+            // Set camera position
+            this->camera->setPosition(smoothedPosition);
+        });
     }
 #endif
 

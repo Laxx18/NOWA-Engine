@@ -454,197 +454,201 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			// Create custom scenenode to store temporary data
-			this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
-
-			if (GameObject::OCEAN == this->type || GameObject::TERRA == this->type)
+			ENQUEUE_RENDER_COMMAND_WAIT("AddGameObjectUndoCommand::redo",
 			{
-				this->position = Ogre::Vector3::ZERO;
-				this->orientation = Ogre::Quaternion::IDENTITY;
-				this->scale = Ogre::Vector3::UNIT_SCALE;
-			}
+				// Create custom scenenode to store temporary data
+				this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
 
-			this->objectNode->setPosition(this->position);
-			this->objectNode->setOrientation(this->orientation);
-			this->objectNode->setScale(this->scale);
-			// this->sceneManager->findMovableObjects
-
-			// Only create id once, so that when undo, redo, the id is the same
-			if (0 == this->id)
-			{
-				this->id = NOWA::makeUniqueID();
-			}
-
-			Ogre::String meshName;
-			Ogre::MovableObject* newMovableObject = nullptr;
-
-			if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-				&& GameObject::LIGHT_AREA != this->type)
-			{
-				meshName = this->meshData[0];
-
-				if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+				if (GameObject::OCEAN == this->type || GameObject::TERRA == this->type)
 				{
-					Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-					this->objectNode->attachObject(newItem);
+					this->position = Ogre::Vector3::ZERO;
+					this->orientation = Ogre::Quaternion::IDENTITY;
+					this->scale = Ogre::Vector3::UNIT_SCALE;
+				}
 
-					newMovableObject = newItem;
 
-					// Copy the datablocks from place entity to new one
-					for (size_t i = 1; i < this->meshData.size(); i++)
+				this->objectNode->setPosition(this->position);
+				this->objectNode->setOrientation(this->orientation);
+				this->objectNode->setScale(this->scale);
+				// this->sceneManager->findMovableObjects
+
+				// Only create id once, so that when undo, redo, the id is the same
+				if (0 == this->id)
+				{
+					this->id = NOWA::makeUniqueID();
+				}
+
+				Ogre::String meshName;
+				Ogre::MovableObject* newMovableObject = nullptr;
+
+				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
+					&& GameObject::LIGHT_AREA != this->type)
+				{
+					meshName = this->meshData[0];
+
+					if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 					{
-						newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
+						Ogre::Item* newItem = this->sceneManager->createItem(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+						this->objectNode->attachObject(newItem);
+
+						newMovableObject = newItem;
+
+						// Copy the datablocks from place entity to new one
+						for (size_t i = 1; i < this->meshData.size(); i++)
+						{
+							newItem->getSubItem(i - 1)->setDatablock(this->meshData[i]);
+						}
+					}
+					else
+					{
+						Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
+						this->objectNode->attachObject(newEntity);
+
+						newMovableObject = newEntity;
+
+						// Copy the datablocks from place entity to new one
+						for (size_t i = 1; i < this->meshData.size(); i++)
+						{
+							newEntity->getSubEntity(i - 1)->setDatablock(this->meshData[i]);
+						}
+					}
+
+					// Get name without .mesh
+					size_t found = meshName.find(".");
+					if (Ogre::String::npos != found)
+					{
+						meshName = meshName.substr(0, found);
 					}
 				}
 				else
 				{
-					Ogre::v1::Entity* newEntity = this->sceneManager->createEntity(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, Ogre::SCENE_STATIC);
-					this->objectNode->attachObject(newEntity);
+					if (GameObject::OCEAN == this->type)
+						meshName = "Ocean";
+					else if (GameObject::TERRA == this->type)
+						meshName = "Terra";
+					else if (GameObject::LIGHT_AREA == this->type)
+						meshName = "LightArea";
+					else if (GameObject::DECAL == this->type)
+						meshName = "Decal";
+				}
 
-					newMovableObject = newEntity;
+				// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
+				Ogre::String gameObjectName = meshName + "_0";
+				AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
 
-					// Copy the datablocks from place entity to new one
-					for (size_t i = 1; i < this->meshData.size(); i++)
+				if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
+					&& GameObject::LIGHT_AREA != this->type)
+				{
+					newMovableObject->setName(gameObjectName);
+				}
+
+				this->objectNode->setName(gameObjectName);
+				GameObjectPtr gameObjectPtr = GameObjectFactory::getInstance()->createGameObject(this->sceneManager, this->objectNode, newMovableObject, this->type, this->id);
+				if (nullptr != gameObjectPtr)
+				{
+					if (GameObject::PLANE == this->type)
 					{
-						newEntity->getSubEntity(i - 1)->setDatablock(this->meshData[i]);
+						// Add the plane component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockPbsComponent::getStaticClassName());
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 					}
-				}
+					else if (GameObject::MIRROR == this->type)
+					{
+						// Add the planar reflection component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlanarReflectionComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::LIGHT_DIRECTIONAL == this->type)
+					{
+						// Add the light direcitional component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightDirectionalComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::LIGHT_SPOT == this->type)
+					{
+						// Add the light spot component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightSpotComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::LIGHT_POINT == this->type)
+					{
+						// Add the light point component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightPointComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::LIGHT_AREA == this->type)
+					{
+						// Add the light area component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightAreaComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::CAMERA == this->type)
+					{
+						// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
+						// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
+						CameraComponent::setJustCreated(true);
+						// Add the camera component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, CameraComponent::getStaticClassName());
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, WorkspacePbsComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
 
-				// Get name without .mesh
-				size_t found = meshName.find(".");
-				if (Ogre::String::npos != found)
-				{
-					meshName = meshName.substr(0, found);
+						CameraComponent::setJustCreated(true);
+					}
+					else if (GameObject::REFLECTION_CAMERA == this->type)
+					{
+						// Add the camera component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ReflectionCameraComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::SCENE_NODE == this->type)
+					{
+						// Add the scene node component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NodeComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::LINES == this->type)
+					{
+						// Add the lines component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LinesComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::MANUAL_OBJECT == this->type)
+					{
+						// Add the manual object component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ManualObjectComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::RECTANGLE == this->type)
+					{
+						// Add the manual object component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, RectangleComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::DECAL == this->type)
+					{
+						// Add the scene decal component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DecalComponent::getStaticClassName());
+						// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::OCEAN == this->type)
+					{
+						// Add the ocean component
+						// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					else if (GameObject::TERRA == this->type)
+					{
+						// Add the terra component
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, TerraComponent::getStaticClassName());
+						NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
+						gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
+					}
+					// Register after the component has been created
+					AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
 				}
-			}
-			else
-			{
-				if (GameObject::OCEAN == this->type)
-					meshName = "Ocean";
-				else if (GameObject::TERRA == this->type)
-					meshName = "Terra";
-				else if (GameObject::LIGHT_AREA == this->type)
-					meshName = "LightArea";
-				else if (GameObject::DECAL == this->type)
-					meshName = "Decal";
-			}
-
-			// Do not use # anymore, because its reserved in mygui as code-word the # and everything after that will be removed!
-			Ogre::String gameObjectName = meshName + "_0";
-			AppStateManager::getSingletonPtr()->getGameObjectController()->getValidatedGameObjectName(gameObjectName);
-
-			if (GameObject::OCEAN != this->type && GameObject::TERRA != this->type && GameObject::DECAL != this->type
-				&& GameObject::LIGHT_AREA != this->type)
-			{
-				newMovableObject->setName(gameObjectName);
-			}
-
-			this->objectNode->setName(gameObjectName);
-			GameObjectPtr gameObjectPtr = GameObjectFactory::getInstance()->createGameObject(this->sceneManager, this->objectNode, newMovableObject, this->type, this->id);
-			if (nullptr != gameObjectPtr)
-			{
-				if (GameObject::PLANE == this->type)
-				{
-					// Add the plane component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockPbsComponent::getStaticClassName());
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::MIRROR == this->type)
-				{
-					// Add the planar reflection component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlanarReflectionComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::LIGHT_DIRECTIONAL == this->type)
-				{
-					// Add the light direcitional component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightDirectionalComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::LIGHT_SPOT == this->type)
-				{
-					// Add the light spot component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightSpotComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::LIGHT_POINT == this->type)
-				{
-					// Add the light point component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightPointComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::LIGHT_AREA == this->type)
-				{
-					// Add the light area component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LightAreaComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::CAMERA == this->type)
-				{
-					// This is required, because when a camera is created via the editor, it must be placed where placenode has been when the user clicked the mouse button
-					// But when a camera is loaded from scene, it must not have an orientation, else there are ugly side effects
-					CameraComponent::setJustCreated(true);
-					// Add the camera component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, CameraComponent::getStaticClassName());
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, WorkspacePbsComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-
-					CameraComponent::setJustCreated(true);
-				}
-				else if (GameObject::REFLECTION_CAMERA == this->type)
-				{
-					// Add the camera component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ReflectionCameraComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::SCENE_NODE == this->type)
-				{
-					// Add the scene node component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, NodeComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::LINES == this->type)
-				{
-					// Add the lines component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, LinesComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::MANUAL_OBJECT == this->type)
-				{
-					// Add the manual object component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, ManualObjectComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::RECTANGLE == this->type)
-				{
-					// Add the manual object component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, RectangleComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::DECAL == this->type)
-				{
-					// Add the scene decal component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DecalComponent::getStaticClassName());
-					// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, PlaneComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::OCEAN == this->type)
-				{
-					// Add the ocean component
-					// NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, OceanComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				else if (GameObject::TERRA == this->type)
-				{
-					// Add the terra component
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, TerraComponent::getStaticClassName());
-					NOWA::GameObjectFactory::getInstance()->createComponent(gameObjectPtr, DatablockTerraComponent::getStaticClassName());
-					gameObjectPtr->setDefaultDirection(Ogre::Vector3::NEGATIVE_UNIT_Z);
-				}
-				// Register after the component has been created
-				AppStateManager::getSingletonPtr()->getGameObjectController()->registerGameObject(gameObjectPtr);
-			}
+			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -868,35 +872,39 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
-
-			rapidxml::xml_document<> doc;
-			rapidxml::xml_node<>* nodesXML = doc.allocate_node(rapidxml::node_element, "nodes");
-			for (size_t i = 0; i < this->gameObjectIds.size(); i++)
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::undo",
 			{
-				// Store the cloned game objects in stream and delete them from scene
-				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectClonedIds[i]);
-				if (nullptr != gameObjectPtr)
-				{
-					// Write all the game object data to stream
-					this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, false);
-					AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
-				}
-				else
-				{
-					// If the to be cloned game object does no more exist, e.g. prior deleted, cloning is no more possible
-					this->gameObjectIds.clear();
-					this->gameObjectClonedIds.clear();
-					break;
-				}
-			}
-			doc.append_node(nodesXML);
+				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
-			std::ostrstream out;
-			out << doc;
-			out << '\0';
-			// Set the stream
-			this->gameObjectsToAddStream = out.str();
+				rapidxml::xml_document<> doc;
+				rapidxml::xml_node<>*nodesXML = doc.allocate_node(rapidxml::node_element, "nodes");
+				for (size_t i = 0; i < this->gameObjectIds.size(); i++)
+				{
+					// Store the cloned game objects in stream and delete them from scene
+					GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectClonedIds[i]);
+					if (nullptr != gameObjectPtr)
+					{
+						// Write all the game object data to stream
+
+						this->dotSceneExportModule->exportNode(gameObjectPtr->getSceneNode(), nodesXML, doc, true, false);
+						AppStateManager::getSingletonPtr()->getGameObjectController()->deleteGameObject(gameObjectPtr);
+					}
+					else
+					{
+						// If the to be cloned game object does no more exist, e.g. prior deleted, cloning is no more possible
+						this->gameObjectIds.clear();
+						this->gameObjectClonedIds.clear();
+						break;
+					}
+				}
+				doc.append_node(nodesXML);
+
+				std::ostrstream out;
+				out << doc;
+				out << '\0';
+				// Set the stream
+				this->gameObjectsToAddStream = out.str();
+			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -907,7 +915,10 @@ namespace NOWA
 			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::redo",
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			});
 
 			if (false == this->gameObjectsToAddStream.empty())
 			{
@@ -997,7 +1008,10 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo",
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			});
 
 			for (size_t i = 0; i < this->gameObjectIds.size(); i++)
 			{
@@ -1024,14 +1038,21 @@ namespace NOWA
 			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo",
+			{
+				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
+			});
+
 			for (size_t i = 0; i < this->gameObjectIds.size(); i++)
 			{
 				// Clone with the clone target id to get the same game object id, as the one that had been deleted in undo
 				GameObjectPtr clonedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->clone(this->gameObjectIds[i], nullptr, this->gameObjectClonedIds[i]);
 				if (nullptr != clonedGameObject)
 				{
-					this->editorManager->getSelectionManager()->select(clonedGameObject->getId());
+					// ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _1(clonedGameObject),
+					// {
+						this->editorManager->getSelectionManager()->select(clonedGameObject->getId());
+					// });
 					// Important: Set the cloned name, for undo redo
 					this->gameObjectClonedIds[i] = clonedGameObject->getId();
 				}
@@ -1049,8 +1070,11 @@ namespace NOWA
 			// Internally game object component can react on onCloned method and search for its target game object that has been cloned by its prior id
 			AppStateManager::getSingletonPtr()->getGameObjectController()->connectClonedGameObjects(this->gameObjectClonedIds);
 
-			this->editorManager->setManipulationMode(EditorManager::EDITOR_TRANSLATE_MODE);
-			this->editorManager->setGizmoToGameObjectsCenter();
+			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::redo2",
+			{
+				this->editorManager->setManipulationMode(EditorManager::EDITOR_TRANSLATE_MODE);
+				this->editorManager->setGizmoToGameObjectsCenter();
+			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1078,12 +1102,18 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newPosition = this->camera->getPosition();
-			this->camera->setPosition(this->oldPosition);
+			ENQUEUE_RENDER_COMMAND("CameraPositionUndoCommand::undo",
+			{
+				this->camera->setPosition(this->oldPosition);
+			});
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->setPosition(this->newPosition);
+			ENQUEUE_RENDER_COMMAND("CameraPositionUndoCommand::redo",
+			{
+				this->camera->setPosition(this->newPosition);
+			});
 		}
 	private:
 		Ogre::Vector3 newPosition;
@@ -1107,12 +1137,18 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newOrientation = this->camera->getOrientation();
-			this->camera->setOrientation(this->oldOrientation);
+			ENQUEUE_RENDER_COMMAND("CameraOrientationUndoCommand::undo",
+			{
+				this->camera->setOrientation(this->oldOrientation);
+			});
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->setOrientation(this->newOrientation);
+			ENQUEUE_RENDER_COMMAND("CameraOrientationUndoCommand::redo",
+			{
+				this->camera->setOrientation(this->newOrientation);
+			});
 		}
 	private:
 		Ogre::Quaternion oldOrientation;
@@ -1139,14 +1175,20 @@ namespace NOWA
 		{
 			this->newPosition = this->camera->getPosition();
 			this->newOrientation = this->camera->getOrientation();
-			this->camera->setPosition(this->oldPosition);
-			this->camera->setOrientation(this->oldOrientation);
+			ENQUEUE_RENDER_COMMAND("CameraTransformUndoCommand::undo",
+			{
+				this->camera->setPosition(this->oldPosition);
+				this->camera->setOrientation(this->oldOrientation);
+			});
 		}
 
 		virtual void redo(void) override
 		{
-			this->camera->setPosition(this->newPosition);
-			this->camera->setOrientation(this->newOrientation);
+			ENQUEUE_RENDER_COMMAND("CameraTransformUndoCommand::redo",
+			{
+				this->camera->setPosition(this->newPosition);
+				this->camera->setOrientation(this->newOrientation);
+			});
 		}
 	private:
 		Ogre::Camera* camera;
@@ -1171,7 +1213,11 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			this->terraComponent->setHeightData(this->oldHeightData);
+			// TODO: Blocking?
+			ENQUEUE_RENDER_COMMAND("TerrainModifyUndoCommand::undo",
+				{
+				this->terraComponent->setHeightData(this->oldHeightData);
+			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1179,7 +1225,10 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			this->terraComponent->setHeightData(this->newHeightData);
+			ENQUEUE_RENDER_COMMAND("TerrainModifyUndoCommand::redo",
+			{
+				this->terraComponent->setHeightData(this->newHeightData);
+			});
 
 			boost::shared_ptr<NOWA::EventDataGeometryModified> eventDataGeometryModified(new NOWA::EventDataGeometryModified());
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGeometryModified);
@@ -1205,12 +1254,18 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			this->terraComponent->setBlendWeightData(this->oldBlendWeightData);
+			ENQUEUE_RENDER_COMMAND("TerrainPaintUndoCommand::undo",
+			{
+				this->terraComponent->setBlendWeightData(this->oldBlendWeightData);
+			});
 		}
 
 		virtual void redo(void) override
 		{
-			this->terraComponent->setBlendWeightData(this->newBlendWeightData);
+			ENQUEUE_RENDER_COMMAND("TerrainPaintUndoCommand::redo",
+			{
+				this->terraComponent->setBlendWeightData(this->newBlendWeightData);
+			});
 		}
 	private:
 		std::vector<Ogre::uint8> oldBlendWeightData;
@@ -1290,6 +1345,7 @@ namespace NOWA
 		}
 		if (nullptr != this->placeNode)
 		{
+			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->placeNode);
 			this->sceneManager->destroySceneNode(this->placeNode);
 			this->placeNode = nullptr;
 
@@ -1800,8 +1856,12 @@ namespace NOWA
 	void EditorManager::filterCategories(Ogre::String& categories)
 	{
 		unsigned int generatedCategoryId = this->selectionManager->filterCategories(categories);
-		this->movePicker->updateQueryMask(generatedCategoryId);
-		this->movePicker2->updateQueryMask(generatedCategoryId);
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::filterCategories", _1(generatedCategoryId),
+		{
+			this->movePicker->updateQueryMask(generatedCategoryId);
+			this->movePicker2->updateQueryMask(generatedCategoryId);
+		});
 	}
 
 	void EditorManager::focusCameraGameObject(GameObject* gameObject)
@@ -1821,121 +1881,129 @@ namespace NOWA
 			// Calculate the adjusted distance
 			Ogre::Real adjustedDistance = baseRadius * factor;
 
-			// Set the camera position
-			this->camera->setPosition(gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::focusCameraGameObject", _2(gameObject, adjustedDistance),
+			{
+				// Set the camera position
+				this->camera->setPosition(gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
 
-			// Look at the center of the game object
-			this->camera->lookAt(gameObject->getPosition());
+				// Look at the center of the game object
+				this->camera->lookAt(gameObject->getPosition());
+			});
 		}
 	}
-
 
 	void EditorManager::selectGizmo(const OIS::MouseEvent& evt, const Ogre::Ray& hitRay)
 	{
 		if (false == this->isGizmoMoving)
 		{
-			Ogre::v1::Entity* gizmoEntity = nullptr;
-			Ogre::Vector3 result = Ogre::Vector3::ZERO;
-			Ogre::Real closestDistance = 0.0f;
-			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+			int mX = evt.state.X.abs;
+			int mY = evt.state.Y.abs;
 
-			// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("");
-
-			// Check if there is an hit with an polygon of an entity
-			if (MathHelper::getInstance()->getRaycastFromPoint(evt.state.X.abs, evt.state.Y.abs, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(),
-				this->gizmoQuery, result, (size_t&)gizmoEntity, closestDistance, normal, nullptr, true))
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::selectGizmo", _3(mX, mY, hitRay),
 			{
-				Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
+				Ogre::v1::Entity * gizmoEntity = nullptr;
+				Ogre::Vector3 result = Ogre::Vector3::ZERO;
+				Ogre::Real closestDistance = 0.0f;
+				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-				Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
-				Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
-				Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
+				// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("");
 
-				this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
-				this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
-				this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
-
-				Ogre::Real vX = this->gizmo->getFirstPlane().projectVector(hitRay.getDirection()).length();
-				Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
-				Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
-
-				if (this->gizmo->getArrowEntityX() == gizmoEntity)
+				// Check if there is an hit with an polygon of an entity
+				if (MathHelper::getInstance()->getRaycastFromPoint(mX, mY, this->camera, Core::getSingletonPtr()->getOgreRenderWindow(),
+					this->gizmoQuery, result, (size_t&)gizmoEntity, closestDistance, normal, nullptr, true))
 				{
-					// http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
+					Ogre::Vector3 gizmoPosition = this->gizmo->getSelectedNode()->_getDerivedPositionUpdated();
 
-					// Change the color of the arrow, when the user hovers over it
-					this->gizmo->highlightXArrow();
-					vX = 10000.0f;
+					Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
+					Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
+					Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
 
-					if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					this->gizmo->redefineFirstPlane(gizmoDirectionX, gizmoPosition);
+					this->gizmo->redefineSecondPlane(gizmoDirectionY, gizmoPosition);
+					this->gizmo->redefineThirdPlane(gizmoDirectionZ, gizmoPosition);
+
+					Ogre::Real vX = this->gizmo->getFirstPlane().projectVector(hitRay.getDirection()).length();
+					Ogre::Real vY = this->gizmo->getSecondPlane().projectVector(hitRay.getDirection()).length();
+					Ogre::Real vZ = this->gizmo->getThirdPlane().projectVector(hitRay.getDirection()).length();
+
+					if (this->gizmo->getArrowEntityX() == gizmoEntity)
 					{
-						this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
-					}
-				}
-				else if (this->gizmo->getArrowEntityY() == gizmoEntity)
-				{
-					this->gizmo->highlightYArrow();
-					vY = 10000.0f;
-					if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-					{
-						this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
-					}
-				}
-				else if (this->gizmo->getArrowEntityZ() == gizmoEntity)
-				{
-					this->gizmo->highlightZArrow();
-					vZ = 10000.0f;
-					if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
-					{
-						this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
-					}
-				}
-				else if (this->gizmo->getSphereEntity() == gizmoEntity
-					&& EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-				{
-					this->gizmo->highlightSphere();
+						// http://www.ogre3d.org/forums/viewtopic.php?f=2&t=41739
 
-					this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
-					// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("Sphere Gizmo hit");
-					return;
+						// Change the color of the arrow, when the user hovers over it
+						this->gizmo->highlightXArrow();
+						vX = 10000.0f;
+
+						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+						{
+							this->resultPlane.redefine(gizmoDirectionY, this->gizmo->getPosition());
+						}
+					}
+					else if (this->gizmo->getArrowEntityY() == gizmoEntity)
+					{
+						this->gizmo->highlightYArrow();
+						vY = 10000.0f;
+						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+						{
+							this->resultPlane.redefine(gizmoDirectionZ, this->gizmo->getPosition());
+						}
+					}
+					else if (this->gizmo->getArrowEntityZ() == gizmoEntity)
+					{
+						this->gizmo->highlightZArrow();
+						vZ = 10000.0f;
+						if (EDITOR_ROTATE_MODE1 == this->manipulationMode || EDITOR_ROTATE_MODE2 == this->manipulationMode)
+						{
+							this->resultPlane.redefine(gizmoDirectionX, this->gizmo->getPosition());
+						}
+					}
+					else if (this->gizmo->getSphereEntity() == gizmoEntity
+						&& EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
+					{
+						this->gizmo->highlightSphere();
+
+						this->resultPlane.redefine(this->camera->getDerivedDirection(), gizmoPosition);
+						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("Sphere Gizmo hit");
+						return;
+					}
+					else
+					{
+						this->gizmo->unHighlightGizmo();
+
+						Ogre::Vector3 cameraBack = this->camera->getDerivedDirection();
+						cameraBack = -cameraBack;
+						this->resultPlane.redefine(cameraBack, gizmoPosition);
+						// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("No Gizmo hit");
+						return;
+					}
+
+					if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
+					{
+						if (vX < vY && vX < vZ)
+						{
+							this->resultPlane = this->gizmo->getFirstPlane();
+							// this->gizmo->_debugShowResultPlane(1);
+						}
+						else
+						{
+							if (vY < vX && vY < vZ)
+							{
+								this->resultPlane = this->gizmo->getSecondPlane();
+								// this->gizmo->_debugShowResultPlane(2);
+							}
+							else
+							{
+								this->resultPlane = this->gizmo->getThirdPlane();
+								// this->gizmo->_debugShowResultPlane(3);
+							}
+						}
+					}
 				}
 				else
 				{
 					this->gizmo->unHighlightGizmo();
-
-					Ogre::Vector3 cameraBack = this->camera->getDerivedDirection();
-					cameraBack = -cameraBack;
-					this->resultPlane.redefine(cameraBack, gizmoPosition);
-					// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("No Gizmo hit");
-					return;
 				}
-
-				if (EDITOR_ROTATE_MODE1 != this->manipulationMode && EDITOR_ROTATE_MODE2 != this->manipulationMode)
-				{
-					if (vX < vY && vX < vZ)
-					{
-						this->resultPlane = this->gizmo->getFirstPlane();
-						// this->gizmo->_debugShowResultPlane(1);
-					}
-					else
-					{
-						if (vY < vX && vY < vZ)
-						{
-							this->resultPlane = this->gizmo->getSecondPlane();
-							// this->gizmo->_debugShowResultPlane(2);
-						}
-						else
-						{
-							this->resultPlane = this->gizmo->getThirdPlane();
-							// this->gizmo->_debugShowResultPlane(3);
-						}
-					}
-				}
-			}
-			else
-			{
-				this->gizmo->unHighlightGizmo();
-			}
+			});
 		}
 	}
 
@@ -2088,38 +2156,73 @@ namespace NOWA
 
 	void EditorManager::movePlaceNode(const Ogre::Ray& hitRay)
 	{
-		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-		// this->placeNode->setPosition(Ogre::Vector3::ZERO);
-		Ogre::MovableObject* hitMovableObject = nullptr;
-
-		switch (this->placeMode)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::movePlaceNode", _1(hitRay),
 		{
-			case EDITOR_PLACE_MODE_NORMAL:
+			Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+			// this->placeNode->setPosition(Ogre::Vector3::ZERO);
+			Ogre::MovableObject* hitMovableObject = nullptr;
+
+			switch (this->placeMode)
 			{
-				internalHitPoint = this->getHitPointOnFloor(hitRay);
-				break;
-			}
-			case EDITOR_PLACE_MODE_STACK:
-			{
-				Ogre::Real closestDistance = 0.0f;
-				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-				// Check if there is an hit with an polygon of an entity and stack the to be placed object
-				this->placeObjectQuery->setRay(hitRay);
-
-				/*Ogre::Ray innerObjectHitPointRay = Ogre::Ray(Ogre::Vector3(this->placeNode->getPosition().x, this->placeNode->getPosition().y + 0.1f, this->placeNode->getPosition().z), this->camera->getDirection());
-				this->toBePlacedObjectQuery->setRay(innerObjectHitPointRay);
-				Ogre::Vector3 vertexPosOfInnerModel = Ogre::Vector3::ZERO;
-				MathHelper::getInstance()->getRaycastFromPoint(this->toBePlacedObjectQuery, vertexPosOfInnerModel, (unsigned long&)tempEntity, closestDistance, normal);
-
-				if (Ogre::Vector3::ZERO != vertexPosOfInnerModel)
+				case EDITOR_PLACE_MODE_NORMAL:
 				{
-					Ogre::Ray hitRay = Ogre::Ray(vertexPosOfInnerModel, this->camera->getDirection());
-					this->placeObjectQuery->setRay(hitRay);
-					MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, internalHitPoint, (unsigned long&)tempEntity, closestDistance, normal, this->tempPlaceEntity);
+					internalHitPoint = this->getHitPointOnFloor(hitRay);
+					break;
 				}
-				else*/
+				case EDITOR_PLACE_MODE_STACK:
 				{
+					Ogre::Real closestDistance = 0.0f;
+					Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+					// Check if there is an hit with an polygon of an entity and stack the to be placed object
+					this->placeObjectQuery->setRay(hitRay);
+
+					/*Ogre::Ray innerObjectHitPointRay = Ogre::Ray(Ogre::Vector3(this->placeNode->getPosition().x, this->placeNode->getPosition().y + 0.1f, this->placeNode->getPosition().z), this->camera->getDirection());
+					this->toBePlacedObjectQuery->setRay(innerObjectHitPointRay);
+					Ogre::Vector3 vertexPosOfInnerModel = Ogre::Vector3::ZERO;
+					MathHelper::getInstance()->getRaycastFromPoint(this->toBePlacedObjectQuery, vertexPosOfInnerModel, (unsigned long&)tempEntity, closestDistance, normal);
+
+					if (Ogre::Vector3::ZERO != vertexPosOfInnerModel)
+					{
+						Ogre::Ray hitRay = Ogre::Ray(vertexPosOfInnerModel, this->camera->getDirection());
+						this->placeObjectQuery->setRay(hitRay);
+						MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, internalHitPoint, (unsigned long&)tempEntity, closestDistance, normal, this->tempPlaceEntity);
+					}
+					else*/
+					{
+						// Check whether to add just the temp place entity to excluded list, or the whole group
+						std::vector<Ogre::MovableObject*> excludeMovableObjects;
+						if (this->groupGameObjectIds.size() > 0)
+						{
+							for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
+							{
+								GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
+								excludeMovableObjects.emplace_back(gameObjectPtr->getMovableObject());
+							}
+						}
+						else if (nullptr != this->tempPlaceMovableObject)
+						{
+							excludeMovableObjects.emplace_back(this->tempPlaceMovableObject);
+						}
+						MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+					}
+
+					// If nothing to stack to, calc the hit point on floor plane
+					if (nullptr == hitMovableObject)
+					{
+						internalHitPoint = this->getHitPointOnFloor(hitRay);
+					}
+
+					break;
+				}
+				case EDITOR_PLACE_MODE_STACK_ORIENTATED:
+				{
+					Ogre::Real closestDistance = 0.0f;
+					Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+
+					// Check if there is an hit with an polygon of an entity and stack the to be placed object and orientate the object
+					this->placeObjectQuery->setRay(hitRay);
+
 					// Check whether to add just the temp place entity to excluded list, or the whole group
 					std::vector<Ogre::MovableObject*> excludeMovableObjects;
 					if (this->groupGameObjectIds.size() > 0)
@@ -2134,114 +2237,82 @@ namespace NOWA
 					{
 						excludeMovableObjects.emplace_back(this->tempPlaceMovableObject);
 					}
-					MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-				}
-
-				// If nothing to stack to, calc the hit point on floor plane
-				if (nullptr == hitMovableObject)
-				{
-					internalHitPoint = this->getHitPointOnFloor(hitRay);
-				}
-
-				break;
-			}
-			case EDITOR_PLACE_MODE_STACK_ORIENTATED:
-			{
-				Ogre::Real closestDistance = 0.0f;
-				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-
-				// Check if there is an hit with an polygon of an entity and stack the to be placed object and orientate the object
-				this->placeObjectQuery->setRay(hitRay);
-
-				// Check whether to add just the temp place entity to excluded list, or the whole group
-				std::vector<Ogre::MovableObject*> excludeMovableObjects;
-				if (this->groupGameObjectIds.size() > 0)
-				{
-					for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
+					if (MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects))
 					{
-						GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
-						excludeMovableObjects.emplace_back(gameObjectPtr->getMovableObject());
+						this->placeNode->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+					}
+					else
+					{
+						this->placeNode->resetOrientation();
+					}
+
+					// If nothing to stack to, calc the hit point on floor plane
+					if (nullptr == hitMovableObject)
+					{
+						internalHitPoint = this->getHitPointOnFloor(hitRay);
+					}
+					break;
+				}
+			}
+
+			if (this->gridStep > 0.0f)
+			{
+				// Let the node follow the mouse step by step based on the gridsize
+				if (nullptr != this->tempPlaceMovableObject)
+				{
+					if (GetAsyncKeyState(VK_LMENU))
+					{
+						Ogre::Vector3 direction = (this->tempPlaceMovableNode->_getDerivedPositionUpdated() - internalHitPoint).normalisedCopy();
+
+						Ogre::Aabb boundingBox;
+						Ogre::Aabb box = this->tempPlaceMovableNode->getAttachedObject(0)->getLocalAabb();
+
+						Ogre::Vector3 newGridPoint = MathHelper::getInstance()->calculateGridTranslation(box.getSize() * this->gridStep, internalHitPoint, this->tempPlaceMovableNode->getAttachedObject(0));
+
+						if (this->constraintAxis.x != 0.0f)
+							newGridPoint = Ogre::Vector3(this->constraintAxis.x, newGridPoint.y, newGridPoint.z);
+						if (this->constraintAxis.y != 0.0f)
+							newGridPoint = Ogre::Vector3(newGridPoint.x, this->constraintAxis.y, newGridPoint.z);
+						if (this->constraintAxis.z != 0.0f)
+							newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
+
+						this->placeNode->setPosition(newGridPoint);
+					}
+					else
+					{
+						Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, internalHitPoint);
+
+						if (this->constraintAxis.x != 0.0f)
+							resultVector = Ogre::Vector3(this->constraintAxis.x, resultVector.y, resultVector.z);
+						if (this->constraintAxis.y != 0.0f)
+							resultVector = Ogre::Vector3(resultVector.x, this->constraintAxis.y, resultVector.z);
+						if (this->constraintAxis.z != 0.0f)
+							resultVector = Ogre::Vector3(resultVector.x, resultVector.y, this->constraintAxis.z);
+						this->placeNode->_setDerivedPosition(resultVector);
 					}
 				}
-				else if (nullptr != this->tempPlaceMovableObject)
-				{
-					excludeMovableObjects.emplace_back(this->tempPlaceMovableObject);
-				}
-				if (MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects))
-				{
-					this->placeNode->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-				}
-				else
-				{
-					this->placeNode->resetOrientation();
-				}
-
-				// If nothing to stack to, calc the hit point on floor plane
-				if (nullptr == hitMovableObject)
-				{
-					internalHitPoint = this->getHitPointOnFloor(hitRay);
-				}
-				break;
 			}
-		}
-
-		if (this->gridStep > 0.0f)
-		{
-			// Let the node follow the mouse step by step based on the gridsize
-			if (nullptr != this->tempPlaceMovableObject)
+			else
 			{
-				if (GetAsyncKeyState(VK_LMENU))
-				{
-					Ogre::Vector3 direction = (this->tempPlaceMovableNode->_getDerivedPositionUpdated() - internalHitPoint).normalisedCopy();
-
-					Ogre::Aabb boundingBox;
-					Ogre::Aabb box = this->tempPlaceMovableNode->getAttachedObject(0)->getLocalAabb();
-
-					Ogre::Vector3 newGridPoint = MathHelper::getInstance()->calculateGridTranslation(box.getSize() * this->gridStep, internalHitPoint, this->tempPlaceMovableNode->getAttachedObject(0));
-
-					if (this->constraintAxis.x != 0.0f)
-						newGridPoint = Ogre::Vector3(this->constraintAxis.x, newGridPoint.y, newGridPoint.z);
-					if (this->constraintAxis.y != 0.0f)
-						newGridPoint = Ogre::Vector3(newGridPoint.x, this->constraintAxis.y, newGridPoint.z);
-					if (this->constraintAxis.z != 0.0f)
-						newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
-
-					this->placeNode->setPosition(newGridPoint);
-				}
-				else
-				{
-					Ogre::Vector3 resultVector = MathHelper::getInstance()->calculateGridValue(this->gridStep, internalHitPoint);
-
-					if (this->constraintAxis.x != 0.0f)
-						resultVector = Ogre::Vector3(this->constraintAxis.x, resultVector.y, resultVector.z);
-					if (this->constraintAxis.y != 0.0f)
-						resultVector = Ogre::Vector3(resultVector.x, this->constraintAxis.y, resultVector.z);
-					if (this->constraintAxis.z != 0.0f)
-						resultVector = Ogre::Vector3(resultVector.x, resultVector.y, this->constraintAxis.z);
-					this->placeNode->_setDerivedPosition(resultVector);
-				}
+				// Set the node to the mouse position
+				if (this->constraintAxis.x != 0.0f)
+					internalHitPoint = Ogre::Vector3(this->constraintAxis.x, internalHitPoint.y, internalHitPoint.z);
+				if (this->constraintAxis.y != 0.0f)
+					internalHitPoint = Ogre::Vector3(internalHitPoint.x, this->constraintAxis.y, internalHitPoint.z);
+				if (this->constraintAxis.z != 0.0f)
+					internalHitPoint = Ogre::Vector3(internalHitPoint.x, internalHitPoint.y, this->constraintAxis.z);
+				this->placeNode->_setDerivedPosition(internalHitPoint);
 			}
-		}
-		else
-		{
-			// Set the node to the mouse position
-			if (this->constraintAxis.x != 0.0f)
-				internalHitPoint = Ogre::Vector3(this->constraintAxis.x, internalHitPoint.y, internalHitPoint.z);
-			if (this->constraintAxis.y != 0.0f)
-				internalHitPoint = Ogre::Vector3(internalHitPoint.x, this->constraintAxis.y, internalHitPoint.z);
-			if (this->constraintAxis.z != 0.0f)
-				internalHitPoint = Ogre::Vector3(internalHitPoint.x, internalHitPoint.y, this->constraintAxis.z);
-			this->placeNode->_setDerivedPosition(internalHitPoint);
-		}
 
-		if (this->groupGameObjectIds.size() > 0)
-		{
-			this->applyGroupTransform();
-		}
-		else if (nullptr != this->tempPlaceMovableObject)
-		{
-			this->applyPlaceMovableTransform();
-		}
+			if (this->groupGameObjectIds.size() > 0)
+			{
+				this->applyGroupTransform();
+			}
+			else if (nullptr != this->tempPlaceMovableObject)
+			{
+				this->applyPlaceMovableTransform();
+			}
+		});
 	}
 
 	void EditorManager::rotatePlaceNode(void)
@@ -2256,16 +2327,27 @@ namespace NOWA
 		}
 		if (nullptr != this->placeNode && this->rotateFactor != 0.0f)
 		{
-			this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
+			/*ENQUEUE_RENDER_COMMAND("EditorManager::rotatePlaceNode",
+			{
+				this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
+			});*/
+
+			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
 		}
 	}
 
 	void EditorManager::applyPlaceMovableTransform(void)
 	{
-		// Set position with center and y = 0 with offset to center when place node is orientated
-		this->tempPlaceMovableNode->_setDerivedPosition(this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
-			* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)));
-		this->tempPlaceMovableNode->setOrientation(this->placeNode->_getDerivedOrientationUpdated());
+		//ENQUEUE_RENDER_COMMAND("EditorManager::applyPlaceMovableTransform", 
+		//{
+		//	// Set position with center and y = 0 with offset to center when place node is orientated
+		//	this->tempPlaceMovableNode->_setDerivedPosition(this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
+		//		* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)));
+		//	this->tempPlaceMovableNode->setOrientation(this->placeNode->_getDerivedOrientationUpdated());
+		//});
+
+		NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->tempPlaceMovableNode, this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
+			* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)), this->placeNode->_getDerivedOrientationUpdated());
 	}
 
 	void EditorManager::applyGroupTransform(void)
@@ -2275,44 +2357,51 @@ namespace NOWA
 		// to each other. They should be placed so that the place node position is in the middle of all objects but y is zero, so that they can be placed at zero, no matter how
 		// high the objects are placed ot each other
 
-		for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
+		ENQUEUE_RENDER_COMMAND("EditorManager::applyGroupTransform",
 		{
-			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
-
-			// Place node position is global and on the top goes offset position (current object pos relative to center)
-			Ogre::Vector3 targetPosition = this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->_getDerivedOrientationUpdated() * std::get<1>(this->groupGameObjectIds[i]));
-
-			auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
-			if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
+			for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
 			{
-				physicsComponent->setPosition(targetPosition);
-				// Set orientation as the place node + the current object orientation
-				physicsComponent->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]));
+				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
+
+				// Place node position is global and on the top goes offset position (current object pos relative to center)
+				Ogre::Vector3 targetPosition = this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->_getDerivedOrientationUpdated() * std::get<1>(this->groupGameObjectIds[i]));
+
+				auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+				if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
+				{
+					physicsComponent->setPosition(targetPosition);
+					// Set orientation as the place node + the current object orientation
+					physicsComponent->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]));
+				}
+				else
+				{
+					// If there is no physics component set the data directly for the game object scene node
+					gameObjectPtr->setAttributePosition(targetPosition);
+					// Set orientation as the place node + the current object orientation
+					gameObjectPtr->getSceneNode()->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
+				}
 			}
-			else
-			{
-				// If there is no physics component set the data directly for the game object scene node
-				gameObjectPtr->setAttributePosition(targetPosition);
-				// Set orientation as the place node + the current object orientation
-				gameObjectPtr->getSceneNode()->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
-			}
-		}
+		});
 	}
 
 	void EditorManager::destroyTempPlaceMovableObjectNode(void)
 	{
-		if (nullptr != this->tempPlaceMovableNode)
+		ENQUEUE_RENDER_COMMAND_WAIT("EditorManager::destroyTempPlaceMovableObjectNode",
 		{
-			this->tempPlaceMovableNode->detachAllObjects();
-			this->sceneManager->destroySceneNode(this->tempPlaceMovableNode);
-
-			if (nullptr != this->tempPlaceMovableObject)
+			if (nullptr != this->tempPlaceMovableNode)
 			{
-				this->sceneManager->destroyMovableObject(this->tempPlaceMovableObject);
+				this->tempPlaceMovableNode->detachAllObjects();
+				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
+				this->sceneManager->destroySceneNode(this->tempPlaceMovableNode);
+
+				if (nullptr != this->tempPlaceMovableObject)
+				{
+					this->sceneManager->destroyMovableObject(this->tempPlaceMovableObject);
+				}
+				this->tempPlaceMovableNode = nullptr;
+				this->tempPlaceMovableObject = nullptr;
 			}
-			this->tempPlaceMovableNode = nullptr;
-			this->tempPlaceMovableObject = nullptr;
-		}
+		});
 	}
 
 	// More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
@@ -2335,8 +2424,7 @@ namespace NOWA
 			const auto versionData = Core::getSingletonPtr()->getMeshVersion(meshName);
 			bool canBeV2Mesh = versionData.first;
 			Ogre::String version = versionData.second;
-		
-			
+
 			if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
 			{
 				v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(meshName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
@@ -2374,7 +2462,8 @@ namespace NOWA
 						this->tempPlaceMovableObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V1_MESH);
 
 						DeployResourceModule::getInstance()->tagResource(meshName, v1Mesh->getGroup());
-						goto ADD_NODE;
+
+						this->createMeshPlaceNode(type);
 					}
 				}
 
@@ -2505,7 +2594,11 @@ namespace NOWA
 			this->tempPlaceEntity->getSubEntity(i)->setDatablock(this->tempPlaceEntity->getSubEntity(i)->getDatablock());
 		}*/
 
-ADD_NODE:
+		this->createMeshPlaceNode(type);
+	}
+
+	void EditorManager::createMeshPlaceNode(GameObject::eType type)
+	{
 		this->tempPlaceMovableNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC, Ogre::Vector3(0.0f, 20.0f, 0.0f));
 		this->tempPlaceMovableNode->setName("TempPlaceEntityNode");
 		this->tempPlaceMovableNode->attachObject(this->tempPlaceMovableObject);
@@ -2517,8 +2610,9 @@ ADD_NODE:
 
 		this->currentPlaceType = type;
 		this->manipulationMode = EDITOR_PLACE_MODE;
+
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 	}
 
 	void EditorManager::attachOtherResourceToPlaceNode(GameObject::eType type)
@@ -2546,7 +2640,7 @@ ADD_NODE:
 
 			Ogre::v1::MeshPtr meshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Plane", "General", Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f), 50.0f, 50.0f, 2, 2, true,
 					1, 20.0f, 20.0f, Ogre::Vector3::UNIT_Z, Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-			
+
 			this->attachMeshToPlaceNode(meshV1->getName(), type, meshV1.get());
 		}
 		else if (GameObject::MIRROR == type)
@@ -2569,7 +2663,7 @@ ADD_NODE:
 
 			Ogre::v1::MeshPtr meshV1 = Ogre::v1::MeshManager::getSingleton().createPlane("Mirror",
 					"General", Ogre::Plane(Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO /* or here distance 1??*/), 1.0f, 1.0f, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y);
-			
+
 			this->attachMeshToPlaceNode(meshV1->getName(), type, meshV1.get());
 
 			Ogre::Item* tempItem = dynamic_cast<Ogre::Item*>(this->tempPlaceMovableObject);
@@ -2693,7 +2787,7 @@ ADD_NODE:
 			// this center offset calculation anymore!
 
 			boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 		}
 	}
 
@@ -2702,7 +2796,8 @@ ADD_NODE:
 		/*MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("-f: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(fromAngle))
 		+ " t: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(toAngle)));*/
 
-		MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("");
+
+		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("");
 
 		this->oldGizmoOrientation = this->gizmo->getOrientation();
 
@@ -2844,8 +2939,6 @@ ADD_NODE:
 
 		this->gizmo->rotate(rotation);
 
-
-
 		// Note: rotation is just current for one axis, but in order to rotate and translate objects correctly, rotation all axes are required, so use gizmoRotationDelta 
 		Ogre::Quaternion gizmoRotationDelta = this->gizmo->getOrientation() * this->oldGizmoOrientation.Inverse();
 
@@ -2909,10 +3002,12 @@ ADD_NODE:
 					{
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
-						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
-					{				
+					{
 						// Get the position and orientation of the entity
 						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
@@ -2925,11 +3020,16 @@ ADD_NODE:
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
-						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 
 						if (Ogre::Vector3::ZERO != normal)
 						{
-							selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+							ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::rotateObjects", _2(selectedGameObject, normal),
+							{
+								// TODO: PAC has already setDirection solved, so write setDirection in GO and use the algo and internally use the updateNoteOrientation!
+								selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+							});
 						}
 					}
 				}
@@ -2973,7 +3073,8 @@ ADD_NODE:
 					{
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
-						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -2986,10 +3087,12 @@ ADD_NODE:
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
+						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
-						selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 				}
 				i++;
@@ -2999,6 +3102,7 @@ ADD_NODE:
 
 	bool EditorManager::getRayStartPoint(const Ogre::Ray& hitRay)
 	{
+		// TODO: queue?
 		bool success = this->getRayHitPoint(hitRay);
 		// if the gizmo was hit
 		if (true == success)
@@ -3012,54 +3116,53 @@ ADD_NODE:
 
 	std::tuple<bool, Ogre::Real, Ogre::Vector3> EditorManager::getTranslateYData(GameObject* gameObject)
 	{
-		bool success = false;
-		Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
-		Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+		std::tuple<bool, Ogre::Real, Ogre::Vector3> result = { false, 0.0f, Ogre::Vector3::ZERO };
 
-		// Depending on translate mode adjust the height, or orientation of GO's
-		switch (this->translateMode)
-		{
-			case EDITOR_TRANSLATE_MODE_STACK:
-			case EDITOR_TRANSLATE_MODE_STACK_ORIENTATED:
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::getTranslateYData", _2(gameObject, &result),
 			{
-				Ogre::v1::Entity* hitMovableObject = nullptr;
-				Ogre::Real closestDistance = 0.0f;
+				bool success = false;
+				Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
+				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-				// Shoot ray at object position down and exclude that object and gizmo
-				Ogre::Ray hitRay = Ogre::Ray(gameObject->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, gameObject->getSize().y * 10.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
-				// Check if there is an hit with an polygon of an entity and stack the to be placed object
-				this->placeObjectQuery->setRay(hitRay);
-
-				std::vector<Ogre::MovableObject*> excludeMovableObjects(5);
-				excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
-				excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
-				excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
-				excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
-				excludeMovableObjects[4] = this->gizmo->getSphereEntity();
-				MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
-
-				// If nothing to stack to, calc the hit point on floor plane
-				if (nullptr == hitMovableObject)
+				if (this->translateMode == EDITOR_TRANSLATE_MODE_STACK || this->translateMode == EDITOR_TRANSLATE_MODE_STACK_ORIENTATED)
 				{
-					internalHitPoint = this->getHitPointOnFloor(hitRay);
+					Ogre::v1::Entity* hitMovableObject = nullptr;
+					Ogre::Real closestDistance = 0.0f;
+
+					Ogre::Ray hitRay(gameObject->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, gameObject->getSize().y * 10.0f, 0.0f), Ogre::Vector3::NEGATIVE_UNIT_Y);
+					this->placeObjectQuery->setRay(hitRay);
+
+					std::vector<Ogre::MovableObject*> excludeMovableObjects(5);
+					excludeMovableObjects[0] = gameObject->getMovableObject<Ogre::v1::Entity>();
+					excludeMovableObjects[1] = this->gizmo->getArrowEntityX();
+					excludeMovableObjects[2] = this->gizmo->getArrowEntityY();
+					excludeMovableObjects[3] = this->gizmo->getArrowEntityZ();
+					excludeMovableObjects[4] = this->gizmo->getSphereEntity();
+
+					MathHelper::getInstance()->getRaycastFromPoint(this->placeObjectQuery, this->camera, internalHitPoint, (size_t&)hitMovableObject, closestDistance, normal, &excludeMovableObjects);
+
+					if (nullptr == hitMovableObject)
+					{
+						internalHitPoint = this->getHitPointOnFloor(hitRay);
+					}
+
+					if (auto* entity = gameObject->getMovableObject<Ogre::v1::Entity>())
+					{
+						internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), entity);
+					}
+
+					success = true;
 				}
-				// Move the gizmo to the bottom center of the entity mesh
-				Ogre::v1::Entity* entity = gameObject->getMovableObject<Ogre::v1::Entity>();
-				if (entity)
+
+				if (EDITOR_TRANSLATE_MODE_STACK_ORIENTATED != this->translateMode)
 				{
-					internalHitPoint += MathHelper::getInstance()->getBottomCenterOfMesh(gameObject->getSceneNode(), gameObject->getMovableObject<Ogre::v1::Entity>());
+					normal = Ogre::Vector3::ZERO;
 				}
-				success = true;
-				break;
-			}
-		}
 
-		if (EDITOR_TRANSLATE_MODE_STACK_ORIENTATED != this->translateMode)
-		{
-			normal = Ogre::Vector3::ZERO;
-		}
+				result = std::make_tuple(success, internalHitPoint.y, normal); // Set the result
+			});
 
-		return std::make_tuple(success, internalHitPoint.y, normal);
+		return result;
 	}
 
 	Ogre::Vector3 EditorManager::calculateGizmoGridTranslation(const Ogre::Vector3& gridFactor, const Ogre::Vector3& internalHitPoint, Ogre::MovableObject* movableObject)
@@ -3192,8 +3295,14 @@ ADD_NODE:
 				
 				if (true == success)
 				{
-					selectedGameObject.second.gameObject->getSceneNode()->setPosition(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height, 
-						selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects1", _2(selectedGameObject, height), {
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
+							selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
+					})
+
+					// Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
+					// RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
+					// 	selectedGameObject.second.gameObject->getSceneNode()->getPosition().z));
 				}
 
 				if (GetAsyncKeyState(VK_LMENU))
@@ -3209,16 +3318,29 @@ ADD_NODE:
 					if (this->constraintAxis.z != 0.0f)
 						newGridPoint = Ogre::Vector3(newGridPoint.x, newGridPoint.y, this->constraintAxis.z);
 
-					selectedGameObject.second.gameObject->getSceneNode()->setPosition(newGridPoint);
+					/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _2(selectedGameObject, newGridPoint), {
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newGridPoint);
+					});*/
+
+					RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newGridPoint);
 				}
 				else
 				{
-					selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
+					/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _2(selectedGameObject, offset), {
+						selectedGameObject.second.gameObject->getSceneNode()->translate(offset);
+					});*/
+
+					Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
+					RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), translatePosition);
 				}
 				
 				if (Ogre::Vector3::ZERO != normal)
 				{
-					selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+					// TODO: How to use interpolation?
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects2", _2(selectedGameObject, normal),
+					{
+						selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+					});
 				}
 			}
 
@@ -3305,7 +3427,11 @@ ADD_NODE:
 					// Prevent scaling below zero
 					newScale.makeCeil(Ogre::Vector3(0.1f, 0.1f, 0.1f));
 
-					entry.second.gameObject->getSceneNode()->setScale(newScale);
+					/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("", _2(entry, newScale), {
+						entry.second.gameObject->getSceneNode()->setScale(newScale);
+					});*/
+
+					NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(entry.second.gameObject->getSceneNode(), newScale);
 				}
 			}
 		}
@@ -3371,7 +3497,10 @@ ADD_NODE:
 		{
 			if (true == this->selectionManager->getSelectedGameObjects().empty())
 			{
-				this->gizmo->setEnabled(false);
+				if (true == this->gizmo->isEnabled())
+				{
+					this->gizmo->setEnabled(false);
+				}
 			}
 			this->timeSinceLastUpdate = 1.0f;
 		}
@@ -3574,32 +3703,50 @@ ADD_NODE:
 		{
 		case EDITOR_CAMERA_VIEW_FRONT:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView front",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
+			});
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_TOP:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_X));
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView top",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_X));
+			});
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BACK:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView back",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
+			});
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BOTTOM:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));;
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView bottom",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
+			});
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_LEFT:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView left",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+			});
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_RIGHT:
 		{
-			this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView right",
+			{
+				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+			});
 			break;
 		}
 		}
@@ -3613,7 +3760,10 @@ ADD_NODE:
 	void EditorManager::deactivatePlaceMode(void)
 	{
 		this->destroyTempPlaceMovableObjectNode();
-		this->placeNode->setVisible(false);
+		ENQUEUE_RENDER_COMMAND("EditorManager::deactivatePlaceMode",
+		{
+			this->placeNode->setVisible(false);
+		});
 		// Delete the group
 		for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
 		{

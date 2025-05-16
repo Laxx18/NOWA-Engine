@@ -88,6 +88,9 @@ namespace OgreNewt
 		*/
 		typedef OgreNewt::function<bool(int, OgreNewt::Body*, const Ogre::Quaternion&, const Ogre::Vector3&, Ogre::Plane&)> buoyancyPlaneCallback;
 
+
+		typedef OgreNewt::function<void(Ogre::SceneNode*, const Ogre::Vector3&, const Ogre::Quaternion&, bool updateRot, bool updateStatic)> RenderUpdateCallback;
+
 		//! constructor.
 		/*!
 		creates a Rigid Body in an OgreNewt::World, based on a specific collision shape.
@@ -132,11 +135,11 @@ namespace OgreNewt
 		*/
 		NewtonBody* getNewtonBody() const { return m_body; }
 
-		//! get a pointer to the attached Node.
+		//! get a pointer to the attached SceneNode.
 		/*!
-		if you have "attached" an Ogre::Node to this body, this retrieves the node.
+		if you have "attached" an Ogre::SceneNode to this body, this retrieves the node.
 		*/
-		Ogre::Node* getOgreNode() const { return m_node; }
+		Ogre::SceneNode* getOgreNode() const { return m_node; }
 
 		Ogre::ManualObject* getDebugCollisionLines() { return m_debugCollisionLines; }
 
@@ -153,14 +156,14 @@ namespace OgreNewt
 		//! get the type set for this body.
 		unsigned int getType() const { return m_categoryType; }
 
-		//! attach this body to an Ogre::Node*
+		//! attach this body to an Ogre::SceneNode*
 		/*!
-		* This is an easy way to connect a Rigid Body with an Ogre::Node.
+		* This is an easy way to connect a Rigid Body with an Ogre::SceneNode.
 		* This automatically sets up a standard Transform callback when you call this. 
-		* After calling this, the Ogre::Node will have its position orientation updated to that of the Rigid Body each time you call World::update(), and the body has moved during the update.
+		* After calling this, the Ogre::SceneNode will have its position orientation updated to that of the Rigid Body each time you call World::update(), and the body has moved during the update.
 		* @param[in] updateRotation If set to false, no rotation will be updated physically. Attention use this with care, because a lot of things will not work
 		*/
-		void attachNode(Ogre::Node* node, bool updateRotation = true);
+		void attachNode(Ogre::SceneNode* node, bool updateRotation = true);
 
 		void detachNode(void);
 
@@ -532,6 +535,10 @@ namespace OgreNewt
 		void setIsSoftBody(bool isSoftBody);
 
 		bool getIsSoftBody(void) const;
+
+		void setRenderUpdateCallback(RenderUpdateCallback renderUpdateCallback);
+
+		bool hasRenderUpdateCallback(void) const;
 	protected:
 		void updateDeformableCollision(void);
 	protected:
@@ -573,7 +580,7 @@ namespace OgreNewt
 #endif
 
 		unsigned int                    m_categoryType;
-		Ogre::Node*                     m_node;
+		Ogre::SceneNode*                m_node;
 		//bool                            m_nodeupdateneeded;
 
 		ForceCallback                   m_forcecallback;
@@ -594,6 +601,7 @@ namespace OgreNewt
 		Ogre::SceneMemoryMgrTypes		m_sceneMemoryType;
 		bool							m_isOwner;
 		bool							m_isSoftBody;
+		RenderUpdateCallback			m_renderUpdateCallback;
 	protected:
 
 		static void _CDECL newtonDestructor(const NewtonBody* body);

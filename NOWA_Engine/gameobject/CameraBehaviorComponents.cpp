@@ -338,6 +338,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	bool CameraBehaviorBaseComponent::postInit(void)
@@ -575,6 +576,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	bool CameraBehaviorFirstPersonComponent::postInit(void)
@@ -827,6 +829,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	bool CameraBehaviorThirdPersonComponent::postInit(void)
@@ -1102,6 +1105,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	bool CameraBehaviorFollow2DComponent::postInit(void)
@@ -1361,6 +1365,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 	bool CameraBehaviorZoomComponent::postInit(void)

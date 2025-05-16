@@ -23,6 +23,8 @@ public:
 
 	virtual void update(Ogre::Real dt) override;
 
+	virtual void renderUpdate(Ogre::Real dt) override;
+
 	virtual bool keyPressed(const OIS::KeyEvent& keyEventRef) override;
 
 	virtual bool keyReleased(const OIS::KeyEvent& keyEventRef) override;

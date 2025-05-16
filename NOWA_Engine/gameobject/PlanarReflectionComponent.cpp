@@ -247,18 +247,21 @@ namespace NOWA
 				Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
 			}
 
-			Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-				Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y,
-				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PlanarReflectionComponent::createPlane", _2(meshName, planeScale),
+			{
+				Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingleton().createPlane(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+					Ogre::Plane(Ogre::Vector3::UNIT_Z, 0.0f), planeScale.x, planeScale.y, 1, 1, true, 1, 1.0f, 1.0f, Ogre::Vector3::UNIT_Y,
+					Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
 
-			Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
+				Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
 
-			// Later: Make scene node and entity static!
-			this->mirrorPlaneItem = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
+				// Later: Make scene node and entity static!
+				this->mirrorPlaneItem = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
 
-			this->gameObjectPtr->setDynamic(true);
-			this->mirrorPlaneItem->setCastShadows(this->gameObjectPtr->getCastShadows());
-			this->gameObjectPtr->getSceneNode()->attachObject(this->mirrorPlaneItem);
+				this->gameObjectPtr->setDynamic(true);
+				this->mirrorPlaneItem->setCastShadows(this->gameObjectPtr->getCastShadows());
+				this->gameObjectPtr->getSceneNode()->attachObject(this->mirrorPlaneItem);
+			});
 
 			// Set the here newly created entity for this game object
 			this->gameObjectPtr->init(this->mirrorPlaneItem);

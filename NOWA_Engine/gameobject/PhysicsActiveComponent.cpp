@@ -514,8 +514,17 @@ namespace NOWA
 
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
-		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
-			collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
+		OgreNewt::CollisionPtr collisionPtr;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::createDynamicCollision", _4(&inertia, collisionOrientation, &calculatedMassOrigin, &collisionPtr),
+		{
+			collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
+				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+		});
+		
+		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
+
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 		
 		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
 		{
@@ -613,6 +622,7 @@ namespace NOWA
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), deformableCollisionPtr);
 		this->physicsBody->setGravity(this->gravity->getVector3());
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
 		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
 		{
@@ -665,9 +675,13 @@ namespace NOWA
 		}
 
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
-		// Set the new collision hull
-		this->physicsBody->setCollision(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), 
-			collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _3(&inertia, collisionOrientation, &calculatedMassOrigin),
+		{
+			// Set the new collision hull
+			this->physicsBody->setCollision(this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(),
+				collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId()));
+		});
 
 		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
 		{
@@ -754,9 +768,14 @@ namespace NOWA
 		}*/
 
 		if (nullptr == this->physicsBody)
+		{
 			this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), compoundCollision);
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
+		}
 		else
+		{
 			this->physicsBody->setCollision(compoundCollision);
+		}
 
 		this->physicsBody->setGravity(this->gravity->getVector3());
 
@@ -1758,7 +1777,10 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveComponent::showDebugData",
+			{
+				this->physicsBody->showDebugCollision(false, this->bShowDebugData);
+			});
 		}
 	}
 
@@ -1801,31 +1823,37 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(charPoint);
-				debugLineObject->index(0);
-				debugLineObject->position(rayEndPoint);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
+				{
+					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+					debugLineObject->setQueryFlags(0 << 0);
+					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+					debugLineObject->setCastShadows(false);
+					debugLineNode->attachObject(debugLineObject);
+					this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(charPoint);
+					debugLineObject->index(0);
+					debugLineObject->position(rayEndPoint);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 			else
 			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(charPoint);
-				debugLineObject->index(0);
-				debugLineObject->position(rayEndPoint);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow::Draw", _3(it, charPoint, rayEndPoint),
+				{
+					Ogre::ManualObject * debugLineObject = it->second.second;
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(charPoint);
+					debugLineObject->index(0);
+					debugLineObject->position(rayEndPoint);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 		}
 
@@ -1929,31 +1957,37 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(charPoint);
-				debugLineObject->index(0);
-				debugLineObject->position(rayEndPoint);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
+				{
+					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+					debugLineObject->setQueryFlags(0 << 0);
+					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+					debugLineObject->setCastShadows(false);
+					debugLineNode->attachObject(debugLineObject);
+					this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(charPoint);
+					debugLineObject->index(0);
+					debugLineObject->position(rayEndPoint);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 			else
 			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(charPoint);
-				debugLineObject->index(0);
-				debugLineObject->position(rayEndPoint);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead::Draw", _3(it, charPoint, rayEndPoint),
+				{
+					Ogre::ManualObject * debugLineObject = it->second.second;
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(charPoint);
+					debugLineObject->index(0);
+					debugLineObject->position(rayEndPoint);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 		}
 
@@ -2047,32 +2081,38 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
+				{
+					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+					debugLineObject->setQueryFlags(0 << 0);
+					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+					debugLineObject->setCastShadows(false);
+					debugLineNode->attachObject(debugLineObject);
+					this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
 
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(fromPosition);
+					debugLineObject->index(0);
+					debugLineObject->position(toPosition);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 			else
 			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove::Draw", _3(it, fromPosition, toPosition),
+				{
+					Ogre::ManualObject * debugLineObject = it->second.second;
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(fromPosition);
+					debugLineObject->index(0);
+					debugLineObject->position(toPosition);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 		}
 
@@ -2170,31 +2210,37 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
+				{
+					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+					debugLineObject->setQueryFlags(0 << 0);
+					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+					debugLineObject->setCastShadows(false);
+					debugLineNode->attachObject(debugLineObject);
+					this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(fromPosition);
+					debugLineObject->index(0);
+					debugLineObject->position(toPosition);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 			else
 			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection::Draw", _3(it, fromPosition, toPosition),
+				{
+					Ogre::ManualObject * debugLineObject = it->second.second;
+					debugLineObject->clear();
+					debugLineObject->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(fromPosition);
+					debugLineObject->index(0);
+					debugLineObject->position(toPosition);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 		}
 
@@ -2304,24 +2350,30 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				Ogre::SceneNode* debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				Ogre::ManualObject* debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				debugLineObject->setQueryFlags(0 << 0);
-				debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				debugLineObject->setCastShadows(false);
-				debugLineNode->attachObject(debugLineObject);
-				this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContact", _1(key),
+				{
+					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+					debugLineObject->setQueryFlags(0 << 0);
+					debugLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+					debugLineObject->setCastShadows(false);
+					debugLineNode->attachObject(debugLineObject);
+					this->drawLineMap.emplace(key, std::make_pair(debugLineNode, debugLineObject));
+				});
 			}
 			else
 			{
-				Ogre::ManualObject* debugLineObject = it->second.second;
-				debugLineObject->clear();
-				debugLineObject->begin("BlueNoLighting", Ogre::OperationType::OT_LINE_LIST);
-				debugLineObject->position(fromPosition);
-				debugLineObject->index(0);
-				debugLineObject->position(toPosition);
-				debugLineObject->index(1);
-				debugLineObject->end();
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact::Draw", _3(it, fromPosition, toPosition),
+				{
+					Ogre::ManualObject * debugLineObject = it->second.second;
+					debugLineObject->clear();
+					debugLineObject->begin("BlueNoLighting", Ogre::OperationType::OT_LINE_LIST);
+					debugLineObject->position(fromPosition);
+					debugLineObject->index(0);
+					debugLineObject->position(toPosition);
+					debugLineObject->index(1);
+					debugLineObject->end();
+				});
 			}
 		}
 

@@ -103,6 +103,7 @@ namespace NOWA
 		if (nullptr != this->gpuParticleSystemWorld)
 		{
 			this->sceneNode->detachObject(this->gpuParticleSystemWorld);
+			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->sceneNode);
 			this->sceneManager->destroySceneNode(this->sceneNode);
 
 			delete this->gpuParticleSystemWorld;

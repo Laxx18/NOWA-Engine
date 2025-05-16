@@ -153,7 +153,10 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), bShowDebugData);
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsArtifactComponent::showDebugData",
+			{
+				this->physicsBody->showDebugCollision(!this->gameObjectPtr->isDynamic(), this->bShowDebugData);
+			});
 		}
 	}
 
@@ -232,9 +235,11 @@ namespace NOWA
 		}
 		else
 		{
-			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-
-			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::serializeTreeCollision", _1(&staticCollision),
+			{
+				Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId()));
+			});
 		}
 
 		if (nullptr == staticCollision)
@@ -246,6 +251,7 @@ namespace NOWA
 		}
 
 		this->physicsBody = new OgreNewt::Body(this->ogreNewt, this->gameObjectPtr->getSceneManager(), staticCollision);
+		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->physicsBody);
 
 		// Set mass to 0 = infinity = static
 		this->physicsBody->setMassMatrix(0.0f, Ogre::Vector3::ZERO);
@@ -347,8 +353,11 @@ namespace NOWA
 		{
 			// For more complexe objects its better to serialize the collision hull, so that the creation is a lot of faster next time
 			// Note: Collision file is located in the project folder for all scenes
-			Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
-			staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::serializeTreeCollision", _2(overwrite, &staticCollision),
+			{
+				Ogre::String projectFilePath = Core::getSingletonPtr()->getCurrentProjectPath();
+				staticCollision = OgreNewt::CollisionPtr(this->serializeTreeCollision(projectFilePath, this->gameObjectPtr->getCategoryId(), overwrite));
+			});
 		}
 
 		if (nullptr == staticCollision)

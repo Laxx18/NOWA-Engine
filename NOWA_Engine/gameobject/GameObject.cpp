@@ -126,17 +126,20 @@ namespace NOWA
 		bool castShadows = true;
 		bool visible = true;
 
-		// game object uses the unique name of the scene node
-		if (nullptr != this->sceneNode)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::GameObject setStatic", _2(&castShadows, &visible),
 		{
-			this->sceneNode->setStatic(!this->dynamic->getBool());
-		}
-		if (nullptr != this->movableObject)
-		{
-			this->movableObject->setStatic(!this->dynamic->getBool());
-			castShadows = this->movableObject->getCastShadows();
-			visible = this->movableObject->getVisible();
-		}
+			// game object uses the unique name of the scene node
+			if (nullptr != this->sceneNode)
+			{
+				this->sceneNode->setStatic(!this->dynamic->getBool());
+			}
+			if (nullptr != this->movableObject)
+			{
+				this->movableObject->setStatic(!this->dynamic->getBool());
+				castShadows = this->movableObject->getCastShadows();
+				visible = this->movableObject->getVisible();
+			}
+		});
 
 		this->castShadows = new Variant(GameObject::AttrCastShadows(), castShadows, this->attributes);
 		this->useReflection = new Variant(GameObject::AttrUseReflection(), false, this->attributes);
@@ -200,7 +203,7 @@ namespace NOWA
 		this->delayedAddCommponentList.clear();
 
 		this->luaScript = nullptr;
-			
+
 		// Delete all attributes
 		auto& it = this->attributes.begin();
 
@@ -213,108 +216,97 @@ namespace NOWA
 		}
 		this->attributes.clear();
 
-		if (nullptr != this->boundingBoxDraw)
+		if (nullptr != this->sceneNode || nullptr != this->movableObject || nullptr != this->boundingBoxDraw || nullptr != this->clampObjectQuery)
 		{
-			this->sceneManager->destroyWireAabb(this->boundingBoxDraw);
-			this->boundingBoxDraw = nullptr;
-		}
+			auto sceneNode = this->sceneNode;
+			auto movableObject = this->movableObject;
+			auto boundingBoxDraw = this->boundingBoxDraw;
+			auto clampObjectQuery = this->clampObjectQuery;
+			auto sceneManager = this->sceneManager;
 
-		if (nullptr != this->clampObjectQuery)
-		{
-			this->sceneManager->destroyQuery(this->clampObjectQuery);
-			this->clampObjectQuery = nullptr;
-		}
-
-		if (nullptr != this->sceneNode)
-		{
-			auto nodeIt = this->sceneNode->getChildIterator();
-			while (nodeIt.hasMoreElements())
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject Constructor Part1", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
 			{
-				//go through all scenenodes in the scene
-				Ogre::Node* subNode = nodeIt.getNext();
-				subNode->removeAllChildren();
-			}
+				if (boundingBoxDraw)
+				{
+					sceneManager->destroyWireAabb(boundingBoxDraw);
+				}
 
-			this->sceneNode->detachAllObjects();
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: "
-				+ this->sceneNode->getName());
-			this->sceneManager->destroySceneNode(this->sceneNode);
-			this->sceneNode = nullptr;
+				if (clampObjectQuery)
+				{
+					sceneManager->destroyQuery(clampObjectQuery);
+				}
+
+				if (sceneNode)
+				{
+					auto nodeIt = sceneNode->getChildIterator();
+					while (nodeIt.hasMoreElements())
+					{
+						Ogre::Node* subNode = nodeIt.getNext();
+						subNode->removeAllChildren();
+					}
+
+					sceneNode->detachAllObjects();
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: " + sceneNode->getName());
+
+					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+					sceneManager->destroySceneNode(sceneNode);
+				}
+
+				if (movableObject)
+				{
+					if (sceneManager->hasMovableObject(movableObject))
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + movableObject->getName());
+						sceneManager->destroyMovableObject(movableObject);
+					}
+				}
+			});
 		}
-
-		if (nullptr != this->movableObject && false == this->doNotDestroyMovableObject)
-		{
-			// Attention: does this work?
-			if (this->sceneManager->hasMovableObject(this->movableObject))
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: "
-					+ this->movableObject->getName());
-
-				this->sceneManager->destroyMovableObject(this->movableObject);
-				this->movableObject = nullptr;
-			}
-		}
-
-		// if this assert fires, the map was not empty and GameObject::destroy() has not been called
-		assert(this->gameObjectComponents.empty());
 	}
 
 	bool GameObject::init(Ogre::MovableObject* newMovableObject)
 	{
-		if (nullptr != newMovableObject)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::init", _1(newMovableObject),
 		{
-			// If there is a new movable object and the game object has one, then first destroy this one
-			if (nullptr != this->movableObject && false == this->doNotDestroyMovableObject)
+			if (nullptr != newMovableObject)
 			{
-				if (this->sceneManager->hasMovableObject(this->movableObject))
+				if (nullptr != this->movableObject && !this->doNotDestroyMovableObject)
 				{
-					this->sceneNode->detachObject(this->movableObject);
-					this->sceneManager->destroyMovableObject(this->movableObject);
+					auto sceneManager = this->sceneManager;
+					auto sceneNode = this->sceneNode;
+					auto oldMovable = this->movableObject;
+
+					if (sceneManager->hasMovableObject(oldMovable))
+					{
+						sceneNode->detachObject(oldMovable);
+						sceneManager->destroyMovableObject(oldMovable);
+					}
+
 					this->movableObject = nullptr;
 				}
+
+				this->movableObject = newMovableObject;
 			}
 
-			this->movableObject = newMovableObject;
-		}
-		// Terrain e.g. has no entity
-		if (nullptr != this->movableObject)
-		{
-			this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
-			this->movableObject->setQueryFlags(this->categoryId->getUInt());
-			this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
-
-			// calculate size and offset from center
-			// Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
-			this->refreshSize();
-
-			if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
+			// Terrain e.g. has no entity
+			if (nullptr != this->movableObject)
 			{
-				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				this->movableObject->getUserObjectBindings().setUserAny(Ogre::Any(this));
+				this->movableObject->setQueryFlags(this->categoryId->getUInt());
+				this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+
+				// calculate size and offset from center
+				// Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
+				this->refreshSize();
+
+				if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 				{
-					auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-					if (nullptr != sourceDataBlock)
+					Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+					for (size_t i = 0; i < item->getNumSubItems(); i++)
 					{
-						// sourceDataBlock->mShadowConstantBias = 0.0001f;
-						// Deactivate fresnel by default, because it looks ugly
-						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
-						{
-							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
-						}
-					}
-				}
-			}
-			else
-			{
-				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
-					{
-						auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
+						auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
 						if (nullptr != sourceDataBlock)
 						{
-							// sourceDataBlock->mShadowConstantBias = 0.0001f;
 							// Deactivate fresnel by default, because it looks ugly
 							if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
 							{
@@ -322,31 +314,48 @@ namespace NOWA
 							}
 						}
 					}
+
 				}
-			}
-			
-			this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
-			// Note: Ogre runs in kilometers where as NOWA in meters as newton does
-			unsigned int renderDistance = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
-			// Movable Object has infinite render distance, get global one. Is by default infinite too!
-			if (0 == renderDistance)
-			{
-				renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
+				else
+				{
+					Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
+					if (nullptr != entity)
+					{
+						for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+						{
+							auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
+							if (nullptr != sourceDataBlock)
+							{
+								// Deactivate fresnel by default, because it looks ugly
+								if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+								{
+									sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+								}
+							}
+						}
+					}
+				}
+
+				this->setRenderQueueIndex(this->movableObject->getRenderQueueGroup());
+				// Note: Ogre runs in kilometers where as NOWA in meters as newton does
+				unsigned int renderDistance = static_cast<unsigned int>(this->movableObject->getRenderingDistance());
+				// Movable Object has infinite render distance, get global one. Is by default infinite too!
 				if (0 == renderDistance)
 				{
-					renderDistance = 1000;
+					renderDistance = Core::getSingletonPtr()->getGlobalRenderDistance();
+					if (0 == renderDistance)
+					{
+						renderDistance = 1000;
+					}
 				}
+				this->renderDistance->setValue(renderDistance);
+				this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
 			}
-			this->renderDistance->setValue(renderDistance);
-			this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
-		}
-		this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
+			this->sceneNode->getUserObjectBindings().setUserAny(Ogre::Any(this));
 
-		if (nullptr == this->boundingBoxDraw)
-		{
 			this->boundingBoxDraw = sceneManager->createWireAabb();
 			this->boundingBoxDraw->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		}
+		});
 
 		return true;
 	}
@@ -401,79 +410,85 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
 			{
-				this->meshName->setValue(item->getMesh()->getName());
-
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
+				if (nullptr != item)
 				{
-					auto datablock = item->getSubItem(i)->getDatablock();
-					Ogre::String datablockName = "Missing";
-					if (nullptr != datablock)
-					{
-						datablockName = *datablock->getNameStr();
-					}
-					else
-					{
-						item->getSubItem(i)->setDatablock(datablockName);
-					}
-					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+					this->meshName->setValue(item->getMesh()->getName());
 
-					const Ogre::String* fileName;
-					const Ogre::String* resourceGroup;
-					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-
-					if (false == (*fileName).empty())
+					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+					for (size_t i = 0; i < item->getNumSubItems(); i++)
 					{
-						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-						this->dataBlocks[i]->setDescription(data);
+						auto datablock = item->getSubItem(i)->getDatablock();
+						Ogre::String datablockName = "Missing";
+						if (nullptr != datablock)
+						{
+							datablockName = *datablock->getNameStr();
+						}
+						else
+						{
+							item->getSubItem(i)->setDatablock(datablockName);
+						}
+						this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+
+						const Ogre::String* fileName;
+						const Ogre::String* resourceGroup;
+						datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+
+						if (false == (*fileName).empty())
+						{
+							Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+							this->dataBlocks[i]->setDescription(data);
+						}
 					}
 				}
-			}
-			else
-			{
-				this->meshName->setVisible(false);
-			}
+				else
+				{
+					this->meshName->setVisible(false);
+				}
+			});
 		}
 		else
 		{
-			Ogre::v1::Entity* entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
 			{
-				this->meshName->setValue(entity->getMesh()->getName());
-
-				// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
-				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+				Ogre::v1::Entity * entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					auto datablock = entity->getSubEntity(i)->getDatablock();
-					Ogre::String datablockName = "Missing";
-					if (nullptr != datablock)
-					{
-						datablockName = *datablock->getNameStr();
-					}
-					else
-					{
-						entity->getSubEntity(i)->setDatablock(datablockName);
-					}
-					this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+					this->meshName->setValue(entity->getMesh()->getName());
 
-					const Ogre::String* fileName;
-					const Ogre::String* resourceGroup;
-					datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
-
-					if (false == (*fileName).empty())
+					// Later check, if the entity has maybe a different type of data block as PBS, such as Toon, Unlit etc.
+					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
 					{
-						Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
-						this->dataBlocks[i]->setDescription(data);
+						auto datablock = entity->getSubEntity(i)->getDatablock();
+						Ogre::String datablockName = "Missing";
+						if (nullptr != datablock)
+						{
+							datablockName = *datablock->getNameStr();
+						}
+						else
+						{
+							entity->getSubEntity(i)->setDatablock(datablockName);
+						}
+						this->dataBlocks.emplace_back(new Variant(GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i), datablockName, this->attributes));
+
+						const Ogre::String* fileName;
+						const Ogre::String* resourceGroup;
+						datablock->getFilenameAndResourceGroup(&fileName, &resourceGroup);
+
+						if (false == (*fileName).empty())
+						{
+							Ogre::String data = "File: '" + *fileName + "'\n Resource group name: '" + *resourceGroup + "'";
+							this->dataBlocks[i]->setDescription(data);
+						}
 					}
 				}
-			}
-			else
-			{
-				this->meshName->setVisible(false);
-			}
+				else
+				{
+					this->meshName->setVisible(false);
+				}
+			});
 		}
 
 		this->meshName->setReadOnly(true);
@@ -775,7 +790,11 @@ namespace NOWA
 			this->changeRenderCategory(attribute->getListSelectedOldValue(), attribute->getListSelectedValue());
 			this->renderCategoryId->setValue(AppStateManager::getSingletonPtr()->getGameObjectController()->getRenderCategoryId(attribute->getListSelectedValue()));
 
-			this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+			// TODO: Here wait?
+			ENQUEUE_RENDER_COMMAND("GameObject::actualizeValue setVisibilityFlags",
+			{
+				this->movableObject->setVisibilityFlags(this->renderCategoryId->getUInt());
+			});
 		}
 		if (GameObject::AttrTagName() == attribute->getName())
 		{
@@ -784,15 +803,21 @@ namespace NOWA
 		else if (GameObject::AttrPosition() == attribute->getName())
 		{
 			this->position->setValue(attribute->getVector3());
-			this->sceneNode->setPosition(attribute->getVector3());
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setPosition", _1(attribute),
+			{
+				this->sceneNode->setPosition(attribute->getVector3());
+			});
 		}
 		else if (GameObject::AttrScale() == attribute->getName())
 		{
 			this->scale->setValue(attribute->getVector3());
-			this->sceneNode->setScale(attribute->getVector3());
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setScale", _1(attribute),
+			{
+				this->sceneNode->setScale(attribute->getVector3());
+				// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
+				this->refreshSize();
+			});
 
-			// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
-			this->refreshSize();
 			this->oldScale = attribute->getVector3();
 		}
 		else if (GameObject::AttrOrientation() == attribute->getName())
@@ -801,7 +826,10 @@ namespace NOWA
 			Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(attribute->getVector3());
 			Ogre::Vector3 degreeOrientation = attribute->getVector3();
 			this->orientation->setValue(attribute->getVector3());
-			this->sceneNode->setOrientation(orientation);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setOrientation", _1(orientation),
+			{
+					this->sceneNode->setOrientation(orientation);
+			});
 		}
 		else if (GameObject::AttrDynamic() == attribute->getName())
 		{
@@ -882,89 +910,95 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type)
 		{
-			Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
-			{
-				for (size_t i = 0; i < this->dataBlocks.size(); i++)
+			RenderCommandQueueModule::RenderCommand renderCommand = [this, attribute]() {
+				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
+				if (nullptr != item)
 				{
-					if (GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i) == attribute->getName())
+					for (size_t i = 0; i < this->dataBlocks.size(); i++)
 					{
-						Ogre::Hlms* hlms = nullptr;
-						// Go through all types of registered hlms and check if the data block exists and set the data block
-						for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
+						if (GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i) == attribute->getName())
 						{
-							hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(*searchHlmsIt);
-							if (nullptr != hlms)
+							Ogre::Hlms* hlms = nullptr;
+							// Go through all types of registered hlms and check if the data block exists and set the data block
+							for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
 							{
-								if (nullptr != hlms->getDatablock(attribute->getString()) /*&& "Missing" != *this->item->getSubItem(i)->getDatablock()->getNameStr()*/)
+								hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(*searchHlmsIt);
+								if (nullptr != hlms)
 								{
-									item->getSubItem(i)->setDatablock(attribute->getString());
-									auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-									if (nullptr != sourceDataBlock)
+									if (nullptr != hlms->getDatablock(attribute->getString()))
 									{
-										// Deactivate fresnel by default, because it looks ugly
-										if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+										item->getSubItem(i)->setDatablock(attribute->getString());
+										auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+										if (nullptr != sourceDataBlock)
 										{
-											sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+											// Deactivate fresnel by default, because it looks ugly
+											if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+											{
+												sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+											}
 										}
+										this->dataBlocks[i]->setValue(attribute->getString());
+										break;
 									}
-									this->dataBlocks[i]->setValue(attribute->getString());
-									// ((Ogre::HlmsPbsDatablock*)hlms->getDatablock(attribute->getString()))->setBackgroundDiffuse
-									break;
-								}
-								else
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Could not set data block name: '" + attribute->getString() + "', because it does not exist");
-									attribute->setValue(*item->getSubItem(i)->getDatablock()->getNameStr());
+									else
+									{
+										Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Could not set data block name: '" + attribute->getString() + "', because it does not exist");
+										attribute->setValue(*item->getSubItem(i)->getDatablock()->getNameStr());
+									}
 								}
 							}
 						}
 					}
 				}
-			}
+			};
+
+			RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
 		}
 		else
 		{
-			Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				for (size_t i = 0; i < this->dataBlocks.size(); i++)
+			RenderCommandQueueModule::RenderCommand renderCommand = [this, attribute]() {
+				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					if (GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i) == attribute->getName())
+					for (size_t i = 0; i < this->dataBlocks.size(); i++)
 					{
-						Ogre::Hlms* hlms = nullptr;
-						// Go through all types of registered hlms and check if the data block exists and set the data block
-						for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
+						if (GameObject::AttrDataBlock() + Ogre::StringConverter::toString(i) == attribute->getName())
 						{
-							hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(*searchHlmsIt);
-							if (nullptr != hlms)
+							Ogre::Hlms* hlms = nullptr;
+							// Go through all types of registered hlms and check if the data block exists and set the data block
+							for (auto searchHlmsIt = searchHlms.begin(); searchHlmsIt != searchHlms.end(); ++searchHlmsIt)
 							{
-								if (nullptr != hlms->getDatablock(attribute->getString()) /*&& "Missing" != *this->entity->getSubEntity(i)->getDatablock()->getNameStr()*/)
+								hlms = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(*searchHlmsIt);
+								if (nullptr != hlms)
 								{
-									entity->getSubEntity(i)->setDatablock(attribute->getString());
-									auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
-									if (nullptr != sourceDataBlock)
+									if (nullptr != hlms->getDatablock(attribute->getString()))
 									{
-										// Deactivate fresnel by default, because it looks ugly
-										if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+										entity->getSubEntity(i)->setDatablock(attribute->getString());
+										auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
+										if (nullptr != sourceDataBlock)
 										{
-											sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+											// Deactivate fresnel by default, because it looks ugly
+											if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+											{
+												sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+											}
 										}
+										this->dataBlocks[i]->setValue(attribute->getString());
+										break;
 									}
-									this->dataBlocks[i]->setValue(attribute->getString());
-									// ((Ogre::HlmsPbsDatablock*)hlms->getDatablock(attribute->getString()))->setBackgroundDiffuse
-									break;
-								}
-								else
-								{
-									Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Could not set data block name: '" + attribute->getString() + "', because it does not exist");
-									attribute->setValue(*entity->getSubEntity(i)->getDatablock()->getNameStr());
+									else
+									{
+										Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Could not set data block name: '" + attribute->getString() + "', because it does not exist");
+										attribute->setValue(*entity->getSubEntity(i)->getDatablock()->getNameStr());
+									}
 								}
 							}
 						}
 					}
 				}
-			}
+			};
+
+			RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
 		}
 	}
 
@@ -1629,14 +1663,21 @@ namespace NOWA
 	void GameObject::setAttributePosition(const Ogre::Vector3& position)
 	{
 		this->position->setValue(position);
-		this->sceneNode->_setDerivedPosition(position);
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributePosition", _1(position),
+		{
+			this->sceneNode->_setDerivedPosition(position);
+		});
 	}
 
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
 	{
 		this->scale->setValue(scale);
-		this->sceneNode->setScale(scale);
-		this->refreshSize();
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributeScale", _1(scale),
+		{
+			this->sceneNode->setScale(scale);
+			this->refreshSize();
+		});
 		this->oldScale = scale;
 	}
 
@@ -1644,7 +1685,10 @@ namespace NOWA
 	{
 		// Set in the form degree, x-axis, y-axis, z-axis
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
-		this->sceneNode->_setDerivedOrientation(orientation);
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributeOrientation", _1(orientation),
+		{
+			this->sceneNode->_setDerivedOrientation(orientation);
+		});
 	}
 
 	void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)
@@ -1687,26 +1731,29 @@ namespace NOWA
 	void GameObject::setDynamic(bool dynamic)
 	{
 		this->dynamic->setValue(dynamic);
-		if (nullptr != this->sceneNode)
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setDynamic", _1(dynamic),
 		{
-			if (false == dynamic && false == this->sceneNode->isStatic())
+			if (nullptr != this->sceneNode)
 			{
-				// Does automatically set all its movable objects to this state
-				this->sceneNode->setStatic(true);
-				if (nullptr != this->movableObject)
+				if (false == dynamic && false == this->sceneNode->isStatic())
 				{
-					this->movableObject->setStatic(true);
+					this->sceneNode->setStatic(true);
+					if (nullptr != this->movableObject)
+					{
+						this->movableObject->setStatic(true);
+					}
+				}
+				else if (true == dynamic && true == this->sceneNode->isStatic())
+				{
+					this->sceneNode->setStatic(false);
+					if (nullptr != this->movableObject)
+					{
+						this->movableObject->setStatic(false);
+					}
 				}
 			}
-			else if (true == dynamic && true == this->sceneNode->isStatic())
-			{
-				this->sceneNode->setStatic(false);
-				if (nullptr != this->movableObject)
-				{
-					this->movableObject->setStatic(false);
-				}
-			}
-		}
+		});
 	}
 
 	const Ogre::Vector3 GameObject::getSize(void) const
@@ -1762,15 +1809,21 @@ namespace NOWA
 		{
 			isMovableVisible = this->movableObject->getVisible();
 		}
+
 		if (isMovableVisible != visible)
 		{
 			this->visible->setValue(visible);
-			if (nullptr != this->movableObject)
+
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setVisible", _1(visible),
 			{
-				this->sceneNode->setVisible(visible);
-				this->movableObject->setVisible(visible);
-			}
+				if (nullptr != this->movableObject)
+				{
+					this->sceneNode->setVisible(visible);
+					this->movableObject->setVisible(visible);
+				}
+			});
 		}
+
 	}
 
 	void GameObject::setLoadedVisible(bool visible)
@@ -1787,21 +1840,29 @@ namespace NOWA
 			if (this->visible->getBool() != visible)
 			{
 				this->visible->setValue(visible);
-				if (nullptr != this->movableObject)
+
+				ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLoadedVisible1", _1(visible),
 				{
-					this->sceneNode->setVisible(visible);
-					this->movableObject->setVisible(visible);
-				}
+					if (nullptr != this->movableObject)
+					{
+						this->sceneNode->setVisible(visible);
+						this->movableObject->setVisible(visible);
+					}
+				});
 			}
 		}
 		else
 		{
 			this->visible->setValue(visible);
-			if (nullptr != this->movableObject)
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLoadedVisible2", _1(visible),
 			{
-				this->sceneNode->setVisible(visible);
-				this->movableObject->setVisible(visible);
-			}
+				if (nullptr != this->movableObject)
+				{
+					this->sceneNode->setVisible(visible);
+					this->movableObject->setVisible(visible);
+				}
+			});
 		}
 	}
 
@@ -1824,73 +1885,79 @@ namespace NOWA
 
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
-			if (nullptr != item)
+			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection1",
 			{
-				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
+				if (nullptr != item)
 				{
-					Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
-					if (nullptr != pbsDatablock)
+					for (size_t i = 0; i < item->getNumSubItems(); i++)
 					{
-						if (true == this->useReflection->getBool())
+						Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+						if (nullptr != pbsDatablock)
 						{
-							WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-							if (nullptr != workspaceBaseComponent)
+							if (true == this->useReflection->getBool())
 							{
-								pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), workspaceBaseComponent->getDynamicCubemapTexture());
-								pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-								pbsDatablock->setRoughness(0.001f);
-								this->setDataBlockPbsReflectionTextureName("cubemap");
+								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+								if (nullptr != workspaceBaseComponent)
+								{
+									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), workspaceBaseComponent->getDynamicCubemapTexture());
+									pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+									pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+									this->setDataBlockPbsReflectionTextureName("cubemap");
+								}
 							}
-						}
-						else
-						{
-							auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
-							if (nullptr != reflectionTexture)
+							else
 							{
-								pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
-								this->setDataBlockPbsReflectionTextureName("");
+								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
+								if (nullptr != reflectionTexture)
+								{
+									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
+									this->setDataBlockPbsReflectionTextureName("");
+								}
 							}
 						}
 					}
 				}
-			}
+			});
+
 		}
 		else
 		{
-			Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND("GameObject::setUseReflection2",
 			{
-				for (size_t i = 0; i < entity->getNumSubEntities(); i++)
+				Ogre::v1::Entity * entity = this->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
-					if (nullptr != pbsDatablock)
+					for (size_t i = 0; i < entity->getNumSubEntities(); i++)
 					{
-						if (true == this->useReflection->getBool())
+						Ogre::HlmsPbsDatablock* pbsDatablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(entity->getSubEntity(i)->getDatablock());
+						if (nullptr != pbsDatablock)
 						{
-							WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-							if (nullptr != workspaceBaseComponent)
+							if (true == this->useReflection->getBool())
 							{
-								pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, workspaceBaseComponent->getDynamicCubemapTexture());
-								pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
-								pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
-								pbsDatablock->setRoughness(0.001f);
-								this->setDataBlockPbsReflectionTextureName("cubemap");
+								WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
+								if (nullptr != workspaceBaseComponent)
+								{
+									pbsDatablock->setTexture(Ogre::PBSM_REFLECTION, workspaceBaseComponent->getDynamicCubemapTexture());
+									pbsDatablock->setWorkflow(Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow);
+									pbsDatablock->setFresnel(Ogre::Vector3(1.0f, 1.0f, 1.0f), true);
+									pbsDatablock->setRoughness(0.001f);
+									this->setDataBlockPbsReflectionTextureName("cubemap");
+								}
 							}
-						}
-						else
-						{
-							auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
-							if (nullptr != reflectionTexture)
+							else
 							{
-								pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
-								this->setDataBlockPbsReflectionTextureName("");
+								auto reflectionTexture = pbsDatablock->getTexture(Ogre::PbsTextureTypes::PBSM_REFLECTION);
+								if (nullptr != reflectionTexture)
+								{
+									pbsDatablock->setTexture(static_cast<Ogre::uint8>(Ogre::PBSM_REFLECTION), nullptr);
+									this->setDataBlockPbsReflectionTextureName("");
+								}
 							}
 						}
 					}
 				}
-			}
+			});
 		}
 	}
 
@@ -1961,7 +2028,6 @@ namespace NOWA
 
 		// [0; 100) & [200; 225) default to FAST(i.e. for v2 objects, like Items); RenderQueue ID range[100; 200) & [225; 256)
 
-
 		Ogre::Item* item = this->getMovableObject<Ogre::Item>();
 		if (nullptr != item)
 		{
@@ -1997,9 +2063,14 @@ namespace NOWA
 		}
 
 		this->renderQueueIndex->setValue(renderQueueIndex);
+
 		if (nullptr != this->movableObject)
 		{
-			this->movableObject->setRenderQueueGroup(static_cast<Ogre::uint8>(renderQueueIndex));
+			const Ogre::uint8 queueIndex = static_cast<Ogre::uint8>(renderQueueIndex);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setRenderQueueIndex", _1(queueIndex),
+			{
+				this->movableObject->setRenderQueueGroup(queueIndex);
+			});
 		}
 	}
 
@@ -2032,7 +2103,10 @@ namespace NOWA
 
 		if (nullptr != this->movableObject && renderDistance > 0)
 		{
-			this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setRenderDistance", _1(renderDistance),
+			{
+				this->movableObject->setRenderingDistance(static_cast<Ogre::Real>(renderDistance));
+			});
 		}
 	}
 
@@ -2058,264 +2132,158 @@ namespace NOWA
 
 		this->lodDistance->setValue(lodDistance);
 
-		if (lodDistance > 0.0f)
+		if (lodDistance <= 0.0f)
 		{
-			Ogre::v1::MeshPtr v1Mesh;
-			Ogre::MeshPtr v2Mesh;
-			GameObject::eType type = GameObject::ENTITY;
+			return;
+		}
 
-			// Attention with hbu_static, there is also dynamic
-			Ogre::String tempMeshFile;
-
-			Ogre::Item* item = this->getMovableObject<Ogre::Item>();
-			if (nullptr != item)
+		if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLodDistance1", _2(item, lodDistance),
 			{
-				tempMeshFile = item->getMesh()->getName();
-
-				try
-				{
-					if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-																				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-					}
-
-					// Generate LOD levels
-					Ogre::LodConfig lodConfig;
-
-					Ogre::MeshLodGenerator lodGenerator;
-					lodGenerator.getAutoconfig(v1Mesh, lodConfig);
-
-					if (lodConfig.levels.size() != this->lodLevels->getUInt())
-					{
-						this->lodLevels->setReadOnly(false);
-						this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
-						this->lodLevels->setReadOnly(true);
-					}
-					else
-					{
-						// Lod levels are the same skip generation
-						return;
-					}
-
-					lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
-
-					Ogre::Real factor[3] = { 0.0f, 0.0f, 0.0f };
-
-					// Calculate factor:
-					// 0 = 211788 / 41834 = 5
-					// 1 = 41834 / 13236 = 3.16
-					// 2 = 13236 / 5421 = 2.14
-
-					for (short i = 0; i < lodConfig.levels.size(); i++)
-					{
-						if (i < lodConfig.levels.size() - 1)
-						{
-							factor[i] = lodConfig.levels[i].distance / lodConfig.levels[i + 1].distance;
-						}
-					}
-
-					// E.g. lodDistance = 10
-					// 0 = 10 * 5 = 50 meter
-					// 1 = 10 * 3.14 = 30 meter
-					// 2 = 10 * 2.14 = 20 meter
-					// 3 = 10 meter
-					for (short i = 0; i < lodConfig.levels.size(); i++)
-					{
-						if (i < lodConfig.levels.size() - 1)
-						{
-							lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(lodDistance * factor[i]);
-						}
-						else
-						{
-							lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(lodDistance);
-						}
-					}
-
-					lodGenerator.generateLodLevels(lodConfig);
-
-					DeployResourceModule::getInstance()->removeResource(tempMeshFile);
-
-					if ((v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, v1Mesh.get(), true, true, true);
-						v2Mesh->load();
-					}
-
-					v1Mesh->unload();
-					Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
-
-					DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
-
-					Ogre::ConfigFile cf;
-					cf.load(Core::getSingletonPtr()->getResourcesName());
-
-					// Save the v2 mesh *with* LODs to disk
-					Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
-
-					Ogre::String filePathName;
-					auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(v1Mesh->getGroup());
-					for (auto it = locationList.cbegin(); it != locationList.cend(); ++it)
-					{
-						Ogre::String tempFilePathName = (*it)->archive->getName() + "//" + tempMeshFile;
-
-						std::ifstream file(tempFilePathName.c_str());
-
-						if (file.good())
-						{
-							filePathName = tempFilePathName;
-							break;
-						}
-					}
-
-					if (false == filePathName.empty())
-					{
-						serializer.exportMesh(v2Mesh.get(), filePathName);
-					}
-				}
-				catch (...)
-				{
-				}
-			}
-			else
+				this->applyLodDistanceToItem(item, lodDistance);
+			});
+		}
+		else if (Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>())
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLodDistance2", _2(entity, lodDistance),
 			{
+				this->applyLodDistanceToEntity(entity, lodDistance);
+			});
+		}
+	}
 
-				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
-				{
-					tempMeshFile = entity->getMesh()->getName();
+	void GameObject::applyLodDistanceToItem(Ogre::Item* item, Ogre::Real lodDistance)
+	{
+		Ogre::String tempMeshFile = item->getMesh()->getName();
+		Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 
-					if ((v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME)) == nullptr)
-					{
-						v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-																				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-					}
+		if (!v1Mesh)
+		{
+			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
+				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+		}
 
-					// Generate LOD levels
-					Ogre::LodConfig lodConfig;
+		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
+			return;
 
-					Ogre::MeshLodGenerator lodGenerator;
-					lodGenerator.getAutoconfig(v1Mesh, lodConfig);
+		Ogre::MeshPtr v2Mesh = Ogre::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+		if (!v2Mesh)
+		{
+			v2Mesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(
+				tempMeshFile, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+				v1Mesh.get(), true, true, true);
+			v2Mesh->load();
+		}
 
-					if (lodConfig.levels.size() != this->lodLevels->getUInt())
-					{
-						this->lodLevels->setReadOnly(false);
-						this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
-						this->lodLevels->setReadOnly(true);
-					}
-					else
-					{
-						// Lod levels are the same skip generation
-						return;
-					}
+		v1Mesh->unload();
+		Ogre::v1::MeshManager::getSingletonPtr()->remove(v1Mesh);
 
-					lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
+		DeployResourceModule::getInstance()->tagResource(tempMeshFile, v2Mesh->getGroup());
 
-					Ogre::Real factor[3] = { 0.0f, 0.0f, 0.0f };
+		saveV2MeshToFile(tempMeshFile, v2Mesh.get());
+	}
 
-					// Calculate factor:
-					// 0 = 211788 / 41834 = 5
-					// 1 = 41834 / 13236 = 3.16
-					// 2 = 13236 / 5421 = 2.14
+	void GameObject::applyLodDistanceToEntity(Ogre::v1::Entity* entity, Ogre::Real lodDistance)
+	{
+		Ogre::String tempMeshFile = entity->getMesh()->getName();
+		Ogre::v1::MeshPtr v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->getByName(tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
 
-					for (short i = 0; i < lodConfig.levels.size(); i++)
-					{
-						if (i < lodConfig.levels.size() - 1)
-						{
-							factor[i] = lodConfig.levels[i].distance / lodConfig.levels[i + 1].distance;
-						}
-					}
+		if (!v1Mesh)
+		{
+			v1Mesh = Ogre::v1::MeshManager::getSingletonPtr()->load(
+				tempMeshFile, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+				Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+		}
 
-					// E.g. lodDistance = 10
-					// 0 = 10 * 5 = 50 meter
-					// 1 = 10 * 3.14 = 30 meter
-					// 2 = 10 * 2.14 = 20 meter
-					// 3 = 10 meter
-					for (short i = 0; i < lodConfig.levels.size(); i++)
-					{
-						if (i < lodConfig.levels.size() - 1)
-						{
-							lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(lodDistance * factor[i]);
-						}
-						else
-						{
-							lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(lodDistance);
-						}
-					}
+		if (!generateLodForMesh(tempMeshFile, v1Mesh, lodDistance))
+			return;
 
-					lodGenerator.generateLodLevels(lodConfig);
+		saveV1MeshToFile(tempMeshFile, v1Mesh.get());
+	}
 
-					Ogre::ConfigFile cf;
-					cf.load(Core::getSingletonPtr()->getResourcesName());
+	bool GameObject::generateLodForMesh(const Ogre::String& meshName, Ogre::v1::MeshPtr v1Mesh, Ogre::Real lodDistance)
+	{
+		Ogre::LodConfig lodConfig;
+		Ogre::MeshLodGenerator lodGenerator;
+		lodGenerator.getAutoconfig(v1Mesh, lodConfig);
 
-					// Save the v2 mesh *with* LODs to disk
-					Ogre::v1::MeshSerializer serializer;
+		if (lodConfig.levels.size() == this->lodLevels->getUInt())
+			return false; // LOD already set
 
-					Ogre::String filePathName;
-					auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(v1Mesh->getGroup());
-					for (auto it = locationList.cbegin(); it != locationList.cend(); ++it)
-					{
-						Ogre::String tempFilePathName = (*it)->archive->getName() + "//" + tempMeshFile;
+		this->lodLevels->setReadOnly(false);
+		this->lodLevels->setValue(static_cast<unsigned int>(lodConfig.levels.size()));
+		this->lodLevels->setReadOnly(true);
 
-						std::ifstream file(tempFilePathName.c_str());
+		lodConfig.strategy = Ogre::LodStrategyManager::getSingleton().getDefaultStrategy();
 
-						if (file.good())
-						{
-							filePathName = tempFilePathName;
-							break;
-						}
-					}
+		Ogre::Real factor[3] = { 0.0f, 0.0f, 0.0f };
+		for (short i = 0; i < lodConfig.levels.size() - 1; ++i)
+		{
+			factor[i] = lodConfig.levels[i].distance / lodConfig.levels[i + 1].distance;
+		}
 
-					if (false == filePathName.empty())
-					{
-						const auto versionData = Core::getSingletonPtr()->getMeshVersion(v1Mesh->getName());
-						bool canBeV2Mesh = versionData.first;
-						Ogre::String version = versionData.second;
+		for (short i = 0; i < lodConfig.levels.size(); ++i)
+		{
+			Ogre::Real dist = (i < lodConfig.levels.size() - 1) ? lodDistance * factor[i] : lodDistance;
+			lodConfig.levels[i].distance = lodConfig.strategy->transformUserValue(dist);
+		}
 
-						Ogre::v1::MeshVersion meshVersion = Ogre::v1::MeshVersion::MESH_VERSION_LATEST;
+		lodGenerator.generateLodLevels(lodConfig);
+		return true;
+	}
 
-						if (version == "1.100")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_10;
-						}
-						else if (version == "1.7")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_7;
-						}
-						else if (version == "1.8")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_8;
-						}
-						else if (version == "1.4")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_4;
-						}
-						else if (version == "1.41")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_4;
-						}
-						else if (version == "1.3")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_4;
-						}
-						else if (version == "1.2")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_4;
-						}
-						else if (version == "1.1")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_1_4;
-						}
-						else if (version == "2.1 R0 LEGACYV1")
-						{
-							meshVersion = Ogre::v1::MESH_VERSION_2_1;
-						}
+	void GameObject::saveV1MeshToFile(const Ogre::String& meshName, Ogre::v1::Mesh* mesh)
+	{
+		Ogre::String filePathName;
+		auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
 
-						// Exports the mesh
-						serializer.exportMesh(v1Mesh.get(), filePathName, meshVersion);
-					}
-				}
+		for (auto& loc : locationList)
+		{
+			Ogre::String path = loc->archive->getName() + "//" + meshName;
+			if (std::ifstream(path.c_str()).good())
+			{
+				filePathName = path;
+				break;
 			}
+		}
+
+		if (!filePathName.empty())
+		{
+			Ogre::v1::MeshSerializer serializer;
+			const auto versionData = Core::getSingletonPtr()->getMeshVersion(meshName);
+			Ogre::v1::MeshVersion meshVersion = Ogre::v1::MESH_VERSION_LATEST;
+
+			if (versionData.second == "1.100") meshVersion = Ogre::v1::MESH_VERSION_1_10;
+			else if (versionData.second == "1.7") meshVersion = Ogre::v1::MESH_VERSION_1_7;
+			else if (versionData.second == "1.8") meshVersion = Ogre::v1::MESH_VERSION_1_8;
+			else if (versionData.second == "1.4" || versionData.second == "1.41" || versionData.second == "1.3")
+				meshVersion = Ogre::v1::MESH_VERSION_1_4;
+
+			serializer.exportMesh(mesh, filePathName, meshVersion);
+		}
+	}
+
+	void GameObject::saveV2MeshToFile(const Ogre::String& meshName, Ogre::Mesh* mesh)
+	{
+		Ogre::String filePathName;
+		auto& locationList = Ogre::ResourceGroupManager::getSingletonPtr()->getResourceLocationList(mesh->getGroup());
+
+		for (auto& loc : locationList)
+		{
+			Ogre::String path = loc->archive->getName() + "//" + meshName;
+			if (std::ifstream(path.c_str()).good())
+			{
+				filePathName = path;
+				break;
+			}
+		}
+
+		if (!filePathName.empty())
+		{
+			Ogre::MeshSerializer serializer(Ogre::Root::getSingletonPtr()->getRenderSystem()->getVaoManager());
+			serializer.exportMesh(mesh, filePathName);
 		}
 	}
 
@@ -2342,7 +2310,10 @@ namespace NOWA
 		this->shadowRenderingDistance->setValue(shadowRenderingDistance);
 		if (nullptr != this->movableObject && shadowRenderingDistance > 0)
 		{
-			this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setShadowRenderingDistance", _1(shadowRenderingDistance),
+			{
+				this->movableObject->setShadowRenderingDistance(static_cast<Ogre::Real>(shadowRenderingDistance));
+			});
 		}
 	}
 
@@ -2351,6 +2322,7 @@ namespace NOWA
 		return this->shadowRenderingDistance->getUInt();
 	}
 
+#if 0
 	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)
 	{
 		bool success = false;
@@ -2399,17 +2371,75 @@ namespace NOWA
 
 		return std::make_pair(success, resultPoint.y);
 	}
+#endif
+
+	std::pair<bool, Ogre::Real> GameObject::performRaycastForYClamping(void)
+	{
+		std::pair<bool, Ogre::Real> result = { false, 0.0f };
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::performRaycastForYClamping", _1(&result),
+		{
+			bool success = false;
+			Ogre::Vector3 resultPoint = Ogre::Vector3::ZERO;
+
+			if (true == this->clampY->getBool())
+			{
+				// Render must be called, else when the game object is loaded somehow Ogre is not ready, and just shadow camera is found for raycast and no objects!
+				Ogre::Root::getSingletonPtr()->renderOneFrame();
+
+				// Generate query for clamp object query for all kinds of categories
+				if (nullptr == this->clampObjectQuery)
+				{
+					this->clampObjectQuery = this->sceneManager->createRayQuery(Ogre::Ray(), GameObjectController::ALL_CATEGORIES_ID);
+					this->clampObjectQuery->setSortByDistance(true);
+				}
+
+				Ogre::MovableObject* hitMovableObject = nullptr;
+
+				// Exclude this movable object
+				std::vector<Ogre::MovableObject*> excludeMovableObjects(1);
+				excludeMovableObjects[0] = this->getMovableObject();
+
+				// Goes up 10 times size and throws down the ray 5000 meters, excludes itself
+				Ogre::Vector3 position(this->sceneNode->getPosition().x, (this->sceneNode->getPosition().y + this->getSize().y * 10.0f), this->sceneNode->getPosition().z);
+				if (MathHelper::getInstance()->getRaycastResult(position, Ogre::Vector3::NEGATIVE_UNIT_Y * 5000.0f, this->clampObjectQuery, resultPoint, (size_t&)hitMovableObject, &excludeMovableObjects))
+				{
+					// Move the game object to the bottom center of the entity mesh
+					resultPoint.y += this->getBottomOffset().y;
+
+					bool nonDynamicGameObject = false;
+					if (false == this->isDynamic())
+					{
+						nonDynamicGameObject = true;
+						this->setDynamic(true);
+					}
+					this->sceneNode->setPosition(this->sceneNode->getPosition().x, resultPoint.y, this->sceneNode->getPosition().z);
+					if (true == nonDynamicGameObject)
+					{
+						this->setDynamic(false);
+					}
+					success = true;
+				}
+			}
+
+			result = std::make_pair(success, resultPoint.y); // Set the result
+		});
+
+		return result;  // This will return immediately, and result will be set after the render thread completes
+	}
 
 	void GameObject::showBoundingBox(bool show)
 	{
-		if (true == show && nullptr != this->boundingBoxDraw)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::showBoundingBox", _1(show),
 		{
-			this->boundingBoxDraw->track(this->movableObject);
-		}
-		else
-		{
-			this->boundingBoxDraw->track(nullptr);
-		}
+			if (this->boundingBoxDraw)
+			{
+				if (show)
+					this->boundingBoxDraw->track(this->movableObject);
+				else
+					this->boundingBoxDraw->track(nullptr);
+			}
+		});
 	}
 
 	Variant* GameObject::getAttribute(const Ogre::String& attributeName)
@@ -2481,17 +2511,20 @@ namespace NOWA
 
 	void GameObject::setDataBlockPbsReflectionTextureName(const Ogre::String& textureName)
 	{
-		unsigned int i = 0;
-		boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
-		do
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setDataBlockPbsReflectionTextureName", _1(textureName),
 		{
-			datablockPbsCompPtr = NOWA::makeStrongPtr(this->getComponentWithOccurrence<DatablockPbsComponent>(i));
-			if (nullptr != datablockPbsCompPtr)
+			unsigned int i = 0;
+			boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
+			do
 			{
-				datablockPbsCompPtr->setReflectionTextureName(textureName);
-				i++;
-			}
-		} while (nullptr != datablockPbsCompPtr);
+				datablockPbsCompPtr = NOWA::makeStrongPtr(this->getComponentWithOccurrence<DatablockPbsComponent>(i));
+				if (nullptr != datablockPbsCompPtr)
+				{
+					datablockPbsCompPtr->setReflectionTextureName(textureName);
+					i++;
+				}
+			} while (nullptr != datablockPbsCompPtr);
+		});
 	}
 
 	boost::weak_ptr<GameObject> GameObject::getConnectedGameObjectPtr(void) const

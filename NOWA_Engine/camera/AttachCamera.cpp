@@ -3,6 +3,7 @@
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
 #include "main/Core.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -32,8 +33,11 @@ namespace NOWA
 		this->firstTimeMoveValueSet = true;
 		if (this->sceneNode)
 		{
-			this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
-			this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
+			ENQUEUE_RENDER_COMMAND("AttachCamera::onSetData",
+			{
+				this->camera->setPosition(this->sceneNode->_getDerivedPositionUpdated());
+				this->camera->setOrientation(this->sceneNode->_getDerivedOrientationUpdated());
+			});
 		}
 		else
 		{
@@ -53,12 +57,16 @@ namespace NOWA
 			Ogre::Vector3 targetPosition = this->sceneNode->_getDerivedPositionUpdated();
 
 			Ogre::Quaternion targetOrientation = MathHelper::getInstance()->lookAt((this->sceneNode->_getDerivedOrientationUpdated() * this->offsetOrientation) * this->defaultDirection, Ogre::Vector3::UNIT_Y);
-
-			this->camera->setOrientation(targetOrientation);
-
 			Ogre::Vector3 targetVector = targetPosition + (targetOrientation * this->offsetPosition * this->moveCameraWeight);
 			targetVector = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
-			this->camera->setPosition(targetVector);
+			
+
+			
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AttachCamera::moveCamera", _2(targetOrientation, targetVector),
+			{
+				this->camera->setOrientation(targetOrientation);
+				this->camera->setPosition(targetVector);
+			});
 
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AttachCamera]:Pos: " + Ogre::StringConverter::toString(this->camera->getPosition()));
 		}

@@ -259,12 +259,19 @@ namespace NOWA
 
 		Ogre::Vector3 calculatedMassOrigin = Ogre::Vector3::ZERO;
 
-		auto collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
-		
-		if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
+		OgreNewt::CollisionPtr collisionPtr;
+
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::createDynamicCollision", _4(&inertia, &collisionPtr, collisionOrientation, &calculatedMassOrigin),
 		{
-			calculatedMassOrigin = this->massOrigin->getVector3();
-		}
+			collisionPtr = this->createDynamicCollision(inertia, this->collisionSize->getVector3(), this->collisionPosition->getVector3(), collisionOrientation, 
+				calculatedMassOrigin, this->gameObjectPtr->getCategoryId());
+
+			if (Ogre::Vector3::ZERO != this->massOrigin->getVector3())
+			{
+				calculatedMassOrigin = this->massOrigin->getVector3();
+			}
+		});
 
 		this->physicsBody = new OgreNewt::KinematicBody(this->ogreNewt, this->gameObjectPtr->getSceneManager(), collisionPtr);
 

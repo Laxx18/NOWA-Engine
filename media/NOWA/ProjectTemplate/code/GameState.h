@@ -31,6 +31,11 @@ public:
 	 * @see AppState::update()
 	 */
 	virtual void update(Ogre::Real dt) override;
+	
+	/**
+	 * @see AppState::renderUpdate()
+	 */
+	virtual void renderUpdate(Ogre::Real dt) override;
 
 	/**
 	 * @brief		Actions on key pressed event.

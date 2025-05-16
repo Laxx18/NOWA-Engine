@@ -834,8 +834,13 @@ namespace NOWA
 			return find->second;
 		}
 
-		SplitPart* part = new SplitPart(this, meshName, this->gameObjectPtr->getSceneManager());
-		this->parts.emplace(meshName, part);
+		SplitPart* part = nullptr;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveDestructableComponent::SplitPart", _2(meshName, &part),
+		{
+			part = new SplitPart(this, meshName, this->gameObjectPtr->getSceneManager());
+			this->parts.emplace(meshName, part);
+		});
 
 		return part;
 	}
@@ -941,6 +946,7 @@ namespace NOWA
 		breakForce(0.0f),
 		motionless(physicsActiveDestructableComponent->motionless->getBool())
 	{
+		Ogre::Vector3 originScale = Ogre::Vector3::UNIT_SCALE;
 		// Attention: here with getOwner()->getSceneNode()->createChildSceneNode() ??
 		this->sceneNode = this->physicsActiveDestructableComponent->getOwner()->getSceneNode()->createChildSceneNode();
 		this->sceneNode->setName("DestructableNode"
@@ -948,16 +954,16 @@ namespace NOWA
 
 		if (GameObject::ENTITY == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
-			this->entity = physicsActiveDestructableComponent->getOwner()->getSceneManager()->createEntity(meshName);
-			this->sceneNode->attachObject(entity);
+			this->entity = sceneManager->createEntity(meshName);
+			this->sceneNode->attachObject(this->entity);
 		}
 		else if (GameObject::ITEM == this->physicsActiveDestructableComponent->getOwner()->getType())
 		{
-			this->item = physicsActiveDestructableComponent->getOwner()->getSceneManager()->createItem(meshName);
-			this->sceneNode->attachObject(item);
+			this->item = sceneManager->createItem(meshName);
+			this->sceneNode->attachObject(this->item);
 		}
-		
-		Ogre::Vector3 originScale = this->physicsActiveDestructableComponent->getOwner()->getSceneNode()->getScale();
+
+		originScale = this->physicsActiveDestructableComponent->getOwner()->getSceneNode()->getScale();
 		this->sceneNode->setScale(originScale);
 
 		// set the part invisible, so that it looks as if its a normal mesh object
@@ -965,7 +971,7 @@ namespace NOWA
 		{
 			this->sceneNode->setVisible(false);
 		}
-	
+
 		// set the collision hull smaller as the object, because its convex and hence would collide with another piece else
 		Ogre::Real shapeSizeFactor = 1.0f;
 
@@ -989,10 +995,10 @@ namespace NOWA
 			boundingBoxHalfSize = item->getMesh()->getAabb().mHalfSize * scale;
 		}
 		/*Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] BoundingBox center: "
-			+ Ogre::StringConverter::toString(this->partPosition));*/
+		+ Ogre::StringConverter::toString(this->partPosition));*/
 
-// Attention: Is this correct?
-		
+		// Attention: Is this correct?
+
 		Ogre::Vector3 scaledOffset = this->partPosition * shapeSizeFactor;
 		Ogre::Vector3 collisionOffset = this->partPosition - scaledOffset;
 
@@ -1021,13 +1027,16 @@ namespace NOWA
 			col->calculateInertialMatrix(inertia, massOrigin);
 
 			this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(), collisionPtr);
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
 		}
 		else
 		{
 			// is boundingBoxHalfSize correct? Breakpoint if ever this case does occur
 			this->splitPartBody = new OgreNewt::Body(this->physicsActiveDestructableComponent->getOgreNewt(), this->physicsActiveDestructableComponent->gameObjectPtr->getSceneManager(),
 				this->physicsActiveDestructableComponent->createCollisionPrimitive("Box", Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY, boundingBoxHalfSize * scale, inertia, massOrigin, this->physicsActiveDestructableComponent->getOwner()->getCategoryId()));
+			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->registerRenderCallbackForBody(this->splitPartBody);
 		}
+
 		// this->splitPartBody->setJointRecursiveCollision(0);
 
 		this->splitPartBody->setGravity(this->physicsActiveDestructableComponent->gravity->getVector3());
@@ -1080,8 +1089,8 @@ namespace NOWA
 		Ogre::Vector3 originalCenterOffset = this->physicsActiveDestructableComponent->getOwner()->getCenterOffset();
 
 		/*this->splitPartBody->setPositionOrientation((originalCenterOffset - this->physicsActiveDestructableComponent->getOwner()->getPosition())
-			+ (this->physicsActiveDestructableComponent->getOwner()->getOrientation() * splitPartPosition),
-			this->physicsActiveDestructableComponent->getOwner()->getOrientation());*/
+		+ (this->physicsActiveDestructableComponent->getOwner()->getOrientation() * splitPartPosition),
+		this->physicsActiveDestructableComponent->getOwner()->getOrientation());*/
 
 		/*this->splitPartBody->setPositionOrientation(this->physicsActiveDestructableComponent->getOwner()->getPosition() + collisionOffset - originalCenterOffset,
 			this->physicsActiveDestructableComponent->getOwner()->getOrientation());*/
@@ -1174,6 +1183,7 @@ namespace NOWA
 			this->sceneNode->detachAllObjects();
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Destroying scene node: "
 				+ this->sceneNode->getName());
+			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
 			this->sceneManager->destroySceneNode(this->sceneNode);
 		}
 

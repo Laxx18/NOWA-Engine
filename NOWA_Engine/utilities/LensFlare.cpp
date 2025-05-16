@@ -1,5 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "LensFlare.h"
+#include "modules/RenderCommandQueueModule.h"
 
 namespace NOWA
 {
@@ -23,6 +24,8 @@ namespace NOWA
 		this->node->detachObject(this->burstSet);
 		this->sceneManager->destroyBillboardSet(this->haloSet);
 		this->sceneManager->destroyBillboardSet(this->burstSet);
+
+		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->node);
 		this->sceneManager->destroySceneNode(this->node);
 	}
 

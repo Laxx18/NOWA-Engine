@@ -31,16 +31,19 @@ namespace NOWA
 	PlaneComponent::~PlaneComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PlaneComponent] Destructor plane component for game object: " + this->gameObjectPtr->getName());
-		if (false == this->dataBlockName.empty())
+		ENQUEUE_RENDER_COMMAND_WAIT("PlaneComponent::destructor",
 		{
-			this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->setDatablock(this->dataBlockName);
-		}
-		// If datablock has been cloned, set original data block name for item and destroy the cloned one, else crash will occur
-		// (is used by renderable, or datablock cannot be cloned, because same name does exist, if switching between scenes).
-		if (nullptr != this->clonedDatablock)
-		{
-			this->clonedDatablock->getCreator()->destroyDatablock(this->clonedDatablock->getName());
-		}
+			if (false == this->dataBlockName.empty())
+			{
+				this->gameObjectPtr->getMovableObjectUnsafe<Ogre::Item>()->setDatablock(this->dataBlockName);
+			}
+			// If datablock has been cloned, set original data block name for item and destroy the cloned one, else crash will occur
+			// (is used by renderable, or datablock cannot be cloned, because same name does exist, if switching between scenes).
+			if (nullptr != this->clonedDatablock)
+			{
+				this->clonedDatablock->getCreator()->destroyDatablock(this->clonedDatablock->getName());
+			}
+		});
 	}
 
 	bool PlaneComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -138,141 +141,143 @@ namespace NOWA
 	{
 		// Plane cannot be moved if static, so let it be dynamic and user will set it static afterwards when it is no more moved
 		// this->gameObjectPtr->getSceneNode()->setStatic(true);
-
-		Ogre::String meshName = this->gameObjectPtr->getName();
-		Ogre::Plane plane(this->normal->getVector3(), this->distance->getReal());
-		Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName(meshName);
-		// Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
-		if (nullptr != resourceV1)
+		ENQUEUE_RENDER_COMMAND_WAIT("PlaneComponent::createPlane",
 		{
-			Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
-			Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
-		}
-
-		// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
-		Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
-		if (nullptr != resourceV2)
-		{
-			Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
-			Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
-		}
-
-		Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(meshName, "General", plane, this->width->getReal(), this->height->getReal(),
-			this->xSegments->getInt(), this->ySegments->getInt(), true,
-			this->numTexCoordSets->getInt(), this->uTile->getReal(), this->vTile->getReal(), this->up->getVector3(), Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
-
-		Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
-		planeMeshV1->unload();
-		planeMeshV1.setNull();
-
-		// Check whether to cast shadows
-		bool castShadows = true;
-		bool visible = true;
-
-		if (nullptr != this->gameObjectPtr->getMovableObject())
-		{
-			castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
-			visible = this->gameObjectPtr->getMovableObject()->getVisible();
-		}
-
-		// Later: Make scene node and entity static!
-		Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
-
-		this->gameObjectPtr->setDynamic(true);
-		item->setCastShadows(castShadows);
-		this->gameObjectPtr->getSceneNode()->attachObject(item);
-
-		// Set the here newly created entity for this game object
-		this->gameObjectPtr->init(item);
-
-		// Get the used data block name 0
-		auto datablockAttribute = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0");
-		if (nullptr != datablockAttribute)
-		{
-			Ogre::String dataBlock = datablockAttribute->getString();
-			if ("Missing" != dataBlock)
-				item->setDatablock(dataBlock);
-		}
-
-		item->setName(this->gameObjectPtr->getName() + "mesh");
-
-		// When plane is re-created actualize the data block component so that the plane gets the data block
-		auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
-		if (nullptr != datablockPbsComponent)
-		{
-			Ogre::HlmsPbsDatablock* datablock = datablockPbsComponent->getDataBlock();
-			if (nullptr != datablock)
+			Ogre::String meshName = this->gameObjectPtr->getName();
+			Ogre::Plane plane(this->normal->getVector3(), this->distance->getReal());
+			Ogre::ResourcePtr resourceV1 = Ogre::v1::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+			// Destroy a potential plane v1, because an error occurs (plane with name ... already exists)
+			if (nullptr != resourceV1)
 			{
-				const Ogre::HlmsSamplerblock* tempSamplerBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-				if (nullptr != tempSamplerBlock)
-				{
-					Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
-					samplerblock.mU = Ogre::TAM_WRAP;
-					samplerblock.mV = Ogre::TAM_WRAP;
-					samplerblock.mW = Ogre::TAM_WRAP;
-
-					samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-					samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-					samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-					samplerblock.mMaxAnisotropy = 1; // test also with -1;
-
-					//Set the new samplerblock. The Hlms system will
-					//automatically create the API block if necessary
-					datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
-				}
-
-				item->setDatablock(datablock);
+				Ogre::v1::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+				Ogre::v1::MeshManager::getSingletonPtr()->remove(resourceV1->getHandle());
 			}
-		}
-		else
-		{
-			// Get the used data block name, if not set
-			if (true == this->dataBlockName.empty())
+
+			// Destroy a potential plane v2, because an error occurs (plane with name ... already exists)
+			Ogre::ResourcePtr resourceV2 = Ogre::MeshManager::getSingletonPtr()->getResourceByName(meshName);
+			if (nullptr != resourceV2)
 			{
-				this->dataBlockName = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0")->getString();
+				Ogre::MeshManager::getSingletonPtr()->destroyResourcePool(meshName);
+				Ogre::MeshManager::getSingletonPtr()->remove(resourceV2->getHandle());
 			}
-			Ogre::HlmsPbsDatablock* sourceDataBlock = static_cast<Ogre::HlmsPbsDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock(this->dataBlockName));
-			if (nullptr != sourceDataBlock)
+
+			Ogre::v1::MeshPtr planeMeshV1 = Ogre::v1::MeshManager::getSingletonPtr()->createPlane(meshName, "General", plane, this->width->getReal(), this->height->getReal(),
+				this->xSegments->getInt(), this->ySegments->getInt(), true,
+				this->numTexCoordSets->getInt(), this->uTile->getReal(), this->vTile->getReal(), this->up->getVector3(), Ogre::v1::HardwareBuffer::HBU_STATIC, Ogre::v1::HardwareBuffer::HBU_STATIC);
+
+			Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingletonPtr()->createByImportingV1(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, planeMeshV1.get(), true, true, true);
+			planeMeshV1->unload();
+			planeMeshV1.setNull();
+
+			// Check whether to cast shadows
+			bool castShadows = true;
+			bool visible = true;
+
+			if (nullptr != this->gameObjectPtr->getMovableObject())
 			{
-				Ogre::String clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
-				bool duplicateItem = false;
+				castShadows = this->gameObjectPtr->getMovableObject()->getCastShadows();
+				visible = this->gameObjectPtr->getMovableObject()->getVisible();
+			}
 
-				do
-				{
-					try
-					{
-						this->clonedDatablock = sourceDataBlock->clone(clonedDatablockName);
-						duplicateItem = false;
-					}
-					catch (const Ogre::Exception& exception)
-					{
-						duplicateItem = true;
-						clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(static_cast<int>(Ogre::Math::RangeRandom(0.0f, 100.0f)));
-					}
-				} while (true == duplicateItem);
+			// Later: Make scene node and entity static!
+			Ogre::Item* item = this->gameObjectPtr->getSceneManager()->createItem(planeMesh, Ogre::SCENE_DYNAMIC);
 
-				if (nullptr != this->clonedDatablock)
+			this->gameObjectPtr->setDynamic(true);
+			item->setCastShadows(castShadows);
+			this->gameObjectPtr->getSceneNode()->attachObject(item);
+
+			// Set the here newly created entity for this game object
+			this->gameObjectPtr->init(item);
+
+			// Get the used data block name 0
+			auto datablockAttribute = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0");
+			if (nullptr != datablockAttribute)
+			{
+				Ogre::String dataBlock = datablockAttribute->getString();
+				if ("Missing" != dataBlock)
+					item->setDatablock(dataBlock);
+			}
+
+			item->setName(this->gameObjectPtr->getName() + "mesh");
+
+			// When plane is re-created actualize the data block component so that the plane gets the data block
+			auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+			if (nullptr != datablockPbsComponent)
+			{
+				Ogre::HlmsPbsDatablock* datablock = datablockPbsComponent->getDataBlock();
+				if (nullptr != datablock)
 				{
-					item->setDatablock(this->clonedDatablock);
+					const Ogre::HlmsSamplerblock* tempSamplerBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
+					if (nullptr != tempSamplerBlock)
+					{
+						Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
+						samplerblock.mU = Ogre::TAM_WRAP;
+						samplerblock.mV = Ogre::TAM_WRAP;
+						samplerblock.mW = Ogre::TAM_WRAP;
+
+						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+						samplerblock.mMaxAnisotropy = 1; // test also with -1;
+
+						//Set the new samplerblock. The Hlms system will
+						//automatically create the API block if necessary
+						datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
+					}
+
+					item->setDatablock(datablock);
 				}
 			}
-			
-			for (size_t i = 0; i < item->getNumSubItems(); i++)
+			else
 			{
-				auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+				// Get the used data block name, if not set
+				if (true == this->dataBlockName.empty())
+				{
+					this->dataBlockName = this->gameObjectPtr->getAttribute(GameObject::AttrDataBlock() + "0")->getString();
+				}
+				Ogre::HlmsPbsDatablock* sourceDataBlock = static_cast<Ogre::HlmsPbsDatablock*>(Ogre::Root::getSingletonPtr()->getHlmsManager()->getDatablock(this->dataBlockName));
 				if (nullptr != sourceDataBlock)
 				{
-					// Deactivate fresnel by default, because it looks ugly
-					if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+					Ogre::String clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
+					bool duplicateItem = false;
+
+					do
 					{
-						sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+						try
+						{
+							this->clonedDatablock = sourceDataBlock->clone(clonedDatablockName);
+							duplicateItem = false;
+						}
+						catch (const Ogre::Exception& exception)
+						{
+							duplicateItem = true;
+							clonedDatablockName = *sourceDataBlock->getNameStr() + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(static_cast<int>(Ogre::Math::RangeRandom(0.0f, 100.0f)));
+						}
+					} while (true == duplicateItem);
+
+					if (nullptr != this->clonedDatablock)
+					{
+						item->setDatablock(this->clonedDatablock);
+					}
+				}
+
+				for (size_t i = 0; i < item->getNumSubItems(); i++)
+				{
+					auto sourceDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(item->getSubItem(i)->getDatablock());
+					if (nullptr != sourceDataBlock)
+					{
+						// Deactivate fresnel by default, because it looks ugly
+						if (sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::SpecularAsFresnelWorkflow && sourceDataBlock->getWorkflow() != Ogre::HlmsPbsDatablock::MetallicWorkflow)
+						{
+							sourceDataBlock->setFresnel(Ogre::Vector3(0.01f, 0.01f, 0.01f), false);
+						}
 					}
 				}
 			}
-		}
 
-		item->setVisible(visible);
-		this->gameObjectPtr->getSceneNode()->setVisible(visible);
+			item->setVisible(visible);
+			this->gameObjectPtr->getSceneNode()->setVisible(visible);
+		});
 
 		// Check if a physics artifact component does exist for this game object and recreate the collision shape when the plane has changed
 		auto& physicsArtifactComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<PhysicsArtifactComponent>());

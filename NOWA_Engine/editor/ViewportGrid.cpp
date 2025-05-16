@@ -30,10 +30,10 @@ THE SOFTWARE.
 
 #include "ViewportGrid.h"
 #include "main/Core.h"
+#include "modules/RenderCommandQueueModule.h"
  
 namespace NOWA
 {
-
 	ViewportGrid::ViewportGrid(Ogre::SceneManager* sceneManager, Ogre::Camera* camera)
 		: sceneManager(sceneManager),
 		camera(camera),
@@ -87,7 +87,7 @@ namespace NOWA
 
 	void ViewportGrid::setPosition(const Ogre::Vector3& position)
 	{
-		this->node->setPosition(position);
+		RenderCommandQueueModule::getInstance()->updateNodePosition(this->node, position);
 		// this->applyForceUpdate();
 	}
 
@@ -98,7 +98,7 @@ namespace NOWA
 
 	void ViewportGrid::setOrientation(const Ogre::Quaternion& orientation)
 	{
-		this->node->setOrientation(orientation);
+		RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->node, orientation);
 		// this->applyForceUpdate();
 	}
 
@@ -168,7 +168,10 @@ namespace NOWA
 
 		if (!this->grid->isAttached())
 		{
-			this->node->attachObject(this->grid);
+			ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::enable",
+			{
+				this->node->attachObject(this->grid);
+			});
 		}
 		this->applyForceUpdate();
 	}
@@ -179,7 +182,10 @@ namespace NOWA
 
 		if (this->grid->isAttached())
 		{
-			this->node->detachObject(this->grid);
+			ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::disable",
+			{
+				this->node->detachObject(this->grid);
+			});
 		}
 	}
 
@@ -220,34 +226,40 @@ namespace NOWA
 
 	void ViewportGrid::createGrid()
 	{
-		Ogre::String name = "ViewportGrid";
+		ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::createGrid",
+		{
+			Ogre::String name = "ViewportGrid";
 
-		// Create the manual object
-		// this->grid = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-		this->grid = this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
-		this->grid->setName(name);
-		this->grid->setQueryFlags(0 << 0);
-		this->grid->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			// Create the manual object
+			// this->grid = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+			this->grid = this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
+			this->grid->setName(name);
+			this->grid->setQueryFlags(0 << 0);
+			this->grid->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 
-		// Really important: When an unlit datablock is used for manual object, no shadows must be cast!! else there is an error in an dx script with 'depthRange'!
-		this->grid->setCastShadows(false);
+			// Really important: When an unlit datablock is used for manual object, no shadows must be cast!! else there is an error in an dx script with 'depthRange'!
+			this->grid->setCastShadows(false);
 
-		// Create the scene node (not attached yet)
-		this->node = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-		this->node->setName(name);
-		this->node->attachObject(this->grid);
+			// Create the scene node (not attached yet)
+			this->node = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+			this->node->setName(name);
+			this->node->attachObject(this->grid);
+		});
 		this->enabled = false;
 	}
 
 	void ViewportGrid::destroyGrid()
 	{
 		// Destroy the manual object
-		
-		this->node->detachAllObjects();
-		this->sceneManager->destroyManualObject(this->grid);
-		
-		// Destroy the scene node
-		this->sceneManager->destroySceneNode(this->node);
+		ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::destroyGrid",
+		{
+			this->node->detachAllObjects();
+			this->sceneManager->destroyManualObject(this->grid);
+
+			// Destroy the scene node
+			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->node);
+			this->sceneManager->destroySceneNode(this->node);
+		});
 		this->node = nullptr;
 	}
 
@@ -274,228 +286,234 @@ namespace NOWA
 
 	void ViewportGrid::updateOrtho()
 	{
-		// Screen dimensions
-		int width = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
-		int height = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
-
-		// Camera information
-		const Ogre::Vector3& camPos = this->camera->getPosition();
-		Ogre::Vector3 camDir = this->camera->getDirection();
-		Ogre::Vector3 camUp = this->camera->getUp();
-		Ogre::Vector3 camRight = this->camera->getRight();
-
-		// Translation in grid space
-		Ogre::Real dx = camPos.dotProduct(camRight);
-		Ogre::Real dy = camPos.dotProduct(camUp);
-
-		// Frustum dimensions
-		// Note: Tan calculates the opposite side of a _right_ triangle given its angle, so we make sure it is one, and double the result
-		Ogre::Real worldWidth = 2.0f * Ogre::Math::Tan(this->camera->getFOVy() / 2) * this->camera->getAspectRatio() * this->camera->getNearClipDistance();
-		Ogre::Real worldHeight = worldWidth / this->camera->getAspectRatio();
-		Ogre::Real worldLeft = dx - worldWidth / 2;
-		Ogre::Real worldRight = dx + worldWidth / 2;
-		Ogre::Real worldBottom = dy - worldHeight / 2;
-		Ogre::Real worldTop = dy + worldHeight / 2;
-
-		// Conversion values (note: same as working with the height values)
-		Ogre::Real worldToScreen = width / worldWidth;
-		Ogre::Real screenToWorld = worldWidth / width;
-
-		//! @todo Treshold should be dependent on window width/height (min? max?) so there are no more then division full alpha-lines
-		static const int treshold = 10; // Treshhold in pixels
-
-		// Calculate the spacing multiplier
-		Ogre::Real mult = 0;
-		int exp = 0;
-		Ogre::Real temp = worldToScreen; // 1 world unit
-		if (worldToScreen < treshold)
+		ENQUEUE_RENDER_COMMAND("ViewportGrid::updateOrtho",
 		{
-			while (temp < treshold)
+			// Screen dimensions
+			int width = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
+			int height = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
+
+			// Camera information
+			const Ogre::Vector3 & camPos = this->camera->getPosition();
+			Ogre::Vector3 camDir = this->camera->getDirection();
+			Ogre::Vector3 camUp = this->camera->getUp();
+			Ogre::Vector3 camRight = this->camera->getRight();
+
+			// Translation in grid space
+			Ogre::Real dx = camPos.dotProduct(camRight);
+			Ogre::Real dy = camPos.dotProduct(camUp);
+
+			// Frustum dimensions
+			// Note: Tan calculates the opposite side of a _right_ triangle given its angle, so we make sure it is one, and double the result
+			Ogre::Real worldWidth = 2.0f * Ogre::Math::Tan(this->camera->getFOVy() / 2) * this->camera->getAspectRatio() * this->camera->getNearClipDistance();
+			Ogre::Real worldHeight = worldWidth / this->camera->getAspectRatio();
+			Ogre::Real worldLeft = dx - worldWidth / 2;
+			Ogre::Real worldRight = dx + worldWidth / 2;
+			Ogre::Real worldBottom = dy - worldHeight / 2;
+			Ogre::Real worldTop = dy + worldHeight / 2;
+
+			// Conversion values (note: same as working with the height values)
+			Ogre::Real worldToScreen = width / worldWidth;
+			Ogre::Real screenToWorld = worldWidth / width;
+
+			//! @todo Treshold should be dependent on window width/height (min? max?) so there are no more then division full alpha-lines
+			static const int treshold = 10; // Treshhold in pixels
+
+			// Calculate the spacing multiplier
+			Ogre::Real mult = 0;
+			int exp = 0;
+			Ogre::Real temp = worldToScreen; // 1 world unit
+			if (worldToScreen < treshold)
 			{
-				++exp;
-				temp *= treshold;
+				while (temp < treshold)
+				{
+					++exp;
+					temp *= treshold;
+				}
+
+				mult = Ogre::Math::Pow(static_cast<Ogre::Real>(division), static_cast<Ogre::Real>(exp));
+			}
+			else
+			{
+				while (temp > division * treshold)
+				{
+					++exp;
+					temp /= treshold;
+				}
+
+				mult = Ogre::Math::Pow(1.0f / static_cast<Ogre::Real>(division), static_cast<Ogre::Real>(exp));
 			}
 
-			mult = Ogre::Math::Pow(static_cast<Ogre::Real>(division), static_cast<Ogre::Real>(exp));
-		}
-		else
-		{
-			while (temp > division * treshold)
+			// Interpolate alpha for (multiplied) spacing between treshold and division*  treshold
+			color2.a = worldToScreen * mult / (division * treshold - treshold);
+			if (color2.a > 1.0f)
 			{
-				++exp;
-				temp /= treshold;
+				color2.a = 1.0f;
+			}
+			// Calculate the horizontal zero-axis color
+			Ogre::Real camRightX = Ogre::Math::Abs(camRight.x);
+			Ogre::Real camRightY = Ogre::Math::Abs(camRight.y);
+			Ogre::Real camRightZ = Ogre::Math::Abs(camRight.z);
+			const Ogre::ColourValue& horAxisColor = Ogre::Math::RealEqual(camRightX, 1.0f) ? Ogre::ColourValue::Red
+				: Ogre::Math::RealEqual(camRightY, 1.0f) ? Ogre::ColourValue::Green
+				: Ogre::Math::RealEqual(camRightZ, 1.0f) ? Ogre::ColourValue::Blue : color1;
+
+			// Calculate the vertical zero-axis color
+			Ogre::Real camUpX = Ogre::Math::Abs(camUp.x);
+			Ogre::Real camUpY = Ogre::Math::Abs(camUp.y);
+			Ogre::Real camUpZ = Ogre::Math::Abs(camUp.z);
+			const Ogre::ColourValue& vertAxisColor = Ogre::Math::RealEqual(camUpX, 1.0f) ? Ogre::ColourValue::Red
+				: Ogre::Math::RealEqual(camUpY, 1.0f) ? Ogre::ColourValue::Green
+				: Ogre::Math::RealEqual(camUpZ, 1.0f) ? Ogre::ColourValue::Blue : color1;
+
+			// The number of lines
+			int numLinesWidth = (int)(worldWidth / mult) + 1;
+			int numLinesHeight = (int)(worldHeight / mult) + 1;
+
+			// Start creating or updating the grid
+			this->grid->estimateVertexCount(2 * numLinesWidth + 2 * numLinesHeight);
+			// this->grid->clear();
+
+			// Start updating the manual object
+			if (this->grid && this->grid->getNumSections() > 0)
+			{
+				this->grid->beginUpdate(0);
+			}
+			else
+			{
+				this->grid->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
 			}
 
-			mult = Ogre::Math::Pow(1.0f / static_cast<Ogre::Real>(division), static_cast<Ogre::Real>(exp));
-		}
+			// Vertical lines
+			Ogre::Real startX = mult * (int)(worldLeft / mult);
+			Ogre::Real x = startX;
+			int i = 0;
+			while (x <= worldRight)
+			{
+				// Get the right color for this line
+				int multX = static_cast<int>((x == 0.0f) ? x : (x < 0.0f) ? (int)(x / mult - 0.5f) : (int)(x / mult + 0.5f));
+				const Ogre::ColourValue& colour = (multX == 0.0f) ? vertAxisColor : (multX % (int)division) ? color2 : color1;
 
-		// Interpolate alpha for (multiplied) spacing between treshold and division*  treshold
-		color2.a = worldToScreen*  mult / (division * treshold - treshold);
-		if (color2.a > 1.0f)
-		{
-			color2.a = 1.0f;
-		}
-		// Calculate the horizontal zero-axis color
-		Ogre::Real camRightX = Ogre::Math::Abs(camRight.x);
-		Ogre::Real camRightY = Ogre::Math::Abs(camRight.y);
-		Ogre::Real camRightZ = Ogre::Math::Abs(camRight.z);
-		const Ogre::ColourValue& horAxisColor = Ogre::Math::RealEqual(camRightX, 1.0f) ? Ogre::ColourValue::Red
-			: Ogre::Math::RealEqual(camRightY, 1.0f) ? Ogre::ColourValue::Green
-			: Ogre::Math::RealEqual(camRightZ, 1.0f) ? Ogre::ColourValue::Blue : color1;
+				// Add the line
+				this->grid->position(x, worldBottom, 0);
+				this->grid->colour(colour);
+				this->grid->index(i);
+				this->grid->position(x, worldTop, 0);
+				this->grid->colour(colour);
+				this->grid->index(i + 1);
 
-		// Calculate the vertical zero-axis color
-		Ogre::Real camUpX = Ogre::Math::Abs(camUp.x);
-		Ogre::Real camUpY = Ogre::Math::Abs(camUp.y);
-		Ogre::Real camUpZ = Ogre::Math::Abs(camUp.z);
-		const Ogre::ColourValue& vertAxisColor = Ogre::Math::RealEqual(camUpX, 1.0f) ? Ogre::ColourValue::Red
-			: Ogre::Math::RealEqual(camUpY, 1.0f) ? Ogre::ColourValue::Green
-			: Ogre::Math::RealEqual(camUpZ, 1.0f) ? Ogre::ColourValue::Blue : color1;
+				x += mult;
+				i += 2;
+			}
 
-		// The number of lines
-		int numLinesWidth = (int)(worldWidth / mult) + 1;
-		int numLinesHeight = (int)(worldHeight / mult) + 1;
+			// Horizontal lines
+			Ogre::Real startY = mult * (int)(worldBottom / mult);
+			Ogre::Real y = startY;
+			while (y <= worldTop)
+			{
+				// Get the right color for this line
+				int multY = static_cast<int>((y == 0.0f) ? y : (y < 0.0f) ? (int)(y / mult - 0.5f) : (int)(y / mult + 0.5f));
+				const Ogre::ColourValue& colour = (multY == 0.0f) ? horAxisColor : (multY % (int)division) ? color2 : color1;
 
-		// Start creating or updating the grid
-		this->grid->estimateVertexCount(2 * numLinesWidth + 2 * numLinesHeight);
-		// this->grid->clear();
+				// Add the line
+				this->grid->position(worldLeft, y, 0.0f);
+				this->grid->colour(colour);
+				this->grid->index(i);
+				this->grid->position(worldRight, y, 0.0f);
+				this->grid->colour(colour);
+				this->grid->index(i + 1);
 
-		// Start updating the manual object
-		if (this->grid && this->grid->getNumSections() > 0)
-		{
-			this->grid->beginUpdate(0);
-		}
-		else
-		{
-			this->grid->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		}
+				y += mult;
+				i += 2;
+			}
 
-		// Vertical lines
-		Ogre::Real startX = mult * (int)(worldLeft / mult);
-		Ogre::Real x = startX;
-		int i = 0;
-		while (x <= worldRight)
-		{
-			// Get the right color for this line
-			int multX = static_cast<int>((x == 0.0f) ? x : (x < 0.0f) ? (int)(x / mult - 0.5f) : (int)(x / mult + 0.5f));
-			const Ogre::ColourValue& colour = (multX == 0.0f) ? vertAxisColor : (multX % (int)division) ? color2 : color1;
+			this->grid->end();
 
-			// Add the line
-			this->grid->position(x, worldBottom, 0);
-			this->grid->colour(colour);
-			this->grid->index(i);
-			this->grid->position(x, worldTop, 0);
-			this->grid->colour(colour);
-			this->grid->index(i + 1);
-
-			x += mult;
-			i += 2;
-		}
-
-		// Horizontal lines
-		Ogre::Real startY = mult * (int)(worldBottom / mult);
-		Ogre::Real y = startY;
-		while (y <= worldTop)
-		{
-			// Get the right color for this line
-			int multY = static_cast<int>((y == 0.0f) ? y : (y < 0.0f) ? (int)(y / mult - 0.5f) : (int)(y / mult + 0.5f));
-			const Ogre::ColourValue& colour = (multY == 0.0f) ? horAxisColor : (multY % (int)division) ? color2 : color1;
-
-			// Add the line
-			this->grid->position(worldLeft, y, 0.0f);
-			this->grid->colour(colour);
-			this->grid->index(i);
-			this->grid->position(worldRight, y, 0.0f);
-			this->grid->colour(colour);
-			this->grid->index(i + 1);
-
-			y += mult;
-			i += 2;
-		}
-
-		this->grid->end();
-
-		this->node->setOrientation(this->camera->getOrientation());
+			this->node->setOrientation(this->camera->getOrientation());
+		});
 	}
 
 	void ViewportGrid::updatePersp()
 	{
-		//! @todo Calculate the spacing multiplier
-		Ogre::Real mult = 1;
-
-		//! @todo Interpolate alpha
-		color2.a = 0.5f;
-		//if(colour2.a > 1.0f) colour2.a = 1.0f;
-
-		// Calculate the horizontal zero-axis color
-		const Ogre::ColourValue& horAxisColor = Ogre::ColourValue::Red;
-
-		// Calculate the vertical zero-axis color
-		const Ogre::ColourValue& vertAxisColor = Ogre::ColourValue::Blue;
-
-		// The number of lines
-		int numLines = (int)(this->perspSize / mult) + 1;
-
-		// Start creating or updating the grid
-		this->grid->estimateVertexCount(4 * numLines);
-		// this->grid->clear();
-
-		// Start updating the manual object
-		if (this->grid && this->grid->getNumSections() > 0)
+		ENQUEUE_RENDER_COMMAND("ViewportGrid::updatePersp",
 		{
-			this->grid->beginUpdate(0);
-		}
-		else
-		{
-			this->grid->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
-		}
+			//! @todo Calculate the spacing multiplier
+			Ogre::Real mult = 1;
 
-		// Vertical lines
-		Ogre::Real start = mult * (int)(-this->perspSize / 2 / mult);
-		Ogre::Real x = start;
+			//! @todo Interpolate alpha
+			color2.a = 0.5f;
+			//if(colour2.a > 1.0f) colour2.a = 1.0f;
 
-		int i = 0;
-		while (x <= perspSize / 2.0f)
-		{
-			// Get the right color for this line
-			int multX = static_cast<int>((x == 0.0f) ? x : (x < 0.0f) ? (int)(x / mult - 0.5f) : (int)(x / mult + 0.5f));
-			const Ogre::ColourValue& colour = (multX == 0.0f) ? vertAxisColor : (multX % (int)division) ? color2 : color1;
+			// Calculate the horizontal zero-axis color
+			const Ogre::ColourValue & horAxisColor = Ogre::ColourValue::Red;
 
-			// Add the line
-			this->grid->position(x, 0, -this->perspSize / 2.0f);
-			this->grid->colour(colour);
-			this->grid->index(i);
-			this->grid->position(x, 0, this->perspSize / 2.0f);
-			this->grid->colour(colour);
-			this->grid->index(i + 1);
+			// Calculate the vertical zero-axis color
+			const Ogre::ColourValue & vertAxisColor = Ogre::ColourValue::Blue;
 
-			x += mult;
-			i += 2;
-		}
+			// The number of lines
+			int numLines = (int)(this->perspSize / mult) + 1;
 
-		// Horizontal lines
-		Ogre::Real y = start;
-		while (y <= this->perspSize / 2.0f)
-		{
-			// Get the right color for this line
-			int multY = static_cast<int>((y == 0.0f) ? y : (y < 0.0f) ? (int)(y / mult - 0.5f) : (int)(y / mult + 0.5f));
-			const Ogre::ColourValue& colour = (multY == 0.0f) ? horAxisColor : (multY % (int)division) ? color2 : color1;
+			// Start creating or updating the grid
+			this->grid->estimateVertexCount(4 * numLines);
+			// this->grid->clear();
 
-			// Add the line
-			this->grid->position(-this->perspSize / 2.0f, 0, y);
-			this->grid->colour(colour);
-			this->grid->index(i);
-			this->grid->position(this->perspSize / 2.0f, 0, y);
-			this->grid->colour(colour);
-			this->grid->index(i + 1);
+			// Start updating the manual object
+			if (this->grid && this->grid->getNumSections() > 0)
+			{
+				this->grid->beginUpdate(0);
+			}
+			else
+			{
+				this->grid->begin("GreenNoLighting", Ogre::OperationType::OT_LINE_LIST);
+			}
 
-			y += mult;
-			i += 2;
-		}
+			// Vertical lines
+			Ogre::Real start = mult * (int)(-this->perspSize / 2 / mult);
+			Ogre::Real x = start;
 
-		this->grid->end();
+			int i = 0;
+			while (x <= perspSize / 2.0f)
+			{
+				// Get the right color for this line
+				int multX = static_cast<int>((x == 0.0f) ? x : (x < 0.0f) ? (int)(x / mult - 0.5f) : (int)(x / mult + 0.5f));
+				const Ogre::ColourValue& colour = (multX == 0.0f) ? vertAxisColor : (multX % (int)division) ? color2 : color1;
 
-		// Normal orientation, grid in the X-Z plane
-		// this->node->resetOrientation();
+				// Add the line
+				this->grid->position(x, 0, -this->perspSize / 2.0f);
+				this->grid->colour(colour);
+				this->grid->index(i);
+				this->grid->position(x, 0, this->perspSize / 2.0f);
+				this->grid->colour(colour);
+				this->grid->index(i + 1);
+
+				x += mult;
+				i += 2;
+			}
+
+			// Horizontal lines
+			Ogre::Real y = start;
+			while (y <= this->perspSize / 2.0f)
+			{
+				// Get the right color for this line
+				int multY = static_cast<int>((y == 0.0f) ? y : (y < 0.0f) ? (int)(y / mult - 0.5f) : (int)(y / mult + 0.5f));
+				const Ogre::ColourValue& colour = (multY == 0.0f) ? horAxisColor : (multY % (int)division) ? color2 : color1;
+
+				// Add the line
+				this->grid->position(-this->perspSize / 2.0f, 0, y);
+				this->grid->colour(colour);
+				this->grid->index(i);
+				this->grid->position(this->perspSize / 2.0f, 0, y);
+				this->grid->colour(colour);
+				this->grid->index(i + 1);
+
+				y += mult;
+				i += 2;
+			}
+
+			this->grid->end();
+
+			// Normal orientation, grid in the X-Z plane
+			// this->node->resetOrientation();
+		});
 	}
 
 	/* Checks if an update is necessary*/
