@@ -823,22 +823,23 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
 	if (true == this->hasSceneChanges)
 	{
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
-			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
-
-		// Register delegate to handle button clicks, and enqueue to render thread.
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleExit1", _1(messageBox),
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit1",
 		{
+			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
+				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
+			// Register delegate to handle button clicks, and enqueue to render thread.
+
 			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEnd);
 		});
 	}
 	else
 	{
-		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
-			MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleExit2", _1(messageBox),
+		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit2",
 		{
+			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
+				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
+
 			messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &DesignState::notifyMessageBoxEndExit);
 		});
 	}
