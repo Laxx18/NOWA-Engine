@@ -952,7 +952,7 @@ namespace NOWA
 				}
 			};
 
-			RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
+			RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
 		}
 		else
 		{
@@ -998,7 +998,7 @@ namespace NOWA
 				}
 			};
 
-			RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
+			RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
 		}
 	}
 
@@ -1664,7 +1664,8 @@ namespace NOWA
 	{
 		this->position->setValue(position);
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributePosition", _1(position),
+		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributePosition", _1(position),
 		{
 			this->sceneNode->_setDerivedPosition(position);
 		});
@@ -1673,7 +1674,8 @@ namespace NOWA
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
 	{
 		this->scale->setValue(scale);
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributeScale", _1(scale),
+		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributeScale", _1(scale),
 		{
 			this->sceneNode->setScale(scale);
 			this->refreshSize();
@@ -1685,7 +1687,8 @@ namespace NOWA
 	{
 		// Set in the form degree, x-axis, y-axis, z-axis
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(orientation));
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setAttributeOrientation", _1(orientation),
+		// Have no idea why, but interpolation cannot be used here! Else a crash does occur, later debug it!
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributeOrientation", _1(orientation),
 		{
 			this->sceneNode->_setDerivedOrientation(orientation);
 		});

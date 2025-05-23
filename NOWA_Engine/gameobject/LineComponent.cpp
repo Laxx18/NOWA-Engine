@@ -214,13 +214,16 @@ namespace NOWA
 	
 	void LineComponent::createLine(void)
 	{
-		this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-		// this->lineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
-		this->lineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-		this->lineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->lineObject->setName("Line_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-		this->lineObject->setQueryFlags(0 << 0);
-		this->lineNode->attachObject(this->lineObject);
+		ENQUEUE_RENDER_COMMAND_WAIT("LineComponent::createLine",
+		{
+			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+			// this->lineObject = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+			this->lineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+			this->lineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->lineObject->setName("Line_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+			this->lineObject->setQueryFlags(0 << 0);
+			this->lineNode->attachObject(this->lineObject);
+		});
 	}
 
 	void LineComponent::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -229,33 +232,40 @@ namespace NOWA
 		{
 			this->createLine();
 		}
-		// Draw a 3D line between these points for visual effect
-		this->lineObject->clear();
-		// Or here via data block??
-		this->lineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-		Ogre::Vector3 color = this->color->getVector3();
-		this->lineObject->position(startPosition);
-		this->lineObject->colour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
-		this->lineObject->index(0);
-		this->lineObject->position(endPosition);
-		this->lineObject->colour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
-		this->lineObject->index(1);
-		this->lineObject->end();
+
+		ENQUEUE_RENDER_COMMAND_MULTI("LineComponent::createLine", _2(startPosition, endPosition),
+		{
+			// Draw a 3D line between these points for visual effect
+			this->lineObject->clear();
+			// Or here via data block??
+			this->lineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+			Ogre::Vector3 color = this->color->getVector3();
+			this->lineObject->position(startPosition);
+			this->lineObject->colour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			this->lineObject->index(0);
+			this->lineObject->position(endPosition);
+			this->lineObject->colour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			this->lineObject->index(1);
+			this->lineObject->end();
+		});
 	}
 
 	void LineComponent::destroyLine()
 	{
 		if (this->lineNode != nullptr)
 		{
-			this->lineNode->detachAllObjects();
-			if (this->lineObject != nullptr)
+			ENQUEUE_RENDER_COMMAND_WAIT("LineComponent::destroyLine",
 			{
-				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObject);
-				// delete this->lineObject;
-				this->lineObject = nullptr;
-			}
-			this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-			this->lineNode = nullptr;
+				this->lineNode->detachAllObjects();
+				if (this->lineObject != nullptr)
+				{
+					this->gameObjectPtr->getSceneManager()->destroyManualObject(this->lineObject);
+					// delete this->lineObject;
+					this->lineObject = nullptr;
+				}
+				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+				this->lineNode = nullptr;
+			});
 		}
 	}
 
@@ -494,9 +504,13 @@ namespace NOWA
 				affectiveSize = this->sizeSnapshot.x + padding;
 				scale = this->scaleSnapshot.x * length / affectiveSize;
 
-				if (scale < 0.05f) scale = 0.05f;
+				if (scale < 0.05f)
+				{
+					scale = 0.05f;
+				}
 
-				this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
+				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "->scale: " + Ogre::StringConverter::toString(Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z)));
 			}
 			else if (this->meshScaleAxis->getVector3().y == 1.0f)
@@ -504,18 +518,26 @@ namespace NOWA
 				affectiveSize = this->sizeSnapshot.y + padding;
 				scale = this->scaleSnapshot.y * length / affectiveSize;
 				
-				if (scale < 0.05f) scale = 0.05f;
+				if (scale < 0.05f)
+				{
+					scale = 0.05f;
+				}
 
-				this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
+				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
 			}
 			else
 			{
 				affectiveSize = this->sizeSnapshot.z + padding;
 				scale = this->scaleSnapshot.z * length / affectiveSize;
 				
-				if (scale < 0.05f) scale = 0.05f;
+				if (scale < 0.05f)
+				{
+					scale = 0.05f;
+				}
 
-				this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
+				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
 			}
 
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "->btoffset: " + Ogre::StringConverter::toString(this->gameObjectPtr->getBottomOffset()));
@@ -700,7 +722,6 @@ namespace NOWA
 	GameObjectCompPtr LineMeshComponent::clone(GameObjectPtr clonedGameObjectPtr)
 	{
 		LineMeshCompPtr clonedCompPtr(boost::make_shared<LineMeshComponent>());
-
 		
 		clonedCompPtr->setOffsetPositionFactor(this->offsetPositionFactor->getVector3());
 		clonedCompPtr->setOffsetOrientation(this->offsetOrientation->getVector3());
@@ -762,10 +783,13 @@ namespace NOWA
 		this->positionSnapshot = this->gameObjectPtr->getSceneNode()->getPosition();
 		this->orientationSnapshot = this->gameObjectPtr->getSceneNode()->getOrientation();
 
-		Ogre::Vector3 resultDirection = (this->endPositionGameObject->getPosition() - this->startPositionGameObject->getPosition()).normalisedCopy();
-		Ogre::Quaternion orientation = MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), resultDirection, this->expandAxis->getVector3()) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-		this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition());
-		this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+		ENQUEUE_RENDER_COMMAND("LineMeshComponent::connect",
+		{
+			Ogre::Vector3 resultDirection = (this->endPositionGameObject->getPosition() - this->startPositionGameObject->getPosition()).normalisedCopy();
+			Ogre::Quaternion orientation = MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), resultDirection, this->expandAxis->getVector3()) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
+			this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition());
+			this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+		});
 
 		return true;
 	}
@@ -778,8 +802,11 @@ namespace NOWA
 		this->orientationOffsetSnapshot = Ogre::Quaternion::IDENTITY;
 		this->sizeSnapshot = Ogre::Vector3::ZERO;
 
-		this->gameObjectPtr->getSceneNode()->setPosition(this->positionSnapshot );
-		this->gameObjectPtr->getSceneNode()->setOrientation(this->orientationSnapshot);
+		ENQUEUE_RENDER_COMMAND("LineMeshComponent::connect",
+		{
+			this->gameObjectPtr->getSceneNode()->setPosition(this->positionSnapshot);
+			this->gameObjectPtr->getSceneNode()->setOrientation(this->orientationSnapshot);
+		});
 
 		this->clearMeshes();
 
@@ -801,7 +828,9 @@ namespace NOWA
 			// Only the id is important!
 			this->setEndPositionId(endPositionGameObjectPtr->getId());
 		else
+		{
 			this->setEndPositionId(0);
+		}
 		
 		return true;
 	}
@@ -871,8 +900,10 @@ namespace NOWA
 		if (true == this->meshes.empty())
 		{
 			position = this->gameObjectPtr->getPosition() + ((direction * this->offsetPositionFactor->getVector3()) * (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale()));
-			sceneNode->setPosition(position);
-			sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+			// sceneNode->setPosition(position);
+			// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+
+			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 		}
 
 		unsigned int oldSize = static_cast<unsigned int>(this->meshes.size());
@@ -881,8 +912,9 @@ namespace NOWA
 		{
 			Ogre::SceneNode* priorSceneNode = this->meshes[oldSize - 1];
 			position = priorSceneNode->getPosition() + ((direction * this->offsetPositionFactor->getVector3()) * (priorSceneNode->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale()));
-			sceneNode->setPosition(position);
-			sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+			// sceneNode->setPosition(position);
+			// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 		}
 
 		this->meshes.push_back(sceneNode);
@@ -893,8 +925,9 @@ namespace NOWA
 		Ogre::SceneNode* priorSceneNode = nullptr;
 
 		Ogre::Quaternion orientation = MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), direction, this->expandAxis->getVector3()) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
-		this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition());
-		this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+		// this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition());
+		// this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+		NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), this->startPositionGameObject->getPosition(), orientation);
 
 		for (size_t i = 0; i < this->meshes.size(); i++)
 		{
@@ -903,15 +936,17 @@ namespace NOWA
 			if (i == 0)
 			{
 				position = this->gameObjectPtr->getPosition() + (direction * this->offsetPositionFactor->getVector3()) * (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale());
-				sceneNode->setPosition(position);
-				sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+				// ->setPosition(position);
+				// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 			}
 			else
 			{
 				priorSceneNode = this->meshes[i - 1];
 				position = priorSceneNode->getPosition() + (direction * this->offsetPositionFactor->getVector3()) * (priorSceneNode->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale());
-				sceneNode->setPosition(position);
-				sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+				// sceneNode->setPosition(position);
+				// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 			}
 		}
 	}

@@ -63,7 +63,10 @@ namespace NOWA
 		if (nullptr != dummyEntity)
 		{
 			bool visible = this->show->getBool() && this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::connect", _1(visible),
+			{
+				this->dummyEntity->setVisible(visible);
+			});
 		}
 
 		return true;
@@ -74,7 +77,10 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI("NodeComponent::disconnect", _1(visible),
+			{
+				this->dummyEntity->setVisible(visible);
+			});
 		}
 		return true;
 	}

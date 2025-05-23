@@ -246,18 +246,21 @@ namespace NOWA
 	{
 		if (nullptr != this->animationBlender)
 		{
-			if (nullptr != this->animationBlender->getSource())
+			ENQUEUE_RENDER_COMMAND("AnimationComponentV2::resetAnimation",
 			{
-				this->animationBlender->getSource()->setEnabled(false);
-				this->animationBlender->getSource()->mWeight = 0.0f;
-				this->animationBlender->getSource()->setTime(0.0f);
-			}
-			if (nullptr != this->animationBlender->getTarget())
-			{
-				this->animationBlender->getTarget()->setEnabled(false);
-				this->animationBlender->getTarget()->mWeight = 0.0f;
-				this->animationBlender->getTarget()->setTime(0.0f);
-			}
+				if (nullptr != this->animationBlender->getSource())
+				{
+					this->animationBlender->getSource()->setEnabled(false);
+					this->animationBlender->getSource()->mWeight = 0.0f;
+					this->animationBlender->getSource()->setTime(0.0f);
+				}
+				if (nullptr != this->animationBlender->getTarget())
+				{
+					this->animationBlender->getTarget()->setEnabled(false);
+					this->animationBlender->getTarget()->mWeight = 0.0f;
+					this->animationBlender->getTarget()->setTime(0.0f);
+				}
+			});
 		}
 	}
 

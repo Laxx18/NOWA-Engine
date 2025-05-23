@@ -122,6 +122,13 @@ namespace NOWA
 		 */
 		bool getIsStalled(void) const;
 
+		/*
+		 * @brief	Gets whether to render the scene, even the render window is not active (not visible).
+		 * @note	Usefull for network scenario testing, in which several instances (clients) are opened.
+		 * @return renderWhenInactive
+		 */
+		bool getRenderWhenInactive(void) const;
+
 		// Rendering thread should wait until logic frame is ready
 		void waitForLogicFrameFinish(void);
 

@@ -155,7 +155,6 @@ namespace NOWA
 	{
 		RectangleCompPtr clonedCompPtr(boost::make_shared<RectangleComponent>());
 
-		
 		clonedCompPtr->setCastShadows(this->castShadows->getBool());
 		clonedCompPtr->setTwoSided(this->twoSided->getBool());
 		clonedCompPtr->setRectanglesCount(this->rectanglesCount->getUInt());
@@ -195,27 +194,31 @@ namespace NOWA
 			return success;
 		}
 
-		this->dummyEntity->setVisible(false);
-
-		if (nullptr == this->lineNode)
+		ENQUEUE_RENDER_COMMAND_WAIT("RectangleComponent::connect",
 		{
-			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-		}
-		this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-		this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->manualObject->setName("Rectangle_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
-		this->manualObject->setQueryFlags(0 << 0);
-		this->lineNode->attachObject(this->manualObject);
-		this->manualObject->setCastShadows(this->castShadows->getBool());
+			this->dummyEntity->setVisible(false);
+
+			if (nullptr == this->lineNode)
+			{
+				this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+			}
+			this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+			this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->manualObject->setName("Rectangle_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
+			this->manualObject->setQueryFlags(0 << 0);
+			this->lineNode->attachObject(this->manualObject);
+			this->manualObject->setCastShadows(this->castShadows->getBool());
+		});
 		
 		return success;
 	}
 
 	bool RectangleComponent::disconnect(void)
 	{
-		this->dummyEntity->setVisible(true);
-
-		this->destroyRectangles();
+		ENQUEUE_RENDER_COMMAND_WAIT("RectangleComponent::disconnect",
+		{
+			this->destroyRectangles();
+		});
 		
 		return true;
 	}
@@ -229,26 +232,29 @@ namespace NOWA
 				return;
 			}
 
-			this->indices = 0;
-			if (this->manualObject->getNumSections() > 0)
+			ENQUEUE_RENDER_COMMAND("RectangleComponent::update",
 			{
-				this->manualObject->beginUpdate(0);
-			}
-			else
-			{
-				this->manualObject->clear();
-				this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-			}
+				this->indices = 0;
+				if (this->manualObject->getNumSections() > 0)
+				{
+					this->manualObject->beginUpdate(0);
+				}
+				else
+				{
+					this->manualObject->clear();
+					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+				}
 
-			for (unsigned int i = 0; i < this->rectanglesCount->getUInt(); i++)
-			{
-				this->drawRectangle(i);
-			}
+				for (unsigned int i = 0; i < this->rectanglesCount->getUInt(); i++)
+				{
+					this->drawRectangle(i);
+				}
 
-			// Realllllllyyyyy important! Else the rectangle is a whole mess!
-			this->manualObject->index(0);
+				// Realllllllyyyyy important! Else the rectangle is a whole mess!
+				this->manualObject->index(0);
 
-			this->manualObject->end();
+				this->manualObject->end();
+			});
 		}
 	}
 
@@ -444,7 +450,9 @@ namespace NOWA
 	void RectangleComponent::setColor1(unsigned int index, const Ogre::Vector3& color)
 	{
 		if (index > this->colors1.size())
+		{
 			index = static_cast<unsigned int>(this->colors1.size()) - 1;
+		}
 
 		this->colors1[index]->setValue(color);
 	}
@@ -452,14 +460,18 @@ namespace NOWA
 	Ogre::Vector3 RectangleComponent::getColor1(unsigned int index) const
 	{
 		if (index > this->colors1.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->colors1[index]->getVector3();
 	}
 
 	void RectangleComponent::setColor2(unsigned int index, const Ogre::Vector3& color)
 	{
 		if (index > this->colors2.size())
+		{
 			index = static_cast<unsigned int>(this->colors2.size()) - 1;
+		}
 
 		this->colors2[index]->setValue(color);
 	}
@@ -467,45 +479,54 @@ namespace NOWA
 	Ogre::Vector3 RectangleComponent::getColor2(unsigned int index) const
 	{
 		if (index > this->colors2.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->colors2[index]->getVector3();
 	}
 
 	void RectangleComponent::setStartPosition(unsigned int index, const Ogre::Vector3& startPosition)
 	{
 		if (index > this->startPositions.size())
+		{
 			index = static_cast<unsigned int>(this->startPositions.size()) - 1;
-
+		}
 		this->startPositions[index]->setValue(startPosition);
 	}
 
 	Ogre::Vector3 RectangleComponent::getStartPosition(unsigned int index) const
 	{
 		if (index > this->startPositions.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->startPositions[index]->getVector3();
 	}
 
 	void RectangleComponent::setStartOrientation(unsigned int index, const Ogre::Vector3& startOrientation)
 	{
 		if (index > this->startOrientations.size())
+		{
 			index = static_cast<unsigned int>(this->startOrientations.size()) - 1;
-
+		}
 		this->startOrientations[index]->setValue(startOrientation);
 	}
 
 	Ogre::Vector3 RectangleComponent::getStartOrientation(unsigned int index) const
 	{
 		if (index > this->startOrientations.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->startOrientations[index]->getVector3();
 	}
 
 	void RectangleComponent::setWidth(unsigned int index, Ogre::Real width)
 	{
 		if (index > this->widths.size())
+		{
 			index = static_cast<unsigned int>(this->widths.size()) - 1;
-
+		}
 		Ogre::Real tempWidth = width;
 
 		if (tempWidth < 0.0f)
@@ -518,15 +539,18 @@ namespace NOWA
 	Ogre::Real RectangleComponent::getWidth(unsigned int index) const
 	{
 		if (index > this->widths.size())
+		{
 			return 0.0f;
+		}
 		return this->widths[index]->getReal();
 	}
 
 	void RectangleComponent::setHeight(unsigned int index, Ogre::Real height)
 	{
 		if (index > this->heights.size())
+		{
 			index = static_cast<unsigned int>(this->heights.size()) - 1;
-
+		}
 		Ogre::Real tempHeight = height;
 
 		if (tempHeight < 0.0f)
@@ -540,151 +564,157 @@ namespace NOWA
 	Ogre::Real RectangleComponent::getHeight(unsigned int index) const
 	{
 		if (index > this->heights.size())
+		{
 			return 0.0f;
+		}
 		return this->heights[index]->getReal();
 	}
 
 	void RectangleComponent::drawRectangle(unsigned int index)
 	{
-		Ogre::Vector3 color1 = this->colors1[index]->getVector3();
-		Ogre::Vector3 color2 = this->colors2[index]->getVector3();
-
-		//	//    lt-------rt 
-		//	//    |         |
-		//	//    |         | height
-		//	//    |         |
-		//	//    lb---x---rb
-		//           width
-		// x = start position
-
-		Ogre::Vector3 p = this->gameObjectPtr->getPosition();
-		Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
-		Ogre::Vector3 sp = this->startPositions[index]->getVector3();
-		Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->startOrientations[index]->getVector3());
-		Ogre::Real w = this->widths[index]->getReal();
-		Ogre::Real h = this->heights[index]->getReal();
-		
-		// Upper half for color gradient
-		// 1) lt
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(0, 0);
-
-		// 2) lb
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(0, 1);
-
-		// 3) rb
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(1, 1);
-
-		// 4) rt
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(1, 0);
-
-		// Internally constructs 2 triangles
-		this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
-		this->indices += 4;
-
-		// Lower half for color gradient
-		// 1) lt
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(0, 0);
-
-		// 2) lb
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(0, 1);
-
-		// 3) rb
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(1, 1);
-
-		// 4) rt
-		this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-		this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-		this->manualObject->normal(0.0f, 0.0f, 1.0f);
-		this->manualObject->textureCoord(1, 0);
-
-		this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
-		this->indices += 4;
-
-		if (true == this->twoSided->getBool())
+		ENQUEUE_RENDER_COMMAND_MULTI("RectangleComponent::drawRectangle", _1(index),
 		{
+			Ogre::Vector3 color1 = this->colors1[index]->getVector3();
+			Ogre::Vector3 color2 = this->colors2[index]->getVector3();
+
+			//	//    lt-------rt 
+			//	//    |         |
+			//	//    |         | height
+			//	//    |         |
+			//	//    lb---x---rb
+			//           width
+			// x = start position
+
+			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
+			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+			Ogre::Vector3 sp = this->startPositions[index]->getVector3();
+			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->startOrientations[index]->getVector3());
+			Ogre::Real w = this->widths[index]->getReal();
+			Ogre::Real h = this->heights[index]->getReal();
+
 			// Upper half for color gradient
-			// 1) rt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(0, 0);
-
-			// 2) rb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(0, 1);
-
-			// 3) lb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(1, 1);
-
-			// 4) lt
+			// 1) lt
 			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
 			this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(0, 0);
+
+			// 2) lb
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(0, 1);
+
+			// 3) rb
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(1, 1);
+
+			// 4) rt
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
 			this->manualObject->textureCoord(1, 0);
 
+			// Internally constructs 2 triangles
 			this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
 			this->indices += 4;
 
 			// Lower half for color gradient
-			// 1) rt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(0, 0);
-
-			// 2) rb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(0, 1);
-
-			// 3) lb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
-			this->manualObject->textureCoord(1, 1);
-
-			// 4) lt
+			// 1) lt
 			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
 			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, -1.0f);
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(0, 0);
+
+			// 2) lb
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(0, 1);
+
+			// 3) rb
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
+			this->manualObject->textureCoord(1, 1);
+
+			// 4) rt
+			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			this->manualObject->normal(0.0f, 0.0f, 1.0f);
 			this->manualObject->textureCoord(1, 0);
 
 			this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
 			this->indices += 4;
-		}
+
+			if (true == this->twoSided->getBool())
+			{
+				// Upper half for color gradient
+				// 1) rt
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(0, 0);
+
+				// 2) rb
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(0, 1);
+
+				// 3) lb
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(1, 1);
+
+				// 4) lt
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(1, 0);
+
+				this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+				this->indices += 4;
+
+				// Lower half for color gradient
+				// 1) rt
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(0, 0);
+
+				// 2) rb
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(0, 1);
+
+				// 3) lb
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(1, 1);
+
+				// 4) lt
+				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+				this->manualObject->normal(0.0f, 0.0f, -1.0f);
+				this->manualObject->textureCoord(1, 0);
+
+				this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+				this->indices += 4;
+			}
+		});
 	}
 
 	void RectangleComponent::destroyRectangles(void)
 	{
 		if (this->lineNode != nullptr)
 		{
+			this->dummyEntity->setVisible(true);
 			this->lineNode->detachAllObjects();
 			this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
 			this->manualObject = nullptr;

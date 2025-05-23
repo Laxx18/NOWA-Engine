@@ -241,7 +241,9 @@ namespace NOWA
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AnimationComponent] weight: " + Ogre::StringConverter::toString(this->animationState->getWeight()));
 			if (nullptr != this->animationBlender)
+			{
 				this->animationBlender->addTime(dt * this->animationSpeed->getReal() / this->animationBlender->getSource()->getLength());
+			}
 		}
 		/*else if (true == notSimulating && nullptr != this->animationBlender)
 		{
@@ -257,18 +259,21 @@ namespace NOWA
 	{
 		if (nullptr != this->animationBlender)
 		{
-			if (nullptr != this->animationBlender->getSource())
+			ENQUEUE_RENDER_COMMAND("AnimationComponent::resetAnimation",
 			{
-				this->animationBlender->getSource()->setEnabled(false);
-				this->animationBlender->getSource()->setWeight(0.0f);
-				this->animationBlender->getSource()->setTimePosition(0.0f);
-			}
-			if (nullptr != this->animationBlender->getTarget())
-			{
-				this->animationBlender->getTarget()->setEnabled(false);
-				this->animationBlender->getTarget()->setWeight(0.0f);
-				this->animationBlender->getTarget()->setTimePosition(0.0f);
-			}
+				if (nullptr != this->animationBlender->getSource())
+				{
+					this->animationBlender->getSource()->setEnabled(false);
+					this->animationBlender->getSource()->setWeight(0.0f);
+					this->animationBlender->getSource()->setTimePosition(0.0f);
+				}
+				if (nullptr != this->animationBlender->getTarget())
+				{
+					this->animationBlender->getTarget()->setEnabled(false);
+					this->animationBlender->getTarget()->setWeight(0.0f);
+					this->animationBlender->getTarget()->setTimePosition(0.0f);
+				}
+			});
 		}
 	}
 

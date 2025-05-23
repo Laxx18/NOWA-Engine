@@ -28,8 +28,11 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LinesComponent] Destructor lines component for game object: " + this->gameObjectPtr->getName());
 		
-		this->destroyLines();
-		this->dummyEntity = nullptr;
+		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::~LinesComponent",
+		{
+			this->destroyLines();
+			this->dummyEntity = nullptr;
+		});
 	}
 
 	bool LinesComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -148,21 +151,28 @@ namespace NOWA
 
 	bool LinesComponent::connect(void)
 	{
-		this->dummyEntity->setVisible(false);
-
-		for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
+		// TODO: Wait?
+		ENQUEUE_RENDER_COMMAND("LinesComponent::connect",
 		{
-			this->createLine(i);
-		}
+			this->dummyEntity->setVisible(false);
+			for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
+			{
+				this->createLine(i);
+			}
+		});
 		
 		return true;
 	}
 
 	bool LinesComponent::disconnect(void)
 	{
-		this->dummyEntity->setVisible(true);
+		// TODO: Wait?
+		ENQUEUE_RENDER_COMMAND("LinesComponent::connect",
+		{
+			this->dummyEntity->setVisible(true);
 
-		this->destroyLines();
+			this->destroyLines();
+		});
 		
 		return true;
 	}
@@ -171,10 +181,13 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
+			ENQUEUE_RENDER_COMMAND("LinesComponent::update",
 			{
-				this->drawLine(i);
-			}
+				for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
+				{
+					this->drawLine(i);
+				}
+			});
 		}
 	}
 
@@ -392,6 +405,7 @@ namespace NOWA
 
 	void LinesComponent::createLine(unsigned int index)
 	{
+		// Threadsafe from the outside
 		if (nullptr == this->lineNode)
 		{
 			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
@@ -407,6 +421,7 @@ namespace NOWA
 
 	void LinesComponent::drawLine(unsigned int index)
 	{
+		// Threadsafe from the outside
 		// Draw a 3D line between these points for visual effect
 		this->lineObjects[index]->clear();
 		// Or here via data block??
@@ -434,6 +449,7 @@ namespace NOWA
 
 	void LinesComponent::destroyLine(unsigned int index)
 	{
+		// Threadsafe from the outside
 		if (this->lineNode != nullptr)
 		{
 			if (this->lineObjects[index] != nullptr)
@@ -450,6 +466,7 @@ namespace NOWA
 
 	void LinesComponent::destroyLines(void)
 	{
+		// Threadsafe from the outside
 		if (this->lineNode != nullptr)
 		{
 			this->lineNode->detachAllObjects();

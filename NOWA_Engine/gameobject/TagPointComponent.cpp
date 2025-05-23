@@ -83,9 +83,11 @@ namespace NOWA
 			Ogre::Vector3 newPosition = (updatedNode->_getDerivedPosition() + (newOrientation * this->offsetPosition)) * this->realNode->getScale();
 
 			// This approach is working!!
-			this->realNode->setOrientation(newOrientation);
-			// this->realNode->setScale(updatedNode->_getDerivedScale());
-			this->realNode->setPosition(newPosition);
+			// this->realNode->setOrientation(newOrientation);
+			//// this->realNode->setScale(updatedNode->_getDerivedScale());
+			// this->realNode->setPosition(newPosition);
+
+			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->realNode, newPosition, newOrientation);
 
 			if (nullptr != this->sourcePhysicsActiveComponent)
 			{
@@ -276,57 +278,62 @@ namespace NOWA
 		{
 			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 			if (nullptr == entity)
-				return false;
-
-			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-			if (nullptr != oldSkeletonInstance)
 			{
-				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-				if (nullptr == sourceGameObjectPtr)
-					return false;
-
-				// Set back reference (e.g. player/enemy that holds the weapon)
-				sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);
-
-				auto& physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
-				if (nullptr != physicsActiveCompPtr)
-				{
-					this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
-				}
-
-				// if (nullptr == this->sourcePhysicsActiveComponent)
-				{
-					this->tagPointNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-					this->tagPointNode->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-					this->tagPointNode->setPosition(this->tagPointNode->getPosition() * this->tagPointNode->getScale());
-
-					std::vector<Ogre::MovableObject*> movableObjects;
-					Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
-					auto& it = sourceSceneNode->getAttachedObjectIterator();
-					// Attach all entities (weapon etc.) to the node
-					while (it.hasMoreElements())
-					{
-						// It is const, so no manipulation possible
-						Ogre::MovableObject* movableObject = it.getNext();
-						movableObjects.emplace_back(movableObject);
-					}
-
-					for (size_t i = 0; i < movableObjects.size(); i++)
-					{
-						movableObjects[i]->detachFromParent();
-						this->tagPointNode->attachObject(movableObjects[i]);
-					}
-
-					if (nullptr == this->tagPoint)
-					{
-						this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
-						this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-					}
-					this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(),
-												MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent, this->gameObjectPtr.get()));
-				}
-				this->alreadyConnected = true;
+				return false;
 			}
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::connect", _1(entity),
+			{
+				Ogre::v1::OldSkeletonInstance * oldSkeletonInstance = entity->getSkeleton();
+				if (nullptr != oldSkeletonInstance)
+				{
+					GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
+					if (nullptr == sourceGameObjectPtr)
+						return false;
+
+					// Set back reference (e.g. player/enemy that holds the weapon)
+					sourceGameObjectPtr->setConnectedGameObject(this->gameObjectPtr);
+
+					auto& physicsActiveCompPtr = NOWA::makeStrongPtr(sourceGameObjectPtr->getComponent<PhysicsActiveComponent>());
+					if (nullptr != physicsActiveCompPtr)
+					{
+						this->sourcePhysicsActiveComponent = physicsActiveCompPtr.get();
+					}
+
+					// if (nullptr == this->sourcePhysicsActiveComponent)
+					{
+						this->tagPointNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+						this->tagPointNode->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+						this->tagPointNode->setPosition(this->tagPointNode->getPosition() * this->tagPointNode->getScale());
+
+						std::vector<Ogre::MovableObject*> movableObjects;
+						Ogre::SceneNode* sourceSceneNode = sourceGameObjectPtr->getSceneNode();
+						auto& it = sourceSceneNode->getAttachedObjectIterator();
+						// Attach all entities (weapon etc.) to the node
+						while (it.hasMoreElements())
+						{
+							// It is const, so no manipulation possible
+							Ogre::MovableObject* movableObject = it.getNext();
+							movableObjects.emplace_back(movableObject);
+						}
+
+						for (size_t i = 0; i < movableObjects.size(); i++)
+						{
+							movableObjects[i]->detachFromParent();
+							this->tagPointNode->attachObject(movableObjects[i]);
+						}
+
+						if (nullptr == this->tagPoint)
+						{
+							this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
+							this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+						}
+						this->tagPoint->setListener(new TagPointListener(this->tagPointNode, this->offsetPosition->getVector3(),
+													MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()), this->sourcePhysicsActiveComponent, this->gameObjectPtr.get()));
+					}
+					this->alreadyConnected = true;
+				}
+			});
 		}
 		return true;
 	}
@@ -401,9 +408,11 @@ namespace NOWA
 					}
 				}
 
-				this->debugGeometryArrowNode->setPosition(worldPosition);
+				/*this->debugGeometryArrowNode->setPosition(worldPosition);
 				this->debugGeometryArrowNode->setOrientation(worldOrientation);
-				this->debugGeometrySphereNode->setPosition(worldPosition);
+				this->debugGeometrySphereNode->setPosition(worldPosition);*/
+
+				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->debugGeometryArrowNode, worldPosition, worldOrientation);
 			}
 		}
 	}
@@ -507,22 +516,25 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{
-			// Does not work anymore, as it is done different in Ogre2.x (see tagpoint example, for that new skeleton and item is necessary, updgrade of meshes)
-			// this->tagPoint = entity->attachObjectToBone(this->tagPoints->getListSelectedValue(), sourceEntity, 
-			// 	MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),this->offsetPosition->getVector3());
-			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-			if (nullptr != oldSkeletonInstance)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::setTagPointName", _1(entity),
 			{
-				if (nullptr != this->tagPoint)
+				// Does not work anymore, as it is done different in Ogre2.x (see tagpoint example, for that new skeleton and item is necessary, updgrade of meshes)
+				// this->tagPoint = entity->attachObjectToBone(this->tagPoints->getListSelectedValue(), sourceEntity, 
+				// 	MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3()),this->offsetPosition->getVector3());
+				Ogre::v1::OldSkeletonInstance * oldSkeletonInstance = entity->getSkeleton();
+				if (nullptr != oldSkeletonInstance)
 				{
-					oldSkeletonInstance->freeTagPoint(this->tagPoint);
-					this->tagPoint = nullptr;
-				}
+					if (nullptr != this->tagPoint)
+					{
+						oldSkeletonInstance->freeTagPoint(this->tagPoint);
+						this->tagPoint = nullptr;
+					}
 
-				// Workaround:
-				this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
-				this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
-			}
+					// Workaround:
+					this->tagPoint = oldSkeletonInstance->createTagPointOnBone(oldSkeletonInstance->getBone(this->tagPoints->getListSelectedValue()));
+					this->tagPoint->setScale(this->gameObjectPtr->getSceneNode()->getScale());
+				}
+			});
 		}
 
 		if (true == this->bShowDebugData)
@@ -581,54 +593,57 @@ namespace NOWA
 	{
 		if (nullptr == this->debugGeometryArrowNode && nullptr != this->tagPoint)
 		{
-			this->debugGeometryArrowNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-			this->debugGeometryArrowNode->setName("tagPointComponentArrowNode");
-			this->debugGeometrySphereNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
-			this->debugGeometrySphereNode->setName("tagPointComponentSphereNode");
-
-			Ogre::Vector3 worldPosition = this->tagPoint->getParent()->_getDerivedPosition();
-			Ogre::Quaternion worldOrientation = this->tagPoint->getParent()->_getDerivedOrientation();
-
-			//multiply with the parent derived transformation
-			Ogre::Node* parentNode = this->gameObjectPtr->getMovableObject()->getParentNode();
-			Ogre::SceneNode* sceneNode = this->gameObjectPtr->getMovableObject()->getParentSceneNode();
-			while (parentNode != nullptr)
+			ENQUEUE_RENDER_COMMAND_WAIT("TagPointComponent::generateDebugData",
 			{
-				// Process the current i_Node
-				if (parentNode != sceneNode)
-				{
-					// This is a tag point (a connection point between 2 entities). which means it has a parent i_Node to be processed
-					worldPosition = ((Ogre::v1::TagPoint*)parentNode)->_getFullLocalTransform() * worldPosition;
-					parentNode = ((Ogre::v1::TagPoint*)parentNode)->getParentEntity()->getParentNode();
-					worldOrientation = ((Ogre::v1::TagPoint*)parentNode)->_getDerivedOrientation() * worldOrientation;
-				}
-				else
-				{
-					// This is the scene i_Node meaning this is the last i_Node to process
-					worldPosition = parentNode->_getFullTransform() * worldPosition;
-					worldOrientation = parentNode->_getDerivedOrientation() * worldOrientation;
-					break;
-				}
-			}
+				this->debugGeometryArrowNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+				this->debugGeometryArrowNode->setName("tagPointComponentArrowNode");
+				this->debugGeometrySphereNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+				this->debugGeometrySphereNode->setName("tagPointComponentSphereNode");
 
-			this->debugGeometryArrowNode->setPosition(worldPosition);
-			this->debugGeometryArrowNode->setOrientation(worldOrientation);
-			this->debugGeometryArrowNode->setScale(0.05f, 0.05f, 0.025f);
-			this->debugGeometryArrowEntity = this->gameObjectPtr->getSceneManager()->createEntity("Arrow.mesh");
-			this->debugGeometryArrowEntity->setName("tagPointComponentArrowEntity");
-			this->debugGeometryArrowEntity->setDatablock("BaseYellowLine");
-			this->debugGeometryArrowEntity->setQueryFlags(0 << 0);
-			this->debugGeometryArrowEntity->setCastShadows(false);
-			this->debugGeometryArrowNode->attachObject(this->debugGeometryArrowEntity);
+				Ogre::Vector3 worldPosition = this->tagPoint->getParent()->_getDerivedPosition();
+				Ogre::Quaternion worldOrientation = this->tagPoint->getParent()->_getDerivedOrientation();
 
-			this->debugGeometrySphereNode->setPosition(worldPosition);
-			this->debugGeometrySphereNode->setScale(0.05f, 0.05f, 0.05f);
-			this->debugGeometrySphereEntity = this->gameObjectPtr->getSceneManager()->createEntity("gizmosphere.mesh");
-			this->debugGeometrySphereEntity->setName("tagPointComponentSphereEntity");
-			this->debugGeometrySphereEntity->setDatablock("BaseYellowLine");
-			this->debugGeometrySphereEntity->setQueryFlags(0 << 0);
-			this->debugGeometrySphereEntity->setCastShadows(false);
-			this->debugGeometrySphereNode->attachObject(this->debugGeometrySphereEntity);
+				//multiply with the parent derived transformation
+				Ogre::Node * parentNode = this->gameObjectPtr->getMovableObject()->getParentNode();
+				Ogre::SceneNode * sceneNode = this->gameObjectPtr->getMovableObject()->getParentSceneNode();
+				while (parentNode != nullptr)
+				{
+					// Process the current i_Node
+					if (parentNode != sceneNode)
+					{
+						// This is a tag point (a connection point between 2 entities). which means it has a parent i_Node to be processed
+						worldPosition = ((Ogre::v1::TagPoint*)parentNode)->_getFullLocalTransform() * worldPosition;
+						parentNode = ((Ogre::v1::TagPoint*)parentNode)->getParentEntity()->getParentNode();
+						worldOrientation = ((Ogre::v1::TagPoint*)parentNode)->_getDerivedOrientation() * worldOrientation;
+					}
+					else
+					{
+						// This is the scene i_Node meaning this is the last i_Node to process
+						worldPosition = parentNode->_getFullTransform() * worldPosition;
+						worldOrientation = parentNode->_getDerivedOrientation() * worldOrientation;
+						break;
+					}
+				}
+
+				this->debugGeometryArrowNode->setPosition(worldPosition);
+				this->debugGeometryArrowNode->setOrientation(worldOrientation);
+				this->debugGeometryArrowNode->setScale(0.05f, 0.05f, 0.025f);
+				this->debugGeometryArrowEntity = this->gameObjectPtr->getSceneManager()->createEntity("Arrow.mesh");
+				this->debugGeometryArrowEntity->setName("tagPointComponentArrowEntity");
+				this->debugGeometryArrowEntity->setDatablock("BaseYellowLine");
+				this->debugGeometryArrowEntity->setQueryFlags(0 << 0);
+				this->debugGeometryArrowEntity->setCastShadows(false);
+				this->debugGeometryArrowNode->attachObject(this->debugGeometryArrowEntity);
+
+				this->debugGeometrySphereNode->setPosition(worldPosition);
+				this->debugGeometrySphereNode->setScale(0.05f, 0.05f, 0.05f);
+				this->debugGeometrySphereEntity = this->gameObjectPtr->getSceneManager()->createEntity("gizmosphere.mesh");
+				this->debugGeometrySphereEntity->setName("tagPointComponentSphereEntity");
+				this->debugGeometrySphereEntity->setDatablock("BaseYellowLine");
+				this->debugGeometrySphereEntity->setQueryFlags(0 << 0);
+				this->debugGeometrySphereEntity->setCastShadows(false);
+				this->debugGeometrySphereNode->attachObject(this->debugGeometrySphereEntity);
+			});
 		}
 	}
 
@@ -636,17 +651,20 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryArrowNode)
 		{
-			this->debugGeometryArrowNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryArrowNode);
-			this->debugGeometryArrowNode = nullptr;
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryArrowEntity);
-			this->debugGeometryArrowEntity = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("TagPointComponent::destroyDebugData",
+			{
+				this->debugGeometryArrowNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryArrowNode);
+				this->debugGeometryArrowNode = nullptr;
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometryArrowEntity);
+				this->debugGeometryArrowEntity = nullptr;
 
-			this->debugGeometrySphereNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometrySphereNode);
-			this->debugGeometrySphereNode = nullptr;
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometrySphereEntity);
-			this->debugGeometrySphereEntity = nullptr;
+				this->debugGeometrySphereNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometrySphereNode);
+				this->debugGeometrySphereNode = nullptr;
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->debugGeometrySphereEntity);
+				this->debugGeometrySphereEntity = nullptr;
+			});
 		}
 	}
 
@@ -655,51 +673,54 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity && nullptr != this->tagPoint)
 		{
-			Ogre::v1::OldSkeletonInstance* oldSkeletonInstance = entity->getSkeleton();
-			if (nullptr != oldSkeletonInstance)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::resetTagPoint", _1(entity),
 			{
-				if (nullptr != this->tagPoint)
+				Ogre::v1::OldSkeletonInstance * oldSkeletonInstance = entity->getSkeleton();
+				if (nullptr != oldSkeletonInstance)
 				{
-					oldSkeletonInstance->freeTagPoint(this->tagPoint);
-					Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
-					this->tagPoint->setListener(nullptr);
-					delete nodeListener;
-					this->tagPoint = nullptr;
+					if (nullptr != this->tagPoint)
+					{
+						oldSkeletonInstance->freeTagPoint(this->tagPoint);
+						Ogre::v1::OldNode::Listener* nodeListener = this->tagPoint->getListener();
+						this->tagPoint->setListener(nullptr);
+						delete nodeListener;
+						this->tagPoint = nullptr;
+					}
 				}
-			}
 
-			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-			if (nullptr != sourceGameObjectPtr)
-			{
-				// Reset pointer
-				sourceGameObjectPtr->setConnectedGameObject(boost::weak_ptr<GameObject>());
+				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
+				if (nullptr != sourceGameObjectPtr)
+				{
+					// Reset pointer
+					sourceGameObjectPtr->setConnectedGameObject(boost::weak_ptr<GameObject>());
+
+					if (nullptr != this->tagPointNode)
+					{
+						std::vector<Ogre::MovableObject*> movableObjects;
+						auto& it = this->tagPointNode->getAttachedObjectIterator();
+						// First detach and reatach all movable objects, that are belonging to the source scene node (e.g. mesh, light)
+						while (it.hasMoreElements())
+						{
+							Ogre::MovableObject* movableObject = it.getNext();
+							movableObjects.emplace_back(movableObject);
+						}
+						for (size_t i = 0; i < movableObjects.size(); i++)
+						{
+							movableObjects[i]->detachFromParent();
+							sourceGameObjectPtr->getSceneNode()->attachObject(movableObjects[i]);
+						}
+					}
+				}
 
 				if (nullptr != this->tagPointNode)
 				{
-					std::vector<Ogre::MovableObject*> movableObjects;
-					auto& it = this->tagPointNode->getAttachedObjectIterator();
-					// First detach and reatach all movable objects, that are belonging to the source scene node (e.g. mesh, light)
-					while (it.hasMoreElements())
-					{
-						Ogre::MovableObject* movableObject = it.getNext();
-						movableObjects.emplace_back(movableObject);
-					}
-					for (size_t i = 0; i < movableObjects.size(); i++)
-					{
-						movableObjects[i]->detachFromParent();
-						sourceGameObjectPtr->getSceneNode()->attachObject(movableObjects[i]);
-					}
+					this->tagPointNode->removeAndDestroyAllChildren();
+					this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
+					this->tagPointNode = nullptr;
 				}
-			}
 
-			if (nullptr != this->tagPointNode)
-			{
-				this->tagPointNode->removeAndDestroyAllChildren();
-				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->tagPointNode);
-				this->tagPointNode = nullptr;
-			}
-
-			this->alreadyConnected = false;
+				this->alreadyConnected = false;
+			});
 		}
 	}
 

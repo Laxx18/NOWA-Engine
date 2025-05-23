@@ -568,301 +568,301 @@ bool MainMenuBar::hasLuaErrors(void)
 
 void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuItem* item)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::notifyPopupMenuAccept", _2(sender, item),
+	Ogre::String id = item->getItemId();
+	unsigned int index = Ogre::StringConverter::parseUnsignedInt(id);
+
+	switch (index)
 	{
-		Ogre::String id = item->getItemId();
-		unsigned int index = Ogre::StringConverter::parseUnsignedInt(id);
-
-		switch (index)
+		case 0: // New
 		{
-			case 0: // New
-			{
-				this->callNewProject();
-				break;
-			}
-			case 1: // Open
-			{
-				this->projectManager->showFileOpenDialog("LoadProject", "*.scene");
-				break;
-			}
-			case SAVE: // Save
-			{
-				this->projectManager->saveProject();
-				this->updateRecentFilesMenu();
-				break;
-			}
-			case SAVE_AS: // Save As
-			{
-				this->projectManager->showFileSaveDialog("SaveProject", "*.scene", NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
-				this->updateRecentFilesMenu();
-				break;
-			}
-			case SETTINGS: // Settings
-			{
-				this->drawCollisionLines(false);
-				this->drawNavigationMap(false);
-				this->configPanel->setVisible(true);
-				this->configPanel->callForSettings(true);
-				// Apply settings from loaded project
-				this->configPanel->applySettings();
-				break;
-			}
-			case CREATE_COMPONENT_PLUGIN:
-			{
-				this->showComponentPlugin();
-				break;
-			}
-			case CREATE_CPLUS_PLUS_PROJECT:
-			{
-				NOWA::DeployResourceModule::getInstance()->createCPlusPlusProject(this->projectManager->getProjectParameter().projectName, this->projectManager->getProjectParameter().sceneName);
-				break;
-			}
-			case OPEN_LOG:
-			{
-				NOWA::DeployResourceModule::getInstance()->openLog();
-				break;
-			}
-			case COPY_SCENE:
-			{
-				this->projectManager->showFileSaveDialog("CopyScene", "*.scene", this->projectManager->getProjectParameter().projectName);
-				break;
-			}
-			case 9: // Recent file 1
-			case 10: // Recent file 2
-			case 11: // Recent file 3
-			case 12: // Recent file 4
-			case 13: // Recent file 5
-			case 14: // Recent file 6
-			case 15: // Recent file 7
-			case 16: // Recent file 8
-			case 17: // Recent file 9
-			case 18: // Recent file 10
-			{
-				if (Ogre::String("--") != item->getCaption().asUTF8())
-				{
-					boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
-					Ogre::String name = item->getCaption();
-					this->projectManager->loadProject(name, index - 9);
-					RecentFilesManager::getInstance().setActiveFile(name);
-					this->updateRecentFilesMenu();
-				}
-				break;
-			}
-
-			case 19: // Close
-			{
-				boost::shared_ptr<EventDataExit> eventDataExit(new EventDataExit());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataExit);
-				break;
-			}
-			case SAVE_GROUP + START_INDEX: // Save Group
-			{
-				this->projectManager->showFileSaveDialog("SaveGroup", "*.group");
-				break;
-			}
-			case LOAD_GROUP + START_INDEX: // Load Group
-			{
-				this->projectManager->showFileOpenDialog("LoadGroup", "*.group");
-				break;
-			}
-			case LOAD_MESH_RESOURCE + START_INDEX: // Add Mesh Resources
-			{
-				this->projectManager->showFileOpenDialog("AddMeshResources", "");
-				break;
-			}
-			case OPEN_PROJECT_FOLDER + START_INDEX: // Open project folder
-			{
-				NOWA::Core::getSingletonPtr()->openFolder(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
-				break;
-			}
-			case START_GAME + START_INDEX: // Start game
-			{
-				if (NOWA::DeployResourceModule::getInstance()->startGame(NOWA::Core::getSingletonPtr()->getProjectName()))
-				{
-					NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
-				}
-				else
-				{
-					boost::shared_ptr<NOWA::EventDataFeedback> eventDataFeedback(new NOWA::EventDataFeedback(false, "#{StartGameFailed}"));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
-				}
-				break;
-			}
-			case UNDO + START_INDEX: // Undo
-			{
-				this->projectManager->getEditorManager()->undo();
-
-				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-				boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-				break;
-			}
-			case REDO + START_INDEX: // Redo
-			{
-				this->projectManager->getEditorManager()->redo();
-
-				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
-
-				boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
-				break;
-			}
-			case SELECTION_UNDO + START_INDEX: // Selection Undo
-			{
-				this->projectManager->getEditorManager()->getSelectionManager()->selectionUndo();
-				break;
-			}
-			case SELECTION_REDO + START_INDEX: // Selection Redo
-			{
-				this->projectManager->getEditorManager()->getSelectionManager()->selectionRedo();
-				break;
-			}
-			case 30: // Front View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_FRONT);
-				break;
-			}
-			case 31: // TOP View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_TOP);
-				break;
-			}
-			case 32: // Back View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BACK);
-				break;
-			}
-			case 33: // Bottom View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BOTTOM);
-				break;
-			}
-			case 34: // Left View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_LEFT);
-				break;
-			}
-			case 35: // Right View
-			{
-				this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_RIGHT);
-				break;
-			}
-			case 36: // Camera Undo
-			{
-				this->projectManager->getEditorManager()->cameraUndo();
-				break;
-			}
-			case 37: // Camera Redo
-			{
-				this->projectManager->getEditorManager()->cameraRedo();
-				break;
-			}
-			case 38: // Render Solid
-			{
-				NOWA::Core::getSingletonPtr()->setPolygonMode(3);
-				break;
-			}
-			case 39: // Render Wireframe
-			{
-				NOWA::Core::getSingletonPtr()->setPolygonMode(2);
-				break;
-			}
-			case 40: // Render Points
-			{
-				// Does not work, do not know why
-				NOWA::Core::getSingletonPtr()->setPolygonMode(1);
-				break;
-			}
-			case 41: // Scene analysis
-			{
-				this->showAnalysisWindow();
-				break;
-			}
-			case 42: // Deploy
-			{
-				this->showDeployWindow();
-				break;
-			}
-			case 43: // Lua Analysis
-			{
-				this->showLuaAnalysisWindow();
-				break;
-			}
-			case 44: // Lua Api
-			{
-				this->showLuaApiWindow();
-				break;
-			}
-			case 45: // Open all lua scripts
-			{
-				this->openAllLuaScripts();
-				break;
-			}
-			case 46: // Mesh Tool
-			{
-				this->showMeshToolWindow();
-				break;
-			}
-			case 47: // Draw Navigation Mesh
-			{
-				this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
-				this->drawNavigationMap(this->bDrawNavigationMesh);
-				break;
-			}
-			case 48: // Draw Collision Lines
-			{
-				this->bDrawCollisionLines = !this->bDrawCollisionLines;
-				this->drawCollisionLines(this->bDrawCollisionLines);
-				break;
-			}
-			case 49: // Optimize scene
-			{
-				this->projectManager->getEditorManager()->optimizeScene(true);
-				break;
-			}
-			case 50: // Toggle MyGUI Components
-			{
-				this->bToggleMyGUIComponents = !this->bToggleMyGUIComponents;
-				this->toggleMyGUIComponents(this->bToggleMyGUIComponents);
-				break;
-			}
-			case 51: // Control selected player
-			{
-				for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
-				{
-					// Start player controller;
-					auto& PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
-					if (nullptr != PlayerControllerComponent)
-					{
-						NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, it->second.gameObject->getId(), true);
-					}
-				}
-				break;
-			}
-			case 52: // Test selected game objects
-			{
-				this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
-				this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
-				boost::shared_ptr<EventDataTestSelectedGameObjects> eventDataTestSelectedGameObjects(new EventDataTestSelectedGameObjects(this->bTestSelectedGameObjects));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
-				break;
-			}
-			case 53: // About
-			{
-				this->showAboutWindow();
-				break;
-			}
-			case 54: // Scene description
-			{
-				this->showSceneDescriptionWindow();
-				break;
-			}
+			this->callNewProject();
+			break;
 		}
-	});
+		case 1: // Open
+		{
+			this->projectManager->showFileOpenDialog("LoadProject", "*.scene");
+			break;
+		}
+		case SAVE: // Save
+		{
+			this->projectManager->saveProject();
+			this->updateRecentFilesMenu();
+			break;
+		}
+		case SAVE_AS: // Save As
+		{
+			this->projectManager->showFileSaveDialog("SaveProject", "*.scene", NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+			this->updateRecentFilesMenu();
+			break;
+		}
+		case SETTINGS: // Settings
+		{
+			this->drawCollisionLines(false);
+			this->drawNavigationMap(false);
+			ENQUEUE_RENDER_COMMAND("MainMenuBar::notifyPopupMenuAccept configpanel visible",
+			{
+				this->configPanel->setVisible(true);
+			});
+			this->configPanel->callForSettings(true);
+			// Apply settings from loaded project
+			this->configPanel->applySettings();
+			break;
+		}
+		case CREATE_COMPONENT_PLUGIN:
+		{
+			this->showComponentPlugin();
+			break;
+		}
+		case CREATE_CPLUS_PLUS_PROJECT:
+		{
+			NOWA::DeployResourceModule::getInstance()->createCPlusPlusProject(this->projectManager->getProjectParameter().projectName, this->projectManager->getProjectParameter().sceneName);
+			break;
+		}
+		case OPEN_LOG:
+		{
+			NOWA::DeployResourceModule::getInstance()->openLog();
+			break;
+		}
+		case COPY_SCENE:
+		{
+			this->projectManager->showFileSaveDialog("CopyScene", "*.scene", this->projectManager->getProjectParameter().projectName);
+			break;
+		}
+		case 9: // Recent file 1
+		case 10: // Recent file 2
+		case 11: // Recent file 3
+		case 12: // Recent file 4
+		case 13: // Recent file 5
+		case 14: // Recent file 6
+		case 15: // Recent file 7
+		case 16: // Recent file 8
+		case 17: // Recent file 9
+		case 18: // Recent file 10
+		{
+			if (Ogre::String("--") != item->getCaption().asUTF8())
+			{
+				boost::shared_ptr<EventDataSceneValid> eventDataSceneValid(new EventDataSceneValid(false));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneValid);
+				Ogre::String name = item->getCaption();
+				this->projectManager->loadProject(name, index - 9);
+				RecentFilesManager::getInstance().setActiveFile(name);
+				this->updateRecentFilesMenu();
+			}
+			break;
+		}
+
+		case 19: // Close
+		{
+			boost::shared_ptr<EventDataExit> eventDataExit(new EventDataExit());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataExit);
+			break;
+		}
+		case SAVE_GROUP + START_INDEX: // Save Group
+		{
+			this->projectManager->showFileSaveDialog("SaveGroup", "*.group");
+			break;
+		}
+		case LOAD_GROUP + START_INDEX: // Load Group
+		{
+			this->projectManager->showFileOpenDialog("LoadGroup", "*.group");
+			break;
+		}
+		case LOAD_MESH_RESOURCE + START_INDEX: // Add Mesh Resources
+		{
+			this->projectManager->showFileOpenDialog("AddMeshResources", "");
+			break;
+		}
+		case OPEN_PROJECT_FOLDER + START_INDEX: // Open project folder
+		{
+			NOWA::Core::getSingletonPtr()->openFolder(NOWA::Core::getSingletonPtr()->getCurrentProjectPath());
+			break;
+		}
+		case START_GAME + START_INDEX: // Start game
+		{
+			if (NOWA::DeployResourceModule::getInstance()->startGame(NOWA::Core::getSingletonPtr()->getProjectName()))
+			{
+				NOWA::Core::getSingletonPtr()->moveWindowToTaskbar();
+			}
+			else
+			{
+				boost::shared_ptr<NOWA::EventDataFeedback> eventDataFeedback(new NOWA::EventDataFeedback(false, "#{StartGameFailed}"));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+			}
+			break;
+		}
+		case UNDO + START_INDEX: // Undo
+		{
+			this->projectManager->getEditorManager()->undo();
+
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+
+			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+			break;
+		}
+		case REDO + START_INDEX: // Redo
+		{
+			this->projectManager->getEditorManager()->redo();
+
+			boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshPropertiesPanel);
+
+			boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRefreshResourcesPanel);
+			break;
+		}
+		case SELECTION_UNDO + START_INDEX: // Selection Undo
+		{
+			this->projectManager->getEditorManager()->getSelectionManager()->selectionUndo();
+			break;
+		}
+		case SELECTION_REDO + START_INDEX: // Selection Redo
+		{
+			this->projectManager->getEditorManager()->getSelectionManager()->selectionRedo();
+			break;
+		}
+		case 30: // Front View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_FRONT);
+			break;
+		}
+		case 31: // TOP View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_TOP);
+			break;
+		}
+		case 32: // Back View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BACK);
+			break;
+		}
+		case 33: // Bottom View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_BOTTOM);
+			break;
+		}
+		case 34: // Left View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_LEFT);
+			break;
+		}
+		case 35: // Right View
+		{
+			this->projectManager->getEditorManager()->setCameraView(NOWA::EditorManager::EDITOR_CAMERA_VIEW_RIGHT);
+			break;
+		}
+		case 36: // Camera Undo
+		{
+			this->projectManager->getEditorManager()->cameraUndo();
+			break;
+		}
+		case 37: // Camera Redo
+		{
+			this->projectManager->getEditorManager()->cameraRedo();
+			break;
+		}
+		case 38: // Render Solid
+		{
+			NOWA::Core::getSingletonPtr()->setPolygonMode(3);
+			break;
+		}
+		case 39: // Render Wireframe
+		{
+			NOWA::Core::getSingletonPtr()->setPolygonMode(2);
+			break;
+		}
+		case 40: // Render Points
+		{
+			// Does not work, do not know why
+			NOWA::Core::getSingletonPtr()->setPolygonMode(1);
+			break;
+		}
+		case 41: // Scene analysis
+		{
+			this->showAnalysisWindow();
+			break;
+		}
+		case 42: // Deploy
+		{
+			this->showDeployWindow();
+			break;
+		}
+		case 43: // Lua Analysis
+		{
+			this->showLuaAnalysisWindow();
+			break;
+		}
+		case 44: // Lua Api
+		{
+			this->showLuaApiWindow();
+			break;
+		}
+		case 45: // Open all lua scripts
+		{
+			this->openAllLuaScripts();
+			break;
+		}
+		case 46: // Mesh Tool
+		{
+			this->showMeshToolWindow();
+			break;
+		}
+		case 47: // Draw Navigation Mesh
+		{
+			this->bDrawNavigationMesh = !this->bDrawNavigationMesh;
+			this->drawNavigationMap(this->bDrawNavigationMesh);
+			break;
+		}
+		case 48: // Draw Collision Lines
+		{
+			this->bDrawCollisionLines = !this->bDrawCollisionLines;
+			this->drawCollisionLines(this->bDrawCollisionLines);
+			break;
+		}
+		case 49: // Optimize scene
+		{
+			this->projectManager->getEditorManager()->optimizeScene(true);
+			break;
+		}
+		case 50: // Toggle MyGUI Components
+		{
+			this->bToggleMyGUIComponents = !this->bToggleMyGUIComponents;
+			this->toggleMyGUIComponents(this->bToggleMyGUIComponents);
+			break;
+		}
+		case 51: // Control selected player
+		{
+			for (auto& it = this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().begin(); it != this->projectManager->getEditorManager()->getSelectionManager()->getSelectedGameObjects().end(); ++it)
+			{
+				// Start player controller;
+				auto& PlayerControllerComponent = NOWA::makeStrongPtr(it->second.gameObject->getComponent<NOWA::PlayerControllerComponent>());
+				if (nullptr != PlayerControllerComponent)
+				{
+					NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->activatePlayerController(true, it->second.gameObject->getId(), true);
+				}
+			}
+			break;
+		}
+		case 52: // Test selected game objects
+		{
+			this->bTestSelectedGameObjects = !this->bTestSelectedGameObjects;
+			this->activateTestSelectedGameObjects(this->bTestSelectedGameObjects);
+			boost::shared_ptr<EventDataTestSelectedGameObjects> eventDataTestSelectedGameObjects(new EventDataTestSelectedGameObjects(this->bTestSelectedGameObjects));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataTestSelectedGameObjects);
+			break;
+		}
+		case 53: // About
+		{
+			this->showAboutWindow();
+			break;
+		}
+		case 54: // Scene description
+		{
+			this->showSceneDescriptionWindow();
+			break;
+		}
+	}
 }
 
 void MainMenuBar::buttonHit(MyGUI::Widget* sender)

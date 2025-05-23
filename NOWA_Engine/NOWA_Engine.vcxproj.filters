@@ -87,9 +87,6 @@
     <ClInclude Include="gameobject\GameObjectFactory.h">
       <Filter>gameobject</Filter>
     </ClInclude>
-    <ClInclude Include="gameobject\GameObjectGuide.h">
-      <Filter>gameobject</Filter>
-    </ClInclude>
     <ClInclude Include="gameobject\GameObjectTitleComponent.h">
       <Filter>gameobject</Filter>
     </ClInclude>

@@ -405,7 +405,7 @@ namespace NOWA
 			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
-		});
+		}, "GameObjectController::cloneWithCallback1");
 	}
 
 	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, unsigned long originalGameObjectId, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
@@ -420,7 +420,7 @@ namespace NOWA
 			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
-		});
+		}, "GameObjectController::cloneWithCallback2");
 	}
 
 	GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
@@ -3412,43 +3412,40 @@ namespace NOWA
 	{
 		GameObject* gameObject = nullptr;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::selectGameObject2", _8(x, y, camera, ogreNewt, categoryIds, maxDistance, sorted, &gameObject),
-		{
-			Ogre::Real resultX;
-			Ogre::Real resultY;
-			MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
-			// Get a world space ray as cast from the camera through a viewport position
-			Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
-			Ogre::Vector3 startPoint = selectRay.getOrigin();
-			Ogre::Vector3 endPoint = selectRay.getPoint(maxDistance);
+		Ogre::Real resultX;
+		Ogre::Real resultY;
+		MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
+		// Get a world space ray as cast from the camera through a viewport position
+		Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
+		Ogre::Vector3 startPoint = selectRay.getOrigin();
+		Ogre::Vector3 endPoint = selectRay.getPoint(maxDistance);
 
-			Ogre::Vector3 pos = Ogre::Vector3::ZERO;
-			OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
-			OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
-			if (info.mBody)
+		Ogre::Vector3 pos = Ogre::Vector3::ZERO;
+		OgreNewt::BasicRaycast ray(ogreNewt, startPoint, endPoint, sorted);
+		OgreNewt::BasicRaycast::BasicRaycastInfo info = ray.getFirstHit();
+		if (info.mBody)
+		{
+			unsigned int type = info.mBody->getType();
+			unsigned int finalType = type & categoryIds;
+			if (type == finalType)
 			{
-				unsigned int type = info.mBody->getType();
-				unsigned int finalType = type & categoryIds;
-				if (type == finalType)
+				try
 				{
-					try
+					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+					Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
+					if (nullptr != tempNode)
 					{
-						// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-						Ogre::SceneNode* tempNode = static_cast<Ogre::SceneNode*>(info.mBody->getOgreNode());
-						if (nullptr != tempNode)
-						{
-							gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
-							// PhysicsComponent* physicsComponent = Ogre::any_cast<PhysicsComponent*>(info.mBody->getUserData());
-							// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
-							// return physicsComponent->getOwner().get();
-						}
-					}
-					catch (...)
-					{
+						gameObject = Ogre::any_cast<GameObject*>(tempNode->getUserObjectBindings().getUserAny());
+						// PhysicsComponent* physicsComponent = Ogre::any_cast<PhysicsComponent*>(info.mBody->getUserData());
+						// GameObjectPtr gameObjectPtr = Ogre::any_cast<GameObject*>((*it).movable->getUserAny());
+						// return physicsComponent->getOwner().get();
 					}
 				}
+				catch (...)
+				{
+				}
 			}
-		});
+		}
 		return gameObject;
 	}
 
@@ -3539,53 +3536,57 @@ namespace NOWA
 				this->sphereSceneQuery->setQueryMask(categoryIds);
 			}
 
-			// check objects in range
-			Ogre::SceneQueryResultMovableList& result = this->sphereSceneQuery->execute().movables;
-			for (auto& it = result.cbegin(); it != result.cend(); ++it)
+			// TODO: Is this correct here?
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectController::checkAreaForActiveObjects", _2(position, distance),
 			{
-				Ogre::MovableObject* movableObject = *it;
-
-				// if the query flags are part of the final category
-				// unsigned int finalCategory = this->sphereSceneQuery->getQueryMask() & movableObject->getQueryFlags();
-				// if (this->sphereSceneQuery->getQueryMask() == finalCategory)
+				// check objects in range
+				Ogre::SceneQueryResultMovableList & result = this->sphereSceneQuery->execute().movables;
+				for (auto& it = result.cbegin(); it != result.cend(); ++it)
 				{
-					NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(movableObject->getUserObjectBindings().getUserAny());
-					if (gameObject)
+					Ogre::MovableObject* movableObject = *it;
+
+					// if the query flags are part of the final category
+					// unsigned int finalCategory = this->sphereSceneQuery->getQueryMask() & movableObject->getQueryFlags();
+					// if (this->sphereSceneQuery->getQueryMask() == finalCategory)
 					{
-						// when this is active, the onEnter callback will only be called once for the object!
-						auto& it = this->triggeredGameObjects.find(gameObject->getId());
-						if (it == this->triggeredGameObjects.end())
+						NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(movableObject->getUserObjectBindings().getUserAny());
+						if (gameObject)
 						{
-							// here also set the script to be called, so that in ActiveObjectsResultCallback can be run in script and call spawn callback for another script?
-							for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+							// when this is active, the onEnter callback will only be called once for the object!
+							auto& it = this->triggeredGameObjects.find(gameObject->getId());
+							if (it == this->triggeredGameObjects.end())
 							{
-								// notify the observer
-								(*subIt)->onEnter(gameObject);
+								// here also set the script to be called, so that in ActiveObjectsResultCallback can be run in script and call spawn callback for another script?
+								for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+								{
+									// notify the observer
+									(*subIt)->onEnter(gameObject);
+								}
+								// add the game object to a map
+								this->triggeredGameObjects.emplace(gameObject->getId(), gameObject);
 							}
-							// add the game object to a map
-							this->triggeredGameObjects.emplace(gameObject->getId(), gameObject);
 						}
 					}
 				}
-			}
 
-			// go through the map with the triggered game objects that are in range
-			for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend(); ++it)
-			{
-				GameObject* gameObject = it->second;
-				Ogre::Vector3& direction = position - gameObject->getPosition();
-				// if a game objects comes out of the range, remove it and notify the observer
-				Ogre::Real distanceToGameObject = direction.squaredLength();
-				if (distanceToGameObject > distance * distance)
+				// go through the map with the triggered game objects that are in range
+				for (auto& it = this->triggeredGameObjects.cbegin(); it != this->triggeredGameObjects.cend(); ++it)
 				{
-					for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+					GameObject* gameObject = it->second;
+					Ogre::Vector3& direction = position - gameObject->getPosition();
+					// if a game objects comes out of the range, remove it and notify the observer
+					Ogre::Real distanceToGameObject = direction.squaredLength();
+					if (distanceToGameObject > distance * distance)
 					{
-						(*subIt)->onLeave(gameObject);
+						for (auto& subIt = this->triggerSphereQueryObservers.cbegin(); subIt != this->triggerSphereQueryObservers.cend(); ++subIt)
+						{
+							(*subIt)->onLeave(gameObject);
+						}
+						this->triggeredGameObjects.erase(it->first);
+						break;
 					}
-					this->triggeredGameObjects.erase(it->first);
-					break;
 				}
-			}
+			});
 		}
 	}
 

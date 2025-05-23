@@ -49,9 +49,6 @@
     <Image Include="res\NOWA.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\Resource.aps" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="res\Resource.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

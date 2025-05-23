@@ -74,35 +74,40 @@ namespace NOWA
 		// if source id = 0 and one was a child, remove the child! resolve groups!
 		if (false == alreadyConnected)
 		{
-			GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
-		
-			if (nullptr == sourceGameObjectPtr)
-				return false;
+			ENQUEUE_RENDER_COMMAND_WAIT("TagChildNodeComponent::connect",
+			{
+				GameObjectPtr sourceGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->sourceId->getULong());
 
-			this->sourceChildNode = sourceGameObjectPtr->getSceneNode();
+				if (nullptr == sourceGameObjectPtr)
+				{
+					return false;
+				}
 
-			// Remember the old position for disconnection
-			this->oldSourceChildPosition = this->sourceChildNode->getPosition();
-			this->oldSourceChildOrientation = this->sourceChildNode->getOrientation();
+				this->sourceChildNode = sourceGameObjectPtr->getSceneNode();
 
-			Ogre::Vector3 resultPosition = this->sourceChildNode->getPosition();
-			Ogre::Quaternion resultOrientation = this->sourceChildNode->getOrientation();
+				// Remember the old position for disconnection
+				this->oldSourceChildPosition = this->sourceChildNode->getPosition();
+				this->oldSourceChildOrientation = this->sourceChildNode->getOrientation();
 
-			// Remove from source
-			this->sourceParentOfChildNode = this->sourceChildNode->getParent();
-			this->sourceParentOfChildNode->removeChild(this->sourceChildNode);
-			// Add as child to this one
-			this->gameObjectPtr->getSceneNode()->addChild(this->sourceChildNode);
+				Ogre::Vector3 resultPosition = this->sourceChildNode->getPosition();
+				Ogre::Quaternion resultOrientation = this->sourceChildNode->getOrientation();
 
-			// Set the new transform
-			this->sourceChildNode->setOrientation(resultOrientation *  this->gameObjectPtr->getSceneNode()->getOrientation().Inverse());
-			this->sourceChildNode->setPosition(resultPosition - this->gameObjectPtr->getSceneNode()->getPosition());
-			this->sourceChildNode->setInheritScale(false);
+				// Remove from source
+				this->sourceParentOfChildNode = this->sourceChildNode->getParent();
+				this->sourceParentOfChildNode->removeChild(this->sourceChildNode);
+				// Add as child to this one
+				this->gameObjectPtr->getSceneNode()->addChild(this->sourceChildNode);
 
-			resultPosition = this->sourceChildNode->getPosition();
-			resultOrientation = this->sourceChildNode->getOrientation();
+				// Set the new transform
+				this->sourceChildNode->setOrientation(resultOrientation * this->gameObjectPtr->getSceneNode()->getOrientation().Inverse());
+				this->sourceChildNode->setPosition(resultPosition - this->gameObjectPtr->getSceneNode()->getPosition());
+				this->sourceChildNode->setInheritScale(false);
 
-			this->alreadyConnected = true;
+				resultPosition = this->sourceChildNode->getPosition();
+				resultOrientation = this->sourceChildNode->getOrientation();
+
+				this->alreadyConnected = true;
+			});
 		}
 		return true;
 	}
@@ -114,14 +119,17 @@ namespace NOWA
 		{
 			if (nullptr != this->sourceChildNode)
 			{
-				// Remove from this one
-				this->sourceChildNode->getParent()->removeChild(this->sourceChildNode);
-				// This is tricky: Source was the scene node directly, so get its parent, which sould be the world node and add as child
-				this->sourceParentOfChildNode->addChild(this->sourceChildNode);
-				this->sourceChildNode->setOrientation(this->oldSourceChildOrientation);
-				this->sourceChildNode->setPosition(this->oldSourceChildPosition);
+				ENQUEUE_RENDER_COMMAND_WAIT("TagChildNodeComponent::disconnect",
+				{
+					// Remove from this one
+					this->sourceChildNode->getParent()->removeChild(this->sourceChildNode);
+					// This is tricky: Source was the scene node directly, so get its parent, which sould be the world node and add as child
+					this->sourceParentOfChildNode->addChild(this->sourceChildNode);
+					this->sourceChildNode->setOrientation(this->oldSourceChildOrientation);
+					this->sourceChildNode->setPosition(this->oldSourceChildPosition);
 
-				this->alreadyConnected = false;
+					this->alreadyConnected = false;
+				});
 			}
 		}
 		return true;

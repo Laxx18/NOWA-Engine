@@ -35,14 +35,17 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NodeTrackComponent] Destructor node track component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->animation)
 		{
-			this->animation->destroyAllNodeTracks();
-			this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
+			ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::~NodeTrackComponent",
+			{
+				this->animation->destroyAllNodeTracks();
+				this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
 
-			// Already destroyed
-			// this->gameObjectPtr->getSceneManager()->destroyAnimationState(this->animationState->getAnimationName());
-			this->animation = nullptr;
-			this->animationTrack = nullptr;
-			this->animationState = nullptr;
+				// Already destroyed
+				// this->gameObjectPtr->getSceneManager()->destroyAnimationState(this->animationState->getAnimationName());
+				this->animation = nullptr;
+				this->animationTrack = nullptr;
+				this->animationState = nullptr;
+			});
 		}
 	}
 
@@ -154,63 +157,70 @@ namespace NOWA
 	bool NodeTrackComponent::connect(void)
 	{
 		if (true == this->timePositions.empty())
-			return true;
-
-		if (nullptr != this->animation)
 		{
-			this->animation->destroyAllNodeTracks();
-			this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
+			return true;
 		}
 
-		this->animation = this->gameObjectPtr->getSceneManager()->createAnimation("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()),
-			this->timePositions[this->nodeTrackIds.size() - 1]->getReal());
-
-		// Create a node track for animation
-		this->animationTrack = this->animation->createNodeTrack(this->gameObjectPtr->getSceneNode());
-
-		/*
-		Values are interpolated along straight lines.
-			IM_LINEAR,
-		Values are interpolated along a spline, resulting in smoother changes in direction.
-			IM_SPLINE
-		*/
-
-		if ("Linear" == this->interpolationMode->getListSelectedValue())
-			this->animation->setInterpolationMode(Ogre::v1::Animation::IM_LINEAR);
-		else if ("Spline" == this->interpolationMode->getListSelectedValue())
-			this->animation->setInterpolationMode(Ogre::v1::Animation::IM_SPLINE);
-
-		/* Values are interpolated linearly. This is faster but does not necessarily give a completely accurate result.
-			RIM_LINEAR,
-			 Values are interpolated spherically. This is more accurate but has a higher cost.
-			RIM_SPHERICAL
-		*/
-		if ("Linear" == this->rotationMode->getListSelectedValue())
-			this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_LINEAR);
-		else if ("Spherical" == this->rotationMode->getListSelectedValue())
-			this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_SPHERICAL);
-
-		this->animationState = this->gameObjectPtr->getSceneManager()->createAnimationState("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
-		this->animationState->setLoop(this->repeat->getBool());
-
-		for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
+		ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::connect",
 		{
-			Ogre::v1::TransformKeyFrame* transformKeyFrame = this->animationTrack->createNodeKeyFrame(this->timePositions[i]->getReal());
-			GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
-			if (nullptr != waypointGameObjectPtr)
+			if (nullptr != this->animation)
 			{
-				auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
-				if (nullptr != nodeCompPtr)
+				this->animation->destroyAllNodeTracks();
+				this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
+			}
+
+			this->animation = this->gameObjectPtr->getSceneManager()->createAnimation("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()),
+				this->timePositions[this->nodeTrackIds.size() - 1]->getReal());
+
+			// Create a node track for animation
+			this->animationTrack = this->animation->createNodeTrack(this->gameObjectPtr->getSceneNode());
+
+			/*
+			Values are interpolated along straight lines.
+				IM_LINEAR,
+			Values are interpolated along a spline, resulting in smoother changes in direction.
+				IM_SPLINE
+			*/
+
+			if ("Linear" == this->interpolationMode->getListSelectedValue())
+				this->animation->setInterpolationMode(Ogre::v1::Animation::IM_LINEAR);
+			else if ("Spline" == this->interpolationMode->getListSelectedValue())
+				this->animation->setInterpolationMode(Ogre::v1::Animation::IM_SPLINE);
+
+			/* Values are interpolated linearly. This is faster but does not necessarily give a completely accurate result.
+				RIM_LINEAR,
+				 Values are interpolated spherically. This is more accurate but has a higher cost.
+				RIM_SPHERICAL
+			*/
+			if ("Linear" == this->rotationMode->getListSelectedValue())
+				this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_LINEAR);
+			else if ("Spherical" == this->rotationMode->getListSelectedValue())
+				this->animation->setRotationInterpolationMode(Ogre::v1::Animation::RIM_SPHERICAL);
+
+			this->animationState = this->gameObjectPtr->getSceneManager()->createAnimationState("Path" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()));
+			this->animationState->setLoop(this->repeat->getBool());
+
+			for (size_t i = 0; i < this->nodeTrackIds.size(); i++)
+			{
+				Ogre::v1::TransformKeyFrame* transformKeyFrame = this->animationTrack->createNodeKeyFrame(this->timePositions[i]->getReal());
+				GameObjectPtr waypointGameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->nodeTrackIds[i]->getULong());
+				if (nullptr != waypointGameObjectPtr)
 				{
-					transformKeyFrame->setTranslate(nodeCompPtr->getPosition());
-					transformKeyFrame->setRotation(nodeCompPtr->getOrientation());
-					transformKeyFrame->setScale(nodeCompPtr->getOwner()->getScale());
+					auto nodeCompPtr = NOWA::makeStrongPtr(waypointGameObjectPtr->getComponent<NodeComponent>());
+					if (nullptr != nodeCompPtr)
+					{
+						transformKeyFrame->setTranslate(nodeCompPtr->getPosition());
+						transformKeyFrame->setRotation(nodeCompPtr->getOrientation());
+						transformKeyFrame->setScale(nodeCompPtr->getOwner()->getScale());
+					}
 				}
 			}
-		}
 
-		if (true == this->activated->getBool())
-			this->animationState->setEnabled(true);
+			if (true == this->activated->getBool())
+			{
+				this->animationState->setEnabled(true);
+			}
+		});
 
 		return true;
 	}
@@ -219,9 +229,12 @@ namespace NOWA
 	{
 		if (nullptr != this->animationTrack)
 		{
-			this->animationTrack->removeAllKeyFrames();
-			this->animationState->setEnabled(false);
-			this->animationState->setTimePosition(0.0f);
+			ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::disconnect",
+			{
+				this->animationTrack->removeAllKeyFrames();
+				this->animationState->setEnabled(false);
+				this->animationState->setTimePosition(0.0f);
+			});
 		}
 		return true;
 	}

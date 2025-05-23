@@ -12,10 +12,19 @@
 #include <atomic>
 #include <unordered_map>
 
+#include "utilities/MathHelper.h"
+
 #define NUM_TRANSFORM_BUFFERS 4
 
 namespace NOWA
 {
+    namespace RenderGlobals
+    {
+        // Marked as inline (C++17), so each translation unit gets its own copy, but all copies are treated as one entity by the linker.
+        inline thread_local int g_renderCommandDepth;
+        inline thread_local int g_waitDepth;
+    }
+
     /*
     *    @brief How the command queue does work:
     *    Main thread must wait, until the closure command is finished. If the closure command is called and inside that, there is another inner function, which also calls ENQUEUE_RENDER_COMMAND_WAIT, 
@@ -73,6 +82,7 @@ namespace NOWA
             TransformData transforms[NUM_TRANSFORM_BUFFERS];
             bool active = false;
             bool isNew = false;
+            bool useDerived = false;
         };
 
         struct CameraTransforms
@@ -95,7 +105,7 @@ namespace NOWA
         };
 	public:
 
-        void enqueue(RenderCommand command, std::shared_ptr<std::promise<void>> promise = nullptr);
+        void enqueue(RenderCommand command, const char* commandName, std::shared_ptr<std::promise<void>> promise = nullptr);
 
         bool pop(CommandEntry& commandEntry);
 
@@ -110,7 +120,83 @@ namespace NOWA
 
         void cleanupFulfilledPromises(void);
 
-        void executeAndWait(RenderCommand command, const char* commandName);
+        void enqueueAndWait(RenderCommand command, const char* commandName);
+
+        template <typename T>
+        T enqueueAndWaitWithResult(std::function<T()> command, const char* commandName)
+        {
+            if (this->isRenderThread())
+            {
+                try
+                {
+                    this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
+                    return command();
+                }
+                catch (const std::exception& e)
+                {
+                    this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+                    throw;
+                }
+                catch (...)
+                {
+                    this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
+                    throw;
+                }
+            }
+
+            this->incrementWaitDepth();
+
+            try
+            {
+                auto promise = std::make_shared<std::promise<T>>();
+                auto future = promise->get_future();
+
+                bool isNested = isInNestedWait() && RenderGlobals::g_waitDepth > 1;
+
+                this->logCommandEvent(std::string("Enqueueing command '") + commandName + "' with wait and result", Ogre::LML_NORMAL);
+
+                // Wrap the command so we can set the result into the promise
+                this->enqueue([command, promise]()
+                {
+                    try
+                    {
+                        promise->set_value(command());
+                    }
+                    catch (...)
+                    {
+                        promise->set_exception(std::current_exception());
+                    }
+                }, commandName);
+
+                if (!isNested)
+                {
+                    if (this->isTimeoutEnabled())
+                    {
+                        auto timeout = getTimeoutDuration();
+                        auto status = future.wait_for(timeout);
+
+                        if (status == std::future_status::timeout)
+                        {
+                            this->logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
+                            this->processQueueSync();
+                        }
+                    }
+                    else
+                    {
+                        future.wait();
+                    }
+                }
+
+                this->decrementWaitDepth();
+                this->logCommandEvent(std::string("Command '") + commandName + "' completed with result", Ogre::LML_TRIVIAL);
+                return future.get();
+            }
+            catch (...)
+            {
+                this->decrementWaitDepth();
+                throw;
+            }
+        }
 
         void processQueueSync(void);
 
@@ -164,16 +250,16 @@ namespace NOWA
         void removeTrackedNode(Ogre::Node* node);
 
         // Update position for a node in the current buffer
-        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position);
+        void updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived = false);
 
         // Update orientation for a node in the current buffer
-        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation);
+        void updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived = false);
 
         // Update scale for a node in the current buffer
-        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale);
+        void updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived = false);
 
         // Update full transform for a node in the current buffer
-        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE);
+        void updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale = Ogre::Vector3::UNIT_SCALE, bool useDerived = false);
 
         // Add a Camera to be tracked and transformed
         void addTrackedCamera(Ogre::Camera* camera);
@@ -363,7 +449,7 @@ namespace NOWA
         } \
     }; \
     \
-    NOWA::RenderCommandQueueModule::getInstance()->executeAndWait(renderCommand, command_name); \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait(renderCommand, command_name); \
 }
 
  // Multi-capture wait macro with timeout, logging, and depth tracking
@@ -387,7 +473,7 @@ namespace NOWA
         } \
     }; \
     \
-    NOWA::RenderCommandQueueModule::getInstance()->executeAndWait(renderCommand, command_name); \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait(renderCommand, command_name); \
 }
 
 // Non-waiting command macros (for completeness)
@@ -411,7 +497,7 @@ namespace NOWA
         } \
     }; \
     \
-    NOWA::RenderCommandQueueModule::getInstance()->enqueue(renderCommand); \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueue(renderCommand, command_name); \
 }
 
 
@@ -435,7 +521,328 @@ namespace NOWA
         } \
     }; \
     \
-    NOWA::RenderCommandQueueModule::getInstance()->enqueue(renderCommand); \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueue(renderCommand, command_name); \
 }
+
+/////////////////No This//////////////////////////////////////////////////////
+
+ // Multi-capture wait macro with timeout, logging, and depth tracking
+#define ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS(command_name, capture_macro, lambda_body) \
+{ \
+    NOWA::RenderCommandQueueModule::RenderCommand renderCommand = [capture_macro]() { \
+        try { \
+            lambda_body \
+        } catch (const std::exception& e) { \
+            NOWA::RenderCommandQueueModule::getInstance()->logCommandEvent( \
+                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
+                Ogre::LML_CRITICAL \
+            ); \
+            throw; /* Re-throw to propagate to the promise */ \
+        } catch (...) { \
+            NOWA::RenderCommandQueueModule::getInstance()->logCommandEvent( \
+                Ogre::String("Unknown exception in command '") + command_name + "'", \
+                Ogre::LML_CRITICAL \
+            ); \
+            throw; /* Re-throw to propagate to the promise */ \
+        } \
+    }; \
+    \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait(renderCommand, command_name); \
+}
+
+#define ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS(command_name, capture_macro, lambda_body) \
+{ \
+    NOWA::RenderCommandQueueModule::RenderCommand renderCommand = [capture_macro]() { \
+        try { \
+            lambda_body \
+        } catch (const std::exception& e) { \
+            NOWA::RenderCommandQueueModule::getInstance()->logCommandEvent( \
+                Ogre::String("Exception in command '") + command_name + "': " + e.what(), \
+                Ogre::LML_CRITICAL \
+            ); \
+            throw; /* Re-throw to propagate to the promise */ \
+        } catch (...) { \
+            NOWA::RenderCommandQueueModule::getInstance()->logCommandEvent( \
+                Ogre::String("Unknown exception in command '") + command_name + "'", \
+                Ogre::LML_CRITICAL \
+            ); \
+            throw; /* Re-throw to propagate to the promise */ \
+        } \
+    }; \
+    \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueue(renderCommand, command_name); \
+}
+
+#define ENQUEUE_RAYCAST1(raySceneQuery, camera, resultPosition, excludeObjects, successVar) \
+    bool successVar = RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>([&]() -> bool \
+    { \
+        auto mathHelper = MathHelper::getInstance(); \
+        return mathHelper->getRaycastFromPoint(raySceneQuery, camera, resultPosition, excludeObjects); \
+    }, "ENQUEUE_RAYCAST1");
+
+// The do { ... } while(0) trick is mostly a C/C++ macro idiom to ensure that the macro behaves like a single statement 
+// (so you can safely put a semicolon after it and use it inside if statements without braces). But if your style prefers no do-while, that’s totally fine.
+#define ENQUEUE_RAYCAST2(mouseX, mouseY, excludeVec, resultPos, successVar) \
+    do { \
+        Ogre::Vector3 resultPos##Local = Ogre::Vector3::ZERO; \
+        int mouseX##Local = (mouseX); \
+        int mouseY##Local = (mouseY); \
+        successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+            [=, &resultPos##Local, &excludeVec]() -> bool { \
+                auto camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(); \
+                auto renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow(); \
+                auto raySceneQuery = this->raySceneQuery; \
+                auto mathHelper = NOWA::MathHelper::getInstance(); \
+                return mathHelper->getRaycastFromPoint(mouseX##Local, mouseY##Local, camera, renderWindow, raySceneQuery, resultPos##Local, &excludeVec); \
+            }, "ENQUEUE_RAYCAST2"); \
+        if (successVar) { \
+            (resultPos) = resultPos##Local; \
+        } \
+    } while(0)
+
+#define ENQUEUE_RAYCAST3(raySceneQuery, camera, excludeVec, clickedPos, movableObj, closestDist, normalVec, successVar) \
+    Ogre::Vector3 clickedPos##Local = Ogre::Vector3::ZERO; \
+    size_t movableObj##Local = 0; \
+    float closestDist##Local = 0.0f; \
+    Ogre::Vector3 normalVec##Local = Ogre::Vector3::ZERO; \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &clickedPos##Local, &movableObj##Local, &closestDist##Local, &normalVec##Local, &excludeVec]() -> bool { \
+            auto mathHelper = NOWA::MathHelper::getInstance(); \
+            return mathHelper->getRaycastFromPoint(raySceneQuery, camera, clickedPos##Local, movableObj##Local, closestDist##Local, normalVec##Local, &excludeVec, false); \
+        }, "ENQUEUE_RAYCAST3"); \
+    if (successVar) { \
+        (clickedPos) = clickedPos##Local; \
+        (movableObj) = movableObj##Local; \
+        (closestDist) = closestDist##Local; \
+        (normalVec) = normalVec##Local; \
+    }
+
+#define ENQUEUE_RAYCAST4(mouseX, mouseY, excludeVec, clickedPos, closestDist, normalVec, movableObj, successVar) \
+    Ogre::Vector3 clickedPos##Local = Ogre::Vector3::ZERO; \
+    Ogre::Vector3 normal##Local = Ogre::Vector3::ZERO; \
+    float closestDist##Local = 0.0f; \
+    size_t movableObj##Local = 0; \
+    int mouseX##Local = (mouseX); \
+    int mouseY##Local = (mouseY); \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &clickedPos##Local, &normal##Local, &closestDist##Local, &movableObj##Local, &excludeVec]() -> bool { \
+            auto camera = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(); \
+            auto renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow(); \
+            auto raySceneQuery = this->raySceneQuery; \
+            auto mathHelper = NOWA::MathHelper::getInstance(); \
+            return mathHelper->getRaycastFromPoint(mouseX##Local, mouseY##Local, camera, renderWindow, raySceneQuery, clickedPos##Local, movableObj##Local, closestDist##Local, normal##Local, &excludeVec, false); \
+        }, "ENQUEUE_RAYCAST4"); \
+    if (successVar) { \
+        (clickedPos) = clickedPos##Local; \
+        (closestDist) = closestDist##Local; \
+        (normalVec) = normal##Local; \
+        (movableObj) = reinterpret_cast<Ogre::MovableObject*>(movableObj##Local); \
+    }
+
+#define ENQUEUE_RAYCAST5(mouseX, mouseY, camera, renderWindow, raySceneQuery, excludeVec, \
+                        outResultPos, outMovableObj, outClosestDist, outNormalVec, successVar) \
+    Ogre::Vector3 outResultPos##Local = Ogre::Vector3::ZERO; \
+    size_t outMovableObj##Local = 0; \
+    float outClosestDist##Local = 0.0f; \
+    Ogre::Vector3 outNormalVec##Local = Ogre::Vector3::ZERO; \
+    int mouseX##Local = (mouseX); \
+    int mouseY##Local = (mouseY); \
+    successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &outResultPos##Local, &outMovableObj##Local, &outClosestDist##Local, &outNormalVec##Local, &excludeVec]() -> bool { \
+            return NOWA::MathHelper::getInstance()->getRaycastFromPoint( \
+                mouseX##Local, mouseY##Local, camera, renderWindow, raySceneQuery, \
+                outResultPos##Local, outMovableObj##Local, outClosestDist##Local, outNormalVec##Local, &excludeVec, false); \
+        }, "ENQUEUE_RAYCAST5"); \
+    if (successVar) { \
+        (outResultPos) = outResultPos##Local; \
+        (outMovableObj) = reinterpret_cast<Ogre::MovableObject*>(outMovableObj##Local); \
+        (outClosestDist) = outClosestDist##Local; \
+        (outNormalVec) = outNormalVec##Local; \
+    }
+
+#define ENQUEUE_GET_MESH_INFO_WITH_SKELETON(entity, vertexCount, vertices, indexCount, indices, position, orientation, scale) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertices, &indexCount, &indices]() { \
+            NOWA::MathHelper::getInstance()->getMeshInformationWithSkeleton( \
+                entity, vertexCount, vertices, indexCount, indices, position, orientation, scale); \
+        }, "ENQUEUE_GET_MESH_INFO_WITH_SKELETON");
+
+#define ENQUEUE_GET_MESH_INFO(meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &indexCount, &indexBuffer]() { \
+            NOWA::MathHelper::getInstance()->getMeshInformation( \
+                meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale); \
+        }, "ENQUEUE_GET_MESH_INFO");
+
+/*
+* Usage:
+* size_t vertexCount = 0;
+* Ogre::Vector3* vertexBuffer = nullptr;
+* size_t indexCount = 0;
+* unsigned long* indexBuffer = nullptr;
+*
+* Ogre::v1::MeshPtr mesh = someEntity->getMesh();
+* Ogre::Vector3 pos = ...;
+* Ogre::Quaternion rot = ...;
+* Ogre::Vector3 scale = ...;
+*
+* ENQUEUE_GET_MESH_INFO(mesh, vertexCount, vertexBuffer, indexCount, indexBuffer, pos, rot, scale);
+*
+*/
+
+#define ENQUEUE_GET_MESH_INFO2(meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &indexCount, &indexBuffer]() { \
+            NOWA::MathHelper::getInstance()->getMeshInformation2( \
+                meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale); \
+        }, "ENQUEUE_GET_MESH_INFO2");
+
+#define ENQUEUE_GET_DETAILED_MESH_INFO2(meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale, isHalf4, isIdx32) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &indexCount, &indexBuffer, &isHalf4, &isIdx32]() { \
+            NOWA::MathHelper::getInstance()->getDetailedMeshInformation2( \
+                meshPtr, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale, isHalf4, isIdx32); \
+        }, "ENQUEUE_GET_DETAILED_MESH_INFO2");
+
+#define ENQUEUE_GET_DETAILED_MESH_INFO2_FULL(meshPtr, vertexCount, vertexBuffer, normalBuffer, texCoordBuffer, indexCount, indexBuffer, position, orientation, scale, isHalf4, isIdx32) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &normalBuffer, &texCoordBuffer, &indexCount, &indexBuffer, &isHalf4, &isIdx32]() { \
+            NOWA::MathHelper::getInstance()->getDetailedMeshInformation2( \
+                meshPtr, vertexCount, vertexBuffer, normalBuffer, texCoordBuffer, \
+                indexCount, indexBuffer, position, orientation, scale, isHalf4, isIdx32); \
+        }, "ENQUEUE_GET_DETAILED_MESH_INFO2_FULL");
+
+#define ENQUEUE_GET_MANUAL_MESH_INFO(manualObj, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &indexCount, &indexBuffer]() { \
+            NOWA::MathHelper::getInstance()->getManualMeshInformation( \
+                manualObj, vertexCount, vertexBuffer, indexCount, indexBuffer, \
+                position, orientation, scale); \
+        }, "ENQUEUE_GET_MANUAL_MESH_INFO");
+
+#define ENQUEUE_GET_MANUAL_MESH_INFO2(manualObj, vertexCount, vertexBuffer, indexCount, indexBuffer, position, orientation, scale) \
+    NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWait( \
+        [=, &vertexCount, &vertexBuffer, &indexCount, &indexBuffer]() { \
+            NOWA::MathHelper::getInstance()->getManualMeshInformation2( \
+                manualObj, vertexCount, vertexBuffer, indexCount, indexBuffer, \
+                position, orientation, scale); \
+        }, "ENQUEUE_GET_MANUAL_MESH_INFO2");
+
+
+#define ENQUEUE_GET_RAYCAST_HEIGHT(xPos, zPos, excludeVec, heightVar, successVar) \
+    Ogre::Real height##Local = 0.0f; \
+    Ogre::Real x##Local = (xPos); \
+    Ogre::Real z##Local = (zPos); \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &height##Local, &excludeVec]() -> bool { \
+            auto raySceneQuery = this->raySceneQuery; \
+            return NOWA::MathHelper::getInstance()->getRaycastHeight( \
+                x##Local, z##Local, raySceneQuery, height##Local, &excludeVec); \
+        }, "getRaycastHeight::enqueueAndWaitWithResult"); \
+    if (successVar) { \
+        (heightVar) = height##Local; \
+    }
+
+
+/*
+* Usage:
+* Ogre::Real height = 0.0f;
+* bool success = false;
+*
+* ENQUEUE_GET_RAYCAST_HEIGHT(100.0f, 200.0f, myExcludeVec, height, success);
+* 
+* if (success) {
+*     // Use `height`
+* }
+*/ 
+
+#define ENQUEUE_GET_RAYCAST_RESULT(originVec, directionVec, excludeVec, resultVec, movableObj, successVar) \
+    Ogre::Vector3 resultVec##Local = Ogre::Vector3::ZERO; \
+    size_t movableObj##Local = 0; \
+    Ogre::Vector3 origin##Local = (originVec); \
+    Ogre::Vector3 direction##Local = (directionVec); \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &resultVec##Local, &movableObj##Local, &excludeVec]() -> bool { \
+            auto raySceneQuery = this->raySceneQuery; \
+            return NOWA::MathHelper::getInstance()->getRaycastResult( \
+                origin##Local, direction##Local, raySceneQuery, resultVec##Local, movableObj##Local, &excludeVec); \
+        }, "ENQUEUE_GET_RAYCAST_RESULT"); \
+    if (successVar) { \
+        (resultVec) = resultVec##Local; \
+        (movableObj) = reinterpret_cast<Ogre::MovableObject*>(movableObj##Local); \
+    }
+
+/*
+* Usage:
+* Ogre::Vector3 origin = ...;
+* Ogre::Vector3 direction = ...;
+* Ogre::Vector3 hitPoint;
+* Ogre::MovableObject* hitObject = nullptr;
+* bool raycastHit = false;
+*
+* ENQUEUE_GET_RAYCAST_RESULT(origin, direction, myExcludeVec, hitPoint, hitObject, raycastHit);
+*
+* if (raycastHit) {
+*     // use hitPoint and hitObject
+* }
+*/ 
+
+#define ENQUEUE_GET_RAYCAST_DETAILS_RESULT(rayInput, resultVec, movableObj, vertexBuf, vertexCountVar, indexBuf, indexCountVar, successVar) \
+    Ogre::Vector3 resultVec##Local = Ogre::Vector3::ZERO; \
+    size_t movableObj##Local = 0; \
+    Ogre::Vector3* vertexBuf##Local = nullptr; \
+    size_t vertexCountVar##Local = 0; \
+    unsigned long* indexBuf##Local = nullptr; \
+    size_t indexCountVar##Local = 0; \
+    Ogre::Ray ray##Local = (rayInput); \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &resultVec##Local, &movableObj##Local, &vertexBuf##Local, &vertexCountVar##Local, &indexBuf##Local, &indexCountVar##Local]() -> bool { \
+            auto raySceneQuery = this->raySceneQuery; \
+            return NOWA::MathHelper::getInstance()->getRaycastDetailsResult(ray##Local, raySceneQuery, \
+                resultVec##Local, movableObj##Local, vertexBuf##Local, vertexCountVar##Local, indexBuf##Local, indexCountVar##Local); \
+        }, "ENQUEUE_GET_RAYCAST_DETAILS_RESULT"); \
+    if (successVar) { \
+        (resultVec) = resultVec##Local; \
+        (movableObj) = reinterpret_cast<Ogre::MovableObject*>(movableObj##Local); \
+        (vertexBuf) = vertexBuf##Local; \
+        (vertexCountVar) = vertexCountVar##Local; \
+        (indexBuf) = indexBuf##Local; \
+        (indexCountVar) = indexCountVar##Local; \
+    }
+
+/*
+* Usage:
+* Ogre::Ray ray = ...;
+* Ogre::Vector3 hitPoint;
+* Ogre::MovableObject* hitObject = nullptr;
+* Ogre::Vector3* verts = nullptr;
+* unsigned long* inds = nullptr;
+* size_t vertCount = 0;
+* size_t indCount = 0;
+* bool raycastSuccess = false;
+* 
+* ENQUEUE_GET_RAYCAST_DETAILS_RESULT(ray, hitPoint, hitObject, verts, vertCount, inds, indCount, raycastSuccess);
+*
+* if (raycastSuccess) {
+*     // use hitPoint, hitObject, verts, inds, vertCount, indCount
+* }
+*/
+
+#define ENQUEUE_GET_RAYCAST_HEIGHT_AND_NORMAL(xPos, zPos, heightVar, normalVar, successVar) \
+    Ogre::Real heightVar##Local = 0.0f; \
+    Ogre::Vector3 normalVar##Local = Ogre::Vector3::ZERO; \
+    Ogre::Real xPos##Local = (xPos); \
+    Ogre::Real zPos##Local = (zPos); \
+    bool successVar = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>( \
+        [=, &heightVar##Local, &normalVar##Local]() -> bool { \
+            auto raySceneQuery = this->raySceneQuery; \
+            return NOWA::MathHelper::getInstance()->getRaycastHeightAndNormal(xPos##Local, zPos##Local, raySceneQuery, heightVar##Local, normalVar##Local); \
+        }, "ENQUEUE_GET_RAYCAST_HEIGHT_AND_NORMAL"); \
+    if (successVar) { \
+        (heightVar) = heightVar##Local; \
+        (normalVar) = normalVar##Local; \
+    }
+
+
 
 #endif

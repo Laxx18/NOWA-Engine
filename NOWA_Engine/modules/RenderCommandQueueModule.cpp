@@ -4,18 +4,14 @@
 
 #include <sstream>
 
-// In the namespace section at the top of your file
 namespace
 {
-    thread_local int g_renderCommandDepth = 0;
-    thread_local int g_waitDepth = 0;
-
-    // Default timeout value (can be changed at runtime)
     std::chrono::milliseconds g_defaultTimeout(5000); // 5 seconds
 }
 
 namespace NOWA
 {
+    using namespace RenderGlobals;
 
     RenderCommandQueueModule::RenderCommandQueueModule()
         : timeoutEnabled(true),
@@ -40,18 +36,18 @@ namespace NOWA
         this->trackedCameras.clear();
     }
 
-    void RenderCommandQueueModule::enqueue(RenderCommand command, std::shared_ptr<std::promise<void>> promise)
+    void RenderCommandQueueModule::enqueue(RenderCommand command, const char* commandName, std::shared_ptr<std::promise<void>> promise)
     {
         // Make sure we have a valid command
         if (!command)
         {
             // If we have a promise, fulfill it to prevent deadlock
-            if (promise && !wasPromiseFulfilled(promise))
+            if (promise && false == this->wasPromiseFulfilled(promise))
             {
                 try
                 {
                     promise->set_value();
-                    markPromiseFulfilled(promise);
+                    this->markPromiseFulfilled(promise);
                 }
                 catch (...)
                 {
@@ -63,13 +59,14 @@ namespace NOWA
 
         // If we're already on the render thread AND processing a command, 
         // execute this command immediately rather than enqueuing it
-        if (isRenderThread() && g_renderCommandDepth > 0)
+        if (this->isRenderThread() && g_renderCommandDepth > 0)
         {
             // Log direct execution
-            logCommandEvent("Executing command directly on render thread", Ogre::LML_TRIVIAL);
+            this->logCommandEvent("Executing command directly on render thread", Ogre::LML_TRIVIAL);
 
             try
             {
+                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
                 command();
                 if (promise && !wasPromiseFulfilled(promise))
                 {
@@ -79,7 +76,7 @@ namespace NOWA
             }
             catch (const std::exception& e)
             {
-                logCommandEvent(std::string("Exception caught in direct command execution: ") + e.what(), Ogre::LML_CRITICAL);
+                this->logCommandEvent(std::string("Exception caught in direct command execution: ") + e.what(), Ogre::LML_CRITICAL);
                 if (promise && !wasPromiseFulfilled(promise))
                 {
                     try
@@ -95,7 +92,7 @@ namespace NOWA
             }
             catch (...)
             {
-                logCommandEvent("Unknown exception caught in direct command execution", Ogre::LML_CRITICAL);
+                this->logCommandEvent("Unknown exception caught in direct command execution", Ogre::LML_CRITICAL);
                 if (promise && !wasPromiseFulfilled(promise))
                 {
                     try
@@ -122,16 +119,16 @@ namespace NOWA
             this->queue.push(std::move(entry));
 
             // Log enqueuing
-            logCommandEvent("Command enqueued for later execution", Ogre::LML_TRIVIAL);
+            this->logCommandEvent("Command " + Ogre::String(commandName) + " enqueued for later execution queue size : " + Ogre::StringConverter::toString(this->queue.size()), Ogre::LML_TRIVIAL);
         }
     }
 
     void RenderCommandQueueModule::processAllCommands(void)
     {
         // Safety check that we're on the render thread
-        if (!isRenderThread())
+        if (false == this->isRenderThread())
         {
-            logCommandEvent("processAllCommands called from non-render thread!", Ogre::LML_CRITICAL);
+            this->logCommandEvent("processAllCommands called from non-render thread!", Ogre::LML_CRITICAL);
             return;
         }
 
@@ -150,43 +147,43 @@ namespace NOWA
                 // Execute the command (which may enqueue more commands if inside a render command)
                 if (entry.command)
                 {
-                    logCommandEvent("Executing command from processAllCommands", Ogre::LML_TRIVIAL);
+                    logCommandEvent("Executing command from processAllCommands. New queue size: " + Ogre::StringConverter::toString(this->queue.size()), Ogre::LML_TRIVIAL);
                     entry.command();
                 }
 
                 // Set the promise value if it exists and hasn't been fulfilled yet
-                if (entry.completionPromise && !wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
                 {
                     entry.completionPromise->set_value();
-                    markPromiseFulfilled(entry.completionPromise);
+                    this->markPromiseFulfilled(entry.completionPromise);
                 }
             }
             catch (const std::exception& e)
             {
-                logCommandEvent(std::string("Exception in processAllCommands: ") + e.what(), Ogre::LML_CRITICAL);
+                this->logCommandEvent(std::string("Exception in processAllCommands: ") + e.what(), Ogre::LML_CRITICAL);
 
                 // Set exception on the promise if it exists
-                if (entry.completionPromise && !wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
                 {
                     try
                     {
                         entry.completionPromise->set_exception(std::current_exception());
-                        markPromiseFulfilled(entry.completionPromise);
+                        this->markPromiseFulfilled(entry.completionPromise);
                     }
                     catch (...) { /* Ignore exceptions from setting the exception */ }
                 }
             }
             catch (...)
             {
-                logCommandEvent("Unknown exception in processAllCommands", Ogre::LML_CRITICAL);
+                this->logCommandEvent("Unknown exception in processAllCommands", Ogre::LML_CRITICAL);
 
                 // Set exception on the promise if it exists
-                if (entry.completionPromise && !wasPromiseFulfilled(entry.completionPromise))
+                if (entry.completionPromise && false == this->wasPromiseFulfilled(entry.completionPromise))
                 {
                     try
                     {
                         entry.completionPromise->set_exception(std::current_exception());
-                        markPromiseFulfilled(entry.completionPromise);
+                        this->markPromiseFulfilled(entry.completionPromise);
                     }
                     catch (...) { /* Ignore exceptions from setting the exception */ }
                 }
@@ -194,9 +191,9 @@ namespace NOWA
         }
 
         // Cleanup fulfilled promises occasionally (when we've processed at least one command)
-        if (processedAnyCommands)
+        if (true == processedAnyCommands)
         {
-            cleanupFulfilledPromises();
+            this->cleanupFulfilledPromises();
         }
 
         // Decrement render command depth
@@ -206,10 +203,10 @@ namespace NOWA
     void RenderCommandQueueModule::waitForRenderCompletion(void)
     {
         // If we're already on the render thread, just process the queue directly
-        if (isRenderThread())
+        if (true == this->isRenderThread())
         {
-            logCommandEvent("waitForRenderCompletion called from render thread - processing queue directly", Ogre::LML_NORMAL);
-            processAllCommands();
+            this->logCommandEvent("waitForRenderCompletion called from render thread - processing queue directly", Ogre::LML_NORMAL);
+            this->processAllCommands();
             return;
         }
 
@@ -221,30 +218,30 @@ namespace NOWA
         this->enqueue([this]()
         {
             // This will execute in the render thread and process any commands ahead of it
-            logCommandEvent("Processing queue from waitForRenderCompletion", Ogre::LML_NORMAL);
-        }, promise);
+                this->logCommandEvent("Processing queue from waitForRenderCompletion", Ogre::LML_NORMAL);
+        }, "", promise);
 
         // Wait for the command to complete
         try
         {
-            logCommandEvent("Waiting for render queue synchronization", Ogre::LML_NORMAL);
+            this->logCommandEvent("Waiting for render queue synchronization", Ogre::LML_NORMAL);
             auto timeout = getTimeoutDuration();
-            if (isTimeoutEnabled())
+            if (true == this->isTimeoutEnabled())
             {
                 if (future.wait_for(timeout) == std::future_status::timeout)
                 {
-                    logCommandEvent("Timeout occurred waiting for render queue synchronization", Ogre::LML_CRITICAL);
+                    this->logCommandEvent("Timeout occurred waiting for render queue synchronization", Ogre::LML_NORMAL);
                 }
             }
             else
             {
                 future.wait();
             }
-            logCommandEvent("Render queue synchronization complete", Ogre::LML_NORMAL);
+            this->logCommandEvent("Render queue synchronization complete", Ogre::LML_NORMAL);
         }
         catch (const std::exception& e)
         {
-            logCommandEvent(std::string("Exception waiting for render completion: ") + e.what(), Ogre::LML_CRITICAL);
+            this->logCommandEvent(std::string("Exception waiting for render completion: ") + e.what(), Ogre::LML_CRITICAL);
         }
     }
 
@@ -269,37 +266,37 @@ namespace NOWA
         {
             std::stringstream ss;
             ss << "Cleaning up " << fulfilledPromises.size() << " fulfilled promises";
-            logCommandEvent(ss.str(), Ogre::LML_NORMAL);
+            this->logCommandEvent(ss.str(), Ogre::LML_NORMAL);
 
             fulfilledPromises.clear();
         }
     }
 
-    void RenderCommandQueueModule::executeAndWait(RenderCommand command, const char* commandName)
+    void RenderCommandQueueModule::enqueueAndWait(RenderCommand command, const char* commandName)
     {
         // If we're already on the render thread, execute directly
-        if (isRenderThread())
+        if (true == this->isRenderThread())
         {
             try
             {
-                logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread", Ogre::LML_TRIVIAL);
+                this->logCommandEvent(std::string("Executing command '") + commandName + "' directly on render thread with **WAIT**", Ogre::LML_TRIVIAL);
                 command();
                 return;
             }
             catch (const std::exception& e)
             {
-                logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+                this->logCommandEvent(std::string("Exception in direct execution of '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
                 throw; // Re-throw the exception
             }
             catch (...)
             {
-                logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
+                this->logCommandEvent(std::string("Unknown exception in direct execution of '") + commandName + "'", Ogre::LML_CRITICAL);
                 throw; // Re-throw the exception
             }
         }
 
         // Track that we're in a waiting state on this thread
-        incrementWaitDepth();
+        this->incrementWaitDepth();
 
         try
         {
@@ -308,35 +305,34 @@ namespace NOWA
             auto future = promise->get_future();
 
             // Log the command
-            logCommandEvent(std::string("Enqueueing command '") + commandName + "' with wait", Ogre::LML_NORMAL);
+            this->logCommandEvent(std::string("Enqueueing command '") + commandName + "' with **WAIT**", Ogre::LML_NORMAL);
 
             // If we're in a nested wait, we still enqueue with the promise but we'll use a special flag
             bool isNested = isInNestedWait() && g_waitDepth > 1; // We've already incremented waitDepth
 
-            if (isNested)
+            if (true == isNested)
             {
-                logCommandEvent(std::string("Command '") + commandName + "' is a nested wait call (depth: " +
-                    std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
+                this->logCommandEvent(std::string("Command '") + commandName + "' is a nested **WAIT** call (depth: " + std::to_string(g_waitDepth) + ")", Ogre::LML_NORMAL);
             }
 
             // Always enqueue with a promise, even for nested commands
-            enqueue(command, promise);
+            this->enqueue(command, commandName, promise);
 
             // For the first level wait, process immediately to avoid deadlocks
-            if (!isNested)
+            if (false == isNested)
             {
                 // Wait for the command to complete
-                if (isTimeoutEnabled())
+                if (true == this->isTimeoutEnabled())
                 {
                     auto timeout = getTimeoutDuration();
                     auto status = future.wait_for(timeout);
 
                     if (status == std::future_status::timeout)
                     {
-                        logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
+                        this->logCommandEvent(std::string("Timeout occurred waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
 
                         // Force a full queue synchronization to recover
-                        processQueueSync();
+                        this->processQueueSync();
                     }
                 }
                 else
@@ -348,8 +344,7 @@ namespace NOWA
             {
                 // For nested waits, we still track the promise but don't wait for it
                 // The outer wait will ensure all commands get processed eventually
-                logCommandEvent(std::string("Nested command '") + commandName +
-                    "' enqueued without blocking wait", Ogre::LML_NORMAL);
+                this->logCommandEvent(std::string("Nested command '") + commandName + "' enqueued without blocking wait", Ogre::LML_NORMAL);
 
                 // Add to tracking for nested commands if needed
                 // trackNestedCommand(promise); // Optional: implement this to track nested promises
@@ -357,13 +352,13 @@ namespace NOWA
         }
         catch (const std::exception& e)
         {
-            logCommandEvent(std::string("Exception waiting for command '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
+            this->logCommandEvent(std::string("Exception waiting for command '") + commandName + "': " + e.what(), Ogre::LML_CRITICAL);
             decrementWaitDepth();
             throw;
         }
         catch (...)
         {
-            logCommandEvent(std::string("Unknown exception waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
+            this->logCommandEvent(std::string("Unknown exception waiting for command '") + commandName + "'", Ogre::LML_CRITICAL);
             decrementWaitDepth();
             throw;
         }
@@ -375,10 +370,10 @@ namespace NOWA
     void RenderCommandQueueModule::processQueueSync(void)
     {
         // If we're on the render thread, process directly
-        if (isRenderThread())
+        if (true == this->isRenderThread())
         {
-            logCommandEvent("Processing queue synchronously on render thread", Ogre::LML_NORMAL);
-            processAllCommands();
+            this->logCommandEvent("Processing queue synchronously on render thread", Ogre::LML_NORMAL);
+            this->processAllCommands();
             return;
         }
 
@@ -387,15 +382,16 @@ namespace NOWA
         auto syncFuture = syncPromise->get_future();
 
         // Create a special command that just completes the sync
-        enqueue([this]() {
+        enqueue([this]() 
+        {
             // This will execute after all previous commands
-            logCommandEvent("Sync point reached in queue processing", Ogre::LML_NORMAL);
-            }, syncPromise);
+            this->logCommandEvent("Sync point reached in queue processing", Ogre::LML_NORMAL);
+        }, "", syncPromise);
 
         // Wait without timeout - we need to ensure this completes
-        logCommandEvent("Waiting for queue sync point", Ogre::LML_NORMAL);
+        this->logCommandEvent("Waiting for queue sync point", Ogre::LML_NORMAL);
         syncFuture.wait();
-        logCommandEvent("Queue sync point completed", Ogre::LML_NORMAL);
+        this->logCommandEvent("Queue sync point completed", Ogre::LML_NORMAL);
     }
 
     void RenderCommandQueueModule::markPromiseFulfilled(const std::shared_ptr<std::promise<void>>& promise)
@@ -403,7 +399,7 @@ namespace NOWA
         if (!promise) return;
 
         std::lock_guard<std::mutex> lock(this->fulfilledMutex);
-        fulfilledPromises.insert(promise);
+        this->fulfilledPromises.insert(promise);
     }
 
     bool RenderCommandQueueModule::wasPromiseFulfilled(const std::shared_ptr<std::promise<void>>& promise)
@@ -411,7 +407,7 @@ namespace NOWA
         if (!promise) return true;
 
         std::lock_guard<std::mutex> lock(this->fulfilledMutex);
-        return fulfilledPromises.find(promise) != fulfilledPromises.end();
+        return fulfilledPromises.find(promise) != this->fulfilledPromises.end();
     }
 
     void RenderCommandQueueModule::markCurrentThreadAsRenderThread()
@@ -479,7 +475,7 @@ namespace NOWA
 
     void RenderCommandQueueModule::recoverFromTimeout(void)
     {
-        logCommandEvent("Attempting to recover from command timeout", Ogre::LML_CRITICAL);
+        this->logCommandEvent("Attempting to recover from command timeout", Ogre::LML_CRITICAL);
 
         // Clear all waiting depths that might be preventing command processing
         // This is a last resort recovery mechanism
@@ -488,23 +484,24 @@ namespace NOWA
         // Log the number of commands still in the queue
         std::stringstream ss;
         ss << "Queue has " << queue.size() << " pending commands during timeout recovery";
-        logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
+        this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
 
         // Reset wait depth if it's non-zero (something might have gone wrong)
-        if (g_waitDepth > 0) {
+        if (g_waitDepth > 0)
+        {
             std::stringstream ss;
             ss << "Resetting wait depth from " << g_waitDepth << " to 0 during recovery";
-            logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
+            this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
             g_waitDepth = 0;
         }
 
         // Optionally: process commands here if we're on the render thread
-        if (isRenderThread())
+        if (true == this->isRenderThread())
         {
-            logCommandEvent("Processing command queue during timeout recovery", Ogre::LML_CRITICAL);
+            this->logCommandEvent("Processing command queue during timeout recovery", Ogre::LML_CRITICAL);
             // Release the lock before processing
             lock.~lock_guard();
-            processAllCommands();
+            this->processAllCommands();
         }
     }
 
@@ -525,7 +522,7 @@ namespace NOWA
             this->logCommandEvent(ss.str(), Ogre::LML_CRITICAL);
 
             // Try to recover from the timeout
-            recoverFromTimeout();
+            this->recoverFromTimeout();
 
             return false;
         }
@@ -622,7 +619,7 @@ namespace NOWA
         }
     }
 
-    void RenderCommandQueueModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position)
+    void RenderCommandQueueModule::updateNodePosition(Ogre::Node* node, const Ogre::Vector3& position, bool useDerived)
     {
         RenderCommandQueueModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
@@ -637,6 +634,7 @@ namespace NOWA
         // This is key to the mutex-free approach - logic thread only writes to current buffer
         nodeTransforms->transforms[this->currentTransformNodeIdx].position = position;
         nodeTransforms->active = true;
+        nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
         {
@@ -645,7 +643,7 @@ namespace NOWA
         }
     }
 
-    void RenderCommandQueueModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation)
+    void RenderCommandQueueModule::updateNodeOrientation(Ogre::Node* node, const Ogre::Quaternion& orientation, bool useDerived)
     {
         RenderCommandQueueModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
@@ -660,6 +658,7 @@ namespace NOWA
         // This is key to the mutex-free approach - logic thread only writes to current buffer
         nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
         nodeTransforms->active = true;
+        nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
         {
@@ -668,7 +667,7 @@ namespace NOWA
         }
     }
 
-    void RenderCommandQueueModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale)
+    void RenderCommandQueueModule::updateNodeScale(Ogre::Node* node, const Ogre::Vector3& scale, bool useDerived)
     {
         RenderCommandQueueModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
@@ -683,6 +682,7 @@ namespace NOWA
         // This is key to the mutex-free approach - logic thread only writes to current buffer
         nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
         nodeTransforms->active = true;
+        nodeTransforms->useDerived = useDerived;
 
         if (true == this->debugVisualization)
         {
@@ -691,7 +691,7 @@ namespace NOWA
         }
     }
 
-    void RenderCommandQueueModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale)
+    void RenderCommandQueueModule::updateNodeTransform(Ogre::Node* node, const Ogre::Vector3& position, const Ogre::Quaternion& orientation, const Ogre::Vector3& scale, bool useDerived)
     {
         RenderCommandQueueModule::NodeTransforms* nodeTransforms = this->findNodeTransforms(node);
 
@@ -707,6 +707,7 @@ namespace NOWA
         nodeTransforms->transforms[this->currentTransformNodeIdx].orientation = orientation;
         nodeTransforms->transforms[this->currentTransformNodeIdx].scale = scale;
         nodeTransforms->active = true;
+        nodeTransforms->useDerived = useDerived;
     }
 
     void RenderCommandQueueModule::addTrackedCamera(Ogre::Camera* camera)
@@ -991,8 +992,17 @@ namespace NOWA
                 Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, weight);
 
                 // Apply to scene node
-                nodeTransform.node->setPosition(interpPos);
-                nodeTransform.node->setOrientation(interpRot);
+                if (false == nodeTransform.useDerived)
+                {
+                    nodeTransform.node->setPosition(interpPos);
+                    nodeTransform.node->setOrientation(currTransform.orientation);
+                }
+                else
+                {
+                    nodeTransform.node->_setDerivedPosition(interpPos);
+                    nodeTransform.node->_setDerivedOrientation(interpRot);
+                }
+
                 nodeTransform.node->setScale(interpScale);
 
                 if (true == this->debugVisualization && weight > 0.0f && weight < 1.0f)

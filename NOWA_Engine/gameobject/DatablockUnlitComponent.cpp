@@ -78,44 +78,6 @@ namespace NOWA
 	DatablockUnlitComponent::~DatablockUnlitComponent()
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[DatablockUnlitComponent] Destructor datablock unlit component for game object: " + this->gameObjectPtr->getName());
-
-		if (true == this->alreadyCloned)
-		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity && nullptr != this->datablock)
-			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-				if (nullptr != this->originalDatablock)
-				{
-					Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-					// Set back the default datablock
-					entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
-				}
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
-				{
-					// Set back the default datablock
-					item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
-				}
-			}
-
-			if (nullptr != this->datablock)
-			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-
-				auto& linkedRenderabled = this->datablock->getLinkedRenderables();
-
-				// Only destroy if the datablock is not used else where
-				if (true == linkedRenderabled.empty())
-				{
-					this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-					this->datablock = nullptr;
-				}
-			}
-		}
 	}
 
 	void DatablockUnlitComponent::onRemoveComponent(void)
@@ -125,40 +87,43 @@ namespace NOWA
 		// If a datablock has been cloned, it must be destroyed manually
 		if (true == this->alreadyCloned)
 		{
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
+			ENQUEUE_RENDER_COMMAND_WAIT("DatablockUnlitComponent::onRemoveComponent",
 			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-				if (nullptr != this->originalDatablock)
+				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
 				{
-					Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-					// Set back the default datablock
-					entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					Ogre::String dataBlockName = *this->datablock->getNameStr();
+					if (nullptr != this->originalDatablock)
+					{
+						Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
+						// Set back the default datablock
+						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					}
 				}
-			}
-			else
-			{
-				Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-				if (nullptr != item)
+				else
 				{
-					// Set back the default datablock
-					item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+					if (nullptr != item)
+					{
+						// Set back the default datablock
+						item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+					}
 				}
-			}
 
-			if (nullptr != this->datablock)
-			{
-				Ogre::String dataBlockName = *this->datablock->getNameStr();
-
-				auto& linkedRenderabled = this->datablock->getLinkedRenderables();
-
-				// Only destroy if the datablock is not used else where
-				if (true == linkedRenderabled.empty())
+				if (nullptr != this->datablock)
 				{
-					this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-					this->datablock = nullptr;
+					Ogre::String dataBlockName = *this->datablock->getNameStr();
+
+					auto& linkedRenderabled = this->datablock->getLinkedRenderables();
+
+					// Only destroy if the datablock is not used else where
+					if (true == linkedRenderabled.empty())
+					{
+						this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
+						this->datablock = nullptr;
+					}
 				}
-			}
+			});
 		}
 
 		this->gameObjectPtr->actualizeDatablocks();
@@ -199,8 +164,6 @@ namespace NOWA
 			this->animationScales.resize(this->textureCount->getUInt());
 			this->animationRotations.resize(this->textureCount->getUInt());
 		}
-
-
 
 		for (size_t i = 0; i < this->textureCount->getUInt(); i++)
 		{
@@ -355,107 +318,110 @@ namespace NOWA
 
 	void DatablockUnlitComponent::internalSetTextureName(unsigned char textureIndex, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
 	{
-		Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+		ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::internalSetTextureName", _4(textureIndex, textureType, attribute, textureName),
+		{
+			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
-		Ogre::String previousTextureName = attribute->getString();
-		// If the data block component has just been created, get texture name from existing data block
-		Ogre::String tempTextureName = textureName;
-		
-		// If the data block component has just been created, get texture name from existing data block
-		if (true == newlyCreated && nullptr != this->datablock)
-		{
-			tempTextureName = this->getUnlitTextureName(this->datablock, textureType);
-		}
-		attribute->setValue(tempTextureName);
-		this->addAttributeFilePathData(attribute);
+			Ogre::String previousTextureName = attribute->getString();
+			// If the data block component has just been created, get texture name from existing data block
+			Ogre::String tempTextureName = textureName;
 
-		// Store the old texture name as user data
-		if (false == tempTextureName.empty())
-		{
-			attribute->addUserData("OldTexture", tempTextureName);
-		}
-		else if (nullptr != this->datablock)
-		{
-			attribute->addUserData("OldTexture", this->getUnlitTextureName(this->datablock, textureType));
-		}
-
-		if (nullptr != this->datablock /*&& false == newlyCreated*/)
-		{
-			// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
-			if (true == attribute->getUserDataValue("OldTexture").empty())
+			// If the data block component has just been created, get texture name from existing data block
+			if (true == newlyCreated && nullptr != this->datablock)
 			{
 				tempTextureName = this->getUnlitTextureName(this->datablock, textureType);
-				attribute->addUserData(tempTextureName);
 			}
+			attribute->setValue(tempTextureName);
+			this->addAttributeFilePathData(attribute);
 
-			// createOrRetrieveTexture crashes, when texture alias name is empty
-			Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
-			if (false == oldTextureName.empty())
+			// Store the old texture name as user data
+			if (false == tempTextureName.empty())
 			{
-				if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
+				attribute->addUserData("OldTexture", tempTextureName);
+			}
+			else if (nullptr != this->datablock)
+			{
+				attribute->addUserData("OldTexture", this->getUnlitTextureName(this->datablock, textureType));
+			}
+
+			if (nullptr != this->datablock /*&& false == newlyCreated*/)
+			{
+				// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
+				if (true == attribute->getUserDataValue("OldTexture").empty())
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Cannot set texture: '" + oldTextureName +
-																	"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
-					attribute->setValue(previousTextureName);
-					this->addAttributeFilePathData(attribute);
-					return;
+					tempTextureName = this->getUnlitTextureName(this->datablock, textureType);
+					attribute->addUserData(tempTextureName);
 				}
 
-				Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
-
-				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
-				
-				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-
-				// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
-				// it will be filled with correct data when setDataBlock is called
-				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
-																						Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
-																						Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
-				// Check if its a valid texture
-				if (nullptr != texture)
+				// createOrRetrieveTexture crashes, when texture alias name is empty
+				Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
+				if (false == oldTextureName.empty())
 				{
-					try
+					if (false == Ogre::ResourceGroupManager::getSingleton().resourceExistsInAnyGroup(oldTextureName))
 					{
-						texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-					}
-					catch (const Ogre::Exception& exception)
-					{
-						Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
-						Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockUnlitComponent] Cannot set texture: '" + oldTextureName +
+																		"', because it does not exist in any resource group! for game object: " + this->gameObjectPtr->getName());
 						attribute->setValue(previousTextureName);
 						this->addAttributeFilePathData(attribute);
 						return;
 					}
 
-					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
-					if (0 == texture->getWidth())
-					{
-						hlmsTextureManager->waitForStreamingCompletion();
-					}
-					// Invalid texture skip
-					if (0 == texture->getWidth())
-					{
-						attribute->setValue(previousTextureName);
-						this->addAttributeFilePathData(attribute);
-						return;
-					}
+					Ogre::uint32 textureFlags = Ogre::TextureFlags::AutomaticBatching;
 
-					// If texture has been removed, set null texture, so that it will be removed from data block
-					if (true == tempTextureName.empty())
+					Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
+
+					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+
+					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+					// it will be filled with correct data when setDataBlock is called
+					Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
+																							Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
+																							Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters, 0u);
+					// Check if its a valid texture
+					if (nullptr != texture)
 					{
-						hlmsTextureManager->destroyTexture(texture);
-						texture = nullptr;
+						try
+						{
+							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+						}
+						catch (const Ogre::Exception& exception)
+						{
+							Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
+							Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+							attribute->setValue(previousTextureName);
+							this->addAttributeFilePathData(attribute);
+							return;
+						}
+
+						// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
+						if (0 == texture->getWidth())
+						{
+							hlmsTextureManager->waitForStreamingCompletion();
+						}
+						// Invalid texture skip
+						if (0 == texture->getWidth())
+						{
+							attribute->setValue(previousTextureName);
+							this->addAttributeFilePathData(attribute);
+							return;
+						}
+
+						// If texture has been removed, set null texture, so that it will be removed from data block
+						if (true == tempTextureName.empty())
+						{
+							hlmsTextureManager->destroyTexture(texture);
+							texture = nullptr;
+						}
+						datablock->setTexture(textureType, texture);
 					}
-					datablock->setTexture(textureType, texture);
-				}
-				else
-				{
-					attribute->setValue("");
-					attribute->removeUserData("OldTexture");
+					else
+					{
+						attribute->setValue("");
+						attribute->removeUserData("OldTexture");
+					}
 				}
 			}
-		}
+		});
 	}
 	
 	Ogre::String DatablockUnlitComponent::mapBlendModeToString(Ogre::UnlitBlendModes blendMode)
@@ -527,11 +493,14 @@ namespace NOWA
 		if (nullptr == this->gameObjectPtr)
 			return;
 
-		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-		if (nullptr != entity)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockUnlitComponent::preReadDatablock", _1(&success),
 		{
-			success = this->readDatablockEntity(entity);
-		}
+			Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			if (nullptr != entity)
+			{
+				success = this->readDatablockEntity(entity);
+			}
+		});
 
 		if (false == success)
 		{
@@ -555,7 +524,7 @@ namespace NOWA
 				}
 			}
 		}
-		
+
 		if (this->subEntityIndex->getUInt() >= entity->getNumSubEntities())
 		{
 			this->datablock = nullptr;
@@ -841,48 +810,52 @@ namespace NOWA
 
 		if (nullptr != this->gameObjectPtr)
 		{
-			// Two data block components with the same entity index can not exist
-			for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockUnlitComponent::setSubEntityIndex", _1(&subEntityIndex),
 			{
-				auto& priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
-				if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
+				// Two data block components with the same entity index can not exist
+				for (size_t i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 				{
-					if (subEntityIndex == priorUnlitComponent->getSubEntityIndex())
+					auto& priorUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>(DatablockUnlitComponent::getStaticClassName(), static_cast<unsigned int>(i)));
+					if (nullptr != priorUnlitComponent && priorUnlitComponent.get() != this)
 					{
-						subEntityIndex = priorUnlitComponent->getSubEntityIndex() + 1;
-					}
-				}
-			}
-
-			Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != entity)
-			{
-				if (subEntityIndex >= entity->getNumSubEntities())
-				{
-					subEntityIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
-				}
-			}
-
-			if (this->oldSubIndex != subEntityIndex)
-			{
-				// Read everything from the beginning, if a new sub index has been set
-				this->newlyCreated = true;
-
-				// Old data block must be destroyed
-				if (true == this->alreadyCloned)
-				{
-					// Set back the default datablock
-					entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
-					if (nullptr != this->datablock)
-					{
-						Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-						hlmsUnlit->destroyDatablock(this->datablock->getName());
-						this->datablock = nullptr;
+						if (subEntityIndex == priorUnlitComponent->getSubEntityIndex())
+						{
+							subEntityIndex = priorUnlitComponent->getSubEntityIndex() + 1;
+						}
 					}
 				}
 
-				this->alreadyCloned = false;
-			}
+				Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != entity)
+				{
+					if (subEntityIndex >= entity->getNumSubEntities())
+					{
+						subEntityIndex = static_cast<unsigned int>(entity->getNumSubEntities()) - 1;
+					}
+				}
+
+				if (this->oldSubIndex != subEntityIndex)
+				{
+					// Read everything from the beginning, if a new sub index has been set
+					this->newlyCreated = true;
+
+					// Old data block must be destroyed
+					if (true == this->alreadyCloned)
+					{
+						// Set back the default datablock
+						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+						if (nullptr != this->datablock)
+						{
+							Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+							hlmsUnlit->destroyDatablock(this->datablock->getName());
+							this->datablock = nullptr;
+						}
+					}
+
+					this->alreadyCloned = false;
+				}
+			});
+
 			this->preReadDatablock();
 
 			this->oldSubIndex = subEntityIndex;
@@ -896,7 +869,10 @@ namespace NOWA
 	
 	void DatablockUnlitComponent::setUseColor(bool useColor)
 	{
-		this->useColor->setValue(useColor);
+		ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setUseColor", _1(useColor),
+		{
+			this->useColor->setValue(useColor);
+		});
 		// Trigger whether background color attribute is visible or not, depening if color is used or not
 		this->backgroundColor->setVisible(useColor);
 	}
@@ -912,7 +888,10 @@ namespace NOWA
 		
 		if (nullptr != datablock)
 		{
-			datablock->setColour(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
+			ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setBackgroundColor", _1(backgroundColor),
+			{
+				datablock->setColour(Ogre::ColourValue(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w));
+			});
 		}
 	}
 
@@ -1007,9 +986,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setBlendMode(index, this->mapStringToBlendMode(blendMode));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setBlendMode", _2(index, blendMode),
+				{
+					this->datablock->setBlendMode(index, this->mapStringToBlendMode(blendMode));
+				});
+			}
 			else
+			{
 				this->blendModes[index]->setListSelectedValue(this->mapBlendModeToString(this->datablock->getBlendMode(index)));
+			}
 		}
 	}
 	
@@ -1028,7 +1014,10 @@ namespace NOWA
 		
 		if (nullptr != datablock && (textureSwizzle.x != 0.0f || textureSwizzle.y != 0.0f || textureSwizzle.z != 0.0f || textureSwizzle.w != 0.0f))
 		{
-			datablock->setTextureSwizzle(static_cast<Ogre::uint8>(index), textureSwizzle.x, textureSwizzle.y, textureSwizzle.z, textureSwizzle.w);
+			ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setTextureSwizzle", _2(index, textureSwizzle),
+			{
+				datablock->setTextureSwizzle(static_cast<Ogre::uint8>(index), textureSwizzle.x, textureSwizzle.y, textureSwizzle.z, textureSwizzle.w);
+			});
 		}
 	}
 
@@ -1050,7 +1039,10 @@ namespace NOWA
 		this->animationRotations[index]->setVisible(useAnimation);
 		if (nullptr != this->datablock)
 		{
-			this->datablock->setEnableAnimationMatrix(index, useAnimation);
+			ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setUseAnimation", _2(index, useAnimation),
+			{
+				this->datablock->setEnableAnimationMatrix(index, useAnimation);
+			});
 		}
 	}
 
@@ -1080,8 +1072,11 @@ namespace NOWA
 					Ogre::Vector3(1, 1, 1),
 					Ogre::Quaternion(Ogre::Radian(this->animationRotations[index]->getVector3().y), Ogre::Vector3(0, 0, 1)));
 
-				this->datablock->setEnableAnimationMatrix(0, true);
-				this->datablock->setAnimationMatrix(0, animationMatrix);
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setAnimationTranslation", _3(index, animationTranslation, animationMatrix),
+				{
+					this->datablock->setEnableAnimationMatrix(0, true);
+					this->datablock->setAnimationMatrix(0, animationMatrix);
+				});
 			}
 		}
 	}
@@ -1112,8 +1107,11 @@ namespace NOWA
 					Ogre::Vector3(1, 1, 1),
 					Ogre::Quaternion(Ogre::Radian(this->animationRotations[index]->getVector3().y), Ogre::Vector3(0, 0, 1)));
 
-				this->datablock->setEnableAnimationMatrix(0, true);
-				this->datablock->setAnimationMatrix(0, animationMatrix);
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setAnimationScale", _3(index, animationScale, animationMatrix),
+				{
+					this->datablock->setEnableAnimationMatrix(0, true);
+					this->datablock->setAnimationMatrix(0, animationMatrix);
+				});
 			}
 		}
 	}
@@ -1146,16 +1144,17 @@ namespace NOWA
 					Ogre::Vector3(1, 1, 1),
 					Ogre::Quaternion(Ogre::Radian(animationRotation.y), Ogre::Vector3(0, 0, 1)));
 
-				this->datablock->setEnableAnimationMatrix(0, true);
-				this->datablock->setAnimationMatrix(0, animationMatrix);
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockUnlitComponent::setAnimationRotation", _3(index, animationRotation, animationMatrix),
+				{
+					this->datablock->setEnableAnimationMatrix(0, true);
+					this->datablock->setAnimationMatrix(0, animationMatrix);
 
-
-
-				// rot.FromEulerAnglesXYZ(Ogre::Degree(0), Ogre::Degree(0), Ogre::Degree(90));
-				// collisionOrientation.FromRotationMatrix(rot);
-				// ??
-				// animationMatrix.setRotation(this->animationRotations[index]->getVector3());  // What here?
-				this->datablock->setAnimationMatrix(0, animationMatrix);
+					// rot.FromEulerAnglesXYZ(Ogre::Degree(0), Ogre::Degree(0), Ogre::Degree(90));
+					// collisionOrientation.FromRotationMatrix(rot);
+					// ??
+					// animationMatrix.setRotation(this->animationRotations[index]->getVector3());  // What here?
+					this->datablock->setAnimationMatrix(0, animationMatrix);
+				});
 			}
 		}
 	}

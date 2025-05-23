@@ -250,7 +250,6 @@
     <ClInclude Include="gameobject\PhysicsActiveDestructableComponent.h" />
     <ClInclude Include="gameobject\PhysicsActiveKinematicComponent.h" />
     <ClInclude Include="gameobject\PhysicsArtifactComponent.h" />
-    <ClInclude Include="gameobject\GameObjectGuide.h" />
     <ClInclude Include="gameobject\GameObjectController.h" />
     <ClInclude Include="gameobject\GameObjectFactory.h" />
     <ClInclude Include="gameobject\AttributesComponent.h" />

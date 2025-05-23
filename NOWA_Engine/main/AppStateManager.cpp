@@ -349,12 +349,12 @@ namespace NOWA
 			startTime = endTime;
 
 			// Check if window is active or in task bar
-			HWND temp = GetActiveWindow();
+		/*	HWND temp = GetActiveWindow();
 			HWND hWnd;
-			Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hWnd);
+			Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hWnd);*/
 			
 			// Update the renderwindow if the window is not active too, for server/client analysis
-			if (temp != hWnd && false == this->renderWhenInactive)
+			if (/*temp != hWnd && */false == this->renderWhenInactive && false == renderWindow->isVisible())
 			{
 				// Core::getSingletonPtr()->getOgreRenderWindow()->update();
 				// Do not burn CPU cycles unnecessary when minimized etc.
@@ -365,7 +365,7 @@ namespace NOWA
 
 	void AppStateManager::multiThreadedRendering(void)
 	{
-		// Default 30 ticks per second
+		// Default 60 ticks per second
 		const Ogre::Real simulationTickCount = 1.0f / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
 
 		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
@@ -375,7 +375,7 @@ namespace NOWA
 
 		if (0 == monitorRefreshRate)
 		{
-			monitorRefreshRate = 1.0f / static_cast<Ogre::Real>(simulationTickCount);
+			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
 		}
 
 		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
@@ -419,7 +419,7 @@ namespace NOWA
 
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
-				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
+				// InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
 
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
@@ -908,6 +908,11 @@ namespace NOWA
 			this->logicFrameFinished = true;
 		}
 		this->logicFrameCondVar.notify_all(); // Notify the rendering thread
+	}
+
+	bool AppStateManager::getRenderWhenInactive(void) const
+	{
+		return this->renderWhenInactive;
 	}
 
 #if 1

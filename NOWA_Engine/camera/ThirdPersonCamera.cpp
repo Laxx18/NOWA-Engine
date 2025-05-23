@@ -233,7 +233,7 @@ namespace NOWA
 		}
 
 		// TODO: How to use queue interpolation?
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ThirdPersonCamera::moveCamera", _3(newCameraPosition, playerViewPosition, localUp),
+		ENQUEUE_RENDER_COMMAND_MULTI/*_WAIT*/("ThirdPersonCamera::moveCamera", _3(newCameraPosition, playerViewPosition, localUp),
 		{
 			// Set camera position
 			this->camera->setPosition(newCameraPosition);

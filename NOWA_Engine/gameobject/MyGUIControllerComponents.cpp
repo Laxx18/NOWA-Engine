@@ -61,7 +61,10 @@ namespace NOWA
 		{
 			// If the controller succeeded, it will be deleted internally!
 			this->controllerItem = nullptr;
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::connect",
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			});
 		}
 
 		if (false == this->activated->getBool())
@@ -106,7 +109,10 @@ namespace NOWA
 
 		if (nullptr != this->sourceWidget)
 		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::onRemoveComponent",
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			});
 			this->sourceWidget = nullptr;
 			this->sourceMyGUIComponent = nullptr;
 		}
@@ -124,7 +130,10 @@ namespace NOWA
 			{
 				if (this->sourceWidget == myGuiCompPtr->getWidget())
 				{
-					MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+					ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::onOtherComponentRemoved",
+					{
+						MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+					});
 					this->sourceWidget = nullptr;
 					this->sourceMyGUIComponent = nullptr;
 				}
@@ -204,16 +213,18 @@ namespace NOWA
 
 				if (this->sourceWidget->getCoord() != coord)
 				{
-					// Set widget to old coordinate
-					this->sourceWidget->setCoord(static_cast<int>(this->oldCoordinate.x), static_cast<int>(this->oldCoordinate.y),
-												 static_cast<int>(this->oldCoordinate.z), static_cast<int>(this->oldCoordinate.w));
+					ENQUEUE_RENDER_COMMAND("MyGUIControllerComponent::activateController",
+					{
+						// Set widget to old coordinate
+						this->sourceWidget->setCoord(static_cast<int>(this->oldCoordinate.x), static_cast<int>(this->oldCoordinate.y),
+													 static_cast<int>(this->oldCoordinate.z), static_cast<int>(this->oldCoordinate.w));
 
+						MyGUI::FloatCoord oldRelativeCoord = MyGUI::CoordConverter::convertToRelative(MyGUI::IntCoord(this->oldCoordinate.x, this->oldCoordinate.y, this->oldCoordinate.z, this->oldCoordinate.w), MyGUI::RenderManager::getInstance().getViewSize());
 
-					MyGUI::FloatCoord oldRelativeCoord = MyGUI::CoordConverter::convertToRelative(MyGUI::IntCoord(this->oldCoordinate.x, this->oldCoordinate.y, this->oldCoordinate.z, this->oldCoordinate.w), MyGUI::RenderManager::getInstance().getViewSize());
-
-					// Set widget to old coordinate
-					this->sourceWidget->setRealPosition(oldRelativeCoord.left, oldRelativeCoord.top);
-					this->sourceWidget->setRealSize(oldRelativeCoord.width, oldRelativeCoord.height);
+						// Set widget to old coordinate
+						this->sourceWidget->setRealPosition(oldRelativeCoord.left, oldRelativeCoord.top);
+						this->sourceWidget->setRealSize(oldRelativeCoord.width, oldRelativeCoord.height);
+					});
 				}
 			}
 		}
@@ -296,51 +307,56 @@ namespace NOWA
 
 		if (nullptr == this->controllerItem)
 		{
-			MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
-			this->controllerItem = item->castType<MyGUI::ControllerPosition>();
+			ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::connect",
+			{
+				MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerPosition::getClassTypeName());
+				this->controllerItem = item->castType<MyGUI::ControllerPosition>();
 
-			// Event: After each animation frame
-			this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
+				// Event: After each animation frame
+				this->controllerItem->eventUpdateAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::onFrameUpdate);
 
-
-			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
+				this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIPositionControllerComponent::controllerFinished);
+			});
 		}
 
 		if (true == this->activated->getBool())
 		{
 			if (nullptr != this->sourceWidget)
 			{
-				// Remove any existing controllers
-				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+				ENQUEUE_RENDER_COMMAND("MyGUIPositionControllerComponent::connect2",
+				{
+					// Remove any existing controllers
+					MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
 
-				// Set transition duration
-				this->controllerItem->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
+					// Set transition duration
+					this->controllerItem->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
 
-				// Set the desired easing function
-				if (this->function->getListSelectedValue() == "Inertional")
-					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::inertionalMoveFunction));
-				else if (this->function->getListSelectedValue() == "Accelerated")
-					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::acceleratedMoveFunction<30>));
-				else if (this->function->getListSelectedValue() == "Slowed")
-					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::acceleratedMoveFunction<4>));
-				else
-					this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::jumpMoveFunction<5>));
+					// Set the desired easing function
+					if (this->function->getListSelectedValue() == "Inertional")
+						this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::inertionalMoveFunction));
+					else if (this->function->getListSelectedValue() == "Accelerated")
+						this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::acceleratedMoveFunction<30>));
+					else if (this->function->getListSelectedValue() == "Slowed")
+						this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::acceleratedMoveFunction<4>));
+					else
+						this->controllerItem->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::jumpMoveFunction<5>));
 
-				// Calculate target coordinates
-				Ogre::Vector4 tempCoordinate = this->coordinate->getVector4();
-				MyGUI::FloatSize relWidgetSize = MyGUI::CoordConverter::convertToRelative(this->sourceWidget->getSize(), MyGUI::RenderManager::getInstance().getViewSize());
+					// Calculate target coordinates
+					Ogre::Vector4 tempCoordinate = this->coordinate->getVector4();
+					MyGUI::FloatSize relWidgetSize = MyGUI::CoordConverter::convertToRelative(this->sourceWidget->getSize(), MyGUI::RenderManager::getInstance().getViewSize());
 
-				if (tempCoordinate.z == 0.0f)
-					tempCoordinate.z = relWidgetSize.width;
-				if (tempCoordinate.w == 0.0f)
-					tempCoordinate.w = relWidgetSize.height;
+					if (tempCoordinate.z == 0.0f)
+						tempCoordinate.z = relWidgetSize.width;
+					if (tempCoordinate.w == 0.0f)
+						tempCoordinate.w = relWidgetSize.height;
 
-				MyGUI::FloatCoord floatCoord(tempCoordinate.x, tempCoordinate.y, tempCoordinate.z, tempCoordinate.w);
-				this->controllerItem->castType<MyGUI::ControllerPosition>()->setCoord(
-					MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
+					MyGUI::FloatCoord floatCoord(tempCoordinate.x, tempCoordinate.y, tempCoordinate.z, tempCoordinate.w);
+					this->controllerItem->castType<MyGUI::ControllerPosition>()->setCoord(
+						MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
 
-				// Apply controller to the widget
-				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+					// Apply controller to the widget
+					MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+				});
 			}
 		}
 		return success;
@@ -508,43 +524,49 @@ namespace NOWA
 
 		if (nullptr == this->controllerItem)
 		{
-			MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
-			this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
+			ENQUEUE_RENDER_COMMAND("MyGUIFadeAlphaControllerComponent::connect",
+			{
+				MyGUI::ControllerItem * item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
+				this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
 
-			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
+				this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
+			});
 		}
 
 		if (true == this->activated->getBool())
 		{
 			if (nullptr != this->sourceWidget)
 			{
-				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-				if (nullptr == this->controllerItem)
+				ENQUEUE_RENDER_COMMAND("MyGUIFadeAlphaControllerComponent::connect2",
 				{
-					MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
-					this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
+					MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+					if (nullptr == this->controllerItem)
+					{
+						MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerFadeAlpha::getClassTypeName());
+						this->controllerItem = item->castType<MyGUI::ControllerFadeAlpha>();
 
-					this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
-				}
+						this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIFadeAlphaControllerComponent::controllerFinished);
+					}
 
-				// Store old alpha, because alpha will be changed
-				this->oldAlpha = this->sourceWidget->getAlpha();
+					// Store old alpha, because alpha will be changed
+					this->oldAlpha = this->sourceWidget->getAlpha();
 
-				// Determine the fade target from the property
-				Ogre::Real targetAlpha = this->alpha->getReal(); // Desired target alpha (0.0f or 1.0f)
-				Ogre::Real currentAlpha = this->sourceWidget->getAlpha();
+					// Determine the fade target from the property
+					Ogre::Real targetAlpha = this->alpha->getReal(); // Desired target alpha (0.0f or 1.0f)
+					Ogre::Real currentAlpha = this->sourceWidget->getAlpha();
 
-				// Force-reset alpha if already at the target to ensure animation triggers
-				if (currentAlpha == targetAlpha)
-				{
-					// Temporarily set to the opposite alpha
-					this->sourceWidget->setAlpha((targetAlpha == 1.0f) ? 0.0f : 1.0f);
-				}
+					// Force-reset alpha if already at the target to ensure animation triggers
+					if (currentAlpha == targetAlpha)
+					{
+						// Temporarily set to the opposite alpha
+						this->sourceWidget->setAlpha((targetAlpha == 1.0f) ? 0.0f : 1.0f);
+					}
 
-				this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setAlpha(this->alpha->getReal());
-				this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setCoef(this->coefficient->getReal());
+					this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setAlpha(this->alpha->getReal());
+					this->controllerItem->castType<MyGUI::ControllerFadeAlpha>()->setCoef(this->coefficient->getReal());
 
-				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+					MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+				});
 			}
 		}
 		return success;
@@ -560,9 +582,12 @@ namespace NOWA
 
 		if (nullptr != this->sourceWidget)
 		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-			// Set widget to old alpha
-			this->sourceWidget->setAlpha(this->oldAlpha);
+			ENQUEUE_RENDER_COMMAND("MyGUIFadeAlphaControllerComponent::disconnect",
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+				// Set widget to old alpha
+				this->sourceWidget->setAlpha(this->oldAlpha);
+			});
 		}
 
 		return MyGUIControllerComponent::disconnect();
@@ -721,38 +746,43 @@ namespace NOWA
 			{
 				MyGUI::EditBox* editBox = this->sourceWidget->castType<MyGUI::EditBox>();
 				if (nullptr == editBox)
-					return true;
-				
-				for (size_t i = 0; i < this->messages.size(); i++)
 				{
-					MyGUI::FloatCoord coord = MyGUI::CoordConverter::convertToRelative(this->sourceWidget->getCoord(), this->sourceWidget->getParentSize());
-					
-					this->editBoxes[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(/*"EditBox"*/"EditBoxEmpty",
-						coord.left, coord.top + 0.1f * i, coord.width, coord.height,
-							this->sourceWidget->getAlign(), this->sourceWidget->getLayer()->getName());
-							
-					this->editBoxes[i]->setColour(MyGUI::Colour(this->sourceMyGUIComponent->getColor().x, this->sourceMyGUIComponent->getColor().y, 
-						this->sourceMyGUIComponent->getColor().z, this->sourceMyGUIComponent->getColor().w));
-					this->editBoxes[i]->setAlpha(this->sourceMyGUIComponent->getColor().w);
-					
-					MyGUITextComponent* myGuiTextComponent = static_cast<MyGUITextComponent*>(this->sourceMyGUIComponent);
-
-					// Somehow MyGUI Schrott edit box has just invalid values, so take the values from component
-					this->editBoxes[i]->setTextColour(MyGUI::Colour(myGuiTextComponent->getTextColor().x, myGuiTextComponent->getTextColor().y, 
-						myGuiTextComponent->getTextColor().z, myGuiTextComponent->getTextColor().w));
-					this->editBoxes[i]->setFontHeight(myGuiTextComponent->getFontHeight());
-					this->editBoxes[i]->setTextAlign(myGuiTextComponent->mapStringToAlign(myGuiTextComponent->getAlign()));
-					this->editBoxes[i]->setOnlyText(this->messages[i]->getString());
-					
-					this->justAdded = true;
-					// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setCoord(MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
-					// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
-					// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::inertionalMoveFunction));
-
-					// MyGUI::ControllerManager::getInstance().addItem(this->editBoxes[i], this->controllerItems[i]);
+					return true;
 				}
 				
-				this->sourceWidget->setVisible(false);
+				ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::connect",
+				{
+					for (size_t i = 0; i < this->messages.size(); i++)
+					{
+						MyGUI::FloatCoord coord = MyGUI::CoordConverter::convertToRelative(this->sourceWidget->getCoord(), this->sourceWidget->getParentSize());
+
+						this->editBoxes[i] = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(/*"EditBox"*/"EditBoxEmpty",
+							coord.left, coord.top + 0.1f * i, coord.width, coord.height,
+								this->sourceWidget->getAlign(), this->sourceWidget->getLayer()->getName());
+
+						this->editBoxes[i]->setColour(MyGUI::Colour(this->sourceMyGUIComponent->getColor().x, this->sourceMyGUIComponent->getColor().y,
+							this->sourceMyGUIComponent->getColor().z, this->sourceMyGUIComponent->getColor().w));
+						this->editBoxes[i]->setAlpha(this->sourceMyGUIComponent->getColor().w);
+
+						MyGUITextComponent* myGuiTextComponent = static_cast<MyGUITextComponent*>(this->sourceMyGUIComponent);
+
+						// Somehow MyGUI Schrott edit box has just invalid values, so take the values from component
+						this->editBoxes[i]->setTextColour(MyGUI::Colour(myGuiTextComponent->getTextColor().x, myGuiTextComponent->getTextColor().y,
+							myGuiTextComponent->getTextColor().z, myGuiTextComponent->getTextColor().w));
+						this->editBoxes[i]->setFontHeight(myGuiTextComponent->getFontHeight());
+						this->editBoxes[i]->setTextAlign(myGuiTextComponent->mapStringToAlign(myGuiTextComponent->getAlign()));
+						this->editBoxes[i]->setOnlyText(this->messages[i]->getString());
+
+						this->justAdded = true;
+						// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setCoord(MyGUI::CoordConverter::convertFromRelative(floatCoord, MyGUI::RenderManager::getInstance().getViewSize()));
+						// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setTime(this->durationSec->getReal());
+						// this->controllerItems[i]->castType<MyGUI::ControllerPosition>()->setAction(MyGUI::newDelegate(MyGUI::action::inertionalMoveFunction));
+
+						// MyGUI::ControllerManager::getInstance().addItem(this->editBoxes[i], this->controllerItems[i]);
+					}
+
+					this->sourceWidget->setVisible(false);
+				});
 				this->setDurationSec(this->durationSec->getReal());
 			}
 		}
@@ -773,17 +803,20 @@ namespace NOWA
 		this->justAdded = false;
 		if (nullptr != this->sourceWidget)
 		{
-			this->sourceWidget->setVisible(true);
-			
-			for (size_t i = 0; i < this->messages.size(); i++)
+			ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::disconnect",
 			{
-				// If the controller succeeded, it will be deleted internally!
-				if (nullptr != this->editBoxes[i])
+				this->sourceWidget->setVisible(true);
+
+				for (size_t i = 0; i < this->messages.size(); i++)
 				{
-					MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
-					this->editBoxes[i] = nullptr;
+					// If the controller succeeded, it will be deleted internally!
+					if (nullptr != this->editBoxes[i])
+					{
+						MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
+						this->editBoxes[i] = nullptr;
+					}
 				}
-			}
+			});
 		}
 		
 		return MyGUIControllerComponent::disconnect();
@@ -804,24 +837,26 @@ namespace NOWA
 					this->justAdded = false;
 				}
 
-				// Scroll the textbox by this much..
-				Ogre::Real progress = (this->durationSec->getReal() - this->timeToGo) / this->durationSec->getReal();
-
-
-				for (unsigned int i = 0; i < this->messageCount->getUInt(); i++)
+				ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::update",
 				{
-					MyGUI::FloatCoord relativeCoord = MyGUI::CoordConverter::convertToRelative(this->editBoxes[i]->getCoord(), this->editBoxes[i]->getParentSize());
-					
-					Ogre::Real x = relativeCoord.left;
-					Ogre::Real y = relativeCoord.top + 0.1f * progress;
-					
-					MyGUI::IntPoint absolutePoint = MyGUI::CoordConverter::convertFromRelative(MyGUI::FloatPoint(x, y), this->editBoxes[i]->getParentSize());
+					// Scroll the textbox by this much..
+					Ogre::Real progress = (this->durationSec->getReal() - this->timeToGo) / this->durationSec->getReal();
 
-					this->editBoxes[i]->setPosition(absolutePoint.left, absolutePoint.top);
-					this->editBoxes[i]->setColour(MyGUI::Colour(this->editBoxes[i]->getTextColour().red, this->editBoxes[i]->getTextColour().green, 
-						this->editBoxes[i]->getTextColour().blue, 1.0f - progress/* / 4*/));
-					this->editBoxes[i]->setAlpha(1.0f - progress/* / 4*/);
-				}
+					for (unsigned int i = 0; i < this->messageCount->getUInt(); i++)
+					{
+						MyGUI::FloatCoord relativeCoord = MyGUI::CoordConverter::convertToRelative(this->editBoxes[i]->getCoord(), this->editBoxes[i]->getParentSize());
+
+						Ogre::Real x = relativeCoord.left;
+						Ogre::Real y = relativeCoord.top + 0.1f * progress;
+
+						MyGUI::IntPoint absolutePoint = MyGUI::CoordConverter::convertFromRelative(MyGUI::FloatPoint(x, y), this->editBoxes[i]->getParentSize());
+
+						this->editBoxes[i]->setPosition(absolutePoint.left, absolutePoint.top);
+						this->editBoxes[i]->setColour(MyGUI::Colour(this->editBoxes[i]->getTextColour().red, this->editBoxes[i]->getTextColour().green,
+							this->editBoxes[i]->getTextColour().blue, 1.0f - progress/* / 4*/));
+						this->editBoxes[i]->setAlpha(1.0f - progress/* / 4*/);
+					}
+				});
 			}
 		}
 		/*
@@ -848,15 +883,18 @@ namespace NOWA
 	{
 		MyGUIControllerComponent::onRemoveComponent();
 		
-		for (size_t i = 0; i < this->messages.size(); i++)
+		ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onRemoveComponent",
 		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
-			if (nullptr != this->editBoxes[i])
+			for (size_t i = 0; i < this->messages.size(); i++)
 			{
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
-				this->editBoxes[i] = nullptr;
+				MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
+				if (nullptr != this->editBoxes[i])
+				{
+					MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
+					this->editBoxes[i] = nullptr;
+				}
 			}
-		}
+		});
 	}
 	
 	void MyGUIScrollingMessageControllerComponent::onOtherComponentRemoved(unsigned int index)
@@ -871,12 +909,15 @@ namespace NOWA
 			{
 				if (this->sourceWidget == myGuiCompPtr->getWidget())
 				{
-					for (size_t i = 0; i < this->messages.size(); i++)
+					ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::onRemoveComponent",
 					{
-						MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
-						MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
-						this->editBoxes[i] = nullptr;
-					}
+						for (size_t i = 0; i < this->messages.size(); i++)
+						{
+							MyGUI::ControllerManager::getInstance().removeItem(this->editBoxes[i]);
+							MyGUI::Gui::getInstancePtr()->destroyWidget(this->editBoxes[i]);
+							this->editBoxes[i] = nullptr;
+						}
+					});
 				}
 			}
 		}
@@ -916,7 +957,6 @@ namespace NOWA
 		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->messageCount->getUInt())));
 		propertiesXML->append_node(propertyXML);
 		
-
 		for (size_t i = 0; i < this->messages.size(); i++)
 		{
 			propertyXML = doc.allocate_node(node_element, "property");
@@ -964,13 +1004,16 @@ namespace NOWA
 		{
 			this->eraseVariants(this->messages, messageCount);
 
-			for (auto it = this->editBoxes.begin() + messageCount; it != this->editBoxes.end();)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIScrollingMessageControllerComponent::setMessageCount", _1(messageCount),
 			{
-				MyGUI::ControllerManager::getInstance().removeItem(*it);
-				MyGUI::Gui::getInstancePtr()->destroyWidget(*it);
-				it = this->editBoxes.erase(it);
-				*it = nullptr;
-			}
+				for (auto it = this->editBoxes.begin() + messageCount; it != this->editBoxes.end();)
+				{
+					MyGUI::ControllerManager::getInstance().removeItem(*it);
+					MyGUI::Gui::getInstancePtr()->destroyWidget(*it);
+					it = this->editBoxes.erase(it);
+					*it = nullptr;
+				}
+			});
 		}
 	}
 	
@@ -982,15 +1025,18 @@ namespace NOWA
 	void MyGUIScrollingMessageControllerComponent::setMessage(unsigned int index, const Ogre::String& message)
 	{
 		if (index > this->messages.size())
+		{
 			index = static_cast<unsigned int>(this->messages.size()) - 1;
-		
+		}
 		this->messages[index]->setValue(message);
 	}
 	
 	Ogre::String MyGUIScrollingMessageControllerComponent::getMessage(unsigned int index) const
 	{
 		if (index > this->messages.size())
+		{
 			return "";
+		}
 		return this->messages[index]->getString();
 	}
 	
@@ -1062,24 +1108,30 @@ namespace NOWA
 		
 		if (nullptr == this->controllerItem)
 		{
-			MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerEdgeHide::getClassTypeName());
-			this->controllerItem = item->castType<MyGUI::ControllerEdgeHide>();
+			ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::connect",
+			{
+				MyGUI::ControllerItem * item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerEdgeHide::getClassTypeName());
+				this->controllerItem = item->castType<MyGUI::ControllerEdgeHide>();
 
-			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
+				this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIEdgeHideControllerComponent::controllerFinished);
+			});
 		}
 		
 		if (true == this->activated->getBool())
 		{
 			if (nullptr != this->sourceWidget)
 			{	
-				// Store old alpha, because alpha will be changed
-				// this->oldAlpha = this->sourceWidget->getAlpha();
+				ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::connect2",
+				{
+					// Store old alpha, because alpha will be changed
+					// this->oldAlpha = this->sourceWidget->getAlpha();
 
-				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
+					MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
 
-				this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setTime(this->time->getReal());
-				this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setRemainPixels(this->remainPixels->getUInt());
-				this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setShadowSize(this->shadowSize->getUInt());
+					this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setTime(this->time->getReal());
+					this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setRemainPixels(this->remainPixels->getUInt());
+					this->controllerItem->castType<MyGUI::ControllerEdgeHide>()->setShadowSize(this->shadowSize->getUInt());
+				});
 			}
 		}
 		return success;
@@ -1094,7 +1146,10 @@ namespace NOWA
 		}
 		if (nullptr != this->sourceWidget)
 		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			ENQUEUE_RENDER_COMMAND("MyGUIEdgeHideControllerComponent::disconnect",
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			});
 			// Set widget to old alpha
 			// this->sourceWidget->setAlpha(this->oldAlpha);
 		}
@@ -1239,22 +1294,25 @@ namespace NOWA
 		
 		if (nullptr == this->controllerItem)
 		{
-			MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerRepeatClick::getClassTypeName());
-			this->controllerItem = item->castType<MyGUI::ControllerRepeatClick>();
+			ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::connect",
+			{
+				MyGUI::ControllerItem* item = MyGUI::ControllerManager::getInstance().createItem(MyGUI::ControllerRepeatClick::getClassTypeName());
+				this->controllerItem = item->castType<MyGUI::ControllerRepeatClick>();
 
-			this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIRepeatClickControllerComponent::controllerFinished);
+				this->controllerItem->eventPostAction += MyGUI::newDelegate(this, &MyGUIRepeatClickControllerComponent::controllerFinished);
+			});
 		}
 		
 		if (true == this->activated->getBool())
 		{
 			if (nullptr != this->sourceWidget)
 			{	
-				// Store old alpha, because alpha will be changed
-				// this->oldAlpha = this->sourceWidget->getAlpha();
+				ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::connect2",
+				{
+					MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
 
-				MyGUI::ControllerManager::getInstance().addItem(this->sourceWidget, this->controllerItem);
-
-				this->controllerItem->castType<MyGUI::ControllerRepeatClick>()->setRepeat(this->timeLeft->getReal(), this->step->getReal());
+					this->controllerItem->castType<MyGUI::ControllerRepeatClick>()->setRepeat(this->timeLeft->getReal(), this->step->getReal());
+				});
 			}
 		}
 		return success;
@@ -1269,9 +1327,10 @@ namespace NOWA
 		}
 		if (nullptr != this->sourceWidget)
 		{
-			MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
-			// Set widget to old alpha
-			// this->sourceWidget->setAlpha(this->oldAlpha);
+			ENQUEUE_RENDER_COMMAND("MyGUIRepeatClickControllerComponent::connect2",
+			{
+				MyGUI::ControllerManager::getInstance().removeItem(this->sourceWidget);
+			});
 		}
 
 		return MyGUIControllerComponent::disconnect();

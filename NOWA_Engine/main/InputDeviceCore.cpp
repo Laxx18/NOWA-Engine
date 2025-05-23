@@ -502,7 +502,7 @@ namespace NOWA
 			this->bSelectDown = true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::keyPressed", _1(tempKeyEvent),
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::keyPressed", _1(tempKeyEvent),
 		{
 			MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
 		});
@@ -535,7 +535,7 @@ namespace NOWA
 			this->bSelectDown = false;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::keyReleased", _1(e),
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::keyReleased", _1(e),
 		{
 			MyGUI::InputManager::getInstancePtr()->injectKeyRelease(MyGUI::KeyCode::Enum(e.key));
 		});
@@ -602,7 +602,7 @@ namespace NOWA
 		int mY = e.state.Y.abs;
 		int mZ = e.state.Z.abs;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mouseMoved", _3(mX, mY, mZ),
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mouseMoved", _3(mX, mY, mZ),
 		{
 			MyGUI::InputManager::getInstancePtr()->injectMouseMove(mX, mY, mZ);
 		});
@@ -632,7 +632,7 @@ namespace NOWA
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mousePressed", _3(mX, mY, id),
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mousePressed", _3(mX, mY, id),
 		{
 			MyGUI::InputManager::getInstancePtr()->injectMousePress(mX, mY, MyGUI::MouseButton::Enum(id));
 		});
@@ -667,7 +667,7 @@ namespace NOWA
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("InputDeviceCore::mouseReleased", _3(mX, mY, id),
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::mouseReleased", _3(mX, mY, id),
 		{
 			MyGUI::InputManager::getInstancePtr()->injectMouseRelease(mX, mY, MyGUI::MouseButton::Enum(id));
 		});

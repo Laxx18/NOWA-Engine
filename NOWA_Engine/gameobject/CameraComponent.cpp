@@ -805,9 +805,10 @@ namespace NOWA
 		if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributePosition(this->position->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraPosition", _1(position),
+			auto camera = this->camera;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraPosition", _2(camera, position),
 			{
-				this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+				camera->setPosition(camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
 			});
 		}
 	}
@@ -824,9 +825,10 @@ namespace NOWA
 		if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(orientation));
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraDegreeOrientation", _1(orientation),
+			auto camera = this->camera;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraDegreeOrientation", _2(camera, orientation),
 			{
-				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
+				camera->setOrientation(camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(MathHelper::getInstance()->degreesToQuat(orientation)));
 			});
 		}
 	}
@@ -837,9 +839,10 @@ namespace NOWA
 		if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributeOrientation(orientation);
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setCameraOrientation", _1(orientation),
+			auto camera = this->camera;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraOrientation", _2(camera, orientation),
 			{
-				this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+				camera->setOrientation(camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
 			});
 		}
 	}

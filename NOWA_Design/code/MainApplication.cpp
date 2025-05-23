@@ -77,7 +77,8 @@ void MainApplication::renderThreadFunction(void)
 #else
 	// In release builds, keep timeout enabled with normal logging
 	// renderQueue->enableTimeout(true);
-	renderQueue->setLogLevel(Ogre::LML_NORMAL);
+	// renderQueue->setLogLevel(Ogre::LML_CRITICAL);
+	renderQueue->setLogLevel(Ogre::LML_TRIVIAL);
 #endif
 
 	// Add a window icon
@@ -101,19 +102,29 @@ void MainApplication::renderThreadFunction(void)
 	Ogre::Timer timer;
 	Ogre::uint64 lastFrameTime = timer.getMicroseconds();
 
+	Ogre::Window* renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow();
+
+	// const auto appStateManager = NOWA::AppStateManager::getSingletonPtr();
+
 	// Render thread loop
 	while (false == NOWA::Core::getSingletonPtr()->isShutdown())
 	{
 		// Process signals from system
 		Ogre::WindowEventUtilities::messagePump();
 
-		// Process all waiting render commands before rendering
-		renderQueue->processAllCommands();
-
 		// Calculate delta time
 		Ogre::uint64 currentTime = timer.getMicroseconds();
 		Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f; // Convert to seconds
 		lastFrameTime = currentTime;
+
+
+		// Process all waiting render commands before rendering
+		renderQueue->processAllCommands();
+
+		// if (false == appStateManager->getIsStalled() && false == appStateManager->getGameProgressModule()->isSceneLoading())
+		{
+			NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
+		}
 
 		// Update accumulated time in render command queue
 		// This is critical for proper interpolation
@@ -137,9 +148,23 @@ void MainApplication::renderThreadFunction(void)
 			renderQueue->dumpBufferState();
 			frameCount = 0;  // Reset counter
 		}
+
+		// Check if window is active or in task bar
+		/*HWND temp = GetActiveWindow();
+		HWND hWnd;
+		renderWindow->getCustomAttribute("WINDOW", &hWnd);*/
+
+		// Update the renderwindow if the window is not active too, for server/client analysis
+		//if (/*temp != hWnd && */false == appStateManager->getRenderWhenInactive() && false == renderWindow->isVisible())
+		//{
+		//	// Core::getSingletonPtr()->getOgreRenderWindow()->update();
+		//	// Do not burn CPU cycles unnecessary when minimized etc.
+		//	Ogre::Threads::Sleep(500);
+		//}
 	}
 
 	// Process any remaining commands before fully exiting, so that code cleanup like DesignState::exit can be processed on a queue, even the render game loop is already gone
+	renderQueue->processAllCommands();
 	renderQueue->processAllCommands();
 }
 

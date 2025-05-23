@@ -283,29 +283,32 @@ namespace NOWA
 
 		if (true == this->alreadyCloned)
 		{
-			Ogre::Terra* terra = this->gameObjectPtr->getMovableObject<Ogre::Terra>();
-			if (nullptr != terra)
+			ENQUEUE_RENDER_COMMAND_WAIT("DatablockTerraComponent::onRemoveComponent",
 			{
-				terra->setDatablock(this->originalDatablock);
-				// terra->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial"));
-				if (nullptr != this->datablock)
+				Ogre::Terra * terra = this->gameObjectPtr->getMovableObject<Ogre::Terra>();
+				if (nullptr != terra)
 				{
-					//Ogre::Hlms* hlms = this->datablock->getCreator();
-					//// Make sure it's a hard copy and not a reference! As we will be iterating while the vector will be changing.
-					//auto linkedRenderables = this->datablock->getLinkedRenderables();
-					//auto itor = linkedRenderables.begin();
-					//auto end  = linkedRenderables.end();
-					//while(itor != end)
-					//{
-					//	(*itor)->setDatablock(hlms->getDefaultDatablock());
-					//	// (*itor)->_setNullDatablock();
-					//	++itor;
-					//}
+					terra->setDatablock(this->originalDatablock);
+					// terra->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial"));
+					if (nullptr != this->datablock)
+					{
+						//Ogre::Hlms* hlms = this->datablock->getCreator();
+						//// Make sure it's a hard copy and not a reference! As we will be iterating while the vector will be changing.
+						//auto linkedRenderables = this->datablock->getLinkedRenderables();
+						//auto itor = linkedRenderables.begin();
+						//auto end  = linkedRenderables.end();
+						//while(itor != end)
+						//{
+						//	(*itor)->setDatablock(hlms->getDefaultDatablock());
+						//	// (*itor)->_setNullDatablock();
+						//	++itor;
+						//}
 
-					this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-					this->datablock = nullptr;
+						this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
+						this->datablock = nullptr;
+					}
 				}
-			}
+			});
 		}
 	}
 
@@ -380,18 +383,21 @@ namespace NOWA
 		if (nullptr == this->gameObjectPtr)
 			return;
 
-		auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
-		if (nullptr != terraCompPtr)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DatablockTerraComponent::preReadDatablock", _1(&success),
 		{
-			if (nullptr != terraCompPtr->getTerra())
+			auto & terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
+			if (nullptr != terraCompPtr)
 			{
-				success = this->readDatablockTerra(terraCompPtr->getTerra());
+				if (nullptr != terraCompPtr->getTerra())
+				{
+					success = this->readDatablockTerra(terraCompPtr->getTerra());
+				}
 			}
-		}
-		else
-		{
-			success = this->readDefaultDatablockTerra();
-		}
+			else
+			{
+				success = this->readDefaultDatablockTerra();
+			}
+		});
 
 		if (false == success)
 		{
@@ -405,58 +411,58 @@ namespace NOWA
 	{
 		// Later create data block with name attribute and save/read as json??
 
-		// If a prior component set this custom data string, with this content, do not clone the this->datablock (see. PlaneComponent)
-		if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
-		{
-			this->alreadyCloned = true;
-			this->gameObjectPtr->setCustomDataString("");
-		}
+			// If a prior component set this custom data string, with this content, do not clone the this->datablock (see. PlaneComponent)
+			if ("doNotCloneDatablock" == this->gameObjectPtr->getCustomDataString())
+			{
+				this->alreadyCloned = true;
+				this->gameObjectPtr->setCustomDataString("");
+			}
 
-		// Get the cloned data block, so that it can be manipulated individually
-		// All terra cells are sharing one this->datablock!?
-		auto it = terra->getTerrainCells().begin();
+			// Get the cloned data block, so that it can be manipulated individually
+			// All terra cells are sharing one this->datablock!?
+			auto it = terra->getTerrainCells().begin();
 
-		this->originalDatablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(it->getDatablock());
+			this->originalDatablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(it->getDatablock());
 
-		if (false == this->alreadyCloned && nullptr != this->originalDatablock)
-		{
-			this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(this->originalDatablock->clone(*this->originalDatablock->getNameStr()
-				+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
-			this->alreadyCloned = true;
-		}
-		else
-		{
-			this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(it->getDatablock());
-		}
+			if (false == this->alreadyCloned && nullptr != this->originalDatablock)
+			{
+				this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(this->originalDatablock->clone(*this->originalDatablock->getNameStr()
+					+ Ogre::StringConverter::toString(this->gameObjectPtr->getId())));
+				this->alreadyCloned = true;
+			}
+			else
+			{
+				this->datablock = dynamic_cast<Ogre::HlmsTerraDatablock*>(it->getDatablock());
+			}
 
-		// Note: Terra Pbs is: HLMS_USER3
+			// Note: Terra Pbs is: HLMS_USER3
 
-		/*if (nullptr == this->datablock)
-		{
-			this->datablock = static_cast<Ogre::HlmsTerraDatablock*>(
-					WorkspaceModule::getInstance()->getHlmsManager()->getHlms(Ogre::HLMS_USER3)->createDatablock(this->gameObjectPtr->getName(), this->gameObjectPtr->getName(),
-						Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
-			it->setDatablock(this->datablock);
-		}*/
+			/*if (nullptr == this->datablock)
+			{
+				this->datablock = static_cast<Ogre::HlmsTerraDatablock*>(
+						WorkspaceModule::getInstance()->getHlmsManager()->getHlms(Ogre::HLMS_USER3)->createDatablock(this->gameObjectPtr->getName(), this->gameObjectPtr->getName(),
+							Ogre::HlmsMacroblock(), Ogre::HlmsBlendblock(), Ogre::HlmsParamVec()));
+				it->setDatablock(this->datablock);
+			}*/
 
-		if (nullptr == this->datablock)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] this->datablock reading failed, because there is no data block for game object: "
-				+ this->gameObjectPtr->getName());
-			return false;
-		}
+			if (nullptr == this->datablock)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] this->datablock reading failed, because there is no data block for game object: "
+					+ this->gameObjectPtr->getName());
+				return false;
+			}
 
-		const Ogre::String* finalDatablockName = this->datablock->getNameStr();
+			const Ogre::String* finalDatablockName = this->datablock->getNameStr();
 
-		if (nullptr != finalDatablockName)
-		{
-			this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, 0);
-		}
+			if (nullptr != finalDatablockName)
+			{
+				this->gameObjectPtr->actualizeDatablockName(*finalDatablockName, 0);
+			}
+
+			// Do not exchange blend weight map, as it has been generated in terra
+			terra->setDatablock(this->datablock);
 
 		this->postReadDatablock();
-
-		// Do not exchange blend weight map, as it has been generated in terra
-		terra->setDatablock(this->datablock);
 
 		return true;
 	}
@@ -963,165 +969,168 @@ namespace NOWA
 
 	void DatablockTerraComponent::internalSetTextureName(Ogre::TerraTextureTypes terraTextureType, Ogre::CommonTextureTypes::CommonTextureTypes textureType, Variant* attribute, const Ogre::String& textureName)
 	{
-		Ogre::TextureGpuManager* hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-		Ogre::String previousTextureName = attribute->getString();
-		Ogre::String tempTextureName = textureName;
-
-		// If the data block component has just been created, get texture name from existing data block
-		if (true == newlyCreated && nullptr != this->datablock)
+		ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::internalSetTextureName", _4(terraTextureType, textureType, attribute, textureName),
 		{
-			tempTextureName = this->getTerraTextureName(this->datablock, terraTextureType);
-		}
+			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
-		attribute->setValue(tempTextureName);
-		this->addAttributeFilePathData(attribute);
-		
-		// Store the old texture name as user data
-		if (false == tempTextureName.empty())
-		{
-			// attribute->addUserData(tempTextureName);
-			attribute->addUserData("OldTexture", tempTextureName);
-		}
-		else if (nullptr != this->datablock)
-		{
-			attribute->addUserData("OldTexture", this->getTerraTextureName(this->datablock, terraTextureType));
-		}
+			Ogre::String previousTextureName = attribute->getString();
+			Ogre::String tempTextureName = textureName;
 
-		if (nullptr != this->datablock/* && false == newlyCreated*/)
-		{
-			// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
-			if (true == attribute->getUserDataValue("OldTexture").empty())
+			// If the data block component has just been created, get texture name from existing data block
+			if (true == newlyCreated && nullptr != this->datablock)
 			{
 				tempTextureName = this->getTerraTextureName(this->datablock, terraTextureType);
-				attribute->addUserData(tempTextureName);
-				this->addAttributeFilePathData(attribute);
 			}
 
-			// createOrRetrieveTexture crashes, when texture alias name is empty
-			Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
-			if (false == oldTextureName.empty())
+			attribute->setValue(tempTextureName);
+			this->addAttributeFilePathData(attribute);
+
+			// Store the old texture name as user data
+			if (false == tempTextureName.empty())
 			{
-				if (false == Ogre::ResourceGroupManager::getSingletonPtr()->resourceExistsInAnyGroup(oldTextureName))
+				// attribute->addUserData(tempTextureName);
+				attribute->addUserData("OldTexture", tempTextureName);
+			}
+			else if (nullptr != this->datablock)
+			{
+				attribute->addUserData("OldTexture", this->getTerraTextureName(this->datablock, terraTextureType));
+			}
+
+			if (nullptr != this->datablock/* && false == newlyCreated*/)
+			{
+				// If no texture has been loaded, but still the data block has an internal one, get this one and remove it manually!
+				if (true == attribute->getUserDataValue("OldTexture").empty())
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] Cannot set texture: '" + oldTextureName +
-						"', because it does not exist in any resource group! For game object: " + this->gameObjectPtr->getName());
-					attribute->setValue(previousTextureName);
+					tempTextureName = this->getTerraTextureName(this->datablock, terraTextureType);
+					attribute->addUserData(tempTextureName);
 					this->addAttributeFilePathData(attribute);
-					return;
 				}
 
-				Ogre::uint32 textureFlags = 0;
-
-				if (datablock->suggestUsingSRGB(terraTextureType))
+				// createOrRetrieveTexture crashes, when texture alias name is empty
+				Ogre::String oldTextureName = attribute->getUserDataValue("OldTexture");
+				if (false == oldTextureName.empty())
 				{
-					textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
-					// textureFlags |= Ogre::TextureFlags::AutomaticBatching;
-					// textureFlags |= Ogre::TextureFlags::ManualTexture;
-				}
-
-				if (terraTextureType >= Ogre::TERRA_DETAIL0_NM && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
-				{
-					textureFlags |= Ogre::TextureFlags::AutomaticBatching;
-				}
-
-				Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
-				if (terraTextureType == Ogre::TERRA_REFLECTION)
-				{
-					internalTextureType = Ogre::TextureTypes::TypeCube;
-					textureFlags &= ~Ogre::TextureFlags::AutomaticBatching;
-				}
-
-				Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
-				filters |= datablock->suggestFiltersForType(terraTextureType);
-
-				// Can never be found^^
-				/*const Ogre::String* foundTextureName = hlmsTextureManager->findResourceGroupStr(oldTextureName);
-				if (nullptr == foundTextureName)
-				{
-					Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Error: Could not find texture: " + oldTextureName, Ogre::LML_CRITICAL);
-					attribute->setValue(previousTextureName);
-					return;
-				}*/
-
-				// Can never be found^^
-				/*Ogre::TextureGpu* foundTexture = hlmsTextureManager->findTextureNoThrow(oldTextureName);
-				if (nullptr == foundTexture)
-				{
-					Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Error: Could not find texture: " + oldTextureName, Ogre::LML_CRITICAL);
-					attribute->setValue(previousTextureName);
-					return;
-				}*/
-
-				// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
-				// it will be filled with correct data when terra->setDataBlock is called, see internal function: itor->setDatablock( datablock );
-				Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
-					oldTextureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
-					Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters);
-
-				// Ogre::Image2 image;
-				// image.load(oldTextureName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-				
-				// Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Texture: " + oldTextureName + " size: " + Ogre::StringConverter::toString(image.getSizeBytes()), Ogre::LML_CRITICAL);
-
-				if (nullptr != texture)
-				{
-					try
+					if (false == Ogre::ResourceGroupManager::getSingletonPtr()->resourceExistsInAnyGroup(oldTextureName))
 					{
-						texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
-					}
-					catch (const Ogre::Exception& exception)
-					{
-						Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
-						Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[DatablockTerraComponent] Cannot set texture: '" + oldTextureName +
+							"', because it does not exist in any resource group! For game object: " + this->gameObjectPtr->getName());
 						attribute->setValue(previousTextureName);
 						this->addAttributeFilePathData(attribute);
 						return;
 					}
 
-					// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
-					if (0 == texture->getWidth())
+					Ogre::uint32 textureFlags = 0;
+
+					if (datablock->suggestUsingSRGB(terraTextureType))
 					{
-						hlmsTextureManager->waitForStreamingCompletion();
+						textureFlags |= Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB;
+						// textureFlags |= Ogre::TextureFlags::AutomaticBatching;
+						// textureFlags |= Ogre::TextureFlags::ManualTexture;
 					}
-					// Invalid texture skip
-					if (0 == texture->getWidth())
+
+					if (terraTextureType >= Ogre::TERRA_DETAIL0_NM && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
 					{
+						textureFlags |= Ogre::TextureFlags::AutomaticBatching;
+					}
+
+					Ogre::TextureTypes::TextureTypes internalTextureType = Ogre::TextureTypes::Type2D;
+					if (terraTextureType == Ogre::TERRA_REFLECTION)
+					{
+						internalTextureType = Ogre::TextureTypes::TypeCube;
+						textureFlags &= ~Ogre::TextureFlags::AutomaticBatching;
+					}
+
+					Ogre::uint32 filters = Ogre::TextureFilter::FilterTypes::TypeGenerateDefaultMipmaps;
+					filters |= datablock->suggestFiltersForType(terraTextureType);
+
+					// Can never be found^^
+					/*const Ogre::String* foundTextureName = hlmsTextureManager->findResourceGroupStr(oldTextureName);
+					if (nullptr == foundTextureName)
+					{
+						Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Error: Could not find texture: " + oldTextureName, Ogre::LML_CRITICAL);
 						attribute->setValue(previousTextureName);
-						this->addAttributeFilePathData(attribute);
 						return;
-					}
+					}*/
 
-					// If texture has been removed, set null texture, so that it will be removed from data block
-					if (true == tempTextureName.empty())
+					// Can never be found^^
+					/*Ogre::TextureGpu* foundTexture = hlmsTextureManager->findTextureNoThrow(oldTextureName);
+					if (nullptr == foundTexture)
 					{
-						hlmsTextureManager->destroyTexture(texture);
-						texture = nullptr;
-					}
+						Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Error: Could not find texture: " + oldTextureName, Ogre::LML_CRITICAL);
+						attribute->setValue(previousTextureName);
+						return;
+					}*/
 
-					Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(terraTextureType));
-					if (terraTextureType >= Ogre::TERRA_DETAIL0 && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
+					// Really important: createOrRetrieveTexture when its created, its width/height is 0 etc. so the texture is just prepared
+					// it will be filled with correct data when terra->setDataBlock is called, see internal function: itor->setDatablock( datablock );
+					Ogre::TextureGpu* texture = hlmsTextureManager->createOrRetrieveTexture(oldTextureName,
+						oldTextureName, Ogre::GpuPageOutStrategy::SaveToSystemRam, textureFlags, internalTextureType,
+						Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME, filters);
+
+					// Ogre::Image2 image;
+					// image.load(oldTextureName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+
+					// Ogre::LogManager::getSingleton().logMessage("[DatablockTerraComponent] Texture: " + oldTextureName + " size: " + Ogre::StringConverter::toString(image.getSizeBytes()), Ogre::LML_CRITICAL);
+
+					if (nullptr != texture)
 					{
-						//Detail maps default to wrap mode.
-						samplerblock.mU = Ogre::TAM_WRAP;
-						samplerblock.mV = Ogre::TAM_WRAP;
-						samplerblock.mW = Ogre::TAM_WRAP;
+						try
+						{
+							texture->scheduleTransitionTo(Ogre::GpuResidency::Resident);
+						}
+						catch (const Ogre::Exception& exception)
+						{
+							Ogre::LogManager::getSingleton().logMessage(exception.getFullDescription(), Ogre::LML_CRITICAL);
+							Ogre::LogManager::getSingleton().logMessage("[DatablockPbsComponent] Error: Could not set texture: '" + oldTextureName + "' For game object: " + this->gameObjectPtr->getName(), Ogre::LML_CRITICAL);
+							attribute->setValue(previousTextureName);
+							this->addAttributeFilePathData(attribute);
+							return;
+						}
 
-						samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
-						samplerblock.mMaxAnisotropy = 1; // test also with -1;
+						// Note: width may be 0, when create or retrieve is called, if its a heavy resolution texture. So the width/height becomes available after waitForData, if its still 0, texture is invalid!
+						if (0 == texture->getWidth())
+						{
+							hlmsTextureManager->waitForStreamingCompletion();
+						}
+						// Invalid texture skip
+						if (0 == texture->getWidth())
+						{
+							attribute->setValue(previousTextureName);
+							this->addAttributeFilePathData(attribute);
+							return;
+						}
+
+						// If texture has been removed, set null texture, so that it will be removed from data block
+						if (true == tempTextureName.empty())
+						{
+							hlmsTextureManager->destroyTexture(texture);
+							texture = nullptr;
+						}
+
+						Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(terraTextureType));
+						if (terraTextureType >= Ogre::TERRA_DETAIL0 && terraTextureType <= Ogre::TERRA_DETAIL_METALNESS3)
+						{
+							//Detail maps default to wrap mode.
+							samplerblock.mU = Ogre::TAM_WRAP;
+							samplerblock.mV = Ogre::TAM_WRAP;
+							samplerblock.mW = Ogre::TAM_WRAP;
+
+							samplerblock.mMinFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMagFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMipFilter = Ogre::FO_ANISOTROPIC;
+							samplerblock.mMaxAnisotropy = 1; // test also with -1;
+						}
+
+						datablock->setTexture(terraTextureType, texture, &samplerblock);
 					}
-
-					datablock->setTexture(terraTextureType, texture, &samplerblock);
-				}
-				else
-				{
-					attribute->setValue("");
-					attribute->removeUserData("OldTexture");
+					else
+					{
+						attribute->setValue("");
+						attribute->removeUserData("OldTexture");
+					}
 				}
 			}
-		}
+		});
 	}
 
 	void DatablockTerraComponent::setBrdf(const Ogre::String& brdf)
@@ -1130,9 +1139,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setBrdf(this->mapStringToBrdf(brdf));
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setWorkflow", _1(brdf),
+				{
+					this->datablock->setBrdf(this->mapStringToBrdf(brdf));
+				});
+			}
 			else
+			{
 				this->brdf->setListSelectedValue(this->mapBrdfToString(static_cast<Ogre::TerraBrdf::TerraBrdf>(this->datablock->getBrdf())));
+			}
 		}
 	}
 
@@ -1147,9 +1163,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setDiffuse(diffuseColor);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setDiffuseColor", _1(diffuseColor),
+				{
+					this->datablock->setDiffuse(diffuseColor);
+				});
+			}
 			else
+			{
 				this->diffuseColor->setValue(this->datablock->getDiffuse());
+			}
 		}
 	}
 
@@ -1184,9 +1207,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setDetailMapOffsetScale(0, offsetScale0);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setOffsetScale0", _1(offsetScale0),
+				{
+					this->datablock->setDetailMapOffsetScale(0, offsetScale0);
+				});
+			}
 			else
+			{
 				this->offsetScale0->setValue(this->datablock->getDetailMapOffsetScale(0));
+			}
 		}
 	}
 
@@ -1211,9 +1241,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setDetailMapOffsetScale(1, offsetScale1);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setOffsetScale1", _1(offsetScale1),
+				{
+					this->datablock->setDetailMapOffsetScale(1, offsetScale1);
+				});
+			}
 			else
+			{
 				this->offsetScale1->setValue(this->datablock->getDetailMapOffsetScale(1));
+			}
 		}
 	}
 
@@ -1238,9 +1275,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setDetailMapOffsetScale(2, offsetScale2);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setOffsetScale2", _1(offsetScale2),
+				{
+					this->datablock->setDetailMapOffsetScale(2, offsetScale2);
+				});
+			}
 			else
+			{
 				this->offsetScale2->setValue(this->datablock->getDetailMapOffsetScale(2));
+			}
 		}
 	}
 
@@ -1265,9 +1309,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setDetailMapOffsetScale(3, offsetScale3);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockTerraComponent::setOffsetScale3", _1(offsetScale3),
+					{
+						this->datablock->setDetailMapOffsetScale(3, offsetScale3);
+					});
+			}
 			else
+			{
 				this->offsetScale3->setValue(this->datablock->getDetailMapOffsetScale(3));
+			}
 		}
 	}
 
@@ -1339,9 +1390,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setRoughness(0, roughness0);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness0", _1(roughness0),
+				{
+					this->datablock->setRoughness(0, roughness0);
+				});
+			}
 			else
+			{
 				this->roughness0->setValue(this->datablock->getRoughness(0));
+			}
 		}
 	}
 
@@ -1373,9 +1431,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setRoughness(1, roughness1);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness1", _1(roughness1),
+				{
+					this->datablock->setRoughness(1, roughness1);
+				});
+			}
 			else
+			{
 				this->roughness1->setValue(this->datablock->getRoughness(1));
+			}
 		}
 	}
 
@@ -1407,9 +1472,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setRoughness(2, roughness2);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness2", _1(roughness2),
+				{
+					this->datablock->setRoughness(2, roughness2);
+				});
+			}
 			else
+			{
 				this->roughness2->setValue(this->datablock->getRoughness(2));
+			}
 		}
 	}
 
@@ -1441,9 +1513,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setRoughness(3, roughness3);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setRoughness3", _1(roughness3),
+				{
+					this->datablock->setRoughness(3, roughness3);
+				});
+			}
 			else
+			{
 				this->roughness3->setValue(this->datablock->getRoughness(3));
+			}
 		}
 	}
 
@@ -1475,9 +1554,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setMetalness(0, metalness0);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness0", _1(metalness0),
+				{
+					this->datablock->setMetalness(0, metalness0);
+				});
+			}
 			else
+			{
 				this->metalness0->setValue(this->datablock->getMetalness(0));
+			}
 		}
 	}
 
@@ -1509,9 +1595,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setMetalness(1, metalness1);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness1", _1(metalness1),
+				{
+					this->datablock->setMetalness(1, metalness1);
+				});
+			}
 			else
+			{
 				this->metalness1->setValue(this->datablock->getMetalness(1));
+			}
 		}
 	}
 
@@ -1543,9 +1636,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setMetalness(2, metalness2);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness2", _1(metalness2),
+				{
+					this->datablock->setMetalness(2, metalness2);
+				});
+			}
 			else
+			{
 				this->metalness2->setValue(this->datablock->getMetalness(2));
+			}
 		}
 	}
 
@@ -1577,9 +1677,16 @@ namespace NOWA
 		if (nullptr != this->datablock)
 		{
 			if (false == newlyCreated)
-				this->datablock->setMetalness(3, metalness3);
+			{
+				ENQUEUE_RENDER_COMMAND_MULTI("DatablockPbsComponent::setMetalness3", _1(metalness3),
+				{
+					this->datablock->setMetalness(3, metalness3);
+				});
+			}
 			else
+			{
 				this->metalness3->setValue(this->datablock->getMetalness(3));
+			}
 		}
 	}
 

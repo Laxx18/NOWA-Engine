@@ -102,11 +102,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\Resource.aps">
-      <Filter>res</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="res\Resource.rc">
       <Filter>res</Filter>
     </ResourceCompile>

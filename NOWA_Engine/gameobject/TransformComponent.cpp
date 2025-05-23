@@ -300,9 +300,15 @@ namespace NOWA
 				if (true == this->rotationRepeat->getBool() || true == this->internalRotationDirectionChange || 0 == this->rotationRound)
 				{
 					if (nullptr == this->physicsComponent)
-						this->gameObjectPtr->getSceneNode()->rotate(Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
+					{
+						// this->gameObjectPtr->getSceneNode()->rotate(Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getOrientation() *
+							Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
+					}
 					else
+					{
 						this->physicsComponent->rotate(Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
+					}
 				}
 			}
 
@@ -356,7 +362,9 @@ namespace NOWA
 					if (nullptr == this->physicsComponent)
 					{
 						// Do not forget dt, because its no physics
-						this->gameObjectPtr->getSceneNode()->translate(this->translationAxis->getVector3() * (this->translationSpeed->getReal() * this->translationOppositeDir) * dt);
+						// this->gameObjectPtr->getSceneNode()->translate(this->translationAxis->getVector3() * (this->translationSpeed->getReal() * this->translationOppositeDir) * dt);
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getPosition()
+							+ this->translationAxis->getVector3() * (this->translationSpeed->getReal() * this->translationOppositeDir) * dt);
 					}
 					else
 					{
@@ -411,7 +419,10 @@ namespace NOWA
 					{
 						// Do not forget dt, because its no physics
 						// scale relative directly does not work, Ogre bug??
-						this->gameObjectPtr->getSceneNode()->setScale(this->gameObjectPtr->getSceneNode()->getScale() + (this->scaleAxis->getVector3() * this->scaleSpeed->getReal() * this->scaleOppositeDir * dt));
+						// this->gameObjectPtr->getSceneNode()->setScale(this->gameObjectPtr->getSceneNode()->getScale() + (this->scaleAxis->getVector3() * this->scaleSpeed->getReal() * this->scaleOppositeDir * dt));
+
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(),
+							this->gameObjectPtr->getSceneNode()->getScale() + (this->scaleAxis->getVector3() * this->scaleSpeed->getReal() * this->scaleOppositeDir * dt));
 					}
 					else
 					{

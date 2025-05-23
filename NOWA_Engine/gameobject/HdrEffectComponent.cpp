@@ -343,11 +343,36 @@ namespace NOWA
 		// Reset shining and set default values
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			this->lightDirectionalComponent->setPowerScale(3.14159f);
+			ENQUEUE_RENDER_COMMAND("HdrEffectComponent::resetShining",
+			{
+				this->lightDirectionalComponent->setPowerScale(3.14159f);
+			});
 		}
 		this->gameObjectPtr->getSceneManager()->setAmbientLight(Ogre::ColourValue(0.03375f, 0.05625f, 0.07875f), Ogre::ColourValue(0.04388f, 0.03291f, 0.02194f, 0.07312f), this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir());
 #endif
 	}
+
+	//void HdrEffectComponent::postApplySunPower(void)
+	//{
+	//	// Strange thing fix:
+	//	// If Loading hdr effect, scene is dark, even if the powerscale is set properly.
+	//	// If setting it afterwards some frames, it does work^^
+	//	if (nullptr != this->lightDirectionalComponent)
+	//	{
+	//		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
+	//		// Shows for a specific amount of time
+	//		auto ptrFunction = [this]()
+	//			{
+	//				ENQUEUE_RENDER_COMMAND_WAIT("HdrEffectComponent::postApplySunPower",
+	//				{
+	//					this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+	//				});
+	//			};
+	//		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+	//		delayProcess->attachChild(closureProcess);
+	//		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+	//	}
+	//}
 
 	void HdrEffectComponent::postApplySunPower(void)
 	{
@@ -356,15 +381,10 @@ namespace NOWA
 		// If setting it afterwards some frames, it does work^^
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
-			// Shows for a specific amount of time
-			auto ptrFunction = [this]()
-				{
-					this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
-				};
-			NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
-			delayProcess->attachChild(closureProcess);
-			NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			ENQUEUE_RENDER_COMMAND_WAIT("HdrEffectComponent::postApplySunPower",
+			{
+				this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());	
+			});
 		}
 	}
 
@@ -383,27 +403,30 @@ namespace NOWA
 			OGRE_EXCEPT(Ogre::Exception::ERR_INVALIDPARAMS, "No node '" + this->workspaceBaseComponent->getRenderingNodeName() + "' in provided workspace ", "HdrEffectComponent::applyHdrSkyColor");
 		}
 
-		const Ogre::CompositorPassVec passes = node->_getPasses();
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyHdrSkyColor", _3(color, multiplier, node),
+		{
+			const Ogre::CompositorPassVec passes = node->_getPasses();
 
-		assert(passes.size() >= 1);
-		Ogre::CompositorPass* pass = passes[0];
+			assert(passes.size() >= 1);
+			Ogre::CompositorPass * pass = passes[0];
 
-		Ogre::RenderPassDescriptor* renderPassDesc = pass->getRenderPassDesc();
-		renderPassDesc->setClearColour(color * multiplier);
+			Ogre::RenderPassDescriptor * renderPassDesc = pass->getRenderPassDesc();
+			renderPassDesc->setClearColour(color * multiplier);
 
-		//Set the definition as well, although this isn't strictly necessary.
-		Ogre::CompositorManager2* compositorManager = this->workspaceBaseComponent->getWorkspace()->getCompositorManager();
-		Ogre::CompositorNodeDef* nodeDef = compositorManager->getNodeDefinitionNonConst(this->workspaceBaseComponent->getRenderingNodeName());
+			//Set the definition as well, although this isn't strictly necessary.
+			Ogre::CompositorManager2 * compositorManager = this->workspaceBaseComponent->getWorkspace()->getCompositorManager();
+			Ogre::CompositorNodeDef * nodeDef = compositorManager->getNodeDefinitionNonConst(this->workspaceBaseComponent->getRenderingNodeName());
 
-		assert(nodeDef->getNumTargetPasses() >= 1);
+			assert(nodeDef->getNumTargetPasses() >= 1);
 
-		Ogre::CompositorTargetDef* targetDef = nodeDef->getTargetPass(0);
-		const Ogre::CompositorPassDefVec& passDefs = targetDef->getCompositorPasses();
+			Ogre::CompositorTargetDef * targetDef = nodeDef->getTargetPass(0);
+			const Ogre::CompositorPassDefVec & passDefs = targetDef->getCompositorPasses();
 
-		assert(passDefs.size() >= 1);
-		Ogre::CompositorPassDef* passDef = passDefs[0];
+			assert(passDefs.size() >= 1);
+			Ogre::CompositorPassDef * passDef = passDefs[0];
 
-		passDef->setAllClearColours(color * multiplier);
+			passDef->setAllClearColours(color * multiplier);
+		});
 	}
 
 	void HdrEffectComponent::applyExposure(Ogre::Real exposure, Ogre::Real minAutoExposure, Ogre::Real maxAutoExposure)
@@ -415,15 +438,18 @@ namespace NOWA
 
 		assert(minAutoExposure <= maxAutoExposure);
 
-		Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/DownScale03_SumLumEnd", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyExposure", _3(exposure, minAutoExposure, maxAutoExposure),
+		{
+			Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/DownScale03_SumLumEnd", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
 
-		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
-		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+			Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+			Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
 
-		const Ogre::Vector3 exposureParams(1024.0f * expf(exposure - 2.0f), 7.5f - maxAutoExposure, 7.5f - minAutoExposure);
+			const Ogre::Vector3 exposureParams(1024.0f * expf(exposure - 2.0f), 7.5f - maxAutoExposure, 7.5f - minAutoExposure);
 
-		psParams = pass->getFragmentProgramParameters();
-		psParams->setNamedConstant("exposure", exposureParams);
+			psParams = pass->getFragmentProgramParameters();
+			psParams->setNamedConstant("exposure", exposureParams);
+		});
 	}
 	//-----------------------------------------------------------------------------------
 	void HdrEffectComponent::applyBloomThreshold(Ogre::Real minThreshold, Ogre::Real fullColorThreshold)
@@ -435,11 +461,14 @@ namespace NOWA
 
 		assert(minThreshold < fullColorThreshold);
 
-		Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/BrightPass_Start", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
-		Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::applyBloomThreshold", _2(minThreshold, fullColorThreshold),
+		{
+			Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().load("HDR/BrightPass_Start", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME).staticCast<Ogre::Material>();
+			Ogre::Pass * pass = material->getTechnique(0)->getPass(0);
 
-		Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
-		psParams->setNamedConstant("brightThreshold", Ogre::Vector4(minThreshold, 1.0f / (fullColorThreshold - minThreshold), 0, 0));
+			Ogre::GpuProgramParametersSharedPtr psParams = pass->getFragmentProgramParameters();
+			psParams->setNamedConstant("brightThreshold", Ogre::Vector4(minThreshold, 1.0f / (fullColorThreshold - minThreshold), 0, 0));
+		});
 	}
 
 	void HdrEffectComponent::setEffectName(const Ogre::String& effectName)
@@ -564,15 +593,18 @@ namespace NOWA
 		this->applyExposure(this->exposure->getReal(), this->minAutoExposure->getReal(), this->maxAutoExposure->getReal());
 		this->applyBloomThreshold(std::max(this->bloom->getReal() - 2.0f, 0.0f), std::max(this->bloom->getReal(), 0.01f));
 
-		Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-		Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
-
-		this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
-
-		if (nullptr != this->lightDirectionalComponent)
+		ENQUEUE_RENDER_COMMAND("HdrEffectComponent::setEffectName",
 		{
-			this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
-		}
+			Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
+			Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+
+			if (nullptr != this->lightDirectionalComponent)
+			{
+				this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+			}
+		});
 	}
 
 	Ogre::String HdrEffectComponent::getEffectName(void) const
@@ -599,9 +631,12 @@ namespace NOWA
 		this->upperHemisphere->setValue(upperHemisphere);
 		this->effectName->setListSelectedValue("Custom");
 
-		Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-		Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
-		this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setUpperHemisphere", _1(upperHemisphere),
+		{
+			Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
+			Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+		});
 	}
 
 	Ogre::Vector4 HdrEffectComponent::getUpperHemisphere(void) const
@@ -614,9 +649,12 @@ namespace NOWA
 		this->lowerHemisphere->setValue(lowerHemisphere);
 		this->effectName->setListSelectedValue("Custom");
 
-		Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
-		Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
-		this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setLowerHemisphere", _1(lowerHemisphere),
+		{
+			Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z, this->lowerHemisphere->getVector4().w);
+			Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z, this->upperHemisphere->getVector4().w);
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+		});
 	}
 
 	Ogre::Vector4 HdrEffectComponent::getLowerHemisphere(void) const
@@ -631,7 +669,10 @@ namespace NOWA
 
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());
+			ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setSunPower", _1(sunPower),
+			{
+				this->lightDirectionalComponent->setPowerScale(sunPower);
+			});
 		}
 	}
 
@@ -656,7 +697,9 @@ namespace NOWA
 	void HdrEffectComponent::setMinAutoExposure(Ogre::Real minAutoExposure)
 	{
 		if (minAutoExposure > this->maxAutoExposure->getReal())
+		{
 			this->maxAutoExposure->setValue(minAutoExposure);
+		}
 		
 		this->minAutoExposure->setValue(minAutoExposure);
 		this->effectName->setListSelectedValue("Custom");
@@ -672,7 +715,9 @@ namespace NOWA
 	void HdrEffectComponent::setMaxAutoExposure(Ogre::Real maxAutoExposure)
 	{
 		if (maxAutoExposure < this->minAutoExposure->getReal())
+		{
 			this->minAutoExposure->setValue(maxAutoExposure);
+		}
 		
 		this->maxAutoExposure->setValue(maxAutoExposure);
 		this->effectName->setListSelectedValue("Custom");
@@ -701,14 +746,19 @@ namespace NOWA
 	void HdrEffectComponent::setEnvMapScale(Ogre::Real envMapScale)
 	{
 		if (envMapScale < 0.0f)
+		{
 			envMapScale = 0.0f;
+		}
 
 		this->envMapScale->setValue(envMapScale);
 		this->effectName->setListSelectedValue("Custom");
 
-		Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
-		Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
-		this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), this->envMapScale->getReal());
+		ENQUEUE_RENDER_COMMAND_MULTI("HdrEffectComponent::setEnvMapScale", _1(envMapScale),
+		{
+			Ogre::ColourValue ambLowerHemisphere(this->lowerHemisphere->getVector4().x, this->lowerHemisphere->getVector4().y, this->lowerHemisphere->getVector4().z);
+			Ogre::ColourValue ambUpperHemisphere(this->upperHemisphere->getVector4().x, this->upperHemisphere->getVector4().y, this->upperHemisphere->getVector4().z);
+			this->gameObjectPtr->getSceneManager()->setAmbientLight(ambUpperHemisphere, ambLowerHemisphere, this->gameObjectPtr->getSceneManager()->getAmbientLightHemisphereDir(), envMapScale);
+		});
 	}
 
 	Ogre::Real HdrEffectComponent::getEnvMapScale(void) const

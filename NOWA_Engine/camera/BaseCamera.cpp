@@ -198,9 +198,11 @@ namespace NOWA
 
 		if (moveValue.length() > 0.0001f)
 		{
-			// Move camera relative to frame time 
-			// Calculate the new position
-			Ogre::Vector3 newPosition = this->camera->getPosition() + moveValue;
+			// Transform moveValue from local to world space using camera orientation
+			Ogre::Vector3 worldMove = this->camera->getOrientation() * moveValue;
+
+			// Calculate new world position
+			Ogre::Vector3 newPosition = this->camera->getPosition() + worldMove;
 
 			// Update the position in the current transform buffer
 			// This is thread-safe because it's happening in the logic thread
@@ -213,223 +215,6 @@ namespace NOWA
 			this->lastMoveValue = Ogre::Vector3::ZERO;
 		}
 	}
-
-#if 0
-	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
-	{
-		if (true == cameraControlLocked)
-		{
-			return;
-		}
-		Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
-		// Normalize rotation speed by frame time
-		Ogre::Real normalizedRotateSpeed = this->rotateSpeed * this->rotateCameraWeight;
-		bool isRotating = false;
-		// Input handling remains the same
-		if (false == forJoyStick)
-		{
-			const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-			isRotating = ms.X.rel != 0 || ms.Y.rel != 0;
-			if (true == isRotating)
-			{
-				rotationValue.x = -ms.X.rel * normalizedRotateSpeed;
-				rotationValue.y = -ms.Y.rel * normalizedRotateSpeed;
-			}
-		}
-		else
-		{
-			OIS::JoyStick* joyStick = NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0);
-			if (nullptr != joyStick)
-			{
-				Ogre::Real rotateHorizontal = 0.0f;
-				Ogre::Real rotateVertical = 0.0f;
-				const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
-				const Ogre::Real DEAD_ZONE = 0.09f;
-				rotateVertical = (Ogre::Real)joystickState.mAxes[0].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateVertical) < DEAD_ZONE)
-				{
-					rotateVertical = 0.0f;
-					isRotating = false;
-				}
-				else
-				{
-					isRotating = true;
-				}
-				rotateHorizontal = (Ogre::Real)joystickState.mAxes[1].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateHorizontal) < DEAD_ZONE)
-				{
-					rotateHorizontal = 0.0f;
-					isRotating = false;
-				}
-				else
-				{
-					isRotating = true;
-				}
-				rotationValue.x = normalizedRotateSpeed * 10.0f * rotateHorizontal;
-				rotationValue.y = normalizedRotateSpeed * 10.0f * rotateVertical;
-			}
-		}
-		if (this->firstTimeValueSet)
-		{
-			this->lastValue = rotationValue;
-			this->firstTimeValueSet = false;
-		}
-		// Adjust low-pass filter interpolation based on frame time
-		Ogre::Real dynamicSmoothValue = this->smoothValue * dt;
-		// If not rotating, gradually reduce lastValue to zero
-		if (false == isRotating)
-		{
-			rotationValue = Ogre::Vector2::ZERO;
-			dynamicSmoothValue = this->smoothValue * dt * 1000.0f; // Faster deceleration
-		}
-		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, dynamicSmoothValue);
-		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, dynamicSmoothValue);
-		
-		if (rotationValue.length() > 0.0001f)
-		{
-			// Create a local coordinate system based on gravity
-			Ogre::Vector3 upVector = -this->gravityDirection;
-
-			// Get current orientation
-			Ogre::Quaternion currentOrientation = this->camera->getOrientation();
-
-			// Create rotation quaternions for yaw and pitch
-			Ogre::Quaternion yawRotation = Ogre::Quaternion(Ogre::Degree(rotationValue.x), upVector);
-
-			// For pitch, we need the camera's right vector (perpendicular to up)
-			Ogre::Vector3 rightVector = currentOrientation * Ogre::Vector3::UNIT_X;
-			// Ensure right vector is perpendicular to up vector
-			rightVector = rightVector - rightVector.dotProduct(upVector) * upVector;
-			rightVector.normalise();
-
-			Ogre::Quaternion pitchRotation = Ogre::Quaternion(Ogre::Degree(rotationValue.y), rightVector);
-
-			// Combine rotations and apply to current orientation
-			Ogre::Quaternion newOrientation = yawRotation * pitchRotation * currentOrientation;
-
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
-
-			this->lastValue = rotationValue;
-		}
-		else
-		{
-			this->lastValue = Ogre::Vector2::ZERO;
-		}
-	}
-
-#endif
-
-#if 0
-	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
-	{
-		if (true == cameraControlLocked)
-		{
-			return;
-		}
-		Ogre::Vector2 rotationValue = Ogre::Vector2::ZERO;
-		// Normalize rotation speed by frame time
-		Ogre::Real normalizedRotateSpeed = this->rotateSpeed * this->rotateCameraWeight;
-		bool isRotating = false;
-
-		// Input handling remains the same
-		if (false == forJoyStick)
-		{
-			const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
-			isRotating = ms.X.rel != 0 || ms.Y.rel != 0;
-			if (true == isRotating)
-			{
-				rotationValue.x = -ms.X.rel * normalizedRotateSpeed * 0.1f;
-				rotationValue.y = -ms.Y.rel * normalizedRotateSpeed * 0.1f;
-			}
-		}
-		else
-		{
-			OIS::JoyStick* joyStick = NOWA::InputDeviceCore::getSingletonPtr()->getJoystick(0);
-			if (nullptr != joyStick)
-			{
-				Ogre::Real rotateHorizontal = 0.0f;
-				Ogre::Real rotateVertical = 0.0f;
-				const OIS::JoyStickState& joystickState = joyStick->getJoyStickState();
-				const Ogre::Real DEAD_ZONE = 0.09f;
-				rotateVertical = (Ogre::Real)joystickState.mAxes[0].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateVertical) < DEAD_ZONE)
-				{
-					rotateVertical = 0.0f;
-					isRotating = false;
-				}
-				else
-				{
-					isRotating = true;
-				}
-				rotateHorizontal = (Ogre::Real)joystickState.mAxes[1].abs / -32767.0f;
-				if (Ogre::Math::Abs(rotateHorizontal) < DEAD_ZONE)
-				{
-					rotateHorizontal = 0.0f;
-					isRotating = false;
-				}
-				else
-				{
-					isRotating = true;
-				}
-				rotationValue.x = normalizedRotateSpeed * 10.0f * rotateHorizontal;
-				rotationValue.y = normalizedRotateSpeed * 10.0f * rotateVertical;
-			}
-		}
-
-		if (this->firstTimeValueSet)
-		{
-			this->lastValue = rotationValue;
-			this->firstTimeValueSet = false;
-		}
-
-		// Only update if we're rotating or still have momentum
-		if (isRotating || this->lastValue.length() > 0.0001f)
-		{
-			// If not rotating, gradually reduce lastValue to zero
-			if (false == isRotating)
-			{
-				// Fast deceleration when not rotating
-				this->lastValue *= 0.f;
-
-				// Stop completely if very small
-				if (this->lastValue.length() < 0.001f)
-				{
-					this->lastValue = Ogre::Vector2::ZERO;
-					return;
-				}
-			}
-			else
-			{
-				// Direct input without filtering
-				this->lastValue = rotationValue;
-			}
-
-			// Create a local coordinate system based on gravity
-			Ogre::Vector3 upVector = -this->gravityDirection;
-
-			// Get current orientation
-			Ogre::Quaternion currentOrientation = this->camera->getOrientation();
-
-			// Create rotation quaternions for yaw and pitch
-			Ogre::Quaternion yawRotation = Ogre::Quaternion(Ogre::Degree(this->lastValue.x), upVector);
-
-			// For pitch, we need the camera's right vector (perpendicular to up)
-			Ogre::Vector3 rightVector = currentOrientation * Ogre::Vector3::UNIT_X;
-
-			// Ensure right vector is perpendicular to up vector
-			rightVector = rightVector - rightVector.dotProduct(upVector) * upVector;
-			rightVector.normalise();
-
-			Ogre::Quaternion pitchRotation = Ogre::Quaternion(Ogre::Degree(this->lastValue.y), rightVector);
-
-			// Combine rotations and apply to current orientation
-			Ogre::Quaternion newOrientation = yawRotation * pitchRotation * currentOrientation;
-
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
-		}
-	}
-
-#endif
 
 	void BaseCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{
@@ -492,7 +277,7 @@ namespace NOWA
 		}
 
 		// Adjust low-pass filter interpolation based on frame time - exact same approach as moveCamera
-		Ogre::Real dynamicSmoothValue = this->smoothValue * dt;
+		Ogre::Real dynamicSmoothValue = this->smoothValue * 0.01f;;
 
 		// Ogre::Real dynamicSmoothValue = 0.001f;
 

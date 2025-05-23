@@ -213,23 +213,26 @@ namespace NOWA
 				return;
 			}
 
-			this->indices = 0;
-			if (this->manualObject->getNumSections() > 0)
+			ENQUEUE_RENDER_COMMAND("ValueBarComponent::update",
 			{
-				this->manualObject->beginUpdate(0);
-			}
-			else
-			{
-				this->manualObject->clear();
-				this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-			}
+				this->indices = 0;
+				if (this->manualObject->getNumSections() > 0)
+				{
+					this->manualObject->beginUpdate(0);
+				}
+				else
+				{
+					this->manualObject->clear();
+					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+				}
 
-			this->drawValueBar();
+				this->drawValueBar();
 
-			// Realllllllyyyyy important! Else the rectangle is a whole mess!
-			this->manualObject->index(0);
+				// Realllllllyyyyy important! Else the rectangle is a whole mess!
+				this->manualObject->index(0);
 
-			this->manualObject->end();
+				this->manualObject->end();
+			});
 		}
 	}
 
@@ -525,6 +528,7 @@ namespace NOWA
 
 	void ValueBarComponent::drawValueBar(void)
 	{
+		// Threadsafe from the outside
 		Ogre::Vector3 tempInnerColor = this->innerColor->getVector3();
 		Ogre::Vector3 tempOuterColor = this->outerColor->getVector3();
 
@@ -830,16 +834,20 @@ namespace NOWA
 	{
 		if (nullptr == this->manualObject)
 		{
-			if (nullptr == this->lineNode)
+			// TODO: Wait?
+			ENQUEUE_RENDER_COMMAND("ValueBarComponent::createValueBar",
 			{
-				this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-			}
-			this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-			this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->manualObject->setName("ValueBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
-			this->manualObject->setQueryFlags(0 << 0);
-			this->lineNode->attachObject(this->manualObject);
-			this->manualObject->setCastShadows(false);
+				if (nullptr == this->lineNode)
+				{
+					this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				}
+				this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				this->manualObject->setName("ValueBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
+				this->manualObject->setQueryFlags(0 << 0);
+				this->lineNode->attachObject(this->manualObject);
+				this->manualObject->setCastShadows(false);
+			});
 		}
 	}
 
@@ -847,11 +855,15 @@ namespace NOWA
 	{
 		if (this->lineNode != nullptr)
 		{
-			this->lineNode->detachAllObjects();
-			this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
-			this->manualObject = nullptr;
-			this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-			this->lineNode = nullptr;
+			// TODO: Wait?
+			ENQUEUE_RENDER_COMMAND("ValueBarComponent::createValueBar",
+			{
+				this->lineNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
+				this->manualObject = nullptr;
+				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+				this->lineNode = nullptr;
+			});
 		}
 	}
 

@@ -302,8 +302,11 @@ namespace NOWA
 		}
 		else
 		{
-			this->gameObjectPtr->getSceneNode()->setPosition(this->originPosition);
-			this->gameObjectPtr->getSceneNode()->setOrientation(this->originOrientation);
+			// this->gameObjectPtr->getSceneNode()->setPosition(this->originPosition);
+			// this->gameObjectPtr->getSceneNode()->setOrientation(this->originOrientation);
+
+			this->gameObjectPtr->setAttributePosition(this->originPosition);
+			this->gameObjectPtr->setAttributeOrientation(this->originOrientation);
 		}
 
 		this->physicsActiveComponent = nullptr;
@@ -480,13 +483,18 @@ namespace NOWA
 					// e.g. speed 2 would create also radius of 2, which is fubbes
 					// https://gamedev.stackexchange.com/questions/140394/moving-a-sprite-along-a-circle-given-by-an-implicit-equation
 					this->gameObjectPtr->getSceneNode()->setPosition(this->originPosition + this->mathFunction);
+
+					NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->originPosition + this->mathFunction);
 					// this->gameObjectPtr->getSceneNode()->translate(mathFunction);
 
 					if (true == this->autoOrientate->getBool())
 					{
 						Ogre::Quaternion newOrientation = ((this->originOrientation /** this->agent->getOrientation()*/)
 							* this->gameObjectPtr->getDefaultDirection()).getRotationTo(this->gameObjectPtr->getPosition() - this->oldPosition);
-						this->gameObjectPtr->getSceneNode()->setOrientation(newOrientation);
+						// this->gameObjectPtr->getSceneNode()->setOrientation(newOrientation);
+						
+						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), newOrientation);
+						
 							// Ogre::Quaternion::Slerp(10.0f * dt, this->gameObjectPtr->getSceneNode()->getOrientation(), newOrientation, true));
 					}
 				}

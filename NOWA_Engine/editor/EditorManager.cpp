@@ -114,11 +114,11 @@ namespace NOWA
 				{
 					// If there is no physics component set the data directly for the game object scene node
 					this->oldGameObjectDataList[i].newPosition = gameObjectPtr->getSceneNode()->getPosition();
-					gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].oldPosition);
 					this->oldGameObjectDataList[i].newScale = gameObjectPtr->getSceneNode()->getScale();
-					gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].oldScale);
 					this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
-					gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].oldOrientation);
+
+					RenderCommandQueueModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
+						this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale);
 				}
 				i++;
 			}
@@ -175,9 +175,8 @@ namespace NOWA
 				else
 				{
 					// If there is no physics component set the data directly for the game object scene node
-					gameObjectPtr->getSceneNode()->setPosition(this->oldGameObjectDataList[i].newPosition);
-					gameObjectPtr->getSceneNode()->setScale(this->oldGameObjectDataList[i].newScale);
-					gameObjectPtr->getSceneNode()->setOrientation(this->oldGameObjectDataList[i].newOrientation);
+					RenderCommandQueueModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
+						this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale);
 				}
 				i++;
 			}
@@ -466,10 +465,8 @@ namespace NOWA
 					this->scale = Ogre::Vector3::UNIT_SCALE;
 				}
 
+				RenderCommandQueueModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
 
-				this->objectNode->setPosition(this->position);
-				this->objectNode->setOrientation(this->orientation);
-				this->objectNode->setScale(this->scale);
 				// this->sceneManager->findMovableObjects
 
 				// Only create id once, so that when undo, redo, the id is the same
@@ -1102,18 +1099,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newPosition = this->camera->getPosition();
-			ENQUEUE_RENDER_COMMAND("CameraPositionUndoCommand::undo",
-			{
-				this->camera->setPosition(this->oldPosition);
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
 		}
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("CameraPositionUndoCommand::redo",
-			{
-				this->camera->setPosition(this->newPosition);
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
 		}
 	private:
 		Ogre::Vector3 newPosition;
@@ -1137,18 +1128,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newOrientation = this->camera->getOrientation();
-			ENQUEUE_RENDER_COMMAND("CameraOrientationUndoCommand::undo",
-			{
-				this->camera->setOrientation(this->oldOrientation);
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("CameraOrientationUndoCommand::redo",
-			{
-				this->camera->setOrientation(this->newOrientation);
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
 		}
 	private:
 		Ogre::Quaternion oldOrientation;
@@ -1175,20 +1160,12 @@ namespace NOWA
 		{
 			this->newPosition = this->camera->getPosition();
 			this->newOrientation = this->camera->getOrientation();
-			ENQUEUE_RENDER_COMMAND("CameraTransformUndoCommand::undo",
-			{
-				this->camera->setPosition(this->oldPosition);
-				this->camera->setOrientation(this->oldOrientation);
-			});
+			NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, this->oldPosition, this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND("CameraTransformUndoCommand::redo",
-			{
-				this->camera->setPosition(this->newPosition);
-				this->camera->setOrientation(this->newOrientation);
-			});
+			NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, this->newPosition, this->newOrientation);
 		}
 	private:
 		Ogre::Camera* camera;
@@ -1589,7 +1566,11 @@ namespace NOWA
 				// Sent event that scene has been modified
 				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
-				this->placeNode->resetOrientation();
+
+				ENQUEUE_RENDER_COMMAND("placenode reset orientation1",
+				{
+					this->placeNode->resetOrientation();
+				});
 
 				// Regenerate categories
 				boost::shared_ptr<EventDataGenerateCategories> eventDataGenerateCategories(new EventDataGenerateCategories());
@@ -2243,7 +2224,10 @@ namespace NOWA
 					}
 					else
 					{
-						this->placeNode->resetOrientation();
+						ENQUEUE_RENDER_COMMAND("placenode reset orientation2",
+						{
+							this->placeNode->resetOrientation();
+						});	
 					}
 
 					// If nothing to stack to, calc the hit point on floor plane
@@ -2332,7 +2316,7 @@ namespace NOWA
 				this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
 			});*/
 
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
+			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y), true);
 		}
 	}
 
@@ -2357,31 +2341,30 @@ namespace NOWA
 		// to each other. They should be placed so that the place node position is in the middle of all objects but y is zero, so that they can be placed at zero, no matter how
 		// high the objects are placed ot each other
 
-		ENQUEUE_RENDER_COMMAND("EditorManager::applyGroupTransform",
+		for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
 		{
-			for (size_t i = 0; i < this->groupGameObjectIds.size(); i++)
+			GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
+
+			// Place node position is global and on the top goes offset position (current object pos relative to center)
+			Ogre::Vector3 targetPosition = this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->_getDerivedOrientationUpdated() * std::get<1>(this->groupGameObjectIds[i]));
+
+			auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
+			if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
 			{
-				GameObjectPtr gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(std::get<0>(this->groupGameObjectIds[i]));
-
-				// Place node position is global and on the top goes offset position (current object pos relative to center)
-				Ogre::Vector3 targetPosition = this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->_getDerivedOrientationUpdated() * std::get<1>(this->groupGameObjectIds[i]));
-
-				auto& physicsComponent = NOWA::makeStrongPtr(gameObjectPtr->getComponent<NOWA::PhysicsComponent>());
-				if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
-				{
-					physicsComponent->setPosition(targetPosition);
-					// Set orientation as the place node + the current object orientation
-					physicsComponent->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]));
-				}
-				else
-				{
-					// If there is no physics component set the data directly for the game object scene node
-					gameObjectPtr->setAttributePosition(targetPosition);
-					// Set orientation as the place node + the current object orientation
-					gameObjectPtr->getSceneNode()->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
-				}
+				physicsComponent->setPosition(targetPosition);
+				// Set orientation as the place node + the current object orientation
+				physicsComponent->setOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]));
 			}
-		});
+			else
+			{
+				// If there is no physics component set the data directly for the game object scene node
+				gameObjectPtr->setAttributePosition(targetPosition);
+				// Set orientation as the place node + the current object orientation
+				gameObjectPtr->setAttributeOrientation(this->placeNode->_getDerivedOrientationUpdated() * std::get<2>(this->groupGameObjectIds[i]) /** gameObjectPtr->getSceneNode()->getOrientation()*/);
+
+
+			}
+		}
 	}
 
 	void EditorManager::destroyTempPlaceMovableObjectNode(void)
@@ -2796,6 +2779,350 @@ namespace NOWA
 		/*MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("-f: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(fromAngle))
 		+ " t: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(toAngle)));*/
 
+		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("");
+
+		this->oldGizmoOrientation = this->gizmo->getOrientation();
+
+		bool yRotation = false;
+		Ogre::Vector3 gizmoDirectionX = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().xAxis();
+		Ogre::Vector3 gizmoDirectionY = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().yAxis();
+		Ogre::Vector3 gizmoDirectionZ = this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated().zAxis();
+
+		Ogre::Vector3 destDir = this->hitPoint - this->gizmo->getPosition();
+		destDir.normalise();
+		Ogre::Vector3 srcDir = this->oldHitPoint - this->gizmo->getPosition();
+		srcDir.normalise();
+
+		Ogre::Vector3 firstHitDirection = this->startHitPoint - this->gizmo->getPosition();
+		firstHitDirection.normalise();
+
+		Ogre::Quaternion rotation = Ogre::Quaternion::IDENTITY;
+
+		// Check whether the absolute rotation is negative or positive. Positive means counter clockwise
+		bool counterClockWise = (this->absoluteAngle >= 0.0f);
+
+		switch (this->gizmo->getState())
+		{
+		case Gizmo::GIZMO_ARROW_X:
+		{
+			if (EDITOR_TRANSLATE_MODE_STACK == this->placeMode || EDITOR_TRANSLATE_MODE_STACK_ORIENTATED == this->placeMode)
+			{
+				yRotation = true;
+			}
+			// Get the correct angle with direction sign from src hit direction to dest hit direction, which is just a relative delta, calculated between this function calls
+			Ogre::Radian angleDelta = MathHelper::getInstance()->getAngle(srcDir, destDir, gizmoDirectionY, true);
+			// Calculate the absolute angle
+			this->absoluteAngle -= angleDelta.valueRadians();
+
+			Ogre::Real fromAngle = MathHelper::getInstance()->getAngle(firstHitDirection, this->rotateStartOrientationGizmoX.xAxis(), gizmoDirectionY, true).valueRadians();
+			// Get the end angle, which is from + absolute angle. Note that absolute angle is necessary to avoid skweing when going over 180 degree,
+			// so its possible to rotate e.g. 1243 degree
+			Ogre::Real toAngle = fromAngle + this->absoluteAngle;
+
+			this->gizmo->drawCircle(this->rotateStartOrientationGizmoX, fromAngle, toAngle, counterClockWise, 1.0f, "TransparentRedNoLighting");
+
+			if (this->gridStep > 0.0f)
+			{
+				this->stepAngleDelta += Ogre::Math::Abs(angleDelta.valueDegrees());
+				if (this->stepAngleDelta >= this->gridStep)
+				{
+					if (angleDelta.valueDegrees() <= 0.0f)
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(-this->gridStep), Ogre::Vector3::UNIT_Y);
+					}
+					else
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(this->gridStep), Ogre::Vector3::UNIT_Y);
+					}
+					// this->absoluteAngle = MathHelper::getInstance()->calculateRotationGridValue(this->gridStep, this->absoluteAngle);
+					this->absoluteAngle = MathHelper::getInstance()->calculateRotationGridValue(this->gizmo->getSelectedNode()->_getDerivedOrientationUpdated(), this->gridStep, this->absoluteAngle);
+					this->stepAngleDelta -= this->gridStep;
+				}
+			}
+			else
+			{
+				rotation = Ogre::Quaternion(angleDelta, Ogre::Vector3::UNIT_Y);
+			}
+			this->gizmo->setRotationCaption(Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(this->absoluteAngle)), Ogre::ColourValue::Black);
+
+			break;
+		}
+		case Gizmo::GIZMO_ARROW_Y:
+		{
+			Ogre::Radian angleDelta = MathHelper::getInstance()->getAngle(srcDir, destDir, gizmoDirectionZ, true);
+			this->absoluteAngle -= angleDelta.valueRadians();
+
+			Ogre::Real fromAngle = MathHelper::getInstance()->getAngle(firstHitDirection, this->rotateStartOrientationGizmoY.xAxis(), gizmoDirectionZ, true).valueRadians();
+			Ogre::Real toAngle = fromAngle + this->absoluteAngle;
+
+			this->gizmo->drawCircle(this->rotateStartOrientationGizmoY, fromAngle, toAngle, counterClockWise, 1.0f, "TransparentGreenNoLighting");
+			if (this->gridStep > 0.0f)
+			{
+				this->stepAngleDelta += Ogre::Math::Abs(angleDelta.valueDegrees());
+				if (this->stepAngleDelta >= this->gridStep)
+				{
+					if (angleDelta.valueDegrees() <= 0.0f)
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(-this->gridStep), Ogre::Vector3::UNIT_Z);
+					}
+					else
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(this->gridStep), Ogre::Vector3::UNIT_Z);
+					}
+					this->absoluteAngle = MathHelper::getInstance()->calculateRotationGridValue(this->gridStep, this->absoluteAngle);
+					this->stepAngleDelta -= this->gridStep;
+				}
+			}
+			else
+			{
+				rotation = Ogre::Quaternion(angleDelta, Ogre::Vector3::UNIT_Z);
+			}
+			this->gizmo->setRotationCaption(Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(this->absoluteAngle)), Ogre::ColourValue::Black);
+
+			break;
+		}
+		case Gizmo::GIZMO_ARROW_Z:
+		{
+			// Z was really hard to get right, because it must be orientated 270 degree about z instead of 90, see gizmo.cpp!
+			Ogre::Radian angleDelta = MathHelper::getInstance()->getAngle(srcDir, destDir, gizmoDirectionX, true);
+			this->absoluteAngle -= angleDelta.valueRadians();
+
+			Ogre::Real fromAngle = MathHelper::getInstance()->getAngle(firstHitDirection, this->rotateStartOrientationGizmoZ.xAxis(), gizmoDirectionX, true).valueRadians();
+			Ogre::Real toAngle = fromAngle + this->absoluteAngle;
+
+			this->gizmo->drawCircle(this->rotateStartOrientationGizmoZ, fromAngle, toAngle, counterClockWise, 1.0f, "TransparentBlueNoLighting");
+
+			if (this->gridStep > 0.0f)
+			{
+				this->stepAngleDelta += Ogre::Math::Abs(angleDelta.valueDegrees());
+				if (this->stepAngleDelta >= this->gridStep)
+				{
+					if (angleDelta.valueDegrees() <= 0.0f)
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(-this->gridStep), Ogre::Vector3::UNIT_X);
+					}
+					else
+					{
+						rotation = Ogre::Quaternion(Ogre::Degree(this->gridStep), Ogre::Vector3::UNIT_X);
+					}
+					this->absoluteAngle = MathHelper::getInstance()->calculateRotationGridValue(this->gridStep, this->absoluteAngle);
+					this->stepAngleDelta -= this->gridStep;
+				}
+			}
+			else
+			{
+				rotation = Ogre::Quaternion(angleDelta, Ogre::Vector3::UNIT_X);
+			}
+			this->gizmo->setRotationCaption(Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(this->absoluteAngle)), Ogre::ColourValue::Black);
+
+			break;
+		}
+		}
+
+		this->gizmo->rotate(rotation);
+
+		// Note: rotation is just current for one axis, but in order to rotate and translate objects correctly, rotation all axes are required, so use gizmoRotationDelta 
+		Ogre::Quaternion gizmoRotationDelta = this->gizmo->getOrientation() * this->oldGizmoOrientation.Inverse();
+
+#if 0
+		
+
+		//// Create a quaternion for each rotation
+		Ogre::Quaternion qx(Ogre::Degree(gizmoRotationDelta.getPitch()), Ogre::Vector3::UNIT_X);
+		Ogre::Quaternion qy(Ogre::Degree(gizmoRotationDelta.getYaw()), Ogre::Vector3::UNIT_Y);
+		Ogre::Quaternion qz(Ogre::Degree(gizmoRotationDelta.getRoll()), Ogre::Vector3::UNIT_Z);
+
+		// Apply the rotations
+		Ogre::Quaternion combinedRotation = qx * qy * qz;
+#endif
+
+		auto& selectedGameObjects = this->selectionManager->getSelectedGameObjects();
+
+		// Check if rotation is about y, and ray cast objects below to manipulate the height
+		if (true == yRotation)
+		{
+			// Set the new position for either physics component or the game object
+			for (auto& selectedGameObject : selectedGameObjects)
+			{
+				// Get y-data (stack translate mode?)
+				auto hitData = this->getTranslateYData(selectedGameObject.second.gameObject);
+
+				bool success = std::get<0>(hitData);
+				Ogre::Real height = std::get<1>(hitData);
+				Ogre::Vector3 normal = std::get<2>(hitData);
+
+				auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+				if (nullptr != physicsComponent)
+				{
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
+					{
+						Ogre::Quaternion orientation = physicsComponent->getOrientation();
+						// Ogre::Quaternion localRotation = combinedRotation * orientation;
+						// Apply the rotation delta directly to preserve full rotation information
+						Ogre::Quaternion localRotation = rotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), rotation);
+
+						// Set the new position and calculate the new orientation
+						physicsComponent->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = rotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+
+						if (Ogre::Vector3::ZERO != normal)
+						{
+							physicsComponent->setDirection(normal, Ogre::Vector3::NEGATIVE_UNIT_Y);
+						}
+					}
+				}
+				else
+				{
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
+					{
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+						Ogre::Quaternion localRotation = rotation * orientation;
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), rotation);
+
+						// Set the new position and calculate the new orientation
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = rotation * orientation;
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+
+						if (Ogre::Vector3::ZERO != normal)
+						{
+							ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::rotateObjects", _2(selectedGameObject, normal),
+							{
+								// TODO: PAC has already setDirection solved, so write setDirection in GO and use the algo and internally use the updateNoteOrientation!
+								selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+							});
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			unsigned int i = 0;
+			// Set the new position for either physics component or the game object
+			for (auto& selectedGameObject : selectedGameObjects)
+			{
+				auto& physicsComponent = makeStrongPtr(selectedGameObject.second.gameObject->getComponent<PhysicsComponent>());
+				if (nullptr != physicsComponent && physicsComponent->getBody() != nullptr)
+				{
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
+					{
+						Ogre::Quaternion orientation = physicsComponent->getOrientation();
+						Ogre::Quaternion localRotation = rotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+#if 0
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), rotation);
+
+						// Set the new position and calculate the new orientation
+						physicsComponent->setPosition(newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = rotation * orientation;
+						physicsComponent->setOrientation(localRotation);
+#endif
+
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Rotate position around gizmo center using helper
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, gizmo->getPosition(), rotation);
+
+						// Apply rotation delta to orientation
+						Ogre::Quaternion newOrientation = rotation * orientation;
+
+						// Enqueue both
+						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+					}
+				}
+				else
+				{
+					if (EDITOR_ROTATE_MODE1 == this->manipulationMode)
+					{
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+						Ogre::Quaternion localRotation = rotation * orientation;
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+					}
+					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
+					{
+#if 0
+						// Get the position and orientation of the entity
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Calculate the new position relative to the gizmo's center
+						Ogre::Vector3 newPosition = this->rotateAroundPoint(position, this->gizmo->getPosition(), rotation);
+
+						// Set the new position and calculate the new orientation
+						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
+						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+
+						// Rotate around the gizmo's position with local orientation
+						Ogre::Quaternion localRotation = rotation * orientation;
+						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+#endif
+
+						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
+						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
+
+						// Rotate position around gizmo center using helper
+						Ogre::Vector3 newPosition = rotateAroundPoint(position, gizmo->getPosition(), rotation);
+
+						// Apply rotation delta to orientation
+						Ogre::Quaternion newOrientation = rotation * orientation;
+
+						// Enqueue both
+						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+					}
+				}
+				i++;
+			}
+		}
+	}
+
+#if 0
+	void EditorManager::rotateObjects(void)
+	{
+		/*MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("DebugLabel")->setCaption("-f: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(fromAngle))
+		+ " t: " + Ogre::StringConverter::toString(Ogre::Math::RadiansToDegrees(toAngle)));*/
 
 		// MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Window>("manipulationWindow")->setCaption("");
 
@@ -2942,7 +3269,7 @@ namespace NOWA
 		// Note: rotation is just current for one axis, but in order to rotate and translate objects correctly, rotation all axes are required, so use gizmoRotationDelta 
 		Ogre::Quaternion gizmoRotationDelta = this->gizmo->getOrientation() * this->oldGizmoOrientation.Inverse();
 
-		// Create a quaternion for each rotation
+		//// Create a quaternion for each rotation
 		Ogre::Quaternion qx(Ogre::Degree(gizmoRotationDelta.getPitch()), Ogre::Vector3::UNIT_X);
 		Ogre::Quaternion qy(Ogre::Degree(gizmoRotationDelta.getYaw()), Ogre::Vector3::UNIT_Y);
 		Ogre::Quaternion qz(Ogre::Degree(gizmoRotationDelta.getRoll()), Ogre::Vector3::UNIT_Z);
@@ -2972,6 +3299,8 @@ namespace NOWA
 					{
 						Ogre::Quaternion orientation = physicsComponent->getOrientation();
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
+						// Apply the rotation delta directly to preserve full rotation information
+
 						physicsComponent->setOrientation(localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
@@ -3026,10 +3355,10 @@ namespace NOWA
 						if (Ogre::Vector3::ZERO != normal)
 						{
 							ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::rotateObjects", _2(selectedGameObject, normal),
-							{
-								// TODO: PAC has already setDirection solved, so write setDirection in GO and use the algo and internally use the updateNoteOrientation!
-								selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
-							});
+								{
+									// TODO: PAC has already setDirection solved, so write setDirection in GO and use the algo and internally use the updateNoteOrientation!
+									selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
+								});
 						}
 					}
 				}
@@ -3083,7 +3412,7 @@ namespace NOWA
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 
 						// Calculate the new position relative to the gizmo's center
-						Ogre::Vector3 newPosition = rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
+						Ogre::Vector3 newPosition = this->rotateAroundPoint(position, this->gizmo->getPosition(), combinedRotation);
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
@@ -3099,6 +3428,7 @@ namespace NOWA
 			}
 		}
 	}
+#endif
 
 	bool EditorManager::getRayStartPoint(const Ogre::Ray& hitRay)
 	{
@@ -3703,50 +4033,32 @@ namespace NOWA
 		{
 		case EDITOR_CAMERA_VIEW_FRONT:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView front",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_TOP:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView top",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_X));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BACK:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView back",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BOTTOM:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView bottom",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_LEFT:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView left",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_RIGHT:
 		{
-			ENQUEUE_RENDER_COMMAND("EditorManager::setCameraView right",
-			{
-				this->camera->setOrientation(Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
-			});
+			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		}

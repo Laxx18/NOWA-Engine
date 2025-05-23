@@ -3165,24 +3165,27 @@ namespace NOWA
 
 	void Core::destroyScene(Ogre::SceneManager*& sceneManager)
 	{
-		if (sceneManager)
+		if (nullptr != sceneManager)
 		{
-			this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
-			// delete the cameras
-			sceneManager->destroyAllCameras();
-			/*sceneManager->destroyAllLights();
-			sceneManager->destroyAllAnimations();
-			sceneManager->destroyAllAnimationStates();
-			sceneManager->destroyAllBillboardChains();
-			sceneManager->destroyAllBillboardSets();
-			sceneManager->destroyAllInstancedGeometry();*/
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
-			sceneManager->clearScene(true);
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying SceneManager");
-			this->root->destroySceneManager(sceneManager);
-			sceneManager = nullptr;
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finised");
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::destroyScene", _1(&sceneManager),
+			{
+				this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
+				// delete the cameras
+				sceneManager->destroyAllCameras();
+				/*sceneManager->destroyAllLights();
+				sceneManager->destroyAllAnimations();
+				sceneManager->destroyAllAnimationStates();
+				sceneManager->destroyAllBillboardChains();
+				sceneManager->destroyAllBillboardSets();
+				sceneManager->destroyAllInstancedGeometry();*/
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
+				sceneManager->clearScene(true);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying SceneManager");
+				this->root->destroySceneManager(sceneManager);
+				sceneManager = nullptr;
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finised");
+			});
 		}
 	}
 

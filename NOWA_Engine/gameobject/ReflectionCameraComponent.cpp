@@ -107,10 +107,13 @@ namespace NOWA
 	
 		if (nullptr != this->camera)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->camera);
-			this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
-			this->camera = nullptr;
-			this->dummyEntity = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("ReflectionCameraComponent::onRemoveComponent",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->camera);
+				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
+				this->camera = nullptr;
+				this->dummyEntity = nullptr;
+			});
 		}
 
 		if (nullptr != this->workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->getIsShutdown())
@@ -127,14 +130,20 @@ namespace NOWA
 			{
 				if (true == this->dummyEntity->isVisible())
 				{
-					this->dummyEntity->setVisible(false);
+					ENQUEUE_RENDER_COMMAND("ReflectionCameraComponent::update",
+					{
+						this->dummyEntity->setVisible(false);
+					});
 				}
 				else
 				{
 					// If its not the active camera
 					if (false == this->dummyEntity->isVisible())
 					{
-						this->dummyEntity->setVisible(true);
+						ENQUEUE_RENDER_COMMAND("ReflectionCameraComponent::update",
+						{
+							this->dummyEntity->setVisible(true);
+						});
 					}
 				}
 			}
@@ -145,27 +154,30 @@ namespace NOWA
 	{
 		if (nullptr == this->camera)
 		{
-			this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName(), true, true);
-
-			Ogre::SceneNode* cameraParentNode = this->camera->getParentSceneNode();
-			this->camera->detachFromParent();
-			this->gameObjectPtr->getSceneNode()->attachObject(this->camera);
-
-			// As attribute? because it should be set to false, when several viewports are used
-			// this->camera->setAutoAspectRatio(true);
-			this->camera->setNearClipDistance(this->nearClipDistance->getReal());
-			this->camera->setFarClipDistance(this->farClipDistance->getReal());
-			this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
-			this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
-			this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
-			this->camera->setQueryFlags(0 << 0);
-
-			// Borrow the entity from the game object
-			this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-			if (nullptr != this->dummyEntity)
+			ENQUEUE_RENDER_COMMAND_WAIT("ReflectionCameraComponent::createCamera",
 			{
-				this->dummyEntity->setCastShadows(false);
-			}
+				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName(), true, true);
+
+				Ogre::SceneNode * cameraParentNode = this->camera->getParentSceneNode();
+				this->camera->detachFromParent();
+				this->gameObjectPtr->getSceneNode()->attachObject(this->camera);
+
+				// As attribute? because it should be set to false, when several viewports are used
+				// this->camera->setAutoAspectRatio(true);
+				this->camera->setNearClipDistance(this->nearClipDistance->getReal());
+				this->camera->setFarClipDistance(this->farClipDistance->getReal());
+				this->camera->setFOVy(Ogre::Degree(this->fovy->getReal()));
+				this->camera->setFixedYawAxis(this->fixedYawAxis->getBool());
+				this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
+				this->camera->setQueryFlags(0 << 0);
+
+				// Borrow the entity from the game object
+				this->dummyEntity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+				if (nullptr != this->dummyEntity)
+				{
+					this->dummyEntity->setCastShadows(false);
+				}
+			});
 		}
 	}
 
@@ -262,7 +274,10 @@ namespace NOWA
 		this->nearClipDistance->setValue(nearClipDistance);
 		if (nullptr != this->camera)
 		{
-			this->camera->setNearClipDistance(nearClipDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setNearClipDistance", _1(nearClipDistance),
+			{
+				this->camera->setNearClipDistance(nearClipDistance);
+			});
 		}
 	}
 
@@ -276,7 +291,10 @@ namespace NOWA
 		this->farClipDistance->setValue(farClipDistance);
 		if (nullptr != this->camera)
 		{
-			this->camera->setFarClipDistance(farClipDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setFarClipDistance", _1(farClipDistance),
+			{
+				this->camera->setFarClipDistance(farClipDistance);
+			});
 		}
 	}
 
@@ -290,7 +308,10 @@ namespace NOWA
 		this->fovy->setValue(fovy.valueDegrees());
 		if (nullptr != this->camera)
 		{
-			this->camera->setFOVy(fovy);
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setFovy", _1(fovy),
+			{
+				this->camera->setFOVy(fovy);
+			});
 		}
 	}
 
@@ -304,11 +325,14 @@ namespace NOWA
 		this->orthographic->setValue(orthographic);
 		if (nullptr != this->camera)
 		{
-			this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
-			if (true == orthographic)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ReflectionCameraComponent::setOrthographic", _1(orthographic),
 			{
-				this->camera->setOrthoWindowHeight(1.0f);
-			}
+				this->camera->setProjectionType(static_cast<Ogre::ProjectionType>(this->orthographic->getBool() == true ? 0 : 1));
+				if (true == orthographic)
+				{
+					this->camera->setOrthoWindowHeight(1.0f);
+				}
+			});
 		}
 	}
 
@@ -327,7 +351,10 @@ namespace NOWA
 		this->fixedYawAxis->setValue(fixedYawAxis);
 		if (nullptr != this->camera)
 		{
-			this->camera->setFixedYawAxis(fixedYawAxis);
+			ENQUEUE_RENDER_COMMAND_MULTI("ReflectionCameraComponent::setFixedYawAxis", _1(fixedYawAxis),
+			{
+				this->camera->setFixedYawAxis(fixedYawAxis);
+			});
 		}
 	}
 

@@ -208,7 +208,7 @@ namespace NOWA
 			};
 
 		// Enqueue the render command to delete the sound
-		RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
+		RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
 	}
 #else
 void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)

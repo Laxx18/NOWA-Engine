@@ -28,30 +28,35 @@ namespace NOWA
 		this->interpolationFirstTime = true;
 
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 2.5f)));
-		this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ClientConfigurationStateMyGui");
-		// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
-		this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
-		this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
-
-		this->camera = this->sceneManager->createCamera("ClientConfigurationStateMyGui");
-		this->camera->setPosition(Ogre::Vector3(0, 25, -50));
-		this->camera->lookAt(Ogre::Vector3(0, 0, 0));
-		this->camera->setNearClipDistance(1);
-		//this->camera->setAspectRatio(Ogre::Real(Core::getSingletonPtr()->getOgreViewport()->getActualWidth()) /
-		//Ogre::Real(Core::getSingletonPtr()->getOgreViewport()->getActualHeight()));
-		this->camera->setAutoAspectRatio(true);
-
-		WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
-
-		this->initializeModules(false, false);
-
-		this->setupWidgets();
-
-		this->createScene();
-		if (!Core::getSingletonPtr()->isStartedAsServer())
+		
+		ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::enter",
 		{
-			this->createBackgroundMusic();
-		}
+			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ClientConfigurationStateMyGui");
+			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
+			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
+			this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
+
+			this->camera = this->sceneManager->createCamera("ClientConfigurationStateMyGui");
+			this->camera->setPosition(Ogre::Vector3(0, 25, -50));
+			this->camera->lookAt(Ogre::Vector3(0, 0, 0));
+			this->camera->setNearClipDistance(1);
+			//this->camera->setAspectRatio(Ogre::Real(Core::getSingletonPtr()->getOgreViewport()->getActualWidth()) /
+			//Ogre::Real(Core::getSingletonPtr()->getOgreViewport()->getActualHeight()));
+			this->camera->setAutoAspectRatio(true);
+
+			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+
+			this->initializeModules(false, false);
+
+			this->setupWidgets();
+
+			this->createScene();
+			if (!Core::getSingletonPtr()->isStartedAsServer())
+			{
+				this->createBackgroundMusic();
+			}
+		});
+		
 
 		AppStateManager::getSingletonPtr()->getRakNetModule()->createRakNetForClient();
 
@@ -66,18 +71,21 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ClientConfigurationStateMyGui] Leaving...");
 		
-		MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
-		this->playerColorCombo = nullptr;
-		this->packetsPerSecondCombo = nullptr;
-		this->interpolationRateCombo = nullptr;
-
-		if (!Core::getSingletonPtr()->isStartedAsServer())
+		ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::exit",
 		{
-			OgreALModule::getInstance()->deleteSound(this->sceneManager, this->menuMusic);
-		}
+			MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
+			MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
+			this->playerColorCombo = nullptr;
+			this->packetsPerSecondCombo = nullptr;
+			this->interpolationRateCombo = nullptr;
 
-		this->destroyModules();
+			if (!Core::getSingletonPtr()->isStartedAsServer())
+			{
+				OgreALModule::getInstance()->deleteSound(this->sceneManager, this->menuMusic);
+			}
+
+			this->destroyModules();
+		});
 	}
 
 	void ClientConfigurationStateMyGui::setupWidgets(void)
@@ -120,20 +128,23 @@ namespace NOWA
 
 	void ClientConfigurationStateMyGui::searchServer(void)
 	{
-		bool serverFound = AppStateManager::getSingletonPtr()->getRakNetModule()->findServerAndCreateClient();
-		if (serverFound)
+		ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::searchServer",
 		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption(AppStateManager::getSingletonPtr()->getRakNetModule()->getServerName() + ":"
-				+ AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName()
-				+ "-" + AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName());
+			bool serverFound = AppStateManager::getSingletonPtr()->getRakNetModule()->findServerAndCreateClient();
+			if (serverFound)
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption(AppStateManager::getSingletonPtr()->getRakNetModule()->getServerName() + ":"
+					+ AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName()
+					+ "-" + AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName());
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption("Server IP: " + AppStateManager::getSingletonPtr()->getRakNetModule()->getServerIP());
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("connectToServerButton")->setEnabled(true);
-		}
-		else
-		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaptionWithReplacing("#{ServerNotFound}");
-		}
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaption("Server IP: " + AppStateManager::getSingletonPtr()->getRakNetModule()->getServerIP());
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("connectToServerButton")->setEnabled(true);
+			}
+			else
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("searchServerLabel")->setCaptionWithReplacing("#{ServerNotFound}");
+			}
+		});
 	}
 
 	void ClientConfigurationStateMyGui::createBackgroundMusic(void)
@@ -152,66 +163,75 @@ namespace NOWA
 
 	void ClientConfigurationStateMyGui::populateOptions(void)
 	{
-		size_t index = 0;
-		
-		//this->pInterpolationTimeMenu->addItem("16");
-		this->interpolationRateCombo->addItem("33");
-		this->interpolationRateCombo->addItem("50");
-		this->interpolationRateCombo->addItem("75");
-		this->interpolationRateCombo->addItem("100");
-		this->interpolationRateCombo->addItem("150");
-		this->interpolationRateCombo->addItem("200");
-		this->interpolationRateCombo->addItem("250");
-		this->interpolationRateCombo->addItem("500");
+		ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::populateOptions",
+		{
+			size_t index = 0;
 
-		this->interpolationRateCombo->setIndexSelected(this->interpolationRateCombo->findItemIndexWith(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionInterpolationRate())));
-		this->interpolationRateCombo->setCaption(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionInterpolationRate()));
+			//this->pInterpolationTimeMenu->addItem("16");
+			this->interpolationRateCombo->addItem("33");
+			this->interpolationRateCombo->addItem("50");
+			this->interpolationRateCombo->addItem("75");
+			this->interpolationRateCombo->addItem("100");
+			this->interpolationRateCombo->addItem("150");
+			this->interpolationRateCombo->addItem("200");
+			this->interpolationRateCombo->addItem("250");
+			this->interpolationRateCombo->addItem("500");
 
-		this->packetsPerSecondCombo->addItem("16");
-		this->packetsPerSecondCombo->addItem("33");
-		this->packetsPerSecondCombo->addItem("50");
-		this->packetsPerSecondCombo->addItem("100");
-		this->packetsPerSecondCombo->setIndexSelected(this->packetsPerSecondCombo->findItemIndexWith(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionPacketsPerSecond())));
-		this->packetsPerSecondCombo->setCaption(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionPacketsPerSecond()));
+			this->interpolationRateCombo->setIndexSelected(this->interpolationRateCombo->findItemIndexWith(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionInterpolationRate())));
+			this->interpolationRateCombo->setCaption(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionInterpolationRate()));
 
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Red}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Green}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Blue}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Black}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{White}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Yellow}"));
-		this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Orange}"));
+			this->packetsPerSecondCombo->addItem("16");
+			this->packetsPerSecondCombo->addItem("33");
+			this->packetsPerSecondCombo->addItem("50");
+			this->packetsPerSecondCombo->addItem("100");
+			this->packetsPerSecondCombo->setIndexSelected(this->packetsPerSecondCombo->findItemIndexWith(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionPacketsPerSecond())));
+			this->packetsPerSecondCombo->setCaption(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionPacketsPerSecond()));
 
-		this->playerColorCombo->setIndexSelected(Core::getSingletonPtr()->getOptionPlayerColor());
-		this->playerColorCombo->setCaption(Ogre::String(this->playerColorCombo->getItemNameAt(this->playerColorCombo->getIndexSelected())));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Red}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Green}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Blue}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Black}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{White}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Yellow}"));
+			this->playerColorCombo->addItem(MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Orange}"));
+
+			this->playerColorCombo->setIndexSelected(Core::getSingletonPtr()->getOptionPlayerColor());
+			this->playerColorCombo->setCaption(Ogre::String(this->playerColorCombo->getItemNameAt(this->playerColorCombo->getIndexSelected())));
+		});
 	}
 
 	void ClientConfigurationStateMyGui::buttonHit(MyGUI::Widget* _sender)
 	{
 		if ("connectToServerButton" == _sender->getName())
 		{
-			Ogre::String interpolationRateSelected = Ogre::String(this->interpolationRateCombo->getItemNameAt(this->interpolationRateCombo->getIndexSelected()));
-			AppStateManager::getSingletonPtr()->getRakNetModule()->setInterpolationTimeMS(Ogre::StringConverter::parseInt(interpolationRateSelected, 33));
-			//Core::getSingletonPtr()->packetSendRate = 1000 / this->packetSendRateSlider->getValue();
-			Ogre::String packetsPerSecondSelected = Ogre::String(this->packetsPerSecondCombo->getItemNameAt(this->packetsPerSecondCombo->getIndexSelected()));
-// Attention, here if always 16
-			AppStateManager::getSingletonPtr()->getRakNetModule()->setPacketSendRateMS(Ogre::StringConverter::parseInt(packetsPerSecondSelected, 16));
+			ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::buttonHit connectToServerButton",
+			{
+				Ogre::String interpolationRateSelected = Ogre::String(this->interpolationRateCombo->getItemNameAt(this->interpolationRateCombo->getIndexSelected()));
+				AppStateManager::getSingletonPtr()->getRakNetModule()->setInterpolationTimeMS(Ogre::StringConverter::parseInt(interpolationRateSelected, 33));
+				//Core::getSingletonPtr()->packetSendRate = 1000 / this->packetSendRateSlider->getValue();
+				Ogre::String packetsPerSecondSelected = Ogre::String(this->packetsPerSecondCombo->getItemNameAt(this->packetsPerSecondCombo->getIndexSelected()));
+				// Attention, here if always 16
+							AppStateManager::getSingletonPtr()->getRakNetModule()->setPacketSendRateMS(Ogre::StringConverter::parseInt(packetsPerSecondSelected, 16));
 
-			AppStateManager::getSingletonPtr()->getRakNetModule()->startNetworking("Client");
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("startGameButton")->setEnabled(true);
+							AppStateManager::getSingletonPtr()->getRakNetModule()->startNetworking("Client");
+							MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::Button>("startGameButton")->setEnabled(true);
+			});
 		}
 		else if ("startGameButton" == _sender->getName())
 		{
-			this->applyOptions();
-			if (!AppStateManager::getSingletonPtr()->getRakNetModule()->isConnectionFailed())
+			ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::buttonHit startGameButton",
 			{
-				this->changeAppState(this->findByName(this->nextAppStateName));
-			}
-			else
-			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{ConnectionFailed}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-			}
+				this->applyOptions();
+				if (!AppStateManager::getSingletonPtr()->getRakNetModule()->isConnectionFailed())
+				{
+					this->changeAppState(this->findByName(this->nextAppStateName));
+				}
+				else
+				{
+					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{ConnectionFailed}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				}
+			});
 		}
 		else if ("backButton" == _sender->getName())
 		{
@@ -222,17 +242,20 @@ namespace NOWA
 		}
 		else if ("playerNameButton" == _sender->getName())
 		{
-			MyGUI::EditBox* playerNameEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("playerNameEdit");
-			if (playerNameEdit->getCaption().size() > 0)
+			ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::buttonHit playerNameButton",
 			{
-				playerNameEdit->setTextShadow(true);
-				AppStateManager::getSingletonPtr()->getRakNetModule()->setPlayerName(playerNameEdit->getCaption());
-			}
-			else
-			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoName}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-			}
+				MyGUI::EditBox * playerNameEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("playerNameEdit");
+				if (playerNameEdit->getCaption().size() > 0)
+				{
+					playerNameEdit->setTextShadow(true);
+					AppStateManager::getSingletonPtr()->getRakNetModule()->setPlayerName(playerNameEdit->getCaption());
+				}
+				else
+				{
+					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoName}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				}
+			});
 		}
 		else if ("searchServerButton" == _sender->getName())
 		{
@@ -240,17 +263,20 @@ namespace NOWA
 		}
 		else if ("enterIPButton" == _sender->getName())
 		{
-			MyGUI::EditBox* enterIPEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit");
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit")->setTextShadow(true);
-			if (enterIPEdit->getCaption().size() > 0)
+			ENQUEUE_RENDER_COMMAND_WAIT("ClientConfigurationStateMyGui::buttonHit enterIPButton",
 			{
-				AppStateManager::getSingletonPtr()->getRakNetModule()->setServerIP(enterIPEdit->getCaption());
-			}
-			else
-			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{EnterIP}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
-			}
+				MyGUI::EditBox * enterIPEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit");
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit")->setTextShadow(true);
+				if (enterIPEdit->getCaption().size() > 0)
+				{
+					AppStateManager::getSingletonPtr()->getRakNetModule()->setServerIP(enterIPEdit->getCaption());
+				}
+				else
+				{
+					MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Client", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{EnterIP}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				}
+			});
 		}
 	}
 
@@ -268,11 +294,17 @@ namespace NOWA
 	{
 		if ("playerNameEdit" == _sender->getName())
 		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("playerNameEdit")->setTextShadow(false);
+			ENQUEUE_RENDER_COMMAND("ClientConfigurationStateMyGui::editChange playerNameEdit",
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("playerNameEdit")->setTextShadow(false);
+			});
 		}
 		else if ("enterIPEdit" == _sender->getName())
 		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit")->setTextShadow(false);
+			ENQUEUE_RENDER_COMMAND("ClientConfigurationStateMyGui::editChange enterIPEdit",
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("enterIPEdit")->setTextShadow(false);
+			});
 		}
 	}
 

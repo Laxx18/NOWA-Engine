@@ -30,22 +30,25 @@ namespace NOWA
 
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 2.5f)));
 
-		this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ServerConfigurationStateMyGui");
-		// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
-		this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
+		ENQUEUE_RENDER_COMMAND_WAIT("ServerConfigurationStateMyGui::enter",
+		{
+			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "ServerConfigurationStateMyGui");
+			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
+			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
 
-		this->camera = this->sceneManager->createCamera("ServerConfigurationStateMyGui");
-		this->camera->setPosition(Ogre::Vector3(0, 25, -50));
-		this->camera->lookAt(Ogre::Vector3(0, 0, 0));
-		this->camera->setNearClipDistance(1);
-		this->camera->setAutoAspectRatio(true);
+			this->camera = this->sceneManager->createCamera("ServerConfigurationStateMyGui");
+			this->camera->setPosition(Ogre::Vector3(0, 25, -50));
+			this->camera->lookAt(Ogre::Vector3(0, 0, 0));
+			this->camera->setNearClipDistance(1);
+			this->camera->setAutoAspectRatio(true);
 
-		WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
 
-		this->initializeModules(false, false);
+			this->initializeModules(false, false);
 
-		this->setupWidgets();
-		this->createScene();
+			this->setupWidgets();
+			this->createScene();
+		});
 	}
 
 	//Kamera, GUI und den SceneManager zerstoeren
@@ -56,8 +59,11 @@ namespace NOWA
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_OUT, 2.5f)));
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ServerConfigurationStateMyGui] Leaving...");
 		
-		MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
+		ENQUEUE_RENDER_COMMAND_WAIT("ServerConfigurationStateMyGui::exit",
+		{
+			MyGUI::Gui::getInstancePtr()->destroyWidget(MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::ImageBox>("Background"));
+			MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->widgets);
+		});
 		this->mapsCombo = nullptr;
 		this->packetSendRateCombo = nullptr;
 		this->areaOfInterestSlider = nullptr;
@@ -112,7 +118,7 @@ namespace NOWA
 		this->packetSendRateCombo->addItem("50");
 		this->packetSendRateCombo->addItem("55");
 		this->packetSendRateCombo->addItem("60");
-		
+
 		this->packetSendRateCombo->setIndexSelected(this->packetSendRateCombo->findItemIndexWith(Ogre::StringConverter::toString(Core::getSingletonPtr()->getOptionPacketSendRate())));
 
 		this->areaOfInterestSlider->setScrollPosition(Core::getSingletonPtr()->getOptionAreaOfInterest());
@@ -125,7 +131,7 @@ namespace NOWA
 		{
 			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: (#{Off})");
 		}
-		
+
 		std::map<Ogre::String, Ogre::String> sceneNames = AppStateManager::getSingletonPtr()->getRakNetModule()->parseScenes("Projects", Core::getSingletonPtr()->getResourcesName());
 		//Karten hinzufuegen
 		for (std::map<Ogre::String, Ogre::String>::iterator it = sceneNames.begin(); it != sceneNames.end(); ++it)
@@ -147,7 +153,7 @@ namespace NOWA
 			//Startpositionen aus der virtuellen Umgebung erhalten
 			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseScene("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName());
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: " 
+			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: "
 				+ Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getRakNetModule()->getAllowedPlayerCount()));
 		}
 	}
@@ -157,8 +163,11 @@ namespace NOWA
 		MyGUI::EditBox* serverNameEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("serverNameEdit");
 		if (0 == serverNameEdit->getCaption().size())
 		{
-			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoServerName}"),
-				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+			ENQUEUE_RENDER_COMMAND_WAIT("ServerConfigurationStateMyGui::buttonHit noServerName",
+			{
+				MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoServerName}"),
+					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+			});
 			return;
 		}
 		if ("startServerSimulationButton" == _sender->getName())
@@ -179,8 +188,11 @@ namespace NOWA
 			}
 			else
 			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoStartPosition}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				ENQUEUE_RENDER_COMMAND_WAIT("ServerConfigurationStateMyGui::buttonHit noStartPosition",
+				{
+					MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoStartPosition}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				});
 			}
 
 		}
@@ -196,13 +208,19 @@ namespace NOWA
 			}
 			else
 			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoStartPosition}"),
-					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				ENQUEUE_RENDER_COMMAND_WAIT("ServerConfigurationStateMyGui::buttonHit noStartPosition2",
+				{
+					MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Server", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{NoStartPosition}"),
+						MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Ok, "Popup", true);
+				});
 			}
 		}
 		else if ("serverNameButton" == _sender->getName())
 		{
-			serverNameEdit->setTextShadow(true);
+			ENQUEUE_RENDER_COMMAND_MULTI("ServerConfigurationStateMyGui::buttonHit serverNameButton", _1(serverNameEdit),
+			{
+				serverNameEdit->setTextShadow(true);
+			});
 			AppStateManager::getSingletonPtr()->getRakNetModule()->setServerName(serverNameEdit->getCaption());
 		}
 		else if ("backButton" == _sender->getName())
@@ -226,8 +244,11 @@ namespace NOWA
 			AppStateManager::getSingletonPtr()->getRakNetModule()->preParseScene("Projects", AppStateManager::getSingletonPtr()->getRakNetModule()->getProjectName() 
 				+ "/" + AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName(), AppStateManager::getSingletonPtr()->getRakNetModule()->getSceneName() + ".scene");
 
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: "
-				+ Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getRakNetModule()->getAllowedPlayerCount()));
+			ENQUEUE_RENDER_COMMAND("ServerConfigurationStateMyGui::itemSelected",
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("maxPlayerInfoLabel")->setCaptionWithReplacing("#{MaxPlayer}: "
+					+ Ogre::StringConverter::toString(AppStateManager::getSingletonPtr()->getRakNetModule()->getAllowedPlayerCount()));
+			});
 		}
 	}
 
@@ -235,15 +256,18 @@ namespace NOWA
 	{
 		if (_sender == this->areaOfInterestSlider)
 		{
-			if (areaOfInterestSlider->getScrollPosition() > 0)
+			ENQUEUE_RENDER_COMMAND("ServerConfigurationStateMyGui::sliderMoved",
 			{
-				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: ("
-					+ Ogre::StringConverter::toString(areaOfInterestSlider->getScrollPosition()) + " m)");
-			}
-			else
-			{
-				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: (#{Off})");
-			}
+				if (areaOfInterestSlider->getScrollPosition() > 0)
+				{
+					MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: ("
+						+ Ogre::StringConverter::toString(areaOfInterestSlider->getScrollPosition()) + " m)");
+				}
+				else
+				{
+					MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("areaOfInterestLabel")->setCaptionWithReplacing("#{AreaOfInterest}: (#{Off})");
+				}
+			});
 		}
 	}
 
@@ -251,7 +275,10 @@ namespace NOWA
 	{
 		if ("serverNameEdit" == _sender->getName())
 		{
-			MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("serverNameEdit")->setTextShadow(false);
+			ENQUEUE_RENDER_COMMAND("ServerConfigurationStateMyGui::editChange",
+			{
+				MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("serverNameEdit")->setTextShadow(false);
+			});
 		}
 	}
 

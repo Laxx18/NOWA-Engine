@@ -197,11 +197,15 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
-			this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
-			this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
-			this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
-			this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
+			// TODO: Queue needed?
+			ENQUEUE_RENDER_COMMAND("MyGUIComponent::postInit",
+			{
+				this->widget->eventMouseButtonClick += MyGUI::newDelegate(this, &MyGUIComponent::mouseButtonClick);
+				this->widget->eventMouseButtonPressed += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonPressed);
+				this->widget->eventMouseButtonDoubleClick += MyGUI::newDelegate(this, &MyGUIComponent::baseMouseButtonDoubleClick);
+				this->widget->eventRootMouseChangeFocus += MyGUI::newDelegate(this, &MyGUIComponent::rootMouseChangeFocus);
+				this->widget->eventChangeCoord += MyGUI::newDelegate(this, &MyGUIComponent::changeCoord);
+			});
 		}
 
 		this->setActivated(this->activated->getBool());
@@ -549,12 +553,15 @@ namespace NOWA
 		this->activated->setValue(activated);
 		if (nullptr != this->widget)
 		{
-			this->widget->setVisible(activated);
-			// Also cascade visibility
-			for (size_t i = 0; i < this->widget->getChildCount(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setActivated", _1(activated),
 			{
-				this->widget->getChildAt(i)->setVisible(activated);
-			}
+				this->widget->setVisible(activated);
+				// Also cascade visibility
+				for (size_t i = 0; i < this->widget->getChildCount(); i++)
+				{
+					this->widget->getChildAt(i)->setVisible(activated);
+				}
+			});
 		}
 	}
 
@@ -574,7 +581,10 @@ namespace NOWA
 		this->position->setValue(position);
 		if (nullptr != this->widget)
 		{
-			this->widget->setRealPosition(position.x, position.y);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setRealPosition", _1(position),
+			{
+				this->widget->setRealPosition(position.x, position.y);
+			});
 
 			this->refreshTransform();
 		}
@@ -590,10 +600,13 @@ namespace NOWA
 		this->size->setValue(size);
 		if (nullptr != this->widget)
 		{
-			this->widget->setRealSize(size.x, size.y);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setRealSize", _1(size),
+			{
+				this->widget->setRealSize(size.x, size.y);
 
-			this->widget->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->widget->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+				this->widget->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->widget->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 
 			this->refreshTransform();
 		}
@@ -609,23 +622,26 @@ namespace NOWA
 		// Prevent recursion, only if its a root, go through all children, that have this my gui widget as parent
 		if (0 == this->parentId->getULong())
 		{
-			// Refresh positions and sizes
-			for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+			ENQUEUE_RENDER_COMMAND("MyGUIComponent::refreshTransform",
 			{
-				auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-				if (nullptr != gameObjectCompPtr)
+				// Refresh positions and sizes
+				for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 				{
-					auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-					if (nullptr != myGuiCompPtr && true == myGuiCompPtr->hasParent && myGuiCompPtr->getId() != this->id->getULong())
+					auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+					if (nullptr != gameObjectCompPtr)
 					{
-						if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
+						auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+						if (nullptr != myGuiCompPtr && true == myGuiCompPtr->hasParent && myGuiCompPtr->getId() != this->id->getULong())
 						{
-							myGuiCompPtr->getWidget()->setRealPosition(myGuiCompPtr->getRealPosition().x, myGuiCompPtr->getRealPosition().y);
-							myGuiCompPtr->getWidget()->setRealSize(myGuiCompPtr->getRealSize().x, myGuiCompPtr->getRealSize().y);
+							if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
+							{
+								myGuiCompPtr->getWidget()->setRealPosition(myGuiCompPtr->getRealPosition().x, myGuiCompPtr->getRealPosition().y);
+								myGuiCompPtr->getWidget()->setRealSize(myGuiCompPtr->getRealSize().x, myGuiCompPtr->getRealSize().y);
+							}
 						}
 					}
 				}
-			}
+			});
 		}
 	}
 
@@ -732,8 +748,11 @@ namespace NOWA
 		this->align->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			this->widget->setAlign(this->mapStringToAlign(align));
-			// this->widget->_setAlign(this->widget->getSize(), this->widget->getSize());
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setAlign", _1(align),
+			{
+				this->widget->setAlign(this->mapStringToAlign(align));
+				// this->widget->_setAlign(this->widget->getSize(), this->widget->getSize());
+			});
 		}
 	}
 	
@@ -749,8 +768,12 @@ namespace NOWA
 		{
 			if (true == this->widget->isRootWidget())
 			{
-				MyGUI::LayerManager::getInstance().detachFromLayer(this->widget);
-				MyGUI::LayerManager::getInstance().attachToLayerNode(layer, this->widget);
+				// TODO: Wait?
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setAlign", _1(layer),
+				{
+					MyGUI::LayerManager::getInstance().detachFromLayer(this->widget);
+					MyGUI::LayerManager::getInstance().attachToLayerNode(layer, this->widget);
+				});
 			}
 		}
 	}
@@ -765,8 +788,11 @@ namespace NOWA
 		this->color->setValue(color);
 		if (nullptr != this->widget)
 		{
-			this->widget->setColour(MyGUI::Colour(color.x, color.y, color.z, color.w));
-			this->widget->setAlpha(color.w);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setColor", _1(color),
+			{
+				this->widget->setColour(MyGUI::Colour(color.x, color.y, color.z, color.w));
+				this->widget->setAlpha(color.w);
+			});
 		}
 	}
 	
@@ -779,7 +805,12 @@ namespace NOWA
 	{
 		this->enabled->setValue(enabled);
 		if (nullptr != this->widget)
-			this->widget->setEnabled(enabled);
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setEnabled", _1(enabled),
+			{
+				this->widget->setEnabled(enabled);
+			});
+		}
 	}
 	
 	bool MyGUIComponent::getEnabled(void) const
@@ -798,31 +829,33 @@ namespace NOWA
 
 		GameObjectComponent::onRemoveComponent();
 
-		this->widget->detachFromWidget();
-		this->hasParent = false;
-
-		// If there are widgets which do have this component as parent, remove them from parent
-		/*for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+		ENQUEUE_RENDER_COMMAND("MyGUIComponent::onRemoveComponent",
 		{
-			auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-			if (nullptr != gameObjectCompPtr)
+			this->widget->detachFromWidget();
+			this->hasParent = false;
+
+			// If there are widgets which do have this component as parent, remove them from parent
+			/*for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 			{
-				auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-				if (nullptr != myGuiCompPtr && this != gameObjectCompPtr.get() && this->parentId->getULong() == myGuiCompPtr->getId())
+				auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+				if (nullptr != gameObjectCompPtr)
 				{
-					myGuiCompPtr->getWidget()->detachFromWidget();
-					myGuiCompPtr->hasParent = false;
-					this->hasParent = false;
+					auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+					if (nullptr != myGuiCompPtr && this != gameObjectCompPtr.get() && this->parentId->getULong() == myGuiCompPtr->getId())
+					{
+						myGuiCompPtr->getWidget()->detachFromWidget();
+						myGuiCompPtr->hasParent = false;
+						this->hasParent = false;
+					}
 				}
+			}*/
+
+			if (nullptr != this->widget && false == this->hasParent)
+			{
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+				this->widget = nullptr;
 			}
-		}*/
-
-		if (nullptr != this->widget && false == this->hasParent)
-		{
-			MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
-			this->widget = nullptr;
-		}
-
+		});
 	}
 
 	void MyGUIComponent::onOtherComponentRemoved(unsigned int index)
@@ -864,46 +897,50 @@ namespace NOWA
 		if (this->id->getULong() != parentId/* && 0 != parentId*/)
 		{
 			this->parentId->setValue(parentId);
-			if (0 == parentId)
-			{
-				this->layer->setVisible(true);
-			}
-			else
-			{
-				this->layer->setVisible(false);
-			}
 
-			if (nullptr != this->gameObjectPtr)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setParentId", _1(parentId),
 			{
-				for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
+				if (0 == parentId)
 				{
-					auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
-					if (nullptr != gameObjectCompPtr)
+					this->layer->setVisible(true);
+				}
+				else
+				{
+					this->layer->setVisible(false);
+				}
+
+				if (nullptr != this->gameObjectPtr)
+				{
+					for (unsigned int i = 0; i < this->gameObjectPtr->getComponents()->size(); i++)
 					{
-						auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
-						if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() != this->id->getULong() && this->parentId->getULong() == myGuiCompPtr->getId())
+						auto& gameObjectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponentByIndex(i));
+						if (nullptr != gameObjectCompPtr)
 						{
-							if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
+							auto& myGuiCompPtr = boost::dynamic_pointer_cast<MyGUIComponent>(gameObjectCompPtr);
+							if (nullptr != myGuiCompPtr && myGuiCompPtr->getId() != this->id->getULong() && this->parentId->getULong() == myGuiCompPtr->getId())
 							{
-								this->widget->attachToWidget(myGuiCompPtr->getWidget());
-								this->setRealPosition(this->position->getVector2());
-								this->setRealSize(this->size->getVector2());
-								this->hasParent = true;
-								// Hide the layer if the widget is part of a parent, because it uses the layer from the parent
-								this->layer->setVisible(false);
-								break;
+								if (nullptr != this->widget && nullptr != myGuiCompPtr->getWidget())
+								{
+									this->widget->attachToWidget(myGuiCompPtr->getWidget());
+									this->setRealPosition(this->position->getVector2());
+									this->setRealSize(this->size->getVector2());
+									this->hasParent = true;
+									// Hide the layer if the widget is part of a parent, because it uses the layer from the parent
+									this->layer->setVisible(false);
+									break;
+								}
 							}
 						}
-					}
-					else
-					{
-						this->widget->detachFromWidget();
-						this->hasParent = false;
-						// Show the layer again
-						this->layer->setVisible(true);
+						else
+						{
+							this->widget->detachFromWidget();
+							this->hasParent = false;
+							// Show the layer again
+							this->layer->setVisible(true);
+						}
 					}
 				}
-			}
+			});
 		}
 		assert(this->id->getULong() != parentId && "Id and parentId are the same!");
 	}
@@ -922,8 +959,11 @@ namespace NOWA
 		this->skin->setListSelectedValue(skin);
 		if (nullptr != this->widget)
 		{
-			this->widget->changeWidgetSkin(skin);
-			this->onChangeSkin();
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComponent::setSkin", _1(skin),
+			{
+				this->widget->changeWidgetSkin(skin);
+				this->onChangeSkin();
+			});
 		}
 	}
 		
@@ -1023,9 +1063,12 @@ namespace NOWA
 		
 		if (true == createWidgetInParent)
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit",
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Window>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			});
 		}
 		else
 		{
@@ -1037,9 +1080,13 @@ namespace NOWA
 
 		this->setMovable(this->movable->getBool());
 		this->setWindowCaption(this->windowCaption->getString());
-		this->widget->setInheritsAlpha(true);
-		Ogre::Vector4 tempColor = this->color->getVector4();
-		this->widget->setColour(MyGUI::Colour(tempColor.x, tempColor.y, tempColor.z, tempColor.w));
+
+		ENQUEUE_RENDER_COMMAND("MyGUIWindowComponent::postInit",
+		{
+			this->widget->setInheritsAlpha(true);
+			Ogre::Vector4 tempColor = this->color->getVector4();
+			this->widget->setColour(MyGUI::Colour(tempColor.x, tempColor.y, tempColor.z, tempColor.w));
+		});
 
 		return MyGUIComponent::postInit();
 	}
@@ -1133,6 +1180,7 @@ namespace NOWA
 
 	void MyGUIWindowComponent::onChangeSkin(void)
 	{
+		// Threadsafe from the outside
 		this->setMovable(this->movable->getBool());
 		this->setWindowCaption(this->windowCaption->getString());
 		this->widget->setInheritsAlpha(true);
@@ -1145,7 +1193,10 @@ namespace NOWA
 		this->movable->setValue(movable);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Window>()->setMovable(movable);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIWindowComponent::setMovable", _1(movable),
+			{
+				widget->castType<MyGUI::Window>()->setMovable(movable);
+			});
 		}
 	}
 
@@ -1159,8 +1210,11 @@ namespace NOWA
 		this->windowCaption->setValue(windowCaption);
 		if (nullptr != this->widget)
 		{
-			this->widget->setProperty("Caption", MyGUI::LanguageManager::getInstancePtr()->replaceTags(windowCaption));
-			// this->widget->setProperty("CaptionWithReplacing", windowCaption); // Test if that does work
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIWindowComponent::setWindowCaption", _1(windowCaption),
+			{
+				this->widget->setProperty("Caption", MyGUI::LanguageManager::getInstancePtr()->replaceTags(windowCaption));
+				// this->widget->setProperty("CaptionWithReplacing", windowCaption); // Test if that does work
+			});
 		}
 	}
 
@@ -1271,17 +1325,20 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUITextComponent] Init MyGUI text component for game object: " + this->gameObjectPtr->getName());
 		
-		if (true == this->createWidgetInParent)
+		ENQUEUE_RENDER_COMMAND("MyGUITextComponent::postInit",
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-		}
+			if (true == this->createWidgetInParent)
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::EditBox>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			}
 
-		// this->widget->eventKeyButtonPressed += MyGUI::newDelegate(this, &MyGUITextComponent::onKeyButtonPressed);
+			// this->widget->eventKeyButtonPressed += MyGUI::newDelegate(this, &MyGUITextComponent::onKeyButtonPressed);
 
-		this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
-		this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+			this->widget->castType<MyGUI::EditBox>(false)->eventEditTextChange += MyGUI::newDelegate(this, &MyGUITextComponent::onEditTextChanged);
+			this->widget->castType<MyGUI::EditBox>(false)->eventEditSelectAccept += MyGUI::newDelegate(this, &MyGUITextComponent::onEditAccepted);
+		});
 
 		this->initTextAttributes();
 
@@ -1562,8 +1619,11 @@ namespace NOWA
 		this->caption->setValue(tempString);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setCaptionWithReplacing(tempString);
-			this->caption->setValue(widget->castType<MyGUI::EditBox>()->getCaption());
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setCaption", _1(tempString),
+			{
+				widget->castType<MyGUI::EditBox>()->setCaptionWithReplacing(tempString);
+				this->caption->setValue(widget->castType<MyGUI::EditBox>()->getCaption());
+			});
 		}
 	}
 		
@@ -1582,7 +1642,10 @@ namespace NOWA
 		if (nullptr == this->widget)
 			return;
 
-		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::EditBox>(false), fontHeight));
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setFontHeight", _1(fontHeight),
+		{
+			this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::EditBox>(false), fontHeight));
+		});
 	}
 
 // widget->castType<MyGUI::EditBox>()->setEditMultiLine
@@ -1594,12 +1657,15 @@ namespace NOWA
 		return this->fontHeight->getUInt();
 	}
 
-	void MyGUITextComponent::setTextAlign(const Ogre::String & align)
+	void MyGUITextComponent::setTextAlign(const Ogre::String& align)
 	{
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setTextAlign(this->mapStringToAlign(align));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setTextAlign", _1(align),
+			{
+				widget->castType<MyGUI::EditBox>()->setTextAlign(this->mapStringToAlign(align));
+			});
 		}
 	}
 
@@ -1613,7 +1679,10 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setTextOffset", _1(textOffset),
+			{
+				widget->castType<MyGUI::EditBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			});
 		}
 	}
 
@@ -1627,7 +1696,10 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setTextColor", _1(textColor),
+			{
+				widget->castType<MyGUI::EditBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			});
 		}
 	}
 	
@@ -1641,8 +1713,11 @@ namespace NOWA
 		this->readOnly->setValue(readOnly);
 		if (nullptr != this->widget)
 		{
-			// setEditStatic: ReadOnly and text cannot be selected
-			widget->castType<MyGUI::EditBox>()->setEditStatic(readOnly);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setReadOnly", _1(readOnly),
+			{
+				// setEditStatic: ReadOnly and text cannot be selected
+				widget->castType<MyGUI::EditBox>()->setEditStatic(readOnly);
+			});
 		}
 	}
 
@@ -1656,7 +1731,10 @@ namespace NOWA
 		this->multiLine->setValue(multiLine);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setEditMultiLine(multiLine);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setMultiLine", _1(multiLine),
+			{
+				widget->castType<MyGUI::EditBox>()->setEditMultiLine(multiLine);
+			});
 
 			this->multiLine->addUserData(GameObject::AttrActionNeedRefresh());
 			if (true == multiLine)
@@ -1676,7 +1754,10 @@ namespace NOWA
 		this->wordWrap->setValue(wordWrap);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::EditBox>()->setEditWordWrap(wordWrap);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUITextComponent::setWordWrap", _1(wordWrap),
+			{
+				widget->castType<MyGUI::EditBox>()->setEditWordWrap(wordWrap);
+			});
 		}
 	}
 
@@ -1781,9 +1862,12 @@ namespace NOWA
 		
 		if (true == this->createWidgetInParent)
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			ENQUEUE_RENDER_COMMAND("MyGUIButtonComponent::postInit",
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			});
 		}
 
 		this->setCaption(this->caption->getString());
@@ -1932,7 +2016,10 @@ namespace NOWA
 		this->caption->setValue(caption);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setCaptionWithReplacing(caption);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIButtonComponent::setCaption", _1(caption),
+			{
+				widget->castType<MyGUI::Button>()->setCaptionWithReplacing(caption);
+			});
 		}
 	}
 		
@@ -1947,7 +2034,10 @@ namespace NOWA
 		if (nullptr == this->widget)
 			return;
 
-		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::Button>(false), fontHeight));
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIButtonComponent::setFontHeight", _1(fontHeight),
+		{
+			this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::Button>(false), fontHeight));
+		});
 	}
 
 	unsigned int MyGUIButtonComponent::getFontHeight(void) const
@@ -1955,12 +2045,15 @@ namespace NOWA
 		return this->fontHeight->getUInt();
 	}
 
-	void MyGUIButtonComponent::setTextAlign(const Ogre::String & align)
+	void MyGUIButtonComponent::setTextAlign(const Ogre::String& align)
 	{
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIButtonComponent::setTextAlign", _1(align),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
+			});
 		}
 	}
 	
@@ -1974,7 +2067,10 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIButtonComponent::setTextOffset", _1(textOffset),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			});
 		}
 	}
 
@@ -1988,7 +2084,10 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIButtonComponent::setTextColor", _1(textColor),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			});
 		}
 	}
 	
@@ -2089,9 +2188,12 @@ namespace NOWA
 		
 		if (true == this->createWidgetInParent)
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			ENQUEUE_RENDER_COMMAND("MyGUICheckBoxComponent::postInit",
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::Button>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			});
 		}
 
 		this->setCaption(this->caption->getString());
@@ -2244,7 +2346,10 @@ namespace NOWA
 		this->caption->setValue(caption);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setCaptionWithReplacing(caption);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setCaption", _1(caption),
+			{
+				widget->castType<MyGUI::Button>()->setCaptionWithReplacing(caption);
+			});
 		}
 	}
 		
@@ -2258,7 +2363,10 @@ namespace NOWA
 		this->checked->setValue(checked);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::Button>()->setStateCheck(checked);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setChecked", _1(checked),
+			{
+				widget->castType<MyGUI::Button>()->setStateCheck(checked);
+			});
 		}
 	}
 	
@@ -2273,7 +2381,10 @@ namespace NOWA
 		if (nullptr == this->widget)
 			return;
 
-		this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::TextBox>(false), fontHeight));
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setFontHeight", _1(fontHeight),
+		{
+			this->fontHeight->setValue(MyGUIUtilities::getInstance()->setFontSize(this->widget->castType<MyGUI::TextBox>(false), fontHeight));
+		});
 	}
 
 	unsigned int MyGUICheckBoxComponent::getFontHeight(void) const
@@ -2281,13 +2392,16 @@ namespace NOWA
 		return this->fontHeight->getUInt();
 	}
 
-	void MyGUICheckBoxComponent::setTextAlign(const Ogre::String & align)
+	void MyGUICheckBoxComponent::setTextAlign(const Ogre::String& align)
 	{
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
-			// this->widget->_setAlign(this->widget->getSize(), this->widget->getSize());
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setTextAlign", _1(align),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextAlign(this->mapStringToAlign(align));
+				// this->widget->_setAlign(this->widget->getSize(), this->widget->getSize());
+			});
 		}
 	}
 	
@@ -2301,7 +2415,10 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setTextOffset", _1(textOffset),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+			});
 		}
 	}
 
@@ -2315,7 +2432,10 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUICheckBoxComponent::setTextColor", _1(textColor),
+			{
+				widget->castType<MyGUI::TextBox>()->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+			});
 		}
 	}
 	
@@ -2416,9 +2536,12 @@ namespace NOWA
 		
 		if (true == this->createWidgetInParent)
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			ENQUEUE_RENDER_COMMAND("MyGUIImageBoxComponent::postInit",
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			});
 		}
 
 		MyGUI::ISubWidget* main = this->widget->getSubWidgetMain();
@@ -2467,7 +2590,10 @@ namespace NOWA
 				{
 					tempRadian = 0.0f;
 				}
-				this->rotatingSkin->setAngle(tempRadian);
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIImageBoxComponent::update", _1(tempRadian),
+				{
+					this->rotatingSkin->setAngle(tempRadian);
+				});
 			}
 		}
 	}
@@ -2694,8 +2820,11 @@ namespace NOWA
 		this->center->setValue(center);
 		if (nullptr != this->rotatingSkin)
 		{
-			// Attention: Here better this->rotatingSkin->getWidth()  * center.x etc. ?
-			this->rotatingSkin->setCenter(MyGUI::IntPoint(static_cast<int>(center.x), static_cast<int>(center.y)));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIImageBoxComponent::setCenter", _1(center),
+			{
+				// Attention: Here better this->rotatingSkin->getWidth()  * center.x etc. ?
+				this->rotatingSkin->setCenter(MyGUI::IntPoint(static_cast<int>(center.x), static_cast<int>(center.y)));
+			});
 		}
 	}
 	
@@ -2709,8 +2838,11 @@ namespace NOWA
 		this->angle->setValue(angle);
 		if (nullptr != this->rotatingSkin)
 		{
-			// Attention: Here better this->rotatingSkin->getWidth()  * center.x etc. ?
-			this->rotatingSkin->setAngle(MathHelper::getInstance()->degreeAngleToRadian(angle));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIImageBoxComponent::setAngle", _1(angle),
+			{
+				// Attention: Here better this->rotatingSkin->getWidth()  * center.x etc. ?
+				this->rotatingSkin->setAngle(MathHelper::getInstance()->degreeAngleToRadian(angle));
+			});
 		}
 	}
 	
@@ -2804,7 +2936,6 @@ namespace NOWA
 	{
 		MyGUIProgressBarCompPtr clonedCompPtr(boost::make_shared<MyGUIProgressBarComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -2831,9 +2962,12 @@ namespace NOWA
 		
 		if (true == this->createWidgetInParent)
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			ENQUEUE_RENDER_COMMAND("MyGUIProgressBarComponent::postInit",
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ProgressBar>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			});
 		}
 		// Order is important range must be placed before value can be set
 		this->setRange(this->range->getUInt());
@@ -2973,7 +3107,10 @@ namespace NOWA
 		this->range->setValue(range);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ProgressBar>()->setProgressRange(range);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIProgressBarComponent::setRange", _1(range),
+			{
+				widget->castType<MyGUI::ProgressBar>()->setProgressRange(range);
+			});
 		}
 	}
 	
@@ -2987,19 +3124,22 @@ namespace NOWA
 		this->flowDirection->setListSelectedValue(flowDirection);
 		if (nullptr != this->widget)
 		{
-			if ("LeftToRight" == flowDirection)
-				widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::LeftToRight);
-			else if ("RightToLeft" == flowDirection)
-				widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::RightToLeft);
-			else if ("TopToBottom" == flowDirection)
-				widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::TopToBottom);
-			else if ("BottomToTop" == flowDirection)
-				widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::BottomToTop);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIProgressBarComponent::setFlowDirection", _1(flowDirection),
+			{
+				if ("LeftToRight" == flowDirection)
+					widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::LeftToRight);
+				else if ("RightToLeft" == flowDirection)
+					widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::RightToLeft);
+				else if ("TopToBottom" == flowDirection)
+					widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::TopToBottom);
+				else if ("BottomToTop" == flowDirection)
+					widget->castType<MyGUI::ProgressBar>()->setFlowDirection(MyGUI::FlowDirection::BottomToTop);
 
-			/*widget->castType<MyGUI::ListBox>()->addItem(Ogre::String("Hallo"));
-			widget->castType<MyGUI::ListBox>()->deleteItem(size_t index);
-			widget->castType<MyGUI::ListBox>()->setItemNameAt(size_t index, string);
-			widget->castType<MyGUI::ListBox>()->setRenderItemTexture(myguitexture);*/
+				/*widget->castType<MyGUI::ListBox>()->addItem(Ogre::String("Hallo"));
+				widget->castType<MyGUI::ListBox>()->deleteItem(size_t index);
+				widget->castType<MyGUI::ListBox>()->setItemNameAt(size_t index, string);
+				widget->castType<MyGUI::ListBox>()->setRenderItemTexture(myguitexture);*/
+			});
 		}
 	}
 	
@@ -3131,23 +3271,26 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIListBoxComponent] Init MyGUI list box component for game object: " + this->gameObjectPtr->getName());
 		
-		if (true == this->createWidgetInParent)
+		ENQUEUE_RENDER_COMMAND("MyGUIListBoxComponent::postInit",
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-		}
+			if (true == this->createWidgetInParent)
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ListBox>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			}
 
-		if (nullptr != this->widget)
-		{
-			this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
-			this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
-		}
+			if (nullptr != this->widget)
+			{
+				this->widget->castType<MyGUI::ListBox>()->eventListMouseItemActivate += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listSelectAccept);
+				this->widget->castType<MyGUI::ListBox>()->eventListSelectAccept += MyGUI::newDelegate(this, &MyGUIListBoxComponent::listAccept);
+			}
 
-		for (size_t i = 0; i < this->itemCount->getUInt(); i++)
-		{
-			widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
-		}
+			for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+			{
+				widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+			}
+		});
 		
 		this->setColor(this->color->getVector4());
 		this->setFontHeight(this->fontHeight->getUInt());
@@ -3381,14 +3524,18 @@ namespace NOWA
 			// Is the default
 			if (itemHeight != 21)
 			{
-				MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
-				listBox->setItemHeight(itemHeight);
-				// Note: Everything will be reset
-				this->widget->changeWidgetSkin(skin->getListSelectedValue());
-				for (size_t i = 0; i < this->items.size(); i++)
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::setItemHeight", _1(itemHeight),
 				{
-					widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
-				}
+						MyGUI::ListBox * listBox = widget->castType<MyGUI::ListBox>();
+						listBox->setItemHeight(itemHeight);
+						// Note: Everything will be reset
+						this->widget->changeWidgetSkin(skin->getListSelectedValue());
+
+					for (size_t i = 0; i < this->items.size(); i++)
+					{
+						widget->castType<MyGUI::ListBox>()->addItem(this->items[i]->getString());
+					}
+				});
 			
 				this->setActivated(this->activated->getBool());
 				this->setColor(this->color->getVector4());
@@ -3411,12 +3558,15 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setFontHeight", _1(&fontHeight),
 			{
-				fontHeight = MyGUIUtilities::getInstance()->setFontSize(listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false), fontHeight);
-			}
-			this->fontHeight->setValue(fontHeight);
+				MyGUI::ListBox * listBox = widget->castType<MyGUI::ListBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					fontHeight = MyGUIUtilities::getInstance()->setFontSize(listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false), fontHeight);
+				}
+				this->fontHeight->setValue(fontHeight);
+			});
 		}
 	}
 
@@ -3425,16 +3575,19 @@ namespace NOWA
 		return this->fontHeight->getUInt();
 	}
 
-	void MyGUIListBoxComponent::setTextAlign(const Ogre::String & align)
+	void MyGUIListBoxComponent::setTextAlign(const Ogre::String& align)
 	{
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setTextAlign", _1(align),
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
-			}
+				MyGUI::ListBox * listBox = widget->castType<MyGUI::ListBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
+				}
+			});
 		}
 	}
 
@@ -3448,11 +3601,14 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setTextOffset", _1(textOffset),
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
-			}
+				MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+				}
+			});
 		}
 	}
 
@@ -3466,11 +3622,14 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ListBox* listBox = widget->castType<MyGUI::ListBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setTextColor", _1(textColor),
 			{
-				listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
-			}
+				MyGUI::ListBox * listBox = widget->castType<MyGUI::ListBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					listBox->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+				}
+			});
 		}
 	}
 	
@@ -3522,11 +3681,14 @@ namespace NOWA
 			this->eraseVariants(this->items, itemCount);
 			if (nullptr != this->widget)
 			{
-				for (size_t i = itemCount; i < oldSize; i++)
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setItemCount", _2(itemCount, oldSize),
 				{
-					// 0 is correct! MyGUI removes each time the 0-th index.
-					widget->castType<MyGUI::ListBox>()->removeItemAt(0);
-				}
+					for (size_t i = itemCount; i < oldSize; i++)
+					{
+						// 0 is correct! MyGUI removes each time the 0-th index.
+						widget->castType<MyGUI::ListBox>()->removeItemAt(0);
+					}
+				});
 			}
 		}
 	}
@@ -3544,7 +3706,10 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ListBox>()->setItemNameAt(index, MyGUI::LanguageManager::getInstancePtr()->replaceTags(itemText));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setItemText", _2(index, itemText),
+			{
+				widget->castType<MyGUI::ListBox>()->setItemNameAt(index, MyGUI::LanguageManager::getInstancePtr()->replaceTags(itemText));
+			});
 		}
 	}
 	
@@ -3566,7 +3731,10 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ListBox>()->addItem(itemText);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::addItem", _1(itemText),
+			{
+				widget->castType<MyGUI::ListBox>()->addItem(itemText);
+			});
 			this->setColor(this->color->getVector4());
 			this->setItemHeight(this->itemHeight->getUInt());
 			this->setFontHeight(this->fontHeight->getUInt());
@@ -3590,7 +3758,10 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ListBox>()->insertItemAt(index, itemText);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::insertItem", _2(index, itemText),
+			{
+				this->widget->castType<MyGUI::ListBox>()->insertItemAt(index, itemText);
+			});
 			this->setColor(this->color->getVector4());
 			this->setItemHeight(this->itemHeight->getUInt());
 			this->setFontHeight(this->fontHeight->getUInt());
@@ -3608,7 +3779,10 @@ namespace NOWA
 			this->itemCount->setValue(this->itemCount->getUInt() - 1);
 			if (nullptr != this->widget)
 			{
-				widget->castType<MyGUI::ListBox>()->removeItemAt(index);
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::insertItem", _1(index),
+				{
+					this->widget->castType<MyGUI::ListBox>()->removeItemAt(index);
+				});
 			}
 		}
 	}
@@ -3723,7 +3897,6 @@ namespace NOWA
 	{
 		MyGUIComboBoxCompPtr clonedCompPtr(boost::make_shared<MyGUIComboBoxComponent>());
 
-		
 		clonedCompPtr->setActivated(this->activated->getBool());
 		clonedCompPtr->setRealPosition(this->position->getVector2());
 		clonedCompPtr->setRealSize(this->size->getVector2());
@@ -3760,23 +3933,26 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIComboBoxComponent] Init MyGUI combo box component for game object: " + this->gameObjectPtr->getName());
 		
-		if (true == this->createWidgetInParent)
+		ENQUEUE_RENDER_COMMAND("MyGUIComboBoxComponent::postInit",
 		{
-			this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(),
-				this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
-				this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
-		}
-		// this->setActivated(this->activated->getBool());
+			if (true == this->createWidgetInParent)
+			{
+				this->widget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ComboBox>(this->skin->getListSelectedValue(),
+					this->position->getVector2().x, this->position->getVector2().y, this->size->getVector2().x, this->size->getVector2().y,
+					this->mapStringToAlign(this->align->getListSelectedValue()), this->layer->getListSelectedValue(), this->getClassName() + "_" + this->gameObjectPtr->getName() + Ogre::StringConverter::toString(this->index));
+			}
+			// this->setActivated(this->activated->getBool());
 
-		if (nullptr != this->widget)
-		{
-			this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
-		}
+			if (nullptr != this->widget)
+			{
+				this->widget->castType<MyGUI::ComboBox>()->eventComboAccept += MyGUI::newDelegate(this, &MyGUIComboBoxComponent::comboAccept);
+			}
 
-		for (size_t i = 0; i < this->itemCount->getUInt(); i++)
-		{
-			widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
-		}
+			for (size_t i = 0; i < this->itemCount->getUInt(); i++)
+			{
+				widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+			}
+		});
 		
 		this->setColor(this->color->getVector4());
 		this->setFontHeight(this->fontHeight->getUInt());
@@ -4012,14 +4188,17 @@ namespace NOWA
 			// Is the default
 			if (itemHeight != 21)
 			{
-				MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
-				comboBox->setItemHeight(itemHeight);
-				// Note: Everything will be reset
-				this->widget->changeWidgetSkin(skin->getListSelectedValue());
-				for (size_t i = 0; i < this->items.size(); i++)
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComboBoxComponent::postInit", _1(itemHeight),
 				{
-					widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
-				}
+					MyGUI::ComboBox * comboBox = widget->castType<MyGUI::ComboBox>();
+					comboBox->setItemHeight(itemHeight);
+					// Note: Everything will be reset
+					this->widget->changeWidgetSkin(skin->getListSelectedValue());
+					for (size_t i = 0; i < this->items.size(); i++)
+					{
+						widget->castType<MyGUI::ComboBox>()->addItem(this->items[i]->getString());
+					}
+				});
 			
 				this->setActivated(this->activated->getBool());
 				this->setColor(this->color->getVector4());
@@ -4047,18 +4226,21 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setFontHeight", _2(&fontHeight, oldFontHeight),
 			{
-				try
+				MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
 				{
-					fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>(false), fontHeight);
+					try
+					{
+						fontHeight = MyGUIUtilities::getInstance()->setFontSize(comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::ComboBox>(false), fontHeight);
+					}
+					catch (...)
+					{
+						fontHeight = oldFontHeight;
+					}
 				}
-				catch (...)
-				{
-					fontHeight = oldFontHeight;
-				}
-			}
+			});
 			this->fontHeight->setValue(fontHeight);
 		}
 	}
@@ -4068,16 +4250,19 @@ namespace NOWA
 		return this->fontHeight->getUInt();
 	}
 
-	void MyGUIComboBoxComponent::setTextAlign(const Ogre::String & align)
+	void MyGUIComboBoxComponent::setTextAlign(const Ogre::String& align)
 	{
 		this->textAlign->setListSelectedValue(align);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setTextAlign", _1(align),
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
-			}
+				MyGUI::ComboBox * comboBox = widget->castType<MyGUI::ComboBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextAlign(this->mapStringToAlign(align));
+				}
+			});
 		}
 	}
 
@@ -4091,11 +4276,14 @@ namespace NOWA
 		this->textOffset->setValue(textOffset);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setTextOffset", _1(textOffset),
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
-			}
+				MyGUI::ComboBox * comboBox = widget->castType<MyGUI::ComboBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextOffset(MyGUI::IntPoint(textOffset.x, textOffset.y));
+				}
+			});
 		}
 	}
 
@@ -4109,11 +4297,14 @@ namespace NOWA
 		this->textColor->setValue(textColor);
 		if (nullptr != this->widget)
 		{
-			MyGUI::ComboBox* comboBox = widget->castType<MyGUI::ComboBox>();
-			for (size_t i = 0; i < this->items.size(); i++)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setTextColor", _1(textColor),
 			{
-				comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
-			}
+				MyGUI::ComboBox * comboBox = widget->castType<MyGUI::ComboBox>();
+				for (size_t i = 0; i < this->items.size(); i++)
+				{
+					comboBox->getList()->getWidgetByIndex(i)->castType<MyGUI::TextBox>(false)->setTextColour(MyGUI::Colour(textColor.x, textColor.y, textColor.z, textColor.w));
+				}
+			});
 		}
 	}
 	
@@ -4155,14 +4346,17 @@ namespace NOWA
 		this->flowDirection->setListSelectedValue(flowDirection);
 		if (nullptr != this->widget)
 		{
-			if ("LeftToRight" == flowDirection)
-				widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::LeftToRight);
-			else if ("RightToLeft" == flowDirection)
-				widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::RightToLeft);
-			else if ("TopToBottom" == flowDirection)
-				widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::TopToBottom);
-			else if ("BottomToTop" == flowDirection)
-				widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::BottomToTop);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setFlowDirection", _1(flowDirection),
+			{
+				if ("LeftToRight" == flowDirection)
+					widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::LeftToRight);
+				else if ("RightToLeft" == flowDirection)
+					widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::RightToLeft);
+				else if ("TopToBottom" == flowDirection)
+					widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::TopToBottom);
+				else if ("BottomToTop" == flowDirection)
+					widget->castType<MyGUI::ComboBox>()->setFlowDirection(MyGUI::FlowDirection::BottomToTop);
+			});
 		}
 	}
 
@@ -4202,11 +4396,14 @@ namespace NOWA
 			this->eraseVariants(this->items, itemCount);
 			if (nullptr != this->widget)
 			{
-				for (size_t i = itemCount; i < oldSize; i++)
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setItemCount", _2(itemCount, oldSize),
 				{
-					// 0 is correct! MyGUI removes each time the 0-th index.
-					widget->castType<MyGUI::ComboBox>()->removeItemAt(0);
-				}
+					for (size_t i = itemCount; i < oldSize; i++)
+					{
+						// 0 is correct! MyGUI removes each time the 0-th index.
+						this->widget->castType<MyGUI::ComboBox>()->removeItemAt(0);
+					}
+				});
 			}
 		}
 	}
@@ -4224,7 +4421,10 @@ namespace NOWA
 		this->items[index]->setValue(itemText);
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->setItemNameAt(index, MyGUI::LanguageManager::getInstancePtr()->replaceTags(itemText));
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::setItemText", _2(index, itemText),
+			{
+				widget->castType<MyGUI::ComboBox>()->setItemNameAt(index, MyGUI::LanguageManager::getInstancePtr()->replaceTags(itemText));
+			});
 		}
 	}
 	
@@ -4246,7 +4446,10 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->addItem(itemText);
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::addItem", _1(itemText),
+			{
+				this->widget->castType<MyGUI::ComboBox>()->addItem(itemText);
+			});
 		}
 	}
 
@@ -4264,7 +4467,10 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			widget->castType<MyGUI::ComboBox>()->insertItemAt(index, itemText);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComboBoxComponent::insertItem", _2(index, itemText),
+			{
+				widget->castType<MyGUI::ComboBox>()->insertItemAt(index, itemText);
+			});
 			this->setColor(this->color->getVector4());
 			this->setItemHeight(this->itemHeight->getUInt());
 			this->setFontHeight(this->fontHeight->getUInt());
@@ -4282,7 +4488,10 @@ namespace NOWA
 			this->itemCount->setValue(this->itemCount->getUInt() - 1);
 			if (nullptr != this->widget)
 			{
-				widget->castType<MyGUI::ComboBox>()->removeItemAt(index);
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::insertItem", _1(index),
+				{
+					this->widget->castType<MyGUI::ComboBox>()->removeItemAt(index);
+				});
 			}
 		}
 	}
@@ -4543,10 +4752,13 @@ namespace NOWA
 						tempStyle |= MyGUI::MessageBoxStyle::IconDefault;
 				}
 
-				this->messageBox = MyGUI::Message::createMessageBox(MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->title->getString()), 
-				MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->message->getString()), tempStyle, "Popup", true);
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIMessageBoxComponent::setActivated", _1(tempStyle),
+				{
+					this->messageBox = MyGUI::Message::createMessageBox(MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->title->getString()),
+					MyGUI::LanguageManager::getInstancePtr()->replaceTags(this->message->getString()), tempStyle, "Popup", true);
 
-				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &MyGUIMessageBoxComponent::notifyMessageBoxEnd);
+					this->messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &MyGUIMessageBoxComponent::notifyMessageBoxEnd);
+				});
 			}
 		}
 
@@ -4554,7 +4766,11 @@ namespace NOWA
 		{
 			if (nullptr != this->messageBox)
 			{
-				this->messageBox->endMessage();
+				// TODO: Wait?
+				ENQUEUE_RENDER_COMMAND("MyGUIMessageBoxComponent::setActivated2",
+				{
+					this->messageBox->endMessage();
+				});
 			}
 		}
 	}
@@ -4777,7 +4993,10 @@ namespace NOWA
 
 				// Actualize position and set at widget center
 // Attention: Width must be real und re-calculated?
-				this->widget->setRealPosition(x - static_cast<Ogre::Real>(this->widget->getWidth() / 2), y);
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUITrackComponent::update", _2(x, y),
+				{
+					this->widget->setRealPosition(x - static_cast<Ogre::Real>(this->widget->getWidth() / 2), y);
+				});
 				// this->widget->setVisible(true);
 			}
 		}

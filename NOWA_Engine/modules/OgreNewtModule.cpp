@@ -293,7 +293,7 @@ namespace NOWA
 			return;
 		}
 
-#if 0
+#if 1
 		body->setRenderUpdateCallback([](Ogre::SceneNode* node, const Ogre::Vector3& pos, const Ogre::Quaternion& rot, bool updateRot, bool updateStatic)
 		{
 			if (nullptr == node)
@@ -353,7 +353,7 @@ namespace NOWA
 						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
 						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
 					}
-				});
+				}, "body->setRenderUpdateCallback");
 			});
 #endif
 	}

@@ -125,71 +125,50 @@ namespace NOWA
 
 	void FaderProcess::onUpdate(Ogre::Real dt)
 	{
-		if (this->eFadeOperation != FadeOperation::FADE_NONE && this->datablock)
+		if (this->eFadeOperation == FadeOperation::FADE_NONE || !this->datablock)
+			return;
+
+		this->stallDuration -= dt * this->speedMultiplier;
+		if (this->stallDuration > 0.0f)
+			return;
+
+		// Compute progress and easing
+		this->currentDuration += (this->eFadeOperation == FadeOperation::FADE_IN ? -1.0f : 1.0f) * dt * this->speedMultiplier;
+		Ogre::Real t = Ogre::Math::Clamp(this->currentDuration / this->totalDuration, 0.0f, 1.0f);
+		this->currentAlpha = (this->eFadeOperation == FadeOperation::FADE_IN) ? 1.0f - t : t;
+
+		Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
+
+		// Copy relevant values for render thread (safe)
+		auto datablock = this->datablock;
+		FadeOperation fadeOp = this->eFadeOperation;
+		auto overlay = this->overlay;
+
+		// Apply color
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("FaderProcess::applyAlpha", _2(resultValue, datablock),
 		{
-			// If fading in, decrease the _alpha until it reaches 0.0
-			if (this->eFadeOperation == FadeOperation::FADE_IN)
+			if (datablock)
 			{
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade in: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-				
-				this->stallDuration -= dt * this->speedMultiplier;
-				if (this->stallDuration <= 0.0f)
-				{
-					this->currentDuration -= dt * this->speedMultiplier;
-					this->currentAlpha = this->currentDuration / this->totalDuration;
-
-					// Call a bit, before process will be destroyed
-					if (this->currentAlpha < 0.0f)
-					{
-						this->currentAlpha = 0.0f;
-
-						ENQUEUE_RENDER_COMMAND_WAIT("FaderProcess::onUpdate1",
-						{
-							this->overlay->hide();
-						});
-						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay hide");
-						this->eFadeOperation = FadeOperation::FADE_NONE;
-						// Finish the process
-						this->succeed();
-						return;
-					}
-
-					Ogre::Real t = this->currentDuration / this->totalDuration;
-					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::onUpdate2", _1(resultValue),
-					{
-						this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
-					});
-				}
+				datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
 			}
-			// If fading out, increase the _alpha until it reaches 1.0
-			else if (this->eFadeOperation == FadeOperation::FADE_OUT)
+		});
+
+		// Finish if done
+		if ((fadeOp == FadeOperation::FADE_IN && this->currentAlpha <= 0.0f) ||
+			(fadeOp == FadeOperation::FADE_OUT && this->currentAlpha >= 1.0f))
+		{
+			this->currentAlpha = (fadeOp == FadeOperation::FADE_IN) ? 0.0f : 1.0f;
+			this->eFadeOperation = FadeOperation::FADE_NONE;
+
+			if (fadeOp == FadeOperation::FADE_IN && overlay)
 			{
-				this->stallDuration -= dt * this->speedMultiplier;
-				if (this->stallDuration <= 0.0f)
+				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("FaderProcess::hideOverlay", _1(overlay),
 				{
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-					this->currentDuration += dt;
-					this->currentAlpha = this->currentDuration / this->totalDuration;
-
-					if (this->currentAlpha > 1.0f)
-					{
-						this->currentAlpha = 1.0f;
-						this->eFadeOperation = FadeOperation::FADE_NONE;
-						this->succeed();
-						return;
-					}
-
-					Ogre::Real t = this->currentDuration / this->totalDuration;
-					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(resultValue) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::onUpdate3", _1(resultValue),
-					{
-						this->datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
-					});
-				}
+					overlay->hide();
+				});
 			}
+
+			this->succeed();
 		}
 	}
 

@@ -252,11 +252,17 @@ namespace NOWA
 			const float lightEpsilon = 0.0f;
 			if (nullptr != this->sunLight)
 			{
-				this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
+				ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::update1", _1(lightEpsilon),
+				{
+					this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
+				});
 			}
 			else
 			{
-				this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
+				ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::update2", _1(lightEpsilon),
+				{
+					this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
+				});
 			}
 		}
 	}
@@ -488,7 +494,7 @@ namespace NOWA
 			}
 
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::modifyTerrainStart", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::modifyTerrainStart", _2(position, strength),
 			{
 				this->terra->modifyTerrainStart(position, strength);
 			});
@@ -506,7 +512,7 @@ namespace NOWA
 			}
 
 			// TODO: Wait
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::smoothTerrainStart", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::smoothTerrainStart", _2(position, strength),
 			{
 				this->terra->smoothTerrainStart(position, strength);
 			});
@@ -523,7 +529,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::paintTerrainStart", _3(position, intensity, imageLayer),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrainStart", _3(position, intensity, imageLayer),
 			{
 				this->terra->paintTerrainStart(position, intensity, imageLayer);
 			});
@@ -539,7 +545,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::modifyTerrain", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::modifyTerrain", _2(position, strength),
 			{
 				this->terra->modifyTerrain(position, strength);
 			});
@@ -555,7 +561,7 @@ namespace NOWA
 				return;
 			}
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::smoothTerrain", _2(position, strength),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::smoothTerrain", _2(position, strength),
 			{
 				this->terra->smoothTerrain(position, strength);
 			});
@@ -570,7 +576,7 @@ namespace NOWA
 			{
 				return;
 			}
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::paintTerrain", _3(position, intensity, imageLayer),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrain", _3(position, intensity, imageLayer),
 			{
 				this->terra->paintTerrain(position, intensity, imageLayer);
 			});
@@ -711,11 +717,14 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::modifyTerrainFinished", _1(&heightData),
+			{
+				heightData = this->terra->modifyTerrainFinished();
+			});
+
 			// Sends event, that terra has been modified
 			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
-
-			heightData = this->terra->modifyTerrainFinished();
 		}
 
 		return std::move(heightData);
@@ -732,7 +741,10 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
-			heightData = this->terra->smoothTerrainFinished();
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::smoothTerrainFinished", _1(&heightData),
+			{
+				heightData = this->terra->smoothTerrainFinished();
+			});
 
 			// Sends event, that terra has been modified
 			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), true, false));
@@ -757,7 +769,10 @@ namespace NOWA
 			boost::shared_ptr<EventDataTerraChanged> eventDataTerraChanged(new EventDataTerraChanged(this->gameObjectPtr->getId(), false, true));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataTerraChanged);
 
-			detailBlendData = this->terra->paintTerrainFinished();
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::paintTerrainFinished", _1(&detailBlendData),
+			{
+				detailBlendData = this->terra->paintTerrainFinished();
+			});
 			return std::move(detailBlendData);
 		}
 		return std::move(detailBlendData);
@@ -767,7 +782,7 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setHeightData", _1(heightData),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setHeightData", _1(heightData),
 			{
 				this->terra->setHeightData(heightData);
 			});
@@ -782,7 +797,7 @@ namespace NOWA
 	{
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setBlendWeightData", _1(blendWeightData),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setBlendWeightData", _1(blendWeightData),
 			{
 				this->terra->setBlendWeightData(blendWeightData);
 			});

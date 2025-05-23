@@ -64,9 +64,12 @@ namespace NOWA
 		this->lightDirectionalComponent = nullptr;
 		if (nullptr != this->atmosphereNpr)
 		{
-			this->atmosphereNpr->setLight(nullptr);
-			delete this->atmosphereNpr;
-			this->atmosphereNpr = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::~AtmosphereComponent",
+			{
+				this->atmosphereNpr->setLight(nullptr);
+				delete this->atmosphereNpr;
+				this->atmosphereNpr = nullptr;
+			});
 		}
 	}
 
@@ -796,27 +799,30 @@ namespace NOWA
 			return false;
 		}
 
-		if (nullptr != this->atmosphereNpr)
+		ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::postInit",
 		{
-			this->atmosphereNpr->setLight(nullptr);
-			delete this->atmosphereNpr;
-			this->atmosphereNpr = nullptr;
-		}
+			if (nullptr != this->atmosphereNpr)
+			{
+				this->atmosphereNpr->setLight(nullptr);
+				delete this->atmosphereNpr;
+				this->atmosphereNpr = nullptr;
+			}
 
-		this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
+			this->atmosphereNpr = new Ogre::AtmosphereNpr(this->gameObjectPtr->getSceneManager()->getDestinationRenderSystem()->getVaoManager());
 
-		this->oldLightDirection = this->lightDirectionalComponent->getDirection();
-		// Todo: If terra is set, update for terra, see sample
-		this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
+			this->oldLightDirection = this->lightDirectionalComponent->getDirection();
+			// Todo: If terra is set, update for terra, see sample
+			this->atmosphereNpr->setLight(this->lightDirectionalComponent->getOgreLight());
 
-		{
-			// Preserve the Power Scale explicitly set by the sample
-			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
-			preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
-			this->atmosphereNpr->setPreset(preset);
-		}
+			{
+				// Preserve the Power Scale explicitly set by the sample
+				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
+				preset.linkedLightPower = this->lightDirectionalComponent->getOgreLight()->getPowerScale();
+				this->atmosphereNpr->setPreset(preset);
+			}
 
-		this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+			this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), this->enableSky->getBool());
+		});
 
 		return true;
 	}
@@ -849,7 +855,10 @@ namespace NOWA
 			presets.back().envmapScale = this->envmapScales[i]->getReal();
 		}
 
-		this->atmosphereNpr->setPresets(presets);
+		ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::connect", _1(presets),
+		{
+			this->atmosphereNpr->setPresets(presets);
+		});
 
 		// this->lightDirectionalComponent->setPowerScale(presets.front().sunPower);
 
@@ -866,7 +875,10 @@ namespace NOWA
 			this->update(0.016, false);
 		}
 
-		this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
+		ENQUEUE_RENDER_COMMAND("AtmosphereComponent::disconnect",
+		{
+			this->lightDirectionalComponent->getOgreLight()->setDirection(this->oldLightDirection);
+		});
 
 		return true;
 	}
@@ -879,27 +891,31 @@ namespace NOWA
 
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 			// Reupdate ambient light for better render results and getting rid of strange flimmer. See: https://forums.ogre3d.org/viewtopic.php?t=96576&start=25
-			sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
-				sceneManager->getAmbientLightLowerHemisphere(),
-				sceneManager->getAmbientLightHemisphereDir());
+
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::update1", _1(sceneManager),
+			{
+				sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
+					sceneManager->getAmbientLightLowerHemisphere(),
+					sceneManager->getAmbientLightHemisphereDir());
+			});
 
 			//sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 			//							  	sceneManager->getAmbientLightLowerHemisphere(),
 			//							   -this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated() + Ogre::Vector3::UNIT_Y * 0.2f);
 			
 
-#if 0
-			this->timeOfDay += this->timeMultiplicator->getReal() * dt;
-			if (this->timeOfDay >= Ogre::Math::PI)
-			{
-				this->timeOfDay = -Ogre::Math::PI + std::fmod(this->timeOfDay, Ogre::Math::PI);
-			}
 
-			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
-			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
+			//this->timeOfDay += this->timeMultiplicator->getReal() * dt;
+			//if (this->timeOfDay >= Ogre::Math::PI)
+			//{
+			//	this->timeOfDay = -Ogre::Math::PI + std::fmod(this->timeOfDay, Ogre::Math::PI);
+			//}
 
-			this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay / Ogre::Math::PI);
-#endif
+			//this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
+			//this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
+
+			//this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay / Ogre::Math::PI);
+
 			// Issue: Since ranges are not equal, short ranges will durate longer as longer ranges
 
 			// Day has 4 zones aka 6 hours. See @setStartTime table
@@ -934,14 +950,17 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::update2", _1(dt),
+			{
+				const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
 
-			// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
-			Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), dt, 60.0f);
-			this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
-			// Not used, because multpile presets and updatePreset is used
-			// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
-			this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
+				// this->lightDirectionalComponent->getOgreLight()->setDirection(sunDir);
+				Ogre::Quaternion newOrientation = MathHelper::getInstance()->faceDirectionSlerp(this->lightDirectionalComponent->getOwner()->getSceneNode()->getOrientation(), sunDir, lightDirectionalComponent->getOwner()->getDefaultDirection(), dt, 60.0f);
+				this->lightDirectionalComponent->getOwner()->getSceneNode()->_setDerivedOrientation(newOrientation);
+				// Not used, because multpile presets and updatePreset is used
+				// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
+				this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
+			});
 
 			if (true == this->bShowDebugData)
 			{
@@ -1299,7 +1318,10 @@ namespace NOWA
 	void AtmosphereComponent::setEnableSky(bool enableSky)
 	{
 		this->enableSky->setValue(enableSky);
-		this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), enableSky);
+		ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setEnableSky", _1(enableSky),
+		{
+			this->atmosphereNpr->setSky(this->gameObjectPtr->getSceneManager(), enableSky);
+		});
 	}
 
 	bool AtmosphereComponent::getEnableSky(void) const
@@ -1398,7 +1420,9 @@ namespace NOWA
 	void AtmosphereComponent::setTime(unsigned int index, const Ogre::String& time)
 	{
 		if (index > this->times.size())
+		{
 			index = static_cast<unsigned int>(this->times.size()) - 1;
+		}
 
 		Ogre::Real normalizedTime = this->convertTime(time);
 
@@ -1406,10 +1430,14 @@ namespace NOWA
 
 		if (nullptr != this->atmosphereNpr)
 		{
+			
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.time = normalizedTime;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setTime", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1435,7 +1463,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.densityCoeff = densityCoefficient;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setDensityCoefficient", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1461,7 +1492,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.densityDiffusion = densityDiffusion;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setDensityDiffusion", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1473,8 +1507,9 @@ namespace NOWA
 	void AtmosphereComponent::setHorizonLimit(unsigned int index, Ogre::Real horizonLimit)
 	{
 		if (index > this->horizonLimits.size())
+		{
 			index = static_cast<unsigned int>(this->horizonLimits.size()) - 1;
-
+		}
 		if (horizonLimit < 0.0f)
 		{
 			horizonLimit = 0.0f;
@@ -1486,8 +1521,10 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.horizonLimit = horizonLimit;
-
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setHorizonLimit", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1499,8 +1536,9 @@ namespace NOWA
 	void AtmosphereComponent::setSunPower(unsigned int index, Ogre::Real sunPower)
 	{
 		if (index > this->sunPowers.size())
+		{
 			index = static_cast<unsigned int>(this->sunPowers.size()) - 1;
-
+		}
 		if (sunPower < 0.0f)
 		{
 			sunPower = 0.0f;
@@ -1513,7 +1551,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.sunPower = sunPower;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSunPower", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1525,8 +1566,9 @@ namespace NOWA
 	void AtmosphereComponent::setSkyPower(unsigned int index, Ogre::Real skyPower)
 	{
 		if (index > this->skyPowers.size())
+		{
 			index = static_cast<unsigned int>(this->skyPowers.size()) - 1;
-
+		}
 		if (skyPower < 0.0f)
 		{
 			skyPower = 0.0f;
@@ -1540,8 +1582,10 @@ namespace NOWA
 			{
 				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 				preset.skyPower = skyPower;
-
-				this->atmosphereNpr->setPreset(preset);
+				ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSunPower", _1(preset),
+				{
+					this->atmosphereNpr->setPreset(preset);
+				});
 			}
 		}
 	}
@@ -1554,7 +1598,9 @@ namespace NOWA
 	void AtmosphereComponent::setSkyColor(unsigned int index, const Ogre::Vector3& skyColor)
 	{
 		if (index > this->skyColors.size())
+		{
 			index = static_cast<unsigned int>(this->skyColors.size()) - 1;
+		}
 
 		Ogre::Vector3 tempSkyColor(skyColor);
 		if (tempSkyColor.x < 0.0f)
@@ -1592,8 +1638,10 @@ namespace NOWA
 			{
 				Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 				preset.skyColour = tempSkyColor;
-
-				this->atmosphereNpr->setPreset(preset);
+				ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setSkyColor", _1(preset),
+				{
+					this->atmosphereNpr->setPreset(preset);
+				});
 			}
 		}
 	}
@@ -1606,7 +1654,9 @@ namespace NOWA
 	void AtmosphereComponent::setFogDensity(unsigned int index, Ogre::Real fogDensity)
 	{
 		if (index > this->fogDensities.size())
+		{
 			index = static_cast<unsigned int>(this->fogDensities.size()) - 1;
+		}
 
 		if (fogDensity < 0.0f)
 		{
@@ -1623,8 +1673,10 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogDensity = fogDensity;
-
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogDensity", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1636,8 +1688,9 @@ namespace NOWA
 	void AtmosphereComponent::setFogBreakMinBrightness(unsigned int index, Ogre::Real fogBreakMinBrightness)
 	{
 		if (index > this->fogBreakMinBrightnesses.size())
+		{
 			index = static_cast<unsigned int>(this->fogBreakMinBrightnesses.size()) - 1;
-
+		}
 		if (fogBreakMinBrightness < 0.0f)
 		{
 			fogBreakMinBrightness = 0.0f;
@@ -1649,8 +1702,10 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogBreakMinBrightness = fogBreakMinBrightness;
-
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogBreakMinBrightness", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1662,8 +1717,9 @@ namespace NOWA
 	void AtmosphereComponent::setFogBreakFalloff(unsigned int index, Ogre::Real fogBreakFalloff)
 	{
 		if (index > this->fogBreakFalloffs.size())
+		{
 			index = static_cast<unsigned int>(this->fogBreakFalloffs.size()) - 1;
-
+		}
 		if (fogBreakFalloff < 0.01f)
 		{
 			fogBreakFalloff = 0.01f;
@@ -1676,7 +1732,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.fogBreakFalloff = fogBreakFalloff;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setFogBreakMinBrightness", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1688,7 +1747,9 @@ namespace NOWA
 	void AtmosphereComponent::setLinkedLightPower(unsigned int index, Ogre::Real linkedLightPower)
 	{
 		if (index > this->linkedLightPowers.size())
+		{
 			index = static_cast<unsigned int>(this->linkedLightPowers.size()) - 1;
+		}
 
 		if (linkedLightPower < 0.01f)
 		{
@@ -1702,7 +1763,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedLightPower = linkedLightPower;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedLightPower", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1714,8 +1778,9 @@ namespace NOWA
 	void AtmosphereComponent::setLinkedAmbientUpperPower(unsigned int index, Ogre::Real linkedAmbientUpperPower)
 	{
 		if (index > this->linkedSceneAmbientUpperPowers.size())
+		{
 			index = static_cast<unsigned int>(this->linkedSceneAmbientUpperPowers.size()) - 1;
-
+		}
 		if (linkedAmbientUpperPower < 0.01f)
 		{
 			linkedAmbientUpperPower = 0.01f;
@@ -1727,8 +1792,10 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedSceneAmbientUpperPower = linkedAmbientUpperPower;
-
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedAmbientUpperPower", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1740,8 +1807,9 @@ namespace NOWA
 	void AtmosphereComponent::setLinkedAmbientLowerPower(unsigned int index, Ogre::Real linkedAmbientLowerPower)
 	{
 		if (index > this->linkedSceneAmbientLowerPowers.size())
+		{
 			index = static_cast<unsigned int>(this->linkedSceneAmbientLowerPowers.size()) - 1;
-
+		}
 		if (linkedAmbientLowerPower < 0.01f)
 		{
 			linkedAmbientLowerPower = 0.01f;
@@ -1753,8 +1821,10 @@ namespace NOWA
 		{
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.linkedSceneAmbientLowerPower = linkedAmbientLowerPower;
-
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setLinkedAmbientLowerPower", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1766,8 +1836,9 @@ namespace NOWA
 	void AtmosphereComponent::setEnvmapScale(unsigned int index, Ogre::Real envmapScale)
 	{
 		if (index > this->envmapScales.size())
+		{
 			index = static_cast<unsigned int>(this->envmapScales.size()) - 1;
-
+		}
 		if (envmapScale < 0.01f)
 		{
 			envmapScale = 0.01f;
@@ -1784,7 +1855,10 @@ namespace NOWA
 			Ogre::AtmosphereNpr::Preset preset = this->atmosphereNpr->getPreset();
 			preset.envmapScale = envmapScale;
 
-			this->atmosphereNpr->setPreset(preset);
+			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::setEnvmapScale", _1(preset),
+			{
+				this->atmosphereNpr->setPreset(preset);
+			});
 		}
 	}
 
@@ -1795,12 +1869,22 @@ namespace NOWA
 
 	void AtmosphereComponent::setSunDir(const Ogre::Radian& sunAltitude, const Ogre::Radian& azimuth)
 	{
-		this->atmosphereNpr->setSunDir(sunAltitude, azimuth);
+		// Avoids possible issues if this is changed/destroyed.
+		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("AtmosphereComponent::setSunDir1", _3(atmosphereNpr, sunAltitude, azimuth),
+		{
+			atmosphereNpr->setSunDir(sunAltitude, azimuth);
+		});
 	}
 
 	void AtmosphereComponent::setSunDir(const Ogre::Vector3& sunDir, const Ogre::Real normalizedTimeOfDay)
 	{
-		this->atmosphereNpr->setSunDir(sunDir, normalizedTimeOfDay);
+		// Avoids possible issues if this is changed/destroyed.
+		auto atmosphereNpr = this->atmosphereNpr; // Capture pointer explicitly
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("AtmosphereComponent::setSunDir2", _3(atmosphereNpr, sunDir, normalizedTimeOfDay),
+		{
+			atmosphereNpr->setSunDir(sunDir, normalizedTimeOfDay);
+		});
 	}
 
 	Ogre::Vector3 AtmosphereComponent::getAtmosphereAt(const Ogre::Vector3& cameraDir, bool bSkipSun)

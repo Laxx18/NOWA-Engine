@@ -2967,20 +2967,6 @@ namespace NOWA
 			/*std::pair<bool, Ogre::Vector3> result = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getTargetBodyPosition(ms.X.abs, ms.Y.abs,
 				AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), this->playerController->getPhysicsComponent()->getOgreNewt(),
 				this->playerController->getCategoriesId(), this->playerController->getRange(), true);*/
-			Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
-			Ogre::Real closestDistance = 0.0f;
-			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
-			Ogre::MovableObject* movableObject = nullptr;
-
-			std::vector<Ogre::MovableObject*> excludeObjects;
-			// Exclude the player, else the final way point can be placed on the top of the player^^
-			excludeObjects.emplace_back(this->playerController->getOwner()->getMovableObject());
-			// No: Else if unvalid path has been found, player can no more get to other target position
-			//if (nullptr != this->playerController->debugWaypointNode)
-			//{
-			//	// Exclude also created waypoint entity
-			//	excludeObjects.emplace_back(this->playerController->debugWaypointNode->getAttachedObject(0));
-			//}
 
 			if (true == this->canClick)
 			{
@@ -2993,8 +2979,49 @@ namespace NOWA
 				}
 			}
 
-			bool success = MathHelper::getInstance()->getRaycastFromPoint(this->mouseX, this->mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(),
-				Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery, clickedPosition, (size_t&)movableObject, closestDistance, normal, &excludeObjects, false);
+			// bool success = MathHelper::getInstance()->getRaycastFromPoint(this->mouseX, this->mouseY, AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(),
+			// 	Core::getSingletonPtr()->getOgreRenderWindow(), this->raySceneQuery, clickedPosition, (size_t&)movableObject, closestDistance, normal, &excludeObjects, false);
+
+			Ogre::Vector3 clickedPosition = Ogre::Vector3::ZERO;
+			Ogre::Real closestDistance = 0.0f;
+			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+			Ogre::MovableObject* movableObject = nullptr;
+
+			std::vector<Ogre::MovableObject*> excludeObjects;
+			excludeObjects.emplace_back(this->playerController->getOwner()->getMovableObject());
+
+			int mouseXLocal = this->mouseX;
+			int mouseYLocal = this->mouseY;
+
+#if 0
+			//  These locals will be written by the lambda:
+			Ogre::Vector3 clickedPositionLocal = Ogre::Vector3::ZERO;
+			Ogre::Vector3 normalLocal = Ogre::Vector3::ZERO;
+			float closestDistanceLocal = 0.0f;
+			size_t movableObjectLocal = 0;
+
+			bool success = RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<bool>(
+				[=, &clickedPositionLocal, &normalLocal, &closestDistanceLocal, &movableObjectLocal, &excludeObjects]() -> bool
+				{
+					auto camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+					auto renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
+					auto raySceneQuery = this->raySceneQuery;
+					auto mathHelper = MathHelper::getInstance();
+
+					return mathHelper->getRaycastFromPoint(mouseXLocal, mouseYLocal, camera, renderWindow, raySceneQuery, clickedPositionLocal, movableObjectLocal, closestDistanceLocal, normalLocal, &excludeObjects, false);
+				}, "PathFollowState3D::update getRaycastFromPoint");
+
+			// Copy back the results safely
+			if (true == success)
+			{
+				clickedPosition = clickedPositionLocal;
+				closestDistance = closestDistanceLocal;
+				normal = normalLocal;
+				movableObject = reinterpret_cast<Ogre::MovableObject*>(movableObjectLocal);
+			}
+#endif
+
+			ENQUEUE_RAYCAST4(mouseXLocal, mouseYLocal, excludeObjects, clickedPosition, closestDistance, normal, movableObject, success);
 
 			if (true == success)
 			{
@@ -3053,48 +3080,33 @@ namespace NOWA
 
 						if (false == path.empty())
 						{
-							for (size_t i = 0; i < path.size(); i++)
+							auto playerController = this->playerController;
+							ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AddWaypoints", _2(path, playerController),
 							{
-#if 0
-								Ogre::Vector3 waypoint = path[i];
-								waypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-								Ogre::Vector3 resultWaypoint = Ogre::Vector3::ZERO;
-
-								std::vector<Ogre::MovableObject*> excludeObject = std::vector<Ogre::MovableObject*>(1);
-								// Exclude the player, else the final way point can be placed on the top of the player^^
-								excludeObject[0] = this->playerController->getOwner()->getMovableObject();
-								bool success = MathHelper::getInstance()->getRaycastResult(waypoint, Ogre::Vector3::NEGATIVE_UNIT_Y, this->raySceneQuery, resultWaypoint, (size_t&)movableObject, &excludeObject);
-								if (false == success)
+								for (size_t i = 0; i < path.size(); i++)
 								{
-									waypoint = path[i];
-								}
-								else
-								{
-									waypoint.y = resultWaypoint.y;
-								}
-#endif
+									Ogre::Vector3 resultWaypoint = path[i];
+									// resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
 
-								Ogre::Vector3 resultWaypoint = path[i];
-								// resultWaypoint.y += this->playerController->getOwner()->getPosition().y /** 2.0f*/;
-
-								// First wp is useless at it is at the same position as the player
-								if (i > 0)
-								{
-									this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
-
-									if (true == this->playerController->getDrawPath())
+									// First wp is useless at it is at the same position as the player
+									if (i > 0)
 									{
-										if (nullptr == this->playerController->debugWaypointNode)
+										this->movingBehavior->getPath()->addWayPoint(resultWaypoint);
+
+										if (true == this->playerController->getDrawPath())
 										{
-											this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-											Ogre::v1::Entity* entity = this->playerController->getOwner()->getSceneManager()->createEntity("Node.mesh");
-											this->playerController->debugWaypointNode->attachObject(entity);
+											if (nullptr == this->playerController->debugWaypointNode)
+											{
+												this->playerController->debugWaypointNode = this->playerController->getOwner()->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+												Ogre::v1::Entity* entity = this->playerController->getOwner()->getSceneManager()->createEntity("Node.mesh");
+												this->playerController->debugWaypointNode->attachObject(entity);
+											}
+
+											this->playerController->debugWaypointNode->setPosition(resultWaypoint);
 										}
-											
-										this->playerController->debugWaypointNode->setPosition(resultWaypoint);
 									}
 								}
-							}
+							});
 
 							this->playerController->setMoveWeight(1.0f);
 							this->playerController->setJumpWeight(1.0f);

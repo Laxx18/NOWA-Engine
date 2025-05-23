@@ -166,7 +166,10 @@ namespace NOWA
 			// this->resourceInfo->setItemName(resourceName); // Itemname comes from XML and is something different
 			if (false == this->resourceInfo->getItemResourceImage().empty())
 			{
-				this->resourceImage = manager.getByName(this->resourceInfo->getItemResourceImage())->castType<MyGUI::ResourceImageSet>();
+				ENQUEUE_RENDER_COMMAND_MULTI("ItemData::setResourceName", _1(manager),
+				{
+					this->resourceImage = manager.getByName(this->resourceInfo->getItemResourceImage())->castType<MyGUI::ResourceImageSet>();
+				});
 			}
 		}
 	}
@@ -318,102 +321,114 @@ namespace NOWA
 	CellView::CellView(MyGUI::Widget* _parent) :
 		wraps::BaseCellView<ItemData*>("CellView.layout", _parent)
 	{
-		assignWidget(mImageBack, "image_Back");
-		assignWidget(mImageBorder, "image_Border");
-		assignWidget(mImageItem, "image_Item");
-		assignWidget(mTextBack, "text_Back");
-		assignWidget(mTextFront, "text_Front");
+		ENQUEUE_RENDER_COMMAND_WAIT("ItemBox::CellView::CellView",
+		{
+			assignWidget(mImageBack, "image_Back");
+			assignWidget(mImageBorder, "image_Border");
+			assignWidget(mImageItem, "image_Item");
+			assignWidget(mTextBack, "text_Back");
+			assignWidget(mTextFront, "text_Front");
+		});
 	}
 
 	void CellView::update(const MyGUI::IBDrawItemInfo& _info, ItemData* _data)
 	{
 		if (_info.update)
 		{
-			if (!_data->isEmpty())
+			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update1", _2(_info, _data),
 			{
-				mImageItem->setItemResourcePtr(_data->getImage());
-				mImageItem->setItemGroup("States");
-				mImageItem->setVisible(true);
-			}
-			else
-			{
-				mImageItem->setVisible(false);
-			}
-			mTextBack->setCaption(((_data->getQuantity() > 1) && (!_info.drag)) ? MyGUI::utility::toString(_data->getQuantity()) : "");
-			mTextFront->setCaption(((_data->getQuantity() > 1) && (!_info.drag)) ? MyGUI::utility::toString(_data->getQuantity()) : "");
+				if (!_data->isEmpty())
+				{
+					mImageItem->setItemResourcePtr(_data->getImage());
+					mImageItem->setItemGroup("States");
+					mImageItem->setVisible(true);
+				}
+				else
+				{
+					mImageItem->setVisible(false);
+				}
+				mTextBack->setCaption(((_data->getQuantity() > 1) && (!_info.drag)) ? MyGUI::utility::toString(_data->getQuantity()) : "");
+				mTextFront->setCaption(((_data->getQuantity() > 1) && (!_info.drag)) ? MyGUI::utility::toString(_data->getQuantity()) : "");
 
-			static MyGUI::ResourceImageSetPtr resourceBack = nullptr;
-			static MyGUI::ResourceImageSetPtr resourceSelect = nullptr;
-			if (resourceBack == nullptr)
-				resourceBack = MyGUI::ResourceManager::getInstance().getByName("pic_ItemBackImage")->castType<MyGUI::ResourceImageSet>(false);
-			if (resourceSelect == nullptr)
-				resourceSelect = MyGUI::ResourceManager::getInstance().getByName("pic_ItemSelectImage")->castType<MyGUI::ResourceImageSet>(false);
+				static MyGUI::ResourceImageSetPtr resourceBack = nullptr;
+				static MyGUI::ResourceImageSetPtr resourceSelect = nullptr;
+				if (resourceBack == nullptr)
+					resourceBack = MyGUI::ResourceManager::getInstance().getByName("pic_ItemBackImage")->castType<MyGUI::ResourceImageSet>(false);
+				if (resourceSelect == nullptr)
+					resourceSelect = MyGUI::ResourceManager::getInstance().getByName("pic_ItemSelectImage")->castType<MyGUI::ResourceImageSet>(false);
 
-			mImageBack->setItemResourcePtr(resourceBack);
-			mImageBack->setItemGroup("States");
-			mImageBorder->setItemResourcePtr(resourceSelect);
-			mImageBorder->setItemGroup("States");
+				mImageBack->setItemResourcePtr(resourceBack);
+				mImageBack->setItemGroup("States");
+				mImageBorder->setItemResourcePtr(resourceSelect);
+				mImageBorder->setItemGroup("States");
+			});
 		}
 
 		if (_info.drag && nullptr != _data->getInfo())
 		{
-			mImageBack->setItemName("None");
-			mImageBorder->setItemName("None");
+			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update drag", _2(_info, _data),
+			{
+				mImageBack->setItemName("None");
+				mImageBorder->setItemName("None");
 
-			if (!_data->isEmpty())
-			{
-				if (_info.drop_refuse)
-					mImageItem->setItemName("Refuse");
-				else if (_info.drop_accept)
-					mImageItem->setItemName("Accept");
+				if (!_data->isEmpty())
+				{
+					if (_info.drop_refuse)
+						mImageItem->setItemName("Refuse");
+					else if (_info.drop_accept)
+						mImageItem->setItemName("Accept");
+					else
+						mImageItem->setItemName("Normal");
+					mImageItem->setVisible(true);
+				}
 				else
-					mImageItem->setItemName("Normal");
-				mImageItem->setVisible(true);
-			}
-			else
-			{
-				mImageItem->setVisible(false);
-			}
+				{
+					mImageItem->setVisible(false);
+				}
+			});
 		}
 		else
 		{
-			if (_info.active)
+			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update2", _2(_info, _data),
 			{
-				if (_info.select)
-					mImageBack->setItemName("Select");
+				if (_info.active)
+				{
+					if (_info.select)
+						mImageBack->setItemName("Select");
+					else
+						mImageBack->setItemName("Active");
+				}
+				else if (_info.select)
+					mImageBack->setItemName("Pressed");
 				else
-					mImageBack->setItemName("Active");
-			}
-			else if (_info.select)
-				mImageBack->setItemName("Pressed");
-			else
-				mImageBack->setItemName("Normal");
+					mImageBack->setItemName("Normal");
 
-			if (_info.drop_refuse)
-			{
-				mImageBorder->setItemName("Refuse");
-				mTextFront->setTextColour(MyGUI::Colour::Red);
-			}
-			else if (_info.drop_accept)
-			{
-				mImageBorder->setItemName("Accept");
-				mTextFront->setTextColour(MyGUI::Colour::Green);
-			}
-			else
-			{
-				mImageBorder->setItemName("Normal");
-				mTextFront->setTextColour(MyGUI::Colour::White);
-			}
+				if (_info.drop_refuse)
+				{
+					mImageBorder->setItemName("Refuse");
+					mTextFront->setTextColour(MyGUI::Colour::Red);
+				}
+				else if (_info.drop_accept)
+				{
+					mImageBorder->setItemName("Accept");
+					mTextFront->setTextColour(MyGUI::Colour::Green);
+				}
+				else
+				{
+					mImageBorder->setItemName("Normal");
+					mTextFront->setTextColour(MyGUI::Colour::White);
+				}
 
-			if (!_data->isEmpty())
-			{
-				mImageItem->setItemName("Normal");
-				mImageItem->setVisible(true);
-			}
-			else
-			{
-				mImageItem->setVisible(false);
-			}
+				if (!_data->isEmpty())
+				{
+					mImageItem->setItemName("Normal");
+					mImageItem->setVisible(true);
+				}
+				else
+				{
+					mImageItem->setVisible(false);
+				}
+			});
 		}
 	}
 
@@ -426,12 +441,15 @@ namespace NOWA
 
 	ItemBox::~ItemBox()
 	{
-		MyGUI::ItemBox* box = getItemBox();
-		size_t count = box->getItemCount();
-		for (size_t pos = 0; pos < count; ++pos)
+		ENQUEUE_RENDER_COMMAND_WAIT("ItemBox::~ItemBox",
 		{
-			delete* box->getItemDataAt<ItemData*>(pos);
-		}
+			MyGUI::ItemBox * box = getItemBox();
+			size_t count = box->getItemCount();
+			for (size_t pos = 0; pos < count; ++pos)
+			{
+				delete* box->getItemDataAt<ItemData*>(pos);
+			}
+		});
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -439,7 +457,10 @@ namespace NOWA
 	ItemBoxWindow::ItemBoxWindow(const std::string& _layout) :
 		BaseLayout(_layout)
 	{
-		assignBase(mItemBox, "box_Items");
+		ENQUEUE_RENDER_COMMAND_WAIT("ItemBoxWindow::ItemBoxWindow",
+		{
+			assignBase(mItemBox, "box_Items");
+		});
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -479,31 +500,34 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIItemBoxComponent] Destructor MyGUI item box component for game object: " + this->gameObjectPtr->getName());
 		
-		std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
-		MyGUI::FactoryManager::getInstance().unregisterFactory<ResourceItemInfo>(resourceCategory);
-
-		// Is done in MyGUIWidgetComponent
-		if (nullptr != this->itemBoxWindow)
+		ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::~MyGUIItemBoxComponent",
 		{
-			if (nullptr != this->widget)
+			std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
+			MyGUI::FactoryManager::getInstance().unregisterFactory<ResourceItemInfo>(resourceCategory);
+
+			// Is done in MyGUIWidgetComponent
+			if (nullptr != this->itemBoxWindow)
 			{
-				MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
-				this->widget = nullptr;
+				if (nullptr != this->widget)
+				{
+					MyGUI::Gui::getInstancePtr()->destroyWidget(this->widget);
+					this->widget = nullptr;
+				}
+				delete this->itemBoxWindow;
+				this->itemBoxWindow = nullptr;
 			}
-			delete this->itemBoxWindow;
-			this->itemBoxWindow = nullptr;
-		}
-		if (nullptr != this->toolTip)
-		{
-			delete this->toolTip;
-			this->toolTip = nullptr;
-		}
+			if (nullptr != this->toolTip)
+			{
+				delete this->toolTip;
+				this->toolTip = nullptr;
+			}
 
-		if (nullptr != this->dragDropData)
-		{
-			delete this->dragDropData;
-			this->dragDropData = nullptr;
-		}
+			if (nullptr != this->dragDropData)
+			{
+				delete this->dragDropData;
+				this->dragDropData = nullptr;
+			}
+		});
 	}
 
 	bool MyGUIItemBoxComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -664,36 +688,39 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIItemBoxComponent] Init MyGUI item box component for game object: " + this->gameObjectPtr->getName());
 		
-		// Do not create widget in parent, because it is created here, but use other parent attributes
-		this->createWidgetInParent = false;
-		
-		std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
-		MyGUI::FactoryManager::getInstance().registerFactory<ResourceItemInfo>(resourceCategory);
-
-		bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
-		if (false == success)
+		ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::postInit",
 		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: "
-				+ this->resourceLocationName->getString() + ", because it cannot be found in '" + this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
-		}
-		//MyGUI::ResourceManager::getInstance().load("ItemBox_skin.xml");
+			// Do not create widget in parent, because it is created here, but use other parent attributes
+			this->createWidgetInParent = false;
 
-		this->itemBoxWindow = new ItemBoxWindow("ItemBox.layout");
+			std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
+			MyGUI::FactoryManager::getInstance().registerFactory<ResourceItemInfo>(resourceCategory);
 
-		this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
-		this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
-		this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
-		this->itemBoxWindow->getItemBox()->eventChangeDDState = newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
-		this->itemBoxWindow->getItemBox()->eventNotifyItem = newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
-		// this->itemBoxWindow->getItemBox()->getItemBox()->requestCreateWidgetItem = newDelegate(this, &MyGUIItemBoxComponent::requestCreateWidgetItem);
-		// this->itemBoxWindow->getItemBox()->getItemBox()->requestCoordItem = newDelegate(this, &MyGUIItemBoxComponent::requestCoordItem);
-		// this->itemBoxWindow->getItemBox()->getItemBox()->requestDrawItem = newDelegate(this, &MyGUIItemBoxComponent::requestDrawItem);
+			bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
+			if (false == success)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: "
+					+ this->resourceLocationName->getString() + ", because it cannot be found in '" + this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
+			}
+			//MyGUI::ResourceManager::getInstance().load("ItemBox_skin.xml");
 
-		this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+			this->itemBoxWindow = new ItemBoxWindow("ItemBox.layout");
 
-		this->widget = this->itemBoxWindow->getMainWidget();
-		// this->widget->changeWidgetSkin("Window"); // Causes crash
-		this->setUseToolTip(this->useToolTip->getBool());
+			this->itemBoxWindow->getItemBox()->eventStartDrag = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyStartDrop);
+			this->itemBoxWindow->getItemBox()->eventRequestDrop = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyRequestDrop);
+			this->itemBoxWindow->getItemBox()->eventDropResult = MyGUI::newDelegate(this, &MyGUIItemBoxComponent::notifyEndDrop);
+			this->itemBoxWindow->getItemBox()->eventChangeDDState = newDelegate(this, &MyGUIItemBoxComponent::notifyDropState);
+			this->itemBoxWindow->getItemBox()->eventNotifyItem = newDelegate(this, &MyGUIItemBoxComponent::notifyNotifyItem);
+			// this->itemBoxWindow->getItemBox()->getItemBox()->requestCreateWidgetItem = newDelegate(this, &MyGUIItemBoxComponent::requestCreateWidgetItem);
+			// this->itemBoxWindow->getItemBox()->getItemBox()->requestCoordItem = newDelegate(this, &MyGUIItemBoxComponent::requestCoordItem);
+			// this->itemBoxWindow->getItemBox()->getItemBox()->requestDrawItem = newDelegate(this, &MyGUIItemBoxComponent::requestDrawItem);
+
+			this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+
+			this->widget = this->itemBoxWindow->getMainWidget();
+			// this->widget->changeWidgetSkin("Window"); // Causes crash
+			this->setUseToolTip(this->useToolTip->getBool());
+		});
 
 		this->setItemCount(this->itemCount->getUInt());
 		this->resourceNames.resize(this->itemCount->getUInt());
@@ -969,8 +996,11 @@ namespace NOWA
 
 		_result = true == this->dragDropData->canDrop && (receiverData->isEmpty() || receiverData->compare(senderData));
 
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::notifyRequestDrop",
+		{
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 
 	void MyGUIItemBoxComponent::notifyEndDrop(wraps::BaseLayout* _sender, wraps::DDItemInfo _info, bool _result)
@@ -1097,8 +1127,11 @@ namespace NOWA
 			static_cast<ItemBox*>(_info.receiver)->setItemData(_info.receiver_index, receiverData);
 			static_cast<ItemBox*>(_info.sender)->setItemData(_info.sender_index, senderData);
 
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::notifyEndDrop",
+			{
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 
 			this->dropFinished = true;
 		}
@@ -1167,9 +1200,12 @@ namespace NOWA
 		ItemData* data = *_sender->getItemDataAt<ItemData*>(_info.index);
 		if (_info.drag)
 		{
-			text->setCaption(MyGUI::utility::toString(
-				_info.drop_accept ? "#00FF00drag accept" : (_info.drop_refuse ? "#FF0000drag refuse" : "#0000FFdrag miss"),
-				"\n#000000data : ", data->getResourceName()));
+			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::requestDrawItem", _1(info),
+			{
+				text->setCaption(MyGUI::utility::toString(
+					_info.drop_accept ? "#00FF00drag accept" : (_info.drop_refuse ? "#FF0000drag refuse" : "#0000FFdrag miss"),
+					"\n#000000data : ", data->getResourceName()));
+			});
 		}
 		else
 		{
@@ -1228,19 +1264,22 @@ namespace NOWA
 	{
 		if (true == this->useToolTip->getBool())
 		{
-			if (_info.type == MyGUI::ToolTipInfo::Show)
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIItemBoxComponent::notifyToolTip", _2(_info, _data),
 			{
-				this->toolTip->show(_data);
-				this->toolTip->move(_info.point);
-			}
-			else if (_info.type == MyGUI::ToolTipInfo::Hide)
-			{
-				this->toolTip->hide();
-			}
-			else if (_info.type == MyGUI::ToolTipInfo::Move)
-			{
-				this->toolTip->move(_info.point);
-			}
+				if (_info.type == MyGUI::ToolTipInfo::Show)
+				{
+					this->toolTip->show(_data);
+					this->toolTip->move(_info.point);
+				}
+				else if (_info.type == MyGUI::ToolTipInfo::Hide)
+				{
+					this->toolTip->hide();
+				}
+				else if (_info.type == MyGUI::ToolTipInfo::Move)
+				{
+					this->toolTip->move(_info.point);
+				}
+			});
 		}
 	}
 
@@ -1250,12 +1289,15 @@ namespace NOWA
 		this->resourceLocationName->setValue(resourceLocationName);
 		if (this->oldResourceLocationName != this->resourceLocationName->getString())
 		{
-			bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
-			if (false == success)
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIItemBoxComponent::setResourceLocationName", _1(resourceLocationName),
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: "
-					+ this->resourceLocationName->getString() + ", because it cannot be found in '" + this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
-			}
+				bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
+				if (false == success)
+				{
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] ERROR: Could not load resource: "
+						+ this->resourceLocationName->getString() + ", because it cannot be found in '" + this->resourceLocationName->getString() + "', for game object : " + this->gameObjectPtr->getName());
+				}
+			});
 			//MyGUI::ResourceManager::getInstance().load("ItemBox_skin.xml");
 
 			// Reset everything
@@ -1275,22 +1317,28 @@ namespace NOWA
 	{
 		if (true == this->useToolTip->getBool())
 		{
-			if (nullptr == this->toolTip)
+			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::setUseToolTip",
 			{
-				this->toolTip = new ToolTip();
-				toolTip->hide();
-			}
-			if (nullptr != this->itemBoxWindow)
-			{
-				this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
-			}
+				if (nullptr == this->toolTip)
+				{
+					this->toolTip = new ToolTip();
+					toolTip->hide();
+				}
+				if (nullptr != this->itemBoxWindow)
+				{
+					this->itemBoxWindow->getItemBox()->eventToolTip = newDelegate(this, &MyGUIItemBoxComponent::notifyToolTip);
+				}
+			});
 		}
 		else
 		{
 			if (nullptr != this->toolTip)
 			{
-				delete this->toolTip;
-				this->toolTip = nullptr;
+				ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::setUseToolTip delete",
+				{
+					delete this->toolTip;
+					this->toolTip = nullptr;
+				});
 			}
 		}
 	}
@@ -1328,7 +1376,11 @@ namespace NOWA
 				
 				if (nullptr != this->itemBoxWindow)
 				{
-					this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+					// TODO: Wait?
+					ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setItemCount",
+					{
+						this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+					});
 				}
 			}
 		}
@@ -1341,18 +1393,24 @@ namespace NOWA
 
 			if (nullptr != this->itemBoxWindow)
 			{
-				for (size_t i = itemCount; i < oldSize; i++)
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIItemBoxComponent::setItemCount erase", _2(itemCount, oldSize),
 				{
-					delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i);
-					this->itemBoxWindow->getItemBox()->removeItem(i);
-				}
+					for (size_t i = itemCount; i < oldSize; i++)
+					{
+						delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(i);
+						this->itemBoxWindow->getItemBox()->removeItem(i);
+					}
+				});
 			}
 		}
 		if (nullptr != this->itemBoxWindow)
 		{
-			// Trigger item box repaint update, so that resource will be visible
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setItemCount repaint",
+			{
+				// Trigger item box repaint update, so that resource will be visible
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 		}
 	}
 	
@@ -1374,9 +1432,12 @@ namespace NOWA
 			{
 				(*item)->setResourceName(resourceName);
 			}
-			// Trigger item box repaint update, so that resource will be visible
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setResourceName repaint",
+			{
+				// Trigger item box repaint update, so that resource will be visible
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 		}
 	}
 	
@@ -1401,10 +1462,12 @@ namespace NOWA
 				(*item)->setQuantity(quantity);
 			}
 		}
-
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setQuantity repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 	
 	void MyGUIItemBoxComponent::setQuantity(const Ogre::String& resourceName, unsigned int quantity)
@@ -1419,9 +1482,12 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set quantity, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
 		}
 
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setQuantity2 repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 	
 	unsigned int MyGUIItemBoxComponent::getQuantity(unsigned int index)
@@ -1518,9 +1584,12 @@ namespace NOWA
 						+ resourceName + ", because there is no free index anymore, because the inventory is full, for game object: " + this->gameObjectPtr->getName());
 				}
 			}
-			// Trigger item box repaint update, so that resource will be visible
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::addQuantity repaint",
+			{
+				// Trigger item box repaint update, so that resource will be visible
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 		}
 	}
 
@@ -1578,9 +1647,11 @@ namespace NOWA
 					(*item)->clear();
 				}
 			}
-
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::removeQuantity repaint",
+			{
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+				this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+			});
 		}
 	}
 
@@ -1599,9 +1670,12 @@ namespace NOWA
 			}
 		}
 
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setSellValue repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 
 	void MyGUIItemBoxComponent::setSellValue(const Ogre::String& resourceName, Ogre::Real sellValue)
@@ -1616,9 +1690,12 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set sell value, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
 		}
 
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setSellValue2 repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 
 	Ogre::Real MyGUIItemBoxComponent::getSellValue(unsigned int index)
@@ -1652,10 +1729,12 @@ namespace NOWA
 				(*item)->setBuyValue(buyValue);
 			}
 		}
-
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setBuyValue repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 
 	void MyGUIItemBoxComponent::setBuyValue(const Ogre::String& resourceName, Ogre::Real buyValue)
@@ -1669,10 +1748,12 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Could not set buy value, because the resource name: " + resourceName + " does not exist for game object: " + this->gameObjectPtr->getName());
 		}
-
-		// Trigger item box repaint update, so that resource will be visible
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
-		this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setBuyValue2 repaint",
+		{
+			// Trigger item box repaint update, so that resource will be visible
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x - 0.001f, this->size->getVector2().y - 0.001f);
+			this->itemBoxWindow->getMainWidget()->setRealSize(this->size->getVector2().x + 0.001f, this->size->getVector2().y + 0.001f);
+		});
 	}
 
 	Ogre::Real MyGUIItemBoxComponent::getBuyValue(unsigned int index)
@@ -1719,15 +1800,18 @@ namespace NOWA
 		{
 			this->setBuyValue(i, 0.0f);
 		}
-		for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::clearItems",
 		{
-			delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(0);
-			this->itemBoxWindow->getItemBox()->removeItem(0);
-		}
-		for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
-		{
-			this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
-		}
+			for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+			{
+				delete* this->itemBoxWindow->getItemBox()->getItemDataAt<ItemData*>(0);
+				this->itemBoxWindow->getItemBox()->removeItem(0);
+			}
+			for (unsigned int i = 0; i < this->itemCount->getUInt(); i++)
+			{
+				this->itemBoxWindow->getItemBox()->addItem(new ItemData(this->gameObjectPtr->getId()));
+			}
+		});
 	}
 
 	void MyGUIItemBoxComponent::reactOnDropItemRequest(luabind::object closureFunction)

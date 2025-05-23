@@ -20,27 +20,30 @@ namespace NOWA
 		ProcessManager::getInstance()->attachProcess(ProcessPtr(new FaderProcess(FaderProcess::FadeOperation::FADE_IN, 1.0f)));
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[IntroState] Entering...");
 
-		// Create scene manager
-		this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "IntroState");
-		// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
-		this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
-		this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
+		ENQUEUE_RENDER_COMMAND_WAIT("IntroState::enter",
+		{
+			// Create scene manager
+			this->sceneManager = Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, 1, "IntroState");
+			// this->sceneManager->setAmbientLight(Ogre::ColourValue(0.7f, 0.7f, 0.7f));
+			this->sceneManager->addRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
+			this->sceneManager->getRenderQueue()->setSortRenderQueue(Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId, Ogre::RenderQueue::StableSort);
 
-		// Create camera
-		this->camera = this->sceneManager->createCamera("IntroCamera");
-		this->camera->setPosition(Ogre::Vector3(0, 25, -50));
-		this->camera->lookAt(Ogre::Vector3(0, 0, 0));
-		this->camera->setNearClipDistance(1);
-		this->camera->setAutoAspectRatio(true);
+			// Create camera
+			this->camera = this->sceneManager->createCamera("IntroCamera");
+			this->camera->setPosition(Ogre::Vector3(0, 25, -50));
+			this->camera->lookAt(Ogre::Vector3(0, 0, 0));
+			this->camera->setNearClipDistance(1);
+			this->camera->setAutoAspectRatio(true);
 
-		WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
+			WorkspaceModule::getInstance()->setPrimaryWorkspace(this->sceneManager, this->camera, nullptr);
 
-		this->initializeModules(false, false);
+			this->initializeModules(false, false);
 
-		this->bQuit = false;
-		this->introTimeDt = 10.0f;
+			this->bQuit = false;
+			this->introTimeDt = 10.0f;
 
-		this->createScene();
+			this->createScene();
+		});
 	}
 
 	void IntroState::createScene(void)

@@ -29,13 +29,16 @@ namespace
 		virtual void onInit(void) override
 		{
 			this->succeed();
-			// Attention: Is this necessary, or here id of external node to be tracked?
-			if (nullptr != this->trackNode)
+			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponent SetDataBlockProcess::onInit",
 			{
-				this->ribbonTrail->addNode(this->trackNode);
-			}
-			this->ribbonTrail->setVisible(true);
-			this->ribbonTrail->setDatablock(this->datablockName);
+				// Attention: Is this necessary, or here id of external node to be tracked?
+				if (nullptr != this->trackNode)
+				{
+					this->ribbonTrail->addNode(this->trackNode);
+				}
+				this->ribbonTrail->setVisible(true);
+				this->ribbonTrail->setDatablock(this->datablockName);
+			});
 
 			//https://forums.ogre3d.org/viewtopic.php?t=82797
 			//static_cast<Ogre::HlmsUnlitDatablock*>(this->ribbonTrail->getDatablock())->setTextureUvSource(0, 0); //Tex Unit 0 will be sampled using uv0
@@ -109,7 +112,10 @@ namespace NOWA
 			this->faceCameraId->setValue(static_cast<unsigned long>(0));
 			if (nullptr != this->ribbonTrail)
 			{
-				this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::ZERO);
+				ENQUEUE_RENDER_COMMAND("RibbonTrailComponen::handleRemoveCamera",
+				{
+					this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::ZERO);
+				});
 			}
 		}
 	}
@@ -290,13 +296,16 @@ namespace NOWA
 
 		if (nullptr != this->ribbonTrail)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->ribbonTrail);
-			this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
-			delete this->ribbonTrail;
-			this->ribbonTrail = nullptr;
+			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponen::onRemoveComponent",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->ribbonTrail);
+				this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
+				delete this->ribbonTrail;
+				this->ribbonTrail = nullptr;
 
-			delete this->billboardSet;
-			this->billboardSet = nullptr;
+				delete this->billboardSet;
+				this->billboardSet = nullptr;
+			});
 		}
 	}
 
@@ -306,7 +315,10 @@ namespace NOWA
 		{
 			// Is already called by ogre
 			// this->ribbonTrail->preRender(this->gameObjectPtr->getSceneManager(), Ogre::Root::getSingletonPtr()->getRenderSystem());
-			this->ribbonTrail->_timeUpdate(dt);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::update", _1(dt),
+			{
+				this->ribbonTrail->_timeUpdate(dt);
+			});
 			
 			/*if (nullptr != this->camera)
 			{
@@ -319,56 +331,59 @@ namespace NOWA
 	{
 		if (nullptr == this->ribbonTrail)
 		{
-			// Creates a ribbon trail that our lights will leave behind
-			this->ribbonTrail = new Ogre::v1::RibbonTrail(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
-				this->gameObjectPtr->getSceneManager(), this->maxChainElements->getUInt(), this->numberOfChains->getUInt());
-			
-			// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
-			// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_LEGACY);
+			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponen::createRibbonTrail",
+			{
+				// Creates a ribbon trail that our lights will leave behind
+				this->ribbonTrail = new Ogre::v1::RibbonTrail(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
+					this->gameObjectPtr->getSceneManager(), this->maxChainElements->getUInt(), this->numberOfChains->getUInt());
 
-			auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
+				// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+				// this->ribbonTrail->setRenderQueueGroup(NOWA::RENDER_QUEUE_LEGACY);
 
-			DeployResourceModule::getInstance()->tagResource(this->datablockName->getListSelectedValue(), data.first, data.second);
+				auto data = DeployResourceModule::getInstance()->getPathAndResourceGroupFromDatablock(this->datablockName->getListSelectedValue(), Ogre::HlmsTypes::HLMS_UNLIT);
 
-			this->ribbonTrail->setQueryFlags(0);
-			this->ribbonTrail->setDynamic(true);
+				DeployResourceModule::getInstance()->tagResource(this->datablockName->getListSelectedValue(), data.first, data.second);
 
-			this->ribbonTrail->setUseVertexColours(true);
-			this->ribbonTrail->setMaxChainElements(static_cast<unsigned int>(this->maxChainElements->getUInt()));
-			this->ribbonTrail->setUseTextureCoords(true);
-			this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::UNIT_Y);
+				this->ribbonTrail->setQueryFlags(0);
+				this->ribbonTrail->setDynamic(true);
 
-			this->setNumberOfChains(this->numberOfChains->getUInt());
-			 
-			this->ribbonTrail->setOtherTextureCoordRange(this->textureCoordRange->getVector2().x, this->textureCoordRange->getVector2().y);
-			this->ribbonTrail->setTrailLength(this->trailLength->getReal());
-			this->ribbonTrail->setRenderingDistance(this->renderDistance->getReal());
+				this->ribbonTrail->setUseVertexColours(true);
+				this->ribbonTrail->setMaxChainElements(static_cast<unsigned int>(this->maxChainElements->getUInt()));
+				this->ribbonTrail->setUseTextureCoords(true);
+				this->ribbonTrail->setFaceCamera(false, Ogre::Vector3::UNIT_Y);
 
-			this->gameObjectPtr->getSceneNode()->attachObject(this->ribbonTrail);
+				this->setNumberOfChains(this->numberOfChains->getUInt());
 
-			this->setDatablockName(this->datablockName->getListSelectedValue());
+				this->ribbonTrail->setOtherTextureCoordRange(this->textureCoordRange->getVector2().x, this->textureCoordRange->getVector2().y);
+				this->ribbonTrail->setTrailLength(this->trailLength->getReal());
+				this->ribbonTrail->setRenderingDistance(this->renderDistance->getReal());
 
+				this->gameObjectPtr->getSceneNode()->attachObject(this->ribbonTrail);
 
-			// https://forums.ogre3d.org/viewtopic.php?t=91597
-
-			//this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet(1);
-			//this->billboardSet->createBillboard(Ogre::Vector3::ZERO, this->ribbonTrail->getInitialColour(0));
-			//this->billboardSet->setDefaultHeight(5.0f);
-			//this->billboardSet->setDefaultWidth(5.0f);
-			//// this->billboardSet->setMaterialName("Examples/Flare2");
-			//// this->billboardSet->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-			//this->billboardSet->setDatablockOrMaterialName("Examples/Flare2", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
-			////this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.1f, 0.1f);
-			//// this->billboardSet->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-
-			//// this->billboardSet->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
-
-			//// this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->setDepthCheckEnabled(false);
-			////pBillboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.2, 0.2);
-			//this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
+				this->setDatablockName(this->datablockName->getListSelectedValue());
 
 
-			// this->billboardSet->setVisible(true);
+				// https://forums.ogre3d.org/viewtopic.php?t=91597
+
+				//this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet(1);
+				//this->billboardSet->createBillboard(Ogre::Vector3::ZERO, this->ribbonTrail->getInitialColour(0));
+				//this->billboardSet->setDefaultHeight(5.0f);
+				//this->billboardSet->setDefaultWidth(5.0f);
+				//// this->billboardSet->setMaterialName("Examples/Flare2");
+				//// this->billboardSet->setDatablockOrMaterialName(this->datablockName->getListSelectedValue(), Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+				//this->billboardSet->setDatablockOrMaterialName("Examples/Flare2", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+				////this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.1f, 0.1f);
+				//// this->billboardSet->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+
+				//// this->billboardSet->setRenderQueueGroup(NOWA::RENDER_QUEUE_PARTICLE_STUFF);
+
+				//// this->billboardSet->getMaterial()->getTechnique(0)->getPass(0)->setDepthCheckEnabled(false);
+				////pBillboardSet->getMaterial()->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureScale(0.2, 0.2);
+				//this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
+
+
+				// this->billboardSet->setVisible(true);
+			});
 		}
 	}
 
@@ -556,7 +571,10 @@ namespace NOWA
 		this->maxChainElements->setValue(maxChainElements);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setMaxChainElements(maxChainElements);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("RibbonTrailComponen::setMaxChainElements", _1(maxChainElements),
+			{
+				this->ribbonTrail->setMaxChainElements(maxChainElements);
+			});
 		}
 	}
 
@@ -572,10 +590,13 @@ namespace NOWA
 
 		if (nullptr != this->ribbonTrail)
 		{
-			// TODO: Nothing works here for clear, so delete complete chain and re-create from scratch if something changes
-			this->ribbonTrail->removeNode(this->gameObjectPtr->getSceneNode());
-			this->ribbonTrail->clearAllChains();
-			this->ribbonTrail->setNumberOfChains(numberOfChains);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("RibbonTrailComponen::setNumberOfChains", _1(numberOfChains),
+			{
+				// TODO: Nothing works here for clear, so delete complete chain and re-create from scratch if something changes
+				this->ribbonTrail->removeNode(this->gameObjectPtr->getSceneNode());
+				this->ribbonTrail->clearAllChains();
+				this->ribbonTrail->setNumberOfChains(numberOfChains);
+			});
 		}
 
 		if (numberOfChains > oldSize)
@@ -617,77 +638,102 @@ namespace NOWA
 	void RibbonTrailComponent::setColorChange(unsigned int chainIndex, const Ogre::Vector3& valuePerSecond)
 	{
 		if (chainIndex > this->colorChanges.size())
+		{
 			chainIndex = static_cast<unsigned int>(this->colorChanges.size()) - 1;
-		
+		}
 		this->colorChanges[chainIndex]->setValue(valuePerSecond);
 		if (nullptr != this->ribbonTrail)
 		{
-			// What is with alpha?
-			this->ribbonTrail->setColourChange(chainIndex, valuePerSecond.x, valuePerSecond.y, valuePerSecond.z, 1.0f);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setColorChange", _2(chainIndex, valuePerSecond),
+			{
+				// What is with alpha?
+				this->ribbonTrail->setColourChange(chainIndex, valuePerSecond.x, valuePerSecond.y, valuePerSecond.z, 1.0f);
+			});
 		}
 	}
 
 	Ogre::Vector3 RibbonTrailComponent::getColorChange(unsigned int chainIndex) const
 	{
 		if (index > this->colorChanges.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->colorChanges[index]->getVector3();
 	}
 
 	void RibbonTrailComponent::setWidthChange(unsigned int chainIndex, Ogre::Real widthDeltaPerSecond)
 	{
 		if (chainIndex > this->widthChanges.size())
+		{
 			chainIndex = static_cast<unsigned int>(this->widthChanges.size()) - 1;
-		
+		}
 		this->widthChanges[chainIndex]->setValue(widthDeltaPerSecond);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setWidthChange(chainIndex, widthDeltaPerSecond);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setWidthChange", _2(chainIndex, widthDeltaPerSecond),
+			{
+				this->ribbonTrail->setWidthChange(chainIndex, widthDeltaPerSecond);
+			});
 		}
 	}
 
 	Ogre::Real RibbonTrailComponent::getWidthChange(unsigned int chainIndex) const
 	{
 		if (index > this->widthChanges.size())
+		{
 			return 0.0f;
+		}
 		return this->widthChanges[index]->getReal();
 	}
 
 	void RibbonTrailComponent::setInitialColor(unsigned int chainIndex, const Ogre::Vector3& color)
 	{
 		if (chainIndex > this->initialColors.size())
+		{
 			chainIndex = static_cast<unsigned int>(this->initialColors.size()) - 1;
-		
+		}
 		this->initialColors[chainIndex]->setValue(color);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setInitialColour(chainIndex, Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setInitialColor", _2(chainIndex, color),
+			{
+				this->ribbonTrail->setInitialColour(chainIndex, Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
+			});
 		}
 	}
 
 	Ogre::Vector3 RibbonTrailComponent::getInitialColor(unsigned int chainIndex) const
 	{
 		if (index > this->initialColors.size())
+		{
 			return Ogre::Vector3::ZERO;
+		}
 		return this->initialColors[index]->getVector3();
 	}
 
 	void RibbonTrailComponent::setInitialWidth(unsigned int chainIndex, Ogre::Real width)
 	{
 		if (chainIndex > this->initialWidths.size())
+		{
 			chainIndex = static_cast<unsigned int>(this->initialWidths.size()) - 1;
+		}
 		
 		this->initialWidths[chainIndex]->setValue(width);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setInitialWidth(chainIndex, width);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setInitialWidth", _2(chainIndex, width),
+			{
+				this->ribbonTrail->setInitialWidth(chainIndex, width);
+			});
 		}
 	}
 
 	Ogre::Real RibbonTrailComponent::getInitialWidth(unsigned int chainIndex) const
 	{
 		if (index > this->initialWidths.size())
+		{
 			return 0.0f;
+		}
 		return this->initialWidths[index]->getReal();
 	}
 	
@@ -704,7 +750,10 @@ namespace NOWA
 
 				if (nullptr != this->ribbonTrail)
 				{
-					this->ribbonTrail->setFaceCamera(true, this->camera->getDirection());
+					ENQUEUE_RENDER_COMMAND("RibbonTrailComponen::setFaceCameraId1", 
+					{
+						this->ribbonTrail->setFaceCamera(true, this->camera->getDirection());
+					});
 				}
 			}
 		}
@@ -712,7 +761,10 @@ namespace NOWA
 		{
 			if (nullptr != this->ribbonTrail)
 			{
-				this->ribbonTrail->setFaceCamera(false);
+				ENQUEUE_RENDER_COMMAND("RibbonTrailComponen::setFaceCameraId2",
+				{
+					this->ribbonTrail->setFaceCamera(false);
+				});
 			}
 		}
 	}
@@ -727,7 +779,10 @@ namespace NOWA
 		this->textureCoordRange->setValue(texCoordChange);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setOtherTextureCoordRange(texCoordChange.x, texCoordChange.y);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setTexCoordChange", _1(texCoordChange),
+			{
+				this->ribbonTrail->setOtherTextureCoordRange(texCoordChange.x, texCoordChange.y);
+			});
 		}
 	}
 
@@ -741,7 +796,10 @@ namespace NOWA
 		this->trailLength->setValue(trailLength);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setTrailLength(trailLength);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setTrailLength", _1(trailLength),
+			{
+				this->ribbonTrail->setTrailLength(trailLength);
+			});
 		}
 	}
 
@@ -755,7 +813,10 @@ namespace NOWA
 		this->renderDistance->setValue(renderDistance);
 		if (nullptr != this->ribbonTrail)
 		{
-			this->ribbonTrail->setRenderingDistance(renderDistance);
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setRenderDistance", _1(renderDistance),
+			{
+				this->ribbonTrail->setRenderingDistance(renderDistance);
+			});
 		}
 	}
 
