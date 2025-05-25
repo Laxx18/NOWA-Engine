@@ -139,7 +139,7 @@ namespace NOWA
 		{
 			// this->gameObjectPtr->getSceneNode()->translate(Ogre::Vector3(0.0f, 10.0f, 0.0f));
 			Ogre::Vector3 newPosition = this->gameObjectPtr->getSceneNode()->getPosition() + Ogre::Vector3(0.0f, 10.0f, 0.0f);
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), newPosition);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), newPosition);
 		}
 		
 		

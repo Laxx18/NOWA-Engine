@@ -1,6 +1,6 @@
 #include "NOWAPrecompiled.h"
 #include "BoundingBoxDraw.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -44,7 +44,7 @@ namespace NOWA
 		{
 			((Ogre::SceneNode*)this->node->getParent())->removeChild(this->node);
 		}
-		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->node);
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->node);
 		this->sceneManager->destroySceneNode(this->node);
 		this->node = nullptr;
 	}

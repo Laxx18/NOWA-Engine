@@ -190,28 +190,39 @@ void PropertiesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void PropertiesPanel::destroyContent(void)
 {
+	// Remove listener immediately (assumed safe on logic thread)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), EventDataRefreshPropertiesPanel::getStaticEventType());
 
-	this->propertiesPanelView1->removeAllItems();
+	// Cache pointers and nullify member variables to avoid race conditions
+	auto propertiesPanelView1 = this->propertiesPanelView1;
+	auto propertiesPanelView2 = this->propertiesPanelView2;
+	auto propertiesPanelInfo = this->propertiesPanelInfo;
+	auto openSaveFileDialog = this->openSaveFileDialog;
 
-	this->propertiesPanelView2->removeAllItems();
+	this->propertiesPanelView1 = nullptr;
+	this->propertiesPanelView2 = nullptr;
+	this->propertiesPanelInfo = nullptr;
+	this->openSaveFileDialog = nullptr;
 
-	if (nullptr != this->propertiesPanelInfo)
+	ENQUEUE_DESTROY_COMMAND("PropertiesPanel::destroyContent", _4(propertiesPanelView1, propertiesPanelView2, propertiesPanelInfo, openSaveFileDialog),
 	{
-		delete this->propertiesPanelInfo;
-		this->propertiesPanelInfo = nullptr;
-	}
+		if (propertiesPanelView1)
+			propertiesPanelView1->removeAllItems();
 
-	if (this->openSaveFileDialog)
-	{
-		delete this->openSaveFileDialog;
-		this->openSaveFileDialog = nullptr;
-	}
-}
+		if (propertiesPanelView2)
+			propertiesPanelView2->removeAllItems();
+
+		if (propertiesPanelInfo)
+			delete propertiesPanelInfo;
+
+		if (openSaveFileDialog)
+			delete openSaveFileDialog;
+	});
+}	
 
 void PropertiesPanel::clearProperties(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanel::clearProperties",
+	ENQUEUE_RENDER_COMMAND("PropertiesPanel::clearProperties",
 	{
 		// Schrott MyGUI, those events do not work at all
 		// this->propertiesPanelView1->getScrollView()->eventMouseWheel -= MyGUI::newDelegate(this, &PropertiesPanel::onMouseWheel);
@@ -253,7 +264,7 @@ void PropertiesPanel::showProperties(unsigned int componentIndex)
 
 	// Get data from selected game objects for properties panel
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanel::showProperties", _1(componentIndex),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanel::showProperties", _1(componentIndex),
 	{
 		// First clear the properties
 		this->clearProperties();
@@ -557,7 +568,7 @@ PropertiesPanelInfo::PropertiesPanelInfo()
 
 void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelInfo::setInfo", _1(info),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelInfo::setInfo", _1(info),
 	{
 		this->propertyInfo->setOnlyText(info);
 	});
@@ -565,7 +576,7 @@ void PropertiesPanelInfo::setInfo(const Ogre::String& info)
 
 void PropertiesPanelInfo::listData(NOWA::GameObject* gameObject)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelInfo::listData", _1(gameObject),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelInfo::listData", _1(gameObject),
 	{
 		const int height = 26;
 		const int heightStep = 28;
@@ -860,12 +871,30 @@ void PropertiesPanelInfo::initialise()
 
 void PropertiesPanelInfo::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelInfo::listData",
+	// Move the vectors for render thread cleanup
+	auto textItems = std::move(this->itemsText);
+	auto editItems = std::move(this->itemsEdit);
+
+	// Ensure main thread doesn't touch them anymore
+	this->itemsText.clear();
+	this->itemsEdit.clear();
+
+	ENQUEUE_DESTROY_COMMAND("PropertiesPanelInfo::shutdown", _2(textItems, editItems),
 	{
-		this->itemsText.clear();
-		this->itemsEdit.clear();
+		for (auto* widget : textItems)
+		{
+			if (widget)
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+		}
+
+		for (auto* widget : editItems)
+		{
+			if (widget)
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+		}
 	});
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -883,10 +912,15 @@ PropertiesPanelDynamic::PropertiesPanelDynamic(const std::vector<NOWA::GameObjec
 
 PropertiesPanelDynamic::~PropertiesPanelDynamic()
 {
-	if (this->openSaveFileDialog)
+	auto openSaveFileDialogPtr = this->openSaveFileDialog;
+	this->openSaveFileDialog = nullptr;
+
+	if (openSaveFileDialogPtr)
 	{
-		delete this->openSaveFileDialog;
-		this->openSaveFileDialog = nullptr;
+		ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::~PropertiesPanelDynamic", _1(openSaveFileDialogPtr),
+		{
+			delete openSaveFileDialogPtr;
+		});
 	}
 }
 
@@ -902,7 +936,7 @@ void PropertiesPanelDynamic::setPropertiesPanelInfo(PropertiesPanelInfo* propert
 
 void PropertiesPanelDynamic::initialise()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelDynamic::initialise",
+	ENQUEUE_RENDER_COMMAND("PropertiesPanelDynamic::initialise",
 	{
 		mPanelCell->setCaption(this->name);
 		mPanelCell->setTextColour(MyGUIHelper::getInstance()->getDefaultTextColour());
@@ -912,41 +946,65 @@ void PropertiesPanelDynamic::initialise()
 
 void PropertiesPanelDynamic::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("PropertiesPanelDynamic::shutdown",
-	{
-		this->itemsText.clear();
+	// this->itemsText.clear();
 
-		for (size_t i = 0; i < this->itemsEdit.size(); i++)
+	// Move the vectors for render thread cleanup
+	auto textItems = std::move(this->itemsText);
+
+	// Ensure main thread doesn't touch them anymore
+	this->itemsText.clear();
+
+	ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::shutdown", _1(textItems),
+	{
+		for (auto* widget : textItems)
 		{
-			auto widget = this->itemsEdit[i];
-			MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
-			if (nullptr != itemBox)
+			if (widget)
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+		}
+	});
+
+	for (size_t i = 0; i < this->itemsEdit.size(); ++i)
+	{
+		auto widget = this->itemsEdit[i];
+		MyGUI::ItemBox* itemBox = widget->castType<MyGUI::ItemBox>(false);
+
+		if (itemBox)
+		{
+			size_t count = itemBox->getItemCount();
+			for (size_t pos = 0; pos < count; ++pos)
 			{
-				size_t count = itemBox->getItemCount();
-				for (size_t pos = 0; pos < count; ++pos)
+				MyGUI::Widget* childWidget = itemBox->getWidgetByIndex(pos);
+				if (childWidget)
 				{
-					auto widget = itemBox->getWidgetByIndex(pos);
-					if (nullptr != widget)
+					ImageData** data = childWidget->getUserData<ImageData*>(false);
+					if (data)
 					{
-						ImageData** data = widget->getUserData<ImageData*>(false);
-						if (nullptr != data)
+						auto toDelete = *data;
+						ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::ImageData Delete", _1(toDelete),
 						{
-							delete (*data);
-						}
+							delete toDelete;
+						});
 					}
 				}
 			}
 		}
+	}
 
-		this->itemsEdit.clear();
-		this->gameObject = nullptr;
-		if (this->openSaveFileDialog)
+	this->itemsEdit.clear();
+	this->gameObject = nullptr;
+
+	if (this->openSaveFileDialog)
+	{
+		auto toDelete = this->openSaveFileDialog;
+		this->openSaveFileDialog = nullptr;
+
+		ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::SaveDialog Delete", _1(toDelete),
 		{
-			delete this->openSaveFileDialog;
-			this->openSaveFileDialog = nullptr;
-		}
-	});
+			delete toDelete;
+		});
+	}
 }
+
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {

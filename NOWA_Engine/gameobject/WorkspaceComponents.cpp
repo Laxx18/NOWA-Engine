@@ -360,7 +360,7 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::disconnect(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::disconnect",
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::disconnect",
 		{
 			if (nullptr != this->workspace)
 			{
@@ -725,7 +725,12 @@ namespace NOWA
 	{
 		this->resetReflectionForAllEntities();
 
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::removeWorkspace",
+		if (nullptr == this->workspace)
+		{
+			return;
+		}
+
+		ENQUEUE_DESTROY_COMMAND("WorkspaceBaseComponent::removeWorkspace", _1(this),
 		{
 			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -839,7 +844,7 @@ namespace NOWA
 	{
 		if (nullptr != this->workspace)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::nullWorkspace",
+			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::nullWorkspace",
 			{
 				this->compositorManager->removeWorkspace(this->workspace);
 				this->workspace = nullptr;
@@ -2430,7 +2435,7 @@ namespace NOWA
 		//Now that we're done, tell the instance to update itself.
 		if (nullptr != this->workspace)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::reconnectAllNodes",
+			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::reconnectAllNodes",
 			{
 					//Now that we're done, tell the instance to update itself.
 					// this->workspace->reconnectAllNodes();

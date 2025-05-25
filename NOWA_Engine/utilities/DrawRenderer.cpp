@@ -75,7 +75,7 @@ namespace NOWA
 
 	DrawRenderer::~DrawRenderer()
 	{
-		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->sceneNodeLines);
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNodeLines);
 		this->sceneManager->destroySceneNode(this->sceneNodeLines);
 	}
 

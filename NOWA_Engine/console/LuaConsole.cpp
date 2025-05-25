@@ -2,7 +2,7 @@
 #include "LuaConsole.h"
 #include "main/InputDeviceCore.h"
 #include "main/AppStateManager.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 #include <OgreOverlay.h>
 

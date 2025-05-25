@@ -79,8 +79,10 @@ namespace NOWA
 	void OgreALModule::destroySounds(Ogre::SceneManager* sceneManager)
 	{
 		// Do not destroy sounds if sounds shall continue, when switching back to the origin AppState
-		if (true == this->bContinue)
+		if (this->bContinue)
+		{
 			return;
+		}
 
 		if (this->sceneManager != sceneManager)
 		{
@@ -89,23 +91,36 @@ namespace NOWA
 		}
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] OgreAL module destroyed");
-		// Queue the destruction operation to the render thread
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::destroySounds", _1(sceneManager),
+
+		auto soundManager = this->soundManager;
+
+		if (soundManager)
 		{
-			if (this->soundManager)
+			ENQUEUE_DESTROY_COMMAND("OgreALModule::destroySounds", _2(soundManager, sceneManager),
 			{
-				this->soundManager->destroyAllSounds(sceneManager);
-			}
-		});
+				soundManager->destroyAllSounds(sceneManager);
+			});
+		}
 	}
 
 	void OgreALModule::destroyContent(void)
 	{
-		this->sceneManager = nullptr;
+		/*this->sceneManager = nullptr;
 		if (this->soundManager)
 		{
 			delete this->soundManager;
 			this->soundManager = 0;
+		}*/
+
+		if (nullptr != this->soundManager)
+		{
+			auto soundManager = this->soundManager;
+			this->soundManager = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("OgreALModule::destroyContent", _1(soundManager),
+			{
+				delete soundManager;
+			});
 		}
 	}
 
@@ -168,7 +183,7 @@ namespace NOWA
 #if 0
 	void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
 	{
-		RenderCommandQueueModule::RenderCommand renderCommand = [this, sceneManager, soundPtr = &sound]() {
+		GraphicsModule::RenderCommand renderCommand = [this, sceneManager, soundPtr = &sound]() {
 			// Ensure sound is valid before attempting to delete
 			try
 			{
@@ -208,7 +223,7 @@ namespace NOWA
 			};
 
 		// Enqueue the render command to delete the sound
-		RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
+		GraphicsModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
 	}
 #else
 void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
@@ -260,7 +275,7 @@ void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*&
 	void OgreALModule::createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop, bool stream, SoundCreationCallback callback)
 	{
 		// First create the lambda and store it in a variable
-		RenderCommandQueueModule::RenderCommand renderCommand = [this, sceneManager, name, resourceName, loop, stream, callback]() {
+		GraphicsModule::RenderCommand renderCommand = [this, sceneManager, name, resourceName, loop, stream, callback]() {
 			OgreAL::Sound* sound = nullptr;
 			if (this->soundManager)
 			{
@@ -302,7 +317,7 @@ void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*&
 		};
 
 		// Then pass the variable to enqueue
-		RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
+		GraphicsModule::getInstance()->enqueue(renderCommand);
 	}
 
 #endif 

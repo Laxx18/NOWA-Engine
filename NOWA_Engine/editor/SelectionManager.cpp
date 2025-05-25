@@ -97,17 +97,37 @@ namespace NOWA
 			delete this->selectionObserver;
 			this->selectionObserver = nullptr;
 		}
-		ENQUEUE_RENDER_COMMAND_WAIT("SelectionManager::~SelectionManager",
+
+		// Step 1: Copy pointers
+		auto selectionRectCopy = this->selectionRect;
+		auto selectionNodeCopy = this->selectionNode;  // if needed
+		auto sceneManagerCopy = this->sceneManager;
+		auto selectQueryCopy = this->selectQuery;
+		auto volumeQueryCopy = this->volumeQuery;
+
+		// Step 2: Nullify members to prevent double free or accidental access
+		this->selectionRect = nullptr;
+		this->selectQuery = nullptr;
+		this->volumeQuery = nullptr;
+		this->selectionNode = nullptr;  // if you want
+
+		// Step 3: Enqueue destruction command with copies, no this capture
+		ENQUEUE_DESTROY_COMMAND("SelectionManager::~SelectionManager", _5(selectionRectCopy, selectionNodeCopy, sceneManagerCopy, selectQueryCopy, volumeQueryCopy),
 		{
-			if (nullptr != this->selectionRect)
+			if (selectionRectCopy && selectionNodeCopy)
 			{
-				this->selectionNode->detachObject(this->selectionRect);
-				delete this->selectionRect;
-				this->selectionRect = nullptr;
+				selectionNodeCopy->detachObject(selectionRectCopy);
+				delete selectionRectCopy;
 			}
 
-			this->sceneManager->destroyQuery(this->selectQuery);
-			this->sceneManager->destroyQuery(this->volumeQuery);
+			if (sceneManagerCopy)
+			{
+				if (selectQueryCopy)
+					sceneManagerCopy->destroyQuery(selectQueryCopy);
+
+				if (volumeQueryCopy)
+					sceneManagerCopy->destroyQuery(volumeQueryCopy);
+			}
 		});
 	}
 

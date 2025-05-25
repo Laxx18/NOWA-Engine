@@ -403,11 +403,11 @@ namespace NOWA
 					{
 						// No physics component
 						// this->targetGameObject->getSceneNode()->setPosition(sourcePosition);
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), sourcePosition);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), sourcePosition);
 						if (true == this->orientate->getBool())
 						{
 							// this->targetGameObject->getSceneNode()->setOrientation(sourceOrientation);
-							NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), sourceOrientation);
+							NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), sourceOrientation);
 						}
 					}
 				}

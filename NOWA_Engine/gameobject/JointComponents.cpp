@@ -99,7 +99,7 @@ namespace NOWA
 			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
 			{
 				this->debugGeometryNode->detachAllObjects();
-				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
+				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
 				this->sceneManager->destroySceneNode(this->debugGeometryNode);
 				this->debugGeometryNode = nullptr;
 				this->sceneManager->destroyMovableObject(this->debugGeometryEntity);
@@ -112,7 +112,7 @@ namespace NOWA
 			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
 			{
 				this->debugGeometryNode2->detachAllObjects();
-				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
+				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);
 				this->sceneManager->destroySceneNode(this->debugGeometryNode2);
 				this->debugGeometryNode2 = nullptr;
 				this->sceneManager->destroyMovableObject(this->debugGeometryEntity2);

@@ -8,7 +8,6 @@
 #include "utilities/ConcurrentQueue.h"
 #include <boost/shared_ptr.hpp>
 
-
 namespace NOWA
 {
 
@@ -22,7 +21,7 @@ namespace NOWA
 	typedef unsigned long EventType;
 	typedef boost::shared_ptr<EventData> EventDataPtr;
 	typedef FastDelegate1<EventDataPtr> EventListenerDelegate;
-	typedef ConcurrentQueue<EventDataPtr> ThreadSafeEventQueue;
+	typedef moodycamel::ConcurrentQueue<EventDataPtr> ThreadSafeEventQueue;
 
 
 	//---------------------------------------------------------------------------------------------------------------------

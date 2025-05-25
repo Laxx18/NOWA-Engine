@@ -414,27 +414,51 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 
 MainMenuBar::~MainMenuBar()
 {
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
+	// Remove event listeners immediately
+	auto eventManager = NOWA::AppStateManager::getSingletonPtr()->getEventManager();
 
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->analysisWidgets);
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->luaAnalysisWidgets);
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->aboutWindowWidgets);
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->sceneDescriptionWindowWidgets);
-	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
+	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
+	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
+	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
+	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
 
+	// Capture needed widget layout pointers locally
+	auto analysisWidgetsCopy = this->analysisWidgets;
+	auto deployWidgetsCopy = this->deployWidgets;
+	auto luaAnalysisWidgetsCopy = this->luaAnalysisWidgets;
+	auto aboutWindowWidgetsCopy = this->aboutWindowWidgets;
+	auto sceneDescriptionWindowWidgetsCopy = this->sceneDescriptionWindowWidgets;
+	auto createComponentPluginWindowWidgetsCopy = this->createComponentPluginWindowWidgets;
+
+	// Enqueue unloadLayout calls on the render thread
+	ENQUEUE_DESTROY_COMMAND("MainMenuBar::~MainMenuBar unloadLayouts", _6(analysisWidgetsCopy, deployWidgetsCopy, luaAnalysisWidgetsCopy, aboutWindowWidgetsCopy,
+		sceneDescriptionWindowWidgetsCopy, createComponentPluginWindowWidgetsCopy),
+	{
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(analysisWidgetsCopy);
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(deployWidgetsCopy);
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(luaAnalysisWidgetsCopy);
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(aboutWindowWidgetsCopy);
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(sceneDescriptionWindowWidgetsCopy);
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(createComponentPluginWindowWidgetsCopy);
+	});
+
+	// For cPlusPlusComponentGenerator, unload and delete immediately or enqueue delete if needed
 	if (nullptr != this->cPlusPlusComponentGenerator)
 	{
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->componentPluginWindowWidgets);
+		auto componentPluginWindowWidgetsCopy = this->componentPluginWindowWidgets;
+		auto cPlusPlusComponentGeneratorCopy = this->cPlusPlusComponentGenerator;
 
-		delete this->cPlusPlusComponentGenerator;
+		ENQUEUE_DESTROY_COMMAND("MainMenuBar::~MainMenuBar unloadComponentPluginWindow", _2(componentPluginWindowWidgetsCopy, cPlusPlusComponentGeneratorCopy),
+		{
+			MyGUI::LayoutManager::getInstancePtr()->unloadLayout(componentPluginWindowWidgetsCopy);
+			delete cPlusPlusComponentGeneratorCopy;
+		});
+
 		this->cPlusPlusComponentGenerator = nullptr;
 	}
 
+	// Destroy configPanel safely now
 	if (nullptr != this->configPanel)
 	{
 		this->configPanel->destroyContent();
@@ -454,7 +478,7 @@ void MainMenuBar::enableMenuEntries(bool enable)
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::enableMenuEntries", _1(enable),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::enableMenuEntries", _1(enable),
 	{
 		this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded()); // save
 		this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(enable && !NOWA::Core::getSingletonPtr()->isProjectEncoded()); // save as
@@ -502,7 +526,7 @@ void MainMenuBar::enableMenuEntries(bool enable)
 
 void MainMenuBar::enableFileMenu(bool enable)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::enableFileMenu", _1(enable),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::enableFileMenu", _1(enable),
 	{
 		this->fileMenuItem->getItemChild()->getItemAt(NEW)->setEnabled(enable);
 		this->fileMenuItem->getItemChild()->getItemAt(OPEN)->setEnabled(enable);
@@ -553,7 +577,7 @@ void MainMenuBar::clearLuaErrors(void)
 	this->errorCount = 0;
 	if (nullptr != this->simulationWindow)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::clearLuaErrors",
+		ENQUEUE_RENDER_COMMAND("MainMenuBar::clearLuaErrors",
 		{
 			this->simulationWindow->getCaptionWidget()->setTextColour(MyGUIHelper::getInstance()->getImportantTextColour());
 			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getSceneName());
@@ -867,7 +891,7 @@ void MainMenuBar::notifyPopupMenuAccept(MyGUI::MenuControl* sender, MyGUI::MenuI
 
 void MainMenuBar::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::buttonHit", _1(sender),
 	{
 		if ("analysisOkButton" == sender->getName())
 		{
@@ -1008,7 +1032,7 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 		// Start a new search each time for data that do match the search caption string
 		this->luaApiAutoCompleteSearch.reset();
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::refreshLuaApi", _1(editBox),
+		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::refreshLuaApi", _1(editBox),
 		{
 			this->refreshLuaApi(editBox->getOnlyText());
 		});
@@ -1018,7 +1042,7 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 		// Start a new search each time for data that do match the search caption string for meshes
 		this->meshAutoCompleteSearch.reset();
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::refreshMeshes", _1(editBox),
+		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::refreshMeshes", _1(editBox),
 		{
 			this->refreshMeshes(editBox->getOnlyText());
 		});
@@ -1027,7 +1051,7 @@ void MainMenuBar::editTextChange(MyGUI::Widget* sender)
 
 void MainMenuBar::updateRecentFilesMenu()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::updateRecentFilesMenu",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::updateRecentFilesMenu",
 	{
 		const RecentFilesManager::VectorUString & recentFiles = RecentFilesManager::getInstance().getRecentFiles();
 
@@ -1071,7 +1095,6 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 			this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(this->bDrawNavigationMesh);
 			NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(this->bDrawNavigationMesh);
 		});
-		// this->componentVisibilityMap.clear();
 	}
 }
 
@@ -1085,7 +1108,7 @@ void MainMenuBar::handleProjectEncoded(NOWA::EventDataPtr eventData)
 {
 	boost::shared_ptr<NOWA::EventDataProjectEncoded> castEventData = boost::static_pointer_cast<NOWA::EventDataProjectEncoded>(eventData);
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::handleProjectEncoded", _1(castEventData),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleProjectEncoded", _1(castEventData),
 	{
 		this->fileMenuItem->getItemChild()->getItemAt(SAVE)->setEnabled(!castEventData->getIsEncoded());
 		this->fileMenuItem->getItemChild()->getItemAt(SAVE_AS)->setEnabled(!castEventData->getIsEncoded());
@@ -1097,7 +1120,7 @@ void MainMenuBar::handleLuaError(NOWA::EventDataPtr eventData)
 	boost::shared_ptr<NOWA::EventDataPrintLuaError> castEventData = boost::static_pointer_cast<NOWA::EventDataPrintLuaError>(eventData);
 	if (false == castEventData->getErrorMessage().empty())
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::handleLuaError", _1(castEventData),
+		ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::handleLuaError", _1(castEventData),
 		{
 			if (true == this->luaErrorFirstTime)
 			{
@@ -1133,7 +1156,7 @@ void MainMenuBar::handleSceneInvalid(NOWA::EventDataPtr eventData)
 
 void MainMenuBar::showAnalysisWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showAnalysisWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAnalysisWindow",
 	{
 		if (0 == this->analysisWidgets.size())
 		{
@@ -1205,7 +1228,7 @@ void MainMenuBar::showAnalysisWindow(void)
 
 void MainMenuBar::showDeployWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showAnalysisWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAnalysisWindow",
 	{
 		if (0 == this->deployWidgets.size())
 		{
@@ -1240,7 +1263,7 @@ void MainMenuBar::showDeployWindow(void)
 
 void MainMenuBar::createLuaAnalysisWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::createLuaAnalysisWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::createLuaAnalysisWindow",
 	{
 		if (0 == this->luaAnalysisWidgets.size())
 		{
@@ -1280,7 +1303,7 @@ void MainMenuBar::createLuaAnalysisWindow(void)
 
 void MainMenuBar::createLuaApiWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::createLuaAnalysisWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::createLuaAnalysisWindow",
 	{
 		if (0 == this->luaApiWidgets.size() || nullptr == this->luaApiWindow)
 		{
@@ -1325,7 +1348,7 @@ void MainMenuBar::createLuaApiWindow(void)
 void MainMenuBar::showLuaAnalysisWindow(void)
 {
 	this->createLuaAnalysisWindow();
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showLuaAnalysisWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showLuaAnalysisWindow",
 	{
 		this->luaAnalysisWindow->setVisible(true);
 	});
@@ -1334,7 +1357,7 @@ void MainMenuBar::showLuaAnalysisWindow(void)
 void MainMenuBar::showLuaApiWindow(void)
 {
 	this->createLuaApiWindow();
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showLuaApiWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showLuaApiWindow",
 	{
 		this->luaApiWindow->setVisible(true);
 	});
@@ -1513,7 +1536,7 @@ void MainMenuBar::refreshMeshes(const Ogre::String& filter)
 
 void MainMenuBar::createMeshToolWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::createMeshToolWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::createMeshToolWindow",
 	{
 		if (0 == this->meshToolWidgets.size())
 		{
@@ -1642,7 +1665,7 @@ void MainMenuBar::applyMeshToolOperations(void)
 void MainMenuBar::showMeshToolWindow(void)
 {
 	this->createMeshToolWindow();
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showMeshToolWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showMeshToolWindow",
 	{
 		this->meshToolWindow->setVisible(true);
 	});
@@ -1665,7 +1688,7 @@ void MainMenuBar::notifyInsideKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Key
 
 void MainMenuBar::showAboutWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showAboutWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showAboutWindow",
 	{
 		if (0 == this->aboutWindowWidgets.size())
 		{
@@ -1770,7 +1793,7 @@ void MainMenuBar::showAboutWindow(void)
 
 void MainMenuBar::showSceneDescriptionWindow(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showSceneDescriptionWindow",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::showSceneDescriptionWindow",
 	{
 		if (0 == this->sceneDescriptionWindowWidgets.size())
 		{
@@ -1912,7 +1935,7 @@ void MainMenuBar::showComponentPlugin(void)
 #else
 	void MainMenuBar::showComponentPlugin(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::showSceneDescriptionWindow",
+		ENQUEUE_RENDER_COMMAND("MainMenuBar::showSceneDescriptionWindow",
 		{
 			if (nullptr == this->cPlusPlusComponentGenerator)
 			{
@@ -1944,7 +1967,7 @@ void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 
 void MainMenuBar::drawNavigationMap(bool bDraw)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::drawNavigationMap", _1(bDraw),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::drawNavigationMap", _1(bDraw),
 	{
 		this->utilitiesMenuItem->getItemChild()->getItemAt(6)->setStateCheck(bDraw);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreRecastModule()->debugDrawNavMesh(bDraw);
@@ -1953,7 +1976,7 @@ void MainMenuBar::drawNavigationMap(bool bDraw)
 
 void MainMenuBar::drawCollisionLines(bool bDraw)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MainMenuBar::drawNavigationMap", _1(bDraw),
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::drawNavigationMap", _1(bDraw),
 	{
 		this->utilitiesMenuItem->getItemChild()->getItemAt(7)->setStateCheck(bDraw);
 		NOWA::AppStateManager::getSingletonPtr()->getOgreNewtModule()->showOgreNewtCollisionLines(bDraw);
@@ -1962,30 +1985,33 @@ void MainMenuBar::drawCollisionLines(bool bDraw)
 
 void MainMenuBar::toggleMyGUIComponents(bool bToggleMyGUIComponents)
 {
-	const auto& allMyGuiComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::MyGUIComponent>();
-
-	// Iterate through all MyGUI components
-	for (const auto& myGuiComponent : allMyGuiComponents)
+	ENQUEUE_RENDER_COMMAND_MULTI("MainMenuBar::toggleMyGUIComponents", _1(bToggleMyGUIComponents),
 	{
-		// Check if the component visibility has been stored before
-		auto it = this->componentVisibilityMap.find(myGuiComponent.get());
-		if (it == this->componentVisibilityMap.end())
-		{
-			// If not found, store the current visibility state of the component
-			this->componentVisibilityMap[myGuiComponent.get()] = myGuiComponent->isActivated();
-		}
+		const auto & allMyGuiComponents = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<NOWA::MyGUIComponent>();
 
-		bool wasVisible = this->componentVisibilityMap[myGuiComponent.get()];
-		if (true == bToggleMyGUIComponents)
+		// Iterate through all MyGUI components
+		for (const auto& myGuiComponent : allMyGuiComponents)
 		{
-			if (true == wasVisible)
+			// Check if the component visibility has been stored before
+			auto it = this->componentVisibilityMap.find(myGuiComponent.get());
+			if (it == this->componentVisibilityMap.end())
 			{
-				myGuiComponent->setActivated(true);
+				// If not found, store the current visibility state of the component
+				this->componentVisibilityMap[myGuiComponent.get()] = myGuiComponent->isActivated();
+			}
+
+			bool wasVisible = this->componentVisibilityMap[myGuiComponent.get()];
+			if (true == bToggleMyGUIComponents)
+			{
+				if (true == wasVisible)
+				{
+					myGuiComponent->setActivated(true);
+				}
+			}
+			else
+			{
+				myGuiComponent->setActivated(false);
 			}
 		}
-		else
-		{
-			myGuiComponent->setActivated(false);
-		}
-	}
+	});
 }

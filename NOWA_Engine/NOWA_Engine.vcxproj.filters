@@ -7,9 +7,6 @@
     <Filter Include="console">
       <UniqueIdentifier>{857481b1-d75a-40eb-b02f-ea433a4d4a52}</UniqueIdentifier>
     </Filter>
-    <Filter Include="decorators">
-      <UniqueIdentifier>{9f761185-0be0-423e-aad8-4f14e2029512}</UniqueIdentifier>
-    </Filter>
     <Filter Include="gameobject">
       <UniqueIdentifier>{9d6473b8-e7cc-4695-8521-fee94d17ae63}</UniqueIdentifier>
     </Filter>
@@ -37,9 +34,6 @@
     <Filter Include="editor">
       <UniqueIdentifier>{1d310fd2-13e4-4675-b879-a38c48796c7a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="deferred">
-      <UniqueIdentifier>{3e556c9f-82ea-4b79-8119-0248a6d4b88b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ocean">
       <UniqueIdentifier>{7b0e6637-c9b9-4c13-b409-59899a4053e7}</UniqueIdentifier>
     </Filter>
@@ -53,12 +47,6 @@
     </ClInclude>
     <ClInclude Include="console\LuaConsoleInterpreter.h">
       <Filter>console</Filter>
-    </ClInclude>
-    <ClInclude Include="decorators\Decorator.h">
-      <Filter>decorators</Filter>
-    </ClInclude>
-    <ClInclude Include="decorators\PhysicsObjectDecorator.h">
-      <Filter>decorators</Filter>
     </ClInclude>
     <ClInclude Include="gameobject\AiLuaComponent.h">
       <Filter>gameobject</Filter>
@@ -652,7 +640,7 @@
     <ClInclude Include="ki\FormationBehavior.h">
       <Filter>ki</Filter>
     </ClInclude>
-    <ClInclude Include="modules\RenderCommandQueueModule.h">
+    <ClInclude Include="modules\GraphicsModule.h">
       <Filter>modules</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1212,7 +1200,7 @@
     <ClCompile Include="ki\FormationBehavior.cpp">
       <Filter>ki</Filter>
     </ClCompile>
-    <ClCompile Include="modules\RenderCommandQueueModule.cpp">
+    <ClCompile Include="modules\GraphicsModule.cpp">
       <Filter>modules</Filter>
     </ClCompile>
   </ItemGroup>

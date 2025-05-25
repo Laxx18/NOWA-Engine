@@ -5,7 +5,7 @@
 #include "gameobject/GameObjectController.h"
 #include "main/AppStateManager.h"
 #include "main/Core.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -465,7 +465,7 @@ namespace NOWA
 		// TODO: cameraUpdate in queue
 		// this->camera->move(velocity * this->moveCameraWeight);
 		Ogre::Vector3 newMove = this->camera->getPosition() + (velocity * this->moveCameraWeight);
-		NOWA::RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, newMove);
+		NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newMove);
 
 		this->lastMoveValue = velocity;
 

@@ -216,6 +216,8 @@ namespace NOWA
 		}
 		this->attributes.clear();
 
+		NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
+
 		if (nullptr != this->sceneNode || nullptr != this->movableObject || nullptr != this->boundingBoxDraw || nullptr != this->clampObjectQuery)
 		{
 			auto sceneNode = this->sceneNode;
@@ -224,7 +226,8 @@ namespace NOWA
 			auto clampObjectQuery = this->clampObjectQuery;
 			auto sceneManager = this->sceneManager;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject Constructor Part1", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
+			// Attention: No this may be used here, because its in the destructor!
+			ENQUEUE_DESTROY_COMMAND("GameObject::~GameObject", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
 			{
 				if (boundingBoxDraw)
 				{
@@ -248,7 +251,6 @@ namespace NOWA
 					sceneNode->detachAllObjects();
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: " + sceneNode->getName());
 
-					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
 				}
 
@@ -910,7 +912,7 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type)
 		{
-			RenderCommandQueueModule::RenderCommand renderCommand = [this, attribute]() {
+			GraphicsModule::RenderCommand renderCommand = [this, attribute]() {
 				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
 				{
@@ -952,11 +954,11 @@ namespace NOWA
 				}
 			};
 
-			RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
+			GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
 		}
 		else
 		{
-			RenderCommandQueueModule::RenderCommand renderCommand = [this, attribute]() {
+			GraphicsModule::RenderCommand renderCommand = [this, attribute]() {
 				Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>();
 				if (nullptr != entity)
 				{
@@ -998,7 +1000,7 @@ namespace NOWA
 				}
 			};
 
-			RenderCommandQueueModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
+			GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
 		}
 	}
 

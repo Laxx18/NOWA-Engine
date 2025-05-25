@@ -24,10 +24,17 @@ void ColourPanelManager::init(void)
 
 void ColourPanelManager::destroyContent(void)
 {
-	if (nullptr != this->colourPanel)
+	if (this->colourPanel != nullptr)
 	{
-		delete this->colourPanel;
+		// Step 1: Copy pointer and nullify member
+		auto panelCopy = this->colourPanel;
 		this->colourPanel = nullptr;
+
+		// Step 2: Enqueue the destruction on render thread
+		ENQUEUE_DESTROY_COMMAND("ColourPanelManager::destroyContent", _1(panelCopy),
+		{
+			delete panelCopy;
+		});
 	}
 }
 

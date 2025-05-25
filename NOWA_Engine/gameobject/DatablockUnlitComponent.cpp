@@ -84,43 +84,44 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
-		// If a datablock has been cloned, it must be destroyed manually
-		if (true == this->alreadyCloned)
+		if (this->alreadyCloned)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("DatablockUnlitComponent::onRemoveComponent",
+			// Make safe copies of pointers & index
+			Ogre::v1::Entity* entityCopy = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
+			Ogre::Item* itemCopy = this->gameObjectPtr->getMovableObject<Ogre::Item>();
+			auto datablockCopy = this->datablock;
+			auto originalDatablockCopy = this->originalDatablock;
+			size_t oldSubIndexCopy = this->oldSubIndex;
+
+			// Nullify members immediately to avoid use-after-free
+			this->datablock = nullptr;
+			this->originalDatablock = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("DatablockUnlitComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
 			{
-				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
-				if (nullptr != entity)
+				// Safely reset datablock for entity or item
+				if (entityCopy && originalDatablockCopy)
 				{
-					Ogre::String dataBlockName = *this->datablock->getNameStr();
-					if (nullptr != this->originalDatablock)
+					if (oldSubIndexCopy < entityCopy->getNumSubEntities())
 					{
-						Ogre::String originalDataBlockName = *this->originalDatablock->getNameStr();
-						// Set back the default datablock
-						entity->getSubEntity(this->oldSubIndex)->setDatablock(this->originalDatablock);
+						entityCopy->getSubEntity(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
 					}
 				}
-				else
+				else if (itemCopy && originalDatablockCopy)
 				{
-					Ogre::Item* item = this->gameObjectPtr->getMovableObject<Ogre::Item>();
-					if (nullptr != item)
+					if (oldSubIndexCopy < itemCopy->getNumSubItems())
 					{
-						// Set back the default datablock
-						item->getSubItem(this->oldSubIndex)->setDatablock(this->originalDatablock);
+						itemCopy->getSubItem(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
 					}
 				}
 
-				if (nullptr != this->datablock)
+				// Destroy datablock only if no linked renderables remain
+				if (datablockCopy)
 				{
-					Ogre::String dataBlockName = *this->datablock->getNameStr();
-
-					auto& linkedRenderabled = this->datablock->getLinkedRenderables();
-
-					// Only destroy if the datablock is not used else where
-					if (true == linkedRenderabled.empty())
+					const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
+					if (linkedRenderables.empty())
 					{
-						this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-						this->datablock = nullptr;
+						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
 					}
 				}
 			});

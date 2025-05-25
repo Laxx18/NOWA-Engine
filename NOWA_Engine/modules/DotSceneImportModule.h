@@ -2,7 +2,7 @@
 #define DOT_SCENE_IMPORT_MODULE_H
 
 #include "modules/OgreRecastModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "utilities/rapidxml.hpp"
 #include "main/Events.h"
 

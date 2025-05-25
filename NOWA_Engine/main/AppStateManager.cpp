@@ -5,7 +5,7 @@
 #include "Events.h"
 #include "modules/GameProgressModule.h"
 #include "modules/InputDeviceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "ProcessManager.h"
 #include "gameobject/AttributesComponent.h"
 
@@ -234,7 +234,7 @@ namespace NOWA
 				this->states.pop_back();
 			}
 
-			Core::getSingletonPtr()->setShutdown(true);
+			// Core::getSingletonPtr()->setShutdown(true);
 		}
 		else
 		{
@@ -394,7 +394,7 @@ namespace NOWA
 		const double maxDeltaTime = 0.25;
 
 		// Set the frame time in the render command queue module
-		RenderCommandQueueModule::getInstance()->setFrameTime(simulationTickCount);
+		GraphicsModule::getInstance()->setFrameTime(simulationTickCount);
 
 		while (false == this->bShutdown)
 		{
@@ -415,7 +415,7 @@ namespace NOWA
 			// Calculate time since last logic frame for interpolation
 			// Is done in render thread
 			// double timeSinceLastLogicFrame = currentTime - lastLogicFrameTime;
-			// RenderCommandQueueModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
+			// GraphicsModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
 
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
@@ -432,7 +432,7 @@ namespace NOWA
 				// This advances the transform buffer
 				if (false == didUpdate)
 				{
-					RenderCommandQueueModule::getInstance()->beginLogicFrame();
+					GraphicsModule::getInstance()->beginLogicFrame();
 					didUpdate = true;
 				}
 
@@ -454,7 +454,7 @@ namespace NOWA
 			if (true == didUpdate)
 			{
 				// End the logic frame
-				RenderCommandQueueModule::getInstance()->endLogicFrame();
+				GraphicsModule::getInstance()->endLogicFrame();
 			}
 
 			// Update the renderwindow if the window is not active too, for server/client analysis

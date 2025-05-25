@@ -41,7 +41,7 @@ namespace NOWA
 			this->active = false;
 		}
 		this->detachAndDestroyAllPickObserver();
-		AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &Picker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
+		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &Picker::deleteBodyDelegate), EventDataDeleteBody::getStaticEventType());
 	}
 
 	void Picker::init(Ogre::SceneManager* sceneManager, Ogre::Camera* camera, Ogre::Real maxDistance, unsigned int queryMask, bool drawLines)
@@ -155,18 +155,31 @@ namespace NOWA
 	{
 		if (this->dragLineNode != nullptr)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("Picker::destroyLine",
+			this->dragLineNode->detachAllObjects();
+
+			auto sceneManagerLocal = this->sceneManager;
+			auto manualObjectLocal = this->dragLineObject;
+			auto nodeLocal = this->dragLineNode;
+			auto parentNode = nodeLocal->getParentSceneNode();
+
+			this->dragLineObject = nullptr;
+			this->dragLineNode = nullptr;
+
+			if (manualObjectLocal != nullptr)
 			{
-				this->dragLineNode->detachAllObjects();
-				if (this->dragLineObject != nullptr)
+				ENQUEUE_DESTROY_COMMAND("Picker::DestroyDragLineManualObject", _2(sceneManagerLocal, manualObjectLocal),
 				{
-					this->sceneManager->destroyManualObject(this->dragLineObject);
-					// delete this->dragLineObject;
-					this->dragLineObject = nullptr;
-				}
-				this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
-				this->dragLineNode = nullptr;
-			});
+					sceneManagerLocal->destroyManualObject(manualObjectLocal);
+				});
+			}
+
+			if (parentNode != nullptr && nodeLocal != nullptr)
+			{
+				ENQUEUE_DESTROY_COMMAND("Picker::DestroyDragLineNode", _2(parentNode, nodeLocal),
+				{
+					parentNode->removeAndDestroyChild(nodeLocal);
+				});
+			}
 		}
 	}
 
@@ -530,15 +543,12 @@ namespace NOWA
 
 	void GameObjectPicker::createLine(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
-		{
-			this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
-			this->dragLineObject = this->sceneManager->createManualObject();
-			this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-			this->dragLineObject->setQueryFlags(0 << 0);
-			this->dragLineObject->setCastShadows(false);
-			this->dragLineNode->attachObject(this->dragLineObject);
-		});
+		this->dragLineNode = this->sceneManager->getRootSceneNode()->createChildSceneNode();
+		this->dragLineObject = this->sceneManager->createManualObject();
+		this->dragLineObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+		this->dragLineObject->setQueryFlags(0 << 0);
+		this->dragLineObject->setCastShadows(false);
+		this->dragLineNode->attachObject(this->dragLineObject);
 	}
 
 	void GameObjectPicker::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
@@ -547,37 +557,51 @@ namespace NOWA
 		{
 			this->createLine();
 		}
-		ENQUEUE_RENDER_COMMAND_MULTI("Picker::drawLine", _2(startPosition, endPosition),
-		{
-			// Draw a 3D line between these points for visual effect
-			this->dragLineObject->clear();
-			this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
-			this->dragLineObject->position(startPosition);
-			this->dragLineObject->index(0);
-			this->dragLineObject->position(endPosition);
-			this->dragLineObject->index(1);
-			this->dragLineObject->end();
-		});
+
+		// Draw a 3D line between these points for visual effect
+		this->dragLineObject->clear();
+		this->dragLineObject->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
+		this->dragLineObject->position(startPosition);
+		this->dragLineObject->index(0);
+		this->dragLineObject->position(endPosition);
+		this->dragLineObject->index(1);
+		this->dragLineObject->end();
 	}
 
 	void GameObjectPicker::destroyLine()
 	{
 		if (this->dragLineNode != nullptr)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObjectPicker::createLine",
+			// Detach objects immediately, safe to do on current thread
+			this->dragLineNode->detachAllObjects();
+
+			if (this->dragLineObject != nullptr)
 			{
-				this->dragLineNode->detachAllObjects();
-				if (this->dragLineObject != nullptr)
+				auto sceneManager = this->sceneManager;
+				auto dragLineObjectLocal = this->dragLineObject;
+				this->dragLineObject = nullptr;
+
+				ENQUEUE_DESTROY_COMMAND("GameObjectPicker::DestroyManualObject", _2(sceneManager, dragLineObjectLocal),
 				{
-					this->sceneManager->destroyManualObject(this->dragLineObject);
-					// delete this->dragLineObject;
-					this->dragLineObject = nullptr;
-				}
-				this->dragLineNode->getParentSceneNode()->removeAndDestroyChild(this->dragLineNode);
-				this->dragLineNode = nullptr;
+					sceneManager->destroyManualObject(dragLineObjectLocal);
+				});
+			}
+
+			// For the node, do deferred removal from parent and destruction:
+			auto sceneManager = this->sceneManager;
+			auto dragLineNodeLocal = this->dragLineNode;
+
+			// Clear original pointer before enqueueing to avoid dangling access
+			this->dragLineNode = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("GameObjectPicker::DestroySceneNode", _2(sceneManager, dragLineNodeLocal),
+			{
+				// Remove and destroy child from parent node safely inside render thread
+				dragLineNodeLocal->getParentSceneNode()->removeAndDestroyChild(dragLineNodeLocal);
 			});
 		}
 	}
+
 
 	void GameObjectPicker::dragCallbackGameObject(OgreNewt::Body* body, Ogre::Real timeStep, int threadIndex)
 	{

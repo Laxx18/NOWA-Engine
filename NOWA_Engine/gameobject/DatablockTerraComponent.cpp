@@ -272,40 +272,29 @@ namespace NOWA
 	{
 		GameObjectComponent::onRemoveComponent();
 
-		/*auto& terraCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TerraComponent>());
-		if (nullptr != terraCompPtr)
+		if (this->alreadyCloned)
 		{
-			if (nullptr != terraCompPtr->getTerra())
-			{
-				terraCompPtr->getTerra()->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial"), false);
-			}
-		}*/
+			Ogre::Terra* terraCopy = this->gameObjectPtr->getMovableObject<Ogre::Terra>();
+			auto datablockCopy = this->datablock;
+			auto originalDatablockCopy = this->originalDatablock;
 
-		if (true == this->alreadyCloned)
-		{
-			ENQUEUE_RENDER_COMMAND_WAIT("DatablockTerraComponent::onRemoveComponent",
+			// Nullify members to avoid use-after-free
+			this->datablock = nullptr;
+			this->originalDatablock = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("DatablockTerraComponent::onRemoveComponent", _3(terraCopy, datablockCopy, originalDatablockCopy),
 			{
-				Ogre::Terra * terra = this->gameObjectPtr->getMovableObject<Ogre::Terra>();
-				if (nullptr != terra)
+				if (terraCopy && originalDatablockCopy)
 				{
-					terra->setDatablock(this->originalDatablock);
-					// terra->setDatablock(WorkspaceModule::getInstance()->getHlmsManager()->getDatablock("TerraDefaultMaterial"));
-					if (nullptr != this->datablock)
-					{
-						//Ogre::Hlms* hlms = this->datablock->getCreator();
-						//// Make sure it's a hard copy and not a reference! As we will be iterating while the vector will be changing.
-						//auto linkedRenderables = this->datablock->getLinkedRenderables();
-						//auto itor = linkedRenderables.begin();
-						//auto end  = linkedRenderables.end();
-						//while(itor != end)
-						//{
-						//	(*itor)->setDatablock(hlms->getDefaultDatablock());
-						//	// (*itor)->_setNullDatablock();
-						//	++itor;
-						//}
+					terraCopy->setDatablock(originalDatablockCopy);
+				}
 
-						this->datablock->getCreator()->destroyDatablock(this->datablock->getName());
-						this->datablock = nullptr;
+				if (datablockCopy)
+				{
+					const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
+					if (linkedRenderables.empty())
+					{
+						datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
 					}
 				}
 			});

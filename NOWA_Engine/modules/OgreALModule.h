@@ -4,7 +4,7 @@
 // Sound
 #include "OgreAL.h"
 #include "defines.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -92,11 +92,11 @@ namespace NOWA
 		*			OgreAL::Sound* sound = OgreALModule::getSound(sceneManager, soundName);
 		*			if (sound) {
 		*				// Instead of directly manipulating the sound object here, queue it if necessary.
-		*				RenderCommandQueueModule::RenderCommand renderCommand = [sound]() {
+		*				GraphicsModule::RenderCommand renderCommand = [sound]() {
 		*					// Modify sound properties safely on the render thread
 		*					sound->setVolume(0.5f);  // Example modification
 		*				};
-		*				RenderCommandQueueModule::getInstance()->enqueue(renderCommand);
+		*				GraphicsModule::getInstance()->enqueue(renderCommand);
 		*			}
 		* return		pSound the corresponding sound
 		*/

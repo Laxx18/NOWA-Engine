@@ -117,7 +117,7 @@ namespace NOWA
 					this->oldGameObjectDataList[i].newScale = gameObjectPtr->getSceneNode()->getScale();
 					this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
 
-					RenderCommandQueueModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
+					GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
 						this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale);
 				}
 				i++;
@@ -175,7 +175,7 @@ namespace NOWA
 				else
 				{
 					// If there is no physics component set the data directly for the game object scene node
-					RenderCommandQueueModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
+					GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
 						this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale);
 				}
 				i++;
@@ -465,7 +465,7 @@ namespace NOWA
 					this->scale = Ogre::Vector3::UNIT_SCALE;
 				}
 
-				RenderCommandQueueModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
+				GraphicsModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
 
 				// this->sceneManager->findMovableObjects
 
@@ -1099,12 +1099,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newPosition = this->camera->getPosition();
-			RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
+			GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
 		}
 
 		virtual void redo(void) override
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
+			GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
 		}
 	private:
 		Ogre::Vector3 newPosition;
@@ -1128,12 +1128,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newOrientation = this->camera->getOrientation();
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
 		}
 	private:
 		Ogre::Quaternion oldOrientation;
@@ -1160,12 +1160,12 @@ namespace NOWA
 		{
 			this->newPosition = this->camera->getPosition();
 			this->newOrientation = this->camera->getOrientation();
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, this->oldPosition, this->oldOrientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraTransform(this->camera, this->oldPosition, this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, this->newPosition, this->newOrientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraTransform(this->camera, this->newPosition, this->newOrientation);
 		}
 	private:
 		Ogre::Camera* camera;
@@ -1301,49 +1301,92 @@ namespace NOWA
 
 	EditorManager::~EditorManager()
 	{
+		// Remove event listeners (safe)
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraModifyEnd), EventDataTerraModifyEnd::getStaticEventType());
 		AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &EditorManager::handleTerraPaintEnd), EventDataTerraPaintEnd::getStaticEventType());
 
-		if (this->gizmo != nullptr)
+		if (nullptr != this->gizmo)
 		{
 			delete this->gizmo;
 			this->gizmo = nullptr;
 		}
-		if (this->viewportGrid != nullptr)
+
+		if (nullptr != this->viewportGrid)
 		{
 			delete this->viewportGrid;
 			this->viewportGrid = nullptr;
 		}
 
-		if (nullptr != this->selectionManager)
+		if (nullptr != this->viewportGrid)
 		{
-			delete this->selectionManager;
+			delete this->viewportGrid;
 			this->selectionManager = nullptr;
 		}
-		if (nullptr != this->placeNode)
-		{
-			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->placeNode);
-			this->sceneManager->destroySceneNode(this->placeNode);
-			this->placeNode = nullptr;
 
+		// SceneNode: defer destruction safely via ENQUEUE_DESTROY_COMMAND
+		if (this->placeNode != nullptr)
+		{
+			auto sceneManager = this->sceneManager;
+			auto placeNodeToDestroy = this->placeNode;
+
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(placeNodeToDestroy);
+
+			ENQUEUE_DESTROY_COMMAND("Destroy placeNode", _2(sceneManager, placeNodeToDestroy),
+			{
+				sceneManager->destroySceneNode(placeNodeToDestroy);
+			});
+
+			this->placeNode = nullptr;
 		}
+
+		// This must be fixed as well if it touches scene nodes
 		this->destroyTempPlaceMovableObjectNode();
-		if (this->movePicker != nullptr)
+
+		if (nullptr != this->movePicker)
 		{
 			delete this->movePicker;
 			this->movePicker = nullptr;
 		}
-		if (this->movePicker2 != nullptr)
+
+		if (nullptr != this->movePicker2)
 		{
 			delete this->movePicker2;
 			this->movePicker2 = nullptr;
 		}
-		this->sceneManager->destroyQuery(this->gizmoQuery);
-		this->sceneManager->destroyQuery(this->placeObjectQuery);
-		this->sceneManager->destroyQuery(this->toBePlacedObjectQuery);
-		this->gizmoQuery = nullptr;
-		this->placeObjectQuery = nullptr;
-		this->toBePlacedObjectQuery = nullptr;
+
+		// Destroy scene queries safely via render thread
+		if (nullptr != this->gizmoQuery)
+		{
+			auto query = this->gizmoQuery;
+			auto sceneManager = this->sceneManager;
+			ENQUEUE_DESTROY_COMMAND("Destroy gizmoQuery", _2(sceneManager, query),
+			{
+				sceneManager->destroyQuery(query);
+			});
+			this->gizmoQuery = nullptr;
+		}
+		if (this->placeObjectQuery)
+		{
+			auto query = this->placeObjectQuery;
+			auto sceneManager = this->sceneManager;
+			ENQUEUE_DESTROY_COMMAND("Destroy placeObjectQuery", _2(sceneManager, query),
+			{
+				sceneManager->destroyQuery(query);
+			});
+			this->placeObjectQuery = nullptr;
+		}
+		if (this->toBePlacedObjectQuery)
+		{
+			auto query = this->toBePlacedObjectQuery;
+			auto sceneManager = this->sceneManager;
+			ENQUEUE_DESTROY_COMMAND("Destroy toBePlacedObjectQuery", _2(sceneManager, query),
+			{
+				sceneManager->destroyQuery(query);
+			});
+			this->toBePlacedObjectQuery = nullptr;
+		}
+
+		// TerraComponent pointer nulling is fine
 		this->terraComponent = nullptr;
 	}
 
@@ -2316,7 +2359,7 @@ namespace NOWA
 				this->placeNode->setOrientation(Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y));
 			});*/
 
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->placeNode, Ogre::Quaternion(Ogre::Degree(this->rotateFactor), Ogre::Vector3::UNIT_Y), true);
 		}
 	}
 
@@ -2330,7 +2373,7 @@ namespace NOWA
 		//	this->tempPlaceMovableNode->setOrientation(this->placeNode->_getDerivedOrientationUpdated());
 		//});
 
-		NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->tempPlaceMovableNode, this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
+		NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->tempPlaceMovableNode, this->placeNode->_getDerivedPositionUpdated() + (this->placeNode->getOrientation()
 			* MathHelper::getInstance()->getBottomCenterOfMesh(this->tempPlaceMovableNode, this->tempPlaceMovableObject)), this->placeNode->_getDerivedOrientationUpdated());
 	}
 
@@ -2367,25 +2410,63 @@ namespace NOWA
 		}
 	}
 
+#if 0
 	void EditorManager::destroyTempPlaceMovableObjectNode(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("EditorManager::destroyTempPlaceMovableObjectNode",
+		if (nullptr != this->tempPlaceMovableNode)
 		{
-			if (nullptr != this->tempPlaceMovableNode)
-			{
-				this->tempPlaceMovableNode->detachAllObjects();
-				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
-				this->sceneManager->destroySceneNode(this->tempPlaceMovableNode);
+			this->tempPlaceMovableNode->detachAllObjects();
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
+			this->sceneManager->destroySceneNode(this->tempPlaceMovableNode);
 
-				if (nullptr != this->tempPlaceMovableObject)
-				{
-					this->sceneManager->destroyMovableObject(this->tempPlaceMovableObject);
-				}
-				this->tempPlaceMovableNode = nullptr;
-				this->tempPlaceMovableObject = nullptr;
+			if (nullptr != this->tempPlaceMovableObject)
+			{
+				this->sceneManager->destroyMovableObject(this->tempPlaceMovableObject);
 			}
-		});
+			this->tempPlaceMovableNode = nullptr;
+			this->tempPlaceMovableObject = nullptr;
+		}
 	}
+#endif
+
+	void EditorManager::destroyTempPlaceMovableObjectNode()
+	{
+		if (this->tempPlaceMovableNode != nullptr)
+		{
+			// Detach all objects immediately (safe, local pointer)
+			this->tempPlaceMovableNode->detachAllObjects();
+
+			// Remove tracking on logic thread (must be done with original pointer)
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->tempPlaceMovableNode);
+
+			// Store local copies for lambda capture
+			auto nodeLocal = this->tempPlaceMovableNode;
+			auto sceneManagerLocal = this->sceneManager;
+
+			// Reset pointers on logic thread ASAP
+			this->tempPlaceMovableNode = nullptr;
+
+			// Enqueue node destruction on render thread
+			ENQUEUE_DESTROY_COMMAND("EditorManager::DestroyTempPlaceMovableNode", _2(sceneManagerLocal, nodeLocal),
+			{
+				sceneManagerLocal->destroySceneNode(nodeLocal);
+			});
+
+			if (this->tempPlaceMovableObject != nullptr)
+			{
+				auto objectLocal = this->tempPlaceMovableObject;
+				// Reset pointer on logic thread
+				this->tempPlaceMovableObject = nullptr;
+
+				// Enqueue object destruction on render thread
+				ENQUEUE_DESTROY_COMMAND("EditorManager::DestroyTempPlaceMovableObject", _2(sceneManagerLocal, objectLocal),
+				{
+					sceneManagerLocal->destroyMovableObject(objectLocal);
+				});
+			}
+		}
+	}
+
 
 	// More modern version: Everything placed is now item be default instead of entity! Even animation does work for item!
 	// Unfortunately causes crash e.g. with spaceGun2.mesh
@@ -2992,7 +3073,7 @@ namespace NOWA
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3009,7 +3090,7 @@ namespace NOWA
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 
 						if (Ogre::Vector3::ZERO != normal)
 						{
@@ -3066,8 +3147,8 @@ namespace NOWA
 						Ogre::Quaternion newOrientation = rotation * orientation;
 
 						// Enqueue both
-						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
 					}
 				}
 				else
@@ -3077,7 +3158,7 @@ namespace NOWA
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3091,12 +3172,12 @@ namespace NOWA
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
-						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 #endif
 
 						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
@@ -3109,8 +3190,8 @@ namespace NOWA
 						Ogre::Quaternion newOrientation = rotation * orientation;
 
 						// Enqueue both
-						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
 					}
 				}
 				i++;
@@ -3333,7 +3414,7 @@ namespace NOWA
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3350,7 +3431,7 @@ namespace NOWA
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 
 						if (Ogre::Vector3::ZERO != normal)
 						{
@@ -3403,7 +3484,7 @@ namespace NOWA
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3416,12 +3497,12 @@ namespace NOWA
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
-						RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						RenderCommandQueueModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 				}
 				i++;
@@ -3631,7 +3712,7 @@ namespace NOWA
 					})
 
 					// Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
-					// RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
+					// GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
 					// 	selectedGameObject.second.gameObject->getSceneNode()->getPosition().z));
 				}
 
@@ -3652,7 +3733,7 @@ namespace NOWA
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newGridPoint);
 					});*/
 
-					RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newGridPoint);
+					GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newGridPoint);
 				}
 				else
 				{
@@ -3661,7 +3742,7 @@ namespace NOWA
 					});*/
 
 					Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
-					RenderCommandQueueModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), translatePosition);
+					GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), translatePosition);
 				}
 				
 				if (Ogre::Vector3::ZERO != normal)
@@ -3761,7 +3842,7 @@ namespace NOWA
 						entry.second.gameObject->getSceneNode()->setScale(newScale);
 					});*/
 
-					NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(entry.second.gameObject->getSceneNode(), newScale);
+					NOWA::GraphicsModule::getInstance()->updateNodeScale(entry.second.gameObject->getSceneNode(), newScale);
 				}
 			}
 		}
@@ -4033,32 +4114,32 @@ namespace NOWA
 		{
 		case EDITOR_CAMERA_VIEW_FRONT:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_TOP:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BACK:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BOTTOM:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_LEFT:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_RIGHT:
 		{
-			RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		}
@@ -4171,9 +4252,15 @@ namespace NOWA
 
 	void EditorManager::stopSimulation(bool withUndo)
 	{
+		if (AppStateManager::getSingletonPtr()->getAppStatesCount() == 0)
+		{
+			return;
+		}
+
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[EditorManager] Simulation stopped");
 
 		this->isInSimulation = false;
+
 		AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 		if (true == withUndo)
 		{

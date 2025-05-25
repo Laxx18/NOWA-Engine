@@ -57,7 +57,7 @@ namespace NOWA
 		{
 			ENQUEUE_RENDER_COMMAND_WAIT("GameObjectTitleComponent::~GameObjectTitleComponent",
 			{
-				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->textNode);
+				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
 				this->textNode->detachObject(this->movableText);
 				this->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->textNode);
 				this->textNode = nullptr;
@@ -161,7 +161,7 @@ namespace NOWA
 			// Create child of node, because when lookAtCamera is set to on, only the text may be orientated, not the whole game object
 			this->textNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
 			this->textNode->attachObject(this->movableText);
-			NOWA::RenderCommandQueueModule::getInstance()->addTrackedNode(this->textNode);
+			NOWA::GraphicsModule::getInstance()->addTrackedNode(this->textNode);
 
 			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
 			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
@@ -172,8 +172,8 @@ namespace NOWA
 			this->movableText->setTextYOffset(0.0f);
 
 			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
-			RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			RenderCommandQueueModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		});
 
 		return true;
@@ -285,8 +285,8 @@ namespace NOWA
 				// this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
 				// this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 
-				RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-				RenderCommandQueueModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+				GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+				GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 			}
 		}
 	}
@@ -481,8 +481,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			RenderCommandQueueModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		}
 	}
 
@@ -504,8 +504,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			RenderCommandQueueModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		}
 	}
 

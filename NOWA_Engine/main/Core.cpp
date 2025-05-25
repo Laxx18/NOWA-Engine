@@ -762,7 +762,7 @@ namespace NOWA
 		this->myGuiWorkspace = nullptr;
 
 		dummySceneManager->removeRenderQueueListener(this->overlaySystem);
-		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(dummyCamera);
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(dummyCamera);
 		dummySceneManager->destroyCamera(dummyCamera);
 		dummyCamera = nullptr;
 		this->root->destroySceneManager(dummySceneManager);
@@ -3167,27 +3167,43 @@ namespace NOWA
 	{
 		if (nullptr != sceneManager)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::destroyScene", _1(&sceneManager),
+			auto myGuiOgrePlatform = this->myGuiOgrePlatform;
+			auto root = this->root;
+
+			// Capture sceneManager by value, so we can reset the reference after destruction
+			auto sceneMgrToDestroy = sceneManager;
+
+			// Null out on logic thread only after render thread finished destroying
+			ENQUEUE_DESTROY_COMMAND("Core::destroyScene", _3(myGuiOgrePlatform, root, sceneMgrToDestroy),
 			{
-				this->myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+				myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
+
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying all cameras");
-				// delete the cameras
-				sceneManager->destroyAllCameras();
-				/*sceneManager->destroyAllLights();
-				sceneManager->destroyAllAnimations();
-				sceneManager->destroyAllAnimationStates();
-				sceneManager->destroyAllBillboardChains();
-				sceneManager->destroyAllBillboardSets();
-				sceneManager->destroyAllInstancedGeometry();*/
+				sceneMgrToDestroy->destroyAllCameras();
+
+				/* Optionally:
+				sceneMgrToDestroy->destroyAllLights();
+				sceneMgrToDestroy->destroyAllAnimations();
+				sceneMgrToDestroy->destroyAllAnimationStates();
+				sceneMgrToDestroy->destroyAllBillboardChains();
+				sceneMgrToDestroy->destroyAllBillboardSets();
+				sceneMgrToDestroy->destroyAllInstancedGeometry();
+				*/
+
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Clearing scene");
-				sceneManager->clearScene(true);
+				sceneMgrToDestroy->clearScene(true);
+
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] Destroying SceneManager");
-				this->root->destroySceneManager(sceneManager);
-				sceneManager = nullptr;
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finised");
+				root->destroySceneManager(sceneMgrToDestroy);
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[Core] SceneManager destruction finished");
 			});
+
+			// Reset the pointer on the logic thread after the render thread finished the destruction
+			sceneManager = nullptr;
 		}
 	}
+
 
 	// void Core::eventOccurred(const Ogre::String& eventName, const Ogre::NameValuePairList* parameters)
 	// {

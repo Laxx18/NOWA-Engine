@@ -29,35 +29,49 @@ void ComponentsPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void ComponentsPanel::destroyContent(void)
 {
+	// Remove listener right away (assuming this is safe on logic thread)
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ComponentsPanel::handleShowComponentsPanel), EventDataShowComponentsPanel::getStaticEventType());
-	
-	ENQUEUE_RENDER_COMMAND_WAIT("ComponentsPanel::destroyContent",
+
+	// Cache pointers
+	auto componentsPanelView = this->componentsPanelView;
+	auto componentsPanelSearch = this->componentsPanelSearch;
+	auto componentsPanelInfo = this->componentsPanelInfo;
+	auto componentsPanelDynamic = this->componentsPanelDynamic;
+
+	// Null out member pointers immediately so no other thread accesses them
+	this->componentsPanelView = nullptr;
+	this->componentsPanelSearch = nullptr;
+	this->componentsPanelInfo = nullptr;
+	this->componentsPanelDynamic = nullptr;
+
+	// Enqueue all MyGUI/Ogre related destruction commands on render thread
+	ENQUEUE_DESTROY_COMMAND("ComponentsPanel::destroyContent", _4(componentsPanelView, componentsPanelSearch, componentsPanelInfo, componentsPanelDynamic),
 	{
-		this->componentsPanelView->removeAllItems();
-
-		if (nullptr != this->componentsPanelSearch)
+		if (componentsPanelView)
 		{
-			delete this->componentsPanelSearch;
-			this->componentsPanelSearch = nullptr;
+			componentsPanelView->removeAllItems();
 		}
 
-		if (nullptr != this->componentsPanelInfo)
+		if (componentsPanelSearch)
 		{
-			delete this->componentsPanelInfo;
-			this->componentsPanelInfo = nullptr;
+			delete componentsPanelSearch;
 		}
-		// Attention: Is this panel always destroyed and re-created?
-		if (nullptr != this->componentsPanelDynamic)
+
+		if (componentsPanelInfo)
 		{
-			delete this->componentsPanelDynamic;
-			this->componentsPanelDynamic = nullptr;
+			delete componentsPanelInfo;
+		}
+
+		if (componentsPanelDynamic)
+		{
+			delete componentsPanelDynamic;
 		}
 	});
 }
 
 void ComponentsPanel::clearComponents(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ComponentsPanel::clearComponents",
+	ENQUEUE_RENDER_COMMAND("ComponentsPanel::clearComponents",
 	{
 		if (nullptr != this->componentsPanelDynamic)
 		{
@@ -94,7 +108,7 @@ void ComponentsPanel::showComponents(int index)
 {
 	this->clearComponents();
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanel::showComponents", _1(index),
+	ENQUEUE_RENDER_COMMAND_MULTI("ComponentsPanel::showComponents", _1(index),
 	{
 		// Show all components for selected game objects
 		unsigned int i = 0;
@@ -278,7 +292,7 @@ void ComponentsPanelDynamic::showComponents(const Ogre::String& searchText)
 	if (true == this->gameObjects.empty())
 		return;
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanelDynamic::showComponents", _1(searchText),
+	ENQUEUE_RENDER_COMMAND_MULTI("ComponentsPanelDynamic::showComponents", _1(searchText),
 	{
 		const int height = 24;
 		const int heightStep = 26;
@@ -558,7 +572,7 @@ void ComponentsPanelDynamic::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ComponentsPanelDynamic::buttonHit", _1(button),
+		ENQUEUE_RENDER_COMMAND_MULTI("ComponentsPanelDynamic::buttonHit", _1(button),
 		{
 			Ogre::String componentName = button->getCaption();
 

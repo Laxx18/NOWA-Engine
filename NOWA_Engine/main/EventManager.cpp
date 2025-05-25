@@ -156,7 +156,7 @@ namespace NOWA
 
 	bool EventManager::threadSafeQueueEvent(const EventDataPtr& event)
 	{
-		this->realtimeEventQueue.push(event);
+		this->realtimeEventQueue.enqueue(event);
 		return true;
 	}
 
@@ -220,7 +220,7 @@ namespace NOWA
 
 		// This section added to handle events from other threads.  Check out Chapter 20.
 		EventDataPtr realtimeEvent;
-		while (this->realtimeEventQueue.tryPop(realtimeEvent))
+		while (this->realtimeEventQueue.try_dequeue(realtimeEvent))
 		{
 			this->queueEvent(realtimeEvent);
 

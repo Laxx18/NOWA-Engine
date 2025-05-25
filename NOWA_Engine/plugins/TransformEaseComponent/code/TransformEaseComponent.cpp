@@ -409,7 +409,7 @@ namespace NOWA
 					if (nullptr == this->physicsComponent)
 					{
 						// this->gameObjectPtr->getSceneNode()->setOrientation(this->oldRotationResult * Ogre::Quaternion(Ogre::Degree(resultValue), this->rotationAxis->getVector3()));
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->oldRotationResult * Ogre::Quaternion(Ogre::Degree(resultValue), this->rotationAxis->getVector3()));
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->oldRotationResult * Ogre::Quaternion(Ogre::Degree(resultValue), this->rotationAxis->getVector3()));
 					}
 					else
 					{
@@ -468,7 +468,7 @@ namespace NOWA
 					if (nullptr == this->physicsComponent)
 					{
 						 // this->gameObjectPtr->getSceneNode()->setPosition(this->oldTranslationResult + resultVec);
-						 NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->oldTranslationResult + resultVec);
+						 NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->oldTranslationResult + resultVec);
 					}
 					else
 					{
@@ -527,7 +527,7 @@ namespace NOWA
 					if (nullptr == this->physicsComponent)
 					{
 						// this->gameObjectPtr->getSceneNode()->setScale(this->oldScaleResult + resultVec);
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), this->oldScaleResult + resultVec);
+						NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), this->oldScaleResult + resultVec);
 					}
 					else
 					{

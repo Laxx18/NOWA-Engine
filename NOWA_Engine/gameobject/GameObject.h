@@ -5,7 +5,7 @@
 #include "utilities/rapidxml.hpp"
 #include "utilities/BoundingBoxDraw.h"
 #include "utilities/Variant.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "OgreWireAabb.h"
 #include <tuple>
 

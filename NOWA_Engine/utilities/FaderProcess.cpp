@@ -3,7 +3,7 @@
 #include "OgreOverlayManager.h"
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsManager.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -20,7 +20,7 @@ namespace NOWA
 		overlay(nullptr),
 		calledFirstTime(true)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::FaderProcess", _6(fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier),
+		ENQUEUE_RENDER_COMMAND_MULTI("FaderProcess::FaderProcess", _6(fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier),
 		{
 			Ogre::HlmsManager * hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 			Ogre::HlmsUnlit* hlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));

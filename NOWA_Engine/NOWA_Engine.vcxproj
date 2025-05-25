@@ -306,8 +306,6 @@
     <ClInclude Include="main\ScriptEvent.h" />
     <ClInclude Include="main\ScriptEventManager.h" />
     <ClInclude Include="main\ServerConfigurationStateMyGui.h" />
-    <ClInclude Include="decorators\Decorator.h" />
-    <ClInclude Include="decorators\PhysicsObjectDecorator.h" />
     <ClInclude Include="gameobject\GameObject.h" />
     <ClInclude Include="modules\CommandModule.h" />
     <ClInclude Include="modules\DeployResourceModule.h" />
@@ -315,6 +313,7 @@
     <ClInclude Include="modules\DotSceneImportModule.h" />
     <ClInclude Include="modules\GameProgressModule.h" />
     <ClInclude Include="modules\GpuParticlesModule.h" />
+    <ClInclude Include="modules\GraphicsModule.h" />
     <ClInclude Include="modules\HLMSModule.h" />
     <ClInclude Include="modules\InputDeviceModule.h" />
     <ClInclude Include="modules\LuaScript.h" />
@@ -327,7 +326,6 @@
     <ClInclude Include="modules\OgreRecastModule.h" />
     <ClInclude Include="modules\ParticleUniverseModule.h" />
     <ClInclude Include="modules\RakNetModule.h" />
-    <ClInclude Include="modules\RenderCommandQueueModule.h" />
     <ClInclude Include="modules\SingletonModule.h" />
     <ClInclude Include="modules\WorkspaceModule.h" />
     <ClInclude Include="network\Client.h" />
@@ -522,6 +520,7 @@
     <ClCompile Include="modules\DotSceneImportModule.cpp" />
     <ClCompile Include="modules\GameProgressModule.cpp" />
     <ClCompile Include="modules\GpuParticlesModule.cpp" />
+    <ClCompile Include="modules\GraphicsModule.cpp" />
     <ClCompile Include="modules\HLMSModule.cpp" />
     <ClCompile Include="modules\InputDeviceModule.cpp" />
     <ClCompile Include="modules\LuaScript.cpp" />
@@ -541,7 +540,6 @@
     <ClCompile Include="modules\OgreRecastModule.cpp" />
     <ClCompile Include="modules\ParticleUniverseModule.cpp" />
     <ClCompile Include="modules\RakNetModule.cpp" />
-    <ClCompile Include="modules\RenderCommandQueueModule.cpp" />
     <ClCompile Include="modules\WorkspaceModule.cpp" />
     <ClCompile Include="network\Client.cpp" />
     <ClCompile Include="network\ConnectionType.cpp" />

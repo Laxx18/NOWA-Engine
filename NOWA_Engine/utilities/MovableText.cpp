@@ -15,6 +15,7 @@
 #include "OgreHlms.h"
 #include "OgreHlmsManager.h"
 #include "OgreHlmsUnlitDatablock.h"
+#include "modules/GraphicsModule.h"
 
 using namespace Ogre;
 
@@ -91,14 +92,34 @@ namespace NOWA
 
 	MovableText::~MovableText()
 	{
-		if (mpHlmsDatablock != nullptr)
+		auto datablockCopy = mpHlmsDatablock;
+		auto vertexDataCopy = mRenderOp.vertexData;
+
+		// Nullify members to avoid accidental use or double delete
+		mpHlmsDatablock = nullptr;
+		mRenderOp.vertexData = nullptr;
+
+		ENQUEUE_DESTROY_COMMAND("MovableText::~MovableText", _2(datablockCopy, vertexDataCopy),
 		{
-			this->_setNullDatablock();
-			mpHlmsDatablock->getCreator()->destroyDatablock(mpHlmsDatablock->getName());
-			mpHlmsDatablock = nullptr;
-		}
-		if (mRenderOp.vertexData)
-			delete mRenderOp.vertexData;
+			if (datablockCopy != nullptr)
+			{
+				// Reset datablock (calls to your internal function, likely safe to call here)
+				// Assuming _setNullDatablock doesn't rely on class members, 
+				// else move this logic here or adapt accordingly.
+				// If _setNullDatablock uses 'this', you may want to refactor it.
+
+				// Because you don't have 'this' in lambda, just do the effect directly if needed.
+
+				// Destroy the datablock using its creator
+				if (datablockCopy->getCreator())
+					datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
+			}
+
+			if (vertexDataCopy != nullptr)
+			{
+				delete vertexDataCopy;
+			}
+		});
 	}
 
 #if 0

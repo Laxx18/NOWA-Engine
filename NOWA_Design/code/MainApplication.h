@@ -26,6 +26,7 @@ private:
 	std::condition_variable renderInitCondition;
 	std::mutex renderInitMutex;
 	bool renderInitialized = false;
+	std::thread renderThread;
 };
 
 #endif

@@ -415,7 +415,7 @@ namespace NOWA
 				};
 
 			// Enqueue and wait for result
-			auto result = NOWA::RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<std::tuple<Ogre::Real, Ogre::Real, Ogre::Vector2, bool>>(
+			auto result = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<std::tuple<Ogre::Real, Ogre::Real, Ogre::Vector2, bool>>(
 				renderCommand, "BackgroundScrollComponent::update");
 
 			std::tie(this->xScroll, this->yScroll, this->lastPosition, this->firstTimePositionSet) = result;

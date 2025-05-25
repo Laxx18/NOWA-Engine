@@ -67,28 +67,7 @@ namespace NOWA
 
 	CameraComponent::~CameraComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[CameraComponent] Destructor camera component for game object: " + this->gameObjectPtr->getName());
-
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
-
-		if (nullptr != this->camera)
-		{
-			AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
-			// this->gameObjectPtr->getSceneNode()->detachObject(this->camera);
-
-			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(this->camera);
-
-			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::~CameraComponent",
-			{
-				this->camera->getParentSceneNode()->detachObject(this->camera);
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->camera);
-			});
-
-			this->camera = nullptr;
-			this->dummyEntity = nullptr;
-		}
+		
 	}
 
 	void CameraComponent::handleSwitchCamera(EventDataPtr eventData)
@@ -264,7 +243,11 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool();
-			this->dummyEntity->setVisible(visible);
+			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::connect", _1(visible),
+			{
+				if (this->dummyEntity)
+					this->dummyEntity->setVisible(visible);
+			});
 		}
 
 		return true;
@@ -279,14 +262,16 @@ namespace NOWA
 			{
 				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect1",
 				{
-					this->dummyEntity->setVisible(false);
+					if (this->dummyEntity)
+						this->dummyEntity->setVisible(false);
 				});
 			}
 			else
 			{
 				ENQUEUE_RENDER_COMMAND("CameraComponent::disconnect2",
 				{
-					this->dummyEntity->setVisible(true);
+					if (this->dummyEntity)
+						this->dummyEntity->setVisible(true);
 				});
 			}
 		}
@@ -298,85 +283,68 @@ namespace NOWA
 	void CameraComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
-		// Show transform values for game object when camera component has been removed
-		this->gameObjectPtr->getAttribute(GameObject::AttrPosition())->setVisible(true);
-		this->gameObjectPtr->getAttribute(GameObject::AttrOrientation())->setVisible(true);
-		this->gameObjectPtr->getAttribute(GameObject::AttrScale())->setVisible(true);
 
-		// If it was an active one, send event
-		if (true == this->active->getBool())
+		// Remove event listeners immediately (assumed thread-safe)
+		auto eventManager = NOWA::AppStateManager::getSingletonPtr()->getEventManager();
+		eventManager->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleSwitchCamera), EventDataSwitchCamera::getStaticEventType());
+		eventManager->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCamera), EventDataRemoveCamera::getStaticEventType());
+		eventManager->removeListener(fastdelegate::MakeDelegate(this, &CameraComponent::handleRemoveCameraBehavior), EventDataRemoveCameraBehavior::getStaticEventType());
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(this->camera);
+
+		// Copy pointers for deferred destruction
+		auto cameraCopy = this->camera;
+		auto dummyEntityCopy = this->dummyEntity;
+		auto gameObjectCopy = this->gameObjectPtr;
+		auto sceneManagerCopy = (gameObjectCopy) ? gameObjectCopy->getSceneManager() : nullptr;
+		auto cameraManager = NOWA::AppStateManager::getSingletonPtr()->getCameraManager();
+		auto workspaceBaseComponentCopy = this->workspaceBaseComponent;
+		auto active = this->active->getBool();
+
+		// Nullify members immediately
+		this->camera = nullptr;
+		this->dummyEntity = nullptr;
+		this->gameObjectPtr = nullptr;
+
+		// Enqueue destruction command on render thread
+		ENQUEUE_DESTROY_COMMAND("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
 		{
-			boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(this->active->getBool(), this->camera));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataRemoveCamera);
-		}
-
-#if 0
-		bool foundAnyOtherCamera = false;
-		auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-		// if the removed camera component had an active camera a successeres must be determined
-		for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
-		{
-			GameObject* gameObject = it->second.get();
-
-			if (gameObject->getId() != this->gameObjectPtr->getId())
+			if (cameraCopy)
 			{
-				auto cameraComponent = NOWA::makeStrongPtr(gameObject->getComponent<CameraComponent>());
-				if (nullptr != cameraComponent)
+				// If dummyEntityCopy needs to be destroyed/deleted, do it here safely
+				// (Add that logic if applicable)
+
+				// Optional: If gameObjectCopy owns other resources that must be cleaned, do so here
+
+				// Show transform values for game object when camera component has been removed
+				gameObjectCopy->getAttribute(GameObject::AttrPosition())->setVisible(true);
+				gameObjectCopy->getAttribute(GameObject::AttrOrientation())->setVisible(true);
+				gameObjectCopy->getAttribute(GameObject::AttrScale())->setVisible(true);
+
+				// If it was an active one, send event
+				if (true == active && false == AppStateManager::getSingletonPtr()->getIsShutdown())
 				{
-					foundAnyOtherCamera = true;
-					break;
+					boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(active, cameraCopy));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRemoveCamera);
 				}
-			}
-		}
 
-		// A camera must exist!
-		if (false == foundAnyOtherCamera && false == AppStateManager::getSingletonPtr()->getIsShutdown())
-		{
-			Ogre::Camera* camera = this->gameObjectPtr->getSceneManager()->createCamera("GamePlayCamera");
-			camera->setFOVy(this->camera->getFOVy());
-			camera->setNearClipDistance(this->camera->getNearClipDistance());
-			camera->setFarClipDistance(this->camera->getFarClipDistance());
-			camera->setQueryFlags(0 << 0);
-			camera->setPosition(this->camera->getPosition());
-
-			// AppStateManager::getSingletonPtr()->getCameraManager()->init("CameraManager1", camera);
-			if (nullptr == this->baseCamera)
-			{
-				this->baseCamera = new BaseCamera(AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-			}
-			AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
-			AppStateManager::getSingletonPtr()->getCameraManager()->setActiveCameraBehavior(camera, cameraType->getBehaviorType());
-			// Create dummy workspace
-
-			if (false == WorkspaceModule::getInstance()->getUseSplitScreen())
-			{
-				WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
-			}
-			else
-			{
-				if (nullptr == WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent())
+				if (nullptr != workspaceBaseComponentCopy && false == AppStateManager::getSingletonPtr()->getIsShutdown())
 				{
-					WorkspaceModule::getInstance()->setPrimaryWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
+					workspaceBaseComponentCopy->setUseReflection(false);
 				}
-				else
-				{
-					WorkspaceModule::getInstance()->setNthWorkspace(this->gameObjectPtr->getSceneManager(), camera, nullptr);
-				}
+
+				WorkspaceModule::getInstance()->removeCamera(cameraCopy);
+			
+				if (cameraManager)
+					cameraManager->removeCamera(cameraCopy);
+
+				if (cameraCopy->getParentSceneNode())
+					cameraCopy->getParentSceneNode()->detachObject(cameraCopy);
+
+				if (sceneManagerCopy)
+					sceneManagerCopy->destroyMovableObject(cameraCopy);
 			}
-		}
-
-		WorkspaceModule::getInstance()->removeCamera(this->camera);
-		AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
-
-		// Send out event, that main camera has changed! so that EditorManager can react and set different camera! but what is with all other components??
-#endif
-
-		if (nullptr != this->workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->getIsShutdown())
-		{
-			this->workspaceBaseComponent->setUseReflection(false);
-		}
-
-		WorkspaceModule::getInstance()->removeCamera(this->camera);
+		});
 	}
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
@@ -468,7 +436,7 @@ namespace NOWA
 					if (nullptr != previousCamera)
 					{
 						NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(previousCamera);
-						NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(previousCamera);
+						NOWA::GraphicsModule::getInstance()->removeTrackedCamera(previousCamera);
 						this->gameObjectPtr->getSceneManager()->destroyCamera(previousCamera);
 						previousCamera = nullptr;
 					}

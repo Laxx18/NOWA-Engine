@@ -484,7 +484,7 @@ namespace NOWA
 					// https://gamedev.stackexchange.com/questions/140394/moving-a-sprite-along-a-circle-given-by-an-implicit-equation
 					this->gameObjectPtr->getSceneNode()->setPosition(this->originPosition + this->mathFunction);
 
-					NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->originPosition + this->mathFunction);
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->originPosition + this->mathFunction);
 					// this->gameObjectPtr->getSceneNode()->translate(mathFunction);
 
 					if (true == this->autoOrientate->getBool())
@@ -493,7 +493,7 @@ namespace NOWA
 							* this->gameObjectPtr->getDefaultDirection()).getRotationTo(this->gameObjectPtr->getPosition() - this->oldPosition);
 						// this->gameObjectPtr->getSceneNode()->setOrientation(newOrientation);
 						
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), newOrientation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), newOrientation);
 						
 							// Ogre::Quaternion::Slerp(10.0f * dt, this->gameObjectPtr->getSceneNode()->getOrientation(), newOrientation, true));
 					}

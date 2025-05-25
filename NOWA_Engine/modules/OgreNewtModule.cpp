@@ -1,6 +1,6 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "OgreNewtModule.h"
-#include "RenderCommandQueueModule.h"
+#include "GraphicsModule.h"
 
 namespace NOWA
 {
@@ -181,21 +181,23 @@ namespace NOWA
 
 	void OgreNewtModule::destroyContent(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("OgreNewtModule::destroyContent",
+		if (nullptr != this->ogreNewt)
 		{
-			if (this->ogreNewt)
+			auto ogreNewt = this->ogreNewt;
+			this->ogreNewt = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("OgreNewtModule::destroyContent", _1(ogreNewt),
 			{
-				delete this->ogreNewt;
-				this->ogreNewt = 0;
-			}
-		});
+				delete ogreNewt;
+			});
+		}
 	}
 
 	void OgreNewtModule::showOgreNewtCollisionLines(bool enabled)
 	{
 		if (this->ogreNewt)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreNewtModule::showOgreNewtCollisionLines", _1(enabled),
+			ENQUEUE_RENDER_COMMAND_MULTI("OgreNewtModule::showOgreNewtCollisionLines", _1(enabled),
 			{
 				OgreNewt::Debugger & debug = this->ogreNewt->getDebugger();
 				if (enabled)
@@ -310,16 +312,16 @@ namespace NOWA
 
 			if (false == node->isStatic())
 			{
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
 			}
 			if (true == updateRot)
 			{
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
 			}
 			else if (true == updateStatic)
 			{
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
 			}
 		});
 #else
@@ -338,20 +340,20 @@ namespace NOWA
 					return;
 				}
 
-				NOWA::RenderCommandQueueModule::getInstance()->enqueue([=]() {
+				NOWA::GraphicsModule::getInstance()->enqueue([=]() {
 
 					if (false == node->isStatic())
 					{
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientation().Inverse() * (pos - parent->_getDerivedPosition())) / parent->_getDerivedScale());
 					}
 					if (true == updateRot)
 					{
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientation().Inverse() * rot);
 					}
 					else if (true == updateStatic)
 					{
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(node, (parent->_getDerivedOrientationUpdated().Inverse() * (pos - parent->_getDerivedPositionUpdated())) / parent->_getDerivedScaleUpdated());
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(node, parent->_getDerivedOrientationUpdated().Inverse() * rot);
 					}
 				}, "body->setRenderUpdateCallback");
 			});

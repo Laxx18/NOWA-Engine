@@ -112,7 +112,6 @@ namespace NOWA
  
 		// Other protected functions
 		void createGrid();
-		void destroyGrid();
  
 		void intenralUpdate();
 		void updateOrtho();

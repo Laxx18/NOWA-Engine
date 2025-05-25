@@ -510,7 +510,7 @@ namespace NOWA
 				}
 
 				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
+				NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z));
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "->scale: " + Ogre::StringConverter::toString(Ogre::Vector3(scale, this->scaleSnapshot.y, this->scaleSnapshot.z)));
 			}
 			else if (this->meshScaleAxis->getVector3().y == 1.0f)
@@ -524,7 +524,7 @@ namespace NOWA
 				}
 
 				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
+				NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, scale, this->scaleSnapshot.z));
 			}
 			else
 			{
@@ -537,7 +537,7 @@ namespace NOWA
 				}
 
 				// this->gameObjectPtr->getSceneNode()->setScale(Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
+				NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(this->scaleSnapshot.x, this->scaleSnapshot.y, scale));
 			}
 
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "->btoffset: " + Ogre::StringConverter::toString(this->gameObjectPtr->getBottomOffset()));
@@ -903,7 +903,7 @@ namespace NOWA
 			// sceneNode->setPosition(position);
 			// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
 
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
+			NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 		}
 
 		unsigned int oldSize = static_cast<unsigned int>(this->meshes.size());
@@ -914,7 +914,7 @@ namespace NOWA
 			position = priorSceneNode->getPosition() + ((direction * this->offsetPositionFactor->getVector3()) * (priorSceneNode->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale()));
 			// sceneNode->setPosition(position);
 			// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
+			NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 		}
 
 		this->meshes.push_back(sceneNode);
@@ -927,7 +927,7 @@ namespace NOWA
 		Ogre::Quaternion orientation = MathHelper::getInstance()->faceDirection(this->gameObjectPtr->getSceneNode(), direction, this->expandAxis->getVector3()) * MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 		// this->gameObjectPtr->getSceneNode()->setPosition(this->startPositionGameObject->getPosition());
 		// this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
-		NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), this->startPositionGameObject->getPosition(), orientation);
+		NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->gameObjectPtr->getSceneNode(), this->startPositionGameObject->getPosition(), orientation);
 
 		for (size_t i = 0; i < this->meshes.size(); i++)
 		{
@@ -938,7 +938,7 @@ namespace NOWA
 				position = this->gameObjectPtr->getPosition() + (direction * this->offsetPositionFactor->getVector3()) * (this->gameObjectPtr->getSceneNode()->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale());
 				// ->setPosition(position);
 				// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
+				NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 			}
 			else
 			{
@@ -946,7 +946,7 @@ namespace NOWA
 				position = priorSceneNode->getPosition() + (direction * this->offsetPositionFactor->getVector3()) * (priorSceneNode->getAttachedObject(0)->getLocalAabb().getSize() * this->gameObjectPtr->getSceneNode()->getScale());
 				// sceneNode->setPosition(position);
 				// sceneNode->setOrientation(this->gameObjectPtr->getSceneNode()->getOrientation());
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
+				NOWA::GraphicsModule::getInstance()->updateNodeTransform(sceneNode, position, this->gameObjectPtr->getSceneNode()->getOrientation());
 			}
 		}
 	}

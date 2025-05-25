@@ -2,7 +2,7 @@
 #include "ProjectManager.h"
 #include "GuiEvents.h"
 #include "modules/WorkspaceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 #include "OpenSaveFileDialog/DialogManager.cpp"
 #include "OpenSaveFileDialog/Dialog.cpp"
@@ -32,26 +32,32 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
 
 ProjectManager::~ProjectManager()
 {
+	// Delete import/export modules safely (already safe as you said)
 	if (this->dotSceneImportModule)
 	{
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ProjectManager]: Destroying Scene");
 		delete this->dotSceneImportModule;
 		this->dotSceneImportModule = nullptr;
 	}
+
 	if (this->dotSceneExportModule)
 	{
 		delete this->dotSceneExportModule;
 		this->dotSceneExportModule = nullptr;
 	}
 
+	// Move pointer locally and enqueue deletion on render thread
 	if (this->openSaveFileDialog)
 	{
-		delete this->openSaveFileDialog;
+		auto openSaveDialogCopy = this->openSaveFileDialog;
 		this->openSaveFileDialog = nullptr;
-	}
 
-	tools::DialogManager::getInstance().shutdown();
-	delete tools::DialogManager::getInstancePtr();
+		ENQUEUE_DESTROY_COMMAND("ProjectManager::~ProjectManager - openSaveFileDialog delete", _1(openSaveDialogCopy),
+		{
+			delete openSaveDialogCopy;
+			tools::DialogManager::getInstance().shutdown();
+			delete tools::DialogManager::getInstancePtr();
+		});
+	}
 
 	this->editorManager = nullptr;
 }
@@ -616,7 +622,7 @@ void ProjectManager::destroyScene(void)
 	if (nullptr != camera && false == foundCorrectCameraComponent)
 	{
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(camera);
-		NOWA::RenderCommandQueueModule::getInstance()->removeTrackedCamera(camera);
+		NOWA::GraphicsModule::getInstance()->removeTrackedCamera(camera);
 		this->sceneManager->destroyCamera(camera);
 		camera = nullptr;
 	}
@@ -904,32 +910,35 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 
 bool ProjectManager::checkProjectExists(const Ogre::String& fileName)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _1(fileName),
+	bool projectExists = false;
+
+	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::checkProjectExists", _2(fileName, &projectExists),
 	{
 		Ogre::String filePathName;
-		Ogre::ResourceGroupManager::LocationList resLocationsList = Ogre::ResourceGroupManager::getSingleton().getResourceLocationList("Projects");
-		Ogre::ResourceGroupManager::LocationList::const_iterator it = resLocationsList.cbegin();
-		Ogre::ResourceGroupManager::LocationList::const_iterator itEnd = resLocationsList.cend();
+		auto & resManager = Ogre::ResourceGroupManager::getSingleton();
+		const auto & resLocationsList = resManager.getResourceLocationList("Projects");
 
-		for (; it != itEnd; ++it)
+		for (const auto& loc : resLocationsList)
 		{
-			// Project is always: "projects/projectName/sceneName.scene"
-			filePathName = (*it)->archive->getName() + "/" + fileName;
+			filePathName = loc->archive->getName() + "/" + fileName;
 
-			// Check if a project with the same name does already exist
 			std::ifstream ifs(filePathName);
-			if (true == ifs.good())
+			if (ifs.good())
 			{
-				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
+				projectExists = true;
+
+				// UI calls must be on render/UI thread
+				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue",
+					MyGUI::LanguageManager::getInstance().replaceTags("#{Overwrite}"),
 					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
 
 				messageBox->eventMessageBoxResult += MyGUI::newDelegate(this, &ProjectManager::notifyMessageBoxEnd);
-				return true;
+				break;
 			}
-			break;
 		}
 	});
-	return false;
+
+	return projectExists;
 }
 
 void ProjectManager::notifyMessageBoxEnd(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)

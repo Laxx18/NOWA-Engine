@@ -3,7 +3,7 @@
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
 #include "main/Core.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {

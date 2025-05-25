@@ -1,7 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "SelectionRectangle.h"
 #include "main/Core.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {

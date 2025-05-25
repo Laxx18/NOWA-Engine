@@ -4,7 +4,7 @@
 #include "gameobject/GameObject.h"
 #include "main/Core.h"
 #include "main/AppStateManager.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -186,7 +186,7 @@ namespace NOWA
 			// TODO: Set from outside?
 			Ogre::Real dampTime = 0.2f;
 			// this->camera->setPosition(MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, MathHelper::getInstance()->smoothDamp(this->camera->getPosition(), this->desiredPosition, this->moveVelocity, dampTime));
 		}
 		this->lastMoveValue = this->camera->getPosition();
 

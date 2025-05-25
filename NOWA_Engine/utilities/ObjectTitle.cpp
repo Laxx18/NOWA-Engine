@@ -1,6 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "ObjectTitle.h"
 #include "main/Core.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -10,54 +11,125 @@ namespace NOWA
 		: pObject(pObject),
 		camera(camera)
 	{
-		this->pOverlay = Ogre::v1::OverlayManager::getSingleton().create(strName + "_TitleOverlay");
-		this->pContainer = (Ogre::v1::OverlayContainer*)Ogre::v1::OverlayManager::getSingleton().createOverlayElement("Panel", strName + "_TitleContainer");
-		this->pOverlay->add2D(this->pContainer);
+		// Save strName etc. for later use inside lambda
+		auto fontName = strFontName;
+		auto overlayName = strName + "_TitleOverlay";
+		auto containerName = strName + "_TitleContainer";
+		auto textAreaName = strName + "_TitleTextArea";
 
-		this->pTextarea = Ogre::v1::OverlayManager::getSingleton().createOverlayElement("TextArea", strName + "_TitleTextArea");
-		this->pTextarea->setDimensions(0.8f, 0.8f);
-		this->pTextarea->setMetricsMode(Ogre::v1::GMM_PIXELS);
-		this->pTextarea->setPosition(0.1f, 0.1f);
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle constructor render init", _6(this, fontName, overlayName, containerName, textAreaName, color),
+		{
+			Ogre::v1::OverlayManager& overlayMgr = Ogre::v1::OverlayManager::getSingleton();
+			Ogre::FontManager& fontMgr = Ogre::FontManager::getSingleton();
 
-		Ogre::FontManager::getSingleton().load(strFontName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-		this->pFont = (Ogre::Font*)Ogre::FontManager::getSingleton().getByName(strFontName).getPointer();
-		this->pTextarea->setParameter("font_name", strFontName);
-		this->pTextarea->setParameter("char_height", this->pFont->getParameter("size"));
-		this->pTextarea->setParameter("horz_align", "left");
-		this->pTextarea->setColour(color);
+			this->pOverlay = overlayMgr.create(overlayName);
+			this->pContainer = static_cast<Ogre::v1::OverlayContainer*>(overlayMgr.createOverlayElement("Panel", containerName));
+			this->pOverlay->add2D(this->pContainer);
 
-		this->pContainer->addChild(this->pTextarea);
-		this->pContainer->show();
+			this->pTextarea = overlayMgr.createOverlayElement("TextArea", textAreaName);
+			this->pTextarea->setDimensions(0.8f, 0.8f);
+			this->pTextarea->setMetricsMode(Ogre::v1::GMM_PIXELS);
+			this->pTextarea->setPosition(0.1f, 0.1f);
 
-		//Titelposition einmal berechnen
+			// Load font and set parameters
+			fontMgr.load(fontName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+			Ogre::Font * font = static_cast<Ogre::Font*>(fontMgr.getByName(fontName).getPointer());
+			this->pFont = font;
+
+			this->pTextarea->setParameter("font_name", fontName);
+			this->pTextarea->setParameter("char_height", font->getParameter("size"));
+			this->pTextarea->setParameter("horz_align", "left");
+			this->pTextarea->setColour(color);
+
+			this->pContainer->addChild(this->pTextarea);
+			this->pContainer->show();
+		});
+
 		this->update();
 	}
 
 	ObjectTitle::~ObjectTitle()
 	{
-		Ogre::v1::OverlayManager *pOverlayManager = Ogre::v1::OverlayManager::getSingletonPtr();
-		this->pTextarea->setCaption("");
-		this->pTextarea->hide();
-		this->pContainer->removeChild(this->pTextarea->getName());
-		this->pContainer->hide();
-		this->pOverlay->remove2D(this->pContainer);
-		pOverlayManager->destroyOverlayElement(this->pTextarea);
-		pOverlayManager->destroyOverlayElement(this->pContainer);
-		this->pOverlay->hide();
-		pOverlayManager->destroy(this->pOverlay);
+		Ogre::v1::OverlayManager* pOverlayManager = Ogre::v1::OverlayManager::getSingletonPtr();
+
+		// Capture everything needed for safe deletion on render thread
+		auto overlay = this->pOverlay;
+		auto container = this->pContainer;
+		auto textarea = this->pTextarea;
+
+		ENQUEUE_DESTROY_COMMAND("Destroy ObjectTitle overlay", _4(pOverlayManager, overlay, container, textarea),
+		{
+			if (textarea)
+			{
+				textarea->setCaption("");
+				textarea->hide();
+			}
+
+			if (container && textarea)
+				container->removeChild(textarea->getName());
+
+			if (container)
+				container->hide();
+
+			if (overlay && container)
+				overlay->remove2D(container);
+
+			if (pOverlayManager)
+			{
+				if (textarea)
+					pOverlayManager->destroyOverlayElement(textarea);
+				if (container)
+					pOverlayManager->destroyOverlayElement(container);
+				if (overlay)
+				{
+					overlay->hide();
+					pOverlayManager->destroy(overlay);
+				}
+			}
+		});
+
+		// Optional: clear local pointers
+		this->pTextarea = nullptr;
+		this->pContainer = nullptr;
+		this->pOverlay = nullptr;
 	}
+
 
 	void ObjectTitle::setTitle(const Ogre::String& strTitle)
 	{
-		this->pTextarea->setCaption(strTitle);
-		textDim = getTextDimensions(strTitle);
-		this->pContainer->setDimensions(textDim.x, textDim.y);
+		textDim = getTextDimensions(strTitle); // Do this on logic thread
+
+		auto textarea = this->pTextarea;
+		auto container = this->pContainer;
+		auto dim = this->textDim; // Make a copy to capture by value
+
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::setTitle", _4(textarea, container, strTitle, dim),
+		{
+			if (textarea)
+			{
+				textarea->setCaption(strTitle);
+			}
+			if (container)
+			{
+				container->setDimensions(dim.x, dim.y);
+			}
+		});
 	}
+
 
 	void ObjectTitle::setColor(const Ogre::ColourValue& color)
 	{
-		this->pTextarea->setColour(color);
+		auto textarea = this->pTextarea;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::setColor", _2(textarea, color),
+		{
+			if (textarea)
+			{
+				textarea->setColour(color);
+			}
+		});
 	}
+
 
 	void ObjectTitle::update()
 	{
@@ -68,7 +140,15 @@ namespace NOWA
 
 		if (!this->pObject->isVisible())
 		{
-			this->pOverlay->hide();
+			// Hide overlay safely on render thread
+			auto overlay = this->pOverlay;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update hide", _1(overlay),
+			{
+				if (overlay)
+				{
+					overlay->hide();
+				}
+			});
 			return;
 		}
 		if (this->pObject)
@@ -96,11 +176,6 @@ namespace NOWA
 
 			// Den Text nur anzeigen, wenn die Kamera drauf schaut
 			Ogre::Plane cameraPlane = Ogre::Plane(Ogre::Vector3(this->camera->getDerivedOrientation().zAxis()), this->camera->getDerivedPosition());
-			/*if (cameraPlane.getSide(point) != Ogre::Plane::NEGATIVE_SIDE)
-			{
-				this->pOverlay->hide();
-				return;
-			}*/
 
 			//2D Bildschirmkoordinaten fuer den Punkt erhalten
 			point = this->camera->getProjectionMatrix() * (this->camera->getViewMatrix() * point);
@@ -110,9 +185,22 @@ namespace NOWA
 			Ogre::Real x = (point.x / 2) + 0.5f;
 			Ogre::Real y = 1 - ((point.y / 2) + 0.5f);
 
-			//Position aktualisieren und Text im Zentrum darstellen
-			this->pContainer->setPosition(x - (textDim.x / 2), y);
-			this->pOverlay->show();
+			// Defer final write to render thread
+			auto container = this->pContainer;
+			auto overlay = this->pOverlay;
+			auto textWidth = this->textDim.x;
+
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update overlay pos", _5(container, overlay, x, y, textWidth),
+			{
+				if (container)
+				{
+					container->setPosition(x - (textWidth / 2), y);
+				}
+				if (overlay)
+				{
+					overlay->show();
+				}
+			});
 		}
 	}
 

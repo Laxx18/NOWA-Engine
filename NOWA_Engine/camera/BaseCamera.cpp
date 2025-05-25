@@ -4,7 +4,7 @@
 #include "main/InputDeviceCore.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "MyGUI_InputManager.h"
 
 namespace NOWA
@@ -206,7 +206,7 @@ namespace NOWA
 
 			// Update the position in the current transform buffer
 			// This is thread-safe because it's happening in the logic thread
-			RenderCommandQueueModule::getInstance()->updateCameraPosition(this->camera, newPosition);
+			GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
 
 			this->lastMoveValue = moveValue;
 		}
@@ -316,7 +316,7 @@ namespace NOWA
 			Ogre::Quaternion newOrientation = yawRotation * pitchRotation * currentOrientation;
 
 			// Use the thread-safe update method just like moveCamera does
-			NOWA::RenderCommandQueueModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, newOrientation);
 
 			// this->lastValue = rotationValue;
 		}

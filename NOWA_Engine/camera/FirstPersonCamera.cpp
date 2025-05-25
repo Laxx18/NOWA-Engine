@@ -3,7 +3,7 @@
 #include "gameobject/GameObjectComponent.h"
 #include "utilities/MathHelper.h"
 #include "main/Core.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -107,7 +107,7 @@ namespace NOWA
         // Apply smooth movement
         Ogre::Vector3 smoothedPosition = (targetVector * this->smoothValue) + (this->camera->getPosition() * (1.0f - this->smoothValue));
 
-        NOWA::RenderCommandQueueModule::getInstance()->updateCameraTransform(this->camera, smoothedPosition, delta);
+        NOWA::GraphicsModule::getInstance()->updateCameraTransform(this->camera, smoothedPosition, delta);
     }
 #else
     void FirstPersonCamera::moveCamera(Ogre::Real dt)

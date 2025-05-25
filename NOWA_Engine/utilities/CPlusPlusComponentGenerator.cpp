@@ -1,7 +1,7 @@
 #include "NOWAPrecompiled.h"
 #include "CPlusPlusComponentGenerator.h"
 #include "modules/DeployResourceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace
 {

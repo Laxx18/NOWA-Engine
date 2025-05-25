@@ -2,7 +2,7 @@
 #include "ParticleUniverseModule.h"
 #include "ParticleUniverseSystemManager.h"
 #include "DeployResourceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -21,31 +21,33 @@ namespace NOWA
 
 	void ParticleUniverseModule::destroyContent(void)
 	{
-		//if (this->particleUniverseSystem)
-		//{
-		//	this->particleUniverseSystem->stop();
-		//	// this->particleNode->detachObject(this->particleUniverseSystem);
-		//	this->particleSystemManager->destroyParticleSystem(this->particleUniverseSystem, this->sceneManager);
-		//	this->particleUniverseSystem = nullptr;
-		//}
-		ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseModule::destroyContent",
+		for (auto& it = this->particles.begin(); it != this->particles.end(); ++it)
 		{
-			for (auto& it = this->particles.begin(); it != this->particles.end(); ++it)
+			ParticleUniverse::ParticleSystem* particle = it->second.particle;
+			Ogre::SceneNode* particleNode = it->second.particleNode;
+
+			if (particle && particleNode)
 			{
-				ParticleUniverse::ParticleSystem* particle = it->second.particle;
-				if (particle)
+				// Capture pointers locally for the lambda
+				auto sceneManager = this->sceneManager;
+
+				ENQUEUE_DESTROY_COMMAND("DestroyParticleSystem", _3(particle, particleNode, sceneManager),
 				{
-				
-						particle->stop();
-						it->second.particleNode->detachObject(particle);
-						this->sceneManager->getRootSceneNode()->removeAndDestroyChild(it->second.particleNode);
-						ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particle, this->sceneManager);
-					particle = nullptr;
-				}
+					particle->stop();
+					particleNode->detachObject(particle);
+
+					// Remove and destroy the particle node from the scene graph
+					sceneManager->getRootSceneNode()->removeAndDestroyChild(particleNode);
+
+					// Destroy the particle system through the ParticleSystemManager
+					ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particle, sceneManager);
+				});
 			}
-			this->sceneManager = nullptr;
-			this->particles.clear();
-		});
+		}
+
+		// After all enqueued commands, clear the container and null sceneManager pointer safely here
+		this->particles.clear();
+		this->sceneManager = nullptr;
 	}
 
 	void ParticleUniverseModule::init(Ogre::SceneManager* sceneManager)
@@ -227,7 +229,8 @@ namespace NOWA
 				}
 				else
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseModule::update", _1(particleUniverseData), {
+					ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::update", _1(particleUniverseData),
+					{
 						particleUniverseData.second.particle->stop();
 					});
 					// set activated to false, so that the particle can be activated at a later time

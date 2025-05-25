@@ -5,7 +5,7 @@
 #include "main/AppStateManager.h"
 #include "utilities/MathHelper.h"
 #include "modules/InputDeviceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
@@ -85,7 +85,7 @@ namespace NOWA
 			}
 			if (nullptr != this->cameraNode)
 			{
-				NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->cameraNode);
+				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->cameraNode);
 				this->sceneManager->destroySceneNode(this->cameraNode);
 				this->cameraNode = nullptr;
 			}

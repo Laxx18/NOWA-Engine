@@ -2,7 +2,7 @@
 #include "InputDeviceCore.h"
 #include "main/Core.h"
 #include "modules/InputDeviceModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "console/LuaConsole.h"
 #include "MyGUI_InputManager.h"
 

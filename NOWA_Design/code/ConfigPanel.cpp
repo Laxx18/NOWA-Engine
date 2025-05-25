@@ -70,13 +70,23 @@ ConfigPanel::ConfigPanel(ProjectManager* projectManager, const MyGUI::FloatCoord
 
 void ConfigPanel::destroyContent(void)
 {
-	// No delete of e.g. configPanelProject because its done internally in removeAllItems
-	this->configPanelView->removeAllItems();
+	if (this->configPanelView != nullptr)
+	{
+		// Step 1: Copy pointer and nullify to prevent race conditions
+		auto viewCopy = this->configPanelView;
+		this->configPanelView = nullptr;
+
+		// Step 2: Enqueue render-thread-safe cleanup
+		ENQUEUE_DESTROY_COMMAND("ConfigPanel::destroyContent", _1(viewCopy),
+		{
+			viewCopy->removeAllItems();
+		});
+	}
 }
 
 void ConfigPanel::setVisible(bool show)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanel::setVisible", _1(show),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanel::setVisible", _1(show),
 	{
 		this->mMainWidget->setVisible(show);
 		// Set main window as modal
@@ -404,7 +414,7 @@ void ConfigPanelProject::resetSettings(void)
 
 void ConfigPanelProject::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::notifyComboChangedPosition", _2(sender, index),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::notifyComboChangedPosition", _2(sender, index),
 	{
 		if (this->themeBox == sender)
 		{
@@ -439,7 +449,7 @@ void ConfigPanelProject::notifyComboChangedPosition(MyGUI::ComboBox* sender, siz
 
 void ConfigPanelProject::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCode code, MyGUI::Char c)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onKeyButtonPressed", _2(sender, code),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::onKeyButtonPressed", _2(sender, code),
 	{
 		if (this->projectNameEdit == sender)
 		{
@@ -460,7 +470,7 @@ void ConfigPanelProject::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCod
 
 void ConfigPanelProject::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::buttonHit", _1(sender),
 	{
 		MyGUI::Button * button = sender->castType<MyGUI::Button>();
 		// Invert the state
@@ -485,7 +495,7 @@ void ConfigPanelProject::buttonHit(MyGUI::Widget* sender)
 
 void ConfigPanelProject::onEditSelectAccepted(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onEditSelectAccepted", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::onEditSelectAccepted", _1(sender),
 	{
 		if (this->projectNameEdit == sender)
 		{
@@ -500,7 +510,7 @@ void ConfigPanelProject::onEditSelectAccepted(MyGUI::Widget* sender)
 
 void ConfigPanelProject::onEditTextChanged(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::onEditTextChanged", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::onEditTextChanged", _1(sender),
 	{
 		if (this->projectNameEdit == sender)
 		{
@@ -533,7 +543,7 @@ void ConfigPanelProject::onMouseButtonClicked(MyGUI::Widget* sender)
 {
 	if (this->getMainWidget() == sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::onMouseButtonClicked",
+		ENQUEUE_RENDER_COMMAND("ConfigPanelProject::onMouseButtonClicked",
 		{
 			this->projectNameEdit->hideList();
 			this->sceneNameEdit->hideList();
@@ -556,11 +566,22 @@ void ConfigPanelProject::fillScenesSearchList(void)
 
 void ConfigPanelProject::shutdown()
 {
-	this->itemsEdit.clear();
-	// Not necessary and will not work
-	/*mWidgetClient->_destroyChildWidget(this->workspaceColorEdit);
-	mWidgetClient->_destroyChildWidget(this->workspaceNameBox);
-	mWidgetClient->_destroyChildWidget(this->workspaceColorButton);*/
+	// Step 1: Copy and clear to avoid double access
+	auto itemsEditCopy = this->itemsEdit;
+	this->itemsEdit.clear();  // Prevent access on main thread
+
+	// Step 2: Enqueue destruction on render thread
+	ENQUEUE_DESTROY_COMMAND("ConfigPanelProject::shutdown", _1(itemsEditCopy),
+	{
+		for (auto* widget : itemsEditCopy)
+		{
+			if (widget)
+			{
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+			}
+		}
+		itemsEditCopy.clear();  // Not strictly needed, but clean
+	});
 }
 
 void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item)
@@ -697,7 +718,22 @@ void ConfigPanelSceneManager::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 void ConfigPanelSceneManager::shutdown()
 {
-	this->itemsEdit.clear();
+	// Step 1: Copy and clear to avoid double access
+	auto itemsEditCopy = this->itemsEdit;
+	this->itemsEdit.clear();  // Prevent access on main thread
+
+	// Step 2: Enqueue destruction on render thread
+	ENQUEUE_DESTROY_COMMAND("ConfigPanelSceneManager::shutdown", _1(itemsEditCopy),
+	{
+		for (auto* widget : itemsEditCopy)
+		{
+			if (widget)
+			{
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+			}
+		}
+		itemsEditCopy.clear();  // Not strictly needed, but clean
+	});
 }
 
 void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLightUpperHemisphere, const Ogre::ColourValue& ambientLightLowerHemisphere, Ogre::Real shadowFarDistance, 
@@ -777,7 +813,7 @@ void ConfigPanelSceneManager::notifyComboChangedPosition(MyGUI::ComboBox* sender
 {
 	if (sender == this->forwardModeCombo)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyComboChangedPosition", _1(index),
+		ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelSceneManager::notifyComboChangedPosition", _1(index),
 		{
 			if (0 == index || 1 == index)
 			{
@@ -819,7 +855,7 @@ void ConfigPanelSceneManager::notifyComboChangedPosition(MyGUI::ComboBox* sender
 
 void ConfigPanelSceneManager::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelSceneManager::buttonHit", _1(sender),
 	{
 		if (this->ambientLightColour1 == sender)
 		{
@@ -841,7 +877,7 @@ void ConfigPanelSceneManager::buttonHit(MyGUI::Widget* sender)
 
 void ConfigPanelSceneManager::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyColourAccept", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelSceneManager::notifyColourAccept", _1(sender),
 	{
 		Ogre::String * colourSender = sender->getWidget()->getUserData<Ogre::String>();
 		Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
@@ -861,7 +897,7 @@ void ConfigPanelSceneManager::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void ConfigPanelSceneManager::notifyColourCancel(MyGUI::ColourPanel* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::notifyColourCancel", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelSceneManager::notifyColourCancel", _1(sender),
 	{
 		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
 		MyGUI::InputManager::getInstancePtr()->addWidgetModal(parent->getMainWidget());
@@ -916,12 +952,27 @@ void ConfigPanelOgreNewt::initialise()
 
 void ConfigPanelOgreNewt::shutdown()
 {
-	this->itemsEdit.clear();
+	// Step 1: Copy and clear to avoid double access
+	auto itemsEditCopy = this->itemsEdit;
+	this->itemsEdit.clear();  // Prevent access on main thread
+
+	// Step 2: Enqueue destruction on render thread
+	ENQUEUE_DESTROY_COMMAND("ConfigPanelOgreNewt::shutdown", _1(itemsEditCopy),
+	{
+		for (auto* widget : itemsEditCopy)
+		{
+			if (widget)
+			{
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+			}
+		}
+		itemsEditCopy.clear();  // Not strictly needed, but clean
+	});
 }
 
 void ConfigPanelOgreNewt::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelOgreNewt::buttonHit", _1(sender),
 	{
 		MyGUI::Button * button = sender->castType<MyGUI::Button>();
 		// Invert the state
@@ -1030,13 +1081,28 @@ void ConfigPanelRecast::initialise()
 
 void ConfigPanelRecast::shutdown()
 {
-	this->itemsEdit.clear();
+	// Step 1: Copy and clear to avoid double access
+	auto itemsEditCopy = this->itemsEdit;
+	this->itemsEdit.clear();  // Prevent access on main thread
+
+	// Step 2: Enqueue destruction on render thread
+	ENQUEUE_DESTROY_COMMAND("ConfigPanelRecast::shutdown", _1(itemsEditCopy),
+	{
+		for (auto* widget : itemsEditCopy)
+		{
+			if (widget)
+			{
+				MyGUI::Gui::getInstance().destroyWidget(widget);
+			}
+		}
+		itemsEditCopy.clear();  // Not strictly needed, but clean
+	});
 }
 
 void ConfigPanelRecast::buttonHit(MyGUI::Widget* sender)
 {
 	// Invert the state
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelOgreNewt::buttonHit", _1(sender),
 	{
 		MyGUI::Button* button = sender->castType<MyGUI::Button>();
 		button->setStateCheck(!button->getStateCheck());
@@ -1065,7 +1131,7 @@ void ConfigPanelRecast::setParameter(bool hasRecast,
 										Ogre::Vector3 pointExtends,
 										bool keepInterResults)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::buttonHit", _16(hasRecast, cellSize, cellHeight, agentMaxSlope, agentMaxClimb, 
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelOgreNewt::buttonHit", _16(hasRecast, cellSize, cellHeight, agentMaxSlope, agentMaxClimb, 
 		agentHeight, agentRadius, edgeMaxLen, edgeMaxError, regionMinSize, regionMergeSize, vertsPerPoly, detailSampleDist, detailSampleMaxError, pointExtends, keepInterResults),
 	{
 		MyGUI::TextBox * textBox = findWidgetBySuffix(mWidgetClient, "cellSizeText");

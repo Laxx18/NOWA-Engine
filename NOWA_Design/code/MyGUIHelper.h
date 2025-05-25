@@ -3,7 +3,7 @@
 
 #include "MyGUI.h"
 #include "OgreString.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 
 class MyGUIHelper
 {

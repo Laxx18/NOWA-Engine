@@ -1183,7 +1183,7 @@ namespace NOWA
 			this->sceneNode->detachAllObjects();
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsActiveDestructableComponent::SplitPart] Destroying scene node: "
 				+ this->sceneNode->getName());
-			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 			this->sceneManager->destroySceneNode(this->sceneNode);
 		}
 

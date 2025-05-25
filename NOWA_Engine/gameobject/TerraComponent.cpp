@@ -269,38 +269,61 @@ namespace NOWA
 	
 	void TerraComponent::destroyTerra(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("TerraComponent::destroyTerra",
-		{
-			//Unset the PBS listener and destroy it
-			if (nullptr != this->terra)
-			{
-				Core::getSingletonPtr()->getBaseListenerContainer()->removeConcreteListener(this->hlmsPbsTerraShadows);
-				this->hlmsPbsTerraShadows = nullptr;
+		if (this->terra == nullptr)
+			return;
 
-				WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-				if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		auto terra = this->terra;
+		auto hlmsPbsTerraShadows = this->hlmsPbsTerraShadows;
+		auto terraWorkspaceListener = this->terraWorkspaceListener;
+		auto gameObjectPtr = this->gameObjectPtr;
+
+		// Optional: get components that might become unavailable
+		auto core = Core::getSingletonPtr();
+		auto appState = AppStateManager::getSingletonPtr();
+		auto workspaceModule = WorkspaceModule::getInstance();
+		auto workspaceBaseComponent = workspaceModule->getPrimaryWorkspaceComponent();
+
+		// Clear pointers on *this* immediately
+		this->terra = nullptr;
+		this->hlmsPbsTerraShadows = nullptr;
+		this->terraWorkspaceListener = nullptr;
+
+		ENQUEUE_DESTROY_COMMAND("TerraComponent::destroyTerra", _7(terra, hlmsPbsTerraShadows, terraWorkspaceListener, gameObjectPtr, core, appState, workspaceBaseComponent),
+		{
+			if (terra)
+			{
+				if (core)
 				{
-						workspaceBaseComponent->setUseTerra(false);
-						workspaceBaseComponent->getWorkspace()->removeListener(this->terraWorkspaceListener);
-						delete this->terraWorkspaceListener;
-						this->terraWorkspaceListener = nullptr;
+					core->getBaseListenerContainer()->removeConcreteListener(hlmsPbsTerraShadows);
 				}
 
-				if (nullptr != this->gameObjectPtr->movableObject)
+				if (workspaceBaseComponent && appState && !appState->getIsShutdown())
 				{
-					this->gameObjectPtr->sceneNode->detachObject(this->terra);
-
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: "
-						+ this->gameObjectPtr->movableObject->getName());
-
-					this->gameObjectPtr->movableObject = nullptr;
-
-					delete this->terra;
-					this->terra = nullptr;
-					if (nullptr != this->gameObjectPtr->boundingBoxDraw)
+					workspaceBaseComponent->setUseTerra(false);
+					if (terraWorkspaceListener)
 					{
-						this->gameObjectPtr->sceneManager->destroyWireAabb(this->gameObjectPtr->boundingBoxDraw);
-						this->gameObjectPtr->boundingBoxDraw = nullptr;
+						workspaceBaseComponent->getWorkspace()->removeListener(terraWorkspaceListener);
+						delete terraWorkspaceListener;
+					}
+				}
+
+				if (gameObjectPtr && gameObjectPtr->movableObject)
+				{
+					if (gameObjectPtr->sceneNode && terra)
+						gameObjectPtr->sceneNode->detachObject(terra);
+
+					Ogre::LogManager::getSingletonPtr()->logMessage(
+						Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " +
+						gameObjectPtr->movableObject->getName());
+
+					gameObjectPtr->movableObject = nullptr;
+
+					delete terra;
+
+					if (gameObjectPtr->boundingBoxDraw && gameObjectPtr->sceneManager)
+					{
+						gameObjectPtr->sceneManager->destroyWireAabb(gameObjectPtr->boundingBoxDraw);
+						gameObjectPtr->boundingBoxDraw = nullptr;
 					}
 				}
 			}

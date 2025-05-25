@@ -91,60 +91,67 @@ void ResourcesPanel::setProjectManager(ProjectManager* projectManager)
 
 void ResourcesPanel::destroyContent(void)
 {
-	this->resourcesPanelView1->removeAllItems();
+	// Cache pointers and nullify member variables immediately for thread safety
+	auto resourcesPanelView1 = this->resourcesPanelView1;
+	auto resourcesPanelMeshes = this->resourcesPanelMeshes;
+	auto resourcesPanelGameObjects = this->resourcesPanelGameObjects;
+	auto resourcesPanelView2 = this->resourcesPanelView2;
+	auto resourcesPanelDataBlocks = this->resourcesPanelDataBlocks;
+	auto resourcesPanelTextures = this->resourcesPanelTextures;
+	auto resourcesPanelView3 = this->resourcesPanelView3;
+	auto resourcesPanelProject = this->resourcesPanelProject;
+	auto resourcesPanelLuaScript = this->resourcesPanelLuaScript;
+	auto resourcesPanelView4 = this->resourcesPanelView4;
+	auto resourcesPanelPlugins = this->resourcesPanelPlugins;
 
-	if (this->resourcesPanelMeshes)
-	{
-		delete this->resourcesPanelMeshes;
-		this->resourcesPanelMeshes = nullptr;
-	}
-#if 0
-	if (this->resourcesPanelMeshPreview)
-	{
-		delete this->resourcesPanelMeshPreview;
-		this->resourcesPanelMeshPreview = nullptr;
-	}
-#endif
-	if (this->resourcesPanelGameObjects)
-	{
-		delete this->resourcesPanelGameObjects;
-		this->resourcesPanelGameObjects = nullptr;
-	}
+	this->resourcesPanelView1 = nullptr;
+	this->resourcesPanelMeshes = nullptr;
+	this->resourcesPanelGameObjects = nullptr;
+	this->resourcesPanelView2 = nullptr;
+	this->resourcesPanelDataBlocks = nullptr;
+	this->resourcesPanelTextures = nullptr;
+	this->resourcesPanelView3 = nullptr;
+	this->resourcesPanelProject = nullptr;
+	this->resourcesPanelLuaScript = nullptr;
+	this->resourcesPanelView4 = nullptr;
+	this->resourcesPanelPlugins = nullptr;
 
-	this->resourcesPanelView2->removeAllItems();
-
-	if (this->resourcesPanelDataBlocks)
+	ENQUEUE_DESTROY_COMMAND("ResourcesPanel::destroyContent", _11(resourcesPanelView1, resourcesPanelMeshes, resourcesPanelGameObjects, resourcesPanelView2, 
+		resourcesPanelDataBlocks, resourcesPanelTextures, resourcesPanelView3, resourcesPanelProject, resourcesPanelLuaScript, resourcesPanelView4, resourcesPanelPlugins),
 	{
-		delete this->resourcesPanelDataBlocks;
-		this->resourcesPanelDataBlocks = nullptr;
-	}
-	if (this->resourcesPanelTextures)
-	{
-		delete this->resourcesPanelTextures;
-		this->resourcesPanelTextures = nullptr;
-	}
+		if (resourcesPanelView1)
+			resourcesPanelView1->removeAllItems();
 
-	this->resourcesPanelView3->removeAllItems();
+		if (resourcesPanelMeshes)
+			delete resourcesPanelMeshes;
 
-	if (this->resourcesPanelProject)
-	{
-		delete this->resourcesPanelProject;
-		this->resourcesPanelProject = nullptr;
-	}
+		if (resourcesPanelGameObjects)
+			delete resourcesPanelGameObjects;
 
-	if (this->resourcesPanelLuaScript)
-	{
-		delete this->resourcesPanelLuaScript;
-		this->resourcesPanelLuaScript = nullptr;
-	}
+		if (resourcesPanelView2)
+			resourcesPanelView2->removeAllItems();
 
-	this->resourcesPanelView4->removeAllItems();
+		if (resourcesPanelDataBlocks)
+			delete resourcesPanelDataBlocks;
 
-	if (this->resourcesPanelPlugins)
-	{
-		delete this->resourcesPanelPlugins;
-		this->resourcesPanelPlugins = nullptr;
-	}
+		if (resourcesPanelTextures)
+			delete resourcesPanelTextures;
+
+		if (resourcesPanelView3)
+			resourcesPanelView3->removeAllItems();
+
+		if (resourcesPanelProject)
+			delete resourcesPanelProject;
+
+		if (resourcesPanelLuaScript)
+			delete resourcesPanelLuaScript;
+
+		if (resourcesPanelView4)
+			resourcesPanelView4->removeAllItems();
+
+		if (resourcesPanelPlugins)
+			delete resourcesPanelPlugins;
+	});
 }
 
 void ResourcesPanel::setVisible(bool show)
@@ -206,19 +213,15 @@ void ResourcesPanelMeshes::initialise()
 
 void ResourcesPanelMeshes::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::shutdown",
-	{
-		this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
-		this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
-	});
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelMeshes::handleRefreshMeshResources), EventDataRefreshMeshResources::getStaticEventType());
+	this->meshesTree->eventTreeNodePrepare -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodePrepare);
+	this->meshesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelMeshes::notifyTreeNodeSelected);
 }
 
 void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelMeshes::editTextChange", _1(editBox),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelMeshes::editTextChange", _1(editBox),
 	{
 			// Start a new search each time for resources that do match the search caption string
 			this->autoCompleteSearch.reset();
@@ -230,7 +233,7 @@ void ResourcesPanelMeshes::editTextChange(MyGUI::Widget* sender)
 
 void ResourcesPanelMeshes::handleRefreshMeshResources(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelMeshes::handleRefreshMeshResources",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelMeshes::handleRefreshMeshResources",
 	{
 		this->clear();
 	});
@@ -399,7 +402,7 @@ void ResourcesPanelMeshes::notifyTreeNodeSelected(MyGUI::TreeControl* treeContro
 		return;
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelMeshes::notifyTreeNodeSelected", _2(treeControl, node),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelMeshes::notifyTreeNodeSelected", _2(treeControl, node),
 	{
 		if ("Plane" == Ogre::String(node->getText()))
 		{
@@ -586,27 +589,20 @@ void ResourcesPanelGameObjects::initialise()
 
 void ResourcesPanelGameObjects::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::shutdown",
-	{
-		this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
-		this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
-		this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
-		this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
-		this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
-		this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
-	});
-
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), EventDataRefreshResourcesPanel::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataNewGameObject::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelGameObjects::handleRefreshGameObjectsPanel), NOWA::EventDataEditorMode::getStaticEventType());
+	this->resourcesSearchEdit->eventToolTip -= MyGUI::newDelegate(MyGUIHelper::getInstance(), &MyGUIHelper::notifyToolTip);
+	this->resourcesSearchEdit->eventMouseLostFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseLostFocus);
+	this->resourcesSearchEdit->eventRootMouseChangeFocus -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::mouseRootChangeFocus);
+	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::editTextChange);
+	this->resourcesSearchEdit->eventMouseButtonClick -= MyGUI::newDelegate(this, &ResourcesPanelGameObjects::onMouseClick);
+	this->gameObjectsTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelGameObjects::notifyTreeNodeSelected);
+	this->gameObjectsTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelGameObjects::keyButtonPressed);
 }
 
 void ResourcesPanelGameObjects::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::editTextChange", _1(editBox),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::editTextChange", _1(editBox),
 	{
 		// Start a new search each time for resources that do match the search caption string
 		this->autoCompleteSearch.reset();
@@ -786,7 +782,7 @@ void ResourcesPanelGameObjects::refresh(const Ogre::String& filter)
 
 void ResourcesPanelGameObjects::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelGameObjects::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->gameObjectsTree->getRoot();
 		root->removeAll();
@@ -919,7 +915,7 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 	if (this->ctrlPressed && key == MyGUI::KeyCode::A)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::selectAll", _1(sender),
+		ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::selectAll", _1(sender),
 		{
 			MyGUI::TreeControl* treeControl = static_cast<MyGUI::TreeControl*>(sender);
 			this->selectAll = true;
@@ -931,7 +927,7 @@ void ResourcesPanelGameObjects::keyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr eventData)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelGameObjects::handleRefreshGameObjectsPanel",
 	{
 		this->clear();
 	});
@@ -939,7 +935,7 @@ void ResourcesPanelGameObjects::handleRefreshGameObjectsPanel(NOWA::EventDataPtr
 
 void ResourcesPanelGameObjects::selectAllNodes(MyGUI::TreeControl* treeControl)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelGameObjects::selectAllNodes", _1(treeControl),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelGameObjects::selectAllNodes", _1(treeControl),
 	{
 		auto rootNodes = treeControl->getRoot();
 		for (const auto node : rootNodes->getChildren())
@@ -1009,20 +1005,17 @@ void ResourcesPanelDataBlocks::initialise()
 
 void ResourcesPanelDataBlocks::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::shutdown",
-	{
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
-		this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
-		this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
-		this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
-	});
+	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelDataBlocks::editTextChange);
+	this->dataBlocksTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeNodeSelected);
+	this->dataBlocksTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelDataBlocks::notifyKeyButtonPressed);
+	this->dataBlocksTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelDataBlocks::notifyTreeContextMenu);
 }
 
 void ResourcesPanelDataBlocks::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelDataBlocks::editTextChange", _1(editBox),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelDataBlocks::editTextChange", _1(editBox),
 	{
 		// Start a new search each time for resources that do match the search caption string
 		this->autoCompleteSearch.reset();
@@ -1089,7 +1082,7 @@ void ResourcesPanelDataBlocks::loadDataBlocks(const Ogre::String& filter)
 
 void ResourcesPanelDataBlocks::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->dataBlocksTree->getRoot();
 		root->removeAll();
@@ -1107,7 +1100,7 @@ void ResourcesPanelDataBlocks::notifyTreeNodeSelected(MyGUI::TreeControl* treeCo
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::editTextChange",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::editTextChange",
 	{
 		Ogre::HlmsDatablock* datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
 		Ogre::HlmsPbsDatablock* pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
@@ -1142,7 +1135,7 @@ void ResourcesPanelDataBlocks::notifyTreeContextMenu(MyGUI::TreeControl* treeCon
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelDataBlocks::notifyTGreeContextMenu",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelDataBlocks::notifyTGreeContextMenu",
 	{
 		Ogre::HlmsDatablock * datablock = NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getDatablock(this->selectedText);
 		Ogre::HlmsPbsDatablock * pbsDataBlock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablock);
@@ -1158,8 +1151,6 @@ void ResourcesPanelDataBlocks::notifyTreeContextMenu(MyGUI::TreeControl* treeCon
 				 MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", data,
 					 MyGUI::MessageBoxStyle::IconInfo | MyGUI::MessageBoxStyle::Ok, "Popup", true);
 			}
-
-
 		}
 	});
 }
@@ -1207,20 +1198,17 @@ void ResourcesPanelTextures::initialise()
 
 void ResourcesPanelTextures::shutdown()
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::shutdown",
-	{
-		this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
-		this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
-		this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
-		this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
-	});
+	this->resourcesSearchEdit->eventEditTextChange -= MyGUI::newDelegate(this, &ResourcesPanelTextures::editTextChange);
+	this->texturesTree->eventTreeNodeSelected -= newDelegate(this, &ResourcesPanelTextures::notifyTreeNodeSelected);
+	this->texturesTree->eventKeyButtonPressed -= newDelegate(this, &ResourcesPanelTextures::notifyKeyButtonPressed);
+	this->texturesTree->eventTreeNodeContextMenu -= newDelegate(this, &ResourcesPanelTextures::notifyTreeContextMenu);
 }
 
 void ResourcesPanelTextures::editTextChange(MyGUI::Widget* sender)
 {
 	MyGUI::EditBox* editBox = static_cast<MyGUI::EditBox*>(sender);
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelTextures::editTextChange", _1(editBox),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelTextures::editTextChange", _1(editBox),
 	{
 		// Start a new search each time for resources that do match the search caption string
 		this->autoCompleteSearch.reset();
@@ -1272,7 +1260,7 @@ void ResourcesPanelTextures::loadTextures(const Ogre::String& filter)
 
 void ResourcesPanelTextures::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::clear",
 	{
 		MyGUI::TreeControl::Node * root = this->texturesTree->getRoot();
 		root->removeAll();
@@ -1289,7 +1277,7 @@ void ResourcesPanelTextures::notifyTreeNodeSelected(MyGUI::TreeControl* treeCont
 	}
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::notifyTreeNodeSelected",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::notifyTreeNodeSelected",
 	{
 		// Ogre::TexturePtr texturePtr = Ogre::TextureManager::getSingleton().getByName(this->selectedText);
 		// if (nullptr != texturePtr)
@@ -1349,7 +1337,7 @@ ResourcesPanelProject::ResourcesPanelProject()
 
 ResourcesPanelProject::~ResourcesPanelProject()
 {
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
+
 }
 
 void ResourcesPanelProject::setEditorManager(NOWA::EditorManager* editorManager)
@@ -1386,15 +1374,9 @@ void ResourcesPanelProject::initialise(void)
 
 void ResourcesPanelProject::shutdown(void)
 {
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataResourceCreated), NOWA::EventDataResourceCreated::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelProject::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
-
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::shutdown",
-	{
-		this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
-		this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
-		this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
-	});
+	this->filesTreeControl->eventKeyButtonPressed -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyKeyButtonPressed);
+	this->filesTreeControl->eventTreeNodeSelected -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeClick);
+	this->filesTreeControl->eventTreeNodeActivated -= MyGUI::newDelegate(this, &ResourcesPanelProject::notifyTreeNodeDoubleClick);
 }
 
 void ResourcesPanelProject::clear(void)
@@ -1411,7 +1393,7 @@ void ResourcesPanelProject::populateFilesTree(const Ogre::String& folderPath)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelProject::populateFilesTree", _1(folderPath),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelProject::populateFilesTree", _1(folderPath),
 	{
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
 
@@ -1676,12 +1658,12 @@ void ResourcesPanelLuaScript::initialise(void)
 
 void ResourcesPanelLuaScript::shutdown(void)
 {
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ResourcesPanelLuaScript::handleLuaScriptModified), NOWA::EventDataLuaScriptModfied::getStaticEventType());
+
 }
 
 void ResourcesPanelLuaScript::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
@@ -1692,7 +1674,7 @@ void ResourcesPanelLuaScript::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelLuaScript::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelLuaScript::clear",
 	{
 		auto luaScripts = NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->getManagedLuaScripts();
 
@@ -1709,7 +1691,7 @@ void ResourcesPanelLuaScript::populateListBox(void)
 
 void ResourcesPanelLuaScript::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelLuaScript::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelLuaScript::buttonHit", _1(sender),
 	{
 		if (sender == this->upButton)
 		{
@@ -1812,15 +1794,12 @@ void ResourcesPanelPlugins::initialise(void)
 
 void ResourcesPanelPlugins::shutdown(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::shutdown",
-	{
-		this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
-	});
+	this->listBox->eventListChangePosition -= MyGUI::newDelegate(this, &ResourcesPanelPlugins::onListBoxItemSelected);
 }
 
 void ResourcesPanelPlugins::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::clear",
 	{
 		this->selectedText.clear();
 		this->listBox->removeAllItems();
@@ -1831,7 +1810,7 @@ void ResourcesPanelPlugins::populateListBox(void)
 {
 	this->clear();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelPlugins::populateListBox",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelPlugins::populateListBox",
 	{
 			// Get all available plugin names
 		std::vector<Ogre::String> allPlugins = NOWA::Core::getSingletonPtr()->getAllPluginNames();
@@ -1860,7 +1839,7 @@ void ResourcesPanelPlugins::populateListBox(void)
 
 void ResourcesPanelPlugins::onListBoxItemSelected(MyGUI::ListBox* sender, size_t index)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ResourcesPanelPlugins::onListBoxItemSelected", _2(sender, index),
+	ENQUEUE_RENDER_COMMAND_MULTI("ResourcesPanelPlugins::onListBoxItemSelected", _2(sender, index),
 	{
 		if (index == MyGUI::ITEM_NONE)
 		{

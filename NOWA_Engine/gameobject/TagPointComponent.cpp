@@ -87,7 +87,7 @@ namespace NOWA
 			//// this->realNode->setScale(updatedNode->_getDerivedScale());
 			// this->realNode->setPosition(newPosition);
 
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->realNode, newPosition, newOrientation);
+			NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->realNode, newPosition, newOrientation);
 
 			if (nullptr != this->sourcePhysicsActiveComponent)
 			{
@@ -412,7 +412,7 @@ namespace NOWA
 				this->debugGeometryArrowNode->setOrientation(worldOrientation);
 				this->debugGeometrySphereNode->setPosition(worldPosition);*/
 
-				NOWA::RenderCommandQueueModule::getInstance()->updateNodeTransform(this->debugGeometryArrowNode, worldPosition, worldOrientation);
+				NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->debugGeometryArrowNode, worldPosition, worldOrientation);
 			}
 		}
 	}

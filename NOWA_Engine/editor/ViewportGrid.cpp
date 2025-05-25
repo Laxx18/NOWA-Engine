@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #include "ViewportGrid.h"
 #include "main/Core.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
  
 namespace NOWA
 {
@@ -61,8 +61,33 @@ namespace NOWA
 
 	ViewportGrid::~ViewportGrid()
 	{
-		destroyGrid();
+		if (this->grid != nullptr)
+		{
+			auto gridLocal = this->grid;
+			this->grid = nullptr;
+			auto sceneManager = this->sceneManager;
+
+			ENQUEUE_DESTROY_COMMAND("ViewportGrid::DestroyManualObject", _2(sceneManager, gridLocal),
+			{
+				sceneManager->destroyManualObject(gridLocal);
+			});
+		}
+
+		if (this->node != nullptr)
+		{
+			auto nodeLocal = this->node;
+
+			auto sceneManager = this->sceneManager;
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->node);
+			this->node = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("ViewportGrid::DestroySceneNode", _2(sceneManager, nodeLocal),
+			{
+				sceneManager->destroySceneNode(nodeLocal);
+			});
+		}
 	}
+
 
 	/** Sets the colour of the major grid lines (the minor lines are alpha-faded out/in when zooming out/in)
 		@note The alpha value is automatically set to one
@@ -87,7 +112,7 @@ namespace NOWA
 
 	void ViewportGrid::setPosition(const Ogre::Vector3& position)
 	{
-		RenderCommandQueueModule::getInstance()->updateNodePosition(this->node, position);
+		GraphicsModule::getInstance()->updateNodePosition(this->node, position);
 		// this->applyForceUpdate();
 	}
 
@@ -98,7 +123,7 @@ namespace NOWA
 
 	void ViewportGrid::setOrientation(const Ogre::Quaternion& orientation)
 	{
-		RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->node, orientation);
+		GraphicsModule::getInstance()->updateNodeOrientation(this->node, orientation);
 		// this->applyForceUpdate();
 	}
 
@@ -166,13 +191,17 @@ namespace NOWA
 	{
 		this->enabled = true;
 
-		if (!this->grid->isAttached())
+		auto nodeLocal = this->node;
+		auto gridLocal = this->grid;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ViewportGrid::enable", _2(nodeLocal, gridLocal),
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::enable",
+			if (!gridLocal->isAttached())
 			{
-				this->node->attachObject(this->grid);
-			});
-		}
+				nodeLocal->attachObject(gridLocal);
+			}
+		});
+
 		this->applyForceUpdate();
 	}
 
@@ -180,14 +209,18 @@ namespace NOWA
 	{
 		this->enabled = false;
 
-		if (this->grid->isAttached())
+		auto nodeLocal = this->node;
+		auto gridLocal = this->grid;
+
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ViewportGrid::disable", _2(nodeLocal, gridLocal),
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::disable",
+			if (gridLocal->isAttached())
 			{
-				this->node->detachObject(this->grid);
-			});
-		}
+				nodeLocal->detachObject(gridLocal);
+			}
+		});
 	}
+
 
 	void ViewportGrid::toggle()
 	{
@@ -226,7 +259,7 @@ namespace NOWA
 
 	void ViewportGrid::createGrid()
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::createGrid",
+		ENQUEUE_RENDER_COMMAND("ViewportGrid::createGrid",
 		{
 			Ogre::String name = "ViewportGrid";
 
@@ -244,23 +277,8 @@ namespace NOWA
 			this->node = this->sceneManager->getRootSceneNode(Ogre::SCENE_DYNAMIC)->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 			this->node->setName(name);
 			this->node->attachObject(this->grid);
+			this->enabled = false;
 		});
-		this->enabled = false;
-	}
-
-	void ViewportGrid::destroyGrid()
-	{
-		// Destroy the manual object
-		ENQUEUE_RENDER_COMMAND_WAIT("ViewportGrid::destroyGrid",
-		{
-			this->node->detachAllObjects();
-			this->sceneManager->destroyManualObject(this->grid);
-
-			// Destroy the scene node
-			NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(this->node);
-			this->sceneManager->destroySceneNode(this->node);
-		});
-		this->node = nullptr;
 	}
 
 	void ViewportGrid::intenralUpdate()

@@ -401,7 +401,7 @@ namespace NOWA
 
 		GameObjectPtr clonedGameObject;
 
-		RenderCommandQueueModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
@@ -416,7 +416,7 @@ namespace NOWA
 			return;
 		}
 
-		RenderCommandQueueModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
@@ -788,103 +788,105 @@ namespace NOWA
 	{
 		if (false == this->alreadyDestroyed)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::destroyContent", _1(&excludeGameObjectNames),
+			AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+
+			this->bIsDestroying = true;
+			auto& it = this->materialIDMap.begin();
+			while (it != this->materialIDMap.end())
 			{
-				AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &GameObjectController::deleteJointDelegate), EventDataDeleteJoint::getStaticEventType());
+				delete it->second;
+				it->second = nullptr;
+				++it;
+			}
+			this->materialIDMap.erase(this->materialIDMap.begin(), this->materialIDMap.end());
+			this->materialIDMap.clear();
 
-				this->bIsDestroying = true;
-				auto& it = this->materialIDMap.begin();
-				while (it != this->materialIDMap.end())
+			this->managedLuaScripts.clear();
+
+			AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
+
+			// do not delete with iterator since the iterator changes then during the loop
+			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+			{
+				it->second->setActivated(false);
+				it->second->disconnect();
+
+				bool canDestroy = true;
+				// Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
+				for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
 				{
-					delete it->second;
-					it->second = nullptr;
-					++it;
-				}
-				this->materialIDMap.erase(this->materialIDMap.begin(), this->materialIDMap.end());
-				this->materialIDMap.clear();
-
-				this->managedLuaScripts.clear();
-
-				AppStateManager::getSingletonPtr()->getScriptEventManager()->destroyContent();
-
-				// do not delete with iterator since the iterator changes then during the loop
-				for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-				{
-					it->second->setActivated(false);
-					it->second->disconnect();
-
-					bool canDestroy = true;
-					// Do not destroy game object, that are excluded from destruction (which is seldom the case and optional)
-					for (auto it2 = excludeGameObjectNames.begin(); it2 != excludeGameObjectNames.end();)
+					if (it->second->getName() == *it2)
 					{
-						if (it->second->getName() == *it2)
-						{
-							canDestroy = false;
-							it2 = excludeGameObjectNames.erase(it2);
-							break;
-						}
-						else
-						{
-							++it2;
-						}
+						canDestroy = false;
+						it2 = excludeGameObjectNames.erase(it2);
+						break;
 					}
-
-					if (true == canDestroy)
+					else
 					{
-						// signal the event, so that other game objects have the chance to react if necessary
-						boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
-						AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
-						assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
-						it->second->destroy();
+						++it2;
 					}
 				}
 
-				// Joints must be destroyed here, because a joint depends on its 2 bodies, which must live at this point, so this must be called, before the destructors of all components are called!
-				// this->disconnectJoints();
-				this->jointComponentMap.clear();
-				this->playerControllerComponentMap.clear();
-				this->physicsCompoundConnectionComponentMap.clear();
-				this->commandModule.clear(); // Must be cleared, because shared ptr's are used and GOC lives to long, because its a singleton
-
-				this->vehicleCollisionMap.clear();
-				this->tempVehicleObjectMap.clear();
-				this->vehicleChildTempMap.clear();
-				this->delayedDeleterList.clear();
-				this->triggeredGameObjects.clear();
-				this->movingBehaviors.clear();
-				// this->movingBehaviors2D.clear();
-				this->shiftIndex = 0;
-				this->triggerUpdateTimer = 0.0f;
-				this->sphereQueryUpdateFrequency = 0.5f;
-				this->isSimulating = false;
-
-				// delete the sphere scene query
-				if (this->currentSceneManager)
+				if (true == canDestroy)
 				{
-					if (this->sphereSceneQuery)
-					{
-						this->currentSceneManager->destroyQuery(this->sphereSceneQuery);
-						this->sphereSceneQuery = nullptr;
-					}
-					this->currentSceneManager = nullptr;
-
-					this->detachAndDestroyAllTriggerObserver();
+					// signal the event, so that other game objects have the chance to react if necessary
+					boost::shared_ptr<EventDataDeleteGameObject> deleteGameObjectEvent(boost::make_shared<EventDataDeleteGameObject>(it->second->getId()));
+					AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(deleteGameObjectEvent);
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController] Deleting gameobject: " + it->second->getName());
+					assert((it->second != nullptr) && "[GameObjectController::deleteAllGameObjects] Gameobject not found");
+					it->second->destroy();
 				}
+			}
 
-				// this->pActiveGameObjects->erase(this->pActiveGameObjects->begin(), this->pActiveGameObjects->end());
-				this->gameObjects->clear();
-				this->typeDBMap.clear();
-				this->renderTypeDBMap.clear();
-				this->shiftIndex = 0;
-				this->renderShiftIndex = 0;
-				this->triggeredGameObjects.clear();
+			// Joints must be destroyed here, because a joint depends on its 2 bodies, which must live at this point, so this must be called, before the destructors of all components are called!
+			// this->disconnectJoints();
+			this->jointComponentMap.clear();
+			this->playerControllerComponentMap.clear();
+			this->physicsCompoundConnectionComponentMap.clear();
+			this->commandModule.clear(); // Must be cleared, because shared ptr's are used and GOC lives to long, because its a singleton
 
-				// Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
-				// That means, if an AppState is exited and started and GameObjects are created
+			this->vehicleCollisionMap.clear();
+			this->tempVehicleObjectMap.clear();
+			this->vehicleChildTempMap.clear();
+			this->delayedDeleterList.clear();
+			this->triggeredGameObjects.clear();
+			this->movingBehaviors.clear();
+			// this->movingBehaviors2D.clear();
+			this->shiftIndex = 0;
+			this->triggerUpdateTimer = 0.0f;
+			this->sphereQueryUpdateFrequency = 0.5f;
+			this->isSimulating = false;
 
-				this->alreadyDestroyed = true;
-			});
+			// delete the sphere scene query
+			if (nullptr != this->currentSceneManager)
+			{
+				if (this->sphereSceneQuery)
+				{
+					auto queryToDestroy = this->sphereSceneQuery;
+					auto sceneManager = this->currentSceneManager;
+					ENQUEUE_DESTROY_COMMAND("Destroy sphere query", _2(sceneManager, queryToDestroy),
+					{
+						sceneManager->destroyQuery(queryToDestroy);
+					});
+					this->sphereSceneQuery = nullptr;
+				}
+				this->currentSceneManager = nullptr;
+
+				this->detachAndDestroyAllTriggerObserver();
+			}
+
+			// this->pActiveGameObjects->erase(this->pActiveGameObjects->begin(), this->pActiveGameObjects->end());
+			this->gameObjects->clear();
+			this->typeDBMap.clear();
+			this->renderTypeDBMap.clear();
+			this->shiftIndex = 0;
+			this->renderShiftIndex = 0;
+			this->triggeredGameObjects.clear();
+
+			// Attention since GameObjectController is a singleton and the lifecycle is beyond the AppState's lifecycle
+			// That means, if an AppState is exited and started and GameObjects are created
+
+			this->alreadyDestroyed = true;
 		}
 		else
 		{

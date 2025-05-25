@@ -302,7 +302,7 @@ namespace NOWA
 					if (nullptr == this->physicsComponent)
 					{
 						// this->gameObjectPtr->getSceneNode()->rotate(Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getOrientation() *
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getOrientation() *
 							Ogre::Quaternion(Ogre::Degree(this->rotationSpeed->getReal() * this->rotationOppositeDir), this->rotationAxis->getVector3()));
 					}
 					else
@@ -363,7 +363,7 @@ namespace NOWA
 					{
 						// Do not forget dt, because its no physics
 						// this->gameObjectPtr->getSceneNode()->translate(this->translationAxis->getVector3() * (this->translationSpeed->getReal() * this->translationOppositeDir) * dt);
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getPosition()
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getPosition()
 							+ this->translationAxis->getVector3() * (this->translationSpeed->getReal() * this->translationOppositeDir) * dt);
 					}
 					else
@@ -421,7 +421,7 @@ namespace NOWA
 						// scale relative directly does not work, Ogre bug??
 						// this->gameObjectPtr->getSceneNode()->setScale(this->gameObjectPtr->getSceneNode()->getScale() + (this->scaleAxis->getVector3() * this->scaleSpeed->getReal() * this->scaleOppositeDir * dt));
 
-						NOWA::RenderCommandQueueModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(),
+						NOWA::GraphicsModule::getInstance()->updateNodeScale(this->gameObjectPtr->getSceneNode(),
 							this->gameObjectPtr->getSceneNode()->getScale() + (this->scaleAxis->getVector3() * this->scaleSpeed->getReal() * this->scaleOppositeDir * dt));
 					}
 					else

@@ -64,61 +64,82 @@ namespace NOWA
 
 	void OgreRecastModule::destroyContent(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("OgreRecastModule::destroyContent",
+		// Disable debug drawing — enqueue if it affects Ogre scene
+		this->debugDrawNavMesh(false);
+
+		// Remove and delete dynamic obstacles
+		// Copy dynamicObstacles locally and clear original container early
+		auto obstaclesCopy = this->dynamicObstacles;
+		this->dynamicObstacles.clear();
+
+		for (auto& it : obstaclesCopy)
 		{
-			this->debugDrawNavMesh(false);
+			InputGeom* inputGeom = it.second.first;
+			ConvexVolume* convexVolume = it.second.second;
 
-			auto & it = this->dynamicObstacles.begin();
-
-			while (it != this->dynamicObstacles.end())
+			if (this->detourTileCache)
 			{
-				auto dataPair = it->second;
-				InputGeom* inputPair = dataPair.first;
-				ConvexVolume* convexVolume = dataPair.second;
-				this->detourTileCache->removeConvexShapeObstacle(convexVolume);
+				// Capture detourTileCache and convexVolume for render thread removal
+				auto detourTileCache = this->detourTileCache;
 
-				delete inputPair;
-				inputPair = nullptr;
-
-				delete convexVolume;
-				convexVolume = nullptr;
-
-				++it;
+				ENQUEUE_DESTROY_COMMAND("OgreRecastModule::removeConvexObstacle", _2(detourTileCache, convexVolume),
+				{
+					detourTileCache->removeConvexShapeObstacle(convexVolume);
+				});
 			}
 
-			auto& it2 = this->terraInputGeomCells.begin();
+			// Delete pure data immediately or after a safe delay if needed
+			delete inputGeom;
+			delete convexVolume;
+		}
 
-			while (it2 != this->terraInputGeomCells.end())
-			{
-				InputGeom* inputGeom = it2->second;
+		// Delete terraInputGeomCells data immediately (pure data)
+		for (auto& it2 : this->terraInputGeomCells)
+		{
+			InputGeom* inputGeom = it2.second;
+			delete inputGeom;
+		}
+		this->terraInputGeomCells.clear();
 
-				delete inputGeom;
-				inputGeom = nullptr;
+		// Enqueue deletion of ogreRecast object (likely CPU-side but let's be safe)
+		if (this->ogreRecast)
+		{
+			auto ogreRecast = this->ogreRecast;
+			this->ogreRecast = nullptr;
 
-				++it2;
-			}
+			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyOgreRecast", _1(ogreRecast),
+			{
+				delete ogreRecast;
+			});
+		}
 
-			if (nullptr != this->ogreRecast)
+		// Enqueue deletion of detourTileCache object
+		if (this->detourTileCache)
+		{
+			auto detourTileCache = this->detourTileCache;
+			this->detourTileCache = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyDetourTileCache", _1(detourTileCache),
 			{
-				delete this->ogreRecast;
-				this->ogreRecast = nullptr;
-			}
-			if (nullptr != this->detourTileCache)
+				delete detourTileCache;
+			});
+		}
+
+		// Enqueue deletion of detourCrowd object
+		if (this->detourCrowd)
+		{
+			auto detourCrowd = this->detourCrowd;
+			this->detourCrowd = nullptr;
+
+			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyDetourCrowd", _1(detourCrowd),
 			{
-				delete this->detourTileCache;
-				this->detourTileCache = nullptr;
-			}
-			if (nullptr != this->detourCrowd)
-			{
-				delete this->detourCrowd;
-				this->detourCrowd = 0;
-			}
-		});
+				delete detourCrowd;
+			});
+		}
+
 		this->hasValidNavMesh = false;
 		this->mustRegenerate = true;
 		this->staticObstacles.clear();
-		this->dynamicObstacles.clear();
-		this->terraInputGeomCells.clear();
 	}
 
 	bool OgreRecastModule::hasNavigationMeshElements(void) const
@@ -576,7 +597,7 @@ namespace NOWA
 		auto ogreRecastPtr = this->ogreRecast;
 
 		// Call FindPath on the render thread and get result safely
-		int ret = RenderCommandQueueModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
+		int ret = GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
 		{
 			return ogreRecastPtr->FindPath(startPosition, endPosition, pathSlot, targetSlot);
 		}, "OgreRecastModule::findPath");

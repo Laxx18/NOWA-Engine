@@ -6,7 +6,7 @@
 #include "main/AppStateManager.h"
 #include "gameObject/WorkspaceComponents.h"
 #include "camera/CameraManager.h"
-#include "RenderCommandQueueModule.h"
+#include "GraphicsModule.h"
 
 #include "Compositor/OgreCompositorWorkspaceListener.h"
 #include "OgrePixelFormatGpu.h"
@@ -45,22 +45,26 @@ namespace NOWA
 
 	void WorkspaceModule::destroyContent(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceModule::destroyContent",
+		for (auto& it : this->workspaceMap)
 		{
-			for (auto& it = this->workspaceMap.cbegin(); it != this->workspaceMap.cend(); ++it)
+			if (it.second.isDummy)
 			{
-				// If there is a dummy workspace, it must be deleted
-				if (true == it->second.isDummy)
+				auto workspace = it.second.workspace;
+				auto compositorManager = this->compositorManager;
+
+				ENQUEUE_DESTROY_COMMAND("RemoveDummyWorkspace", _2(workspace, compositorManager),
 				{
-					// cannot be used anymore, still necessary?
-					// it->second.workspace->setListener(nullptr);
-					// it->second.workspace->removeListener()
-					this->compositorManager->removeWorkspace(it->second.workspace);
-				}
+					// Optionally unset listener if needed (uncomment if required)
+					// workspace->setListener(nullptr);
+					// workspace->removeListener();
+
+					compositorManager->removeWorkspace(workspace);
+				});
 			}
-			this->workspaceMap.clear();
-			this->splitScreenScenarioActive = false;
-		});
+		}
+
+		this->workspaceMap.clear();
+		this->splitScreenScenarioActive = false;
 	}
 
 	WorkspaceModule* WorkspaceModule::getInstance()

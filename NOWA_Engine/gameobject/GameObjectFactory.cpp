@@ -457,7 +457,7 @@ namespace NOWA
 						//add them to the tree as parents
 					}
 					sceneNode->detachAllObjects();
-					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
 				});
 
@@ -586,7 +586,7 @@ namespace NOWA
 								// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
 								// will fall out of scope with nothing else pointing to it.
 								sceneNode->removeAndDestroyAllChildren();
-								NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+								NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 								sceneManager->destroySceneNode(sceneNode);
 							});
 
@@ -637,7 +637,7 @@ namespace NOWA
 				{
 					// If game object could not be initialized, destroy ogre data
 					sceneNode->removeAndDestroyAllChildren();
-					NOWA::RenderCommandQueueModule::getInstance()->removeTrackedNode(sceneNode);
+					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
 				});
 			sceneNode = nullptr;

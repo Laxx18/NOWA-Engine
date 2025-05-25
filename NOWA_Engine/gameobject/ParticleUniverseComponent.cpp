@@ -541,7 +541,7 @@ namespace NOWA
 		if (nullptr != this->particleNode)
 		{
 			// this->particleNode->setPosition(this->particleOffsetPosition->getVector3());
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->particleNode, this->particleOffsetPosition->getVector3());
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->particleNode, this->particleOffsetPosition->getVector3());
 		}
 	}
 
@@ -557,7 +557,7 @@ namespace NOWA
 		if (nullptr != this->particleNode)
 		{
 			// this->particleNode->setOrientation(MathHelper::getInstance()->degreesToQuat(particleOffsetOrientation));
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->particleNode, MathHelper::getInstance()->degreesToQuat(particleOffsetOrientation));
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->particleNode, MathHelper::getInstance()->degreesToQuat(particleOffsetOrientation));
 		}
 	}
 
@@ -601,7 +601,7 @@ namespace NOWA
 		{
 			Ogre::Vector3 resultPosition = this->particleNode->convertWorldToLocalPosition(particlePosition);
 			// this->particleNode->setPosition(resultPosition);
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodePosition(this->particleNode, particlePosition);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->particleNode, particlePosition);
 
 			// Test this:
 #if 0
@@ -631,7 +631,7 @@ namespace NOWA
 			Ogre::Quaternion globalOrientation = MathHelper::getInstance()->degreesToQuat(particleOrientation);
 			Ogre::Quaternion resultOrientation = this->particleNode->convertWorldToLocalOrientation(globalOrientation);
 			// this->particleNode->setOrientation(resultOrientation);
-			NOWA::RenderCommandQueueModule::getInstance()->updateNodeOrientation(this->particleNode, resultOrientation);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->particleNode, resultOrientation);
 
 			// Test this:
 #if 0

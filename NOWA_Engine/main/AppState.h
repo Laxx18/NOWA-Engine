@@ -17,7 +17,7 @@
 #include "modules/GameProgressModule.h"
 #include "modules/ParticleUniverseModule.h"
 #include "modules/LuaScriptModule.h"
-#include "modules/RenderCommandQueueModule.h"
+#include "modules/GraphicsModule.h"
 #include "gameobject/GameObjectController.h"
 #include "camera/CameraManager.h"
 #include "main/EventManager.h"
