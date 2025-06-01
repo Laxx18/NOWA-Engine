@@ -954,7 +954,7 @@ namespace NOWA
 				}
 			};
 
-			GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
+			NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
 		}
 		else
 		{
@@ -1000,7 +1000,7 @@ namespace NOWA
 				}
 			};
 
-			GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
+			NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
 		}
 	}
 

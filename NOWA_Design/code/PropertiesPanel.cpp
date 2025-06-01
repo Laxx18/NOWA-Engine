@@ -871,6 +871,7 @@ void PropertiesPanelInfo::initialise()
 
 void PropertiesPanelInfo::shutdown()
 {
+	// Threadsafe from the outside
 	// Move the vectors for render thread cleanup
 	auto textItems = std::move(this->itemsText);
 	auto editItems = std::move(this->itemsEdit);
@@ -879,20 +880,17 @@ void PropertiesPanelInfo::shutdown()
 	this->itemsText.clear();
 	this->itemsEdit.clear();
 
-	ENQUEUE_DESTROY_COMMAND("PropertiesPanelInfo::shutdown", _2(textItems, editItems),
+	for (auto* widget : textItems)
 	{
-		for (auto* widget : textItems)
-		{
-			if (widget)
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-		}
+		if (widget)
+			MyGUI::Gui::getInstance().destroyWidget(widget);
+	}
 
-		for (auto* widget : editItems)
-		{
-			if (widget)
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-		}
-	});
+	for (auto* widget : editItems)
+	{
+		if (widget)
+			MyGUI::Gui::getInstance().destroyWidget(widget);
+	}
 }
 
 
@@ -946,6 +944,7 @@ void PropertiesPanelDynamic::initialise()
 
 void PropertiesPanelDynamic::shutdown()
 {
+	// Threadsafe from the outside
 	// this->itemsText.clear();
 
 	// Move the vectors for render thread cleanup
@@ -954,14 +953,11 @@ void PropertiesPanelDynamic::shutdown()
 	// Ensure main thread doesn't touch them anymore
 	this->itemsText.clear();
 
-	ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::shutdown", _1(textItems),
+	for (auto* widget : textItems)
 	{
-		for (auto* widget : textItems)
-		{
-			if (widget)
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-		}
-	});
+		if (widget)
+			MyGUI::Gui::getInstance().destroyWidget(widget);
+	}
 
 	for (size_t i = 0; i < this->itemsEdit.size(); ++i)
 	{
@@ -980,10 +976,7 @@ void PropertiesPanelDynamic::shutdown()
 					if (data)
 					{
 						auto toDelete = *data;
-						ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::ImageData Delete", _1(toDelete),
-						{
-							delete toDelete;
-						});
+						delete toDelete;
 					}
 				}
 			}
@@ -998,10 +991,7 @@ void PropertiesPanelDynamic::shutdown()
 		auto toDelete = this->openSaveFileDialog;
 		this->openSaveFileDialog = nullptr;
 
-		ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::SaveDialog Delete", _1(toDelete),
-		{
-			delete toDelete;
-		});
+		delete toDelete;
 	}
 }
 

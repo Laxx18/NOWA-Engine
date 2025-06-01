@@ -5,24 +5,17 @@
 #include "main/Core.h"
 #include "modules/GraphicsModule.h"
 
-#include <thread>
-
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #include "../res/resource.h"
 #endif
 
 MainApplication::MainApplication()
-	: renderInitialized(false)
 {
 }
 
 MainApplication::~MainApplication()
 {
-	// Wait for render thread to finish before cleanup
-	if (this->renderThread.joinable())
-	{
-		this->renderThread.join();
-	}
+	NOWA::GraphicsModule::getInstance()->doCleanup();
 
 	// Applictation state manager must always be deleted before core will be deleted in order to avoid ugly side effects
 	if (NOWA::AppStateManager::getSingletonPtr())
@@ -37,13 +30,16 @@ MainApplication::~MainApplication()
 	}
 }
 
-void MainApplication::renderThreadFunction(void)
+void MainApplication::startSimulation(const Ogre::String& configName)
 {
-	// Configure the render command queue
-	auto* graphicsModule = NOWA::GraphicsModule::getInstance();
+	this->configName = configName;
 
-	// Mark the current thread as the render thread
-	graphicsModule->markCurrentThreadAsRenderThread();
+	// Create framework singleton
+	new NOWA::Core();
+
+	// Second the application state manager
+	new NOWA::AppStateManager();
+	// Note: This are special case singletons, since they are created and deleted manually, to avoid side effects when e.g. core would be else maybe deleted before AppStateManager
 
 	// Feed core configuration with some information
 	NOWA::CoreConfiguration coreConfiguration;
@@ -56,36 +52,10 @@ void MainApplication::renderThreadFunction(void)
 	NOWA::Core::getSingletonPtr()->setRenderThreadId(std::this_thread::get_id());
 
 	bool isInitializedCorrectly = NOWA::Core::getSingletonPtr()->initialize(coreConfiguration);
-
-	// Notify that initialization is complete
-	{
-		std::lock_guard<std::mutex> lock(this->renderInitMutex);
-		this->renderInitialized = true;
-	}
-	this->renderInitCondition.notify_one();
-
 	if (false == isInitializedCorrectly)
 	{
 		return;
 	}
-
-	// Set timeout duration (e.g., 10 seconds for complex operations)
-	graphicsModule->setTimeoutDuration(std::chrono::milliseconds(10000));
-	graphicsModule->setFrameTime(NOWA::Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
-
-	// Enable or disable timeout based on build configuration
-#ifdef _DEBUG
-	// In debug builds, you might want to disable timeout for easier debugging
-	graphicsModule->enableTimeout(false);
-	// And set a more verbose log level
-	graphicsModule->setLogLevel(Ogre::LML_TRIVIAL);
-	// graphicsModule->enableDebugVisualization(true);
-#else
-	// In release builds, keep timeout enabled with normal logging
-	// graphicsModule->enableTimeout(true);
-	// graphicsModule->setLogLevel(Ogre::LML_CRITICAL);
-	graphicsModule->setLogLevel(Ogre::LML_TRIVIAL);
-#endif
 
 	// Add a window icon
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
@@ -100,118 +70,11 @@ void MainApplication::renderThreadFunction(void)
 #endif
 
 	Ogre::LogManager::getSingletonPtr()->logMessage("Simulation initialized!");
-
-	static int frameCount = 0;
-
-	// Render thread loop
-	// Initialize timer for frame time calculation
-	Ogre::Timer timer;
-	Ogre::uint64 lastFrameTime = timer.getMicroseconds();
-
-	Ogre::Window* renderWindow = NOWA::Core::getSingletonPtr()->getOgreRenderWindow();
-
-	// const auto appStateManager = NOWA::AppStateManager::getSingletonPtr();
-
-	// Render thread loop
-	while (false == NOWA::Core::getSingletonPtr()->isShutdown())
-	{
-		// Process signals from system
-		Ogre::WindowEventUtilities::messagePump();
-
-		// Calculate delta time
-		Ogre::uint64 currentTime = timer.getMicroseconds();
-		Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f; // Convert to seconds
-		lastFrameTime = currentTime;
-
-		// Clears expired objects
-		graphicsModule->advanceFrameAndDestroyOld();
-
-		// Process all waiting render commands before rendering
-		graphicsModule->processAllCommands();
-
-		// if (false == appStateManager->getIsStalled() && false == appStateManager->getGameProgressModule()->isSceneLoading())
-		{
-			NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
-		}
-
-		// Update accumulated time in render command queue
-		// This is critical for proper interpolation
-		Ogre::Real currentAccumTime = graphicsModule->getAccumTimeSinceLastLogicFrame();
-		graphicsModule->setAccumTimeSinceLastLogicFrame(currentAccumTime + deltaTime);
-
-		// Calculate interpolation weight based on time since last logic frame
-		Ogre::Real interpolationWeight = graphicsModule->calculateInterpolationWeight();
-
-		// Update transforms with interpolation
-		graphicsModule->updateAllTransforms(interpolationWeight);
-
-		// Perform the actual rendering
-		Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-		// Periodically dump buffer state for debugging (every 300 frames = 5 seconds at 60 FPS)
-		if (++frameCount % 300 == 0)
-		{
-			graphicsModule->waitForRenderCompletion();
-			// Uncomment for debugging
-			graphicsModule->dumpBufferState();
-			frameCount = 0;  // Reset counter
-		}
-
-		// Check if window is active or in task bar
-		/*HWND temp = GetActiveWindow();
-		HWND hWnd;
-		renderWindow->getCustomAttribute("WINDOW", &hWnd);*/
-
-		// Update the renderwindow if the window is not active too, for server/client analysis
-		//if (/*temp != hWnd && */false == appStateManager->getRenderWhenInactive() && false == renderWindow->isVisible())
-		//{
-		//	// Core::getSingletonPtr()->getOgreRenderWindow()->update();
-		//	// Do not burn CPU cycles unnecessary when minimized etc.
-		//	Ogre::Threads::Sleep(500);
-		//}
-	}
-
-	while (graphicsModule->hasPendingRenderCommands())
-	{
-		// Process any remaining commands before fully exiting, so that code cleanup like DesignState::exit can be processed on a queue, even the render game loop is already gone
-		graphicsModule->processAllCommands();
-	}
-
-	for (size_t i = 0; i < NOWA::GraphicsModule::NUM_DESTROY_SLOTS; ++i)
-	{
-		// Process any remaining commands before fully exiting, so that code cleanup like DesignState::exit can be processed on a queue, even the render game loop is already gone
-		graphicsModule->advanceFrameAndDestroyOld();
-	}
-
-	graphicsModule->destroyContent();
-}
-
-void MainApplication::startSimulation(const Ogre::String& configName)
-{
-	this->configName = configName;
-
-	// Create framework singleton
-	new NOWA::Core();
-
-	// Second the application state manager
-	new NOWA::AppStateManager();
-	// Note: This are special case singletons, since they are created and deleted manually, to avoid side effects when e.g. core would be else maybe deleted before AppStateManager
-
-	this->renderThread = std::thread(&MainApplication::renderThreadFunction, this);
-
-	// Wait until render thread initializes Ogre/Core
-	{
-		std::unique_lock<std::mutex> lock(this->renderInitMutex);
-		this->renderInitCondition.wait(lock, [this] { return this->renderInitialized; });
-	}
-
+	
 	// Create states
 	// Attention: always use NOWA:: + name of the state
 	DesignState::create(NOWA::AppStateManager::getSingletonPtr(), "DesignState", "DesignState");
 
 	// Lets start with the Design state
-	NOWA::AppStateManager::getSingletonPtr()->start("DesignState", false, /*NOWA::AppStateManager::FPS_INDEPENDENT*/ /*NOWA::AppStateManager::ADAPTIVE*/ /*NOWA::AppStateManager::RESTRICTED_INTERPOLATED*/ NOWA::AppStateManager::MULTI_THREADED);
-
-	int i = 0;
-	i = 1;
+	NOWA::AppStateManager::getSingletonPtr()->start("DesignState", false);
 }

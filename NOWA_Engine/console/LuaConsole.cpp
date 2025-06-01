@@ -63,8 +63,8 @@ namespace NOWA
 		this->print(this->pInterpreter->getOutput());
 		this->pInterpreter->clearOutput();
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LuaConsole::init", _1(&overlayManager),
-		{
+		/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LuaConsole::init", _1(&overlayManager),
+		{*/
 			this->pTextbox = overlayManager.createOverlayElement("TextArea", "ConsoleText");
 			this->pTextbox->setMetricsMode(Ogre::v1::GMM_RELATIVE);
 			this->pTextbox->setPosition(0, 0);
@@ -91,7 +91,7 @@ namespace NOWA
 			Ogre::LogManager::getSingleton().getDefaultLog()->addListener(this);
 
 			this->initialised = true;
-		});
+		/*});*/
 	}
 
 	void LuaConsole::shutdown(void)

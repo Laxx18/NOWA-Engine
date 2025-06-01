@@ -401,7 +401,7 @@ namespace NOWA
 
 		GameObjectPtr clonedGameObject;
 
-		GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		NOWA::GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
@@ -416,7 +416,7 @@ namespace NOWA
 			return;
 		}
 
-		GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		NOWA::GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);

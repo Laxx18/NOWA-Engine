@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<scene formatVersion="1.1.0" generator="NOWA-Engine">
+<scene formatVersion="1.1.0" generator="NOWA-Engine" sceneName="Intro">
+	<resourceLocations/>
 	<environment>
-		<sceneManager name="ExampleSMInstance" id="1603148382" type="DefaultSceneManager"/>
+		<sceneManager name="NOWA_SceneManager" id="1980837708"/>
 		<ambient>
 			<ambientLightUpperHemisphere r="0.03375" g="0.05625" b="0.07875"/>
 			<ambientLightLowerHemisphere r="0.043875" g="0.0329062" b="0.0219375" a="0.073125"/>
-			<hemisphereDir x="0.371386" y="0.642788" z="0.669998"/>
+			<hemisphereDir x="-2.98023e-07" y="0.882948" z="0.469471"/>
 			<envmapScale x="1"/>
 		</ambient>
 		<shadows>
@@ -29,6 +30,8 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="true"/>
+			<renderDistance distance="100"/>
+			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
 		<bounds mostLeftNearPosition="-25.5 -0.1615 -25.5" mostRightFarPosition="25.5 10.6661 25.5"/>
@@ -48,6 +51,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="2713970596"/>
 					<property type="7" name="Category" data="Logo"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -58,16 +62,22 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
-					<property type="7" name="DataBlock0" data="WhiteLine"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
+					<property type="7" name="DataBlock0" data="WhiteLine__2713970596"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="2" name="SubEntityIndex" data="0"/>
 					<property type="7" name="Workflow" data="MetallicWorkflow"/>
 					<property type="6" name="Metalness" data="0.15"/>
 					<property type="6" name="Roughness" data="2"/>
 					<property type="10" name="Fresnel" data="0.01 0.818 0.818 0"/>
+					<property type="10" name="IndexOfRefraction" data="0.9 0.9 0.9 0"/>
+					<property type="6" name="RefractionStrength" data="0"/>
 					<property type="7" name="Brdf" data="CookTorrance"/>
 					<property type="12" name="TwoSidedLighting" data="false"/>
 					<property type="7" name="OneSidedShadowCastCullingMode" data="CULL_ANTICLOCKWISE"/>
@@ -80,6 +90,9 @@
 					<property type="9" name="EmissiveColor" data="0 0 0"/>
 					<property type="7" name="DiffuseTextureName" data="NOWA_Big_1D.png"/>
 					<property type="7" name="NormalTextureName" data="NOWA_Big_1N.png"/>
+					<property type="6" name="NormalMapWeight" data="1"/>
+					<property type="6" name="ClearCoat" data="0.2"/>
+					<property type="6" name="ClearCoatRoughness" data="0.2"/>
 					<property type="7" name="SpecularTextureName" data="NOWA_Big_1S.png"/>
 					<property type="7" name="MetallicTextureName" data="NOWA_Big_1R.png"/>
 					<property type="7" name="RoughnessTextureName" data="NOWA_Big_1R.png"/>
@@ -104,9 +117,12 @@
 					<property type="2" name="UVScale" data="0"/>
 					<property type="12" name="UseEmissiveAsLightMap" data="false"/>
 					<property type="7" name="ShadowConstBias" data="0.01"/>
+					<property type="12" name="BringToFront" data="false"/>
+					<property type="12" name="CutOff" data="false"/>
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0 0 0"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
@@ -120,14 +136,17 @@
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
 					<property type="7" name="CollisionType" data="ConvexHull"/>
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentJointPlaneComponent" data="JointPlaneComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="JointType" data="JointPlaneComponent"/>
 					<property type="12" name="JointActivate" data="true"/>
 					<property type="2" name="JointId" data="3863255799"/>
@@ -141,13 +160,16 @@
 					<property type="7" name="ComponentLuaScriptComponent" data="LuaScriptComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="7" name="ScriptFile" data="Logo.lua"/>
 					<property type="12" name="CloneScript" data="false"/>
 					<property type="12" name="HasCommonScript" data="false"/>
+					<property type="2" name="OrderIndex" data="1"/>
 					<property type="7" name="ComponentPhysicsMaterialComponent" data="PhysicsMaterialComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="Category1" data="Logo"/>
 					<property type="7" name="Category2" data="Default"/>
 					<property type="8" name="Friction" data="0.8 0.4"/>
@@ -161,9 +183,11 @@
 					<property type="7" name="OverlapFunctionName" data=""/>
 					<property type="7" name="ContactFunctionName" data=""/>
 					<property type="7" name="ContactOnceFunctionName" data="onHitFloorContact"/>
+					<property type="7" name="ContactScratchFunctionName" data=""/>
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="SoundName" data="Hit2.wav"/>
 					<property type="6" name="Volume" data="100"/>
@@ -175,6 +199,7 @@
 					<property type="7" name="ComponentParticleUniverseComponent" data="ParticleUniverseComponent"/>
 					<property type="7" name="Name" data="Smoke1"/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="TemplateName" data="woosh"/>
 					<property type="12" name="Repeat" data="false"/>
@@ -186,6 +211,7 @@
 					<property type="7" name="ComponentTimeLineComponent" data="TimeLineComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="2" name="TimePointCount" data="1"/>
 					<property type="2" name="GameObjectId0" data="0"/>
@@ -197,9 +223,11 @@
 					<property type="7" name="ComponentFadeComponent" data="FadeComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="FadeMode" data="FadeOut"/>
 					<property type="6" name="Duration" data="5"/>
+					<property type="7" name="EaseFunction" data="linear"/>
 				</userData>
 			</entity>
 		</node>
@@ -213,6 +241,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="362703469"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -223,11 +252,15 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightSpotComponent" data="LightSpotComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Diffuse" data="1 0.16406 0"/>
 					<property type="9" name="Specular" data="0.8 1 0"/>
 					<property type="6" name="PowerScale" data="10"/>
@@ -245,6 +278,7 @@
 					<property type="7" name="ComponentPhysicsActiveComponent" data="PhysicsActiveComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0 0 0"/>
 					<property type="9" name="OffsetPosition" data="0 0 0"/>
@@ -258,14 +292,17 @@
 					<property type="9" name="ConstraintDirection" data="0 0 0"/>
 					<property type="12" name="ContinuousCollision" data="false"/>
 					<property type="6" name="Speed" data="1"/>
+					<property type="6" name="MinSpeed" data="1"/>
 					<property type="6" name="MaxSpeed" data="5"/>
 					<property type="7" name="CollisionType" data="ConvexHull"/>
 					<property type="9" name="ConstraintAxis" data="0 0 0"/>
 					<property type="12" name="EnableGyroscopicTorque" data="false"/>
 					<property type="12" name="Collidable" data="true"/>
+					<property type="7" name="OnContactFunctionName" data=""/>
 					<property type="7" name="ComponentJointSliderActuatorComponent" data="JointSliderActuatorComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="7" name="JointType" data="JointSliderActuatorComponent"/>
 					<property type="12" name="JointActivate" data="false"/>
 					<property type="2" name="JointId" data="4126113282"/>
@@ -287,6 +324,7 @@
 					<property type="7" name="ComponentSimpleSoundComponent" data="SimpleSoundComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="SoundName" data="introStartFx.wav"/>
 					<property type="6" name="Volume" data="50"/>
@@ -308,9 +346,10 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111112"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -318,23 +357,30 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
 					<property type="9" name="CameraPosition" data="-2.839 12.3995 16.3987"/>
-					<property type="9" name="CameraOrientation" data="-28.6502 0.773671 -0.000169876"/>
+					<property type="9" name="CameraOrientation" data="-28.6502 0.773671 -0.000169846"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
 					<property type="12" name="Orthographic" data="false"/>
 					<property type="8" name="OrthoWindowSize" data="10 10"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
 					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
@@ -342,6 +388,9 @@
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
 					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
 					<property type="12" name="UseOcean" data="false"/>
 					<property type="6" name="ShadowGlobalBias" data="1"/>
@@ -355,7 +404,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="12" z="0"/>
-			<rotation qw="0.859342" qx="-0.261669" qy="0.310693" qz="0.310693"/>
+			<rotation qw="0.76995" qx="-0.462633" qy="0.226352" qz="0.376713"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteLine"/>
@@ -363,6 +412,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111113"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -373,11 +423,15 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentLightDirectionalComponent" data="LightDirectionalComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="Diffuse" data="1 1 1"/>
 					<property type="9" name="Specular" data="0.8 0.8 0.8"/>
 					<property type="6" name="PowerScale" data="4"/>
@@ -400,6 +454,7 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1111111111"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
 					<property type="12" name="Static" data="false"/>
@@ -410,7 +465,10 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 				</userData>
 			</entity>
@@ -425,9 +483,10 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="282471371"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="false"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -435,11 +494,15 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
 					<property type="7" name="ComponentPlaneComponent" data="PlaneComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Distance" data="0"/>
 					<property type="6" name="Width" data="50"/>
 					<property type="6" name="Height" data="50"/>
@@ -453,6 +516,7 @@
 					<property type="7" name="ComponentPhysicsArtifactComponent" data="PhysicsArtifactComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="6" name="Mass" data="10000"/>
 					<property type="12" name="Serialize" data="false"/>
 				</userData>
@@ -468,9 +532,10 @@
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="1270707882"/>
 					<property type="7" name="Category" data="Default"/>
+					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -478,11 +543,15 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="110"/>
-					<property type="2" name="RenderDistance" data="0"/>
+					<property type="2" name="RenderDistance" data="100"/>
+					<property type="6" name="LodDistance" data="0"/>
+					<property type="6" name="LodLevels" data="0"/>
+					<property type="2" name="ShadowRenderingDistance" data="100"/>
 					<property type="7" name="DataBlock0" data="WhiteLine"/>
 					<property type="7" name="ComponentCameraComponent" data="CameraComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="false"/>
 					<property type="9" name="CameraPosition" data="0 0.5 10"/>
 					<property type="9" name="CameraOrientation" data="0 0 0"/>
@@ -492,9 +561,12 @@
 					<property type="12" name="Orthographic" data="true"/>
 					<property type="8" name="OrthoWindowSize" data="5 5"/>
 					<property type="12" name="FixedYawAxis" data="true"/>
+					<property type="12" name="ShowDummyEntity" data="false"/>
+					<property type="7" name="ExcludeRenderCategories" data="All"/>
 					<property type="7" name="ComponentWorkspacePbsComponent" data="WorkspacePbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
+					<property type="12" name="IsExpanded" data="true"/>
 					<property type="9" name="BackgroundColor" data="0 0 0"/>
 					<property type="10" name="ViewportRect" data="0 0 1 1"/>
 					<property type="6" name="SuperSampling" data="1"/>
@@ -502,6 +574,9 @@
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="6" name="ReflectionCameraGameObjectId" data="0"/>
 					<property type="12" name="UsePlanarReflection" data="false"/>
+					<property type="12" name="UseSSAO" data="false"/>
+					<property type="12" name="UseDistortion" data="false"/>
+					<property type="12" name="UseMSAA" data="false"/>
 					<property type="12" name="UseTerra" data="false"/>
 					<property type="12" name="UseOcean" data="false"/>
 					<property type="6" name="ShadowGlobalBias" data="1"/>

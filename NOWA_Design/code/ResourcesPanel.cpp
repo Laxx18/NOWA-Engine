@@ -91,67 +91,61 @@ void ResourcesPanel::setProjectManager(ProjectManager* projectManager)
 
 void ResourcesPanel::destroyContent(void)
 {
-	// Cache pointers and nullify member variables immediately for thread safety
-	auto resourcesPanelView1 = this->resourcesPanelView1;
-	auto resourcesPanelMeshes = this->resourcesPanelMeshes;
-	auto resourcesPanelGameObjects = this->resourcesPanelGameObjects;
-	auto resourcesPanelView2 = this->resourcesPanelView2;
-	auto resourcesPanelDataBlocks = this->resourcesPanelDataBlocks;
-	auto resourcesPanelTextures = this->resourcesPanelTextures;
-	auto resourcesPanelView3 = this->resourcesPanelView3;
-	auto resourcesPanelProject = this->resourcesPanelProject;
-	auto resourcesPanelLuaScript = this->resourcesPanelLuaScript;
-	auto resourcesPanelView4 = this->resourcesPanelView4;
-	auto resourcesPanelPlugins = this->resourcesPanelPlugins;
+	// Threadsafe from the outside
+	this->resourcesPanelView1->removeAllItems();
 
-	this->resourcesPanelView1 = nullptr;
-	this->resourcesPanelMeshes = nullptr;
-	this->resourcesPanelGameObjects = nullptr;
-	this->resourcesPanelView2 = nullptr;
-	this->resourcesPanelDataBlocks = nullptr;
-	this->resourcesPanelTextures = nullptr;
-	this->resourcesPanelView3 = nullptr;
-	this->resourcesPanelProject = nullptr;
-	this->resourcesPanelLuaScript = nullptr;
-	this->resourcesPanelView4 = nullptr;
-	this->resourcesPanelPlugins = nullptr;
-
-	ENQUEUE_DESTROY_COMMAND("ResourcesPanel::destroyContent", _11(resourcesPanelView1, resourcesPanelMeshes, resourcesPanelGameObjects, resourcesPanelView2, 
-		resourcesPanelDataBlocks, resourcesPanelTextures, resourcesPanelView3, resourcesPanelProject, resourcesPanelLuaScript, resourcesPanelView4, resourcesPanelPlugins),
+	if (this->resourcesPanelMeshes)
 	{
-		if (resourcesPanelView1)
-			resourcesPanelView1->removeAllItems();
+		delete this->resourcesPanelMeshes;
+		this->resourcesPanelMeshes = nullptr;
+	}
+#if 0
+	if (this->resourcesPanelMeshPreview)
+	{
+		delete this->resourcesPanelMeshPreview;
+		this->resourcesPanelMeshPreview = nullptr;
+	}
+#endif
+	if (this->resourcesPanelGameObjects)
+	{
+		delete this->resourcesPanelGameObjects;
+		this->resourcesPanelGameObjects = nullptr;
+	}
 
-		if (resourcesPanelMeshes)
-			delete resourcesPanelMeshes;
+	this->resourcesPanelView2->removeAllItems();
 
-		if (resourcesPanelGameObjects)
-			delete resourcesPanelGameObjects;
+	if (this->resourcesPanelDataBlocks)
+	{
+		delete this->resourcesPanelDataBlocks;
+		this->resourcesPanelDataBlocks = nullptr;
+	}
+	if (this->resourcesPanelTextures)
+	{
+		delete this->resourcesPanelTextures;
+		this->resourcesPanelTextures = nullptr;
+	}
 
-		if (resourcesPanelView2)
-			resourcesPanelView2->removeAllItems();
+	this->resourcesPanelView3->removeAllItems();
 
-		if (resourcesPanelDataBlocks)
-			delete resourcesPanelDataBlocks;
+	if (this->resourcesPanelProject)
+	{
+		delete this->resourcesPanelProject;
+		this->resourcesPanelProject = nullptr;
+	}
 
-		if (resourcesPanelTextures)
-			delete resourcesPanelTextures;
+	if (this->resourcesPanelLuaScript)
+	{
+		delete this->resourcesPanelLuaScript;
+		this->resourcesPanelLuaScript = nullptr;
+	}
 
-		if (resourcesPanelView3)
-			resourcesPanelView3->removeAllItems();
+	this->resourcesPanelView4->removeAllItems();
 
-		if (resourcesPanelProject)
-			delete resourcesPanelProject;
-
-		if (resourcesPanelLuaScript)
-			delete resourcesPanelLuaScript;
-
-		if (resourcesPanelView4)
-			resourcesPanelView4->removeAllItems();
-
-		if (resourcesPanelPlugins)
-			delete resourcesPanelPlugins;
-	});
+	if (this->resourcesPanelPlugins)
+	{
+		delete this->resourcesPanelPlugins;
+		this->resourcesPanelPlugins = nullptr;
+	}
 }
 
 void ResourcesPanel::setVisible(bool show)

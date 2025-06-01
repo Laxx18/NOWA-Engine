@@ -206,7 +206,7 @@ namespace NOWA
 
 			// Update the position in the current transform buffer
 			// This is thread-safe because it's happening in the logic thread
-			GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPosition);
 
 			this->lastMoveValue = moveValue;
 		}

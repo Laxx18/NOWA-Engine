@@ -380,7 +380,7 @@ namespace NOWA
 		});
 
 		// Note: If compositor effect components are involved, they will be disabled, hence connections will be removed
-		this->reconnectAllNodes();
+		// this->reconnectAllNodes();
 
 		return true;
 	}
@@ -2435,7 +2435,12 @@ namespace NOWA
 		//Now that we're done, tell the instance to update itself.
 		if (nullptr != this->workspace)
 		{
-			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::reconnectAllNodes",
+			if (true == AppStateManager::getSingletonPtr()->bShutdown)
+			{
+				return;
+			}
+
+			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::reconnectAllNodes",
 			{
 					//Now that we're done, tell the instance to update itself.
 					// this->workspace->reconnectAllNodes();

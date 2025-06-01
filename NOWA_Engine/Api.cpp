@@ -126,7 +126,7 @@ public:
 
 		if (true == canUpdate)
 		{
-			if (false == NOWA::AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
+			if (false == NOWA::AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->isSceneLoading())
 			{
 				this->ogreNewtModule->update(dt);
 				// Update the GameObjects
@@ -305,7 +305,7 @@ namespace NOWA
 		SimulationState::create(NOWA::AppStateManager::getSingletonPtr(), "SimulationState", "SimulationState");
 
 		// Lets start with the Game
-		NOWA::AppStateManager::getSingletonPtr()->start("SimulationState", false, NOWA::AppStateManager::RESTRICTED_INTERPOLATED);
+		NOWA::AppStateManager::getSingletonPtr()->start("SimulationState", false);
 
 		return 1;
 	}

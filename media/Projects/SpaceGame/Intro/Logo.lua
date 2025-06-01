@@ -29,7 +29,6 @@ Logo["connect"] = function(gameObject)
     spotLightJoint = spotLightGameObject:getJointSliderActuatorComponent();
     introSoundFxComponent = spotLightGameObject:getSimpleSoundComponent();
     
-    local fadeComponent = gameObject:getFadeComponent();
     fadeComponent:reactOnFadeCompleted(function() 
         if (Core:isGame() == true) then
             AppStateManager:changeAppState("MenuState");

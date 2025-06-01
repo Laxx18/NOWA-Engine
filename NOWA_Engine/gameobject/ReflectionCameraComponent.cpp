@@ -116,7 +116,7 @@ namespace NOWA
 			});
 		}
 
-		if (nullptr != this->workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		if (nullptr != this->workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
 			this->workspaceBaseComponent->setUseReflection(false);
 		}

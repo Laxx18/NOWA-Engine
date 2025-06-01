@@ -242,7 +242,7 @@ namespace NOWA
 		unsigned long id = castEventData->getGameObjectId();
 
 		// Deactivated, because it would also thrown, when just NOWA-Design is exited :(
-		if (nullptr != this->spawnTargetGameObject && this->spawnTargetGameObject->getId() == id && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		if (nullptr != this->spawnTargetGameObject && this->spawnTargetGameObject->getId() == id && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
 			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " is about to be destroyed, which is an illegal case!");
 			// throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "[SpawnComponent] Spawn target id: " + Ogre::StringConverter::toString(this->spawnTargetId->getULong()) + " is about to be destroyed, which is an illegal case!", "NOWA");

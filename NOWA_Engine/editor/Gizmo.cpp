@@ -1299,24 +1299,24 @@ namespace NOWA
 			if (this->constraintAxis == Ogre::Vector3::ZERO)
 			{
 				// this->selectNode->setPosition(position);
-				GraphicsModule::getInstance()->updateNodePosition(this->selectNode, position);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, position);
 			}
 			else
 			{
 				if (this->constraintAxis.x != 0.0f)
 				{
 					// this->selectNode->setPosition(Ogre::Vector3(this->constraintAxis.x, position.y, position.z));
-					GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(this->constraintAxis.x, position.y, position.z));
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(this->constraintAxis.x, position.y, position.z));
 				}
 				if (this->constraintAxis.y != 0.0f)
 				{
 					// this->selectNode->setPosition(Ogre::Vector3(position.x, this->constraintAxis.y, position.z));
-					GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, this->constraintAxis.y, position.z));
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, this->constraintAxis.y, position.z));
 				}
 				if (this->constraintAxis.z != 0.0f)
 				{
 					// this->selectNode->setPosition(Ogre::Vector3(position.x, position.y, this->constraintAxis.z));
-					GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, position.y, this->constraintAxis.z));
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, Ogre::Vector3(position.x, position.y, this->constraintAxis.z));
 				}
 			}
 		// });
@@ -1329,7 +1329,7 @@ namespace NOWA
 
 	void Gizmo::setOrientation(const Ogre::Quaternion& orientation)
 	{
-		GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, orientation);
+		NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, orientation);
 	}
 
 	Ogre::Quaternion Gizmo::getOrientation(void) const
@@ -1354,13 +1354,13 @@ namespace NOWA
 		}
 		
 		Ogre::Vector3 newPosition = this->selectNode->getPosition() + internalTranslateVector;
-		GraphicsModule::getInstance()->updateNodePosition(this->selectNode, newPosition);
+		NOWA::GraphicsModule::getInstance()->updateNodePosition(this->selectNode, newPosition);
 	}
 
 	void Gizmo::rotate(const Ogre::Quaternion& rotateQuaternion)
 	{
 		Ogre::Quaternion newOrientation = this->selectNode->getOrientation() * rotateQuaternion;
-		GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, newOrientation);
+		NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->selectNode, newOrientation);
 	}
 
 	void Gizmo::setConstraintAxis(const Ogre::Vector3& constraintAxis)

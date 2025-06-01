@@ -172,8 +172,8 @@ namespace NOWA
 			this->movableText->setTextYOffset(0.0f);
 
 			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
-			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		});
 
 		return true;
@@ -285,8 +285,8 @@ namespace NOWA
 				// this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
 				// this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 
-				GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-				GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 			}
 		}
 	}
@@ -481,8 +481,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		}
 	}
 
@@ -504,8 +504,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
 		}
 	}
 

@@ -223,7 +223,7 @@ namespace NOWA
 			};
 
 		// Enqueue the render command to delete the sound
-		GraphicsModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
+		NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
 	}
 #else
 void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
@@ -317,7 +317,7 @@ void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*&
 		};
 
 		// Then pass the variable to enqueue
-		GraphicsModule::getInstance()->enqueue(renderCommand);
+		NOWA::GraphicsModule::getInstance()->enqueue(renderCommand);
 	}
 
 #endif 

@@ -3000,7 +3000,7 @@ namespace NOWA
 			float closestDistanceLocal = 0.0f;
 			size_t movableObjectLocal = 0;
 
-			bool success = GraphicsModule::getInstance()->enqueueAndWaitWithResult<bool>(
+			bool success = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<bool>(
 				[=, &clickedPositionLocal, &normalLocal, &closestDistanceLocal, &movableObjectLocal, &excludeObjects]() -> bool
 				{
 					auto camera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();

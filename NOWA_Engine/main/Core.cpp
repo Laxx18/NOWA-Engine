@@ -1720,7 +1720,7 @@ namespace NOWA
 
 	bool Core::getIsSceneBeingDestroyed(void) const
 	{
-		return true == AppStateManager::getSingletonPtr()->getIsShutdown() || true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying();
+		return true == AppStateManager::getSingletonPtr()->bShutdown || true == AppStateManager::getSingletonPtr()->getGameObjectController()->getIsDestroying();
 	}
 
 	bool Core::getIsGame(void) const

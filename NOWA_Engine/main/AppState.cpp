@@ -36,6 +36,16 @@ namespace NOWA
 		
 	}
 
+	void AppState::startRendering(void)
+	{
+ 		NOWA::GraphicsModule::getInstance()->startRendering();
+	}
+
+	void AppState::stopRendering(void)
+	{
+		NOWA::GraphicsModule::getInstance()->stopRendering();
+	}
+
 	// static function for macro
 	void AppState::create(AppStateListener* appStateManager, const Ogre::String name, const Ogre::String nextAppStateName)
 	{
@@ -91,8 +101,13 @@ namespace NOWA
 		this->camera = castEventData->getSceneParameter().mainCamera;
 		this->ogreNewt = castEventData->getSceneParameter().ogreNewt;
 
-		// Start game
-		NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
+		ENQUEUE_RENDER_COMMAND("AppState::handleSceneLoaded",
+		{
+			// Start game
+			NOWA::AppStateManager::getSingletonPtr()->getGameObjectController()->start();
+		});
+
+
 		// Set the start position for the player
 		NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->determinePlayerStartLocation(castEventData->getProjectParameter().sceneName);
 		// Activate player controller, so that user can move player
@@ -156,7 +171,7 @@ namespace NOWA
 	{
 		if (true == this->canUpdate)
 		{
-			if (false == AppStateManager::getSingletonPtr()->getIsStalled() && false == this->gameProgressModule->isSceneLoading())
+			if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->isSceneLoading())
 			{
 				this->ogreNewtModule->update(dt);
 				// Update the GameObjects
@@ -379,92 +394,6 @@ namespace NOWA
 			});
 		}
 	}
-
-#if 0
-	void AppState::destroyModules(void)
-	{
-		bool canDestroy = true;
-		if (nullptr == this->sceneManager)
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[AppState]: Could not destroy modules, because the scene manager is null");
-			canDestroy = false;
-		}
-
-		if (false == canDestroy)
-		{
-			return;
-		}
-
-		if (nullptr != this->ogreNewtModule)
-		{
-			this->ogreNewtModule->showOgreNewtCollisionLines(false);
-			this->ogreNewtModule->destroyContent();
-			delete this->ogreNewtModule;
-			this->ogreNewt = nullptr;
-		}
-
-		// Detach overlay system immediately on main thread
-		this->sceneManager->removeRenderQueueListener(Core::getSingletonPtr()->getOverlaySystem());
-
-		// Copy pointers for render-thread-safe destruction
-		auto sceneManager = this->sceneManager;
-		auto gameObjectController = this->gameObjectController;
-		auto cameraManager = this->cameraManager;
-		auto ogreRecastModule = this->ogreRecastModule;
-		auto particleUniverseModule = this->particleUniverseModule;
-		auto gameProgressModule = this->gameProgressModule;
-		auto miniMapModule = this->miniMapModule;
-		auto meshDecalGeneratorModule = this->meshDecalGeneratorModule;
-		auto luaScriptModule = this->luaScriptModule;
-		auto eventManager = this->eventManager;
-		auto scriptEventManager = this->scriptEventManager;
-		auto gpuParticlesModule = this->gpuParticlesModule;
-		auto rakNetModule = this->rakNetModule;
-
-		// Nullify all pointers immediately
-		this->gameObjectController = nullptr;
-		this->cameraManager = nullptr;
-		this->ogreRecastModule = nullptr;
-		this->particleUniverseModule = nullptr;
-		this->gameProgressModule = nullptr;
-		this->miniMapModule = nullptr;
-		this->meshDecalGeneratorModule = nullptr;
-		this->luaScriptModule = nullptr;
-		this->eventManager = nullptr;
-		this->scriptEventManager = nullptr;
-		this->gpuParticlesModule = nullptr;
-		this->rakNetModule = nullptr;
-
-		ENQUEUE_DESTROY_COMMAND("AppState::destroyModules", _13(sceneManager, gameObjectController, cameraManager, ogreRecastModule, particleUniverseModule,
-			gameProgressModule, miniMapModule, meshDecalGeneratorModule, luaScriptModule, eventManager, scriptEventManager, gpuParticlesModule, rakNetModule),
-		{
-			if (gameObjectController) { gameObjectController->destroyContent(); delete gameObjectController; }
-			if (cameraManager) { cameraManager->destroyContent(); delete cameraManager; }
-			if (ogreRecastModule) { ogreRecastModule->destroyContent(); delete ogreRecastModule; }
-			if (particleUniverseModule) { particleUniverseModule->destroyContent(); delete particleUniverseModule; }
-			if (gameProgressModule) { gameProgressModule->destroyContent(); delete gameProgressModule; }
-			if (miniMapModule) { miniMapModule->destroyContent(); delete miniMapModule; }
-			if (meshDecalGeneratorModule) delete meshDecalGeneratorModule;
-			if (luaScriptModule) { luaScriptModule->destroyContent(); delete luaScriptModule; }
-			if (eventManager) delete eventManager;
-			if (scriptEventManager) { scriptEventManager->destroyContent(); delete scriptEventManager; }
-			if (gpuParticlesModule) { gpuParticlesModule->destroyContent(); delete gpuParticlesModule; }
-			if (rakNetModule) { rakNetModule->destroyContent(); delete rakNetModule; }
-
-			WorkspaceModule::getInstance()->destroyContent();
-
-			if (AppStateManager::getSingletonPtr()->getAppStatesCount() > 1)
-				OgreALModule::getInstance()->destroySounds(sceneManager);
-			else
-				OgreALModule::getInstance()->destroyContent();
-
-			OgreALModule::getInstance()->destroyContent();
-
-			if (sceneManager)
-				Core::getSingletonPtr()->destroyScene(sceneManager);
-		});
-	}
-#endif
 
 	void AppState::destroyModules(void)
 	{

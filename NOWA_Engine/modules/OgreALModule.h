@@ -96,7 +96,7 @@ namespace NOWA
 		*					// Modify sound properties safely on the render thread
 		*					sound->setVolume(0.5f);  // Example modification
 		*				};
-		*				GraphicsModule::getInstance()->enqueue(renderCommand);
+		*				NOWA::GraphicsModule::getInstance()->enqueue(renderCommand);
 		*			}
 		* return		pSound the corresponding sound
 		*/

@@ -136,6 +136,16 @@ namespace NOWA
 		AppState();
 
 		/**
+		 * @brief		Starts the render thread with its render game loop.
+		 */
+		void startRendering(void);
+
+		/**
+		 * @brief		Stop the render thread game loop.
+		 */
+		void stopRendering(void);
+
+		/**
 		 * @brief		Finds a state by a given name
 		 * @param[in]	stateName The state to find by name
 		 * @return 		appState The found state or NULL if not found

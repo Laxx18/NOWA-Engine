@@ -162,7 +162,7 @@ namespace NOWA
 		GameObjectComponent::onRemoveComponent();
 
 		WorkspaceBaseComponent* workspaceBaseComponent = WorkspaceModule::getInstance()->getPrimaryWorkspaceComponent();
-		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+		if (nullptr != workspaceBaseComponent && false == AppStateManager::getSingletonPtr()->bShutdown)
 		{
 			workspaceBaseComponent->setUseTerra(false);
 		}
@@ -297,7 +297,7 @@ namespace NOWA
 					core->getBaseListenerContainer()->removeConcreteListener(hlmsPbsTerraShadows);
 				}
 
-				if (workspaceBaseComponent && appState && !appState->getIsShutdown())
+				if (workspaceBaseComponent && appState && !appState->bShutdown)
 				{
 					workspaceBaseComponent->setUseTerra(false);
 					if (terraWorkspaceListener)

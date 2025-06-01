@@ -116,135 +116,6 @@ void DesignState::enter(void)
 	this->createScene();
 }
 
-#if 0
-void DesignState::exit(void)
-{
-	this->canUpdate = false;
-	this->hasStarted = false;
-
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleExit), EventDataExit::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEditorMode), NOWA::EventDataEditorMode::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleFeedback), NOWA::EventDataFeedback::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handlePlayerInControl), NOWA::EventDataActivatePlayerController::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTestSelectedGameObjects), EventDataTestSelectedGameObjects::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleMyGUIWidgetSelected), NOWA::EventDataMyGUIWidgetSelected::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleSceneModified), NOWA::EventDataSceneModified::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleTerraChanged), NOWA::EventDataTerraChanged::getStaticEventType());
-	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->removeListener(fastdelegate::MakeDelegate(this, &DesignState::handleEventDataGameObjectMadeGlobal), NOWA::EventDataGameObjectMadeGlobal::getStaticEventType());
-
-	auto sceneManager = this->sceneManager;
-	auto selectQuery = this->selectQuery;
-	this->selectQuery = nullptr;
-
-	ENQUEUE_DESTROY_COMMAND("DesignState::exit::DestroyQuery", _2(sceneManager, selectQuery),
-	{
-		if (sceneManager && selectQuery)
-		{
-			sceneManager->destroyQuery(selectQuery);
-		}
-	});
-
-	NOWA::Core::getSingletonPtr()->switchFullscreen(false, 0, 0, 0);
-
-	if (nullptr != this->editorManager && true == this->simulating)
-	{
-		// Stop simulation, since there can be tag-point components involved which changed the scene node owner ship, so a crash may occur if a movable object is detached from its
-		// origin node, but the object is attached to another one
-		this->editorManager->stopSimulation();
-	}
-
-	std::string widgetCategory = MyGUI::WidgetManager::getInstance().getCategoryName();
-
-	// Make copies by value
-	MyGUI::VectorWidgetPtr widgetsSimulationCopy = this->widgetsSimulation;
-	MyGUI::VectorWidgetPtr widgetsManipulationCopy = this->widgetsManipulation;
-
-	// Clear original references early
-	this->widgetsSimulation.clear();
-	this->widgetsManipulation.clear();
-
-
-	ENQUEUE_DESTROY_COMMAND("DesignState::exit::MyGUI", _3(widgetCategory, widgetsSimulationCopy, widgetsManipulationCopy),
-	{
-		MyGUI::FactoryManager & factory = MyGUI::FactoryManager::getInstance();
-
-		factory.unregisterFactory<MyGUI::TreeControl>(widgetCategory);
-		factory.unregisterFactory<MyGUI::TreeControlItem>(widgetCategory);
-		factory.unregisterFactory<MyGUI::Slider>(widgetCategory);
-		factory.unregisterFactory<MyGUI::HyperTextBox>(widgetCategory);
-		factory.unregisterFactory<MyGUI::WrapPanel>(widgetCategory);
-		factory.unregisterFactory<MyGUI::StackPanel>(widgetCategory);
-		factory.unregisterFactory<MyGUI::ScrollViewPanel>(widgetCategory);
-
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(widgetsSimulationCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(widgetsManipulationCopy);
-		ColourPanelManager::getInstance()->destroyContent();
-	});
-
-	auto editorManagerPtr = this->editorManager;
-	this->editorManager = nullptr;
-
-	auto propertiesPanelPtr = this->propertiesPanel;
-	this->propertiesPanel = nullptr;
-
-	auto resourcesPanelPtr = this->resourcesPanel;
-	this->resourcesPanel = nullptr;
-
-	auto componentsPanelPtr = this->componentsPanel;
-	this->componentsPanel = nullptr;
-
-	auto mainMenuBarPtr = this->mainMenuBar;
-	this->mainMenuBar = nullptr;
-
-	auto projectManagerPtr = this->projectManager;
-	this->projectManager = nullptr;
-
-	ENQUEUE_DESTROY_COMMAND("DesignState::exit::UIComponents", _7(editorManagerPtr, propertiesPanelPtr, resourcesPanelPtr, componentsPanelPtr, mainMenuBarPtr, projectManagerPtr, this),
-	{
-		if (editorManagerPtr)
-		{
-			delete editorManagerPtr;
-		}
-
-		if (propertiesPanelPtr)
-		{
-			propertiesPanelPtr->destroyContent();
-			delete propertiesPanelPtr;
-		}
-
-		if (resourcesPanelPtr)
-		{
-			resourcesPanelPtr->destroyContent();
-			delete resourcesPanelPtr;
-		}
-
-		if (componentsPanelPtr)
-		{
-			componentsPanelPtr->destroyContent();
-			delete componentsPanelPtr;
-		}
-
-		if (mainMenuBarPtr)
-		{
-			delete mainMenuBarPtr;
-		}
-
-		if (projectManagerPtr)
-		{
-			delete projectManagerPtr;
-		}
-	});
-
-	AppState::destroyModules();
-}
-#endif
-
-#if 1
 void DesignState::exit(void)
 {
 	this->canUpdate = false;
@@ -335,7 +206,6 @@ void DesignState::exit(void)
 		AppState::destroyModules();
 	});
 }
-#endif
 
 void DesignState::createScene(void)
 {
@@ -348,7 +218,7 @@ void DesignState::createScene(void)
 	numThreads = std::max<size_t>(1, Ogre::PlatformInformation::getNumLogicalCores());
 #endif
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::createScene", _1(numThreads),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::createScene", _1(numThreads),
 	{
 		// Create the SceneManager, in this case a generic one
 		this->sceneManager = NOWA::Core::getSingletonPtr()->getOgreRoot()->createSceneManager(Ogre::ST_GENERIC, numThreads, "NOWA_SceneManager");
@@ -360,8 +230,9 @@ void DesignState::createScene(void)
 		this->camera->setNearClipDistance(0.1f);
 		this->camera->setFarClipDistance(500.0f);
 		this->camera->setQueryFlags(0 << 0);
-		this->initializeModules(false, false);
 	});
+
+	this->initializeModules(false, false);
 
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleGenerateCategoriesDelegate), NOWA::EventDataGenerateCategories::getStaticEventType());
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->addListener(fastdelegate::MakeDelegate(this, &DesignState::handleStopSimulation), NOWA::EventDataStopSimulation::getStaticEventType());
@@ -394,7 +265,7 @@ void DesignState::createScene(void)
 
 	this->projectManager = new ProjectManager(this->sceneManager);
 
-	ENQUEUE_RENDER_COMMAND_WAIT("setupMyGUI",
+	ENQUEUE_RENDER_COMMAND("setupMyGUI",
 	{
 		// Setup all MyGUI widgets
 		this->setupMyGUIWidgets();
@@ -497,7 +368,7 @@ void DesignState::createScene(void)
 	//entity->setDatablockOrMaterialName("GroundDirtPlane");
 	//entity->setCastShadows(true);
 
-	// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
+	NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 5.0f, NOWA::Interpolator::Linear, 1.0f, 0.0f, 1.0f)));
 }
 
 void DesignState::setupMyGUIWidgets(void)

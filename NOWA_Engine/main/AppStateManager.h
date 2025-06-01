@@ -25,14 +25,6 @@ namespace NOWA
 			AppState* state;
 		} StateInfo;
 
-		enum GameLoopMode
-		{
-			ADAPTIVE = 0,
-			RESTRICTED_INTERPOLATED = 1,
-			FPS_INDEPENDENT = 2,
-			MULTI_THREADED
-		};
-
 		AppStateManager();
 		~AppStateManager();
 
@@ -53,18 +45,13 @@ namespace NOWA
 		* @param[in]	renderWhenInactive	Whether to render the graphics scene even if the window is not active e.g.in task bar.This can be useful if creating a network scenario
 		*									with several instances on one monitor and the developer wants to switch to a different application instance to e.g. move an object and watch
 		*									whats happening on the other application scenes
-		* @param[in]	gameLoopMode		Whether to restrict the fps to a given value(see config.xml attribute name DesiredUpdates).
-		* @Note: When VSync is on, RESTRICTED_INTERPOLATED is automatically chosen. So only if vsync is of, ADAPTIVE may be used, which will result in maximum frame rate.
 		*/
-		void start(const Ogre::String& stateName, bool renderWhenInactive = false, GameLoopMode gameLoopMode = GameLoopMode::RESTRICTED_INTERPOLATED);
-
-		GameLoopMode getGameLoopMode(void) const;
+		void start(const Ogre::String& stateName, bool renderWhenInactive = false);
 
 		void changeAppState(AppState* state);
 		bool pushAppState(AppState* state);
 		void popAppState(void);
 		void popAllAndPushAppState(AppState* state);
-		//void pauseAppState(AppState *pState);
 
 		void shutdown(void);
 
@@ -105,22 +92,10 @@ namespace NOWA
 		*/
 		void setDesiredUpdates(unsigned int desiredUpdates);
 
-		/*
-		 * @brief	Gets whether this application has been shut down
-		 * @return bShutDown	True if the application has been shut down, else false
-		 */
-		bool getIsShutdown(void) const;
-
 		/**
 		 * @brief		Exits the game and destroys all application states.
 		 */
 		void exitGame(void);
-
-		/*
-		 * @brief	Gets whether the AppStateManager is stalled, due to loading another AppState.
-		 * @return bStalled	True if the AppStateManager is busy, else false.
-		 */
-		bool getIsStalled(void) const;
 
 		/*
 		 * @brief	Gets whether to render the scene, even the render window is not active (not visible).
@@ -185,18 +160,30 @@ namespace NOWA
 		ScriptEventManager* getScriptEventManager(const Ogre::String& stateName);
 
 		GpuParticlesModule* getGpuParticlesModule(const Ogre::String& stateName);
+
+	public:
+		/*
+		* @brief	Gets whether this application has been shut down
+		* @return bShutDown	True if the application has been shut down, else false
+		*/
+		std::atomic<bool> bShutdown;
+
+		/*
+		 * @brief	Gets whether the AppStateManager is stalled, due to loading another AppState.
+		 * @return bStalled	True if the AppStateManager is busy, else false.
+		 */
+		std::atomic<bool> bStall;
+
+		std::atomic<bool> bCanProcessRenderQueue;
 	public:
 		static AppStateManager& getSingleton(void);
 
 		static AppStateManager* getSingletonPtr(void);
 
 	private:
-		void restrictedInterpolatedFPSRendering(void);
-		void adaptiveFPSRendering(void);
-		void fpsIndependentRendering(void);
 		void multiThreadedRendering(void);
 
-		void internalChangeAppState(AppState* state);
+		void internalChangeAppState(AppState* state, bool initial = false);
 		bool internalPushAppState(AppState* state);
 		void internalPopAppState(void);
 		void internalPopAllAndPushAppState(AppState* state);
@@ -247,7 +234,6 @@ namespace NOWA
 		std::vector<AppState*> activeStateStack;
 		std::vector<StateInfo> states;
 		bool renderWhenInactive;
-		GameLoopMode gameLoopMode;
 		
 		unsigned int desiredUpdates;
 		unsigned int renderDelta;
@@ -255,9 +241,6 @@ namespace NOWA
 		bool vsyncOn;
 
 		unsigned int slowMotionMS;
-
-		bool bShutdown;
-		bool bStall;
 
 		// For user defined attributes, without the need for a game objects attributes component
 		std::map<Ogre::String, Variant*> globalAttributesMap;

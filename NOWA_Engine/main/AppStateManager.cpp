@@ -117,14 +117,14 @@ namespace NOWA
 
 	AppStateManager::AppStateManager()
 		: renderWhenInactive(false),
-		gameLoopMode(ADAPTIVE),
 		lastTime(0),
 		desiredUpdates(60),
 		slowMotionMS(0),
 		renderDelta(0),
 		vsyncOn(true),
 		bShutdown(false),
-		bStall(false)
+		bStall(false),
+		bCanProcessRenderQueue(true)
 	{
 	}
 
@@ -172,15 +172,14 @@ namespace NOWA
 		}
 	}
 
-	void AppStateManager::start(const Ogre::String& stateName, bool renderWhenInactive, GameLoopMode gameLoopMode)
+	void AppStateManager::start(const Ogre::String& stateName, bool renderWhenInactive)
 	{
 		this->renderWhenInactive = renderWhenInactive;
-		this->gameLoopMode = gameLoopMode;
 
 		AppState* appState = this->findByName(stateName);
 		if (nullptr != appState)
 		{
-			this->internalChangeAppState(appState);
+			this->internalChangeAppState(appState, true);
 
 			auto options = Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->getConfigOptions();
 			auto option = options.find("VSync");
@@ -196,22 +195,7 @@ namespace NOWA
 				}
 			}
 
-			if (GameLoopMode::FPS_INDEPENDENT == this->gameLoopMode)
-			{
-				this->fpsIndependentRendering();
-			}
-			else if (GameLoopMode::ADAPTIVE == this->gameLoopMode)
-			{
-				this->adaptiveFPSRendering();
-			}
-			else if (GameLoopMode::MULTI_THREADED == this->gameLoopMode)
-			{
-				this->multiThreadedRendering();
-			}
-			else
-			{
-				this->restrictedInterpolatedFPSRendering();
-			}
+			this->multiThreadedRendering();
 
 			// end all present states
 			while (false == this->activeStateStack.empty())
@@ -234,7 +218,7 @@ namespace NOWA
 				this->states.pop_back();
 			}
 
-			// Core::getSingletonPtr()->setShutdown(true);
+			Core::getSingletonPtr()->setShutdown(true);
 		}
 		else
 		{
@@ -243,11 +227,6 @@ namespace NOWA
 			throw Ogre::Exception(Ogre::Exception::ERR_INVALID_STATE, "[AppStateManager] Error: Cannot start application state: '" + stateName
 				+ "' because it does not exist.\n", "NOWA");
 		}
-	}
-
-	AppStateManager::GameLoopMode AppStateManager::getGameLoopMode(void) const
-	{
-		return this->gameLoopMode;
 	}
 
 	AppState* AppStateManager::findByName(const Ogre::String& stateName)
@@ -288,81 +267,6 @@ namespace NOWA
 		Core::getSingletonPtr()->getOgreRenderWindow()->setVSync(this->vsyncOn, Ogre::StringConverter::parseUnsignedInt(cfgOpts["VSync Interval"].currentValue));
 	}
 
-	void AppStateManager::restrictedInterpolatedFPSRendering(void)
-	{
-		// Core::getSingletonPtr()->getOgreRoot()->getRenderSystem()->_initRenderTargets();
-
-		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-
-		Ogre::Timer timer;
-
-		Ogre::uint64 startTime = timer.getMicroseconds();
-
-		double frameTime = 1.0 / this->desiredUpdates;
-		double accumulator = frameTime;
-		double timeSinceLast = 1.0 / static_cast<double>(Core::getSingletonPtr()->getScreenRefreshRate());
-
-		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-
-		while (false == this->bShutdown)
-		{
-			// Process signals from system
-			Ogre::WindowEventUtilities::messagePump();
-			
-			while (accumulator >= frameTime)
-			{
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "cFrametime: " + Ogre::StringConverter::toString(cFrametime));
-
-				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-				{
-					InputDeviceCore::getSingletonPtr()->capture(frameTime);
-
-					// Updates the active state
-					this->activeStateStack.back()->update(static_cast<Ogre::Real>(frameTime));
-				}
-
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Logic dt: " + Ogre::StringConverter::toString(dt));
-
-				// Update core
-				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(frameTime));
-				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(frameTime));
-
-				accumulator -= frameTime;
-
-				// Does not work?
-				// if (this->slowMotionMS > 0)
-				// 	Ogre::Threads::Sleep(this->slowMotionMS);
-			}
-
-			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(/*static_cast<Ogre::Real>(timeSinceLast)*/);
-
-			/*if (gFakeFrameskip)
-				Ogre::Threads::Sleep(40);*/
-
-			Ogre::uint64 endTime = timer.getMicroseconds();
-			timeSinceLast = (endTime - startTime) / 1000000.0;
-			timeSinceLast = std::min(1.0, timeSinceLast); //Prevent from going haywire.
-			accumulator += timeSinceLast;
-			startTime = endTime;
-
-			// Check if window is active or in task bar
-		/*	HWND temp = GetActiveWindow();
-			HWND hWnd;
-			Core::getSingletonPtr()->getOgreRenderWindow()->getCustomAttribute("WINDOW", &hWnd);*/
-			
-			// Update the renderwindow if the window is not active too, for server/client analysis
-			if (/*temp != hWnd && */false == this->renderWhenInactive && false == renderWindow->isVisible())
-			{
-				// Core::getSingletonPtr()->getOgreRenderWindow()->update();
-				// Do not burn CPU cycles unnecessary when minimized etc.
-				Ogre::Threads::Sleep(500);
-			}
-		}
-	}
-
 	void AppStateManager::multiThreadedRendering(void)
 	{
 		// Default 60 ticks per second
@@ -394,7 +298,7 @@ namespace NOWA
 		const double maxDeltaTime = 0.25;
 
 		// Set the frame time in the render command queue module
-		GraphicsModule::getInstance()->setFrameTime(simulationTickCount);
+		NOWA::GraphicsModule::getInstance()->setFrameTime(simulationTickCount);
 
 		while (false == this->bShutdown)
 		{
@@ -415,11 +319,11 @@ namespace NOWA
 			// Calculate time since last logic frame for interpolation
 			// Is done in render thread
 			// double timeSinceLastLogicFrame = currentTime - lastLogicFrameTime;
-			// GraphicsModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
+			// NOWA::GraphicsModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
 
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
 			{
-				// InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
+				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
 
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
@@ -432,7 +336,7 @@ namespace NOWA
 				// This advances the transform buffer
 				if (false == didUpdate)
 				{
-					GraphicsModule::getInstance()->beginLogicFrame();
+					NOWA::GraphicsModule::getInstance()->beginLogicFrame();
 					didUpdate = true;
 				}
 
@@ -454,7 +358,7 @@ namespace NOWA
 			if (true == didUpdate)
 			{
 				// End the logic frame
-				GraphicsModule::getInstance()->endLogicFrame();
+				NOWA::GraphicsModule::getInstance()->endLogicFrame();
 			}
 
 			// Update the renderwindow if the window is not active too, for server/client analysis
@@ -466,274 +370,7 @@ namespace NOWA
 		}
 	}
 
-#if 1
-
-	void AppStateManager::adaptiveFPSRendering(void)
-	{
-		// really important:
-		// http://docs.unity3d.com/Manual/ExecutionOrder.html
-		// update: Input, Gameslogic -> as often as possible
-		// FixedUpdate: Physics because of deterministics, always at constant rate
-
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-
-		// this keeps track of time (seconds to keep it easy)
-		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-
-		while (false == this->bShutdown)
-		{
-			// Process signals from system
-			Ogre::WindowEventUtilities::messagePump();
-			// calculate time between 2 frames
-			// this keeps track of time (seconds to keep it easy)
-			double dt = (static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001) - currentTime;
-			currentTime += dt;
-
-			// update input devices
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-			{
-				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
-
-				// update the active state
-				this->activeStateStack.back()->update(static_cast<float>(dt));
-			}
-
-			// Update core
-			Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
-			Core::getSingletonPtr()->update(static_cast<Ogre::Real>(dt));
-
-			// Ogre::Root::getSingletonPtr()->_fireFrameRenderingQueued();
-			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<float>(dt));
-
-			// is better because everything necessary is done, and hydrax works properly then
-
-			// Update the renderwindow if the window is not active too, for server/client analysis
-			if (false == renderWindow->isVisible() && this->renderWhenInactive)
-			{
-				// Core::getSingletonPtr()->getOgreRenderWindow()->update();
-				// Do not burn CPU cycles unnecessary when minimized etc.
-				Ogre::Threads::Sleep(500);
-				// Sleep(500);
-			}
-			// http://stackoverflow.com/questions/3727420/significance-of-sleep0))
-			// This will have the frame rate e.g. from 800 to 400 and give other thread a change to react
-			// Sleep(0);
-		}
-	}
-#else
-
-	void AppStateManager::adaptiveFPSRendering(void)
-	{
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-
-		// Time tracking
-		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-		double accumulator = 0.0;
-
-		// Fixed timestep settings
-		const double FIXED_DT = 1.0 / 60.0;  // 60Hz fixed update rate
-		const double MAX_DT = 1.0 / 30.0;    // Prevent large dt spikes
-
-		while (!this->bShutdown)
-		{
-			// Process signals from system
-			Ogre::WindowEventUtilities::messagePump();
-
-			// Calculate delta time
-			double newTime = static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-			double dt = newTime - currentTime;
-			currentTime = newTime;
-
-			// Prevent dt spikes from causing physics jumps
-			dt = std::clamp(dt, 0.0, MAX_DT);
-
-			// Accumulate time for fixed-step updates
-			accumulator += dt;
-
-			// Process input as fast as possible
-			if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-			{
-				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(dt));
-			}
-
-			// Fixed timestep physics, logic update
-			while (accumulator >= FIXED_DT)
-			{
-				if (!this->bStall && !this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-				{
-					this->activeStateStack.back()->update(static_cast<float>(FIXED_DT));
-				}
-
-				Core::getSingletonPtr()->update(static_cast<Ogre::Real>(FIXED_DT));
-				Core::getSingletonPtr()->updateFrameStats(static_cast<Ogre::Real>(dt));
-
-				accumulator -= FIXED_DT;
-			}
-
-			// Render one frame
-			this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<float>(dt));
-
-			// If window is inactive, sleep to prevent CPU waste
-			if (!renderWindow->isVisible() && this->renderWhenInactive)
-			{
-				Ogre::Threads::Sleep(500);
-			}
-		}
-	}
-#endif
-
-	void AppStateManager::fpsIndependentRendering(void)
-	{
-		std::chrono::nanoseconds lag(0);
-		std::chrono::time_point<std::chrono::high_resolution_clock> endTime = std::chrono::high_resolution_clock::now();
-		std::chrono::time_point<std::chrono::high_resolution_clock> fpsStartTime = endTime;
-
-		int frameCount = 0;
-		int tickCount = 0;
-
-		// Default 30 ticks per second
-		const unsigned int simulationTickCount = Core::getSingletonPtr()->getOptionDesiredSimulationUpdates();
-
-		Ogre::Window* renderWindow = Core::getSingletonPtr()->getOgreRenderWindow();
-		this->setDesiredUpdates(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-
-		Ogre::Real monitorRefreshRate = static_cast<Ogre::Real>(Core::getSingletonPtr()->getScreenRefreshRate());
-
-		if (0 == monitorRefreshRate)
-		{
-			monitorRefreshRate = static_cast<Ogre::Real>(simulationTickCount);
-		}
-
-		if (this->desiredUpdates != 0 && this->desiredUpdates <= static_cast<unsigned int>(monitorRefreshRate))
-		{
-			monitorRefreshRate = static_cast<Ogre::Real>(this->desiredUpdates);
-		}
-
-		// Whole engine/game is processed constantly at 60 ticks per second, but rendering as fast graphics card speed!
-		const std::chrono::nanoseconds lengthOfFrame(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)) / simulationTickCount);
-		const Ogre::Real tickCountDt = 1.0f / static_cast<Ogre::Real>(simulationTickCount);
-		const Ogre::Real framesDt = 1.0f / monitorRefreshRate;
-
-		// Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-
-		double currentTime = static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001;
-
-		while (false == this->bShutdown)
-		{
-			double dt = (static_cast<double>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001) - currentTime;
-			// Prevents from going haywire.
-			dt = std::min(1.0, dt);
-			currentTime += dt;
-
-			// Process signals from system
-			Ogre::WindowEventUtilities::messagePump();
-
-			std::chrono::time_point<std::chrono::high_resolution_clock> endTime2 = std::chrono::high_resolution_clock::now();
-			std::chrono::nanoseconds fpsElapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(endTime2 - fpsStartTime));
-
-			// Wait til all textures are loaded
-			// textureManager->waitForStreamingCompletion();
-
-			if (fpsElapsedTime >= std::chrono::seconds(1))
-			{
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "frameCount: " + Ogre::StringConverter::toString(frameCount) + " tickCount: " + Ogre::StringConverter::toString(tickCount));
-
-				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Screen Refresh Rate: " + Ogre::StringConverter::toString(Core::getSingletonPtr()->getScreenRefreshRate()));
-				// getScreenRefreshRate = 144
-				
-				/*
-				FrameCount: Graphics FPC, TickCount = Processed ticks for dt and updates of engine
-				23:38:12: frameCount: 79 tickCount: 57
-				23:38:13: frameCount: 1 tickCount: 157
-				23:38:14: frameCount: 15 tickCount: 129
-				23:38:15: frameCount: 84 tickCount: 61
-				23:38:16: frameCount: 84 tickCount: 60
-				23:38:17: frameCount: 84 tickCount: 61
-				23:38:18: frameCount: 84 tickCount: 61
-				23:38:19: frameCount: 84 tickCount: 60
-				23:38:20: frameCount: 84 tickCount: 61
-				23:38:21: frameCount: 84 tickCount: 61
-				23:38:22: frameCount: 84 tickCount: 60
-				23:38:23: frameCount: 84 tickCount: 61
-				23:38:24: frameCount: 84 tickCount: 61
-				23:38:25: frameCount: 83 tickCount: 60
-				23:38:26: frameCount: 84 tickCount: 61
-				23:38:27: frameCount: 84 tickCount: 60
-				23:38:28: frameCount: 84 tickCount: 61
-				23:38:29: frameCount: 84 tickCount: 61
-				23:38:30: frameCount: 84 tickCount: 60
-				*/
-		
-
-				Core::getSingletonPtr()->updateFrameStats(tickCountDt);
-
-				fpsStartTime = std::chrono::high_resolution_clock::now();
-				frameCount = 0;
-				tickCount = 0;
-			}
-
-			std::chrono::time_point<std::chrono::high_resolution_clock> startTime = std::chrono::high_resolution_clock::now();
-
-			std::chrono::nanoseconds elapsedTime(std::chrono::duration_cast<std::chrono::nanoseconds>(startTime - endTime));
-			endTime = startTime;
-
-			// Updates inputs
-			InputDeviceCore::getSingletonPtr()->capture(tickCountDt);
-
-			// Game processing is independent of rendering
-			if (false == this->bShutdown)
-			{
-				// update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
-				{
-					// Updates the active state
-					this->activeStateStack.back()->update(tickCountDt);
-				}
-
-				// Update core
-				Core::getSingletonPtr()->update(tickCountDt);
-
-				// Update the renderwindow if the window is not active too, for server/client analysis
-				if (false == renderWindow->isVisible() && this->renderWhenInactive)
-				{
-					break;
-				}
-
-				// Keeps track of how many ticks have been done this second
-				tickCount++;
-			}
-
-// Attention: Is never called!
-			// Update the renderwindow if the window is not active too, for server/client analysis
-			if (false == renderWindow->isVisible() && this->renderWhenInactive)
-			{
-				// Do not burn CPU cycles unnecessary when minimized etc.
-				Ogre::Threads::Sleep(500);
-				// Sleep(500);
-			}
-
-			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count()) / static_cast<Ogre::Real>(lengthOfFrame.count()) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-
-			// Ogre::Real renderDt = static_cast<Ogre::Real>(lag.count() / 1000.0f) / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredFramesUpdates());
-
-			// Controls the shown fps in game! If in DefaultConfig.xml set to 0, go with as many as frames as possible (adaptive)
-			if (0 == this->desiredUpdates)
-			{
-				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame();
-			}
-			else
-			{
-				// Else go with max this->desiredUpdates. E.g. if monitor has 144hz 1 / 144
-				// this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(static_cast<Ogre::Real>(elapsedTime.count() / 1000000.0f));
-				this->bShutdown |= !Ogre::Root::getSingletonPtr()->renderOneFrame(framesDt);
-			}
-
-			// Keeps track of how many frames are done this second
-			frameCount++;
-		}
-	}
-
-	void AppStateManager::internalChangeAppState(AppState* state)
+	void AppStateManager::internalChangeAppState(AppState* state, bool initial)
 	{
 		AppState* oldState = nullptr;
 		// end the state if present
@@ -741,6 +378,8 @@ namespace NOWA
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
 			this->activeStateStack.back()->exit();
+
+			this->bCanProcessRenderQueue = false;
 
 			oldState = this->activeStateStack.back();
 			
@@ -754,6 +393,11 @@ namespace NOWA
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Entering " + this->activeStateStack.back()->getName());
 		// enter the new state
+		if (true == initial)
+		{
+			this->activeStateStack.back()->startRendering();
+		}
+		this->bCanProcessRenderQueue = true;
 		this->activeStateStack.back()->enter();
 
 		if (nullptr == this->activeStateStack.back()->eventManager)
@@ -804,6 +448,7 @@ namespace NOWA
 		this->activeStateStack.back()->enter();
 
 		this->bStall = false;
+		this->bCanProcessRenderQueue = true;
 
 		return true;
 	}
@@ -834,6 +479,7 @@ namespace NOWA
 			this->shutdown();
 		}
 		this->bStall = false;
+		this->bCanProcessRenderQueue = true;
 	}
 
 	void AppStateManager::internalPopAllAndPushAppState(AppState* state)
@@ -879,6 +525,7 @@ namespace NOWA
 				state->enter();
 
 				this->bStall = false;
+				this->bCanProcessRenderQueue = true;
 			}
 		}
 		else
@@ -886,6 +533,7 @@ namespace NOWA
 			this->shutdown();
 		}
 		this->bStall = false;
+		this->bCanProcessRenderQueue = true;
 	}
 
 	void AppStateManager::internalExitGame(void)
@@ -1137,17 +785,10 @@ namespace NOWA
 	void AppStateManager::shutdown(void)
 	{
 		this->bShutdown = true;
-		Core::getSingletonPtr()->setShutdown(this->bShutdown);
-	}
-
-	bool AppStateManager::getIsShutdown(void) const
-	{
-		return this->bShutdown;
-	}
-
-	bool AppStateManager::getIsStalled(void) const
-	{
-		return this->bStall;
+		if (false == this->activeStateStack.empty())
+		{
+			this->activeStateStack.back()->stopRendering();
+		}
 	}
 
 	size_t AppStateManager::getAppStatesCount(void) const
@@ -1708,7 +1349,7 @@ namespace NOWA
 			outFile << crypted << "\n";
 
 			// Get the game object controller for this app state name
-			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController(this->activeStateStack.back()->getName())->getGameObjects();
+			auto gameObjects = this->getGameObjectController(this->activeStateStack.back()->getName())->getGameObjects();
 
 			std::ostringstream oStream;
 

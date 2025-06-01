@@ -20,7 +20,7 @@ namespace NOWA
 		overlay(nullptr),
 		calledFirstTime(true)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("FaderProcess::FaderProcess", _6(fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FaderProcess::FaderProcess", _6(fadeOperation, &duration, selectedEaseFunction, continueAlpha, continueDuration, speedMultiplier),
 		{
 			Ogre::HlmsManager * hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
 			Ogre::HlmsUnlit* hlmsUnlit = dynamic_cast<Ogre::HlmsUnlit*>(hlmsManager->getHlms(Ogre::HLMS_UNLIT));
@@ -120,62 +120,137 @@ namespace NOWA
 
 	FaderProcess::~FaderProcess()
 	{
-
+		
 	}
 
 	void FaderProcess::onUpdate(Ogre::Real dt)
 	{
-		if (this->eFadeOperation == FadeOperation::FADE_NONE || !this->datablock)
-			return;
-
-		this->stallDuration -= dt * this->speedMultiplier;
-		if (this->stallDuration > 0.0f)
-			return;
-
-		// Compute progress and easing
-		this->currentDuration += (this->eFadeOperation == FadeOperation::FADE_IN ? -1.0f : 1.0f) * dt * this->speedMultiplier;
-		Ogre::Real t = Ogre::Math::Clamp(this->currentDuration / this->totalDuration, 0.0f, 1.0f);
-		this->currentAlpha = (this->eFadeOperation == FadeOperation::FADE_IN) ? 1.0f - t : t;
-
-		Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
-
-		// Copy relevant values for render thread (safe)
-		auto datablock = this->datablock;
-		FadeOperation fadeOp = this->eFadeOperation;
-		auto overlay = this->overlay;
-
-		// Apply color
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("FaderProcess::applyAlpha", _2(resultValue, datablock),
+		if (this->eFadeOperation != FadeOperation::FADE_NONE && nullptr != this->datablock)
 		{
-			if (datablock)
+			// If fading in, decrease the _alpha until it reaches 0.0
+			if (this->eFadeOperation == FadeOperation::FADE_IN)
 			{
-				datablock->setColour(Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue));
-			}
-		});
-
-		// Finish if done
-		if ((fadeOp == FadeOperation::FADE_IN && this->currentAlpha <= 0.0f) ||
-			(fadeOp == FadeOperation::FADE_OUT && this->currentAlpha >= 1.0f))
-		{
-			this->currentAlpha = (fadeOp == FadeOperation::FADE_IN) ? 0.0f : 1.0f;
-			this->eFadeOperation = FadeOperation::FADE_NONE;
-
-			if (fadeOp == FadeOperation::FADE_IN && overlay)
-			{
-				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("FaderProcess::hideOverlay", _1(overlay),
+				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade in: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
+				
+				this->stallDuration -= dt * this->speedMultiplier;
+				if (this->stallDuration <= 0.0f)
 				{
-					overlay->hide();
-				});
-			}
+					this->currentDuration -= dt * this->speedMultiplier;
+					this->currentAlpha = this->currentDuration / this->totalDuration;
 
-			this->succeed();
+					// Call a bit, before process will be destroyed
+					if (this->currentAlpha < 0.0f)
+					{
+						this->currentAlpha = 0.0f;
+						auto overlay = this->overlay;
+						ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("FaderProcess::hideOverlay", _1(overlay),
+						{
+							overlay->hide();
+						});
+						// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Fade in Overlay hide");
+						this->eFadeOperation = FadeOperation::FADE_NONE;
+						// Finish the process
+						this->succeed();
+						return;
+					}
+
+					Ogre::Real t = this->currentDuration / this->totalDuration;
+					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
+					// Copy relevant values for render thread (safe)
+
+					NOWA::GraphicsModule::getInstance()->updateTrackedDatablockValue(this->datablock, this->datablock->getColour(), Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue),
+						[db = datablock](const Ogre::ColourValue& c)
+						{
+							db->setColour(c);
+						},
+						[](const Ogre::ColourValue& a, const Ogre::ColourValue& b, Ogre::Real w)
+						{
+							return Ogre::ColourValue(
+								Ogre::Math::lerp(a.r, b.r, w),
+								Ogre::Math::lerp(a.g, b.g, w),
+								Ogre::Math::lerp(a.b, b.b, w),
+								Ogre::Math::lerp(a.a, b.a, w)
+							);
+						}
+					);
+				}
+			}
+			// If fading out, increase the _alpha until it reaches 1.0
+			else if (this->eFadeOperation == FadeOperation::FADE_OUT)
+			{
+				this->stallDuration -= dt * this->speedMultiplier;
+				if (this->stallDuration <= 0.0f)
+				{
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(this->currentDuration) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
+					this->currentDuration += dt;
+					this->currentAlpha = this->currentDuration / this->totalDuration;
+
+					if (this->currentAlpha > 1.0f)
+					{
+						this->currentAlpha = 1.0f;
+						this->eFadeOperation = FadeOperation::FADE_NONE;
+						this->succeed();
+						return;
+					}
+
+					Ogre::Real t = this->currentDuration / this->totalDuration;
+					Ogre::Real resultValue = Interpolator::getInstance()->applyEaseFunction(0.0f, 1.0f, this->selectedEaseFunction, t);
+					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Fade out: " + Ogre::StringConverter::toString(resultValue) + " alpha: " + Ogre::StringConverter::toString(this->currentAlpha));
+					// Copy relevant values for render thread (safe)
+					auto datablock = this->datablock;
+					FadeOperation fadeOp = this->eFadeOperation;
+
+					NOWA::GraphicsModule::getInstance()->updateTrackedDatablockValue(this->datablock, this->datablock->getColour(), Ogre::ColourValue(0.0f, 0.0f, 0.0f, resultValue),
+						[db = datablock](const Ogre::ColourValue& c)
+						{
+							db->setColour(c);
+						},
+						[](const Ogre::ColourValue& a, const Ogre::ColourValue& b, Ogre::Real w)
+						{
+							return Ogre::ColourValue(
+								Ogre::Math::lerp(a.r, b.r, w),
+								Ogre::Math::lerp(a.g, b.g, w),
+								Ogre::Math::lerp(a.b, b.b, w),
+								Ogre::Math::lerp(a.a, b.a, w)
+							);
+						}
+					);
+				}
+			}
 		}
 	}
 
 	void FaderProcess::finished(void)
 	{
-		// this->overlay->hide();
-		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->Finished Overlay hide");
+	//	ENQUEUE_DESTROY_COMMAND("DatablockUnlitComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
+	//		{
+	//			// Safely reset datablock for entity or item
+	//			if (entityCopy && originalDatablockCopy)
+	//			{
+	//				if (oldSubIndexCopy < entityCopy->getNumSubEntities())
+	//				{
+	//					entityCopy->getSubEntity(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
+	//				}
+	//			}
+	//			else if (itemCopy && originalDatablockCopy)
+	//			{
+	//				if (oldSubIndexCopy < itemCopy->getNumSubItems())
+	//				{
+	//					itemCopy->getSubItem(oldSubIndexCopy)->setDatablock(originalDatablockCopy);
+	//				}
+	//			}
+
+	//	// Destroy datablock only if no linked renderables remain
+	//	if (datablockCopy)
+	//	{
+	//		const auto& linkedRenderables = datablockCopy->getLinkedRenderables();
+	//		if (linkedRenderables.empty())
+	//		{
+	//			datablockCopy->getCreator()->destroyDatablock(datablockCopy->getName());
+	//		}
+	//	}
+	//		});
+		NOWA::GraphicsModule::getInstance()->removeTrackedDatablock(this->datablock);
 	}
 
 	void FaderProcess::onSuccess(void)

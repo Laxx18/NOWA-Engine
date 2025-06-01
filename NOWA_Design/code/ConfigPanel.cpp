@@ -72,15 +72,8 @@ void ConfigPanel::destroyContent(void)
 {
 	if (this->configPanelView != nullptr)
 	{
-		// Step 1: Copy pointer and nullify to prevent race conditions
-		auto viewCopy = this->configPanelView;
+		this->configPanelView->removeAllItems();
 		this->configPanelView = nullptr;
-
-		// Step 2: Enqueue render-thread-safe cleanup
-		ENQUEUE_DESTROY_COMMAND("ConfigPanel::destroyContent", _1(viewCopy),
-		{
-			viewCopy->removeAllItems();
-		});
 	}
 }
 
@@ -566,22 +559,15 @@ void ConfigPanelProject::fillScenesSearchList(void)
 
 void ConfigPanelProject::shutdown()
 {
-	// Step 1: Copy and clear to avoid double access
-	auto itemsEditCopy = this->itemsEdit;
-	this->itemsEdit.clear();  // Prevent access on main thread
-
-	// Step 2: Enqueue destruction on render thread
-	ENQUEUE_DESTROY_COMMAND("ConfigPanelProject::shutdown", _1(itemsEditCopy),
+	// Threadsafe from the outside
+	for (auto* widget : this->itemsEdit)
 	{
-		for (auto* widget : itemsEditCopy)
+		if (widget)
 		{
-			if (widget)
-			{
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-			}
+			MyGUI::Gui::getInstance().destroyWidget(widget);
 		}
-		itemsEditCopy.clear();  // Not strictly needed, but clean
-	});
+	}
+	this->itemsEdit.clear();
 }
 
 void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item)
@@ -718,22 +704,15 @@ void ConfigPanelSceneManager::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::K
 
 void ConfigPanelSceneManager::shutdown()
 {
-	// Step 1: Copy and clear to avoid double access
-	auto itemsEditCopy = this->itemsEdit;
-	this->itemsEdit.clear();  // Prevent access on main thread
-
-	// Step 2: Enqueue destruction on render thread
-	ENQUEUE_DESTROY_COMMAND("ConfigPanelSceneManager::shutdown", _1(itemsEditCopy),
+	// Threadsafe from the outside
+	for (auto* widget : this->itemsEdit)
 	{
-		for (auto* widget : itemsEditCopy)
+		if (widget)
 		{
-			if (widget)
-			{
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-			}
+			MyGUI::Gui::getInstance().destroyWidget(widget);
 		}
-		itemsEditCopy.clear();  // Not strictly needed, but clean
-	});
+	}
+	this->itemsEdit.clear();
 }
 
 void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLightUpperHemisphere, const Ogre::ColourValue& ambientLightLowerHemisphere, Ogre::Real shadowFarDistance, 
@@ -952,22 +931,15 @@ void ConfigPanelOgreNewt::initialise()
 
 void ConfigPanelOgreNewt::shutdown()
 {
-	// Step 1: Copy and clear to avoid double access
-	auto itemsEditCopy = this->itemsEdit;
-	this->itemsEdit.clear();  // Prevent access on main thread
-
-	// Step 2: Enqueue destruction on render thread
-	ENQUEUE_DESTROY_COMMAND("ConfigPanelOgreNewt::shutdown", _1(itemsEditCopy),
+	// Threadsafe from the outside
+	for (auto* widget : this->itemsEdit)
 	{
-		for (auto* widget : itemsEditCopy)
+		if (widget)
 		{
-			if (widget)
-			{
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-			}
+			MyGUI::Gui::getInstance().destroyWidget(widget);
 		}
-		itemsEditCopy.clear();  // Not strictly needed, but clean
-	});
+	}
+	this->itemsEdit.clear();
 }
 
 void ConfigPanelOgreNewt::buttonHit(MyGUI::Widget* sender)
@@ -1081,22 +1053,15 @@ void ConfigPanelRecast::initialise()
 
 void ConfigPanelRecast::shutdown()
 {
-	// Step 1: Copy and clear to avoid double access
-	auto itemsEditCopy = this->itemsEdit;
-	this->itemsEdit.clear();  // Prevent access on main thread
-
-	// Step 2: Enqueue destruction on render thread
-	ENQUEUE_DESTROY_COMMAND("ConfigPanelRecast::shutdown", _1(itemsEditCopy),
+	// Threadsafe from the outside
+	for (auto* widget : this->itemsEdit)
 	{
-		for (auto* widget : itemsEditCopy)
+		if (widget)
 		{
-			if (widget)
-			{
-				MyGUI::Gui::getInstance().destroyWidget(widget);
-			}
+			MyGUI::Gui::getInstance().destroyWidget(widget);
 		}
-		itemsEditCopy.clear();  // Not strictly needed, but clean
-	});
+	}
+	this->itemsEdit.clear();
 }
 
 void ConfigPanelRecast::buttonHit(MyGUI::Widget* sender)

@@ -307,7 +307,7 @@ namespace NOWA
 		this->gameObjectPtr = nullptr;
 
 		// Enqueue destruction command on render thread
-		ENQUEUE_DESTROY_COMMAND("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
 		{
 			if (cameraCopy)
 			{
@@ -322,13 +322,13 @@ namespace NOWA
 				gameObjectCopy->getAttribute(GameObject::AttrScale())->setVisible(true);
 
 				// If it was an active one, send event
-				if (true == active && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+				if (true == active && false == AppStateManager::getSingletonPtr()->bShutdown)
 				{
 					boost::shared_ptr<EventDataRemoveCamera> eventDataRemoveCamera(new EventDataRemoveCamera(active, cameraCopy));
 					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRemoveCamera);
 				}
 
-				if (nullptr != workspaceBaseComponentCopy && false == AppStateManager::getSingletonPtr()->getIsShutdown())
+				if (nullptr != workspaceBaseComponentCopy && false == AppStateManager::getSingletonPtr()->bShutdown)
 				{
 					workspaceBaseComponentCopy->setUseReflection(false);
 				}

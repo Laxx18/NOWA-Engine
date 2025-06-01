@@ -117,7 +117,7 @@ namespace NOWA
 					this->oldGameObjectDataList[i].newScale = gameObjectPtr->getSceneNode()->getScale();
 					this->oldGameObjectDataList[i].newOrientation = gameObjectPtr->getSceneNode()->getOrientation();
 
-					GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
+					NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].oldPosition,
 						this->oldGameObjectDataList[i].oldOrientation, this->oldGameObjectDataList[i].oldScale);
 				}
 				i++;
@@ -175,7 +175,7 @@ namespace NOWA
 				else
 				{
 					// If there is no physics component set the data directly for the game object scene node
-					GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
+					NOWA::GraphicsModule::getInstance()->updateNodeTransform(gameObjectPtr->getSceneNode(), this->oldGameObjectDataList[i].newPosition,
 						this->oldGameObjectDataList[i].newOrientation, this->oldGameObjectDataList[i].newScale);
 				}
 				i++;
@@ -465,7 +465,7 @@ namespace NOWA
 					this->scale = Ogre::Vector3::UNIT_SCALE;
 				}
 
-				GraphicsModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
+				NOWA::GraphicsModule::getInstance()->updateNodeTransform(this->objectNode, this->position, this->orientation, this->scale);
 
 				// this->sceneManager->findMovableObjects
 
@@ -1099,12 +1099,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newPosition = this->camera->getPosition();
-			GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->oldPosition);
 		}
 
 		virtual void redo(void) override
 		{
-			GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->newPosition);
 		}
 	private:
 		Ogre::Vector3 newPosition;
@@ -1128,12 +1128,12 @@ namespace NOWA
 		virtual void undo(void) override
 		{
 			this->newOrientation = this->camera->getOrientation();
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->oldOrientation);
 		}
 
 		virtual void redo(void) override
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, this->newOrientation);
 		}
 	private:
 		Ogre::Quaternion oldOrientation;
@@ -3073,7 +3073,7 @@ namespace NOWA
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3090,7 +3090,7 @@ namespace NOWA
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 
 						if (Ogre::Vector3::ZERO != normal)
 						{
@@ -3147,8 +3147,8 @@ namespace NOWA
 						Ogre::Quaternion newOrientation = rotation * orientation;
 
 						// Enqueue both
-						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
 					}
 				}
 				else
@@ -3158,7 +3158,7 @@ namespace NOWA
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3172,12 +3172,12 @@ namespace NOWA
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
-						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = rotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 #endif
 
 						Ogre::Vector3 position = selectedGameObject.second.gameObject->getPosition();
@@ -3190,8 +3190,8 @@ namespace NOWA
 						Ogre::Quaternion newOrientation = rotation * orientation;
 
 						// Enqueue both
-						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), newOrientation);
 					}
 				}
 				i++;
@@ -3414,7 +3414,7 @@ namespace NOWA
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
 
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3431,7 +3431,7 @@ namespace NOWA
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 
 						if (Ogre::Vector3::ZERO != normal)
 						{
@@ -3484,7 +3484,7 @@ namespace NOWA
 						Ogre::Quaternion orientation = selectedGameObject.second.gameObject->getOrientation();
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 					else if (EDITOR_ROTATE_MODE2 == this->manipulationMode)
 					{
@@ -3497,12 +3497,12 @@ namespace NOWA
 
 						// Set the new position and calculate the new orientation
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newPosition);
-						GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
+						NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newPosition);
 
 						// Rotate around the gizmo's position with local orientation
 						Ogre::Quaternion localRotation = combinedRotation * orientation;
 						// selectedGameObject.second.gameObject->getSceneNode()->setOrientation(localRotation);
-						GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
+						NOWA::GraphicsModule::getInstance()->updateNodeOrientation(selectedGameObject.second.gameObject->getSceneNode(), localRotation);
 					}
 				}
 				i++;
@@ -3712,7 +3712,7 @@ namespace NOWA
 					})
 
 					// Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
-					// GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
+					// NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), Ogre::Vector3(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
 					// 	selectedGameObject.second.gameObject->getSceneNode()->getPosition().z));
 				}
 
@@ -3733,7 +3733,7 @@ namespace NOWA
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(newGridPoint);
 					});*/
 
-					GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newGridPoint);
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), newGridPoint);
 				}
 				else
 				{
@@ -3742,7 +3742,7 @@ namespace NOWA
 					});*/
 
 					Ogre::Vector3 translatePosition = selectedGameObject.second.gameObject->getSceneNode()->getPosition() + offset;
-					GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), translatePosition);
+					NOWA::GraphicsModule::getInstance()->updateNodePosition(selectedGameObject.second.gameObject->getSceneNode(), translatePosition);
 				}
 				
 				if (Ogre::Vector3::ZERO != normal)
@@ -4114,32 +4114,32 @@ namespace NOWA
 		{
 		case EDITOR_CAMERA_VIEW_FRONT:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(0.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_TOP:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(270.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BACK:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-180.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_BOTTOM:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_X));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_LEFT:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(-90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		case EDITOR_CAMERA_VIEW_RIGHT:
 		{
-			GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion(Ogre::Degree(90.0f), Ogre::Vector3::UNIT_Y));
 			break;
 		}
 		}

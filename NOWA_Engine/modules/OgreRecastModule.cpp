@@ -597,7 +597,7 @@ namespace NOWA
 		auto ogreRecastPtr = this->ogreRecast;
 
 		// Call FindPath on the render thread and get result safely
-		int ret = GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
+		int ret = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<int>([=]() -> int
 		{
 			return ogreRecastPtr->FindPath(startPosition, endPosition, pathSlot, targetSlot);
 		}, "OgreRecastModule::findPath");

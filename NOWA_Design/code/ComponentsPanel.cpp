@@ -29,44 +29,27 @@ void ComponentsPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void ComponentsPanel::destroyContent(void)
 {
-	// Remove listener right away (assuming this is safe on logic thread)
+	// Threadsafe from the outside
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &ComponentsPanel::handleShowComponentsPanel), EventDataShowComponentsPanel::getStaticEventType());
+	this->componentsPanelView->removeAllItems();
 
-	// Cache pointers
-	auto componentsPanelView = this->componentsPanelView;
-	auto componentsPanelSearch = this->componentsPanelSearch;
-	auto componentsPanelInfo = this->componentsPanelInfo;
-	auto componentsPanelDynamic = this->componentsPanelDynamic;
-
-	// Null out member pointers immediately so no other thread accesses them
-	this->componentsPanelView = nullptr;
-	this->componentsPanelSearch = nullptr;
-	this->componentsPanelInfo = nullptr;
-	this->componentsPanelDynamic = nullptr;
-
-	// Enqueue all MyGUI/Ogre related destruction commands on render thread
-	ENQUEUE_DESTROY_COMMAND("ComponentsPanel::destroyContent", _4(componentsPanelView, componentsPanelSearch, componentsPanelInfo, componentsPanelDynamic),
+	if (nullptr != this->componentsPanelSearch)
 	{
-		if (componentsPanelView)
-		{
-			componentsPanelView->removeAllItems();
-		}
+		delete this->componentsPanelSearch;
+		this->componentsPanelSearch = nullptr;
+	}
 
-		if (componentsPanelSearch)
-		{
-			delete componentsPanelSearch;
-		}
-
-		if (componentsPanelInfo)
-		{
-			delete componentsPanelInfo;
-		}
-
-		if (componentsPanelDynamic)
-		{
-			delete componentsPanelDynamic;
-		}
-	});
+	if (nullptr != this->componentsPanelInfo)
+	{
+		delete this->componentsPanelInfo;
+		this->componentsPanelInfo = nullptr;
+	}
+	// Attention: Is this panel always destroyed and re-created?
+	if (nullptr != this->componentsPanelDynamic)
+	{
+		delete this->componentsPanelDynamic;
+		this->componentsPanelDynamic = nullptr;
+	}
 }
 
 void ComponentsPanel::clearComponents(void)
@@ -276,6 +259,7 @@ void ComponentsPanelDynamic::initialise()
 
 void ComponentsPanelDynamic::shutdown()
 {
+	// Threadsafe from the outside
 	this->componentsButtons.clear();
 	this->parentPanel = nullptr;
 }

@@ -32,77 +32,67 @@ namespace NOWA
 	protected:
 		virtual void onInit(void) override
 		{
-			// Shows black picture
-			// FaderProcess faderProcess(NOWA::FaderProcess::FadeOperation::FADE_OUT, 0.0f);
-			// Ogre::Root::getSingletonPtr()->renderOneFrame();
-			
 			this->succeed();
-			
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->resetContent();
 
-			EngineResourceFadeListener* engineResourceListener = nullptr;
+			auto* appStateMgr = AppStateManager::getSingletonPtr();
+			auto* core = Core::getSingletonPtr();
+			auto* gameProgressModule = appStateMgr->getGameProgressModule(this->appStateName);
+			gameProgressModule->resetContent();
 
-			if (true == this->showProgress)
-			{
-				engineResourceListener = new EngineResourceFadeListener(Core::getSingletonPtr()->getOgreRenderWindow());
-				Core::getSingletonPtr()->setEngineResourceListener(engineResourceListener);
-
-				engineResourceListener->showLoadingBar();
-			}
-
-			bool success = this->dotSceneImportModule->parseScene(Core::getSingletonPtr()->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, showProgress);
-			
+			// TODO: Another (threadsafe) implementation of ThreadSafeEngineResourceFadeListener is required first!, because the default one is used in Core on main thread!
+			/*EngineResourceFadeListener* engineResourceListener = nullptr;
 			std::pair<Ogre::Real, Ogre::Real> continueData(0.0f, 0.0f);
 
-			if (true == this->showProgress)
+			if (this->showProgress)
 			{
-				continueData = engineResourceListener->hideLoadingBar();
-				Core::getSingletonPtr()->resetEngineResourceListener();
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Show loading bar", _3(core, &engineResourceListener, &continueData),
+				{
+					engineResourceListener = new EngineResourceFadeListener(core->getOgreRenderWindow());
+					core->setEngineResourceListener(engineResourceListener);
+					engineResourceListener->showLoadingBar();
+				});
+			}*/
 
-				delete engineResourceListener;
-				engineResourceListener = nullptr;
-			}
-			
+			bool success = false;
+
+			// ⬇Run parsing scene on render thread
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::parseScene", _2(core, &success),
+			{
+				success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, this->showProgress);
+
+				/*if (this->showProgress && engineResourceListener)
+				{
+					continueData = engineResourceListener->hideLoadingBar();
+					core->resetEngineResourceListener();
+					delete engineResourceListener;
+					engineResourceListener = nullptr;
+				}*/
+			});
+
 			if (false == success)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->nextSceneName + "' correctly!");
-				AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
+				gameProgressModule->setIsSceneLoading(false);
 				return;
 			}
-			// Continue fading after loading scene, if there is enough time left
-			/*if (continueData.second > 1.0f)
-			{
-				NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 10.0f, continueData.first, continueData.second)));
-			}*/
 
-			// NOWA::ProcessManager::getInstance()->attachProcess(NOWA::ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 1.0f)));
-			// Ogre::Root::getSingletonPtr()->renderOneFrame();
-
-			// Set the data for a state
+			// Scene was parsed successfully, construct scene parameter
 			NOWA::SceneParameter sceneParameter;
 			sceneParameter.appStateName = this->appStateName;
 			sceneParameter.sceneManager = this->dotSceneImportModule->getSceneManager();
 			sceneParameter.mainCamera = this->dotSceneImportModule->getMainCamera();
 			sceneParameter.sunLight = this->dotSceneImportModule->getSunLight();
-			sceneParameter.ogreNewt = AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->getOgreNewt();
+			sceneParameter.ogreNewt = appStateMgr->getOgreNewtModule(this->appStateName)->getOgreNewt();
 			sceneParameter.dotSceneImportModule = this->dotSceneImportModule;
 
-			// NOWA::AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->start();
+			// Trigger loaded event
+			boost::shared_ptr<EventDataSceneLoaded> sceneLoadedEvent = boost::make_shared<EventDataSceneLoaded>(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter);
 
-			// NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->determinePlayerStartLocation(this->nextSceneName);
+			appStateMgr->getEventManager(this->appStateName)->threadSafeQueueEvent(sceneLoadedEvent);
 
-			// Send event, that scene has been loaded. Note: When scene has been changed, send that flag. E.g. in DesignState, if true, also call GameObjectController::start, so that when in simulation
-			// and the scene has been changed, remain in simulation and maybe activate player controller, so that the player may continue his game play
-			boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
-			
-			 for (unsigned short i = 0; i < 2; i++)
-			 {
-			 	Ogre::Root::getSingletonPtr()->renderOneFrame();
-			 }
-
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
+			gameProgressModule->setIsSceneLoading(false);
 		}
+
 
 		virtual void onUpdate(float dt) override
 		{
@@ -222,10 +212,10 @@ namespace NOWA
 			boost::shared_ptr<EventDataSceneLoaded> EventDataSceneLoaded(new EventDataSceneLoaded(this->sceneChanged, this->dotSceneImportModule->getProjectParameter(), sceneParameter));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->triggerEvent(EventDataSceneLoaded);
 
-			for (unsigned short i = 0; i < 2; i++)
+			/*for (unsigned short i = 0; i < 2; i++)
 			{
 				Ogre::Root::getSingletonPtr()->renderOneFrame();
-			}
+			}*/
 
 			if (true == Core::getSingletonPtr()->getIsGame())
 			{
@@ -337,17 +327,13 @@ namespace NOWA
 
 	void GameProgressModule::resetContent(void)
 	{
-		// this->sceneManager->destroyAllCameras();
-		// std::vector<Ogre::String> excludeGameObjects = { "MainCamera" };
-		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
-		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
-		WorkspaceModule::getInstance()->destroyContent();
-
-		// AppStateManager::getSingletonPtr()->getCameraManager(this->appStateName)->destroyContent();
-
-		// this->sceneManager->clearScene(true);
-
-		AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();
+		ENQUEUE_RENDER_COMMAND_WAIT("GameProgressModule::resetContent",
+		{
+			AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
+			AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
+			WorkspaceModule::getInstance()->destroyContent();
+			AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();
+		});
 	}
 	
 	void GameProgressModule::start(void)

@@ -414,51 +414,28 @@ MainMenuBar::MainMenuBar(ProjectManager* projectManager, MyGUI::Widget* _parent)
 
 MainMenuBar::~MainMenuBar()
 {
-	// Remove event listeners immediately
-	auto eventManager = NOWA::AppStateManager::getSingletonPtr()->getEventManager();
+	// Threadsafe from the outside
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
+	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
 
-	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectManipulation), EventDataProjectManipulation::getStaticEventType());
-	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneValid), EventDataSceneValid::getStaticEventType());
-	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleProjectEncoded), NOWA::EventDataProjectEncoded::getStaticEventType());
-	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleLuaError), NOWA::EventDataPrintLuaError::getStaticEventType());
-	eventManager->removeListener(fastdelegate::MakeDelegate(this, &MainMenuBar::handleSceneInvalid), EventDataSceneInvalid::getStaticEventType());
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->analysisWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->deployWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->luaAnalysisWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->aboutWindowWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->sceneDescriptionWindowWidgets);
+	MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->createComponentPluginWindowWidgets);
 
-	// Capture needed widget layout pointers locally
-	auto analysisWidgetsCopy = this->analysisWidgets;
-	auto deployWidgetsCopy = this->deployWidgets;
-	auto luaAnalysisWidgetsCopy = this->luaAnalysisWidgets;
-	auto aboutWindowWidgetsCopy = this->aboutWindowWidgets;
-	auto sceneDescriptionWindowWidgetsCopy = this->sceneDescriptionWindowWidgets;
-	auto createComponentPluginWindowWidgetsCopy = this->createComponentPluginWindowWidgets;
-
-	// Enqueue unloadLayout calls on the render thread
-	ENQUEUE_DESTROY_COMMAND("MainMenuBar::~MainMenuBar unloadLayouts", _6(analysisWidgetsCopy, deployWidgetsCopy, luaAnalysisWidgetsCopy, aboutWindowWidgetsCopy,
-		sceneDescriptionWindowWidgetsCopy, createComponentPluginWindowWidgetsCopy),
-	{
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(analysisWidgetsCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(deployWidgetsCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(luaAnalysisWidgetsCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(aboutWindowWidgetsCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(sceneDescriptionWindowWidgetsCopy);
-		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(createComponentPluginWindowWidgetsCopy);
-	});
-
-	// For cPlusPlusComponentGenerator, unload and delete immediately or enqueue delete if needed
 	if (nullptr != this->cPlusPlusComponentGenerator)
 	{
-		auto componentPluginWindowWidgetsCopy = this->componentPluginWindowWidgets;
-		auto cPlusPlusComponentGeneratorCopy = this->cPlusPlusComponentGenerator;
+		MyGUI::LayoutManager::getInstancePtr()->unloadLayout(this->componentPluginWindowWidgets);
 
-		ENQUEUE_DESTROY_COMMAND("MainMenuBar::~MainMenuBar unloadComponentPluginWindow", _2(componentPluginWindowWidgetsCopy, cPlusPlusComponentGeneratorCopy),
-		{
-			MyGUI::LayoutManager::getInstancePtr()->unloadLayout(componentPluginWindowWidgetsCopy);
-			delete cPlusPlusComponentGeneratorCopy;
-		});
-
+		delete this->cPlusPlusComponentGenerator;
 		this->cPlusPlusComponentGenerator = nullptr;
 	}
 
-	// Destroy configPanel safely now
 	if (nullptr != this->configPanel)
 	{
 		this->configPanel->destroyContent();

@@ -32,6 +32,7 @@ ProjectManager::ProjectManager(Ogre::SceneManager* sceneManager)
 
 ProjectManager::~ProjectManager()
 {
+	// Threadsafe from the outside
 	// Delete import/export modules safely (already safe as you said)
 	if (this->dotSceneImportModule)
 	{
@@ -48,15 +49,10 @@ ProjectManager::~ProjectManager()
 	// Move pointer locally and enqueue deletion on render thread
 	if (this->openSaveFileDialog)
 	{
-		auto openSaveDialogCopy = this->openSaveFileDialog;
+		delete this->openSaveFileDialog;
+		tools::DialogManager::getInstance().shutdown();
+		delete tools::DialogManager::getInstancePtr();
 		this->openSaveFileDialog = nullptr;
-
-		ENQUEUE_DESTROY_COMMAND("ProjectManager::~ProjectManager - openSaveFileDialog delete", _1(openSaveDialogCopy),
-		{
-			delete openSaveDialogCopy;
-			tools::DialogManager::getInstance().shutdown();
-			delete tools::DialogManager::getInstancePtr();
-		});
 	}
 
 	this->editorManager = nullptr;
