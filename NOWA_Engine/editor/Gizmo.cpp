@@ -1069,7 +1069,7 @@ namespace NOWA
 
 	void Gizmo::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, Ogre::Real thickness, const Ogre::String& materialName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Gizmo::drawLine", _4(startPosition, endPosition, thickness, materialName),
+		ENQUEUE_RENDER_COMMAND_MULTI("Gizmo::drawLine", _4(startPosition, endPosition, thickness, materialName),
 		{
 			Ogre::Real const relativeThickness = this->sphereNode->getScale().x * thickness;
 			this->translationLine->clear();

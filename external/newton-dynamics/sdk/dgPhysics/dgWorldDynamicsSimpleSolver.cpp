@@ -1305,6 +1305,10 @@ void dgWorldDynamicUpdate::CalculateClusterReactionForces(const dgBodyCluster* c
 		for (dgInt32 i = 0; i < jointCount; i++) {
 			dgJointInfo* const jointInfo = &constraintArray[i];
 			dgConstraint* const constraint = jointInfo->m_joint;
+			if (!constraint)
+			{
+				continue;
+			}
 			const dgInt32 pairStart = jointInfo->m_pairStart;
 
 			joindDesc.m_rowsCount = jointInfo->m_pairCount;

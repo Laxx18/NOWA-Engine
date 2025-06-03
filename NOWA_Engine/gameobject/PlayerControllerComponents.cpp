@@ -2943,6 +2943,11 @@ namespace NOWA
 	{
 		const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
+		if (nullptr == this->playerController->getPhysicsComponent())
+		{
+			return;
+		}
+
 		Ogre::Real tempSpeed = this->playerController->getPhysicsComponent()->getSpeed();
 		Ogre::Real tempAnimationSpeed = this->playerController->getAnimationSpeed();
 

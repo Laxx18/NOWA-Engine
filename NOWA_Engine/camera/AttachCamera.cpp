@@ -62,7 +62,7 @@ namespace NOWA
 			
 
 			
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AttachCamera::moveCamera", _2(targetOrientation, targetVector),
+			ENQUEUE_RENDER_COMMAND_MULTI("AttachCamera::moveCamera", _2(targetOrientation, targetVector),
 			{
 				this->camera->setOrientation(targetOrientation);
 				this->camera->setPosition(targetVector);

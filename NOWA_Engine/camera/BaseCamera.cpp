@@ -292,7 +292,7 @@ namespace NOWA
 		rotationValue.x = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.x, this->lastValue.x, dynamicSmoothValue);
 		rotationValue.y = NOWA::MathHelper::getInstance()->lowPassFilter(rotationValue.y, this->lastValue.y, dynamicSmoothValue);
 
-		// if (rotationValue.length() > 0.0001f)
+		if (rotationValue.length() > 0.0001f)
 		{
 			// Create a local coordinate system based on gravity
 			Ogre::Vector3 upVector = -this->gravityDirection;

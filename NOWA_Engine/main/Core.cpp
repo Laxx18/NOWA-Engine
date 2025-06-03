@@ -3174,7 +3174,7 @@ namespace NOWA
 			auto sceneMgrToDestroy = sceneManager;
 
 			// Null out on logic thread only after render thread finished destroying
-			ENQUEUE_DESTROY_COMMAND("Core::destroyScene", _3(myGuiOgrePlatform, root, sceneMgrToDestroy),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Core::destroyScene", _3(myGuiOgrePlatform, root, sceneMgrToDestroy),
 			{
 				myGuiOgrePlatform->getRenderManagerPtr()->setSceneManager(nullptr);
 

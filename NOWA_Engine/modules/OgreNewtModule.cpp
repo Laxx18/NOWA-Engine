@@ -183,13 +183,8 @@ namespace NOWA
 	{
 		if (nullptr != this->ogreNewt)
 		{
-			auto ogreNewt = this->ogreNewt;
+			delete ogreNewt;
 			this->ogreNewt = nullptr;
-
-			ENQUEUE_DESTROY_COMMAND("OgreNewtModule::destroyContent", _1(ogreNewt),
-			{
-				delete ogreNewt;
-			});
 		}
 	}
 

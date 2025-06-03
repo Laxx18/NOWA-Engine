@@ -28,20 +28,14 @@ namespace NOWA
 
 			if (particle && particleNode)
 			{
-				// Capture pointers locally for the lambda
-				auto sceneManager = this->sceneManager;
+				particle->stop();
+				particleNode->detachObject(particle);
 
-				ENQUEUE_DESTROY_COMMAND("DestroyParticleSystem", _3(particle, particleNode, sceneManager),
-				{
-					particle->stop();
-					particleNode->detachObject(particle);
+				// Remove and destroy the particle node from the scene graph
+				sceneManager->getRootSceneNode()->removeAndDestroyChild(particleNode);
 
-					// Remove and destroy the particle node from the scene graph
-					sceneManager->getRootSceneNode()->removeAndDestroyChild(particleNode);
-
-					// Destroy the particle system through the ParticleSystemManager
-					ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particle, sceneManager);
-				});
+				// Destroy the particle system through the ParticleSystemManager
+				ParticleUniverse::ParticleSystemManager::getSingletonPtr()->destroyParticleSystem(particle, sceneManager);
 			}
 		}
 

@@ -425,7 +425,10 @@ namespace NOWA
 				// animations working and bones match bodies transforms!!!!
 				if (nullptr != this->skeleton)
 				{
-					this->skeleton->setAnimationState(*this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates());
+					ENQUEUE_RENDER_COMMAND("PhysicsRagDollComponent::update setAnimationState",
+					{
+						this->skeleton->setAnimationState(*this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates());
+					});
 				}
 				// this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->_updateAnimation();
 				// Note: Order here is important!
@@ -732,7 +735,7 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->getSceneNode()->setPosition(x, y, z);
+				this->gameObjectPtr->setAttributePosition(Ogre::Vector3(x, y, z));
 			}
 		}
 		else
@@ -747,7 +750,7 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->getSceneNode()->setPosition(position);
+				this->gameObjectPtr->setAttributePosition(position);
 			}
 		}
 		else
@@ -1633,7 +1636,7 @@ namespace NOWA
 		for (; i < this->ragDataList.size(); i++)
 		{
 			auto& ragBone = this->ragDataList[i].ragBone;
-
+			// TODO: Transform for ogre bone
 			ragBone->getOgreBone()->setOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation().Inverse() *
 				ragBone->getBody()->getOrientation() /** ragBone->getInitialBoneOrientation().Inverse() * ragBone->getInitialBoneOrientation()*/);
 		}
@@ -1703,7 +1706,7 @@ namespace NOWA
 						// Set inherit orientation to false
 						bone->setManuallyControlled(true);
 						bone->setInheritOrientation(false);
-							
+						// TODO: Transform for ogre bone
 						// Set the absolute world orientation
 						bone->setOrientation(absoluteWorldOrientation);
 
@@ -1725,6 +1728,7 @@ namespace NOWA
 				bone->setManuallyControlled(true);
 				bone->setInheritOrientation(false);
 				// Set the absolute world orientation
+				// TODO: Transform for ogre bone
 				bone->setOrientation(absoluteWorldOrientation);
 				// Attach all rag bones to node
 				if (i < this->ragDataList.size())
@@ -2319,14 +2323,21 @@ namespace NOWA
 		}
 		if (nullptr != this->sceneNode)
 		{
+			
 			if (nullptr != this->parentRagBone)
 			{
-				this->physicsRagDollComponent->gameObjectPtr->getSceneNode()->removeAndDestroyChild(this->sceneNode);
+				auto sceneNode = this->physicsRagDollComponent->gameObjectPtr->getSceneNode();
+				auto thisSceneNode = this->sceneNode);
+				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("PhysicsRagDollComponent::RagBone::deleteRagBone", _2(sceneNode, thisSceneNode),
+				{
+					sceneNode->removeAndDestroyChild(thisSceneNode);
+				});
 			}
 			else
 			{
 				this->sceneNode = nullptr;
 			}
+				
 		}
 	}
 
@@ -2457,6 +2468,7 @@ namespace NOWA
 		if (nullptr != this->body)
 			this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
 
+		// TODO: Transform for ogre bone
 		this->ogreBone->setPosition(this->initialBonePosition);
 		this->ogreBone->setOrientation(this->initialBoneOrientation);
 	}

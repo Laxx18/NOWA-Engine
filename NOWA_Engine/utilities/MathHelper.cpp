@@ -400,6 +400,53 @@ namespace NOWA
 		return std::move(resultOrientation);
 	}
 
+	Ogre::Quaternion MathHelper::computeLookAtQuaternion(const Ogre::Vector3& position, const Ogre::Vector3& target, const Ogre::Vector3& worldUp)
+	{
+		Ogre::Vector3 direction = target - position;
+		direction.normalise();
+
+		Ogre::Vector3 forward = -direction;
+		Ogre::Vector3 up = worldUp;
+
+		if (fabs(forward.dotProduct(up)) > 0.999f)
+		{
+			up = Ogre::Vector3::UNIT_Z;
+		}
+
+		Ogre::Vector3 right = up.crossProduct(forward).normalisedCopy();
+		Ogre::Vector3 trueUp = forward.crossProduct(right).normalisedCopy();
+
+		Ogre::Matrix3 rotMatrix;
+		rotMatrix.FromAxes(right, trueUp, forward);
+
+		return Ogre::Quaternion(rotMatrix);
+	}
+
+	Ogre::Quaternion MathHelper::computeDirectionQuaternion(const Ogre::Vector3& direction, const Ogre::Vector3& fallbackUp)
+	{
+		if (direction.isZeroLength())
+		{
+			return Ogre::Quaternion::IDENTITY;
+		}
+
+		Ogre::Vector3 forward = -direction.normalisedCopy(); // Ogre camera looks down -Z
+
+		// Compute right and up vectors
+		Ogre::Vector3 right = fallbackUp.crossProduct(forward);
+		if (right.isZeroLength())
+		{
+			right = Ogre::Vector3::UNIT_X; // fallback for parallel up/forward
+		}
+
+		right.normalise();
+		Ogre::Vector3 up = forward.crossProduct(right);
+		up.normalise();
+
+		Ogre::Quaternion q;
+		q.FromAxes(right, up, forward); // note: Ogre uses right, up, forward
+		return q;
+	}
+
 	Ogre::Radian MathHelper::getAngle(const Ogre::Vector3& dir1, const Ogre::Vector3& dir2, const Ogre::Vector3& norm, bool signedAngle)
 	{
 		Ogre::Real dot = dir1.dotProduct(dir2);

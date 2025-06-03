@@ -275,7 +275,7 @@ bool ConfigPanel::checkProjectExists(const Ogre::String& projectName, const Ogre
 		std::ifstream ifs(filePathName);
 		if (true == ifs.good())
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanel::checkProjectExists",
+			ENQUEUE_RENDER_COMMAND("ConfigPanel::checkProjectExists",
 			{
 				MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Overwrite}"),
 					MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -375,7 +375,7 @@ void ConfigPanelProject::initialise()
 
 void ConfigPanelProject::resetSettings(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ConfigPanelProject::resetSettings",
+	ENQUEUE_RENDER_COMMAND("ConfigPanelProject::resetSettings",
 	{
 		this->projectAutoCompleteSearch.reset();
 
@@ -572,7 +572,7 @@ void ConfigPanelProject::shutdown()
 
 void ConfigPanelProject::setParameter(const Ogre::String& projectName, const Ogre::String& sceneName, bool createProject, bool openProject, bool createOwnState, int key, bool ignoreGlobalScene, bool useV2Item)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelProject::setParameter", _8(projectName, sceneName, createProject, openProject, createOwnState, key, ignoreGlobalScene, useV2Item),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelProject::setParameter", _8(projectName, sceneName, createProject, openProject, createOwnState, key, ignoreGlobalScene, useV2Item),
 	{
 		if (true == projectName.empty())
 			this->projectNameEdit->setOnlyText("Project1");
@@ -720,7 +720,7 @@ void ConfigPanelSceneManager::setParameter(const Ogre::ColourValue& ambientLight
 	unsigned short forwardMode, unsigned int lightWidth, unsigned int lightHeight, unsigned int numLightSlices, unsigned int lightsPerCell, Ogre::Real minLightDistance, 
 	Ogre::Real maxLightDistance, Ogre::Real renderDistance)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelSceneManager::setParameter", _16(ambientLightUpperHemisphere, ambientLightLowerHemisphere, shadowFarDistance,
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelSceneManager::setParameter", _16(ambientLightUpperHemisphere, ambientLightLowerHemisphere, shadowFarDistance,
 		shadowDirectionalLightExtrusionDistance, shadowDirLightTextureOffset, shadowColor, shadowQuality, ambientLightMode, 
 		forwardMode, &lightWidth, &lightHeight, numLightSlices, lightsPerCell, minLightDistance,
 		maxLightDistance, &renderDistance),
@@ -960,7 +960,7 @@ void ConfigPanelOgreNewt::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::KeyCo
 void ConfigPanelOgreNewt::setParameter(Ogre::Real updateRate, unsigned short solverModel, bool solverForSingleIsland, unsigned short broadPhaseAlgorithm, unsigned short threadCount, Ogre::Real linearDamping,
 	const Ogre::Vector3& angularDamping, const Ogre::Vector3& gravity)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ConfigPanelOgreNewt::setParameter", _8(updateRate, solverModel, solverForSingleIsland, broadPhaseAlgorithm, threadCount, linearDamping, angularDamping, gravity),
+	ENQUEUE_RENDER_COMMAND_MULTI("ConfigPanelOgreNewt::setParameter", _8(updateRate, solverModel, solverForSingleIsland, broadPhaseAlgorithm, threadCount, linearDamping, angularDamping, gravity),
 	{
 		this->updateRateEdit->setOnlyText(Ogre::StringConverter::toString(updateRate));
 		this->solverModelCombo->setIndexSelected(solverModel);

@@ -190,34 +190,24 @@ void PropertiesPanel::setEditorManager(NOWA::EditorManager* editorManager)
 
 void PropertiesPanel::destroyContent(void)
 {
-	// Remove listener immediately (assumed safe on logic thread)
+	// Threadsafe from the outside
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &PropertiesPanel::handleRefreshPropertiesPanel), EventDataRefreshPropertiesPanel::getStaticEventType());
 
-	// Cache pointers and nullify member variables to avoid race conditions
-	auto propertiesPanelView1 = this->propertiesPanelView1;
-	auto propertiesPanelView2 = this->propertiesPanelView2;
-	auto propertiesPanelInfo = this->propertiesPanelInfo;
-	auto openSaveFileDialog = this->openSaveFileDialog;
+	this->propertiesPanelView1->removeAllItems();
 
-	this->propertiesPanelView1 = nullptr;
-	this->propertiesPanelView2 = nullptr;
-	this->propertiesPanelInfo = nullptr;
-	this->openSaveFileDialog = nullptr;
+	this->propertiesPanelView2->removeAllItems();
 
-	ENQUEUE_DESTROY_COMMAND("PropertiesPanel::destroyContent", _4(propertiesPanelView1, propertiesPanelView2, propertiesPanelInfo, openSaveFileDialog),
+	if (nullptr != this->propertiesPanelInfo)
 	{
-		if (propertiesPanelView1)
-			propertiesPanelView1->removeAllItems();
+		delete this->propertiesPanelInfo;
+		this->propertiesPanelInfo = nullptr;
+	}
 
-		if (propertiesPanelView2)
-			propertiesPanelView2->removeAllItems();
-
-		if (propertiesPanelInfo)
-			delete propertiesPanelInfo;
-
-		if (openSaveFileDialog)
-			delete openSaveFileDialog;
-	});
+	if (this->openSaveFileDialog)
+	{
+		delete this->openSaveFileDialog;
+		this->openSaveFileDialog = nullptr;
+	}
 }	
 
 void PropertiesPanel::clearProperties(void)
@@ -998,7 +988,7 @@ void PropertiesPanelDynamic::shutdown()
 
 void PropertiesPanelDynamic::setVisibleCount(unsigned int count)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::setVisibleCount", _1(count),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::setVisibleCount", _1(count),
 	{
 		const int heightStep = 28;
 		int heightCurrent = 0;
@@ -2008,7 +1998,7 @@ void PropertiesPanelDynamic::onKeyButtonPressed(MyGUI::Widget* sender, MyGUI::Ke
 	// Adds new line if shift + enter is pressed
 	else if (MyGUI::InputManager::getInstance().isShiftPressed() && code == MyGUI::KeyCode::Return)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onKeyButtonPressed", _1(sender),
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::onKeyButtonPressed", _1(sender),
 		{
 			MyGUI::EditBox * editBox = sender->castType<MyGUI::EditBox>(false);
 			if (nullptr != editBox && true == editBox->getEditMultiLine())
@@ -2046,7 +2036,7 @@ void PropertiesPanelDynamic::onMouseDoubleClick(MyGUI::Widget* sender)
 		MyGUI::EditBox* editBox = sender->getParent()->castType<MyGUI::EditBox>(false);
 		if (nullptr != editBox)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::onMouseDoubleClick", _1(editBox),
+			ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::onMouseDoubleClick", _1(editBox),
 			{
 				editBox->setTextSelection(0, editBox->getCaption().size());
 			});
@@ -2092,7 +2082,7 @@ MyGUI::Widget* PropertiesPanelDynamic::addSeparator(void)
 
 void PropertiesPanelDynamic::notifyColourCancel(MyGUI::ColourPanel* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::notifyColourCancel", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::notifyColourCancel", _1(sender),
 	{
 		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
 		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
@@ -2135,7 +2125,7 @@ bool PropertiesPanelDynamic::showFileOpenDialog(const Ogre::String& action, cons
 		return false;
 	}
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelDynamic::showFileOpenDialog", _3(targetFolder, action, fileMask),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::showFileOpenDialog", _3(targetFolder, action, fileMask),
 	{
 		// Set the target folder specified in scene resource group
 		this->openSaveFileDialog->setCurrentFolder(targetFolder);
@@ -2536,7 +2526,7 @@ void PropertiesPanelGameObject::buttonHit(MyGUI::Widget* sender)
 	MyGUI::Button* button = sender->castType<MyGUI::Button>();
 	if (nullptr != button)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelGameObject::buttonHit", _1(button),
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::buttonHit", _1(button),
 		{
 			NOWA::Variant** attribute = button->getUserData<NOWA::Variant*>(false);
 			// ColorDialog handling
@@ -2637,11 +2627,11 @@ void PropertiesPanelGameObject::notifyComboChangedPosition(MyGUI::ComboBox* send
 
 void PropertiesPanelGameObject::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelGameObject::notifyColourAccept", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelGameObject::notifyColourAccept", _1(sender),
 	{
 		Ogre::Vector3 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue);
 
-		NOWA::Variant * *copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
+		NOWA::Variant** copiedAttribute = sender->getWidget()->getUserData<NOWA::Variant*>();
 		(*copiedAttribute)->setValue(colour);
 		MyGUI::InputManager::getInstancePtr()->removeWidgetModal(ColourPanelManager::getInstance()->getColourPanel()->getWidget());
 		ColourPanelManager::getInstance()->getColourPanel()->setVisible(false);
@@ -2860,7 +2850,7 @@ void PropertiesPanelComponent::setNewAttributeValue(MyGUI::EditBox* sender, NOWA
 
 void PropertiesPanelComponent::notifyEditSelectAccept(MyGUI::EditBox* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyEditSelectAccept", _1(sender),
 	{
 		// Let the camera move again
 		NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
@@ -3379,7 +3369,7 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 
 void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sender, size_t index)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyComboChangedPosition", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyComboChangedPosition", _1(sender),
 	{
 		this->showDescription(sender);
 	});
@@ -3423,7 +3413,7 @@ void PropertiesPanelComponent::notifyComboChangedPosition(MyGUI::ComboBox* sende
 
 void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyColourAccept", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyColourAccept", _1(sender),
 	{
 		Ogre::Vector4 colour(sender->getColour().red, sender->getColour().green, sender->getColour().blue, sender->getColour().alpha);
 
@@ -3464,7 +3454,7 @@ void PropertiesPanelComponent::notifyColourAccept(MyGUI::ColourPanel* sender)
 
 void PropertiesPanelComponent::notifyEndDialog(tools::Dialog* sender, bool result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PropertiesPanelComponent::notifyEndDialog", _2(sender, result),
+	ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelComponent::notifyEndDialog", _2(sender, result),
 	{
 		if (true == result)
 		{

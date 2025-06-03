@@ -52,7 +52,7 @@ namespace NOWA
 				auto workspace = it.second.workspace;
 				auto compositorManager = this->compositorManager;
 
-				ENQUEUE_DESTROY_COMMAND("RemoveDummyWorkspace", _2(workspace, compositorManager),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("RemoveDummyWorkspace", _2(workspace, compositorManager),
 				{
 					// Optionally unset listener if needed (uncomment if required)
 					// workspace->setListener(nullptr);

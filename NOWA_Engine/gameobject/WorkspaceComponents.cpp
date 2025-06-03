@@ -2442,10 +2442,10 @@ namespace NOWA
 
 			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::reconnectAllNodes",
 			{
-					//Now that we're done, tell the instance to update itself.
-					// this->workspace->reconnectAllNodes();
-					// Get workspace definition, to connect everything
-					Ogre::CompositorWorkspaceDef * workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+				//Now that we're done, tell the instance to update itself.
+				// this->workspace->reconnectAllNodes();
+				// Get workspace definition, to connect everything
+				Ogre::CompositorWorkspaceDef * workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
 
 				//-------------------------------------------------------------------------------------------
 				//

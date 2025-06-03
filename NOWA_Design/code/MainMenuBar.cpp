@@ -1058,7 +1058,7 @@ void MainMenuBar::handleProjectManipulation(NOWA::EventDataPtr eventData)
 	{
 		this->updateRecentFilesMenu();
 
-		ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::handleProjectManipulation",
+		ENQUEUE_RENDER_COMMAND("MainMenuBar::handleProjectManipulation",
 		{
 			this->bTestSelectedGameObjects = false;
 			this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
@@ -1548,7 +1548,7 @@ void MainMenuBar::createMeshToolWindow(void)
 
 void MainMenuBar::applyMeshToolOperations(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::applyMeshToolOperations",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::applyMeshToolOperations",
 	{
 		MyGUI::EditBox * rotateEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("rotateEdit");
 		MyGUI::EditBox * scaleEdit = MyGUI::Gui::getInstancePtr()->findWidget<MyGUI::EditBox>("scaleEdit");
@@ -1935,7 +1935,7 @@ void MainMenuBar::showComponentPlugin(void)
 void MainMenuBar::activateTestSelectedGameObjects(bool bActivated)
 {
 	this->bTestSelectedGameObjects = bActivated;
-	ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::activateTestSelectedGameObjects",
+	ENQUEUE_RENDER_COMMAND("MainMenuBar::activateTestSelectedGameObjects",
 	{
 		this->simulationMenuItem->getItemChild()->getItemAt(1)->setStateCheck(this->bTestSelectedGameObjects);
 	});

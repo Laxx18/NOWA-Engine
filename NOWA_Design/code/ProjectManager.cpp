@@ -897,7 +897,7 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 		}
 	}
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ProjectManager::openSaveFileDialog::endModal",
+	ENQUEUE_RENDER_COMMAND("ProjectManager::openSaveFileDialog::endModal",
 	{
 		this->openSaveFileDialog->endModal();
 	});

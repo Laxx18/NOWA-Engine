@@ -55,7 +55,7 @@ namespace NOWA
 	{
 		if (nullptr != this->movableText)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObjectTitleComponent::~GameObjectTitleComponent",
+			ENQUEUE_RENDER_COMMAND("GameObjectTitleComponent::~GameObjectTitleComponent",
 			{
 				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->textNode);
 				this->textNode->detachObject(this->movableText);
@@ -130,7 +130,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectTitleComponent] Init game object title component for game object: " + this->gameObjectPtr->getName());
 
-		ENQUEUE_RENDER_COMMAND_WAIT("GameObjectTitleComponent::~GameObjectTitleComponent",
+		ENQUEUE_RENDER_COMMAND("GameObjectTitleComponent::~postInit",
 		{
 			Ogre::NameValuePairList params;
 			params["name"] = Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_MovableText";
@@ -172,8 +172,8 @@ namespace NOWA
 			this->movableText->setTextYOffset(0.0f);
 
 			// Note: Order is really important! First set orientation, then position, else strange side effects do occur!
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
 		});
 
 		return true;
@@ -285,8 +285,8 @@ namespace NOWA
 				// this->movableText->getParentSceneNode()->_setDerivedOrientation(so);
 				// this->movableText->getParentSceneNode()->_setDerivedPosition(p + (o * (so * sp)));
 
-				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
 			}
 		}
 	}
@@ -404,7 +404,7 @@ namespace NOWA
 		this->fontName->setValue(fontName);
 		if (this->movableText)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectTitleComponent::setFontName", _1(fontName),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectTitleComponent::setFontName", _1(fontName),
 			{
 				this->movableText->setFontName(fontName);
 			});
@@ -442,7 +442,7 @@ namespace NOWA
 		Ogre::ColourValue colourValue(this->color->getVector4().x, this->color->getVector4().y, this->color->getVector4().z, this->color->getVector4().w);
 		if (this->movableText)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectTitleComponent::setAlwaysPresent", _1(alwaysPresent),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectTitleComponent::setAlwaysPresent", _1(alwaysPresent),
 			{
 				this->movableText->showOnTop(alwaysPresent);
 			});
@@ -481,8 +481,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
 		}
 	}
 
@@ -504,8 +504,8 @@ namespace NOWA
 			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->offsetOrientation->getVector3());
 
 			this->movableText->setTextYOffset(-1.0f);
-			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so, true);
-			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)), true);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->movableText->getParentSceneNode(), so);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(this->movableText->getParentSceneNode(), p + (o * (so * sp)));
 		}
 	}
 

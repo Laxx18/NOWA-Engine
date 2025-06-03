@@ -223,7 +223,10 @@ namespace NOWA
 			{
 				if (true == this->useFogOfWar->getBool())
 				{
-					this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
+					ENQUEUE_RENDER_COMMAND("MinimapComponent::updateFogOfWarTexture",
+					{
+						this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
+					});
 				}
 
 				this->timeSinceLastUpdate = 0.0f;
@@ -309,126 +312,129 @@ namespace NOWA
 
 		this->cameraComponent = cameraCompPtr.get();
 
-		auto gameObjectsWithTerraComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
-		if (gameObjectsWithTerraComponent.size() > 0)
+		ENQUEUE_RENDER_COMMAND_WAIT("MinimapComponent::setupMinimapWithFogOfWar",
 		{
-			// For now support just for 1 terra
-			const auto& terraCompPtr = NOWA::makeStrongPtr(gameObjectsWithTerraComponent[0]->getComponent<TerraComponent>());
-			if (nullptr != terraCompPtr)
+			auto gameObjectsWithTerraComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
+			if (gameObjectsWithTerraComponent.size() > 0)
 			{
-				this->terraComponent = terraCompPtr.get();
-
-				/*
-				Render the whole terrain from above in Ortho projection with high resolution into a RenderTexture. Keep that texture.
-				If the terrain is too big to the point that LOD becomes a problem, render it in chunks (e.g. move the camera to the first quadrant and render 2048x2048 region, then move to the next quadrant; 4 times until you get the whole 4096x4096)
-				Alternatively, set m_basePixelDimension to a very high value to have very little LOD.
-				*/
-				// Adjust this via height of camera?
-				this->terraComponent->setBasePixelDimension(128);
-
-				if (this->cameraComponent->getOwner()->getId() != this->terraComponent->geCameraId())
+				// For now support just for 1 terra
+				const auto& terraCompPtr = NOWA::makeStrongPtr(gameObjectsWithTerraComponent[0]->getComponent<TerraComponent>());
+				if (nullptr != terraCompPtr)
 				{
-					this->terraComponent->setCameraId(this->cameraComponent->getOwner()->getId());
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MinimapComponent] Attention: Changed camera for terra, in order to get minimap working for game object: " + this->gameObjectPtr->getName());
+					this->terraComponent = terraCompPtr.get();
+
+					/*
+					Render the whole terrain from above in Ortho projection with high resolution into a RenderTexture. Keep that texture.
+					If the terrain is too big to the point that LOD becomes a problem, render it in chunks (e.g. move the camera to the first quadrant and render 2048x2048 region, then move to the next quadrant; 4 times until you get the whole 4096x4096)
+					Alternatively, set m_basePixelDimension to a very high value to have very little LOD.
+					*/
+					// Adjust this via height of camera?
+					this->terraComponent->setBasePixelDimension(128);
+
+					if (this->cameraComponent->getOwner()->getId() != this->terraComponent->geCameraId())
+					{
+						this->terraComponent->setCameraId(this->cameraComponent->getOwner()->getId());
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[MinimapComponent] Attention: Changed camera for terra, in order to get minimap working for game object: " + this->gameObjectPtr->getName());
+					}
 				}
 			}
-		}
 
-		// Remove the workspace from the camera, as it is used for a new minimap workspace, which is created here
-		const auto& workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
-		if (nullptr != workspaceCompPtr)
-		{
-			this->gameObjectPtr->deleteComponent(workspaceCompPtr.get());
-			return;
-		}
-
-		if (true == this->persistDiscovery->getBool())
-		{
-			this->loadDiscoveryState();
-		}
-
-		if (true == this->wholeSceneVisible->getBool())
-		{
-			this->cameraComponent->getOwner()->setDynamic(true);
-			this->adjustMinimapCamera();
-			this->cameraComponent->getOwner()->setDynamic(false);
-		}
-		else
-		{
-			this->cameraComponent->getOwner()->setDynamic(true);
-		}
-
-
-		Ogre::String minimapTextureName = "MinimapRT";
-
-		if (true == this->useRoundMinimap->getBool())
-		{
-			minimapTextureName = "MinimapRT_Round";
-		}
-
-		this->minimapTexture = this->createMinimapTexture(minimapTextureName, this->textureSize->getUInt(), this->textureSize->getUInt());
-		if (true == this->useFogOfWar->getBool())
-		{
-			this->fogOfWarTexture = this->createFogOfWarTexture("FogOfWarTexture", this->textureSize->getUInt(), this->textureSize->getUInt());
-			this->fogOfWarStagingTexture = this->textureManager->getStagingTexture(this->fogOfWarTexture->getWidth(), this->fogOfWarTexture->getHeight(), 1u, 1u, this->fogOfWarTexture->getPixelFormat());
-		}
-
-		if (true == this->useDiscovery->getBool())
-		{
-			this->discoveryState.resize((this->textureSize->getUInt()), std::vector<bool>(this->textureSize->getUInt(), false));
-		}
-
-		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
-
-		if (false == this->useRoundMinimap->getBool())
-		{
-			this->createMinimapWorkspace();
-		}
-		else
-		{
-			this->createRoundMinimapWorkspace();
-		}
-	
-#if 0
-		// Test 
-		Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
-		Ogre::Hlms* hlms = hlmsManager->getHlms(Ogre::HLMS_USER3);
-		OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(hlms));
-		this->workspace->addListener(new Ogre::TerraWorkspaceListener((Ogre::HlmsTerra*)hlms));
-#endif
-
-		// Create MyGUI widget for the minimap
-		Ogre::Vector4 geometry = this->minimapGeometry->getVector4();
-		this->minimapWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(geometry.x, geometry.y, geometry.z, geometry.w), MyGUI::Align::HCenter, "Overlapped");
-		this->minimapWidget->setImageTexture(this->minimapTexture->getNameStr());
-
-		if (false == this->minimapMask->getString().empty())
-		{
-			// Overlay the circular mask on top of the minimap
-			this->maskWidget = minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, this->minimapWidget->getWidth(), this->minimapWidget->getHeight()), MyGUI::Align::Stretch);
-			this->maskWidget->setImageTexture(this->minimapMask->getString());
-			// Makes sure the mask doesn't block mouse events
-			this->maskWidget->setNeedMouseFocus(false);
-			// Higher depth to ensure it's on top
-			this->maskWidget->setDepth(1);
-		}
-
-		if (true == this->useFogOfWar->getBool())
-		{
-			Ogre::Vector4 geometry = this->minimapGeometry->getVector4();
-			this->fogOfWarWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(geometry.x, geometry.y, geometry.z, geometry.w), MyGUI::Align::HCenter, "Overlapped");
-			this->fogOfWarWidget->setImageTexture(this->fogOfWarTexture->getNameStr());
-			
-			if (false == this->persistDiscovery->getBool())
+			// Remove the workspace from the camera, as it is used for a new minimap workspace, which is created here
+			const auto& workspaceCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+			if (nullptr != workspaceCompPtr)
 			{
-				this->clearFogOfWar();
+				this->gameObjectPtr->deleteComponent(workspaceCompPtr.get());
+				return;
 			}
-		}
+
+			if (true == this->persistDiscovery->getBool())
+			{
+				this->loadDiscoveryState();
+			}
+
+			if (true == this->wholeSceneVisible->getBool())
+			{
+				this->cameraComponent->getOwner()->setDynamic(true);
+				this->adjustMinimapCamera();
+				this->cameraComponent->getOwner()->setDynamic(false);
+			}
+			else
+			{
+				this->cameraComponent->getOwner()->setDynamic(true);
+			}
+
+
+			Ogre::String minimapTextureName = "MinimapRT";
+
+			if (true == this->useRoundMinimap->getBool())
+			{
+				minimapTextureName = "MinimapRT_Round";
+			}
+
+			this->minimapTexture = this->createMinimapTexture(minimapTextureName, this->textureSize->getUInt(), this->textureSize->getUInt());
+			if (true == this->useFogOfWar->getBool())
+			{
+				this->fogOfWarTexture = this->createFogOfWarTexture("FogOfWarTexture", this->textureSize->getUInt(), this->textureSize->getUInt());
+				this->fogOfWarStagingTexture = this->textureManager->getStagingTexture(this->fogOfWarTexture->getWidth(), this->fogOfWarTexture->getHeight(), 1u, 1u, this->fogOfWarTexture->getPixelFormat());
+			}
+
+			if (true == this->useDiscovery->getBool())
+			{
+				this->discoveryState.resize((this->textureSize->getUInt()), std::vector<bool>(this->textureSize->getUInt(), false));
+			}
+
+			Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
+
+			if (false == this->useRoundMinimap->getBool())
+			{
+				this->createMinimapWorkspace();
+			}
+			else
+			{
+				this->createRoundMinimapWorkspace();
+			}
+
+			// Test 
+			/*Ogre::HlmsManager* hlmsManager = Ogre::Root::getSingletonPtr()->getHlmsManager();
+			Ogre::Hlms* hlms = hlmsManager->getHlms(Ogre::HLMS_USER3);
+			OGRE_ASSERT_HIGH(dynamic_cast<HlmsTerra*>(hlms));
+			this->workspace->addListener(new Ogre::TerraWorkspaceListener((Ogre::HlmsTerra*)hlms));*/
+
+
+			// Create MyGUI widget for the minimap
+			Ogre::Vector4 geometry = this->minimapGeometry->getVector4();
+			this->minimapWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(geometry.x, geometry.y, geometry.z, geometry.w), MyGUI::Align::HCenter, "Overlapped");
+			this->minimapWidget->setImageTexture(this->minimapTexture->getNameStr());
+
+			if (false == this->minimapMask->getString().empty())
+			{
+				// Overlay the circular mask on top of the minimap
+				this->maskWidget = minimapWidget->createWidget<MyGUI::ImageBox>("ImageBox", MyGUI::IntCoord(0, 0, this->minimapWidget->getWidth(), this->minimapWidget->getHeight()), MyGUI::Align::Stretch);
+				this->maskWidget->setImageTexture(this->minimapMask->getString());
+				// Makes sure the mask doesn't block mouse events
+				this->maskWidget->setNeedMouseFocus(false);
+				// Higher depth to ensure it's on top
+				this->maskWidget->setDepth(1);
+			}
+
+			if (true == this->useFogOfWar->getBool())
+			{
+				Ogre::Vector4 geometry = this->minimapGeometry->getVector4();
+				this->fogOfWarWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(geometry.x, geometry.y, geometry.z, geometry.w), MyGUI::Align::HCenter, "Overlapped");
+				this->fogOfWarWidget->setImageTexture(this->fogOfWarTexture->getNameStr());
+
+				if (false == this->persistDiscovery->getBool())
+				{
+					this->clearFogOfWar();
+				}
+			}
+		});
 	}
 
 
 	Ogre::TextureGpu* MinimapComponent::createMinimapTexture(const Ogre::String& name, unsigned int width, unsigned int height)
 	{
+		// Threadsafe from the outside
 		Ogre::TextureGpu* texture = nullptr;
 		if (false == this->textureManager->hasTextureResource(name, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME))
 		{
@@ -479,6 +485,7 @@ namespace NOWA
 
 	void MinimapComponent::createRoundMinimapWorkspace(void)
 	{
+		// Threadsafe from the outside
 		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
 		this->minimapNodeName = "MinimapNode_Round";
@@ -568,6 +575,7 @@ namespace NOWA
 
 	void MinimapComponent::createMinimapWorkspace(void)
 	{
+		// Threadsafe from the outside
 		Ogre::CompositorManager2* compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 
 		this->minimapNodeName = "MinimapNode";
@@ -631,6 +639,7 @@ namespace NOWA
 
 	void MinimapComponent::clearFogOfWar(void)
 	{
+		// Threadsafe from the outside
 		this->discoveryState.clear();
 		this->discoveryState.resize((this->textureSize->getUInt()), std::vector<bool>(this->textureSize->getUInt(), false));
 
@@ -663,8 +672,8 @@ namespace NOWA
 
 	void MinimapComponent::updateFogOfWarTexture(const Ogre::Vector3& position, Ogre::Real radius)
 	{
+		// Threadsafe from the outside
 		// Use code from EndFrameOnceFailureGameState.h for parallelization!
-
 		unsigned int texSize = this->textureSize->getUInt();
 
 		int radiusInPixels = static_cast<int>(this->visibilityRadius->getReal() * texSize / (this->maximumBounds.x - this->minimumBounds.x));
@@ -1323,15 +1332,32 @@ namespace NOWA
 		{
 			if (nullptr != this->minimapWidget)
 			{
-				this->minimapWidget->setVisible(false);
-				if (nullptr != this->maskWidget)
+				auto minimapWidget = this->minimapWidget;
+				auto maskWidget = this->maskWidget;
+
+				ENQUEUE_RENDER_COMMAND_MULTI("MinimapComponent::setActivated maskWidget", _2(minimapWidget, maskWidget),
 				{
-					this->maskWidget->setVisible(false);
-				}
+					if (minimapWidget)
+					{
+						minimapWidget->setVisible(false);
+						if (maskWidget)
+						{
+							maskWidget->setVisible(false);
+						}
+					}
+				});
 			}
 			if (nullptr != this->fogOfWarWidget)
 			{
-				this->fogOfWarWidget->setVisible(false);
+				auto fogOfWarWidget = this->fogOfWarWidget;
+
+				ENQUEUE_RENDER_COMMAND_MULTI("MinimapComponent::setActivated fogOfWarWidget", _1(fogOfWarWidget),
+				{
+					if (fogOfWarWidget)
+					{
+						fogOfWarWidget->setVisible(false);
+					}
+				});
 			}
 		}
 	}

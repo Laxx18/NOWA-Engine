@@ -82,7 +82,7 @@ namespace NOWA
 				// Capture detourTileCache and convexVolume for render thread removal
 				auto detourTileCache = this->detourTileCache;
 
-				ENQUEUE_DESTROY_COMMAND("OgreRecastModule::removeConvexObstacle", _2(detourTileCache, convexVolume),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::removeConvexObstacle", _2(detourTileCache, convexVolume),
 				{
 					detourTileCache->removeConvexShapeObstacle(convexVolume);
 				});
@@ -107,7 +107,7 @@ namespace NOWA
 			auto ogreRecast = this->ogreRecast;
 			this->ogreRecast = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyOgreRecast", _1(ogreRecast),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::destroyOgreRecast", _1(ogreRecast),
 			{
 				delete ogreRecast;
 			});
@@ -119,7 +119,7 @@ namespace NOWA
 			auto detourTileCache = this->detourTileCache;
 			this->detourTileCache = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyDetourTileCache", _1(detourTileCache),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::destroyDetourTileCache", _1(detourTileCache),
 			{
 				delete detourTileCache;
 			});
@@ -131,7 +131,7 @@ namespace NOWA
 			auto detourCrowd = this->detourCrowd;
 			this->detourCrowd = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("OgreRecastModule::destroyDetourCrowd", _1(detourCrowd),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreRecastModule::destroyDetourCrowd", _1(detourCrowd),
 			{
 				delete detourCrowd;
 			});

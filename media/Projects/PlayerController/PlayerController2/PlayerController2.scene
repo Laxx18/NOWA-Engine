@@ -19,7 +19,7 @@
 		</shadows>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="300"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -43,7 +43,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="false"/>
+					<property type="12" name="Static" data="true"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -61,8 +61,8 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="true"/>
-					<property type="9" name="CameraPosition" data="6.36086 3.19454 0.72542"/>
-					<property type="9" name="CameraOrientation" data="-27.0211 68.9056 -0"/>
+					<property type="9" name="CameraPosition" data="8.83652 4.68593 -8.0379"/>
+					<property type="9" name="CameraOrientation" data="-26.3126 83.5032 0.00777873"/>
 					<property type="6" name="NearClipDistance" data="0.1"/>
 					<property type="6" name="FarClipDistance" data="500"/>
 					<property type="6" name="Fovy" data="90"/>
@@ -386,17 +386,15 @@
 					<property type="12" name="Activated" data="false"/>
 					<property type="7" name="DeviceName" data="Win32InputManager"/>
 					<property type="12" name="IsExclusive" data="false"/>
-					<property type="7" name="ComponentCameraBehaviorThirdPersonComponent" data="CameraBehaviorThirdPersonComponent"/>
+					<property type="7" name="ComponentCameraBehaviorFirstPersonComponent" data="CameraBehaviorFirstPersonComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="false"/>
 					<property type="6" name="CameraGameObjectId" data="0"/>
-					<property type="9" name="YOffset" data="0 2 5"/>
-					<property type="9" name="LookAtOffset" data="0 -1 0"/>
-					<property type="6" name="SpringForce" data="0.1"/>
-					<property type="6" name="Friction" data="1.2"/>
-					<property type="6" name="SpringLength" data="6"/>
+					<property type="6" name="SmoothValue" data="0.6"/>
+					<property type="6" name="RotationSpeed" data="0.5"/>
+					<property type="9" name="OffsetPosition" data="0.4 0.8 -0.9"/>
 				</userData>
 			</entity>
 		</node>
@@ -440,7 +438,7 @@
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Plane_0mesh" meshFile="Plane_0" castShadows="true" visible="true">
-				<subitem index="0" datablockName="GroundDirtPlane"/>
+				<subitem index="0" datablockName="GroundDirtPlane__3691838085"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="3691838085"/>
@@ -456,11 +454,11 @@
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="2" name="RenderQueueIndex" data="9"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
+					<property type="7" name="DataBlock0" data="GroundDirtPlane__3691838085"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>

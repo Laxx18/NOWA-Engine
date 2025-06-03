@@ -3360,52 +3360,49 @@ namespace NOWA
 	GameObject* GameObjectController::selectGameObject(int x, int y, Ogre::Camera* camera, Ogre::RaySceneQuery* raySceneQuery, bool raycastFromPoint)
 	{
 		GameObject* gameObject = nullptr;
-		
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::selectGameObject", _6(x, y, camera, raySceneQuery, raycastFromPoint, &gameObject),
+
+		if (true == raycastFromPoint)
 		{
-			if (true == raycastFromPoint)
-			{
-				Ogre::MovableObject* targetMovableObject = nullptr;
-				Ogre::Vector3 result = Ogre::Vector3::ZERO;
-				Ogre::Real closestDistance = -1.0f;
-				Ogre::Vector3 normal = Ogre::Vector3::ZERO;
+			Ogre::MovableObject* targetMovableObject = nullptr;
+			Ogre::Vector3 result = Ogre::Vector3::ZERO;
+			Ogre::Real closestDistance = -1.0f;
+			Ogre::Vector3 normal = Ogre::Vector3::ZERO;
 
-				//check if there is an hit with an polygon of an entity
-				if (MathHelper::getInstance()->getRaycastFromPoint(x, y, camera, Core::getSingletonPtr()->getOgreRenderWindow(),
-					raySceneQuery, result, (size_t&)targetMovableObject, closestDistance, normal))
+			//check if there is an hit with an polygon of an entity
+			if (MathHelper::getInstance()->getRaycastFromPoint(x, y, camera, Core::getSingletonPtr()->getOgreRenderWindow(),
+				raySceneQuery, result, (size_t&)targetMovableObject, closestDistance, normal))
+			{
+				try
 				{
-					try
-					{
-						gameObject = Ogre::any_cast<GameObject*>((targetMovableObject)->getUserObjectBindings().getUserAny());
-					}
-					catch (...)
-					{
-					}
+					gameObject = Ogre::any_cast<GameObject*>((targetMovableObject)->getUserObjectBindings().getUserAny());
+				}
+				catch (...)
+				{
 				}
 			}
-			else
-			{
-				Ogre::Real resultX;
-				Ogre::Real resultY;
-				MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
-				Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
-				raySceneQuery->setRay(selectRay);
-				Ogre::RaySceneQueryResult& result = raySceneQuery->execute();
+		}
+		else
+		{
+			Ogre::Real resultX;
+			Ogre::Real resultY;
+			MathHelper::getInstance()->mouseToViewPort(x, y, resultX, resultY, Core::getSingletonPtr()->getOgreRenderWindow());
+			Ogre::Ray selectRay = camera->getCameraToViewportRay(resultX, resultY);
+			raySceneQuery->setRay(selectRay);
+			Ogre::RaySceneQueryResult& result = raySceneQuery->execute();
 
-				for (const auto& it : result)
+			for (const auto& it : result)
+			{
+				// Store the relevant picking information
+				try
 				{
-					// Store the relevant picking information
-					try
-					{
-						// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
-						gameObject = Ogre::any_cast<GameObject*>(it.movable->getUserObjectBindings().getUserAny());
-					}
-					catch (...)
-					{
-					}
+					// here no shared_ptr because in this scope the game object should not extend the lifecycle! Only shared where really necessary
+					gameObject = Ogre::any_cast<GameObject*>(it.movable->getUserObjectBindings().getUserAny());
+				}
+				catch (...)
+				{
 				}
 			}
-		});
+		}
 
 		return gameObject;
 	}

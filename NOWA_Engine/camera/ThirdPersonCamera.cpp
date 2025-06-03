@@ -15,7 +15,8 @@ namespace NOWA
 		lookAtOffset(lookAtOffset),
 		cameraSpring(cameraSpring),
 		cameraFriction(cameraFriction),
-		cameraSpringLength(cameraSpringLength)
+		cameraSpringLength(cameraSpringLength),
+		lastSmoothedCameraPos(Ogre::Vector3::ZERO)
 	{
 
 	}
@@ -73,179 +74,74 @@ namespace NOWA
 		this->sceneNode = sceneNode;
 	}
 
-#if 0
 	void ThirdPersonCamera::moveCamera(Ogre::Real dt)
 	{
 		if (nullptr == this->sceneNode) return;
 
-		// Get gravity direction (which points toward the planet center)
-		Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
-		if (false == this->gravityDirection.isZeroLength())
-		{
-			gravityDir = -this->gravityDirection;
-		}
+		// Determine local up (planetary support)
+		Ogre::Vector3 gravityDir = this->gravityDirection;
+		if (gravityDir.isZeroLength())
+			gravityDir = Ogre::Vector3::NEGATIVE_UNIT_Y;
+		Ogre::Vector3 localUp = -gravityDir.normalisedCopy();
 
-		// Calculate surface normal (opposite of gravity direction)
-		Ogre::Vector3 surfaceNormal = gravityDir;
-
-		// Get current camera and player positions
-		Ogre::Vector3 cameraPosition = this->camera->getPosition();
+		// Player basis and camera
 		Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
-
-		// Get player's orientation
 		Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
+		Ogre::Vector3 cameraPosition = this->camera->getPosition();
 
-		// Calculate player's forward direction
+		// Apply lookAt offset to get visual center of the player
+		playerPosition += this->lookAtOffset;
+
+		// Define local right/forward based on orientation and gravity
 		Ogre::Vector3 playerForward = playerOrientation * this->defaultDirection;
-
-		// Create a local coordinate system aligned with the planet surface
-		Ogre::Vector3 localUp = surfaceNormal;
-
-		// Project player's forward direction onto the local plane
 		Ogre::Vector3 playerForwardProjected = playerForward - (playerForward.dotProduct(localUp) * localUp);
-		if (playerForwardProjected.isZeroLength())
-		{
-			// Fallback if the projected direction is zero
-			Ogre::Vector3 fallbackDirection = playerOrientation * Ogre::Vector3::UNIT_Z;
-			playerForwardProjected = fallbackDirection - (fallbackDirection.dotProduct(localUp) * localUp);
-			if (playerForwardProjected.isZeroLength())
-			{
-				// Second fallback
-				playerForwardProjected = localUp.perpendicular();
-			}
-		}
 		playerForwardProjected.normalise();
 
-		// Calculate local right and forward vectors
-		Ogre::Vector3 localRight = localUp.crossProduct(playerForwardProjected);
-		localRight.normalise();
-		Ogre::Vector3 localForward = localRight.crossProduct(localUp);
-		localForward.normalise();
+		Ogre::Vector3 localRight = localUp.crossProduct(playerForwardProjected).normalisedCopy();
+		Ogre::Vector3 localForward = localRight.crossProduct(localUp).normalisedCopy();
 
-		// Calculate the desired camera position in local coordinates
-		// This is the player position plus an offset in the direction opposite to the player's forward
-		Ogre::Vector3 playerViewPosition = playerPosition + (localUp * this->offsetPosition);
+		// ----------------------
+		// Hooks-style Camera Spring
 
-		// Calculate the camera's desired position
-		// It should be behind the player (in the direction opposite to the player's forward)
-		// and offset upward along the local up vector
-		Ogre::Vector3 targetPosition = playerViewPosition - (playerForwardProjected * this->cameraSpringLength);
+		// Angle (for compatibility)
+		Ogre::Vector3 direction = cameraPosition - playerPosition;
+		Ogre::Real angle = Ogre::Math::ATan2(direction.dotProduct(localForward), direction.dotProduct(localRight)).valueRadians();
 
-		// Apply spring physics for smooth camera movement
-		Ogre::Vector3 displacement = targetPosition - cameraPosition;
-		Ogre::Vector3 velocityVector = displacement * this->cameraSpring * this->cameraFriction * dt * 60.0f;
+		// Target camera direction from player + cameraSpringLength
+		Ogre::Vector3 offsetXZ = Ogre::Math::Cos(angle) * localRight + Ogre::Math::Sin(angle) * localForward;
+		Ogre::Vector3 targetDirection = playerPosition + offsetXZ * this->cameraSpringLength;
 
-		// Calculate new camera position
-		Ogre::Vector3 newCameraPosition = cameraPosition + velocityVector;
+		// Velocity vector (primary spring movement)
+		Ogre::Vector3 velocityVector = (targetDirection - cameraPosition) * this->cameraSpring;
+		velocityVector *= this->cameraFriction;
 
-		// Enforce minimum distance from player to avoid clipping
-		Ogre::Vector3 cameraToPlayer = playerViewPosition - newCameraPosition;
-		Ogre::Real currentDistance = cameraToPlayer.length();
-		if (currentDistance < this->cameraSpringLength * 0.5f)
-		{
-			newCameraPosition = playerViewPosition - (cameraToPlayer.normalisedCopy() * this->cameraSpringLength * 0.5f);
-		}
+		// Support force (vVector from old code)
+		Ogre::Vector3 tVector = playerOrientation * this->defaultDirection * -1.0f;
+		tVector = tVector - (tVector.dotProduct(localUp) * localUp);
+		tVector.normalise();
+		tVector *= this->cameraSpringLength;
 
-		// Set camera position
-		this->camera->setPosition(newCameraPosition);
+		Ogre::Vector3 supportTarget = playerPosition + tVector;
+		supportTarget += localUp * this->offsetPosition.y;
 
-		// Make camera look at player with offset
-		this->camera->lookAt(playerViewPosition + this->lookAtOffset);
+		Ogre::Vector3 vVector = (supportTarget - cameraPosition) * this->cameraSpring * this->moveCameraWeight;
+		vVector *= this->cameraFriction * 0.4f;
 
-		// Ensure camera's up vector is aligned with the local up vector
-		// This prevents the camera from rolling when moving on curved surfaces
+		// Final camera position (projected onto local plane)
+		Ogre::Vector3 positionVector = cameraPosition + velocityVector + vVector;
+		Ogre::Real height = playerPosition.dotProduct(localUp) + this->offsetPosition.y;
+		Ogre::Real currentHeight = positionVector.dotProduct(localUp);
+		Ogre::Vector3 verticalOffset = (height - currentHeight) * localUp;
+		positionVector += verticalOffset;
+
+		// Final look-at orientation
+		Ogre::Quaternion resultOrientation = MathHelper::getInstance()->computeLookAtQuaternion(positionVector, playerPosition, localUp);
+
+		// Apply to camera
 		this->camera->setFixedYawAxis(true, localUp);
+		NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, resultOrientation);
+		NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, positionVector);
 	}
-#else
-	void ThirdPersonCamera::moveCamera(Ogre::Real dt)
-	{
-		if (nullptr == this->sceneNode) return;
-
-		// Get gravity direction (which points toward the planet center)
-		Ogre::Vector3 gravityDir = Ogre::Vector3::UNIT_Y;
-		if (false == this->gravityDirection.isZeroLength())
-		{
-			gravityDir = -this->gravityDirection;
-		}
-
-		// Calculate surface normal (opposite of gravity direction)
-		Ogre::Vector3 surfaceNormal = gravityDir;
-
-		// Get current camera and player positions
-		Ogre::Vector3 cameraPosition = this->camera->getPosition();
-		Ogre::Vector3 playerPosition = this->sceneNode->_getDerivedPositionUpdated();
-
-		// Get player's orientation
-		Ogre::Quaternion playerOrientation = this->sceneNode->_getDerivedOrientationUpdated();
-
-		// Calculate player's forward direction
-		Ogre::Vector3 playerForward = playerOrientation * this->defaultDirection;
-
-		// Create a local coordinate system aligned with the planet surface
-		Ogre::Vector3 localUp = surfaceNormal;
-
-		// Project player's forward direction onto the local plane
-		Ogre::Vector3 playerForwardProjected = playerForward - (playerForward.dotProduct(localUp) * localUp);
-		if (playerForwardProjected.isZeroLength())
-		{
-			// Fallback if the projected direction is zero
-			Ogre::Vector3 fallbackDirection = playerOrientation * Ogre::Vector3::UNIT_Z;
-			playerForwardProjected = fallbackDirection - (fallbackDirection.dotProduct(localUp) * localUp);
-			if (playerForwardProjected.isZeroLength())
-			{
-				// Second fallback
-				playerForwardProjected = localUp.perpendicular();
-			}
-		}
-		playerForwardProjected.normalise();
-
-		// Calculate local right and forward vectors
-		Ogre::Vector3 localRight = localUp.crossProduct(playerForwardProjected);
-		localRight.normalise();
-		Ogre::Vector3 localForward = localRight.crossProduct(localUp);
-		localForward.normalise();
-
-		// Calculate the desired camera position in local coordinates
-		Ogre::Vector3 playerViewPosition = playerPosition + (localUp * this->offsetPosition);
-
-		// Calculate the camera's desired position
-		Ogre::Vector3 targetPosition = playerViewPosition - (playerForwardProjected * this->cameraSpringLength);
-
-		// Normalize spring parameters based on frame time
-		Ogre::Real normalizedSpring = this->cameraSpring * dt * 60.0f;
-		Ogre::Real normalizedFriction = this->cameraFriction * dt * 60.0f;
-
-		// Apply spring physics for smooth camera movement
-		Ogre::Vector3 displacement = targetPosition - cameraPosition;
-
-		// Use a more stable spring calculation
-		Ogre::Vector3 velocityVector = displacement * normalizedSpring * normalizedFriction;
-
-		// Calculate new camera position
-		Ogre::Vector3 newCameraPosition = cameraPosition + velocityVector;
-
-		// Enforce minimum distance from player to avoid clipping
-		Ogre::Vector3 cameraToPlayer = playerViewPosition - newCameraPosition;
-		Ogre::Real currentDistance = cameraToPlayer.length();
-		if (currentDistance < this->cameraSpringLength * 0.5f)
-		{
-			newCameraPosition = playerViewPosition - (cameraToPlayer.normalisedCopy() * this->cameraSpringLength * 0.5f);
-		}
-
-		// TODO: How to use queue interpolation?
-		ENQUEUE_RENDER_COMMAND_MULTI/*_WAIT*/("ThirdPersonCamera::moveCamera", _3(newCameraPosition, playerViewPosition, localUp),
-		{
-			// Set camera position
-			this->camera->setPosition(newCameraPosition);
-
-			// Make camera look at player with offset
-			this->camera->lookAt(playerViewPosition + this->lookAtOffset);
-
-			// Ensure camera's up vector is aligned with the local up vector
-			this->camera->setFixedYawAxis(true, localUp);
-		});
-	}
-#endif
 
 	void ThirdPersonCamera::rotateCamera(Ogre::Real dt, bool forJoyStick)
 	{

@@ -176,7 +176,7 @@ namespace NOWA
 			return true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("BackgroundScrollComponent::disconnect",
+		ENQUEUE_RENDER_COMMAND("BackgroundScrollComponent::disconnect",
 		{
 			for (size_t i = 0; i < 9; i++)
 			{
@@ -629,7 +629,7 @@ namespace NOWA
 
 		if (nullptr != workspaceBackgroundComponent)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BackgroundScrollComponent::setBackgroundName", _1(backgroundName),
+			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setBackgroundName", _1(backgroundName),
 			{
 				for (size_t i = 0; i < 9; i++)
 				{

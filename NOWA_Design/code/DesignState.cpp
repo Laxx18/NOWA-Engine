@@ -704,7 +704,7 @@ void DesignState::wakeSleepGameObjects(bool allGameObjects, bool sleep)
 			}
 		}
 	}
-	ENQUEUE_RENDER_COMMAND_WAIT("ShowProperties",
+	ENQUEUE_RENDER_COMMAND("ShowProperties",
 	{
 		this->propertiesPanel->showProperties();
 	});
@@ -822,7 +822,7 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 {
 	if (true == this->hasSceneChanges)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit1",
+		ENQUEUE_RENDER_COMMAND("DesignState::handleExit1",
 		{
 			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
 				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -834,7 +834,7 @@ void DesignState::handleExit(NOWA::EventDataPtr eventData)
 	}
 	else
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DesignState::handleExit2",
+		ENQUEUE_RENDER_COMMAND("DesignState::handleExit2",
 		{
 			MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("Menue", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{Quit_Application}"),
 				MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);
@@ -1057,7 +1057,7 @@ void DesignState::handleMyGUIWidgetSelected(NOWA::EventDataPtr eventData)
 	// Event not for this state
 	if (0 != castEventData->getGameObjectId())
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
+		ENQUEUE_RENDER_COMMAND_MULTI("DesignState::handleMyGUIWidgetSelected", _1(castEventData),
 		{
 			MyGUI::Widget * widget = MyGUI::InputManager::getInstance().getMouseFocusWidget();
 			if (nullptr != widget && false == this->simulating)
@@ -1145,7 +1145,7 @@ void DesignState::itemSelected(MyGUI::ComboBox* sender, size_t index)
 			Ogre::String selectedGridValue = this->gridValueComboBox->getItemNameAt(index);
 
 			// Enqueue the logic to update the grid step in the render thread
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::itemSelected2", _1(selectedGridValue),
+			ENQUEUE_RENDER_COMMAND_MULTI("DesignState::itemSelected2", _1(selectedGridValue),
 			{
 				this->editorManager->setGridStep(Ogre::StringConverter::parseReal(selectedGridValue));
 			});
@@ -1235,7 +1235,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 
 void DesignState::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::buttonHit", _1(sender),
 	{
 		this->selectModeCheck->setStateSelected(false);
 		this->placeModeCheck->setStateSelected(false);
@@ -1457,7 +1457,8 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 			{
 				this->camera->setPosition(0.0f, 1.0f, 0.0f);
 			}
-			this->camera->setOrientation(Ogre::Quaternion::IDENTITY);
+
+			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
 			this->cameraMoveSpeed = 10.0f;
 			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 			if (nullptr != cameraBehavior)
@@ -1556,7 +1557,7 @@ void DesignState::notifyToolTip(MyGUI::Widget* sender, const MyGUI::ToolTipInfo&
 
 void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEnd", _1(result),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::notifyMessageBoxEnd", _1(result),
 	{
 		if (result == MyGUI::MessageBoxStyle::Yes)
 		{
@@ -1578,7 +1579,7 @@ void DesignState::notifyMessageBoxEnd(MyGUI::Message* _sender, MyGUI::MessageBox
 
 void DesignState::notifyMessageBoxEndExit(MyGUI::Message* sender, MyGUI::MessageBoxStyle result)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::notifyMessageBoxEndExit", _1(result),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::notifyMessageBoxEndExit", _1(result),
 	{
 		if (result == MyGUI::MessageBoxStyle::Yes)
 		{
@@ -1860,8 +1861,8 @@ void DesignState::orbitCamera(Ogre::Real dt)
 	const OIS::MouseState& ms = NOWA::InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 
 	Ogre::Vector2 rotationValue;
-	rotationValue.x = -ms.X.rel * 0.25f;
-	rotationValue.y = ms.Y.rel * 0.25f;
+	rotationValue.x = -ms.X.rel;
+	rotationValue.y = ms.Y.rel;
 
 	if (this->firstTimeValueSet)
 	{
@@ -1876,15 +1877,10 @@ void DesignState::orbitCamera(Ogre::Real dt)
 	// Same as camera->moveRelative
 	Ogre::Vector3 trans = this->camera->getOrientation() * Ogre::Vector3(rotationValue.x, rotationValue.y, 0.0f);
 
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::orbitCamera", _1(trans),
-	{
-		this->camera->move(trans);
+	Ogre::Quaternion resultOrientation = NOWA::MathHelper::getInstance()->computeDirectionQuaternion(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getPosition());
+	NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, resultOrientation);
 
-		//this->pCamera->moveRelative(this->pSelectNode->getPosition() + (this->pCamera->getOrientation() * offset));
-		//this->pCamera->moveRelative(this->pSelectNode->getPosition());
-		// Same as: camera->lookAt
-		this->camera->setDirection(this->editorManager->getGizmo()->getSelectedNode()->getPosition() - this->camera->getPosition());
-	});
+	NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, this->camera->getPosition() + trans);
 
 	this->lastOrbitValue = rotationValue;
 }
@@ -1915,7 +1911,7 @@ void DesignState::showDebugCollisionLines(bool show)
 
 void DesignState::showContextMenu(int mouseX, int mouseY)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::showContextMenu", _2(mouseX, mouseY),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::showContextMenu", _2(mouseX, mouseY),
 	{
 		this->editPopupMenu = MyGUI::Gui::getInstancePtr()->createWidget<MyGUI::MenuCtrl>("PopupMenu", mouseX, mouseY, 150, 0, MyGUI::Align::Default, "Popup", "ContextMenu");
 
@@ -2016,7 +2012,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 		Ogre::LogManager::getSingleton().logMessage("Option 3 selected");
 	}*/
 
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::onMenuItemSelected", _1(menu),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::onMenuItemSelected", _1(menu),
 	{
 		// Close (destroy) the menu after selection
 		MyGUI::Gui::getInstancePtr()->destroyWidget(menu);
@@ -2025,7 +2021,7 @@ void DesignState::onMenuItemSelected(MyGUI::MenuCtrl* menu, MyGUI::MenuItem* ite
 
 void DesignState::toggleGuiVisibility(bool visible)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::toggleGuiVisibility", _1(visible),
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::toggleGuiVisibility", _1(visible),
 	{
 		if (nullptr != this->propertiesPanel)
 		{
@@ -2194,7 +2190,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						if (false == this->editorManager->getSelectionManager()->getSelectedGameObjects().empty())
 						{
-							ENQUEUE_RENDER_COMMAND_WAIT("ShowComponents",
+							ENQUEUE_RENDER_COMMAND("ShowComponents",
 							{
 								this->componentsPanel->showComponents(-1);
 							});
@@ -2220,7 +2216,7 @@ bool DesignState::keyPressed(const OIS::KeyEvent& keyEventRef)
 					{
 						this->editorManager->getSelectionManager()->select(affectedGameObjects[i]->getId());
 					}
-					ENQUEUE_RENDER_COMMAND_WAIT("Click ShowProperties",
+					ENQUEUE_RENDER_COMMAND("Click ShowProperties",
 					{
 						this->propertiesPanel->showProperties();
 					});
@@ -2528,7 +2524,7 @@ bool DesignState::mouseMoved(const OIS::MouseEvent& evt)
 			{
 				int scrollAmount = scrollView->getViewOffset().top + evt.state.Z.rel;
 
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("scroll", _2(scrollAmount, scrollView),
+				ENQUEUE_RENDER_COMMAND_MULTI("scroll", _2(scrollAmount, scrollView),
 				{
 					scrollView->setViewOffset(MyGUI::IntPoint(scrollView->getViewOffset().left, scrollAmount));
 				});
@@ -2603,7 +2599,7 @@ bool DesignState::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id
 					this->editorManager->getSelectionManager()->select(std::get<1>(gameObjectData));
 
 					// Also scrolls down to component
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DesignState::mousePressed showProperties", _1(gameObjectData),
+					ENQUEUE_RENDER_COMMAND_MULTI("DesignState::mousePressed showProperties", _1(gameObjectData),
 					{
 						this->propertiesPanel->showProperties(std::get<2>(gameObjectData));
 					});
@@ -2706,7 +2702,7 @@ bool DesignState::mouseReleased(const OIS::MouseEvent &evt, OIS::MouseButtonID i
 					// if (true == selectedGameObjectsChanged)
 					{
 						// Show properties (only when selection changed, because showProperties is an heavy operation!)
-						ENQUEUE_RENDER_COMMAND_WAIT("Mouse Release ShowProperties",
+						ENQUEUE_RENDER_COMMAND("Mouse Release ShowProperties",
 						{
 							this->propertiesPanel->showProperties();
 						});

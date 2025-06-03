@@ -269,6 +269,16 @@ namespace NOWA
 		Ogre::Quaternion lookAt(const Ogre::Vector3& unnormalizedTargetDirection, const Ogre::Vector3 fixedAxis = Ogre::Vector3::UNIT_Y);
 
 		/**
+		* @brief		Reimplementation of Ogre::Camera lookAt
+		*/
+		Ogre::Quaternion computeLookAtQuaternion(const Ogre::Vector3& position, const Ogre::Vector3& target, const Ogre::Vector3& worldUp = Ogre::Vector3::UNIT_Y);
+
+		/**
+		* @brief		Reimplementation of Ogre::Camera setDirection
+		*/
+		Ogre::Quaternion computeDirectionQuaternion(const Ogre::Vector3& direction, const Ogre::Vector3& fallbackUp = Ogre::Vector3::UNIT_Y);
+
+		/**
 		 * @brief		Gets angle between two vectors. The normal of the two vectors is used in conjunction with the signed angle parameter, to determine
 		 *				whether the angle between the two vectors is negative or positive.
 		 * @info		This function can be use e.g. when using a gizmo or a grabber to rotate objects via mouse in the correct direction.

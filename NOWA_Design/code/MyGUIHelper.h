@@ -156,7 +156,7 @@ public:
 
 	void adaptFocus(MyGUI::Widget* sender, MyGUI::KeyCode code, const MyGUI::VectorWidgetPtr& items)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyguiHelper::adaptFocus", _3(sender, code, items),
+		ENQUEUE_RENDER_COMMAND_MULTI("MyguiHelper::adaptFocus", _3(sender, code, items),
 		{
 			// Accept value
 			if (code == MyGUI::KeyCode::Return || code == MyGUI::KeyCode::Tab)
@@ -268,7 +268,7 @@ public:
 	{
 		if (nullptr == this->toolTip)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIHelper::initToolTipData",
+			ENQUEUE_RENDER_COMMAND("MyGUIHelper::initToolTipData",
 			{
 				MyGUI::LayoutManager::getInstance().loadLayout("ToolTip2.layout");
 				this->toolTip = MyGUI::Gui::getInstance().findWidget<MyGUI::Widget>("tooltipPanel");
@@ -281,7 +281,7 @@ public:
 	{
 		if (info.type == MyGUI::ToolTipInfo::Show)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::notifyToolTip1", _2(sender, info),
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIHelper::notifyToolTip1", _2(sender, info),
 			{
 				// First fetch the viewport size.  (Do not try to getParent()->getSize().
 				// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)
@@ -344,7 +344,7 @@ public:
 			boundedpoint.top -= offset.top + offset.top + size.height;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::boundedMove", _2(moving, boundedpoint),
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIHelper::boundedMove", _2(moving, boundedpoint),
 		{
 			moving->setPosition(boundedpoint);
 		});
@@ -352,7 +352,7 @@ public:
 
 	void showAcceptedImage(const Ogre::Vector2& position, const Ogre::Vector2& size, Ogre::Real duration)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIHelper::showAcceptedImage1", _2(position, size),
+		ENQUEUE_RENDER_COMMAND_MULTI("MyGUIHelper::showAcceptedImage1", _2(position, size),
 		{
 			acceptedImageBox->setPosition(static_cast<int>(position.x), static_cast<int>(position.y));
 			acceptedImageBox->setSize(static_cast<int>(size.x), static_cast<int>(size.y));
@@ -396,7 +396,7 @@ private:
 		acceptedImageBox(nullptr),
 		canMousePress(true)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("MyGUIHelper::constructor",
+		ENQUEUE_RENDER_COMMAND("MyGUIHelper::constructor",
 		{
 			acceptedImageBox = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", 0.0f, 0.0f, 5.0f, 5.0f, MyGUI::Align::Default, "ToolTip");
 			acceptedImageBox->setImageTexture("circleGlow.png");

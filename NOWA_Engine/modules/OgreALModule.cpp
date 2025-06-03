@@ -96,7 +96,7 @@ namespace NOWA
 
 		if (soundManager)
 		{
-			ENQUEUE_DESTROY_COMMAND("OgreALModule::destroySounds", _2(soundManager, sceneManager),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("OgreALModule::destroySounds", _2(soundManager, sceneManager),
 			{
 				soundManager->destroyAllSounds(sceneManager);
 			});
@@ -117,7 +117,7 @@ namespace NOWA
 			auto soundManager = this->soundManager;
 			this->soundManager = nullptr;
 
-			ENQUEUE_DESTROY_COMMAND("OgreALModule::destroyContent", _1(soundManager),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("OgreALModule::destroyContent", _1(soundManager),
 			{
 				delete soundManager;
 			});

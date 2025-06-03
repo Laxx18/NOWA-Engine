@@ -759,7 +759,7 @@ namespace NOWA
 		: CameraBehaviorComponent(),
 		offsetPosition(new Variant(CameraBehaviorThirdPersonComponent::AttrOffsetPosition(), Ogre::Vector3(0.0f, 2.0f, 5.0f), this->attributes)),
 		lookAtOffset(new Variant(CameraBehaviorThirdPersonComponent::AttrLookAtOffset(), Ogre::Vector3(0.0f, -1.0f, 0.0f), this->attributes)),
-		springForce(new Variant(CameraBehaviorThirdPersonComponent::AttrSpringForce(), 0.1f, this->attributes)),
+		springForce(new Variant(CameraBehaviorThirdPersonComponent::AttrSpringForce(), 4.0f, this->attributes)),
 		friction(new Variant(CameraBehaviorThirdPersonComponent::AttrFriction(), 0.5f, this->attributes)),
 		springLength(new Variant(CameraBehaviorThirdPersonComponent::AttrSpringLength(), 6.0f, this->attributes))
 	{

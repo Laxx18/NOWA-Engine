@@ -239,54 +239,61 @@ namespace NOWA
 					}
 					this->selectedGameObjects.clear();
 				}
-				// true at the end: raycast from point does not work correctly so far
-				GameObject* selectedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->selectGameObject(evt.state.X.abs, evt.state.Y.abs, this->camera, this->selectQuery, true);
-				if (nullptr != selectedGameObject)
+
+				Ogre::Real absX = evt.state.X.abs;
+				Ogre::Real absY = evt.state.Y.abs;
+
+				ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::handleMousePress select", _2(absX, absY),
 				{
-					auto& it = this->selectedGameObjects.find(selectedGameObject->getId());
-					// Unselect and remove from map, if it has been selected
-					if (it != this->selectedGameObjects.end())
+					// true at the end: raycast from point does not work correctly so far
+					GameObject* selectedGameObject = AppStateManager::getSingletonPtr()->getGameObjectController()->selectGameObject(absX, absY, this->camera, this->selectQuery, true);
+					if (nullptr != selectedGameObject)
 					{
-						this->selectionObserver->onHandleSelection(it->second.gameObject, false);
-						it->second.gameObject->selected = false;
-						// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
-						it->second.gameObject->setDynamic(it->second.initiallyDynamic);
-						this->isSelecting = false;
-						this->selectedGameObjects.erase(it);
+						auto& it = this->selectedGameObjects.find(selectedGameObject->getId());
+						// Unselect and remove from map, if it has been selected
+						if (it != this->selectedGameObjects.end())
+						{
+							this->selectionObserver->onHandleSelection(it->second.gameObject, false);
+							it->second.gameObject->selected = false;
+							// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
+							it->second.gameObject->setDynamic(it->second.initiallyDynamic);
+							this->isSelecting = false;
+							this->selectedGameObjects.erase(it);
+						}
+						else
+						{
+							this->selectionObserver->onHandleSelection(selectedGameObject, true);
+
+							SelectionManager::SelectionData selectionData;
+							selectionData.gameObject = selectedGameObject;
+							// Store initial state
+							selectionData.initiallyDynamic = selectedGameObject->isDynamic();
+
+							this->isSelecting = true;
+							selectedGameObject->selected = true;
+							// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
+							if (false == selectedGameObject->isDynamic())
+							{
+								selectedGameObject->setDynamic(true);
+							}
+							this->isSelecting = true;
+							this->selectedGameObjects.emplace(selectedGameObject->getId(), selectionData);
+						}
 					}
 					else
 					{
-						this->selectionObserver->onHandleSelection(selectedGameObject, true);
-
-						SelectionManager::SelectionData selectionData;
-						selectionData.gameObject = selectedGameObject;
-						// Store initial state
-						selectionData.initiallyDynamic = selectedGameObject->isDynamic();
-
-						this->isSelecting = true;
-						selectedGameObject->selected = true;
-						// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
-						if (false == selectedGameObject->isDynamic())
+						// Nothing found for selection so un-selected everything
+						for (auto& it = this->selectedGameObjects.begin(); it != this->selectedGameObjects.end();)
 						{
-							selectedGameObject->setDynamic(true);
+							this->selectionObserver->onHandleSelection(it->second.gameObject, false);
+							it->second.gameObject->selected = false;
+							// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
+							it->second.gameObject->setDynamic(it->second.initiallyDynamic);
+							this->isSelecting = false;
+							this->selectedGameObjects.erase(it++);
 						}
-						this->isSelecting = true;
-						this->selectedGameObjects.emplace(selectedGameObject->getId(), selectionData);
 					}
-				}
-				else
-				{
-					// Nothing found for selection so un-selected everything
-					for (auto& it = this->selectedGameObjects.begin(); it != this->selectedGameObjects.end();)
-					{
-						this->selectionObserver->onHandleSelection(it->second.gameObject, false);
-						it->second.gameObject->selected = false;
-						// A static game object cannot be moved for performance reasons, so set it dynamic for a short time, move it and reset to static again
-						it->second.gameObject->setDynamic(it->second.initiallyDynamic);
-						this->isSelecting = false;
-						this->selectedGameObjects.erase(it++);
-					}
-				}
+				});
 			}
 
 			MathHelper::getInstance()->mouseToViewPort(evt.state.X.abs, evt.state.Y.abs, this->selectBegin.x, this->selectBegin.y, Core::getSingletonPtr()->getOgreRenderWindow());
@@ -445,7 +452,7 @@ namespace NOWA
 			top = (2.0f * (1.0f - top)) - 1.0f;
 			bottom = (2.0f * (1.0f - bottom)) - 1.0f;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SelectionManager::selectGameObjects1", _10(left, right, top, bottom, viewMatrix, projMatrix, camPos, vol, frontDistance, backDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::selectGameObjects1", _10(left, right, top, bottom, viewMatrix, projMatrix, camPos, vol, frontDistance, backDistance),
 			{
 				Ogre::PlaneBoundedVolumeList volList;
 				volList.push_back(vol);
@@ -572,12 +579,14 @@ namespace NOWA
 						OGRE_FREE(indices, Ogre::MEMCATEGORY_GEOMETRY);
 					}
 				}
-			});
 
-			ENQUEUE_RENDER_COMMAND("SelectionManager::selectGameObjects2",
-			{
 				this->volumeQuery->clearResults();
 			});
+
+			/*ENQUEUE_RENDER_COMMAND("SelectionManager::selectGameObjects2",
+			{
+				this->volumeQuery->clearResults();
+			});*/
 	}
 
 	std::unordered_map<unsigned long, SelectionManager::SelectionData>& SelectionManager::getSelectedGameObjects(void)

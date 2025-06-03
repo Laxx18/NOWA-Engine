@@ -164,7 +164,8 @@ namespace NOWA
 			this->originalDatablock = nullptr;
 
 			// Enqueue all changes on render thread
-			ENQUEUE_DESTROY_COMMAND("DatablockPbsComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
+			// ENQUEUE_DESTROY_COMMAND("DatablockPbsComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("DatablockPbsComponent::onRemoveComponent", _5(entityCopy, itemCopy, datablockCopy, originalDatablockCopy, oldSubIndexCopy),
 			{
 				// Reset datablock on entity/item
 				if (entityCopy && originalDatablockCopy)

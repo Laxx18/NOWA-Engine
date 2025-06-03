@@ -453,7 +453,7 @@ namespace NOWA
 
 		virtual void redo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("AddGameObjectUndoCommand::redo",
+			ENQUEUE_RENDER_COMMAND("AddGameObjectUndoCommand::redo",
 			{
 				// Create custom scenenode to store temporary data
 				this->objectNode = this->sceneManager->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_STATIC);
@@ -869,7 +869,7 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::undo",
+			ENQUEUE_RENDER_COMMAND("CloneGameObjectGroupUndoCommand::undo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 
@@ -912,7 +912,7 @@ namespace NOWA
 			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectGroupUndoCommand::redo",
+			ENQUEUE_RENDER_COMMAND("CloneGameObjectGroupUndoCommand::redo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 			});
@@ -1005,7 +1005,7 @@ namespace NOWA
 
 		virtual void undo(void) override
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::undo",
+			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::undo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 			});
@@ -1035,7 +1035,7 @@ namespace NOWA
 			this->editorManager->getSelectionManager()->clearSelection();
 			// First disconnect game objects, because during clone, when there are joint components etc. only those to be cloned joint components may be in a list
 			// to find the new predecessor. If there would be all other, a wrong predecessor joint could be found!
-			ENQUEUE_RENDER_COMMAND_WAIT("CloneGameObjectsUndoCommand::redo",
+			ENQUEUE_RENDER_COMMAND("CloneGameObjectsUndoCommand::redo",
 			{
 				AppStateManager::getSingletonPtr()->getGameObjectController()->stop();
 			});
@@ -1881,7 +1881,7 @@ namespace NOWA
 	{
 		unsigned int generatedCategoryId = this->selectionManager->filterCategories(categories);
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::filterCategories", _1(generatedCategoryId),
+		ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::filterCategories", _1(generatedCategoryId),
 		{
 			this->movePicker->updateQueryMask(generatedCategoryId);
 			this->movePicker2->updateQueryMask(generatedCategoryId);
@@ -1905,7 +1905,7 @@ namespace NOWA
 			// Calculate the adjusted distance
 			Ogre::Real adjustedDistance = baseRadius * factor;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::focusCameraGameObject", _2(gameObject, adjustedDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::focusCameraGameObject", _2(gameObject, adjustedDistance),
 			{
 				// Set the camera position
 				this->camera->setPosition(gameObject->getMovableObject()->getWorldAabbUpdated().mCenter + (this->camera->getOrientation() * Ogre::Vector3(0, 0, adjustedDistance)));
@@ -1923,7 +1923,7 @@ namespace NOWA
 			int mX = evt.state.X.abs;
 			int mY = evt.state.Y.abs;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::selectGizmo", _3(mX, mY, hitRay),
+			ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::selectGizmo", _3(mX, mY, hitRay),
 			{
 				Ogre::v1::Entity * gizmoEntity = nullptr;
 				Ogre::Vector3 result = Ogre::Vector3::ZERO;
@@ -2180,7 +2180,7 @@ namespace NOWA
 
 	void EditorManager::movePlaceNode(const Ogre::Ray& hitRay)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::movePlaceNode", _1(hitRay),
+		ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::movePlaceNode", _1(hitRay),
 		{
 			Ogre::Vector3 internalHitPoint = Ogre::Vector3::ZERO;
 			// this->placeNode->setPosition(Ogre::Vector3::ZERO);
@@ -3706,7 +3706,7 @@ namespace NOWA
 				
 				if (true == success)
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects1", _2(selectedGameObject, height), {
+					ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::moveObjects1", _2(selectedGameObject, height), {
 						selectedGameObject.second.gameObject->getSceneNode()->setPosition(selectedGameObject.second.gameObject->getSceneNode()->getPosition().x, height,
 							selectedGameObject.second.gameObject->getSceneNode()->getPosition().z);
 					})
@@ -3748,7 +3748,7 @@ namespace NOWA
 				if (Ogre::Vector3::ZERO != normal)
 				{
 					// TODO: How to use interpolation?
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("EditorManager::moveObjects2", _2(selectedGameObject, normal),
+					ENQUEUE_RENDER_COMMAND_MULTI("EditorManager::moveObjects2", _2(selectedGameObject, normal),
 					{
 						selectedGameObject.second.gameObject->getSceneNode()->setDirection(normal, Ogre::Node::TS_PARENT, Ogre::Vector3::NEGATIVE_UNIT_Y);
 					});
