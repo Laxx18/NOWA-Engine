@@ -267,8 +267,72 @@ namespace NOWA
 		Core::getSingletonPtr()->getOgreRenderWindow()->setVSync(this->vsyncOn, Ogre::StringConverter::parseUnsignedInt(cfgOpts["VSync Interval"].currentValue));
 	}
 
+	void AppStateManager::enqueue(LogicCommand&& command)
+	{
+		if (true == this->isLogicThread())
+		{
+			command();
+			return;
+		}
+		this->queue.enqueue(std::move(command));
+	}
+
+	void AppStateManager::enqueueAndWait(LogicCommand&& command)
+	{
+		if (true == this->isLogicThread())
+		{
+			command();
+			return;
+		}
+
+		std::promise<void> promise;
+		std::future<void> future = promise.get_future();
+
+		// Wrap the command to set promise on completion or exception
+		LogicCommand wrappedCommand = [command = std::move(command), &p = promise]() mutable
+		{
+			try
+			{
+				command();
+				p.set_value();
+			}
+			catch (...) {
+				p.set_exception(std::current_exception());
+			}
+		};
+
+		// Enqueue the wrapped command into your queue for the logic thread
+		this->queue.enqueue(std::move(wrappedCommand));
+
+		// Now wait for the logic thread to execute the command and set the promise
+		future.get();  // This will re-throw exceptions here
+	}
+
+	void AppStateManager::markCurrentThreadAsLogicThread(void)
+	{
+		this->logicThreadId.store(std::this_thread::get_id());
+	}
+
+	bool AppStateManager::isLogicThread(void) const
+	{
+		return std::this_thread::get_id() == this->logicThreadId.load();
+	}
+
+	void AppStateManager::processAll(void)
+	{
+		LogicCommand commandEntry;
+		while (this->queue.try_dequeue(commandEntry))
+		{
+			RenderGlobals::g_inLogicCommand = true;
+			commandEntry(); // Execute the logic command
+			RenderGlobals::g_inLogicCommand = false;
+		}
+	}
+
 	void AppStateManager::multiThreadedRendering(void)
 	{
+		this->markCurrentThreadAsLogicThread();
+
 		// Default 60 ticks per second
 		const Ogre::Real simulationTickCount = 1.0f / static_cast<Ogre::Real>(Core::getSingletonPtr()->getOptionDesiredSimulationUpdates());
 
@@ -339,6 +403,8 @@ namespace NOWA
 					NOWA::GraphicsModule::getInstance()->beginLogicFrame();
 					didUpdate = true;
 				}
+
+				this->processAll();
 
 				// Update input devices
 				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())

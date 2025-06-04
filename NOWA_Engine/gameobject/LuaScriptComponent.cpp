@@ -254,11 +254,9 @@ namespace NOWA
 		{
 			if (true == this->activated->getBool())
 			{
-
 				// this->luaScript->callFunction("disconnect");
 				// Lots faster
 				this->luaScript->callTableFunction("disconnect");
-
 				this->luaScript->decompile();
 			}
 
@@ -427,7 +425,6 @@ namespace NOWA
 				{
 					this->luaScript->callTableFunction("cloned", this->gameObjectPtr.get());
 				}
-
 				this->luaScript->callTableFunction("connect", this->gameObjectPtr.get());
 
 				// Sends event, that lua script has been connected, so that in a state machine the first state can be entered after that

@@ -260,7 +260,7 @@ namespace NOWA
 			// Cycle through colors
 			colorIndex = (colorIndex + 1) % colorPalette.size();
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreNewtModule::setMaterialIdForDebugger", _3(&debug, material, tempColour),
+			ENQUEUE_RENDER_COMMAND_MULTI("OgreNewtModule::setMaterialIdForDebugger", _3(&debug, material, tempColour),
 			{
 				debug.setMaterialColor(material, tempColour);
 			});

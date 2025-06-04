@@ -63,7 +63,11 @@ namespace NOWA
 					this->playerFrictionContact->position = position;
 					this->playerFrictionContact->normal = normal;
 
-					luaScript->callTableFunction(this->onContactFrictionFunctionName, gameObject0, gameObject1, this->playerFrictionContact);
+					NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject0, gameObject1]()
+					{
+						luaScript->callTableFunction(this->onContactFrictionFunctionName, gameObject0, gameObject1, this->playerFrictionContact);
+					};
+					NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 
 					return this->playerFrictionContact->resultFriction;
 				}
@@ -97,7 +101,11 @@ namespace NOWA
 					this->playerContact->normal = normal;
 					this->playerContact->penetration = penetration;
 
-					luaScript->callTableFunction(this->onContactFunctionName, gameObject0, gameObject1, this->playerContact);
+					NOWA::AppStateManager::LogicCommand logicCommand = [this, gameObject0, gameObject1]()
+					{
+						luaScript->callTableFunction(this->onContactFunctionName, gameObject0, gameObject1, this->playerContact);
+					};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
 		}

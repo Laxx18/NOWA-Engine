@@ -282,7 +282,7 @@ namespace NOWA
 				return false;
 			}
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::connect", _1(entity),
+			ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::connect", _1(entity),
 			{
 				Ogre::v1::OldSkeletonInstance * oldSkeletonInstance = entity->getSkeleton();
 				if (nullptr != oldSkeletonInstance)
@@ -516,7 +516,7 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::setTagPointName", _1(entity),
+			ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::setTagPointName", _1(entity),
 			{
 				// Does not work anymore, as it is done different in Ogre2.x (see tagpoint example, for that new skeleton and item is necessary, updgrade of meshes)
 				// this->tagPoint = entity->attachObjectToBone(this->tagPoints->getListSelectedValue(), sourceEntity, 
@@ -593,7 +593,7 @@ namespace NOWA
 	{
 		if (nullptr == this->debugGeometryArrowNode && nullptr != this->tagPoint)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("TagPointComponent::generateDebugData",
+			ENQUEUE_RENDER_COMMAND("TagPointComponent::generateDebugData",
 			{
 				this->debugGeometryArrowNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 				this->debugGeometryArrowNode->setName("tagPointComponentArrowNode");
@@ -651,7 +651,7 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryArrowNode)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("TagPointComponent::destroyDebugData",
+			ENQUEUE_RENDER_COMMAND("TagPointComponent::destroyDebugData",
 			{
 				this->debugGeometryArrowNode->detachAllObjects();
 				this->gameObjectPtr->getSceneManager()->destroySceneNode(this->debugGeometryArrowNode);
@@ -673,7 +673,7 @@ namespace NOWA
 		Ogre::v1::Entity* entity = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>();
 		if (nullptr != entity && nullptr != this->tagPoint)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TagPointComponent::resetTagPoint", _1(entity),
+			ENQUEUE_RENDER_COMMAND_MULTI("TagPointComponent::resetTagPoint", _1(entity),
 			{
 				Ogre::v1::OldSkeletonInstance * oldSkeletonInstance = entity->getSkeleton();
 				if (nullptr != oldSkeletonInstance)

@@ -188,9 +188,12 @@ namespace NOWA
 			this->destroyParticleEffect();
 			this->oldParticleTemplateName = this->particleTemplateName->getListSelectedValue();
 		}
+
+		bool success = true;
+
 		if (nullptr == this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::createParticleEffect",
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseComponent::createParticleEffect", _1(&success),
 			{
 				Ogre::String name = this->particleTemplateName->getListSelectedValue() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 				this->particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->getParticleSystem(name);
@@ -210,43 +213,46 @@ namespace NOWA
 					if (nullptr == this->particle)
 					{
 						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[ParticleUniverseComponent] Error: Could not create particle effect: " + this->particleTemplateName->getListSelectedValue());
-						return false;
+						success = false;
 					}
 
-					// Tag resource for deployment
-					DeployResourceModule::getInstance()->tagResource(this->particleTemplateName->getListSelectedValue(), this->particle->getResourceGroupName());
+					if (true == success)
+					{
+						// Tag resource for deployment
+						DeployResourceModule::getInstance()->tagResource(this->particleTemplateName->getListSelectedValue(), this->particle->getResourceGroupName());
 
-					this->particleNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
-					// this->particleNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(); // 
-					this->particleNode->setOrientation(MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3()));
-					// Just add the offset because the node is a child of the game object scene node and therefore relative to the parent position
-					this->particleNode->setPosition(this->particleOffsetPosition->getVector3());
-					// Particle effect is moving, so it must always be dynamic, else it will not be rendered!
-					this->particle->setStatic(false);
-					this->particleNode->setStatic(false);
-					this->particleNode->attachObject(this->particle);
-					this->particle->setDefaultQueryFlags(0 << 0);
-					this->particle->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
-					this->particle->setCastShadows(false);
-					this->particle->setScale(this->particleScale->getVector3());
-					this->particle->setScaleVelocity(this->particleScale->getVector3().x);
-					this->particle->setScaleTime(this->particlePlaySpeed->getReal());
-					// Hack according to http://forums.ogre3d.org/viewtopic.php?f=25&t=82012&sid=05ff08d7c249d71d7f78ead03ce082d3&start=25
-					// Because else a crash may occur, when particle is just prepared and played in another frame
-					this->particle->prepare();
-					this->particle->start();
-					this->particle->stop();
+						this->particleNode = this->gameObjectPtr->getSceneNode()->createChildSceneNode();
+						// this->particleNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode(); // 
+						this->particleNode->setOrientation(MathHelper::getInstance()->degreesToQuat(this->particleOffsetOrientation->getVector3()));
+						// Just add the offset because the node is a child of the game object scene node and therefore relative to the parent position
+						this->particleNode->setPosition(this->particleOffsetPosition->getVector3());
+						// Particle effect is moving, so it must always be dynamic, else it will not be rendered!
+						this->particle->setStatic(false);
+						this->particleNode->setStatic(false);
+						this->particleNode->attachObject(this->particle);
+						this->particle->setDefaultQueryFlags(0 << 0);
+						this->particle->setRenderQueueGroup(RENDER_QUEUE_PARTICLE_STUFF);
+						this->particle->setCastShadows(false);
+						this->particle->setScale(this->particleScale->getVector3());
+						this->particle->setScaleVelocity(this->particleScale->getVector3().x);
+						this->particle->setScaleTime(this->particlePlaySpeed->getReal());
+						// Hack according to http://forums.ogre3d.org/viewtopic.php?f=25&t=82012&sid=05ff08d7c249d71d7f78ead03ce082d3&start=25
+						// Because else a crash may occur, when particle is just prepared and played in another frame
+						this->particle->prepare();
+						this->particle->start();
+						this->particle->stop();
+					}
 				}
 			});
 		}
-		return true;
+		return success;
 	}
 
 	void ParticleUniverseComponent::destroyParticleEffect(void)
 	{
 		if (nullptr != this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::destroyParticleEffect",
+			ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::destroyParticleEffect",
 			{
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->destroy: " + this->particle->getName());
 				this->particle->stop();
@@ -277,7 +283,7 @@ namespace NOWA
 			if (true == this->activated->getBool() && nullptr != this->particle)
 			{
 				this->particlePlayTime = this->particleInitialPlayTime->getReal();
-				ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::connect",
+				ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::connect",
 				{
 					this->particle->prepare();
 					this->particle->start();
@@ -293,7 +299,7 @@ namespace NOWA
 		// this->destroyParticleEffect();
 		if (nullptr != this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::disconnect",
+			ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::disconnect",
 			{
 				this->particle->stop();
 			});
@@ -340,7 +346,7 @@ namespace NOWA
 				else
 				{
 					// this->particle->stopFade();
-					ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::update stop",
+					ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::update stop",
 					{
 						this->particle->stop();
 					});
@@ -466,14 +472,14 @@ namespace NOWA
 		{
 			if (false == activated)
 			{
-				ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::activated false",
+				ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::activated false",
 				{
 					this->particle->stopFade();
 				});
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::activated true",
+				ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::activated true",
 				{
 					this->particle->start();
 				});

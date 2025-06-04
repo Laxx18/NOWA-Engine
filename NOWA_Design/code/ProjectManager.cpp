@@ -233,6 +233,7 @@ void ProjectManager::createNewProject(const NOWA::ProjectParameter& projectParam
 		// This file will be parsed and below also again exported along with the new scene file.
 		// Mandatory game objects are only created below, if they do not exist already via the parsed globa.scene
 		// So now no new scene creation does kill a valid valueable global.scene anymore!
+
 		this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
 	}
 	catch (const std::runtime_error& e)
@@ -377,10 +378,13 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 	{
 		this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, nullptr, nullptr);
 	}
+
+	
 	try
 	{
-		// Also create workspace before any game object is created for reflection (last true parameter)
 		bool success = this->dotSceneImportModule->parseScene(this->projectParameter.projectName, this->projectParameter.sceneName, "Projects", nullptr, nullptr, false);
+
+		// Must be done back in logic thread, because this is called via mygui mouse press from rendering thread!
 		if (false == success)
 		{
 			if (-1 != recentFileIndex)
@@ -424,7 +428,7 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 			this->ogreNewt->cleanUp();
 		}
 	}
-	catch (const std::runtime_error & e)
+	catch (const std::runtime_error& e)
 	{
 		MyGUI::Message* messageBox = MyGUI::Message::createMessageBox("NOWA-Design", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{FailedToLoadProject}"),
 			MyGUI::MessageBoxStyle::IconError | MyGUI::MessageBoxStyle::Ok, "Popup", true);
@@ -826,6 +830,7 @@ void ProjectManager::notifyEndDialog(tools::Dialog* sender, bool result)
 			{
 				this->dotSceneImportModule = new NOWA::DotSceneImportModule(this->sceneManager, NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera(), nullptr);
 			}
+
 			std::vector<unsigned long> gameObjectIds = this->dotSceneImportModule->parseGroup(tempFileName, "Projects");
 
 			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ProjectManager::attachGroupToPlaceNode", _1(gameObjectIds),

@@ -6,6 +6,10 @@
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
+#include <functional>
+#include <future>
+
+#include "utilities/concurrentqueue.h"
 
 namespace NOWA
 {
@@ -24,6 +28,8 @@ namespace NOWA
 			Ogre::String name;
 			AppState* state;
 		} StateInfo;
+
+		using LogicCommand = std::function<void()>;
 
 		AppStateManager();
 		~AppStateManager();
@@ -161,6 +167,15 @@ namespace NOWA
 
 		GpuParticlesModule* getGpuParticlesModule(const Ogre::String& stateName);
 
+		void enqueue(LogicCommand&& command);
+
+		void enqueueAndWait(LogicCommand&& command);
+
+		// Sets the logic thread ID
+		void markCurrentThreadAsLogicThread(void);
+
+		// Checks if we are on the render thread
+		bool isLogicThread(void) const;
 	public:
 		/*
 		* @brief	Gets whether this application has been shut down
@@ -228,7 +243,7 @@ namespace NOWA
 
 		void saveProgress(const Ogre::String& saveFilePathName, bool crypted, bool sceneSnapshot);
 
-
+		void processAll(void);
 	protected:
 		void linkInputWithCore(AppState* oldState, AppState* state);
 		std::vector<AppState*> activeStateStack;
@@ -248,6 +263,8 @@ namespace NOWA
 		std::mutex logicFrameMutex;
 		std::condition_variable logicFrameCondVar;
 		bool logicFrameFinished = false;
+		moodycamel::ConcurrentQueue<LogicCommand> queue;
+		std::atomic<std::thread::id> logicThreadId;
 	};
 
 }; // namespace end

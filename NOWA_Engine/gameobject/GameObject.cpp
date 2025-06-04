@@ -126,7 +126,7 @@ namespace NOWA
 		bool castShadows = true;
 		bool visible = true;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::GameObject setStatic", _2(&castShadows, &visible),
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::GameObject setStatic", _2(&castShadows, &visible),
 		{
 			// game object uses the unique name of the scene node
 			if (nullptr != this->sceneNode)
@@ -268,7 +268,7 @@ namespace NOWA
 
 	bool GameObject::init(Ogre::MovableObject* newMovableObject)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::init", _1(newMovableObject),
+		ENQUEUE_RENDER_COMMAND_MULTI/*_WAIT*/("GameObject::init", _1(newMovableObject),
 		{
 			if (nullptr != newMovableObject)
 			{
@@ -412,7 +412,7 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
+			ENQUEUE_RENDER_COMMAND("GameObject::actualizeDatablocks",
 			{
 				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
@@ -453,7 +453,7 @@ namespace NOWA
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
+			ENQUEUE_RENDER_COMMAND("GameObject::actualizeDatablocks",
 			{
 				Ogre::v1::Entity * entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
 				if (nullptr != entity)
@@ -805,7 +805,7 @@ namespace NOWA
 		else if (GameObject::AttrPosition() == attribute->getName())
 		{
 			this->position->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setPosition", _1(attribute),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setPosition", _1(attribute),
 			{
 				this->sceneNode->setPosition(attribute->getVector3());
 			});
@@ -813,7 +813,7 @@ namespace NOWA
 		else if (GameObject::AttrScale() == attribute->getName())
 		{
 			this->scale->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setScale", _1(attribute),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setScale", _1(attribute),
 			{
 				this->sceneNode->setScale(attribute->getVector3());
 				// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
@@ -828,7 +828,7 @@ namespace NOWA
 			Ogre::Quaternion orientation = MathHelper::getInstance()->degreesToQuat(attribute->getVector3());
 			Ogre::Vector3 degreeOrientation = attribute->getVector3();
 			this->orientation->setValue(attribute->getVector3());
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::actualizeValue setOrientation", _1(orientation),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setOrientation", _1(orientation),
 			{
 					this->sceneNode->setOrientation(orientation);
 			});
@@ -912,7 +912,8 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type)
 		{
-			GraphicsModule::RenderCommand renderCommand = [this, attribute]() {
+			GraphicsModule::RenderCommand renderCommand = [this, attribute]()
+			{
 				Ogre::Item* item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
 				{
@@ -954,7 +955,7 @@ namespace NOWA
 				}
 			};
 
-			NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock item");
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setDatablock item");
 		}
 		else
 		{
@@ -1000,7 +1001,7 @@ namespace NOWA
 				}
 			};
 
-			NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "GameObject::setDatablock entity");
+			NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "GameObject::setDatablock entity");
 		}
 	}
 
@@ -1737,7 +1738,7 @@ namespace NOWA
 	{
 		this->dynamic->setValue(dynamic);
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setDynamic", _1(dynamic),
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setDynamic", _1(dynamic),
 		{
 			if (nullptr != this->sceneNode)
 			{
@@ -1860,7 +1861,7 @@ namespace NOWA
 		{
 			this->visible->setValue(visible);
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLoadedVisible2", _1(visible),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLoadedVisible2", _1(visible),
 			{
 				if (nullptr != this->movableObject)
 				{
@@ -2072,7 +2073,7 @@ namespace NOWA
 		if (nullptr != this->movableObject)
 		{
 			const Ogre::uint8 queueIndex = static_cast<Ogre::uint8>(renderQueueIndex);
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setRenderQueueIndex", _1(queueIndex),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setRenderQueueIndex", _1(queueIndex),
 			{
 				this->movableObject->setRenderQueueGroup(queueIndex);
 			});
@@ -2144,14 +2145,14 @@ namespace NOWA
 
 		if (Ogre::Item* item = this->getMovableObject<Ogre::Item>())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLodDistance1", _2(item, lodDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLodDistance1", _2(item, lodDistance),
 			{
 				this->applyLodDistanceToItem(item, lodDistance);
 			});
 		}
 		else if (Ogre::v1::Entity* entity = this->getMovableObject<Ogre::v1::Entity>())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setLodDistance2", _2(entity, lodDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setLodDistance2", _2(entity, lodDistance),
 			{
 				this->applyLodDistanceToEntity(entity, lodDistance);
 			});
@@ -2435,7 +2436,7 @@ namespace NOWA
 
 	void GameObject::showBoundingBox(bool show)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::showBoundingBox", _1(show),
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::showBoundingBox", _1(show),
 		{
 			if (this->boundingBoxDraw)
 			{
@@ -2516,7 +2517,7 @@ namespace NOWA
 
 	void GameObject::setDataBlockPbsReflectionTextureName(const Ogre::String& textureName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setDataBlockPbsReflectionTextureName", _1(textureName),
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setDataBlockPbsReflectionTextureName", _1(textureName),
 		{
 			unsigned int i = 0;
 			boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;

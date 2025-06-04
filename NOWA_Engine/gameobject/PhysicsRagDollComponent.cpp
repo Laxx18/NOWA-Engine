@@ -248,16 +248,24 @@ namespace NOWA
 		// Get the mesh.
 		this->mesh = entity->getMesh();
 
-		Ogre::v1::AnimationState* animState = nullptr;
-		if (defaultPose.length() > 0)
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::createRagDoll", _2(entity, defaultPose),
 		{
-			// Get the default pose animation state (ideally the T-Pose)
-			animState = entity->getAnimationState(defaultPose);
-			animState->setEnabled(true);
-			animState->setLoop(false);
-			animState->setTimePosition(100.0f);
-			entity->_updateAnimation(); //critical! read this functions comments!
-		}
+			Ogre::v1::AnimationState* animState = nullptr;
+			if (defaultPose.length() > 0)
+			{
+				// Get the default pose animation state (ideally the T-Pose)
+				animState = entity->getAnimationState(defaultPose);
+				animState->setEnabled(true);
+				animState->setLoop(false);
+				animState->setTimePosition(100.0f);
+				entity->_updateAnimation(); //critical! read this functions comments!
+			}
+
+			if (nullptr != animState)
+			{
+				animState->setEnabled(false);
+			}
+		});
 
 		// First delete all prior created ragbones
 		while (this->ragDataList.size() > 0)
@@ -277,11 +285,6 @@ namespace NOWA
 		if (false == success)
 		{
 			return false;
-		}
-
-		if (nullptr != animState)
-		{
-			animState->setEnabled(false);
 		}
 
 		this->physicsBody->setUserData(OgreNewt::Any(dynamic_cast<PhysicsComponent*>(this)));
@@ -404,9 +407,13 @@ namespace NOWA
 			for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
 			{
 				if (true == activated)
+				{
 					(*it).ragBone->getBody()->unFreeze();
+				}
 				else
+				{
 					(*it).ragBone->getBody()->freeze();
+				}
 			}
 		}
 	}
@@ -507,7 +514,7 @@ namespace NOWA
 		// On disconnect, the debug data must be hidden in any case, because almost everything will be destroyed
 		if (false == this->ragDataList.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::internalShowDebugData", _1(activate),
+			ENQUEUE_RENDER_COMMAND_MULTI("PhysicsRagDollComponent::internalShowDebugData", _1(activate),
 			{
 				for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
 				{
@@ -538,12 +545,16 @@ namespace NOWA
 		{
 			if (nullptr != this->physicsBody)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::showDebugData", _1(activate),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsRagDollComponent::showDebugData", _1(activate),
 				{
 					if (true == activate)
+					{
 						this->physicsBody->showDebugCollision(false, this->bShowDebugData && activate);
+					}
 					else
+					{
 						this->physicsBody->showDebugCollision(false, false);
+					}
 				});
 			}
 		}
@@ -735,7 +746,8 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->setAttributePosition(Ogre::Vector3(x, y, z));
+				// this->gameObjectPtr->setAttributePosition(Ogre::Vector3(x, y, z));
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), Ogre::Vector3(x, y, z));
 			}
 		}
 		else
@@ -750,7 +762,8 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->setAttributePosition(position);
+				// this->gameObjectPtr->setAttributePosition(position);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), position);
 			}
 		}
 		else
@@ -766,7 +779,8 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->getSceneNode()->translate(relativePosition);
+				// this->gameObjectPtr->getSceneNode()->translate(relativePosition);
+				NOWA::GraphicsModule::getInstance()->updateNodePosition(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getPosition() + relativePosition);
 			}
 		}
 		else
@@ -778,9 +792,13 @@ namespace NOWA
 	Ogre::Vector3 PhysicsRagDollComponent::getPosition(void) const
 	{
 		if (false == this->isSimulating || nullptr == this->physicsBody)
+		{
 			return this->gameObjectPtr->getPosition();
+		}
 		else
+		{
 			return this->physicsBody->getPosition();
+		}
 	}
 
 	void PhysicsRagDollComponent::setOrientation(const Ogre::Quaternion& orientation)
@@ -789,7 +807,8 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+				// this->gameObjectPtr->getSceneNode()->setOrientation(orientation);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), orientation);
 			}
 			else
 			{
@@ -818,7 +837,8 @@ namespace NOWA
 		{
 			if (false == this->isSimulating)
 			{
-				this->gameObjectPtr->getSceneNode()->rotate(relativeRotation);
+				// this->gameObjectPtr->getSceneNode()->rotate(relativeRotation);
+				NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->gameObjectPtr->getSceneNode(), this->gameObjectPtr->getSceneNode()->getOrientation() * relativeRotation);
 			}
 		}
 		else
@@ -830,9 +850,13 @@ namespace NOWA
 	Ogre::Quaternion PhysicsRagDollComponent::getOrientation(void) const
 	{
 		if (false == this->isSimulating || nullptr == this->physicsBody)
+		{
 			return this->gameObjectPtr->getOrientation();
+		}
 		else
+		{
 			return this->physicsBody->getOrientation();
+		}
 	}
 	
 	void PhysicsRagDollComponent::setBoneRotation(const Ogre::String& boneName, const Ogre::Vector3& axis, Ogre::Real degree)
@@ -1207,8 +1231,9 @@ namespace NOWA
 			// }
 
 			if (nullptr != childRagBone)
+			{
 				this->joinBones(jointType, childRagBone, parentRagBone, pin, minTwistAngle, maxTwistAngle, maxConeAngle, minTwistAngle2, maxTwistAngle2, friction, useSpring, offset);
-
+			}
 			jointXmlElement = jointXmlElement->NextSiblingElement("Joint");
 		}
 
@@ -1505,7 +1530,9 @@ namespace NOWA
 		if (state == "Inactive")
 		{
 			if (this->rdState == PhysicsRagDollComponent::INACTIVE)
+			{
 				return;
+			}
 
 			this->rdState = PhysicsRagDollComponent::INACTIVE;
 
@@ -1515,7 +1542,9 @@ namespace NOWA
 		else if (state == "Animation")
 		{
 			if (this->rdState == PhysicsRagDollComponent::ANIMATION)
+			{
 				return;
+			}
 			this->rdState = PhysicsRagDollComponent::ANIMATION;
 			boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
 			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataGameObjectIsInRagDollingState);
@@ -1523,7 +1552,9 @@ namespace NOWA
 		else if (state == "Ragdolling")
 		{
 			if (this->rdState == PhysicsRagDollComponent::RAGDOLLING)
+			{
 				return;
+			}
 			this->rdState = PhysicsRagDollComponent::RAGDOLLING;
 			this->animationEnabled = false;
 			boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), true));
@@ -1533,7 +1564,9 @@ namespace NOWA
 		{
 			// Check if rotation bone name has changed, if this is the case partial ragdoll must be re-created
 			if (this->rdState == PhysicsRagDollComponent::PARTIAL_RAGDOLLING && this->oldPartialRagdollBoneName == this->partialRagdollBoneName)
+			{
 				return;
+			}
 			this->rdState = PhysicsRagDollComponent::PARTIAL_RAGDOLLING;
 			
 			boost::shared_ptr<EventDataGameObjectIsInRagDollingState> eventDataGameObjectIsInRagDollingState(new EventDataGameObjectIsInRagDollingState(this->gameObjectPtr->getId(), false));
@@ -1601,7 +1634,6 @@ namespace NOWA
 			// so maybe it must be translated. But this translation offset may mess up with the bones, e.g. when the root bone is translated by y=-0.986, the
 			ragBone->getBody()->setPositionOrientation(
 				node->_getDerivedPosition() + this->ragdollPositionOffset + (node->_getDerivedOrientation() * (ragBone->getWorldPosition() + this->ragdollPositionOffset)) * scale,
-
 				node->_getDerivedOrientation() * ragBone->getWorldOrientation() * ragBone->getInitialBoneOrientation().Inverse() * orientation);
 		}
 
@@ -1624,7 +1656,9 @@ namespace NOWA
 	void PhysicsRagDollComponent::applyRagdollStateToModel(void)
 	{
 		if (true == this->ragDataList.empty())
+		{
 			return;
+		}
 
 		size_t i = 0;
 
@@ -1636,8 +1670,11 @@ namespace NOWA
 		for (; i < this->ragDataList.size(); i++)
 		{
 			auto& ragBone = this->ragDataList[i].ragBone;
-			// TODO: Transform for ogre bone
-			ragBone->getOgreBone()->setOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation().Inverse() *
+			
+			// ragBone->getOgreBone()->setOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientation().Inverse() *
+			// 	ragBone->getBody()->getOrientation() /** ragBone->getInitialBoneOrientation().Inverse() * ragBone->getInitialBoneOrientation()*/);
+
+			NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(ragBone->getOgreBone(), this->gameObjectPtr->getSceneNode()->_getDerivedOrientation().Inverse() *
 				ragBone->getBody()->getOrientation() /** ragBone->getInitialBoneOrientation().Inverse() * ragBone->getInitialBoneOrientation()*/);
 		}
 
@@ -1706,9 +1743,10 @@ namespace NOWA
 						// Set inherit orientation to false
 						bone->setManuallyControlled(true);
 						bone->setInheritOrientation(false);
-						// TODO: Transform for ogre bone
 						// Set the absolute world orientation
-						bone->setOrientation(absoluteWorldOrientation);
+						// bone->setOrientation(absoluteWorldOrientation);
+
+						NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(bone, absoluteWorldOrientation);
 
 						this->ragDataList[j].ragBone->attachToNode();
 						break;
@@ -1728,8 +1766,8 @@ namespace NOWA
 				bone->setManuallyControlled(true);
 				bone->setInheritOrientation(false);
 				// Set the absolute world orientation
-				// TODO: Transform for ogre bone
-				bone->setOrientation(absoluteWorldOrientation);
+				// bone->setOrientation(absoluteWorldOrientation);
+				NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(bone, absoluteWorldOrientation);
 				// Attach all rag bones to node
 				if (i < this->ragDataList.size())
 				{
@@ -1806,20 +1844,23 @@ namespace NOWA
 			}
 		} while (nullptr != tagPointCompPtr);
 
-		this->skeleton->unload();
-		// this->skeleton->reload();
-		this->skeleton->load();
-
-		Ogre::v1::AnimationStateSet* set = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates();
-		Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
-
-		while (it.hasMoreElements())
+		ENQUEUE_RENDER_COMMAND("PhysicsRagDollComponent::endRagdolling",
 		{
-			Ogre::v1::AnimationState* anim = it.getNext();
-			anim->setEnabled(false);
-			anim->setWeight(0);
-			anim->setTimePosition(0);
-		}
+			this->skeleton->unload();
+			// this->skeleton->reload();
+			this->skeleton->load();
+
+			Ogre::v1::AnimationStateSet * set = this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates();
+			Ogre::v1::AnimationStateIterator it = set->getAnimationStateIterator();
+
+			while (it.hasMoreElements())
+			{
+				Ogre::v1::AnimationState* anim = it.getNext();
+				anim->setEnabled(false);
+				anim->setWeight(0);
+				anim->setTimePosition(0);
+			}
+		});
 	}
 
 	void PhysicsRagDollComponent::deleteJointDelegate(EventDataPtr eventData)
@@ -1961,52 +2002,67 @@ namespace NOWA
 		{
 			case PhysicsRagDollComponent::RagBone::BS_BOX:
 			{
-				OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
-				col->calculateInertialMatrix(inertia, massOrigin);
-				
-				collisionPtr = OgreNewt::CollisionPtr(col);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::BoxHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+				{
+					OgreNewt::CollisionPrimitives::Box* col = new OgreNewt::CollisionPrimitives::Box(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
+					col->calculateInertialMatrix(inertia, massOrigin);
+
+					collisionPtr = OgreNewt::CollisionPtr(col);
+				});
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CAPSULE:
 			{
-				OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-					collisionOrientation, collisionPosition);
-				
-				col->calculateInertialMatrix(inertia, massOrigin);
-				collisionPtr = OgreNewt::CollisionPtr(col);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::CapsuleHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+				{
+					OgreNewt::CollisionPrimitives::Capsule* col = new OgreNewt::CollisionPrimitives::Capsule(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+						collisionOrientation, collisionPosition);
+
+					col->calculateInertialMatrix(inertia, massOrigin);
+					collisionPtr = OgreNewt::CollisionPtr(col);
+				});
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CONE:
 			{
-				OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-					collisionOrientation, collisionPosition);
-				
-				col->calculateInertialMatrix(inertia, massOrigin);
-				collisionPtr = OgreNewt::CollisionPtr(col);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::ConeHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+				{
+					OgreNewt::CollisionPrimitives::Cone* col = new OgreNewt::CollisionPrimitives::Cone(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+						collisionOrientation, collisionPosition);
+
+					col->calculateInertialMatrix(inertia, massOrigin);
+					collisionPtr = OgreNewt::CollisionPtr(col);
+				});
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CYLINDER:
 			{
-				OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
-					collisionOrientation, collisionPosition);
-				
-				col->calculateInertialMatrix(inertia, massOrigin);
-				collisionPtr = OgreNewt::CollisionPtr(col);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::CylinderHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+				{
+					OgreNewt::CollisionPrimitives::Cylinder* col = new OgreNewt::CollisionPrimitives::Cylinder(this->physicsRagDollComponent->ogreNewt, size.y, size.x, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(),
+						collisionOrientation, collisionPosition);
+
+					col->calculateInertialMatrix(inertia, massOrigin);
+					collisionPtr = OgreNewt::CollisionPtr(col);
+				});
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_ELLIPSOID:
 			{
-				OgreNewt::CollisionPrimitives::Ellipsoid* col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
-				col->calculateInertialMatrix(inertia, massOrigin);
-				
-				collisionPtr = OgreNewt::CollisionPtr(col);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::EllipsoidHull", _6(size, collisionPosition, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+				{
+					OgreNewt::CollisionPrimitives::Ellipsoid * col = new OgreNewt::CollisionPrimitives::Ellipsoid(this->physicsRagDollComponent->ogreNewt, size, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), collisionOrientation, collisionPosition);
+					col->calculateInertialMatrix(inertia, massOrigin);
+
+					collisionPtr = OgreNewt::CollisionPtr(col);
+				});
 				break;
 			}
 			case PhysicsRagDollComponent::RagBone::BS_CONVEXHULL:
 			{
 				if (nullptr != this->ogreBone)
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsComponent::getWeightedBoneConvexHull", _6(mesh, size, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::RagBone::getWeightedBoneConvexHull", _6(mesh, size, collisionOrientation, &inertia, &massOrigin, &collisionPtr),
 					{
 						collisionPtr = this->physicsRagDollComponent->getWeightedBoneConvexHull(this->ogreBone, mesh, size.x, inertia, massOrigin, this->physicsRagDollComponent->gameObjectPtr->getCategoryId(), Ogre::Vector3::ZERO, Ogre::Quaternion::IDENTITY,
 							this->physicsRagDollComponent->initialScale);
@@ -2295,6 +2351,8 @@ namespace NOWA
 		if (nullptr != this->ogreBone)
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[PhysicsRagDollComponent::RagBone] Deleting ragbone: " + this->ogreBone->getName());
+
+			NOWA::GraphicsModule::getInstance()->removeTrackedOldBone(this->ogreBone);
 		}
 		if (nullptr != this->body)
 		{
@@ -2323,11 +2381,11 @@ namespace NOWA
 		}
 		if (nullptr != this->sceneNode)
 		{
-			
+			NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->sceneNode);
 			if (nullptr != this->parentRagBone)
 			{
 				auto sceneNode = this->physicsRagDollComponent->gameObjectPtr->getSceneNode();
-				auto thisSceneNode = this->sceneNode);
+				auto thisSceneNode = this->sceneNode;
 				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("PhysicsRagDollComponent::RagBone::deleteRagBone", _2(sceneNode, thisSceneNode),
 				{
 					sceneNode->removeAndDestroyChild(thisSceneNode);
@@ -2468,9 +2526,9 @@ namespace NOWA
 		if (nullptr != this->body)
 			this->body->setPositionOrientation(center + this->initialBonePosition, this->initialBoneOrientation);
 
-		// TODO: Transform for ogre bone
-		this->ogreBone->setPosition(this->initialBonePosition);
-		this->ogreBone->setOrientation(this->initialBoneOrientation);
+		// this->ogreBone->setPosition(this->initialBonePosition);
+		// this->ogreBone->setOrientation(this->initialBoneOrientation);
+		NOWA::GraphicsModule::getInstance()->updateOldBoneTransform(this->ogreBone, this->initialBonePosition, this->initialBoneOrientation);
 	}
 
 	OgreNewt::Body* PhysicsRagDollComponent::RagBone::getBody(void)

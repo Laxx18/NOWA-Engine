@@ -331,7 +331,7 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::connect(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::connect",
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
 		{
 			if (nullptr != this->workspace)
 			{
@@ -419,7 +419,7 @@ namespace NOWA
 			return true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createWorkspace",
+		ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::createWorkspace",
 		{
 			this->internalInitWorkspaceData();
 
@@ -1497,7 +1497,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::changeBackgroundColor", _1(backgroundColor),
+		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::changeBackgroundColor", _1(backgroundColor),
 		{
 			Ogre::CompositorManager2::CompositorNodeDefMap nodeDefinitions = this->compositorManager->getNodeDefinitions();
 			Ogre::CompositorNodeDef * nodeDef;
@@ -1572,7 +1572,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::initializeHdr", _1(fsaa),
+		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::initializeHdr", _1(fsaa),
 		{
 			Ogre::String preprocessorDefines = "MSAA_INITIALIZED=1,";
 
@@ -1881,7 +1881,7 @@ namespace NOWA
 		else if (caps->isShaderProfileSupported("glsl330"))
 			preprocessorDefines += "SMAA_GLSL_3=1,";
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::initializeSmaa", _2(materialNames, preprocessorDefines),
+		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::initializeSmaa", _2(materialNames, preprocessorDefines),
 		{
 			for (size_t i = 0; i < sizeof(materialNames) / sizeof(materialNames[0]); ++i)
 			{
@@ -1915,7 +1915,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::resetReflectionForAllEntities(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::resetReflectionForAllEntities",
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::resetReflectionForAllEntities",
 		{
 			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -1980,7 +1980,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName(GameObject* gameObject, const Ogre::String& textureName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName", _2(gameObject, textureName),
+		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setDataBlockPbsReflectionTextureName", _2(gameObject, textureName),
 		{
 			unsigned int i = 0;
 			boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
@@ -2001,7 +2001,7 @@ namespace NOWA
 	{
 		if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setPlanarMaxReflections", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
+			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setPlanarMaxReflections", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
 			{
 				bool foundGameObjectId = false;
 				unsigned int planarReflectionActorIndex = 1;
@@ -2027,7 +2027,7 @@ namespace NOWA
 	{
 		if (nullptr != this->planarReflections && false == this->planarReflectionReflectiveWorkspaceName.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::addPlanarReflectionsActor", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
+			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::addPlanarReflectionsActor", _9(gameObjectId, useAccurateLighting, width, height, withMipmaps, useMipmapMethodCompute, position, orientation, mirrorSize),
 			{
 				bool foundGameObjectId = false;
 				unsigned int planarReflectionActorIndex = 1;
@@ -2085,7 +2085,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::removePlanarReflectionsActor(unsigned long gameObjectId)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::removePlanarReflectionsActor", _1(gameObjectId),
+		ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::removePlanarReflectionsActor", _1(gameObjectId),
 		{
 			bool couldRemove = false;
 			for (size_t i = 0; i < this->planarReflectionActors.size(); i++)
@@ -2169,7 +2169,7 @@ namespace NOWA
 
 		if (false == useHdr && nullptr != this->gameObjectPtr)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
+			ENQUEUE_RENDER_COMMAND_MULTI("WorkspaceBaseComponent::setUseHdr", _1(useHdr),
 			{
 				auto & hdrEffectCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<HdrEffectComponent>());
 				if (nullptr != hdrEffectCompPtr)
@@ -2440,7 +2440,7 @@ namespace NOWA
 				return;
 			}
 
-			ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::reconnectAllNodes",
+			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::reconnectAllNodes",
 			{
 				//Now that we're done, tell the instance to update itself.
 				// this->workspace->reconnectAllNodes();
@@ -2763,7 +2763,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::updateShadowGlobalBias(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::updateShadowGlobalBias",
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::updateShadowGlobalBias",
 		{
 			Ogre::CompositorShadowNodeDef * node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
 			size_t numShadowDefinitions = node->getNumShadowTextureDefinitions();

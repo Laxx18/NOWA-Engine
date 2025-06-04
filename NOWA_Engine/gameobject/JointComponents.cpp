@@ -96,7 +96,7 @@ namespace NOWA
 	{
 		if (nullptr != this->debugGeometryNode)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
+			ENQUEUE_RENDER_COMMAND_WAIT("JointComponent::~JointComponent debugGeometryNode1",
 			{
 				this->debugGeometryNode->detachAllObjects();
 				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode);
@@ -109,7 +109,7 @@ namespace NOWA
 
 		if (nullptr != this->debugGeometryNode2)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MainMenuBar::setVisible",
+			ENQUEUE_RENDER_COMMAND_WAIT("JointComponent::~JointComponent debugGeometryNode2",
 			{
 				this->debugGeometryNode2->detachAllObjects();
 				NOWA::GraphicsModule::getInstance()->removeTrackedNode(this->debugGeometryNode2);

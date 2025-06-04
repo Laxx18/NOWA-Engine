@@ -474,7 +474,7 @@ namespace NOWA
 		// Only recreate if flag is set (scene modified), because its an heavy process
 		if (true == this->mustRegenerate)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("OgreRecastModule::buildNavigationMesh",
+			ENQUEUE_RENDER_COMMAND("OgreRecastModule::buildNavigationMesh",
 			{
 				if (nullptr == this->detourTileCache)
 				{
@@ -624,7 +624,7 @@ namespace NOWA
 	{
 		if (nullptr != this->ogreRecast)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("OgreRecastModule::removeDrawnPath",
+			ENQUEUE_RENDER_COMMAND("OgreRecastModule::removeDrawnPath",
 			{
 				this->ogreRecast->RemoveRecastPathLine();
 			});

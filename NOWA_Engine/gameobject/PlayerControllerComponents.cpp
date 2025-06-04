@@ -3073,7 +3073,11 @@ namespace NOWA
 						LuaScript* luaScript = this->playerController->getOwner()->getLuaScript();
 						if (nullptr != luaScript)
 						{
-							luaScript->callTableFunction("onNavMeshClicked", posOnNavMesh);
+							NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, posOnNavMesh]()
+							{
+								luaScript->callTableFunction("onNavMeshClicked", posOnNavMesh);
+							};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 							
 						this->hasGoal = true;

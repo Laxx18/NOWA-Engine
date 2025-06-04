@@ -75,7 +75,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightAreaComponent] Destructor light area component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightAreaComponent::~LightAreaComponent",
+			ENQUEUE_RENDER_COMMAND("LightAreaComponent::~LightAreaComponent",
 			{
 				// First remove data block from entity, after that it can be destroyed
 				Ogre::v1::Entity * entity = this->gameObjectPtr->getMovableObject <Ogre::v1::Entity>();
@@ -244,7 +244,7 @@ namespace NOWA
 
 	void LightAreaComponent::createLight(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("LightAreaComponent::createLight",
+		ENQUEUE_RENDER_COMMAND("LightAreaComponent::createLight",
 		{
 			Ogre::Hlms* hlmsUnlit = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
 			Ogre::Hlms* hlmsPbs = Ogre::Root::getSingletonPtr()->getHlmsManager()->getHlms(Ogre::HLMS_PBS);
@@ -725,7 +725,8 @@ namespace NOWA
 		this->rectSize->setValue(tempRectSize);
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightAreaComponent::setRectSize", _2(tempRectSize, rectSize), {
+			ENQUEUE_RENDER_COMMAND_MULTI("LightAreaComponent::setRectSize", _2(tempRectSize, rectSize),
+			{
 				this->light->setRectSize(tempRectSize);
 				this->gameObjectPtr->getSceneNode()->setScale(rectSize.x, rectSize.y, 1.0f);
 			});

@@ -226,7 +226,7 @@ namespace NOWA
 		static const Ogre::String AttrWidth(void) { return "Width "; }
 		static const Ogre::String AttrHeight(void) { return "Height "; }
 	protected:
-		virtual void drawRectangle(unsigned int index);
+		virtual void drawRectangle(Ogre::ManualObject* manualObject, unsigned int index);
 
 		void destroyRectangles(void);
 	protected:

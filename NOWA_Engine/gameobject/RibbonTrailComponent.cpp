@@ -29,7 +29,7 @@ namespace
 		virtual void onInit(void) override
 		{
 			this->succeed();
-			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponent SetDataBlockProcess::onInit",
+			ENQUEUE_RENDER_COMMAND("RibbonTrailComponent SetDataBlockProcess::onInit",
 			{
 				// Attention: Is this necessary, or here id of external node to be tracked?
 				if (nullptr != this->trackNode)
@@ -296,7 +296,7 @@ namespace NOWA
 
 		if (nullptr != this->ribbonTrail)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponen::onRemoveComponent",
+			ENQUEUE_RENDER_COMMAND("RibbonTrailComponen::onRemoveComponent",
 			{
 				this->gameObjectPtr->getSceneNode()->detachObject(this->ribbonTrail);
 				this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
@@ -331,7 +331,7 @@ namespace NOWA
 	{
 		if (nullptr == this->ribbonTrail)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("RibbonTrailComponen::createRibbonTrail",
+			ENQUEUE_RENDER_COMMAND("RibbonTrailComponen::createRibbonTrail",
 			{
 				// Creates a ribbon trail that our lights will leave behind
 				this->ribbonTrail = new Ogre::v1::RibbonTrail(Ogre::Id::generateNewId<Ogre::MovableObject>(), &this->gameObjectPtr->getSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC),
@@ -571,7 +571,7 @@ namespace NOWA
 		this->maxChainElements->setValue(maxChainElements);
 		if (nullptr != this->ribbonTrail)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("RibbonTrailComponen::setMaxChainElements", _1(maxChainElements),
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setMaxChainElements", _1(maxChainElements),
 			{
 				this->ribbonTrail->setMaxChainElements(maxChainElements);
 			});
@@ -590,7 +590,7 @@ namespace NOWA
 
 		if (nullptr != this->ribbonTrail)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("RibbonTrailComponen::setNumberOfChains", _1(numberOfChains),
+			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::setNumberOfChains", _1(numberOfChains),
 			{
 				// TODO: Nothing works here for clear, so delete complete chain and re-create from scratch if something changes
 				this->ribbonTrail->removeNode(this->gameObjectPtr->getSceneNode());

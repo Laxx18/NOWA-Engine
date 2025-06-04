@@ -337,7 +337,11 @@ namespace NOWA
 
 		if (nullptr != this->gameObjectPtr->getLuaScript())
 		{
-			this->gameObjectPtr->getLuaScript()->callTableFunction(this->onKinematicContactFunctionName->getString(), otherPhysicsComponent->getOwner());
+			NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent]()
+			{
+				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onKinematicContactFunctionName->getString(), otherPhysicsComponent->getOwner());
+			};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 

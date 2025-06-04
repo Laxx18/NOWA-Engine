@@ -3524,7 +3524,7 @@ namespace NOWA
 			// Is the default
 			if (itemHeight != 21)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::setItemHeight", _1(itemHeight),
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::setItemHeight", _1(itemHeight),
 				{
 						MyGUI::ListBox * listBox = widget->castType<MyGUI::ListBox>();
 						listBox->setItemHeight(itemHeight);
@@ -3731,7 +3731,7 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::addItem", _1(itemText),
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::addItem", _1(itemText),
 			{
 				widget->castType<MyGUI::ListBox>()->addItem(itemText);
 			});
@@ -3758,7 +3758,7 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIListBoxComponent::insertItem", _2(index, itemText),
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIListBoxComponent::insertItem", _2(index, itemText),
 			{
 				this->widget->castType<MyGUI::ListBox>()->insertItemAt(index, itemText);
 			});
@@ -4188,7 +4188,7 @@ namespace NOWA
 			// Is the default
 			if (itemHeight != 21)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComboBoxComponent::postInit", _1(itemHeight),
+				ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::postInit", _1(itemHeight),
 				{
 					MyGUI::ComboBox * comboBox = widget->castType<MyGUI::ComboBox>();
 					comboBox->setItemHeight(itemHeight);
@@ -4467,7 +4467,7 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIComboBoxComponent::insertItem", _2(index, itemText),
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIComboBoxComponent::insertItem", _2(index, itemText),
 			{
 				widget->castType<MyGUI::ComboBox>()->insertItemAt(index, itemText);
 			});
@@ -4871,7 +4871,11 @@ namespace NOWA
 			// Call also function in lua script, if it does exist in the lua script component
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->resultEventName->getString().empty())
 			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->resultEventName->getString(), this, result);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, result]()
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->resultEventName->getString(), this, result);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 		// Note: Internally in MyGUI MessageBox, after event handled, the message box will be destroyed, hence its sufficient, to just reset the pointer.

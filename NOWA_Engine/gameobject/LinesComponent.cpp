@@ -28,7 +28,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LinesComponent] Destructor lines component for game object: " + this->gameObjectPtr->getName());
 		
-		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::~LinesComponent",
+		ENQUEUE_RENDER_COMMAND("LinesComponent::~LinesComponent",
 		{
 			this->destroyLines();
 			this->dummyEntity = nullptr;

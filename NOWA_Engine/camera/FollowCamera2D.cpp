@@ -38,7 +38,7 @@ namespace NOWA
 		this->sceneNode = nullptr;
 		if (this->raySceneQuery)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("FollowCamera2D::~FollowCamera2D",
+			ENQUEUE_RENDER_COMMAND("FollowCamera2D::~FollowCamera2D",
 			{
 				this->sceneManager->destroyQuery(this->raySceneQuery);
 			});
@@ -100,7 +100,7 @@ namespace NOWA
 
 	void FollowCamera2D::alwaysShowGameObject(bool show, const Ogre::String& category, Ogre::SceneManager* sceneManager)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::alwaysShowGameObject", _3(show, category, sceneManager),
+		ENQUEUE_RENDER_COMMAND_MULTI("FollowCamera2D::alwaysShowGameObject", _3(show, category, sceneManager),
 		{
 			this->showGameObject = show;
 			this->category = category;
@@ -478,34 +478,42 @@ namespace NOWA
 		Ogre::Real borderXLeft = cameraPositionX - mostRightUpX;
 		if (borderXRight > this->maximumBounds.x/* + this->borderOffset.x*/)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max x bounds", _1(cameraPosition),
+			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max x bounds", _1(cameraPosition),
 			{
 				this->camera->setPosition(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z);
-			});
+			});*/
+
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(this->maximumBounds.x - this->mostRightUp.x, cameraPosition.y, cameraPosition.z));
 		}
 		else if (borderXLeft < this->minimumBounds.x/* - this->borderOffset.x*/)
 		{
 			Ogre::Vector3 newPos = Ogre::Vector3(this->minimumBounds.x + this->mostRightUp.x/* + this->borderOffset.x*/, cameraPosition.y, cameraPosition.z);
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min x bounds", _1(newPos),
+			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min x bounds", _1(newPos),
 			{
 				this->camera->setPosition(newPos);
-			});
+			});*/
+
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, newPos);
 		}
 
 		// y bounds
 		if (this->camera->getPosition().y + this->mostRightUp.y > this->maximumBounds.y/* + this->borderOffset.y*/)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max y bounds", _1(cameraPosition),
+			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera max y bounds", _1(cameraPosition),
 			{
 				this->camera->setPosition(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z);
-			});
+			});*/
+
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->maximumBounds.y - this->mostRightUp.y, cameraPosition.z));
 		}
 		else if (this->camera->getPosition().y + this->mostRightUp.y < this->minimumBounds.y/* - this->borderOffset.y*/)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min y bounds", _1(cameraPosition),
+			/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("FollowCamera2D::moveCamera min y bounds", _1(cameraPosition),
 			{
 				this->camera->setPosition(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z);
-			});
+			});*/
+
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(cameraPosition.x, this->minimumBounds.y + this->mostRightUp.y, cameraPosition.z));
 		}
 
 		//////////////////////////////////////////////////////////////////////////////////////////////

@@ -281,7 +281,11 @@ namespace NOWA
 						// Call lua function name in script, if it does exist
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->timePointStartEventNames[this->timePointIndex]->getString().empty())
 						{
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointStartEventNames[this->timePointIndex]->getString(), this->timeDt);
+							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointStartEventNames[this->timePointIndex]->getString(), this->timeDt);
+							};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 
 						this->alreadyActivatedList[this->totalIndex] = true;
@@ -321,7 +325,11 @@ namespace NOWA
 						// Call lua function name in script, if it does exist
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->timePointEndEventNames[this->timePointIndex]->getString().empty())
 						{
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointEndEventNames[this->timePointIndex]->getString(), this->timeDt);
+							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								this->gameObjectPtr->getLuaScript()->callTableFunction(this->timePointEndEventNames[this->timePointIndex]->getString(), this->timeDt);
+							};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 
 						this->alreadyActivatedList[this->totalIndex] = true;

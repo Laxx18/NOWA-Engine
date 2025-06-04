@@ -71,7 +71,7 @@ namespace NOWA
 
 	void DotSceneExportModule::exportScene(const Ogre::String& projectName, const Ogre::String& sceneName, const Ogre::String& sceneResourceGroupName, bool crypted)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::exportScene", _4(projectName, sceneName, sceneResourceGroupName, crypted),
+		ENQUEUE_RENDER_COMMAND_MULTI("DotSceneExportModule::exportScene", _4(projectName, sceneName, sceneResourceGroupName, crypted),
 		{
 			Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 			// Announce the current scene path to core
@@ -190,7 +190,7 @@ namespace NOWA
 
 	void DotSceneExportModule::saveSceneSnapshot(const Ogre::String& filePathName, bool crypted)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::saveSceneSnapshot", _2(filePathName, crypted),
+		ENQUEUE_RENDER_COMMAND_MULTI("DotSceneExportModule::saveSceneSnapshot", _2(filePathName, crypted),
 		{
 			Ogre::String tempFilePathName = Core::getSingletonPtr()->removePartsFromString(filePathName, ".sav").second;
 			// Maybe create a folder
@@ -295,7 +295,7 @@ namespace NOWA
 
 	void DotSceneExportModule::copyScene(const Ogre::String& oldSeneName, const Ogre::String& newSceneFilePathName, const Ogre::String& sceneResourceGroupName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneExportModule::copyScene", _3(oldSeneName, newSceneFilePathName, sceneResourceGroupName),
+		ENQUEUE_RENDER_COMMAND_MULTI("DotSceneExportModule::copyScene", _3(oldSeneName, newSceneFilePathName, sceneResourceGroupName),
 		{
 			Ogre::String projectPath = Core::getSingletonPtr()->getSectionPath(sceneResourceGroupName)[0];
 

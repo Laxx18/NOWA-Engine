@@ -53,21 +53,16 @@ namespace NOWA
 				});
 			}*/
 
-			bool success = false;
+			// Run parsing scene on render thread
+			bool success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, this->showProgress);
 
-			// ⬇Run parsing scene on render thread
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::parseScene", _2(core, &success),
+			/*if (this->showProgress && engineResourceListener)
 			{
-				success = this->dotSceneImportModule->parseScene(core->getProjectName(), this->nextSceneName, "Projects", nullptr, nullptr, this->showProgress);
-
-				/*if (this->showProgress && engineResourceListener)
-				{
-					continueData = engineResourceListener->hideLoadingBar();
-					core->resetEngineResourceListener();
-					delete engineResourceListener;
-					engineResourceListener = nullptr;
-				}*/
-			});
+				continueData = engineResourceListener->hideLoadingBar();
+				core->resetEngineResourceListener();
+				delete engineResourceListener;
+				engineResourceListener = nullptr;
+			}*/
 
 			if (false == success)
 			{
@@ -169,6 +164,7 @@ namespace NOWA
 				}
 
 				bool success = this->dotSceneImportModule->parseSceneSnapshot(snapshotProjectAndSceneName.first, snapshotProjectAndSceneName.second, "Projects", openFilePathName, this->crypted, this->showProgress);
+
 				if (false == success)
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->saveName + "' correctly!");
@@ -327,13 +323,10 @@ namespace NOWA
 
 	void GameProgressModule::resetContent(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("GameProgressModule::resetContent",
-		{
-			AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
-			AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
-			WorkspaceModule::getInstance()->destroyContent();
-			AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();
-		});
+		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
+		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
+		AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();
+		WorkspaceModule::getInstance()->destroyContent();
 	}
 	
 	void GameProgressModule::start(void)

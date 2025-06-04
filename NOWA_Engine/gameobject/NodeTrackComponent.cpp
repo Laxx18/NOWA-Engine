@@ -35,7 +35,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[NodeTrackComponent] Destructor node track component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->animation)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::~NodeTrackComponent",
+			ENQUEUE_RENDER_COMMAND("NodeTrackComponent::~NodeTrackComponent",
 			{
 				this->animation->destroyAllNodeTracks();
 				this->gameObjectPtr->getSceneManager()->destroyAnimation(this->animation->getName());
@@ -161,7 +161,7 @@ namespace NOWA
 			return true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::connect",
+		ENQUEUE_RENDER_COMMAND("NodeTrackComponent::connect",
 		{
 			if (nullptr != this->animation)
 			{
@@ -229,7 +229,7 @@ namespace NOWA
 	{
 		if (nullptr != this->animationTrack)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("NodeTrackComponent::disconnect",
+			ENQUEUE_RENDER_COMMAND("NodeTrackComponent::disconnect",
 			{
 				this->animationTrack->removeAllKeyFrames();
 				this->animationState->setEnabled(false);

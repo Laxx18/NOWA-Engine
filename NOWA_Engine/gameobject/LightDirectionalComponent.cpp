@@ -35,7 +35,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::~LightDirectionalComponent",
+			ENQUEUE_RENDER_COMMAND("LightDirectionalComponent::~LightDirectionalComponent",
 			{
 				this->gameObjectPtr->getSceneNode()->detachObject(this->light);
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
@@ -189,7 +189,7 @@ namespace NOWA
 	{
 		if (nullptr == this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::createLight",
+			ENQUEUE_RENDER_COMMAND("LightDirectionalComponent::createLight",
 			{
 				this->light = this->gameObjectPtr->getSceneManager()->createLight();
 

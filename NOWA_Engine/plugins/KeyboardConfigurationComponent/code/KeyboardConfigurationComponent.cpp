@@ -566,7 +566,11 @@ namespace NOWA
 
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->okClickEventName->getString().empty())
 			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->okClickEventName->getString(), this);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->okClickEventName->getString(), this);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 		else if ("abordButton" == sender->getName())
@@ -580,7 +584,11 @@ namespace NOWA
 
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->abordClickEventName->getString().empty())
 			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->abordClickEventName->getString(), this);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->abordClickEventName->getString(), this);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 	}

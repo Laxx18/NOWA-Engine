@@ -440,7 +440,7 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectFactory] Skipping creation for game object: " + sceneNode->getName() +
 					" because it will be replicated later.");
 				
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy", _3(sceneManager, movableObject, &sceneNode),
+				ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy", _3(sceneManager, movableObject, &sceneNode),
 				{
 					// also delete the already created entity, and node etc.
 					if (movableObject != nullptr && sceneManager->hasMovableObject(movableObject))
@@ -459,9 +459,8 @@ namespace NOWA
 					sceneNode->detachAllObjects();
 					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
+					sceneNode = nullptr;
 				});
-
-				sceneNode = nullptr;
 				return nullptr;
 			}
 			else
@@ -580,20 +579,19 @@ namespace NOWA
 					}
 					else
 					{
-						ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy2", _2(sceneManager, &sceneNode),
-							{
-								// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
-								// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
-								// will fall out of scope with nothing else pointing to it.
-								sceneNode->removeAndDestroyAllChildren();
-								NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
-								sceneManager->destroySceneNode(sceneNode);
-							});
-
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
-							+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
-						sceneNode = nullptr;
-						return nullptr;
+						ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy2", _4(sceneManager, &sceneNode, gameObjectPtr, componentName),
+						{
+							// If an error occurs, we kill the game obect and bail. We could keep going, but the game object is will only be 
+							// partially complete so it is not worth it. Note that the game object instance will be destroyed because it
+							// will fall out of scope with nothing else pointing to it.
+							sceneNode->removeAndDestroyAllChildren();
+							NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
+							sceneManager->destroySceneNode(sceneNode);
+							Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Could not create component: "
+								+ componentName + " for GameObject '" + gameObjectPtr->getName() + "'. Maybe the component has not been registered?");
+							sceneNode = nullptr;
+							return nullptr;
+						});
 					}
 				}
 				else
@@ -633,14 +631,15 @@ namespace NOWA
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectFactory::createOrSetGameObjectFromXML destroy3", _2(sceneManager, &sceneNode),
+			ENQUEUE_RENDER_COMMAND_MULTI("GameObjectFactory::createOrSetGameObjectFromXML destroy3", _2(sceneManager, &sceneNode),
 				{
 					// If game object could not be initialized, destroy ogre data
 					sceneNode->removeAndDestroyAllChildren();
 					NOWA::GraphicsModule::getInstance()->removeTrackedNode(sceneNode);
 					sceneManager->destroySceneNode(sceneNode);
+					sceneNode = nullptr;
 				});
-			sceneNode = nullptr;
+			
 			return nullptr;
 		}
 
@@ -689,18 +688,10 @@ namespace NOWA
 		}
 	}
 
+#if 0
 	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
 	{
 		Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
-
-#if 0
-		if (nullptr == existingGameObjectCompPtr || existingGameObjectCompPtr->customDataString == GameObjectComponent::AttrCustomDataNewCreation())
-		{
-			if (nullptr != existingGameObjectCompPtr && existingGameObjectCompPtr->customDataString == GameObjectComponent::AttrCustomDataNewCreation())
-			{
-				gameObjectPtr->deleteComponent(existingGameObjectCompPtr.get());
-			}
-#endif
 
 		if (nullptr == existingGameObjectCompPtr)
 		{
@@ -734,6 +725,131 @@ namespace NOWA
 		}
 
 		return existingGameObjectCompPtr;
+	}
+#endif
+
+#if 0
+	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
+	{
+		// Create promise/future pair to get the result
+		std::promise<GameObjectCompPtr> promise;
+		std::future<GameObjectCompPtr> future = promise.get_future();
+
+		// Create the logic command
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, propertyElement, filename, gameObjectPtr, existingGameObjectCompPtr, &promise]() mutable
+		{
+			GameObjectCompPtr result = nullptr;
+			Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
+
+			if (nullptr == existingGameObjectCompPtr)
+			{
+				GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
+				if (nullptr != componentPtr)
+				{
+					if (false == componentPtr->init(propertyElement))
+					{
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectFactory] Error: Failed to initialize component: " + name);
+						promise.set_value(nullptr);
+						return;
+					}
+				}
+				else
+				{
+					Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+					boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+					promise.set_value(nullptr);
+					return;
+				}
+
+				boost::shared_ptr<EventDataNewComponent> eventDataNewComponent(new EventDataNewComponent(name));
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNewComponent);
+
+				result = componentPtr;
+			}
+			else
+			{
+				existingGameObjectCompPtr->init(propertyElement);
+				result = existingGameObjectCompPtr;
+			}
+
+			// Return the result to render thread
+			promise.set_value(result);
+		};
+
+		// Enqueue the logic command and wait
+		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
+		// Wait without blocking the render thread
+		while (future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready)
+		{
+			std::this_thread::yield();
+		}
+
+		return future.get();
+	}
+#endif
+
+	GameObjectCompPtr GameObjectFactory::createComponent(rapidxml::xml_node<>*& propertyElement, const Ogre::String& filename, GameObjectPtr gameObjectPtr, GameObjectCompPtr existingGameObjectCompPtr)
+	{
+		Ogre::String name = XMLConverter::getAttrib(propertyElement, "data", "");
+
+		// Prepare a promise/future pair for synchronization
+		auto done = std::make_shared<std::promise<void>>();
+		std::future<void> future = done->get_future();
+
+		// This will hold the resulting component
+		GameObjectCompPtr resultComp = nullptr;
+
+		// Create the logic command lambda
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, done, &resultComp, name, &propertyElement, existingGameObjectCompPtr]() mutable
+		{
+			if (nullptr == existingGameObjectCompPtr)
+			{
+				GameObjectCompPtr componentPtr(this->componentFactory.create(NOWA::getIdFromName(name)));
+				if (nullptr != componentPtr)
+				{
+					if (!componentPtr->init(propertyElement))
+					{
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL,
+							"[GameObjectFactory] Error: Failed to initialize component: " + name);
+						done->set_value();
+						return;
+					}
+				}
+				else
+				{
+					Ogre::String message = "[GameObjectFactory] Error: Could not find GameObjectComponent named: '" + name + "'. If its a plugin component, see your application folders plugin.cfg";
+					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, message);
+					auto feedback = boost::make_shared<EventDataFeedback>(false, message);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(feedback);
+					done->set_value();
+					return;
+				}
+
+				auto createdEvent = boost::make_shared<EventDataNewComponent>(name);
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(createdEvent);
+
+				resultComp = componentPtr;
+			}
+			else
+			{
+				existingGameObjectCompPtr->init(propertyElement);
+				resultComp = existingGameObjectCompPtr;
+			}
+
+			done->set_value();
+		};
+
+		// Enqueue the logic command to be executed on the logic thread
+		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
+		// Wait for the logic command to finish
+		future.wait();
+
+		// Return the created or initialized component
+		return resultComp;
 	}
 
 	GameObjectPtr GameObjectFactory::createGameObject(Ogre::SceneManager* sceneManager, Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, GameObject::eType type, const unsigned long id)

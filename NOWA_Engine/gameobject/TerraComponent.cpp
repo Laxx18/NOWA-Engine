@@ -342,7 +342,7 @@ namespace NOWA
 
 	void TerraComponent::createTerra(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("TerraComponent::createTerra",
+		ENQUEUE_RENDER_COMMAND("TerraComponent::createTerra",
 		{
 			if (nullptr == this->terra && nullptr != AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera() && true == this->postInitDone)
 			{
@@ -1131,7 +1131,7 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setBasePixelDimension", _1(basePixelDimension),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setBasePixelDimension", _1(basePixelDimension),
 			{
 				this->terra->setBasePixelDimension(basePixelDimension);
 			});
@@ -1159,7 +1159,7 @@ namespace NOWA
 
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setBrushName", _1(brushName),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setBrushName", _1(brushName),
 			{
 				this->terra->setBrushName(brushName);
 			});
@@ -1181,7 +1181,7 @@ namespace NOWA
 		this->brushSize->setValue(brushSize);
 		if (nullptr != this->terra)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("TerraComponent::setBrushSize", _1(brushSize),
+			ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::setBrushSize", _1(brushSize),
 			{
 				this->terra->setBrushSize(brushSize);
 				this->terra->setBrushName(this->brush->getListSelectedValue());

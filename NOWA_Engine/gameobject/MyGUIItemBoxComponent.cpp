@@ -500,7 +500,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[MyGUIItemBoxComponent] Destructor MyGUI item box component for game object: " + this->gameObjectPtr->getName());
 		
-		ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::~MyGUIItemBoxComponent",
+		ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::~MyGUIItemBoxComponent",
 		{
 			std::string resourceCategory = MyGUI::ResourceManager::getInstance().getCategoryName();
 			MyGUI::FactoryManager::getInstance().unregisterFactory<ResourceItemInfo>(resourceCategory);
@@ -1200,7 +1200,7 @@ namespace NOWA
 		ItemData* data = *_sender->getItemDataAt<ItemData*>(_info.index);
 		if (_info.drag)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::requestDrawItem", _1(info),
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::requestDrawItem", _1(info),
 			{
 				text->setCaption(MyGUI::utility::toString(
 					_info.drop_accept ? "#00FF00drag accept" : (_info.drop_refuse ? "#FF0000drag refuse" : "#0000FFdrag miss"),
@@ -1289,7 +1289,7 @@ namespace NOWA
 		this->resourceLocationName->setValue(resourceLocationName);
 		if (this->oldResourceLocationName != this->resourceLocationName->getString())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MyGUIItemBoxComponent::setResourceLocationName", _1(resourceLocationName),
+			ENQUEUE_RENDER_COMMAND_MULTI("MyGUIItemBoxComponent::setResourceLocationName", _1(resourceLocationName),
 			{
 				bool success = MyGUI::ResourceManager::getInstance().load(this->resourceLocationName->getString());
 				if (false == success)
@@ -1317,7 +1317,7 @@ namespace NOWA
 	{
 		if (true == this->useToolTip->getBool())
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::setUseToolTip",
+			ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setUseToolTip",
 			{
 				if (nullptr == this->toolTip)
 				{
@@ -1334,7 +1334,7 @@ namespace NOWA
 		{
 			if (nullptr != this->toolTip)
 			{
-				ENQUEUE_RENDER_COMMAND_WAIT("MyGUIItemBoxComponent::setUseToolTip delete",
+				ENQUEUE_RENDER_COMMAND("MyGUIItemBoxComponent::setUseToolTip delete",
 				{
 					delete this->toolTip;
 					this->toolTip = nullptr;

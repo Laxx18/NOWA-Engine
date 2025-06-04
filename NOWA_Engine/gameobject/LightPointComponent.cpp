@@ -37,7 +37,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightPointComponent] Destructor light point component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightPointComponent::~LightPointComponent",
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::~LightPointComponent",
 			{
 				this->gameObjectPtr->getSceneNode()->detachObject(this->light);
 				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
@@ -154,7 +154,7 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool() && this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::connect setVisible", _1(visible),
+			ENQUEUE_RENDER_COMMAND_MULTI("LightPointComponent::connect setVisible", _1(visible),
 			{
 				this->dummyEntity->setVisible(visible);
 			});
@@ -168,7 +168,7 @@ namespace NOWA
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("LightPointComponent::disconnect setVisible", _1(visible),
+			ENQUEUE_RENDER_COMMAND_MULTI("LightPointComponent::disconnect setVisible", _1(visible),
 			{
 				this->dummyEntity->setVisible(visible);
 			});
@@ -186,7 +186,7 @@ namespace NOWA
 	{
 		if (nullptr == this->light)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightPointComponent::createLight",
+			ENQUEUE_RENDER_COMMAND("LightPointComponent::createLight",
 			{
 				this->light = this->gameObjectPtr->getSceneManager()->createLight();
 

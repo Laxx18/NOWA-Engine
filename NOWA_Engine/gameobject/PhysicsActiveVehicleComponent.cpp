@@ -52,8 +52,11 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onSteerAngleChangedFunctionName.empty())
 			{
-				
-				this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
+				{
+					this->luaScript->callTableFunction(this->onSteerAngleChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 				return this->vehicleDrivingManipulation->steerAngle;
 			}
 		}
@@ -69,7 +72,11 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onMotorForceChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
+				{
+					this->luaScript->callTableFunction(this->onMotorForceChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 				return this->vehicleDrivingManipulation->motorForce;
 			}
 		}
@@ -101,7 +108,11 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onBrakeChangedFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, dt]()
+				{
+					this->luaScript->callTableFunction(this->onBrakeChangedFunctionName, this->vehicleDrivingManipulation, dt);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 				return this->vehicleDrivingManipulation->brake;
 			}
 		}
@@ -115,7 +126,11 @@ namespace NOWA
 		{
 			if (nullptr != this->luaScript && this->luaScript->isCompiled() && false == this->onTireContactFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration]()
+				{
+					this->luaScript->callTableFunction(this->onTireContactFunctionName, tireName, hitPhysicsComponent, contactPosition, contactNormal, penetration);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 	}

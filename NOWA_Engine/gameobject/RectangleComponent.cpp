@@ -194,7 +194,7 @@ namespace NOWA
 			return success;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("RectangleComponent::connect",
+		ENQUEUE_RENDER_COMMAND("RectangleComponent::connect",
 		{
 			this->dummyEntity->setVisible(false);
 
@@ -215,7 +215,7 @@ namespace NOWA
 
 	bool RectangleComponent::disconnect(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("RectangleComponent::disconnect",
+		ENQUEUE_RENDER_COMMAND("RectangleComponent::disconnect",
 		{
 			this->destroyRectangles();
 		});
@@ -232,28 +232,32 @@ namespace NOWA
 				return;
 			}
 
-			ENQUEUE_RENDER_COMMAND("RectangleComponent::update",
+			auto manualObject = this->manualObject;
+			ENQUEUE_RENDER_COMMAND_MULTI("RectangleComponent::update", _1(manualObject),
 			{
-				this->indices = 0;
-				if (this->manualObject->getNumSections() > 0)
+				if (manualObject)
 				{
-					this->manualObject->beginUpdate(0);
-				}
-				else
-				{
-					this->manualObject->clear();
-					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-				}
+					this->indices = 0;
+					if (manualObject->getNumSections() > 0)
+					{
+						manualObject->beginUpdate(0);
+					}
+					else
+					{
+						manualObject->clear();
+						manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+					}
 
-				for (unsigned int i = 0; i < this->rectanglesCount->getUInt(); i++)
-				{
-					this->drawRectangle(i);
+					for (unsigned int i = 0; i < this->rectanglesCount->getUInt(); i++)
+					{
+						this->drawRectangle(manualObject, i);
+					}
+
+					// Realllllllyyyyy important! Else the rectangle is a whole mess!
+					manualObject->index(0);
+
+					manualObject->end();
 				}
-
-				// Realllllllyyyyy important! Else the rectangle is a whole mess!
-				this->manualObject->index(0);
-
-				this->manualObject->end();
 			});
 		}
 	}
@@ -570,148 +574,147 @@ namespace NOWA
 		return this->heights[index]->getReal();
 	}
 
-	void RectangleComponent::drawRectangle(unsigned int index)
+	void RectangleComponent::drawRectangle(Ogre::ManualObject* manualObject, unsigned int index)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("RectangleComponent::drawRectangle", _1(index),
+		// Threadsafe from the outside
+		Ogre::Vector3 color1 = this->colors1[index]->getVector3();
+		Ogre::Vector3 color2 = this->colors2[index]->getVector3();
+
+		//	//    lt-------rt 
+		//	//    |         |
+		//	//    |         | height
+		//	//    |         |
+		//	//    lb---x---rb
+		//           width
+		// x = start position
+
+		Ogre::Vector3 p = this->gameObjectPtr->getPosition();
+		Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
+		Ogre::Vector3 sp = this->startPositions[index]->getVector3();
+		Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->startOrientations[index]->getVector3());
+		Ogre::Real w = this->widths[index]->getReal();
+		Ogre::Real h = this->heights[index]->getReal();
+
+		// Upper half for color gradient
+		// 1) lt
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(0, 0);
+
+		// 2) lb
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(0, 1);
+
+		// 3) rb
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(1, 1);
+
+		// 4) rt
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(1, 0);
+
+		// Internally constructs 2 triangles
+		manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+		this->indices += 4;
+
+		// Lower half for color gradient
+		// 1) lt
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(0, 0);
+
+		// 2) lb
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(0, 1);
+
+		// 3) rb
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(1, 1);
+
+		// 4) rt
+		manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+		manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+		manualObject->normal(0.0f, 0.0f, 1.0f);
+		manualObject->textureCoord(1, 0);
+
+		manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+		this->indices += 4;
+
+		if (true == this->twoSided->getBool())
 		{
-			Ogre::Vector3 color1 = this->colors1[index]->getVector3();
-			Ogre::Vector3 color2 = this->colors2[index]->getVector3();
-
-			//	//    lt-------rt 
-			//	//    |         |
-			//	//    |         | height
-			//	//    |         |
-			//	//    lb---x---rb
-			//           width
-			// x = start position
-
-			Ogre::Vector3 p = this->gameObjectPtr->getPosition();
-			Ogre::Quaternion o = this->gameObjectPtr->getOrientation();
-			Ogre::Vector3 sp = this->startPositions[index]->getVector3();
-			Ogre::Quaternion so = MathHelper::getInstance()->degreesToQuat(this->startOrientations[index]->getVector3());
-			Ogre::Real w = this->widths[index]->getReal();
-			Ogre::Real h = this->heights[index]->getReal();
-
 			// Upper half for color gradient
-			// 1) lt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(0, 0);
+			// 1) rt
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(0, 0);
 
-			// 2) lb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(0, 1);
+			// 2) rb
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(0, 1);
 
-			// 3) rb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(1, 1);
+			// 3) lb
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(1, 1);
 
-			// 4) rt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(1, 0);
+			// 4) lt
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(1, 0);
 
-			// Internally constructs 2 triangles
-			this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+			manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
 			this->indices += 4;
 
 			// Lower half for color gradient
-			// 1) lt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(0, 0);
+			// 1) rt
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(0, 0);
 
-			// 2) lb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(0, 1);
+			// 2) rb
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(0, 1);
 
-			// 3) rb
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(1, 1);
+			// 3) lb
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(1, 1);
 
-			// 4) rt
-			this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-			this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-			this->manualObject->normal(0.0f, 0.0f, 1.0f);
-			this->manualObject->textureCoord(1, 0);
+			// 4) lt
+			manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
+			manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
+			manualObject->normal(0.0f, 0.0f, -1.0f);
+			manualObject->textureCoord(1, 0);
 
-			this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
+			manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
 			this->indices += 4;
-
-			if (true == this->twoSided->getBool())
-			{
-				// Upper half for color gradient
-				// 1) rt
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(0, 0);
-
-				// 2) rb
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(0, 1);
-
-				// 3) lb
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(1, 1);
-
-				// 4) lt
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue(color2.x, color2.y, color2.z, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(1, 0);
-
-				this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
-				this->indices += 4;
-
-				// Lower half for color gradient
-				// 1) rt
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, h * 0.5f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(0, 0);
-
-				// 2) rb
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(w * 0.5f, 0.0f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(0, 1);
-
-				// 3) lb
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, 0.0f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue(color1.x, color1.y, color1.z, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(1, 1);
-
-				// 4) lt
-				this->manualObject->position(p + (o * (so * (sp + (so * Ogre::Vector3(-w * 0.5f, h * 0.5f, 0.0f))))));
-				this->manualObject->colour(Ogre::ColourValue((color1.x + color2.x) * 0.5f, (color1.y + color2.y) * 0.5f, (color1.z + color2.z) * 0.5f, 1.0f));
-				this->manualObject->normal(0.0f, 0.0f, -1.0f);
-				this->manualObject->textureCoord(1, 0);
-
-				this->manualObject->quad(this->indices + 0, this->indices + 1, this->indices + 2, this->indices + 3);
-				this->indices += 4;
-			}
-		});
+		}
 	}
 
 	void RectangleComponent::destroyRectangles(void)
 	{
+		// Threadsafe from the outside
 		if (this->lineNode != nullptr)
 		{
 			this->dummyEntity->setVisible(true);

@@ -422,83 +422,86 @@ namespace NOWA
 
 		if (this->source != nullptr)
 		{
-			bool weightChange = false;
-			if (this->timeleft > 0.0f)
+			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlenderV2::addTime", _1(time),
 			{
-				this->timeleft -= time;
-				if (this->timeleft <= 0.0f)
+				bool weightChange = false;
+				if (this->timeleft > 0.0f)
 				{
-					// finish blending
-					this->source->setEnabled(false);
-					this->source->mWeight = 0.0f;
-					this->source = this->target;
-					this->source->setEnabled(true);
-					this->source->mWeight = 0.0f;
-					this->target = nullptr;
+					this->timeleft -= time;
+					if (this->timeleft <= 0.0f)
+					{
+						// finish blending
+						this->source->setEnabled(false);
+						this->source->mWeight = 0.0f;
+						this->source = this->target;
+						this->source->setEnabled(true);
+						this->source->mWeight = 0.0f;
+						this->target = nullptr;
+					}
+					else
+					{
+						// still blending, advance weights
+						this->source->mWeight = this->timeleft / this->duration;
+						this->target->mWeight = 1.0f - this->timeleft / this->duration;
+						weightChange = true;
+						if (this->transition == AnimationBlenderV2::BlendWhileAnimating)
+						{
+							this->target->addTime(time);
+						}
+					}
+				}
+
+				// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
+				if (this->source->getCurrentTime() >= this->source->getDuration() - 0.05f)
+				{
+					this->complete = true;
+					if (nullptr != this->previousSource)
+					{
+						this->source = this->previousSource;
+						this->loop = this->previousLoop;
+						this->transition = this->previousTransition;
+						this->duration = this->previousDuration;
+						this->previousSource = nullptr;
+
+						this->internalInit(this->source->getName().getFriendlyText());
+
+						this->blend(this->source->getName().getFriendlyText(), this->transition, this->duration, this->loop);
+
+						this->source->setFrame(this->source->getDuration() * 0.5f);
+					}
+
+					// Notifies all observers that the animation has finished
+					this->notifyObservers();
 				}
 				else
 				{
-					// still blending, advance weights
-					this->source->mWeight = this->timeleft / this->duration;
-					this->target->mWeight = 1.0f - this->timeleft / this->duration;
-					weightChange = true;
-					if (this->transition == AnimationBlenderV2::BlendWhileAnimating)
+					this->complete = false;
+					if (false == weightChange)
 					{
-						this->target->addTime(time);
+						this->source->mWeight = 1.0f;
+						/*if (nullptr != this->target)
+						{
+							this->target->setWeight(1.0f);
+						}*/
 					}
 				}
-			}
+				this->source->addTime(time);
 
-			// Must be minus fraction, else it will never complete, OgreAnimationState bug? hasEnded only works for not looping and not accurate too
-			if (this->source->getCurrentTime() >= this->source->getDuration() - 0.05f)
-			{
-				this->complete = true;
-				if (nullptr != this->previousSource)
+				if (true == this->debugLog)
 				{
-					this->source = this->previousSource;
-					this->loop = this->previousLoop;
-					this->transition = this->previousTransition;
-					this->duration = this->previousDuration;
-					this->previousSource = nullptr;
-
-					this->internalInit(this->source->getName().getFriendlyText());
-
-					this->blend(this->source->getName().getFriendlyText(), this->transition, this->duration, this->loop);
-
-					this->source->setFrame(this->source->getDuration() * 0.5f);
-				}
-
-				// Notifies all observers that the animation has finished
-				this->notifyObservers();
-			}
-			else
-			{
-				this->complete = false;
-				if (false == weightChange)
-				{
-					this->source->mWeight = 1.0f;
-					/*if (nullptr != this->target)
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Source Animation: " + this->source->getName().getFriendlyText()
+						+ " timePosition: " + Ogre::StringConverter::toString(this->source->getCurrentTime())
+						+ " length: " + Ogre::StringConverter::toString(this->source->getDuration())
+						+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->mWeight));
+					if (target != nullptr)
 					{
-						this->target->setWeight(1.0f);
-					}*/
+						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Target Animation: " + this->target->getName().getFriendlyText()
+							+ " timePosition: " + Ogre::StringConverter::toString(this->target->getCurrentTime())
+							+ " length: " + Ogre::StringConverter::toString(this->target->getDuration()) + " weight: " + Ogre::StringConverter::toString(this->target->mWeight));
+					}
 				}
-			}
-			this->source->addTime(time);
-
-			if (true == this->debugLog)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Source Animation: " + this->source->getName().getFriendlyText()
-					+ " timePosition: " + Ogre::StringConverter::toString(this->source->getCurrentTime())
-					+ " length: " + Ogre::StringConverter::toString(this->source->getDuration())
-					+ " complete: " + Ogre::StringConverter::toString(this->complete) + " weight: " + Ogre::StringConverter::toString(this->source->mWeight));
-				if (target != nullptr)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Target Animation: " + this->target->getName().getFriendlyText()
-						+ " timePosition: " + Ogre::StringConverter::toString(this->target->getCurrentTime())
-						+ " length: " + Ogre::StringConverter::toString(this->target->getDuration()) + " weight: " + Ogre::StringConverter::toString(this->target->mWeight));
-				}
-			}
-			this->source->setLoop(this->loop);
+				this->source->setLoop(this->loop);
+			});
 		}
 	}
 
@@ -858,7 +861,7 @@ namespace NOWA
 
 		if (nullptr != this->skeleton)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("AnimationBlenderV2::resetBones",
+			ENQUEUE_RENDER_COMMAND("AnimationBlenderV2::resetBones",
 			{
 				this->skeleton->resetToPose();
 			});

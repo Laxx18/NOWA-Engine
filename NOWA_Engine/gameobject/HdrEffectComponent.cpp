@@ -381,7 +381,7 @@ namespace NOWA
 		// If setting it afterwards some frames, it does work^^
 		if (nullptr != this->lightDirectionalComponent)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("HdrEffectComponent::postApplySunPower",
+			ENQUEUE_RENDER_COMMAND("HdrEffectComponent::postApplySunPower",
 			{
 				this->lightDirectionalComponent->setPowerScale(this->sunPower->getReal());	
 			});

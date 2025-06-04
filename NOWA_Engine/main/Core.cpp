@@ -1735,7 +1735,7 @@ namespace NOWA
 
 	void Core::setMenuSettingsForCamera(Ogre::Camera* camera)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::setMenuSettingsForCamera", _1(camera),
+		ENQUEUE_RENDER_COMMAND_MULTI("Core::setMenuSettingsForCamera", _1(camera),
 		{
 			// camera->setNearClipDistance(0.01f);
 			// to be removed
@@ -1750,7 +1750,7 @@ namespace NOWA
 
 	void Core::setPolygonMode(unsigned short mode)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Core::setPolygonMode", _1(mode),
+		ENQUEUE_RENDER_COMMAND_MULTI("Core::setPolygonMode", _1(mode),
 		{
 			Ogre::HlmsPbs * hlmsPbs = dynamic_cast<Ogre::HlmsPbs*>(NOWA::Core::getSingletonPtr()->getOgreRoot()->getHlmsManager()->getHlms(Ogre::HLMS_PBS));
 			if (nullptr != hlmsPbs)

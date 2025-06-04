@@ -168,7 +168,11 @@ namespace NOWA
 
 		xmlNodes = XMLDoc.first_node("nodes");
 		this->dotSceneImportModule->setIsSnapshot(true);
-		this->dotSceneImportModule->processNodes(xmlNodes);
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes]()
+		{
+			this->dotSceneImportModule->processNodes(xmlNodes);
+		};
+		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 		this->dotSceneImportModule->setIsSnapshot(false);
 
 		// Post init new game objects when created
@@ -306,7 +310,11 @@ namespace NOWA
 
 		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
 		this->dotSceneImportModule->setIsSnapshot(true);
-		this->dotSceneImportModule->processNodes(xmlNodes, nullptr, true);
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes]()
+		{
+			this->dotSceneImportModule->processNodes(xmlNodes, nullptr, true);
+		};
+		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
 		this->dotSceneImportModule->setIsSnapshot(false);
 		differenceList.clear();
 		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
@@ -1559,137 +1567,160 @@ namespace NOWA
 	void GameObjectController::start(void)
 	{
 		// Must be called, else all initial transforms, which are used via _getDerivedPosition() and not _getDerivedPositionUpdated() are 0 0 0 etc.!
-		Ogre::Root::getSingletonPtr()->renderOneFrame();
+		// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
-		// Clears lua errors etc.
-		LuaScriptApi::getInstance()->clear();
+		// Must be called on logic thread, because lua operations must be on logic thread!
+		auto done = std::make_shared<std::promise<void>>();
+		std::future<void> future = done->get_future();
 
-		if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, done]()
 		{
-			AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->buildNavigationMesh();
-		}
-		
-		this->isSimulating = true;
-		AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->start();
+			// Clears lua errors etc.
+			LuaScriptApi::getInstance()->clear();
 
-		LuaScriptApi::getInstance()->runInitScript("init.lua");
-
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			const auto& gameObjectPtr = it->second;
-			if (nullptr != gameObjectPtr)
+			if (true == AppStateManager::getSingletonPtr()->getOgreRecastModule()->hasNavigationMeshElements())
 			{
-				gameObjectPtr->connectPriority();
+				AppStateManager::getSingletonPtr()->getOgreRecastModule(this->appStateName)->buildNavigationMesh();
 			}
-		}
-		
-		GameObjectPtr mainGameObjectPtr = nullptr;
-		// If all game objects had been loaded finally initialize all components of all objects
-		// This is done here, because at this time, all game objects are loaded and in the final init, its possible for a component to get data from other game objects or components
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
-		{
-			const auto& gameObjectPtr = it->second;
-			if (MAIN_GAMEOBJECT_ID != gameObjectPtr->getId())
+
+			this->isSimulating = true;
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->start();
+
+			LuaScriptApi::getInstance()->runInitScript("init.lua");
+
+			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
 			{
-				gameObjectPtr->connect();
+				const auto& gameObjectPtr = it->second;
+				if (nullptr != gameObjectPtr)
+				{
+					gameObjectPtr->connectPriority();
+				}
+			}
+
+			GameObjectPtr mainGameObjectPtr = nullptr;
+			// If all game objects had been loaded finally initialize all components of all objects
+			// This is done here, because at this time, all game objects are loaded and in the final init, its possible for a component to get data from other game objects or components
+			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+			{
+				const auto& gameObjectPtr = it->second;
+				if (MAIN_GAMEOBJECT_ID != gameObjectPtr->getId())
+				{
+					gameObjectPtr->connect();
+				}
+				else
+				{
+					// 1111111111L = MainGameObject, do connect when everything has been handled because in the MainGameObject may have components, that are relied on other game objects
+					// which must be already connected!
+					mainGameObjectPtr = gameObjectPtr;
+				}
+			}
+
+			//// LuaScript order execution
+			// Ensures order is correct before execution
+			this->updateLuaScriptExecutionOrder();
+
+			for (const auto& pair : this->managedLuaScripts)
+			{
+				const auto luaScriptCompPtr = NOWA::makeStrongPtr(pair.second);
+				if (nullptr != luaScriptCompPtr)
+				{
+					if (false == luaScriptCompPtr->getLuaScript()->isCompiled())
+					{
+						luaScriptCompPtr->compileScript();
+					}
+					luaScriptCompPtr->connect();
+
+					boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(luaScriptCompPtr->getOwner()->getComponent<AiLuaComponent>());
+					if (nullptr != aiLuaCompPtr)
+					{
+						aiLuaCompPtr->connect();
+					}
+				}
+			}
+
+			// First connect compound collision objects, because joints need a valid phyics object
+			this->connectCompoundCollisions();
+
+			// Connect physics joints
+			this->connectJoints();
+
+			// Connect vehicles
+			this->connectVehicles();
+
+			if (nullptr != mainGameObjectPtr)
+			{
+				mainGameObjectPtr->connect();
 			}
 			else
 			{
-				// 1111111111L = MainGameObject, do connect when everything has been handled because in the MainGameObject may have components, that are relied on other game objects
-				// which must be already connected!
-				mainGameObjectPtr = gameObjectPtr;
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning Could not get main game object!");
 			}
-		}
 
-		//// LuaScript order execution
-		// Ensures order is correct before execution
-		this->updateLuaScriptExecutionOrder();
+			done->set_value();
+		};
 
-		for (const auto& pair : this->managedLuaScripts)
-		{
-			const auto luaScriptCompPtr = NOWA::makeStrongPtr(pair.second);
-			if (nullptr != luaScriptCompPtr)
-			{
-				if (false == luaScriptCompPtr->getLuaScript()->isCompiled())
-				{
-					luaScriptCompPtr->compileScript();
-				}
-				luaScriptCompPtr->connect();
-
-				boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(luaScriptCompPtr->getOwner()->getComponent<AiLuaComponent>());
-				if (nullptr != aiLuaCompPtr)
-				{
-					aiLuaCompPtr->connect();
-				}
-			}
-		}
-
-		// First connect compound collision objects, because joints need a valid phyics object
-		this->connectCompoundCollisions();
-
-		// Connect physics joints
-		this->connectJoints();
-
-		// Connect vehicles
-		this->connectVehicles();
-
-		if (nullptr != mainGameObjectPtr)
-		{
-			mainGameObjectPtr->connect();
-		}
-		else
-		{
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning Could not get main game object!");
-		}
+		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+		future.wait();
 	}
 
 	void GameObjectController::stop(void)
 	{
-		// Resets the command, so that deletion of game object can be processed again.
-		// See @deleteGameObjectWithUndo for more information
-		if (nullptr != this->deleteGameObjectsUndoCommand)
-		{
-			this->deleteGameObjectsUndoCommand.reset();
-		}
-		this->nextGameObjectIndex = 0;
-		// Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
-		AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
-		AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
+		// Must be called on logic thread, because lua operations must be on logic thread!
+		auto done = std::make_shared<std::promise<void>>();
+		std::future<void> future = done->get_future();
 
-		this->deactivateAllPlayerController();
-
-		this->isSimulating = false;
-		
-		for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, done]()
 		{
-			const auto& gameObjectPtr = it->second;
-			if (false == gameObjectPtr->disconnect())
+			// Resets the command, so that deletion of game object can be processed again.
+			// See @deleteGameObjectWithUndo for more information
+			if (nullptr != this->deleteGameObjectsUndoCommand)
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
-				throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");
+				this->deleteGameObjectsUndoCommand.reset();
 			}
+			this->nextGameObjectIndex = 0;
+			// Delete all user defined attributes (when lua script has been disconnected and re-connected, this is required)
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->stop();
+			AppStateManager::getSingletonPtr()->getScriptEventManager(this->appStateName)->destroyContent();
 
-			// Main camera must be activated again, if scene is stopped
-			if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
+			this->deactivateAllPlayerController();
+
+			this->isSimulating = false;
+		
+			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
 			{
-				auto& cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
-				if (nullptr != cameraCompPtr)
+				const auto& gameObjectPtr = it->second;
+				if (false == gameObjectPtr->disconnect())
 				{
-					if (false == cameraCompPtr->isActivated())
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");
+					throw Ogre::Exception(Ogre::Exception::ERR_FILE_NOT_FOUND, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'", "NOWA");
+				}
+
+				// Main camera must be activated again, if scene is stopped
+				if (gameObjectPtr->getId() == MAIN_CAMERA_ID)
+				{
+					auto& cameraCompPtr = makeStrongPtr(gameObjectPtr->getComponent<CameraComponent>());
+					if (nullptr != cameraCompPtr)
 					{
-						cameraCompPtr->setActivated(true);
+						if (false == cameraCompPtr->isActivated())
+						{
+							cameraCompPtr->setActivated(true);
+						}
 					}
 				}
 			}
-		}
 
-		LuaScriptApi::getInstance()->stopInitScript("init.lua");
+			LuaScriptApi::getInstance()->stopInitScript("init.lua");
 		
-		this->disconnectCompoundCollisions();
-		// this->disconnectJoints();
-		this->jointComponentMap.clear();
-		this->physicsCompoundConnectionComponentMap.clear();
-		this->disconnectVehicles();
+			this->disconnectCompoundCollisions();
+			// this->disconnectJoints();
+			this->jointComponentMap.clear();
+			this->physicsCompoundConnectionComponentMap.clear();
+			this->disconnectVehicles();
+			done->set_value();
+		};
+
+		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+		future.wait();
 	}
 
 	void GameObjectController::pause(void)

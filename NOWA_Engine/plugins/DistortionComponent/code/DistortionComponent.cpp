@@ -158,7 +158,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_WAIT("DistortionComponent::createDistortion",
+		ENQUEUE_RENDER_COMMAND("DistortionComponent::createDistortion",
 		{
 			if (nullptr == this->distortionDatablock)
 			{
@@ -243,7 +243,7 @@ namespace NOWA
 
 	void DistortionComponent::destroyDistoration(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("DistortionComponent::destroyDistoration",
+		ENQUEUE_RENDER_COMMAND("DistortionComponent::destroyDistoration",
 		{
 			if (0 != this->oldRenderQueueIndex)
 			{

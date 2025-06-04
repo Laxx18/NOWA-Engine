@@ -217,7 +217,6 @@ namespace NOWA
 					});
 
 					AppStateManager::getSingletonPtr()->getCameraManager()->removeCameraBehavior(this->baseCamera->getBehaviorType());
-
 					this->baseCamera = nullptr;
 				}
 			}

@@ -27,8 +27,6 @@ namespace NOWA
 		return &instance;
 	}
 
-	// TODO: Which one to use?
-#if 0
 	void OgreALModule::init(Ogre::SceneManager* sceneManager)
 	{
 		// Do not change scene manager if sounds shall continue
@@ -49,40 +47,12 @@ namespace NOWA
 			this->soundManager->init(sceneManager);
 		}
 	}
-#else
-	void OgreALModule::init(Ogre::SceneManager* sceneManager)
-	{
-		// Do not change scene manager if sounds shall continue
-		if (true == this->bContinue)
-			return;
-
-		// Queue initialization if soundManager hasn't been created
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::init", _1(sceneManager),
-		{
-			if (this->soundManager == nullptr)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreALModule] Module created");
-				Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing OgreAL ***");
-				this->sceneManager = sceneManager;
-				this->soundManager = new OgreAL::SoundManager(sceneManager);
-				Ogre::LogManager::getSingletonPtr()->logMessage("*** Finished: Initializing OgreAL ***");
-			}
-			else
-			{
-				this->sceneManager = sceneManager;
-				this->soundManager->init(sceneManager);
-			}
-		});
-	}
-#endif
 
 	void OgreALModule::destroySounds(Ogre::SceneManager* sceneManager)
 	{
 		// Do not destroy sounds if sounds shall continue, when switching back to the origin AppState
-		if (this->bContinue)
-		{
+		if (true == this->bContinue)
 			return;
-		}
 
 		if (this->sceneManager != sceneManager)
 		{
@@ -91,36 +61,19 @@ namespace NOWA
 		}
 
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] OgreAL module destroyed");
-
-		auto soundManager = this->soundManager;
-
-		if (soundManager)
+		if (this->soundManager)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("OgreALModule::destroySounds", _2(soundManager, sceneManager),
-			{
-				soundManager->destroyAllSounds(sceneManager);
-			});
+			this->soundManager->destroyAllSounds(sceneManager);
 		}
 	}
 
 	void OgreALModule::destroyContent(void)
 	{
-		/*this->sceneManager = nullptr;
+		this->sceneManager = nullptr;
 		if (this->soundManager)
 		{
 			delete this->soundManager;
 			this->soundManager = 0;
-		}*/
-
-		if (nullptr != this->soundManager)
-		{
-			auto soundManager = this->soundManager;
-			this->soundManager = nullptr;
-
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("OgreALModule::destroyContent", _1(soundManager),
-			{
-				delete soundManager;
-			});
 		}
 	}
 
@@ -140,7 +93,6 @@ namespace NOWA
 		this->musicVolume = musicVolume;
 	}
 
-#if 0
 	void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
 	{
 		// attention sound is of type *&, because the sound is not deleted here, but in the soundManager
@@ -177,225 +129,62 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] Something has messed up with the sound pointer in the 'deleteSound(...)' function.");
 		}
 	}
-#endif
 
-	
-#if 0
-	void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
+	OgreAL::Sound* OgreALModule::createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop, bool stream)
 	{
-		GraphicsModule::RenderCommand renderCommand = [this, sceneManager, soundPtr = &sound]() {
-			// Ensure sound is valid before attempting to delete
-			try
-			{
-				if (*soundPtr)
-				{
-					if (this->soundManager->hasSound(sceneManager, (*soundPtr)->getName()))
-					{
-						// Remove resource
-						DeployResourceModule::getInstance()->removeResource((*soundPtr)->getName());
-
-						// Stop sound
-						(*soundPtr)->stop();
-
-						// Release sound source (without deleting to prevent crashes)
-						this->soundManager->_releaseSource(*soundPtr);
-
-						// Destroy the sound
-						this->soundManager->destroySound(sceneManager, *soundPtr);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] SoundObject: " + (*soundPtr)->getFileName() + " destroyed.");
-					}
-					else
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The soundname: " + (*soundPtr)->getFileName() + " has already been deleted!");
-					}
-					// Set the pointer to null after deletion
-					*soundPtr = nullptr;
-				}
-				else
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The committed pointer to the sound is already null");
-				}
-			}
-			catch (...)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] Something has messed up with the sound pointer in the 'deleteSound(...)' function.");
-			}
-			};
-
-		// Enqueue the render command to delete the sound
-		NOWA::GraphicsModule::getInstance()->enqueue(renderCommand, "OgreALModule::deleteSound");
-	}
-#else
-void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*& sound)
-	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::deleteSound", _2(sceneManager, soundPtr = &sound),
+		if (this->soundManager)
 		{
-			// Ensure sound is valid before attempting to delete
-			try
+			if (!this->soundManager->hasSound(sceneManager, name))
 			{
-				if (*soundPtr)
+				OgreAL::Sound* sound = nullptr;
+				try
 				{
-					if (this->soundManager->hasSound(sceneManager, (*soundPtr)->getName()))
-					{
-						// Remove resource
-						DeployResourceModule::getInstance()->removeResource((*soundPtr)->getName());
-
-						// Stop sound
-						(*soundPtr)->stop();
-
-						// Release sound source (without deleting to prevent crashes)
-						this->soundManager->_releaseSource(*soundPtr);
-
-						// Destroy the sound
-						this->soundManager->destroySound(sceneManager, *soundPtr);
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] SoundObject: " + (*soundPtr)->getFileName() + " destroyed.");
-					}
-					else
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The soundname: " + (*soundPtr)->getFileName() + " has already been deleted!");
-					}
-					// Set the pointer to null after deletion
-					*soundPtr = nullptr;
+					sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
 				}
-				else
+				catch (const Ogre::Exception& exception)
 				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The committed pointer to the sound is already null");
+					Ogre::String message = "[OgreALModule] Could not create sound : " + name + " description : " + exception.getDescription();
+					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
+					boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, message));
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
+					return nullptr;
 				}
-			}
-			catch (...)
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] Something has messed up with the sound pointer in the 'deleteSound(...)' function.");
-			}
-		});
-	}
-
-#endif
-
-#if 0
-	void OgreALModule::createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop, bool stream, SoundCreationCallback callback)
-	{
-		// First create the lambda and store it in a variable
-		GraphicsModule::RenderCommand renderCommand = [this, sceneManager, name, resourceName, loop, stream, callback]() {
-			OgreAL::Sound* sound = nullptr;
-			if (this->soundManager)
-			{
-				if (!this->soundManager->hasSound(sceneManager, name))
-				{
-					try
-					{
-						sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
-					}
-					catch (const Ogre::Exception& exception)
-					{
-						Ogre::String message = "[OgreALModule] Could not create sound : " + name + " description : " + exception.getDescription();
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-						boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, message));
-						NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-					}
-					// Setup volume
-					if (sound)
-					{
-						sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
-						DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio");
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
-					}
-				}
-				else
-				{
-					sound = this->getSound(sceneManager, name);
-				}
+				// setup volume
+				sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
+				DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio");
+				// fadein causes non correct behavior, because the volume is at its maximum after the operation
+				//pSound->fadeIn(pSound->getGain());
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
+				return sound;
 			}
 			else
 			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The SoundManager does not exist.");
+				return this->getSound(sceneManager, name);
 			}
-			// Execute the callback, passing the sound (could be nullptr if creation failed)
-			if (callback)
-			{
-				callback(sound);
-			}
-		};
-
-		// Then pass the variable to enqueue
-		NOWA::GraphicsModule::getInstance()->enqueue(renderCommand);
-	}
-
-#endif 
-
-#if 1
-	OgreAL::Sound* OgreALModule::createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop, bool stream)
-	{
-		if (!this->soundManager)
+		}
+		else
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[OgreALModule] The SoundManager does not exist. Have you forgotten to create one? Call ' NOWA::Core::getSingletonPtr()->createOgreAL(void)' first.");
 			return nullptr;
 		}
-
-		if (this->soundManager->hasSound(sceneManager, name))
-		{
-			return this->getSound(sceneManager, name);
-		}
-
-		OgreAL::Sound* sound = nullptr;
-
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::createSound", _6(sceneManager, name, resourceName, loop, stream, &sound),
-		{
-			try
-			{
-				sound = this->soundManager->createSound(sceneManager, name, resourceName, loop, stream);
-
-				// Set volume
-				sound->setGain(Ogre::Real(this->soundVolume) / 100.0f);
-
-				// Tag resource for cleanup
-				DeployResourceModule::getInstance()->tagResource(sound->getFileName(), "Audio");
-
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[OgreALModule] Sound: " + name + " created.");
-			}
-			catch (const Ogre::Exception& exception)
-			{
-				Ogre::String message = "[OgreALModule] Could not create sound : " + name + " description : " + exception.getDescription();
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
-				boost::shared_ptr<EventDataFeedback> eventDataNavigationMeshFeedback(new EventDataFeedback(false, message));
-				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataNavigationMeshFeedback);
-			}
-		});  // `sound` will be set after the render thread completes
-
-		return sound;  // This will now return after the promise is resolved
 	}
-#endif
 
 	void OgreALModule::setSoundDopplerEffect(Ogre::Real value)
 	{
 		assert((this->soundManager != nullptr) && "[OgreALModule::setSoundDopplerEffect] SoundManager is already NULL");
-
-		// Queue the call to ensure thread safety, if needed
-		ENQUEUE_RENDER_COMMAND_MULTI("OgreALModule::setSoundDopplerEffect", _1(value),
-		{
-			this->soundManager->setDopplerFactor(value);
-		});
+		this->soundManager->setDopplerFactor(value);
 	}
 
 	void OgreALModule::setSoundSpeed(Ogre::Real speed)
 	{
 		assert((this->soundManager != nullptr) && "[OgreALModule::setSoundSpeed] SoundManager is already NULL");
-
-		// Queue the call if it interacts with GPU resources
-		ENQUEUE_RENDER_COMMAND_MULTI("OgreALModule::setSoundSpeed", _1(speed),
-		{
-			this->soundManager->setSpeedOfSound(speed);
-		});
+		this->soundManager->setSpeedOfSound(speed);
 	}
 
 	void OgreALModule::setSoundCullDistance(Ogre::SceneManager* sceneManager, Ogre::Real distance)
 	{
 		assert((this->soundManager != nullptr) && "[OgreALModule::setSoundCullDistance] SoundManager is already NULL");
-
-		// Queue if it involves render resources or scene manager interaction
-		ENQUEUE_RENDER_COMMAND_MULTI("OgreALModule::setSoundCullDistance", _2(sceneManager, distance),
-		{
-			this->soundManager->setCullDistance(sceneManager, distance);
-		});
+		this->soundManager->setCullDistance(sceneManager, distance);
 	}
 
 	OgreAL::SoundManager* OgreALModule::getSoundManager(void) const
@@ -406,7 +195,6 @@ void OgreALModule::deleteSound(Ogre::SceneManager* sceneManager, OgreAL::Sound*&
 
 	OgreAL::Sound* OgreALModule::getSound(Ogre::SceneManager* sceneManager, const Ogre::String& soundName)
 	{
-		// TODO: Queue?
 		assert((this->soundManager != nullptr) && "[OgreALModule::getSound] SoundManager is already NULL");
 		if (this->soundManager->hasSound(sceneManager, soundName))
 		{

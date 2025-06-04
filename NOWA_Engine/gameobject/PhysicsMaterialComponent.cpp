@@ -849,7 +849,11 @@ namespace NOWA
 
 		if (false == this->overlapFunctionName.empty())
 		{
-			this->luaScript->callTableFunction(this->overlapFunctionName, gameObject0, gameObject1);
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+			{
+				this->luaScript->callTableFunction(this->overlapFunctionName, this->gameObject0, this->gameObject1);
+			};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 		return 1;
 	}
@@ -875,7 +879,11 @@ namespace NOWA
 		{
 			if (false == this->contactFunctionName.empty())
 			{
-				this->luaScript->callTableFunction(this->contactFunctionName, gameObject0, gameObject1, contact);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, contact]()
+				{
+					this->luaScript->callTableFunction(this->contactFunctionName, this->gameObject0, this->gameObject1, contact);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 
 			if (false == this->contactOnceFunctionName.empty())
@@ -888,7 +896,11 @@ namespace NOWA
 				if (contact->getNormalSpeed() > 3.0f && abs(normalSpeedDiff) > 3.0f)
 				{
 					// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "hit: " + Ogre::StringConverter::toString(normalSpeedDiff));
-					this->luaScript->callTableFunction(this->contactOnceFunctionName, gameObject0, gameObject1, contact);
+					NOWA::AppStateManager::LogicCommand logicCommand = [this, contact]()
+					{
+							this->luaScript->callTableFunction(this->contactOnceFunctionName, this->gameObject0, this->gameObject1, contact);
+					};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					break;
 				}
 
@@ -930,7 +942,11 @@ namespace NOWA
 			if (nullptr != tangentContact && maxTangentSpeed > 10.0f)
 			{
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "scratch: " + Ogre::StringConverter::toString(maxTangentSpeed));
-				this->luaScript->callTableFunction(this->contactScratchFunctionName, gameObject0, gameObject1, tangentContact);
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, tangentContact]()
+				{
+					this->luaScript->callTableFunction(this->contactScratchFunctionName, this->gameObject0, this->gameObject1, tangentContact);
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 

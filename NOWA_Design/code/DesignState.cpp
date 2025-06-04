@@ -760,12 +760,16 @@ void DesignState::simulate(bool pause, bool withUndo)
 			this->mainMenuBar->clearLuaErrors();
 			// Internally a snapshot is made before anything is changed in simulation, to get the state back, when stopping the simulation
 			// this->editorManager->stopSimulation(); Never do this!!!! Else because of internal undo, all set values are reset and fancy behavior will start!
-			this->editorManager->startSimulation();
 			this->playButton->setImageResource("StopImage");
 			this->enableWidgets(false);
+		});
+
+		if (nullptr != this->editorManager)
+		{
 			this->editorManager->setViewportGridEnabled(false);
 			this->editorManager->getGizmo()->setEnabled(false);
-		});
+			this->editorManager->startSimulation();
+		}
 	}
 	else
 	{
@@ -780,9 +784,6 @@ void DesignState::simulate(bool pause, bool withUndo)
 			// this->ogreNewt->update(this->ogreNewt->getUpdateFPS());
 			if (nullptr != editorManager)
 			{
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-				// Set the state before the simulation began
-				this->editorManager->stopSimulation(withUndo);
 				// Show panels
 				this->playButton->setImageResource("PlayImage");
 				this->playButton->setStateSelected(true);
@@ -792,6 +793,13 @@ void DesignState::simulate(bool pause, bool withUndo)
 				this->mainMenuBar->activateTestSelectedGameObjects(false);
 			}
 		});
+
+		if (nullptr != editorManager)
+		{
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+			// Set the state before the simulation began
+			this->editorManager->stopSimulation(withUndo);
+		}
 
 		boost::shared_ptr<EventDataRefreshResourcesPanel> eventDataRefreshResourcesPanel(new EventDataRefreshResourcesPanel());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataRefreshResourcesPanel, 3.0f);
@@ -1235,7 +1243,7 @@ void DesignState::notifyEditSelectAccept(MyGUI::EditBox* sender)
 
 void DesignState::buttonHit(MyGUI::Widget* sender)
 {
-	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::buttonHit", _1(sender),
+	ENQUEUE_RENDER_COMMAND("DesignState::buttonHit 1",
 	{
 		this->selectModeCheck->setStateSelected(false);
 		this->placeModeCheck->setStateSelected(false);
@@ -1247,35 +1255,40 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 		this->terrainModifyModeCheck->setStateSelected(false);
 		this->terrainSmoothModeCheck->setStateSelected(false);
 		this->terrainPaintModeCheck->setStateSelected(false);
+	});
 
-		if (this->playButton == sender)
+	if (this->playButton == sender)
+	{
+		this->simulate(false == this->playButton->getStateSelected(), true);
+	}
+
+	if (this->gridButton == sender)
+	{
+		this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
+	}
+
+	if (this->focusButton == sender)
+	{
+		if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
 		{
-			this->simulate(false == this->playButton->getStateSelected(), true);
+			// Focus the first selected object no matter how many objects are selected
+			this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
 		}
+	}
 
-		if (this->gridButton == sender)
-		{
-			this->editorManager->setViewportGridEnabled(!this->editorManager->getViewportGridEnabled());
-		}
-
-		if (this->focusButton == sender)
-		{
-			if (this->editorManager->getSelectionManager()->getSelectedGameObjects().size() > 0)
-			{
-				// Focus the first selected object no matter how many objects are selected
-				this->editorManager->focusCameraGameObject(this->editorManager->getSelectionManager()->getSelectedGameObjects().begin()->second.gameObject);
-			}
-		}
-
-		if (this->selectModeCheck == sender)
+	if (this->selectModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit2",
 		{
 			this->selectModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
-		}
-		else if (this->placeModeCheck == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SELECT_MODE);
+	}
+	else if (this->placeModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit3",
 		{
 			this->placeModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
 			this->placeModePopupMenu->showMenu();
 			for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
 			{
@@ -1285,11 +1298,15 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 					placeModeItem->showItemChild();
 				}
 			}
-		}
-		else if (this->translateModeCheck == sender)
+		});
+
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PLACE_MODE);
+	}
+	else if (this->translateModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit3",
 		{
 			this->translateModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
 			this->translateModePopupMenu->showMenu();
 			for (size_t i = 0; i < this->translateModePopupMenu->getChildCount(); i++)
 			{
@@ -1299,68 +1316,94 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 					translateModeItem->showItemChild();
 				}
 			}
-		}
-		else if (this->pickModeCheck == sender)
+		});
+
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TRANSLATE_MODE);
+	}
+	else if (this->pickModeCheck == sender)
+	{
+		// If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
+		if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
 		{
-			// If already in picker mode, to not re-start simulation again, since another undo command is pushed, so when stopped, the first undo is gone (2x undo would be required)
-			if (NOWA::EditorManager::EDITOR_PICKER_MODE != this->editorManager->getManipulationMode())
+			ENQUEUE_RENDER_COMMAND("DesignState::buttonHit4",
 			{
 				this->pickModeCheck->setStateSelected(true);
-				this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
-				this->editorManager->getGizmo()->setEnabled(false);
-				this->simulate(false, true);
 				this->propertiesPanel->clearProperties();
-
 				this->playButton->setStateSelected(false);
-			}
+			});
+
+			this->simulate(false, true);
+			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_PICKER_MODE);
+			this->editorManager->getGizmo()->setEnabled(false);
 		}
-		else if (this->scaleModeCheck == sender)
+	}
+	else if (this->scaleModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit5",
 		{
 			this->scaleModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
-		}
-		else if (this->rotate1ModeCheck == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_SCALE_MODE);
+	}
+	else if (this->rotate1ModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit6",
 		{
 			this->rotate1ModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
-		}
-		else if (this->rotate2ModeCheck == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE1);
+	}
+	else if (this->rotate2ModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit7",
 		{
 			this->rotate2ModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
-		}
-		else if (this->terrainModifyModeCheck == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_ROTATE_MODE2);
+	}
+	else if (this->terrainModifyModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit8",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(true);
 			this->terrainPaintModeCheck->setStateSelected(false);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
-		}
-		else if (this->terrainSmoothModeCheck == sender)
+		});
+
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_MODIFY_MODE);
+	}
+	else if (this->terrainSmoothModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit9",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(true);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(false);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
-		}
-		else if (this->terrainPaintModeCheck == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_SMOOTH_MODE);
+	}
+	else if (this->terrainPaintModeCheck == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit10",
 		{
 			this->terrainSmoothModeCheck->setStateSelected(false);
 			this->terrainModifyModeCheck->setStateSelected(false);
 			this->terrainPaintModeCheck->setStateSelected(true);
-			this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
-		}
-		else if (this->wakeButton == sender)
+		});
+		this->editorManager->setManipulationMode(NOWA::EditorManager::EDITOR_TERRAIN_PAINT_MODE);
+	}
+	else if (this->wakeButton == sender)
+	{
+		this->wakeSleepGameObjects(false, false);
+	}
+	else if (this->sleepButton == sender)
+	{
+		this->wakeSleepGameObjects(false, true);
+	}
+	else if (this->undoButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit11",
 		{
-			this->wakeSleepGameObjects(false, false);
-		}
-		else if (this->sleepButton == sender)
-		{
-			this->wakeSleepGameObjects(false, true);
-		}
-		else if (this->undoButton == sender)
-		{
-			this->editorManager->undo();
 			// Show properties
 			this->propertiesPanel->showProperties();
 			this->resourcesPanel->refresh();
@@ -1371,103 +1414,121 @@ void DesignState::buttonHit(MyGUI::Widget* sender)
 				this->hasSceneChanges = false;
 				this->undoPressed = true;
 			}
-		}
-		else if (this->redoButton == sender)
+		});
+		this->editorManager->undo();
+	}
+	else if (this->redoButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit12",
 		{
 			this->simulationWindow->setCaption(NOWA::Core::getSingletonPtr()->getProjectName() + "/" + NOWA::Core::getSingletonPtr()->getSceneName() + "*");
 			this->hasSceneChanges = true;
-
-			this->editorManager->redo();
 			// Show properties
 			this->propertiesPanel->showProperties();
 			this->resourcesPanel->refresh();
-		}
-		else if (this->cameraUndoButton == sender)
+		});
+		this->editorManager->redo();
+	}
+	else if (this->cameraUndoButton == sender)
+	{
+		this->editorManager->cameraUndo();
+	}
+	else if (this->cameraRedoButton == sender)
+	{
+		this->editorManager->cameraRedo();
+	}
+	else if (this->selectUndoButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit13",
 		{
-			this->editorManager->cameraUndo();
-		}
-		else if (this->cameraRedoButton == sender)
-		{
-			this->editorManager->cameraRedo();
-		}
-		else if (this->selectUndoButton == sender)
-		{
-			this->editorManager->getSelectionManager()->selectionUndo();
 			// Show properties
 			this->propertiesPanel->showProperties();
 			this->resourcesPanel->refresh();
-		}
-		else if (this->selectRedoButton == sender)
+		});
+		this->editorManager->getSelectionManager()->selectionUndo();
+	}
+	else if (this->selectRedoButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit14",
 		{
-			this->editorManager->getSelectionManager()->selectionRedo();
 			// Show properties
 			this->propertiesPanel->showProperties();
 			this->resourcesPanel->refresh();
-		}
-		else if (this->cameraSpeedUpButton == sender)
+		});
+		this->editorManager->getSelectionManager()->selectionRedo();
+	}
+	else if (this->cameraSpeedUpButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit15",
 		{
-			this->cameraMoveSpeed += 5.0f;
-			if (this->cameraMoveSpeed > 52.0f)
-			{
-				this->cameraMoveSpeed = 52.0f;
-				this->cameraSpeedUpButton->setEnabled(false);
-			}
-
 			this->cameraSpeedDownButton->setEnabled(true);
+		});
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-
-				this->cameraSpeedUpButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
-			}
-		}
-		else if (this->cameraSpeedDownButton == sender)
+		this->cameraMoveSpeed += 5.0f;
+		if (this->cameraMoveSpeed > 52.0f)
 		{
-			this->cameraMoveSpeed -= 5.0f;
-			if (this->cameraMoveSpeed < 2.0f)
-			{
-				this->cameraMoveSpeed = 2.0f;
-				this->cameraSpeedUpButton->setEnabled(true);
-				this->cameraSpeedDownButton->setEnabled(false);
-			}
+			this->cameraMoveSpeed = 52.0f;
+			this->cameraSpeedUpButton->setEnabled(false);
+		}
 
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+		if (nullptr != cameraBehavior)
+		{
+			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+
+			this->cameraSpeedUpButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+		}
+	}
+	else if (this->cameraSpeedDownButton == sender)
+	{
+		ENQUEUE_RENDER_COMMAND("DesignState::buttonHit16",
+		{
 			this->cameraSpeedUpButton->setEnabled(true);
+		});
 
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-
-				this->cameraSpeedDownButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
-			}
-		}
-		else if (this->removeButton == sender)
+		this->cameraMoveSpeed -= 5.0f;
+		if (this->cameraMoveSpeed < 2.0f)
 		{
-			this->removeGameObjects();
-		}
-		else if (this->copyButton == sender)
-		{
-			this->cloneGameObjects();
-		}
-		else if (this->cameraResetButton == sender)
-		{
-			if (!GetAsyncKeyState(VK_LSHIFT))
-			{
-				this->camera->setPosition(0.0f, 1.0f, 0.0f);
-			}
-
-			NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
-			this->cameraMoveSpeed = 10.0f;
-			auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
-			if (nullptr != cameraBehavior)
-			{
-				cameraBehavior->reset();
-				cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
-			}
+			this->cameraMoveSpeed = 2.0f;
+			this->cameraSpeedUpButton->setEnabled(true);
+			this->cameraSpeedDownButton->setEnabled(false);
 		}
 
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+		if (nullptr != cameraBehavior)
+		{
+			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+
+			this->cameraSpeedDownButton->setUserString("tooltip", "Speed: " + Ogre::StringConverter::toString(this->cameraMoveSpeed));
+		}
+	}
+	else if (this->removeButton == sender)
+	{
+		this->removeGameObjects();
+	}
+	else if (this->copyButton == sender)
+	{
+		this->cloneGameObjects();
+	}
+	else if (this->cameraResetButton == sender)
+	{
+		if (!GetAsyncKeyState(VK_LSHIFT))
+		{
+			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, Ogre::Vector3(0.0f, 1.0f, 0.0f));
+		}
+
+		NOWA::GraphicsModule::getInstance()->updateCameraOrientation(this->camera, Ogre::Quaternion::IDENTITY);
+		this->cameraMoveSpeed = 10.0f;
+		auto cameraBehavior = NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
+		if (nullptr != cameraBehavior)
+		{
+			cameraBehavior->reset();
+			cameraBehavior->setMoveSpeed(this->cameraMoveSpeed);
+		}
+	}
+
+	ENQUEUE_RENDER_COMMAND_MULTI("DesignState::buttonHit17", _1(sender),
+	{
 		// Check if some place mode has been pressed
 		for (size_t i = 0; i < this->placeModePopupMenu->getChildCount(); i++)
 		{

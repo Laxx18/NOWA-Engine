@@ -98,6 +98,7 @@ namespace NOWA
 	{
 		SimpleSoundCompPtr clonedCompPtr(boost::make_shared<SimpleSoundComponent>());
 
+		
 		clonedCompPtr->setSoundName(this->soundName->getString());
 		clonedCompPtr->setVolume(this->volume->getReal());
 		clonedCompPtr->setLoop(this->loop->getBool());
@@ -140,39 +141,34 @@ namespace NOWA
 		bool loop = this->loop->getBool();
 
 		if (true == this->playWhenInMotion->getBool())
-		{
 			loop = true;
-		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BackgroundScrollComponent::createSound", _1(loop),
+		if (nullptr == this->sound)
 		{
+			this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), Ogre::StringConverter::toString(NOWA::makeUniqueID()), this->soundName->getString(),
+				loop, this->stream->getBool());
 			if (nullptr == this->sound)
 			{
-				this->sound = OgreALModule::getInstance()->createSound(this->gameObjectPtr->getSceneManager(), Ogre::StringConverter::toString(NOWA::makeUniqueID()), this->soundName->getString(),
-					loop, this->stream->getBool());
-				if (nullptr == this->sound)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] Error: Could not create sound: " + this->soundName->getString());
-					return false;
-				}
-				this->sound->setStatic(!this->gameObjectPtr->isDynamic());
-				this->sound->setGain(this->volume->getReal() * 0.01f);
-				this->sound->setRelativeToListener(this->relativeToListener->getBool());
-				this->sound->setQueryFlags(0);
-				this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
-
-				// hier attach to node? wenn relative zu listener? Beispiele anschauen
-
-				// wenn on hit, dann schauen ob physicscomponent gibt die activephysicscomponent ist, dann in physicscomponent, wo auch materialien erstellt werden, coll function einfuehren,
-				// die alles behandelt und dann per delegate verteilt, dann hier die delegate function, um zu schauen, ob diese sound component angesprochen wurde, dann sound abspielen
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[SimpleSoundComponent] Error: Could not create sound: " + this->soundName->getString());
+				return false;
 			}
-
-			this->sound->setStream(this->stream->getBool());
-			this->sound->setLoop(loop);
+			this->sound->setStatic(!this->gameObjectPtr->isDynamic());
 			this->sound->setGain(this->volume->getReal() * 0.01f);
 			this->sound->setRelativeToListener(this->relativeToListener->getBool());
 			this->sound->setQueryFlags(0);
-		});
+			this->gameObjectPtr->getSceneNode()->attachObject(this->sound);
+
+			// hier attach to node? wenn relative zu listener? Beispiele anschauen
+
+			// wenn on hit, dann schauen ob physicscomponent gibt die activephysicscomponent ist, dann in physicscomponent, wo auch materialien erstellt werden, coll function einfuehren,
+			// die alles behandelt und dann per delegate verteilt, dann hier die delegate function, um zu schauen, ob diese sound component angesprochen wurde, dann sound abspielen
+		}
+
+		this->sound->setStream(this->stream->getBool());
+		this->sound->setLoop(loop);
+		this->sound->setGain(this->volume->getReal() * 0.01f);
+		this->sound->setRelativeToListener(this->relativeToListener->getBool());
+		this->sound->setQueryFlags(0);
 
 		this->setOnSpectrumAnalysisFunctionName(this->onSpectrumAnalysisFunctionName->getString());
 
@@ -183,14 +179,11 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("BackgroundScrollComponent::createSound",
+			if (this->sound->isAttached())
 			{
-				if (this->sound->isAttached())
-				{
-					this->gameObjectPtr->getSceneNode()->detachObject(this->sound);
-				}
-				OgreALModule::getInstance()->deleteSound(this->gameObjectPtr->getSceneManager(), this->sound);
-			});
+				this->gameObjectPtr->getSceneNode()->detachObject(this->sound);
+			}
+			OgreALModule::getInstance()->deleteSound(this->gameObjectPtr->getSceneManager(), this->sound);
 			this->sound = nullptr;
 		}
 	}
@@ -209,8 +202,96 @@ namespace NOWA
 			// Call also function in lua script, if it does exist in the lua script component
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onSpectrumAnalysisFunctionName->getString().empty())
 			{
-				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onSpectrumAnalysisFunctionName->getString());
+				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onSpectrumAnalysisFunctionName->getString());
+				};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
+
+#if 0
+			/*for (int i = 0; i < this->sound->getBufferSize() - 1; ++i)
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Spectrum: " + Ogre::StringConverter::toString(spectrumParameter->VUpoints[i]));
+				
+			}
+
+			int level = 0;
+			for (int i = 0; i < (this->sound->getBufferSize() - 1) / 2; ++i)
+			{
+				level = -10 * log(spectrumParameter->amp[i] / 94);
+				if (level > 0)
+					level = 0;
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Level: " + Ogre::StringConverter::toString(level));
+			}*/
+
+			const Ogre::Real xoff = 0.02f;
+			const Ogre::Real yoff = 0.02f;
+
+		
+			if (true == this->lines.empty())
+			{
+				this->lines.resize((512 - 1) / 2);
+				for (size_t i = 0; i < (512 - 1) / 2; i++)
+				{
+					// this->translationLine = new Ogre::v1::ManualObject(0, &this->sceneManager->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC), this->sceneManager);
+					this->lines[i] = this->gameObjectPtr->getSceneManager()->createManualObject(Ogre::SCENE_DYNAMIC);
+					// this->sceneManager->createManualObject(Ogre::SCENE_DYNAMIC);
+					this->lines[i]->setQueryFlags(0 << 0);
+					this->lineNode->attachObject(this->lines[i]);
+					this->lines[i]->setCastShadows(false);
+					this->lines[i]->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+				}
+			}
+
+			/*for (size_t i = 0; i < 10; i++)
+			{
+				
+				this->lines[i]->clear();
+				this->lines[i]->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+
+				this->lines[i]->position(Ogre::Vector3(i + xoff, norm(spectrumParameter->VUpoints[i], 65536, 10.0f, 2.5f), 0.0f));
+				this->lines[i]->index(0);
+				this->lines[i]->position(Ogre::Vector3(i + xoff, norm(spectrumParameter->VUpoints[i], -65536, 10.0f, 2.5f), 0.0f));
+				this->lines[i]->index(1);
+				this->lines[i]->end();
+			}*/
+
+
+
+
+			float level = 0;
+			for (size_t i = 0; i < (512 - 1) / 2; i++)
+			{
+				// Ogre::Vector3 previousPosition = Ogre::Vector3(i * 2 * xoff, 0.0f, 0.0f);
+
+				level = spectrumParameter->amp[i];
+
+				/*double regleDe3 = level * 255 / 100;
+				int y = static_cast<int>(regleDe3);
+				if (y > 255) y = 255;
+				if (y < 0) y = 0;*/
+			
+
+				/*level = -10 * log(spectrumParameter->amp[i] / 94);
+				if (level > 0)
+					level = 0;*/
+
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Spectrum: " + Ogre::StringConverter::toString(level));
+				
+				this->lines[i]->clear();
+				this->lines[i]->begin("RedNoLighting", Ogre::OperationType::OT_LINE_LIST);
+
+				
+
+				this->lines[i]->position(Ogre::Vector3(i * 2 * xoff, 0.0f, 0.0f));
+				this->lines[i]->index(0);
+				this->lines[i]->position(Ogre::Vector3(i * 2 * xoff, level, 0.0f));
+				this->lines[i]->index(1);
+				this->lines[i]->end();
+			}
+#endif
 		}
 	}
 
@@ -271,22 +352,14 @@ namespace NOWA
 				else
 				{
 					this->createSound();
-					// Wait?
-					ENQUEUE_RENDER_COMMAND_WAIT("BackgroundScrollComponent::update",
-					{
-						this->sound->play();
-					});
-
+					this->sound->play();
 				}
 			}
 			else
 			{
 				if (nullptr != this->sound)
 				{
-					ENQUEUE_RENDER_COMMAND_WAIT("BackgroundScrollComponent::update2",
-					{
-						this->sound->fadeOut(0.2f);
-					});
+					this->sound->fadeOut(0.2f);
 				}
 			}
 		}
@@ -407,16 +480,7 @@ namespace NOWA
 		if (false == activated)
 		{
 			if (nullptr != this->sound)
-			{
-				auto sound = this->sound;
-				ENQUEUE_RENDER_COMMAND_MULTI("SimpleSoundComponent::setActivated", _1(sound),
-				{
-					if (sound)
-					{
-						sound->stop();
-					}
-				});
-			}
+				this->sound->stop();
 		}
 		else
 		{
@@ -449,14 +513,7 @@ namespace NOWA
 		this->volume->setValue(volume);
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setVolume", _2(sound, volume),
-			{
-				if (sound)
-				{
-					sound->setGain(volume * 0.01f);
-				}
-			});
+			this->sound->setGain(volume * 0.01f);
 		}
 	}
 
@@ -470,14 +527,7 @@ namespace NOWA
 		this->loop->setValue(loop);
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setLoop", _2(sound, loop),
-			{
-				if (sound)
-				{
-					this->sound->setLoop(loop);
-				}
-			});
+			this->sound->setLoop(loop);
 		}
 	}
 
@@ -505,14 +555,7 @@ namespace NOWA
 		this->relativeToListener->setValue(relativeToListener);
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setRelativeToListener", _2(sound, relativeToListener),
-			{
-				if (sound)
-				{
-					this->sound->setRelativeToListener(relativeToListener);
-				}
-			});
+			this->sound->setRelativeToListener(relativeToListener);
 		}
 	}
 
@@ -536,29 +579,19 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setRelativeToListener", _7(sound, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor),
-			{
-				if (sound)
-				{
-					sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
-				}
-			});
+			this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
 		}
 	}
 
 	void SimpleSoundComponent::setOnSpectrumAnalysisFunctionName(const Ogre::String& onSpectrumAnalysisFunctionName)
 	{
 		if (nullptr == this->sound)
-		{
 			return;
-		}
 
 		this->onSpectrumAnalysisFunctionName->setValue(onSpectrumAnalysisFunctionName);
 		this->onSpectrumAnalysisFunctionName->addUserData(GameObject::AttrActionGenerateLuaFunction(), onSpectrumAnalysisFunctionName + "()");
 		if (false == onSpectrumAnalysisFunctionName.empty())
 		{
-			// TODO: Command queue?
 			this->sound->addSoundSpectrumHandler(this, &SimpleSoundComponent::soundSpectrumFuncPtr);
 		}
 		else
@@ -612,15 +645,8 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setFadeInOutTime", _2(sound, fadeInOutTime),
-			{
-				if (sound)
-				{
-					sound->fadeIn(fadeInOutTime.x);
-					sound->fadeOut(fadeInOutTime.y);
-				}
-			});
+			this->sound->fadeIn(fadeInOutTime.x);
+			this->sound->fadeOut(fadeInOutTime.y);
 		}
 	}
 
@@ -628,15 +654,8 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setInnerOuterConeAngle", _2(sound, innerOuterConeAngle),
-			{
-				if (sound)
-				{
-					sound->setInnerConeAngle(innerOuterConeAngle.x);
-					sound->setOuterConeAngle(innerOuterConeAngle.y);
-				}
-			});
+			this->sound->setInnerConeAngle(innerOuterConeAngle.x);
+			this->sound->setOuterConeAngle(innerOuterConeAngle.y);
 		}
 	}
 
@@ -644,14 +663,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setOuterConeGain", _2(sound, outerConeGain),
-			{
-				if (sound)
-				{
-					sound->setOuterConeGain(outerConeGain);
-				}
-			});
+			this->sound->setOuterConeGain(outerConeGain);
 		}
 	}
 
@@ -668,14 +680,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setPitch", _2(sound, pitch),
-			{
-				if (sound)
-				{
-					sound->setPitch(pitch);
-				}
-			});
+			this->sound->setPitch(pitch);
 		}
 	}
 
@@ -692,14 +697,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setPriority", _2(sound, priority),
-			{
-				if (sound)
-				{
-					sound->setPriority(static_cast<OgreAL::Sound::Priority>(priority));
-				}
-			});
+			this->sound->setPriority(static_cast<OgreAL::Sound::Priority>(priority));
 		}
 	}
 
@@ -716,14 +714,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setDistanceValues", _2(sound, distanceValues),
-			{
-				if (sound)
-				{
-					sound->setDistanceValues(distanceValues.x, distanceValues.y, distanceValues.z);
-				}
-			});
+			this->sound->setDistanceValues(distanceValues.x, distanceValues.y, distanceValues.z);
 		}
 	}
 
@@ -736,14 +727,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setSecondOffset", _2(sound, secondOffset),
-			{
-				if (sound)
-				{
-					sound->setSecondOffset(secondOffset);
-				}
-			});
+			this->sound->setSecondOffset(secondOffset);
 		}
 	}
 
@@ -760,14 +744,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setVelocity", _2(sound, velocity),
-			{
-				if (sound)
-				{
-					sound->setVelocity(velocity);
-				}
-			});
+			this->sound->setVelocity(velocity);
 		}
 	}
 		
@@ -784,14 +761,7 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			auto sound = this->sound;
-			ENQUEUE_RENDER_COMMAND_MULTI("BackgroundScrollComponent::setDirection", _2(sound, direction),
-			{
-				if (sound)
-				{
-					sound->setDirection(direction);
-				}
-			});
+			this->sound->setDirection(direction);
 		}
 	}
 
@@ -809,37 +779,34 @@ namespace NOWA
 		this->oldPosition = this->gameObjectPtr->getPosition();
 		this->oldOrientation = this->gameObjectPtr->getOrientation();
 
-		ENQUEUE_RENDER_COMMAND_WAIT("BackgroundScrollComponent::setupSound",
+		if (true == this->activated->getBool())
+		{
+			if (nullptr != this->sound)
+			{
+				// Do not interrupt sound, when it is currently playing
+				if (this->sound->isPlaying())
+				{
+					return;
+				}
+			}
+		}
+		this->createSound();
+		if (nullptr != this->sound)
 		{
 			if (true == this->activated->getBool())
 			{
-				if (nullptr != this->sound)
-				{
-					// Do not interrupt sound, when it is currently playing
-					if (this->sound->isPlaying())
-					{
-						return;
-					}
-				}
-			}
-			this->createSound();
-			if (nullptr != this->sound)
-			{
-				if (true == this->activated->getBool())
-				{
-					if (this->sound->isPlaying())
-					{
-						this->sound->stop();
-					}
-					this->sound->play();
-				}
-				else
+				if (this->sound->isPlaying())
 				{
 					this->sound->stop();
-					this->destroySound();
 				}
+				this->sound->play();
 			}
-		});
+			else
+			{
+				this->sound->stop();
+				this->destroySound();
+			}
+		}
 	}
 		
 	OgreAL::Sound* SimpleSoundComponent::getSound(void) const

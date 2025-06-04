@@ -60,7 +60,7 @@ namespace NOWA
 			//Achtung: immer im SkriptOrdner nach system "Name" schauen, das ist der Templatename der benutzt werden kann
 			//Weil Name da nicht stand, ging kein Partikel!!
 
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseModule::createParticleSystem", _6(name, templateName, playTimeMS, orientation, position, scale),
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::createParticleSystem", _6(name, templateName, playTimeMS, orientation, position, scale),
 				{
 					ParticleUniverseData particleUniverseData;
 					particleUniverseData.particleTemplateName = templateName;
@@ -149,7 +149,7 @@ namespace NOWA
 		auto it = this->particles.find(name);
 		if (it != this->particles.end())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseModule::stopParticleSystem", _2(&it, name), {
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::stopParticleSystem", _2(&it, name), {
 				// do not deactive since it will be deactivated, when the particle playout time is over
 				// it->second.activated = false;
 				it->second.particle->stop();
@@ -166,7 +166,7 @@ namespace NOWA
 		auto it = this->particles.find(name);
 		if (it != this->particles.end())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseModule::pauseParticleSystem", _3(&it, name, pauseTimeMS), {
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::pauseParticleSystem", _3(&it, name, pauseTimeMS), {
 				if (0.0f != pauseTimeMS)
 				{
 					it->second.particle->pause(pauseTimeMS);
@@ -188,7 +188,7 @@ namespace NOWA
 		auto it = this->particles.find(name);
 		if (it != this->particles.end())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseModule::resumeParticleSystem", _2(&it, name), {
+			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::resumeParticleSystem", _2(&it, name), {
 				it->second.particle->resume();
 			});
 		}

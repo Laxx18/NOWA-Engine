@@ -307,7 +307,7 @@ namespace NOWA
 		this->gameObjectPtr = nullptr;
 
 		// Enqueue destruction command on render thread
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
+		ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
 		{
 			if (cameraCopy)
 			{
@@ -388,7 +388,7 @@ namespace NOWA
 	{
 		if (nullptr == this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::createCamera",
+			ENQUEUE_RENDER_COMMAND("CameraComponent::createCamera",
 			{
 				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 
@@ -847,7 +847,7 @@ namespace NOWA
 		this->nearClipDistance->setValue(nearClipDistance);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setNearClipDistance", _1(nearClipDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setNearClipDistance", _1(nearClipDistance),
 			{
 				this->camera->setNearClipDistance(nearClipDistance);
 			});
@@ -864,7 +864,7 @@ namespace NOWA
 		this->farClipDistance->setValue(farClipDistance);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFarClipDistance", _1(farClipDistance),
+			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFarClipDistance", _1(farClipDistance),
 			{
 				this->camera->setFarClipDistance(farClipDistance);
 			});
@@ -881,7 +881,7 @@ namespace NOWA
 		this->fovy->setValue(fovy.valueDegrees());
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFovy", _1(fovy),
+			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFovy", _1(fovy),
 			{
 				this->camera->setFOVy(fovy);
 			});
@@ -920,7 +920,7 @@ namespace NOWA
 		{
 			if (true == this->orthographic->getBool())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setOrthoWindowSize", _1(orthoWindowSize),
+				ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setOrthoWindowSize", _1(orthoWindowSize),
 				{
 					this->camera->setOrthoWindow(orthoWindowSize.x, orthoWindowSize.y);
 				});
@@ -973,7 +973,7 @@ namespace NOWA
 		this->fixedYawAxis->setValue(fixedYawAxis);
 		if (nullptr != this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setFixedYawAxis", _1(fixedYawAxis),
+			ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::setFixedYawAxis", _1(fixedYawAxis),
 			{
 				this->camera->setFixedYawAxis(fixedYawAxis);
 			});

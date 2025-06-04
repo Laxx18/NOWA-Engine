@@ -327,7 +327,12 @@ namespace NOWA
 							}
 							if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
 							{
-								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+								NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+								{
+									this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+								};
+								NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+
 							}
 						}
 					}
@@ -667,7 +672,11 @@ namespace NOWA
 
 				if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
 				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+					{
+						this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+					};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
 		}
@@ -741,7 +750,11 @@ namespace NOWA
 				}
 				if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
 				{
-					this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+					{
+						this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+					};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
 		}

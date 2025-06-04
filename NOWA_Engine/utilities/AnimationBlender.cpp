@@ -429,8 +429,8 @@ namespace NOWA
 
 		if (this->source != nullptr)
 		{
-			// ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::addTime", _1(time),
-			// {
+			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::addTime", _1(time),
+			{
 				bool weightChange = false;
 				if (this->timeleft > 0.0f)
 				{
@@ -514,7 +514,7 @@ namespace NOWA
 					}
 				}
 				this->source->setLoop(this->loop);
-			// });
+			});
 		}
 	}
 
@@ -884,7 +884,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::setBoneWeight", _2(bone, weight),
+		ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::setBoneWeight", _2(bone, weight),
 		{
 			bone->reset(); // _pBone is Ogre::Bone*
 
@@ -932,7 +932,7 @@ namespace NOWA
 			Ogre::v1::Skeleton* skeleton = this->entity->getSkeleton();
 			if (nullptr != skeleton)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("AnimationBlender::resetBones", _1(skeleton),
+				ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::resetBones", _1(skeleton),
 				{
 					skeleton->reset(true);
 				});

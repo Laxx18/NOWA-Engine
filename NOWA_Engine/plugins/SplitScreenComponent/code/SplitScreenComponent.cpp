@@ -350,7 +350,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
+		ENQUEUE_RENDER_COMMAND_MULTI("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
 		{
 			auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
 
@@ -547,7 +547,7 @@ namespace NOWA
 	{
 		WorkspaceModule::getInstance()->setSplitScreenScenarioActive(false);
 
-		ENQUEUE_RENDER_COMMAND_WAIT("SplitScreenComponent::cleanupSplitScreen",
+		ENQUEUE_RENDER_COMMAND("SplitScreenComponent::cleanupSplitScreen",
 		{
 			Ogre::CompositorManager2 * compositorManager = WorkspaceModule::getInstance()->getCompositorManager();
 

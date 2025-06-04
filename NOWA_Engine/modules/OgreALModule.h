@@ -4,15 +4,12 @@
 // Sound
 #include "OgreAL.h"
 #include "defines.h"
-#include "modules/GraphicsModule.h"
 
 namespace NOWA
 {
 
 	class EXPORTED OgreALModule
 	{
-	public:
-		using SoundCreationCallback = std::function<void(OgreAL::Sound*)>;
 	public:
 
 		/**
@@ -43,8 +40,6 @@ namespace NOWA
 		 *				for bigger files can cause interrupting the music playback and stops it.
 		 *				Also note, the only difference between create sound and create music is the need for different sound volume und music volume specified in a menu.
 		 */
-		// void createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop, bool stream, SoundCreationCallback callback);
-
 		OgreAL::Sound* createSound(Ogre::SceneManager* sceneManager, const Ogre::String& name, const Ogre::String& resourceName, bool loop = false, bool stream = false);
 
 		/**
@@ -84,22 +79,12 @@ namespace NOWA
 		*/
 		void setSoundCullDistance(Ogre::SceneManager* sceneManager, Ogre::Real distance);
 
-	   /**
-		* @brief		Gets a specific sound resource from name
-		* @param[in]	soundName The sound name
-		* @note	If there is no such sound name, NULL will be returned.
-		* @usage		
-		*			OgreAL::Sound* sound = OgreALModule::getSound(sceneManager, soundName);
-		*			if (sound) {
-		*				// Instead of directly manipulating the sound object here, queue it if necessary.
-		*				GraphicsModule::RenderCommand renderCommand = [sound]() {
-		*					// Modify sound properties safely on the render thread
-		*					sound->setVolume(0.5f);  // Example modification
-		*				};
-		*				NOWA::GraphicsModule::getInstance()->enqueue(renderCommand);
-		*			}
-		* return		pSound the corresponding sound
-		*/
+		/**
+		 * @brief		Gets a specific sound resource from name
+		 * @param[in]	soundName The sound name
+		 * @note	If there is no such sound name, NULL will be returned.
+		 * return		pSound the corresponding sound
+		 */
 		OgreAL::Sound* getSound(Ogre::SceneManager* sceneManager, const Ogre::String& soundName);
 
 		OgreAL::SoundManager* getSoundManager(void) const;

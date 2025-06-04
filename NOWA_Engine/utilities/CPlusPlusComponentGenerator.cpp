@@ -757,7 +757,7 @@ namespace NOWA
 
 	void CPlusPlusComponentGenerator::onOkButtonClick(MyGUI::Widget* _sender)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("CPlusPlusComponentGenerator::onOkButtonClick",
+		ENQUEUE_RENDER_COMMAND("CPlusPlusComponentGenerator::onOkButtonClick",
 		{
 			this->mMainWidget->setVisible(false);
 		});
@@ -765,7 +765,7 @@ namespace NOWA
 
 	void CPlusPlusComponentGenerator::onAddVariableButtonClick(MyGUI::Widget* _sender)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CPlusPlusComponentGenerator::onAddVariableButtonClick", _1(_sender),
+		ENQUEUE_RENDER_COMMAND_MULTI("CPlusPlusComponentGenerator::onAddVariableButtonClick", _1(_sender),
 		{
 			// Create a new variable input field
 			MyGUI::ComboBox * typeCombo = this->variantContainer->createWidget<MyGUI::ComboBox>("ComboBox", MyGUI::IntCoord(0, this->currentVariableIndex * 40, 180, 30), MyGUI::Align::Default, "TypeCombo" + std::to_string(this->currentVariableIndex));

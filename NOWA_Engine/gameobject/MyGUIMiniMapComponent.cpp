@@ -25,7 +25,7 @@ namespace NOWA
 	void MiniMapToolTip::show(const MyGUI::IntPoint& point, const Ogre::String& description)
 	{
 		// TODO: No wait
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("MiniMapToolTip::show", _2(point, description),
+		ENQUEUE_RENDER_COMMAND_MULTI("MiniMapToolTip::show", _2(point, description),
 		{
 			// First fetch the viewport size.  (Do not try to getParent()->getSize().
 			// Top level widgets do not have parents, but getParentSize() returns something useful anyway.)

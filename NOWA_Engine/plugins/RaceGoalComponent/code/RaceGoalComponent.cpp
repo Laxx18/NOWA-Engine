@@ -351,8 +351,12 @@ namespace NOWA
 						this->currentLap++;
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
 						{
-							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
+							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
+							};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 						if (this->currentLap < this->lapsCount->getUInt())
 						{
@@ -370,9 +374,13 @@ namespace NOWA
 						this->pPath->clear();
 						if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onFeedbackRaceFunctionName->getString().empty())
 						{
-							this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
-							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
-							this->lapTimeSec = 0.0f;
+							NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								this->lapTimeSec = MathHelper::getInstance()->round(this->lapTimeSec, 3);
+								this->gameObjectPtr->getLuaScript()->callTableFunction(this->onFeedbackRaceFunctionName->getString(), this->currentLap, Ogre::StringConverter::toString(this->lapTimeSec), this->finished);
+								this->lapTimeSec = 0.0f;
+							};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 					}
 				}
@@ -487,7 +495,11 @@ namespace NOWA
 				{
 					if (nullptr != this->gameObjectPtr->getLuaScript())
 					{
-						this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
+						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							this->gameObjectPtr->getLuaScript()->callTableFunction(this->onWrongDirectionFunctionName->getString(), this->wrongDirection);
+						};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 

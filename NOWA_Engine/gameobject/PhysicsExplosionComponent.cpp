@@ -190,7 +190,11 @@ namespace NOWA
 					// if a script file is set
 					if (nullptr != luaScript)
 					{
-						luaScript->callTableFunction("onTimerSecondTick", this->gameObjectPtr.get());
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript]()
+						{
+							luaScript->callTableFunction("onTimerSecondTick", this->gameObjectPtr.get());
+						};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 					else if (this->explosionCallback)
 					{
@@ -269,7 +273,12 @@ namespace NOWA
 								// if a script file is set
 								if (nullptr != luaScript)
 								{
-									luaScript->callTableFunction("onExplodeAffectedGameObject", this->gameObjectPtr.get(), affectedGameObject, distanceToBomb, detonationStrength);
+									
+									NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript, affectedGameObject, distanceToBomb, detonationStrength]()
+									{
+										luaScript->callTableFunction("onExplodeAffectedGameObject", this->gameObjectPtr.get(), affectedGameObject, distanceToBomb, detonationStrength);
+									};
+									NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 								}
 								else if (this->explosionCallback)
 								{
@@ -284,7 +293,11 @@ namespace NOWA
 					if (nullptr != luaScript)
 					{
 						// call the onExplode callback function with the cloned game object on lua and run the script file
-						luaScript->callTableFunction("onExplode", this->gameObjectPtr.get());
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, luaScript]()
+						{
+							luaScript->callTableFunction("onExplode", this->gameObjectPtr.get());
+						};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 					else if (this->explosionCallback)
 					{

@@ -1777,7 +1777,7 @@ namespace NOWA
 		GameObjectComponent::showDebugData();
 		if (nullptr != this->physicsBody)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsActiveComponent::showDebugData",
+			ENQUEUE_RENDER_COMMAND("PhysicsActiveComponent::showDebugData",
 			{
 				this->physicsBody->showDebugCollision(false, this->bShowDebugData);
 			});
@@ -1823,7 +1823,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactBelow", _3(key, charPoint, rayEndPoint),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -1957,7 +1957,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAhead", _3(key, charPoint, rayEndPoint),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2081,7 +2081,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactAbove", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2210,7 +2210,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContactToDirection", _3(key, fromPosition, toPosition),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2350,7 +2350,7 @@ namespace NOWA
 			auto& it = this->drawLineMap.find(key);
 			if (it == this->drawLineMap.cend())
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsActiveComponent::getContact", _1(key),
+				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsActiveComponent::getContact", _1(key),
 				{
 					Ogre::SceneNode * debugLineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 					Ogre::ManualObject * debugLineObject = this->gameObjectPtr->getSceneManager()->createManualObject();
@@ -2963,7 +2963,11 @@ namespace NOWA
 		
 		if (nullptr != this->gameObjectPtr->getLuaScript())
 		{
-			this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
+			NOWA::AppStateManager::LogicCommand logicCommand = [this, otherPhysicsComponent, contact]()
+			{
+				this->gameObjectPtr->getLuaScript()->callTableFunction(this->onContactFunctionName->getString(), otherPhysicsComponent->getOwner(), contact);
+			};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 
