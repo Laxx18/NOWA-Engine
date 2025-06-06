@@ -193,7 +193,7 @@ namespace NOWA
 
 		if (nullptr == this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseComponent::createParticleEffect", _1(&success),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseComponent::createParticleEffect", _1(&success),
 			{
 				Ogre::String name = this->particleTemplateName->getListSelectedValue() + Ogre::StringConverter::toString(this->gameObjectPtr->getId());
 				this->particle = ParticleUniverse::ParticleSystemManager::getSingletonPtr()->getParticleSystem(name);
@@ -252,7 +252,7 @@ namespace NOWA
 	{
 		if (nullptr != this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::destroyParticleEffect",
+			ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::destroyParticleEffect",
 			{
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->destroy: " + this->particle->getName());
 				this->particle->stop();

@@ -1808,7 +1808,7 @@ void DesignState::update(Ogre::Real dt)
 	}
 	// NOWA::LuaScriptApi::getInstance()->update(dt);
 
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())
+	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
 	{
 		if (true == this->simulating)
 		{
@@ -1850,7 +1850,7 @@ void DesignState::update(Ogre::Real dt)
 		}
 	}
 
-	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->isSceneLoading())
+	if (true == this->validScene && false == NOWA::AppStateManager::getSingletonPtr()->getGameProgressModule()->bSceneLoading)
 	{
 		this->updateInfo(dt);
 	}

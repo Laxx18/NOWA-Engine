@@ -1,0 +1,152 @@
+
+// GLSL shaders
+fragment_program NOWABackgroundScroll_ps_GLSL glsl
+{
+	source NOWABackgroundScroll_ps.glsl
+	default_params
+	{
+		param_named backgroundMap int 0
+	}
+}
+
+// GLSL (Vulkan) shaders
+fragment_program NOWABackgroundScroll_ps_VK glslvk
+{
+	source NOWABackgroundScroll_ps.glsl
+	default_params
+	{
+		param_named backgroundMap int 0
+	}
+}
+
+// HLSL shaders
+fragment_program NOWABackgroundScroll_ps_HLSL hlsl
+{
+	source NOWABackgroundScroll_ps.hlsl
+	entry_point main
+	target ps_5_0 ps_4_0 ps_4_0_level_9_1 ps_4_0_level_9_3
+}
+
+// Metal shaders
+fragment_program NOWABackgroundScroll_ps_Metal metal
+{
+	source NOWABackgroundScroll_ps.metal
+	// Because of this one, propably metal will not work, because background is just one texture and this vs is created for cube and not adapted (to complicated).
+	// shader_reflection_pair_hint NOWASkyPostprocess_vs_Metal
+}
+
+fragment_program NOWABackgroundScroll_ps unified
+{
+	delegate NOWABackgroundScroll_ps_HLSL
+	delegate NOWABackgroundScroll_ps_GLSL
+	delegate NOWABackgroundScroll_ps_VK
+	// Causes could not find best technique crash
+	// delegate NOWABackgroundScroll_ps_Metal
+}
+
+material NOWABackgroundScroll
+{
+    technique
+    {
+        pass
+        {
+            // Use alpha blending instead of replace
+            scene_blend alpha_blend
+			// scene_blend src_alpha one_minus_src_alpha
+			// scene_blend one one_minus_src_alpha
+            depth_check on
+            depth_write off
+            
+            // Ensure proper alpha handling
+            alpha_to_coverage off
+            transparent_sorting on
+
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
+
+            fragment_program_ref NOWABackgroundScroll_ps
+            {
+                // Initialize speeds
+                param_named speedsX float9 0 0 0 0 0 0 0 0 0
+				param_named speedsY float9 0 0 0 0 0 0 0 0 0
+                
+                // Disable all layers by default (changed from enabled)
+                param_named layerEnabled float9 0 0 0 0 0 0 0 0 0
+            }
+
+            // All 9 texture units with proper filtering
+            texture_unit backgroundMap0
+            {
+                texture Sky1.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap1
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap2
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap3
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap4
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap5
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap6
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap7
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+            
+            texture_unit backgroundMap8
+            {
+                texture alpha.png
+                filtering none
+				alpha_op_ex add src_manual src_texture 0.1
+                tex_address_mode wrap
+            }
+        }
+    }
+}

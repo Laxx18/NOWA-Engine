@@ -730,7 +730,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_DESTROY_COMMAND("WorkspaceBaseComponent::removeWorkspace", _1(this),
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::removeWorkspace",
 		{
 			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -3886,11 +3886,12 @@ namespace NOWA
 
 	WorkspaceBackgroundComponent::WorkspaceBackgroundComponent()
 		: WorkspaceBaseComponent(),
-		hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes))
+		hardwareGammaEnabled(new Variant(WorkspaceBackgroundComponent::AttrHardwareGammaEnabled(), true, this->attributes)),
+		activeLayerCount(0)
 	{
 		for (size_t i = 0; i < 9; i++)
 		{
-			passBackground[i] = nullptr;
+			this->layerEnabled[i] = 0.0f;
 		}
 	}
 
@@ -3952,46 +3953,42 @@ namespace NOWA
 	void WorkspaceBackgroundComponent::setHardwareGammaEnabled(bool hardwareGammaEnabled)
 	{
 		this->hardwareGammaEnabled->setValue(hardwareGammaEnabled);
-		for (size_t i = 0; i < 9; i++)
+
+		Ogre::String strMaterialName = "NOWABackgroundScroll";
+
+		if (true == this->materialBackgroundPtr.isNull())
 		{
-			Ogre::String strMaterialName = "NOWABackgroundPostprocess";
-			if (i > 0)
-			{
-				strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
+		}
 
-			}
-			this->materialBackgroundPtr[i] = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
+		Ogre::Material* material = this->materialBackgroundPtr.getPointer();
+		this->passBackground = material->getTechnique(0)->getPass(0);
 
-			if (true == this->materialBackgroundPtr[i].isNull())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
-			}
+		Ogre::HlmsSamplerblock samplerblock;
+		samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mMaxAnisotropy = 0;
+		samplerblock.mMagFilter = Ogre::FO_POINT;
+		samplerblock.mMinFilter = Ogre::FO_POINT;
+		samplerblock.mMipFilter = Ogre::FO_NONE;
+		samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
 
-			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
-			this->passBackground[i] = material->getTechnique(0)->getPass(0);
-			Ogre::TextureUnitState* tex = this->passBackground[i]->getTextureUnitState(0);
+		this->passBackground->setSamplerblock(samplerblock);
 
-			Ogre::HlmsSamplerblock samplerblock;
-			samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mMaxAnisotropy = 0;
-			samplerblock.mMagFilter = Ogre::FO_POINT;
-			samplerblock.mMinFilter = Ogre::FO_POINT;
-			samplerblock.mMipFilter = Ogre::FO_NONE;
-			samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
-
-			this->passBackground[i]->setSamplerblock(samplerblock);
-			
+		for (size_t i = 0; i < this->activeLayerCount; i++)
+		{
+			Ogre::TextureUnitState* tex = this->passBackground->getTextureUnitState(i);
 			if (true == this->hardwareGammaEnabled->getBool())
 			{
 				tex->setGamma(8.0);
 			}
 			tex->setHardwareGammaEnabled(hardwareGammaEnabled);
 			tex->setNumMipmaps(0);
-			material->compile();
 		}
+
+		material->compile();
 	}
 
 	bool WorkspaceBackgroundComponent::getHardwareGammaEnabled(void) const
@@ -4189,77 +4186,13 @@ namespace NOWA
 
 					const Ogre::CompositorPassQuadDef::FrustumCorners corners = Ogre::CompositorPassQuadDef::NO_CORNERS;
 
-					// Background 1 quad
+					// Background quad
 					{
 						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess";
+						passQuad->mMaterialName = "NOWABackgroundScroll";
 						passQuad->mFrustumCorners = corners;
 
-						passQuad->mProfilingId = "NOWA_Background_1_Background_Pass_Quad";
-					}
-
-					// Background 2 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess2";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_2_Background_Pass_Quad";
-					}
-
-					// Background 3 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess3";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_3_Background_Pass_Quad";
-					}
-
-					// Background 4 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess4";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_4_Background_Pass_Quad";
-					}
-
-					// Background 5 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess5";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_5_Background_Pass_Quad";
-					}
-
-					// Background 6 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess6";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_6_Background_Pass_Quad";
-					}
-
-					// Background 7 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess7";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_7_Background_Pass_Quad";
-					}
-
-					// Background 8 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess8";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_8_Background_Pass_Quad";
-					}
-
-					// Background 9 quad
-					{
-						Ogre::CompositorPassQuadDef* passQuad = static_cast<Ogre::CompositorPassQuadDef*>(targetDef->addPass(Ogre::PASS_QUAD));
-						passQuad->mMaterialName = "NOWABackgroundPostprocess9";
-						passQuad->mFrustumCorners = corners;
-						passQuad->mProfilingId = "NOWA_Background_9_Background_Pass_Quad";
+						passQuad->mProfilingId = "NOWABackgroundScroll_Pass_Quad";
 					}
 
 					// Render Scene
@@ -4406,21 +4339,14 @@ namespace NOWA
 							}
 
 							// Add background image passes
-							for (size_t i = 0; i < 9; i++)
-							{
-								Ogre::String strMaterialName = "NOWABackgroundPostprocess";
-								if (i > 0)
-								{
-									strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
-								}
-								
-								Ogre::CompositorPassQuadDef* passQuad;
-								auto pass = targetDef->addPass(Ogre::PASS_QUAD);
-								passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
+							Ogre::String strMaterialName = "NOWABackgroundScroll";
+							
+							Ogre::CompositorPassQuadDef* passQuad;
+							auto pass = targetDef->addPass(Ogre::PASS_QUAD);
+							passQuad = static_cast<Ogre::CompositorPassQuadDef*>(pass);
 
-								passQuad->mMaterialName = strMaterialName;
-								passQuad->mProfilingId = "NOWA_Background_Background_" + Ogre::StringConverter::toString(i) + "_Pass_Scene";
-							}
+							passQuad->mMaterialName = strMaterialName;
+							passQuad->mProfilingId = "NOWA_Background_Background_Pass_Scene";
 
 							// Render Scene
 							{
@@ -4452,24 +4378,17 @@ namespace NOWA
 			}
 		}
 
-		for (size_t i = 0; i < 9; i++)
-		{
-			Ogre::String strMaterialName = "NOWABackgroundPostprocess";
-			if (i > 0)
-			{
-				strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
-			}
-			this->materialBackgroundPtr[i] = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
+		Ogre::String strMaterialName = "NOWABackgroundScroll";
+		this->materialBackgroundPtr = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
 			
-			if (true == this->materialBackgroundPtr[i].isNull())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
-			}
-
-			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
-			this->passBackground[i] = material->getTechnique(0)->getPass(0);
+		if (true == this->materialBackgroundPtr.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
 		}
+
+		Ogre::Material* material = this->materialBackgroundPtr.getPointer();
+		this->passBackground = material->getTechnique(0)->getPass(0);
 	}
 
 	bool WorkspaceBackgroundComponent::internalCreateWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
@@ -4477,37 +4396,33 @@ namespace NOWA
 		// Call base workspace creation, which does already main node connections
 		WorkspaceBaseComponent::baseCreateWorkspace(workspaceDef);
 
+		Ogre::String strMaterialName = "NOWABackgroundScroll";
+		this->materialBackgroundPtr = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
+
+		if (true == this->materialBackgroundPtr.isNull())
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
+		}
+
+		Ogre::Material* material = this->materialBackgroundPtr.getPointer();
+		this->passBackground = material->getTechnique(0)->getPass(0);
+
+		Ogre::HlmsSamplerblock samplerblock;
+		samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
+		samplerblock.mMaxAnisotropy = 1;
+		samplerblock.mMagFilter = Ogre::FO_POINT;
+		samplerblock.mMinFilter = Ogre::FO_POINT;
+		samplerblock.mMipFilter = Ogre::FO_NONE;
+		samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
+
+		this->passBackground->setSamplerblock(samplerblock);
+
 		for (size_t i = 0; i < 9; i++)
 		{
-			Ogre::String strMaterialName = "NOWABackgroundPostprocess";
-			if (i > 0)
-			{
-				strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
-				
-			}
-			this->materialBackgroundPtr[i] = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
-			
-			if (true == this->materialBackgroundPtr[i].isNull())
-			{
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
-				throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
-			}
-
-			Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
-			this->passBackground[i] = material->getTechnique(0)->getPass(0);
-			Ogre::TextureUnitState* tex = this->passBackground[i]->getTextureUnitState(0);
-
-			Ogre::HlmsSamplerblock samplerblock;
-			samplerblock.mU = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mV = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mW = Ogre::TextureAddressingMode::TAM_WRAP;
-			samplerblock.mMaxAnisotropy = 1;
-			samplerblock.mMagFilter = Ogre::FO_POINT;
-			samplerblock.mMinFilter = Ogre::FO_POINT;
-			samplerblock.mMipFilter = Ogre::FO_NONE;
-			samplerblock.setFiltering(Ogre::TextureFilterOptions::TFO_NONE);
-
-			this->passBackground[i]->setSamplerblock(samplerblock);
+			Ogre::TextureUnitState* tex = this->passBackground->getTextureUnitState(i);
 
 			if (true == this->hardwareGammaEnabled->getBool())
 			{
@@ -4515,8 +4430,9 @@ namespace NOWA
 			}
 			tex->setHardwareGammaEnabled(this->hardwareGammaEnabled->getBool());
 			tex->setNumMipmaps(0);
-			material->compile();
 		}
+
+		material->compile();
 
 		this->addWorkspace(workspaceDef);
 
@@ -4549,83 +4465,101 @@ namespace NOWA
 	{
 		WorkspaceBaseComponent::removeWorkspace();
 
-		for (size_t i = 0; i < 9; i++)
+		if (false == this->materialBackgroundPtr.isNull())
 		{
-			if (false == this->materialBackgroundPtr[i].isNull())
-				this->materialBackgroundPtr[i].setNull();
-
-			this->passBackground[i] = nullptr;
+			this->materialBackgroundPtr.setNull();
 		}
+
+		NOWA::GraphicsModule::getInstance()->removeTrackedPass(this->passBackground);
+
+		this->passBackground = nullptr;
 	}
 
 	void WorkspaceBackgroundComponent::changeBackground(unsigned short index, const Ogre::String& backgroundTextureName)
 	{
-		// Threadsafe from the outside
-		if (nullptr == this->passBackground[index])
+		if (index >= 9)
 		{
-			// Create all
-			for (size_t i = 0; i < 9; i++)
-			{
-				Ogre::String strMaterialName = "NOWABackgroundPostprocess";
-				if (i > 0)
-				{
-					strMaterialName = "NOWABackgroundPostprocess" + Ogre::StringConverter::toString(i + 1);
-				}
-				this->materialBackgroundPtr[i] = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
-
-				if (true == this->materialBackgroundPtr[i].isNull())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!");
-					throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Could not create: " + this->workspaceName + " because the material: '" + strMaterialName + "' does not exist!", "NOWA");
-				}
-
-				Ogre::Material* material = this->materialBackgroundPtr[i].getPointer();
-				this->passBackground[i] = material->getTechnique(0)->getPass(0);
-			}
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[WorkspaceBackgroundComponent] Invalid layer index: " + Ogre::StringConverter::toString(index));
+			return;
 		}
 
-		if (nullptr != this->passBackground[index])
+		this->layerEnabled[index] = 1.0f;
+
+		Ogre::String strMaterialName = "NOWABackgroundScroll";
+		this->materialBackgroundPtr = Ogre::MaterialManager::getSingletonPtr()->getByName(strMaterialName);
+
+		if (this->materialBackgroundPtr.isNull())
 		{
-			// Change background texture
-			Ogre::TextureUnitState* tex = this->passBackground[index]->getTextureUnitState(0);
-			tex->setNumMipmaps(0);
-			tex->setTextureName(backgroundTextureName);
-			if (true == this->hardwareGammaEnabled->getBool())
-			{
-				tex->setGamma(8.0);
-			}
-			tex->setHardwareGammaEnabled(this->hardwareGammaEnabled->getBool());
-			this->materialBackgroundPtr[index]->compile();
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[WorkspaceBackgroundComponent] Could not set: " + this->workspaceName +
+				" because the material: '" + strMaterialName + "' does not exist!");
+			throw Ogre::Exception(Ogre::Exception::ERR_ITEM_NOT_FOUND,
+				"Could not create: " + this->workspaceName +
+				" because the material: '" + strMaterialName + "' does not exist!", "NOWA");
+		}
+
+		Ogre::Material* material = this->materialBackgroundPtr.getPointer();
+		this->passBackground = material->getTechnique(0)->getPass(0);
+
+		// Update layer enabled flags
+		this->passBackground->getFragmentProgramParameters()->setNamedConstant("layerEnabled", this->layerEnabled, 9, 1);
+
+		// Change background texture
+		Ogre::TextureUnitState* tex = this->passBackground->getTextureUnitState(index);
+		tex->setNumMipmaps(0);
+		tex->setTextureName(backgroundTextureName);
+
+		// Set proper texture addressing for scrolling
+		// tex->setTextureAddressingMode(Ogre::TextureUnitState::TAM_WRAP);
+
+		if (this->hardwareGammaEnabled->getBool())
+		{
+			tex->setGamma(8.0);
+		}
+		tex->setHardwareGammaEnabled(this->hardwareGammaEnabled->getBool());
+
+		this->materialBackgroundPtr->compile();
+	}
+
+	void WorkspaceBackgroundComponent::setBackgroundScrollSpeedX(unsigned short index, Ogre::Real speedX)
+	{
+		if (index >= 9)
+		{
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[WorkspaceBackgroundComponent] Invalid layer index for X speed: " + Ogre::StringConverter::toString(index));
+			return;
+		}
+
+		// Update shader parameters
+		if (this->passBackground)
+		{
+			NOWA::GraphicsModule::getInstance()->updatePassSpeedsX(this->passBackground, index, speedX);
 		}
 	}
 
-	void WorkspaceBackgroundComponent::setBackgroundScrollSpeedX(unsigned short index, Ogre::Real backgroundScrollSpeedX)
+	void WorkspaceBackgroundComponent::setBackgroundScrollSpeedY(unsigned short index, Ogre::Real speedY)
 	{
-		// Threadsafe from the outside
-		if (nullptr != this->passBackground[index])
+		if (index >= 9)
 		{
-			this->passBackground[index]->getFragmentProgramParameters()->setNamedConstant("speedX", backgroundScrollSpeedX);
+			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL,
+				"[WorkspaceBackgroundComponent] Invalid layer index for Y speed: " + Ogre::StringConverter::toString(index));
+			return;
+		}
+
+		// Update shader parameters
+		if (this->passBackground)
+		{
+			NOWA::GraphicsModule::getInstance()->updatePassSpeedsY(this->passBackground, index, speedY);
 		}
 	}
 
-	void WorkspaceBackgroundComponent::setBackgroundScrollSpeedY(unsigned short index, Ogre::Real backgroundScrollSpeedY)
+	void WorkspaceBackgroundComponent::compileBackgroundMaterial(void)
 	{
-		// Threadsafe from the outside
-		if (nullptr != this->passBackground[index])
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBackgroundComponent::compileBackgroundMaterial",
 		{
-			this->passBackground[index]->getFragmentProgramParameters()->setNamedConstant("speedY", backgroundScrollSpeedY);
-		}
-	}
-
-	void WorkspaceBackgroundComponent::compileBackgroundMaterial(unsigned short index)
-	{
-		if (nullptr != this->passBackground[index])
-		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("WorkspaceBackgroundComponent::setBackgroundScrollSpeedY", _1(index),
-			{
-				this->materialBackgroundPtr[index]->compile();
-			});
-		}
+			this->materialBackgroundPtr->compile();
+		});
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////

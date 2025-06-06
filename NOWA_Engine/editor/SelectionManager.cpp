@@ -112,7 +112,7 @@ namespace NOWA
 		this->selectionNode = nullptr;  // if you want
 
 		// Step 3: Enqueue destruction command with copies, no this capture
-		ENQUEUE_DESTROY_COMMAND("SelectionManager::~SelectionManager", _5(selectionRectCopy, selectionNodeCopy, sceneManagerCopy, selectQueryCopy, volumeQueryCopy),
+		ENQUEUE_RENDER_COMMAND_MULTI("SelectionManager::~SelectionManager", _5(selectionRectCopy, selectionNodeCopy, sceneManagerCopy, selectQueryCopy, volumeQueryCopy),
 		{
 			if (selectionRectCopy && selectionNodeCopy)
 			{

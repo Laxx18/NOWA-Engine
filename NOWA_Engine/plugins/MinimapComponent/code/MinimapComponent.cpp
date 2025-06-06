@@ -312,7 +312,7 @@ namespace NOWA
 
 		this->cameraComponent = cameraCompPtr.get();
 
-		ENQUEUE_RENDER_COMMAND("MinimapComponent::setupMinimapWithFogOfWar",
+		ENQUEUE_RENDER_COMMAND_WAIT("MinimapComponent::setupMinimapWithFogOfWar",
 		{
 			auto gameObjectsWithTerraComponent = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectsFromComponent(TerraComponent::getStaticClassName());
 			if (gameObjectsWithTerraComponent.size() > 0)

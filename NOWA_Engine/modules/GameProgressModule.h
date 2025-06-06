@@ -4,6 +4,8 @@
 #include "defines.h"
 #include <map>
 #include <vector>
+#include <atomic>
+
 #include "DotSceneImportModule.h"
 #include "DotSceneExportModule.h"
 
@@ -214,14 +216,12 @@ namespace NOWA
 		void changeSceneShowProgress(const Ogre::String& sceneName);
 
 		/**
-		 * @brief		Gets whether the state is in the middle of scene loading.
-		 */
-		bool isSceneLoading(void) const;
-
-		/**
 		 * @brief		Gets the current (for this scene) scene manager, or null if not existing.
 		 */
 		Ogre::SceneManager* getCurrentSceneManager(void);
+
+	public:
+		std::atomic<bool> bSceneLoading;
 	private:
 		GameProgressModule(const Ogre::String& appStateName);
 		~GameProgressModule();
@@ -229,8 +229,6 @@ namespace NOWA
 		void setPlayerName(const Ogre::String& playerName);
 
 		bool internalReadGlobalAttributes(const Ogre::String& globalAttributesStream);
-
-		void setIsSceneLoading(bool bSceneLoading);
 	private:
 		std::pair<bool, Ogre::String> getSaveFileContent(const Ogre::String& saveName);
 	private:
@@ -248,9 +246,6 @@ namespace NOWA
 		Ogre::String userSaveName;
 
 		Ogre::String currentSceneName;
-
-		bool bSceneLoading;
-		
 	};
 
 }; //namespace end

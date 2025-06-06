@@ -64,7 +64,7 @@ namespace NOWA
 		this->lightDirectionalComponent = nullptr;
 		if (nullptr != this->atmosphereNpr)
 		{
-			ENQUEUE_RENDER_COMMAND("AtmosphereComponent::~AtmosphereComponent",
+			ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::~AtmosphereComponent",
 			{
 				this->atmosphereNpr->setLight(nullptr);
 				delete this->atmosphereNpr;
@@ -799,7 +799,7 @@ namespace NOWA
 			return false;
 		}
 
-		ENQUEUE_RENDER_COMMAND("AtmosphereComponent::postInit",
+		ENQUEUE_RENDER_COMMAND_WAIT("AtmosphereComponent::postInit",
 		{
 			if (nullptr != this->atmosphereNpr)
 			{

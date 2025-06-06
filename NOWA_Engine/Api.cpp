@@ -126,7 +126,7 @@ public:
 
 		if (true == canUpdate)
 		{
-			if (false == NOWA::AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->isSceneLoading())
+			if (false == NOWA::AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->bSceneLoading)
 			{
 				this->ogreNewtModule->update(dt);
 				// Update the GameObjects

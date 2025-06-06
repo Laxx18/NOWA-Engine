@@ -67,7 +67,7 @@ namespace NOWA
 			if (false == success)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse scene: '" + this->nextSceneName + "' correctly!");
-				gameProgressModule->setIsSceneLoading(false);
+				gameProgressModule->bSceneLoading = false;
 				return;
 			}
 
@@ -85,7 +85,7 @@ namespace NOWA
 
 			appStateMgr->getEventManager(this->appStateName)->threadSafeQueueEvent(sceneLoadedEvent);
 
-			gameProgressModule->setIsSceneLoading(false);
+			gameProgressModule->bSceneLoading = false;
 		}
 
 
@@ -143,7 +143,7 @@ namespace NOWA
 				if (true == openFilePathName.empty())
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameProgressModule]: Error: Could not parse saved name: '" + this->saveName + "' because its unclear to which scene the save snapshot belongs!");
-					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
+					AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading = false;
 					return;
 				}
 
@@ -226,7 +226,7 @@ namespace NOWA
 				// }
 			}
 
-			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->setIsSceneLoading(false);
+			AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading = false;
 		}
 
 		virtual void onUpdate(float dt) override
@@ -288,11 +288,6 @@ namespace NOWA
 	GameProgressModule::~GameProgressModule()
 	{
 
-	}
-
-	bool GameProgressModule::isSceneLoading(void) const
-	{
-		return this->bSceneLoading;
 	}
 
 	Ogre::SceneManager* GameProgressModule::getCurrentSceneManager(void)
@@ -554,7 +549,7 @@ namespace NOWA
 
 	void GameProgressModule::loadScene(const Ogre::String& sceneName)
 	{
-		this->setIsSceneLoading(true);
+		this->bSceneLoading = true;
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(sceneName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
@@ -571,8 +566,7 @@ namespace NOWA
 
 	void GameProgressModule::loadSceneShowProgress(const Ogre::String& sceneName)
 	{
-		this->setIsSceneLoading(true);
-
+		this->bSceneLoading = true;
 
 		Ogre::String projectName = NOWA::Core::getSingletonPtr()->getProjectNameFromPath(sceneName);
 		NOWA::Core::getSingletonPtr()->setProjectName(projectName);
@@ -589,7 +583,7 @@ namespace NOWA
 
 	void GameProgressModule::changeScene(const Ogre::String& sceneName)
 	{
-		this->setIsSceneLoading(true);
+		this->bSceneLoading = true;
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the scene at another tick. Note, this is necessary
@@ -602,7 +596,7 @@ namespace NOWA
 
 	void GameProgressModule::changeSceneShowProgress(const Ogre::String& sceneName)
 	{
-		this->setIsSceneLoading(true);
+		this->bSceneLoading = true;
 
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// Creates the delay process and changes the scene at another tick. Note, this is necessary
@@ -646,7 +640,7 @@ namespace NOWA
 			return false;
 		}
 
-		this->setIsSceneLoading(true);
+		this->bSceneLoading = true;
 
 		bool success = false;
 		this->saveName = saveName;
@@ -661,7 +655,7 @@ namespace NOWA
 		auto streamData = this->getSaveFileContent(tempSaveName);
 		if (true == streamData.second.empty())
 		{
-			this->setIsSceneLoading(false);
+			this->bSceneLoading = false;
 			return success;
 		}
 
@@ -679,11 +673,6 @@ namespace NOWA
 	bool GameProgressModule::internalReadGlobalAttributes(const Ogre::String& globalAttributesStream)
 	{
 		return AppStateManager::getSingletonPtr()->internalReadGlobalAttributes(globalAttributesStream);
-	}
-
-	void GameProgressModule::setIsSceneLoading(bool bSceneLoading)
-	{
-		this->bSceneLoading = bSceneLoading;
 	}
 	
 	void GameProgressModule::saveValues(const Ogre::String& saveName, unsigned long gameObjectId, bool crypted)

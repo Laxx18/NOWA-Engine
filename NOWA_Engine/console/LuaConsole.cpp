@@ -198,7 +198,7 @@ namespace NOWA
 			this->pPanel->setDimensions(1.0f, this->height * 0.5f);
 		});
 
-		if (this->textChanged)
+		if (visible && this->textChanged)
 		{
 			Ogre::String text("");
 			std::list<std::string>::iterator i;

@@ -39,6 +39,7 @@ namespace NOWA
 		this->followGameObjectY->setDescription("Whether to follow the game object's y position (if target id is valid).");
 		this->followGameObjectZ->setDescription("Whether to follow the game object's z position instead of y (if target id is valid).");
 		this->backgroundName->setDescription("The background far texture name. If empty, no background far will be rendered.");
+		this->backgroundName->addUserData(GameObject::AttrActionFileOpenDialog(), "Backgrounds");
 	}
 
 	BackgroundScrollComponent::~BackgroundScrollComponent()
@@ -170,6 +171,10 @@ namespace NOWA
 	{
 		this->firstTimePositionSet = true;
 		this->targetSceneNode = nullptr;
+		this->lastPosition = Ogre::Vector2::ZERO;
+		this->pausedLastPosition = Ogre::Vector2::ZERO;
+		this->xScroll = 0.0f;
+		this->yScroll = 0.0f;
 
 		if (nullptr == this->workspaceBackgroundComponent)
 		{
@@ -186,10 +191,10 @@ namespace NOWA
 					this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(i, 0.0f);
 					this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(i, 0.0f);
 					// Compiles the materials and its shaders again, so that default uv values are set (uv set to 0)
-					this->workspaceBackgroundComponent->compileBackgroundMaterial(i);
 					break;
 				}
 			}
+			this->workspaceBackgroundComponent->compileBackgroundMaterial();
 		});
 		return true;
 	}
@@ -206,223 +211,101 @@ namespace NOWA
 		this->lastPosition = this->pausedLastPosition;
 	}
 
-#if 0
 	void BackgroundScrollComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		if (false == notSimulating && true == this->active->getBool() && nullptr != this->workspaceBackgroundComponent)
+		if (!notSimulating && this->active->getBool() && this->workspaceBackgroundComponent != nullptr)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BackgroundScrollComponent::update", _1(dt),
-			{
-				bool followGameObjectX = this->followGameObjectX->getBool();
-				bool followGameObjectY = this->followGameObjectY->getBool();
-				bool followGameObjectZ = this->followGameObjectZ->getBool();
-
-				Ogre::Vector2 absolutePos2D = Ogre::Vector2::ZERO;
-				Ogre::Vector2 velocity = Ogre::Vector2::ZERO;
-
-				if (nullptr != this->targetSceneNode)
-				{
-					Ogre::Vector3 absolutePos3D = this->targetSceneNode->_getDerivedPositionUpdated();
-
-					if (true == followGameObjectX || true == followGameObjectY)
-						absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.y);
-					else
-						absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.z);
-
-					if (this->firstTimePositionSet)
-					{
-						if (true == followGameObjectX)
-							this->lastPosition.x = absolutePos2D.x;
-						if (true == followGameObjectY || true == followGameObjectZ)
-							this->lastPosition.y = absolutePos2D.y;
-
-						this->firstTimePositionSet = false;
-					}
-
-					if (true == followGameObjectX)
-					{
-						absolutePos2D.x = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f * dt);
-						velocity.x = absolutePos2D.x - this->lastPosition.x;
-
-						this->xScroll += velocity.x * this->moveSpeedX->getReal() * dt;
-
-						if (this->xScroll >= 2.0f)
-						{
-							this->xScroll = 0.0f;
-						}
-						else if (this->xScroll <= 0.0f)
-						{
-							this->xScroll = 2.0f;
-						}
-					}
-					if (true == followGameObjectY || true == followGameObjectZ)
-					{
-						absolutePos2D.y = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f * dt);
-						velocity.y = absolutePos2D.y - this->lastPosition.y;
-
-						this->yScroll -= velocity.y * this->moveSpeedY->getReal() * dt;
-
-						if (this->yScroll >= 2.0f)
-						{
-							this->yScroll = 0.0f;
-						}
-						else if (this->yScroll <= 0.0f)
-						{
-							this->yScroll = 2.0f;
-						}
-					}
-				}
-
-				if (false == followGameObjectX)
-				{
-					velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f * dt);
-					this->xScroll += velocity.x * dt;
-
-					if (this->xScroll >= 2.0f)
-					{
-						this->xScroll = 0.0f;
-					}
-					else if (this->xScroll <= 0.0f)
-					{
-						this->xScroll = 2.0f;
-					}
-				}
-
-				if (false == followGameObjectY && false == followGameObjectZ)
-				{
-					velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f * dt);
-					this->yScroll -= velocity.y * dt;
-
-					if (this->yScroll >= 2.0f)
-					{
-						this->yScroll = 0.0f;
-					}
-					else if (this->yScroll <= 0.0f)
-					{
-						this->yScroll = 2.0f;
-					}
-				}
-
-				for (size_t i = 0; i < 9; i++)
-				{
-					if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
-					{
-						this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(i, this->xScroll);
-						this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(i, this->yScroll);
-						break;
-					}
-				}
-
-				if (true == followGameObjectX)
-					this->lastPosition.x = absolutePos2D.x;
-				else
-					this->lastPosition.x = velocity.x;
-
-				if (true == followGameObjectY || true == followGameObjectZ)
-					this->lastPosition.y = absolutePos2D.y;
-				else
-					this->lastPosition.y = velocity.y;
-			});
-		}
-	}
-#endif
-
-#if 1
-	void BackgroundScrollComponent::update(Ogre::Real dt, bool notSimulating)
-	{
-		if (!notSimulating && this->active->getBool() && this->workspaceBackgroundComponent)
-		{
-			auto workspaceBackgroundComponent = this->workspaceBackgroundComponent;
-			auto moveSpeedX = this->moveSpeedX->getReal();
-			auto moveSpeedY = this->moveSpeedY->getReal();
-			auto targetSceneNode = this->targetSceneNode;
-			auto occurrenceIndex = this->gameObjectPtr->getOccurrenceIndexFromComponent(this);
-
 			bool followGameObjectX = this->followGameObjectX->getBool();
 			bool followGameObjectY = this->followGameObjectY->getBool();
 			bool followGameObjectZ = this->followGameObjectZ->getBool();
 
-			// Local copies of state variables
-			Ogre::Vector2 lastPosition = this->lastPosition;
-			bool firstTimePositionSet = this->firstTimePositionSet;
-			Ogre::Real xScroll = this->xScroll;
-			Ogre::Real yScroll = this->yScroll;
+			Ogre::Vector2 absolutePos2D = Ogre::Vector2::ZERO;
+			Ogre::Vector2 velocity = Ogre::Vector2::ZERO;
 
-			auto renderCommand = [dt, workspaceBackgroundComponent, moveSpeedX, moveSpeedY,
-				targetSceneNode, occurrenceIndex, followGameObjectX, followGameObjectY, followGameObjectZ,
-				lastPosition, firstTimePositionSet, xScroll, yScroll]() mutable
-				-> std::tuple<Ogre::Real, Ogre::Real, Ogre::Vector2, bool>
+			if (this->targetSceneNode != nullptr)
+			{
+				Ogre::Vector3 absolutePos3D = this->targetSceneNode->_getDerivedPositionUpdated();
+
+				// Determine which axes to track for scroll calculation
+				if (followGameObjectX || followGameObjectY)
+					absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.y);
+				else
+					absolutePos2D = Ogre::Vector2(absolutePos3D.x, absolutePos3D.z);
+
+				// Initialize lastPosition on first update
+				if (this->firstTimePositionSet)
 				{
-					Ogre::Vector2 absolutePos2D = Ogre::Vector2::ZERO;
-					Ogre::Vector2 velocity = Ogre::Vector2::ZERO;
+					if (followGameObjectX)
+						this->lastPosition.x = absolutePos2D.x;
+					if (followGameObjectY || followGameObjectZ)
+						this->lastPosition.y = absolutePos2D.y;
 
-					if (targetSceneNode)
-					{
-						Ogre::Vector3 absolutePos3D = targetSceneNode->_getDerivedPositionUpdated();
+					this->firstTimePositionSet = false;
+				}
 
-						if (followGameObjectX || followGameObjectY)
-							absolutePos2D = { absolutePos3D.x, absolutePos3D.y };
-						else
-							absolutePos2D = { absolutePos3D.x, absolutePos3D.z };
+				// Smooth and calculate velocity for X
+				if (followGameObjectX)
+				{
+					float filteredX = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, this->lastPosition.x, 0.1f * dt);
+					velocity.x = filteredX - this->lastPosition.x;
 
-						if (firstTimePositionSet)
-						{
-							if (followGameObjectX)
-								lastPosition.x = absolutePos2D.x;
-							if (followGameObjectY || followGameObjectZ)
-								lastPosition.y = absolutePos2D.y;
-							firstTimePositionSet = false;
-						}
+					this->xScroll += velocity.x * this->moveSpeedX->getReal() * dt;
+					this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f);  // Wrap between [0,2)
+					absolutePos2D.x = filteredX; // update for lastPosition below
+				}
 
-						if (followGameObjectX)
-						{
-							absolutePos2D.x = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.x, lastPosition.x, 0.1f * dt);
-							velocity.x = absolutePos2D.x - lastPosition.x;
-							xScroll += velocity.x * moveSpeedX * dt;
-							xScroll = fmodf(xScroll + 2.0f, 2.0f);
-							lastPosition.x = absolutePos2D.x;
-						}
-						if (followGameObjectY || followGameObjectZ)
-						{
-							absolutePos2D.y = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, lastPosition.y, 0.1f * dt);
-							velocity.y = absolutePos2D.y - lastPosition.y;
-							yScroll -= velocity.y * moveSpeedY * dt;
-							yScroll = fmodf(yScroll + 2.0f, 2.0f);
-							lastPosition.y = absolutePos2D.y;
-						}
-					}
+				// Smooth and calculate velocity for Y
+				if (followGameObjectY || followGameObjectZ)
+				{
+					float filteredY = NOWA::MathHelper::getInstance()->lowPassFilter(absolutePos2D.y, this->lastPosition.y, 0.1f * dt);
+					velocity.y = filteredY - this->lastPosition.y;
 
-					if (!followGameObjectX)
-					{
-						velocity.x = NOWA::MathHelper::getInstance()->lowPassFilter(moveSpeedX, lastPosition.x, 0.1f * dt);
-						xScroll += velocity.x * dt;
-						xScroll = fmodf(xScroll + 2.0f, 2.0f);
-						lastPosition.x = velocity.x;
-					}
-					if (!followGameObjectY && !followGameObjectZ)
-					{
-						velocity.y = NOWA::MathHelper::getInstance()->lowPassFilter(moveSpeedY, lastPosition.y, 0.1f * dt);
-						yScroll -= velocity.y * dt;
-						yScroll = fmodf(yScroll + 2.0f, 2.0f);
-						lastPosition.y = velocity.y;
-					}
+					this->yScroll -= velocity.y * this->moveSpeedY->getReal() * dt;
+					this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f);  // Wrap between [0,2)
+					absolutePos2D.y = filteredY; // update for lastPosition below
+				}
+			}
 
-					workspaceBackgroundComponent->setBackgroundScrollSpeedX(occurrenceIndex, xScroll);
-					workspaceBackgroundComponent->setBackgroundScrollSpeedY(occurrenceIndex, yScroll);
+			// If not following game object, just scroll based on moveSpeed values
+			if (!followGameObjectX)
+			{
+				float filteredSpeedX = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedX->getReal(), this->lastPosition.x, 0.1f * dt);
+				this->xScroll += filteredSpeedX * dt;
+				this->xScroll = fmodf(this->xScroll + 2.0f, 2.0f);
+				velocity.x = filteredSpeedX;
+			}
 
-					// Return updated state
-					return std::make_tuple(xScroll, yScroll, lastPosition, firstTimePositionSet);
-				};
+			if (!followGameObjectY && !followGameObjectZ)
+			{
+				float filteredSpeedY = NOWA::MathHelper::getInstance()->lowPassFilter(this->moveSpeedY->getReal(), this->lastPosition.y, 0.1f * dt);
+				this->yScroll -= filteredSpeedY * dt;
+				this->yScroll = fmodf(this->yScroll + 2.0f, 2.0f);
+				velocity.y = filteredSpeedY;
+			}
 
-			// Enqueue and wait for result
-			auto result = NOWA::GraphicsModule::getInstance()->enqueueAndWaitWithResult<std::tuple<Ogre::Real, Ogre::Real, Ogre::Vector2, bool>>(
-				renderCommand, "BackgroundScrollComponent::update");
+			// Update the workspace background component with current scroll values
+			for (size_t i = 0; i < 9; ++i)
+			{
+				if (i == this->gameObjectPtr->getOccurrenceIndexFromComponent(this))
+				{
+					this->workspaceBackgroundComponent->setBackgroundScrollSpeedX(i, this->xScroll);
+					this->workspaceBackgroundComponent->setBackgroundScrollSpeedY(i, this->yScroll);
+					break;
+				}
+			}
 
-			std::tie(this->xScroll, this->yScroll, this->lastPosition, this->firstTimePositionSet) = result;
+			// Update lastPosition for next frame
+			if (followGameObjectX)
+				this->lastPosition.x = absolutePos2D.x;
+			else
+				this->lastPosition.x = velocity.x;
 
+			if (followGameObjectY || followGameObjectZ)
+				this->lastPosition.y = absolutePos2D.y;
+			else
+				this->lastPosition.y = velocity.y;
 		}
 	}
-#endif
 
 	void BackgroundScrollComponent::actualizeValue(Variant* attribute)
 	{
@@ -639,6 +522,7 @@ namespace NOWA
 						break;
 					}
 				}
+				// this->workspaceBackgroundComponent->compileBackgroundMaterial();
 			});
 		}
 	}

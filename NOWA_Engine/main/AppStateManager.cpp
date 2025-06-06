@@ -385,9 +385,9 @@ namespace NOWA
 			// double timeSinceLastLogicFrame = currentTime - lastLogicFrameTime;
 			// NOWA::GraphicsModule::getInstance()->setAccumTimeSinceLastLogicFrame(static_cast<Ogre::Real>(timeSinceLastLogicFrame));
 
-			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 			{
-				InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
+				// InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
 
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
@@ -407,7 +407,7 @@ namespace NOWA
 				this->processAll();
 
 				// Update input devices
-				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->isSceneLoading())
+				if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 				{
 					// Update the active state with fixed time step
 					this->activeStateStack.back()->update(simulationTickCount);

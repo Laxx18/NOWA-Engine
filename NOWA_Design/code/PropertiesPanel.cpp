@@ -905,7 +905,7 @@ PropertiesPanelDynamic::~PropertiesPanelDynamic()
 
 	if (openSaveFileDialogPtr)
 	{
-		ENQUEUE_DESTROY_COMMAND("PropertiesPanelDynamic::~PropertiesPanelDynamic", _1(openSaveFileDialogPtr),
+		ENQUEUE_RENDER_COMMAND_MULTI("PropertiesPanelDynamic::~PropertiesPanelDynamic", _1(openSaveFileDialogPtr),
 		{
 			delete openSaveFileDialogPtr;
 		});
@@ -3286,6 +3286,9 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 						this->gameObjects[i]->moveComponentUp(index);
 					}
 				}
+				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
+
 				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);
@@ -3307,6 +3310,9 @@ void PropertiesPanelComponent::buttonHit(MyGUI::Widget* sender)
 						this->gameObjects[i]->moveComponentDown(index);
 					}
 				}
+				boost::shared_ptr<NOWA::EventDataSceneModified> eventDataSceneModified(new NOWA::EventDataSceneModified());
+				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataSceneModified);
+
 				// Sent when a property has changed, so that the properties panel can be refreshed with new values
 				boost::shared_ptr<EventDataRefreshPropertiesPanel> eventDataRefreshPropertiesPanel(new EventDataRefreshPropertiesPanel());
 				NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataRefreshPropertiesPanel);

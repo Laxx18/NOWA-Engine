@@ -1108,7 +1108,7 @@ namespace NOWA
 		auto lineNode = this->translationLineNode;
 		auto line = this->translationLine;
 
-		ENQUEUE_DESTROY_COMMAND("Destroy Gizmo Line", _3(sceneManager, lineNode, line),
+		ENQUEUE_RENDER_COMMAND_MULTI("Destroy Gizmo Line", _3(sceneManager, lineNode, line),
 		{
 			lineNode->detachAllObjects();
 			if (line)
@@ -1134,7 +1134,7 @@ namespace NOWA
 		if (rotationCircleNode == nullptr)
 			return;
 
-		ENQUEUE_DESTROY_COMMAND("Gizmo::destroyCircle", _3(sceneManager, rotationCircle, rotationCircleNode),
+		ENQUEUE_RENDER_COMMAND_MULTI("Gizmo::destroyCircle", _3(sceneManager, rotationCircle, rotationCircleNode),
 		{
 			rotationCircleNode->detachAllObjects();
 

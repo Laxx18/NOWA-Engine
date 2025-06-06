@@ -307,7 +307,7 @@ namespace NOWA
 		this->gameObjectPtr = nullptr;
 
 		// Enqueue destruction command on render thread
-		ENQUEUE_RENDER_COMMAND_MULTI("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
 		{
 			if (cameraCopy)
 			{
@@ -388,7 +388,7 @@ namespace NOWA
 	{
 		if (nullptr == this->camera)
 		{
-			ENQUEUE_RENDER_COMMAND("CameraComponent::createCamera",
+			ENQUEUE_RENDER_COMMAND_WAIT("CameraComponent::createCamera",
 			{
 				this->camera = this->gameObjectPtr->getSceneManager()->createCamera(this->gameObjectPtr->getName());
 

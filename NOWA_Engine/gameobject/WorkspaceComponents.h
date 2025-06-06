@@ -617,13 +617,15 @@ namespace NOWA
 
 		void setBackgroundScrollSpeedY(unsigned short index, Ogre::Real backgroundScrollFarSpeedY);
 
-		void compileBackgroundMaterial(unsigned short index);
+		void compileBackgroundMaterial(void);
 	public:
 		static const Ogre::String AttrHardwareGammaEnabled(void) { return "Hardware Gamma Enabled"; }
 	private:
-		Ogre::MaterialPtr materialBackgroundPtr[9];
-		Ogre::Pass* passBackground[9];
+		Ogre::MaterialPtr materialBackgroundPtr;
+		Ogre::Pass* passBackground;
 		Variant* hardwareGammaEnabled;
+		Ogre::Real layerEnabled[9];
+		int activeLayerCount;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////

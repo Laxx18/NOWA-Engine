@@ -350,7 +350,7 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SplitScreenComponent::setupSplitScreen", _1(workspaceBaseCompPtr),
 		{
 			auto splitScreenComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<SplitScreenComponent>();
 

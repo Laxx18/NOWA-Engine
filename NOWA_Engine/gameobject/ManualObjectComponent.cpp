@@ -157,27 +157,32 @@ namespace NOWA
 			return success;
 		}
 
-		this->dummyEntity->setVisible(false);
-
-		if (nullptr == this->lineNode)
+		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::connect",
 		{
-			this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-		}
-		this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-		this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-		this->manualObject->setName("ManualObject_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
-		this->manualObject->setQueryFlags(0 << 0);
-		this->lineNode->attachObject(this->manualObject);
-		this->manualObject->setCastShadows(this->castShadows->getBool());
+			this->dummyEntity->setVisible(false);
+
+			if (nullptr == this->lineNode)
+			{
+				this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+			}
+			this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+			this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+			this->manualObject->setName("ManualObject_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
+			this->manualObject->setQueryFlags(0 << 0);
+			this->lineNode->attachObject(this->manualObject);
+			this->manualObject->setCastShadows(this->castShadows->getBool());
+		});
 		
 		return success;
 	}
 
 	bool ManualObjectComponent::disconnect(void)
 	{
-		this->dummyEntity->setVisible(true);
-
-		this->destroyLines();
+		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::disconnect",
+		{
+			this->dummyEntity->setVisible(true);
+			this->destroyLines();
+		});
 		
 		return true;
 	}
@@ -194,23 +199,26 @@ namespace NOWA
 				return;
 			}
 
-			this->indices = 0;
-			if (this->manualObject->getNumSections() > 0)
+			ENQUEUE_RENDER_COMMAND("ManualObjectComponent::update",
 			{
-				this->manualObject->beginUpdate(0);
-			}
-			else
-			{
-				this->manualObject->clear();
-				this->manualObject->begin("WhiteNoLightingBackground", this->internalOperationType);
-			}
+				this->indices = 0;
+				if (this->manualObject->getNumSections() > 0)
+				{
+					this->manualObject->beginUpdate(0);
+				}
+				else
+				{
+					this->manualObject->clear();
+					this->manualObject->begin("WhiteNoLightingBackground", this->internalOperationType);
+				}
 
-			for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
-			{
-				this->drawLine(i);
-			}
+				for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
+				{
+					this->drawLine(i);
+				}
 
-			this->manualObject->end();
+				this->manualObject->end();
+			});
 		}
 	}
 

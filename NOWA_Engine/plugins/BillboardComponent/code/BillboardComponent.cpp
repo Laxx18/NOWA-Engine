@@ -207,7 +207,7 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->billboardSet)
 		{
-			ENQUEUE_RENDER_COMMAND("BillboardComponent::onRemoveComponent", 
+			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::onRemoveComponent", 
 			{
 				this->billboardSet->removeBillboard(this->billboard);
 				this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
@@ -223,7 +223,7 @@ namespace NOWA
 	{
 		if (nullptr == this->billboard)
 		{
-			ENQUEUE_RENDER_COMMAND("BillboardComponent::createBillboard",
+			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::createBillboard",
 			{
 				// https://forums.ogre3d.org/viewtopic.php?t=83421
 				this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet();

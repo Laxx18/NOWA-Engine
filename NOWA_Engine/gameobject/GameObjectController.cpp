@@ -907,7 +907,7 @@ namespace NOWA
 	
 	void GameObjectController::undo(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -920,7 +920,7 @@ namespace NOWA
 		
 	void GameObjectController::undoAll(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading
 			&& false == this->bIsDestroying 
 			&& false == Core::getSingletonPtr()->getIsGame())
 		{
@@ -934,7 +934,7 @@ namespace NOWA
 	
 	void GameObjectController::redo(void)
 	{
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -947,7 +947,7 @@ namespace NOWA
 	
 	void GameObjectController::redoAll(void)
 	{	
-		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->isSceneLoading()
+		if (false == AppStateManager::getSingletonPtr()->getGameProgressModule(this->appStateName)->bSceneLoading
 			&& false == this->bIsDestroying)
 		{
 			NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
@@ -1570,10 +1570,10 @@ namespace NOWA
 		// Ogre::Root::getSingletonPtr()->renderOneFrame();
 
 		// Must be called on logic thread, because lua operations must be on logic thread!
-		auto done = std::make_shared<std::promise<void>>();
-		std::future<void> future = done->get_future();
+		/*auto done = std::make_shared<std::promise<void>>();
+		std::future<void> future = done->get_future();*/
 
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, done]()
+		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 		{
 			// Clears lua errors etc.
 			LuaScriptApi::getInstance()->clear();
@@ -1656,20 +1656,21 @@ namespace NOWA
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Warning Could not get main game object!");
 			}
 
-			done->set_value();
+			// done->set_value();
 		};
 
 		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		future.wait();
+		// NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+		// future.wait();
 	}
 
 	void GameObjectController::stop(void)
 	{
 		// Must be called on logic thread, because lua operations must be on logic thread!
-		auto done = std::make_shared<std::promise<void>>();
-		std::future<void> future = done->get_future();
+		/*auto done = std::make_shared<std::promise<void>>();
+		std::future<void> future = done->get_future();*/
 
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, done]()
+		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 		{
 			// Resets the command, so that deletion of game object can be processed again.
 			// See @deleteGameObjectWithUndo for more information
@@ -1716,11 +1717,11 @@ namespace NOWA
 			this->jointComponentMap.clear();
 			this->physicsCompoundConnectionComponentMap.clear();
 			this->disconnectVehicles();
-			done->set_value();
+			// done->set_value();
 		};
 
 		NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
-		future.wait();
+		// future.wait();
 	}
 
 	void GameObjectController::pause(void)

@@ -152,7 +152,7 @@ namespace NOWA
 	bool LinesComponent::connect(void)
 	{
 		// TODO: Wait?
-		ENQUEUE_RENDER_COMMAND("LinesComponent::connect",
+		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::connect",
 		{
 			this->dummyEntity->setVisible(false);
 			for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
@@ -167,7 +167,7 @@ namespace NOWA
 	bool LinesComponent::disconnect(void)
 	{
 		// TODO: Wait?
-		ENQUEUE_RENDER_COMMAND("LinesComponent::connect",
+		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::connect",
 		{
 			this->dummyEntity->setVisible(true);
 

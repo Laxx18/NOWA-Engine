@@ -11,7 +11,7 @@ namespace NOWA
 	{
 		this->setName(name);
 
-		ENQUEUE_RENDER_COMMAND_WAIT("SelectionRectangle::SelectionRectangle",
+		ENQUEUE_RENDER_COMMAND("SelectionRectangle::SelectionRectangle",
 		{
 			//// Assure that the rectangle is allways visible on the surface
 			this->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);

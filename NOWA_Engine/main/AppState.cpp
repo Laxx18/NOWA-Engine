@@ -171,7 +171,7 @@ namespace NOWA
 	{
 		if (true == this->canUpdate)
 		{
-			if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->isSceneLoading())
+			if (false == AppStateManager::getSingletonPtr()->bStall && false == this->gameProgressModule->bSceneLoading)
 			{
 				this->ogreNewtModule->update(dt);
 				// Update the GameObjects
