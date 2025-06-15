@@ -268,7 +268,7 @@ namespace NOWA
 
 	bool GameObject::init(Ogre::MovableObject* newMovableObject)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI/*_WAIT*/("GameObject::init", _1(newMovableObject),
+		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::init", _1(newMovableObject),
 		{
 			if (nullptr != newMovableObject)
 			{
@@ -299,7 +299,7 @@ namespace NOWA
 
 				// calculate size and offset from center
 				// Ogre::AxisAlignedBox boundingBox = newEntity->getMesh()->getBounds();
-				this->refreshSize();
+				this->refreshSize(this->sceneNode->getScale());
 
 				if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 				{
@@ -362,12 +362,11 @@ namespace NOWA
 		return true;
 	}
 
-	void GameObject::refreshSize(void)
+	void GameObject::refreshSize(const Ogre::Vector3& scale)
 	{
 		if (nullptr != this->movableObject)
 		{
 			Ogre::Aabb boundingBox = this->movableObject->getLocalAabb();
-			Ogre::Vector3 scale = this->sceneNode->getScale();
 			this->size->setReadOnly(false);
 			this->size->setValue(((boundingBox.getMaximum() - boundingBox.getMinimum())) * scale);
 			this->size->setReadOnly(true);
@@ -755,7 +754,7 @@ namespace NOWA
 			this->scale->setValue(this->sceneNode->getScale());
 			if (this->sceneNode->getScale() != this->oldScale)
 			{
-				this->refreshSize();
+				this->refreshSize(this->scale->getVector3());
 			}
 
 			this->oldScale = this->sceneNode->getScale();
@@ -817,7 +816,7 @@ namespace NOWA
 			{
 				this->sceneNode->setScale(attribute->getVector3());
 				// Ogre::AxisAlignedBox boundingBox = this->entity->getMesh()->getBounds();
-				this->refreshSize();
+				this->refreshSize(attribute->getVector3());
 			});
 
 			this->oldScale = attribute->getVector3();
@@ -830,7 +829,7 @@ namespace NOWA
 			this->orientation->setValue(attribute->getVector3());
 			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::actualizeValue setOrientation", _1(orientation),
 			{
-					this->sceneNode->setOrientation(orientation);
+				this->sceneNode->setOrientation(orientation);
 			});
 		}
 		else if (GameObject::AttrDynamic() == attribute->getName())
@@ -1672,6 +1671,9 @@ namespace NOWA
 		{
 			this->sceneNode->_setDerivedPosition(position);
 		});
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
+		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position);
 	}
 
 	void GameObject::setAttributeScale(const Ogre::Vector3& scale)
@@ -1681,8 +1683,10 @@ namespace NOWA
 		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setAttributeScale", _1(scale),
 		{
 			this->sceneNode->setScale(scale);
-			this->refreshSize();
+			this->refreshSize(scale);
 		});
+
+		// NOWA::GraphicsModule::getInstance()->updateNodeScale(this->sceneNode, scale);
 		this->oldScale = scale;
 	}
 
@@ -1695,6 +1699,8 @@ namespace NOWA
 		{
 			this->sceneNode->_setDerivedOrientation(orientation);
 		});
+
+		// NOWA::GraphicsModule::getInstance()->updateNodeOrientation(this->sceneNode, orientation);
 	}
 
 	void GameObject::setDefaultDirection(const Ogre::Vector3& defaultDirection)
@@ -1820,7 +1826,7 @@ namespace NOWA
 		{
 			this->visible->setValue(visible);
 
-			ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setVisible", _1(visible),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::setVisible", _1(visible),
 			{
 				if (nullptr != this->movableObject)
 				{
@@ -2517,20 +2523,18 @@ namespace NOWA
 
 	void GameObject::setDataBlockPbsReflectionTextureName(const Ogre::String& textureName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("GameObject::setDataBlockPbsReflectionTextureName", _1(textureName),
+		// Threadsafe from the outside
+		unsigned int i = 0;
+		boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
+		do
 		{
-			unsigned int i = 0;
-			boost::shared_ptr<DatablockPbsComponent> datablockPbsCompPtr = nullptr;
-			do
+			datablockPbsCompPtr = NOWA::makeStrongPtr(this->getComponentWithOccurrence<DatablockPbsComponent>(i));
+			if (nullptr != datablockPbsCompPtr)
 			{
-				datablockPbsCompPtr = NOWA::makeStrongPtr(this->getComponentWithOccurrence<DatablockPbsComponent>(i));
-				if (nullptr != datablockPbsCompPtr)
-				{
-					datablockPbsCompPtr->setReflectionTextureName(textureName);
-					i++;
-				}
-			} while (nullptr != datablockPbsCompPtr);
-		});
+				datablockPbsCompPtr->setReflectionTextureName(textureName);
+				i++;
+			}
+		} while (nullptr != datablockPbsCompPtr);
 	}
 
 	boost::weak_ptr<GameObject> GameObject::getConnectedGameObjectPtr(void) const

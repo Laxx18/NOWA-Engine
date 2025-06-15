@@ -228,6 +228,12 @@ namespace NOWA
 
 	bool TerraComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		return true;
 	}
 
@@ -252,17 +258,21 @@ namespace NOWA
 			const float lightEpsilon = 0.0f;
 			if (nullptr != this->sunLight)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::update1", _1(lightEpsilon),
+				auto closureFunction = [this, lightEpsilon](Ogre::Real weight)
 				{
 					this->terra->update(this->sunLight->getDerivedDirectionUpdated(), lightEpsilon);
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("TerraComponent::update2", _1(lightEpsilon),
+				auto closureFunction = [this, lightEpsilon](Ogre::Real weight)
 				{
 					this->terra->update(Ogre::Vector3::ZERO, lightEpsilon);
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 			}
 		}
 	}

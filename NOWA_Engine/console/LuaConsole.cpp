@@ -162,10 +162,12 @@ namespace NOWA
 		{
 			this->height += dt * 10.0f;
 
-			ENQUEUE_RENDER_COMMAND("LuaConsole::update1",
+			auto pTextbox = this->pTextbox;
+			auto pPanel = this->pPanel;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update1", _2(pTextbox, pPanel),
 			{
-				this->pPanel->show();
-				this->pTextbox->show();
+				pPanel->show();
+				pTextbox->show();
 			});
 
 			NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(0.0f);
@@ -182,21 +184,29 @@ namespace NOWA
 			if (this->height <= 0.0f)
 			{
 				this->height = 0.0f;
-				ENQUEUE_RENDER_COMMAND("LuaConsole::update2",
-					{
-						this->pPanel->hide();
-						this->pTextbox->hide();
-					});
+				auto pTextbox = this->pTextbox;
+				auto pPanel = this->pPanel;
+				ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update2", _2(pTextbox, pPanel),
+				{
+					pPanel->hide();
+					pTextbox->hide();
+				});
 				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setMoveCameraWeight(1.0f);
 				NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->setRotateCameraWeight(1.0f);
 			}
 		}
 
-		ENQUEUE_RENDER_COMMAND("LuaConsole::update3",
+		if (visible)
 		{
-			this->pTextbox->setPosition(0.0f, (this->height - 1.0f) * 0.5f);
-			this->pPanel->setDimensions(1.0f, this->height * 0.5f);
-		});
+			auto pTextbox = this->pTextbox;
+			auto pPanel = this->pPanel;
+			Ogre::Real height = this->height;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update3", _3(pTextbox, pPanel, height),
+			{
+				pTextbox->setPosition(0.0f, (height - 1.0f) * 0.5f);
+				pPanel->setDimensions(1.0f, height * 0.5f);
+			});
+		}
 
 		if (visible && this->textChanged)
 		{
@@ -245,19 +255,16 @@ namespace NOWA
 				editLineText[this->editLine.getPosition()] = '_';
 			}
 			text += this->pInterpreter->getPrompt() + editLineText;
-
-			ENQUEUE_RENDER_COMMAND_MULTI("LuaConsole::update4", _1(text),
+			auto pTextbox = this->pTextbox;
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("LuaConsole::update4", _2(pTextbox, text),
 			{
-				try
+				if (pTextbox)
 				{
 					// bad UTF-8 continuation byte may happen at any time, when a specifig log is printed :( so catch it
-					this->pTextbox->setCaption(text);
-				}
-				catch (std::exception& exception)
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Error in set text for Log console: " + Ogre::String(exception.what()));
+					pTextbox->setCaption(text);
 				}
 			});
+
 			this->textChanged = false;
 		}
 	}

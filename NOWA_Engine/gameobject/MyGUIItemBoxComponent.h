@@ -135,6 +135,8 @@ namespace NOWA
 	public:
 		CellView(MyGUI::Widget* _parent);
 
+		~CellView();
+
 		void update(const MyGUI::IBDrawItemInfo& _info, ItemData* _data);
 		static void getCellDimension(MyGUI::Widget* _sender, MyGUI::IntCoord& _coord, bool _drop);
 
@@ -144,6 +146,7 @@ namespace NOWA
 		MyGUI::ImageBox* mImageItem;
 		MyGUI::TextBox* mTextBack;
 		MyGUI::TextBox* mTextFront;
+		unsigned long uniqueId;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

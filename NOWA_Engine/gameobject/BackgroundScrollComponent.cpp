@@ -194,8 +194,9 @@ namespace NOWA
 					break;
 				}
 			}
-			this->workspaceBackgroundComponent->compileBackgroundMaterial();
 		});
+
+		// this->workspaceBackgroundComponent->compileBackgroundMaterial();
 		return true;
 	}
 
@@ -522,7 +523,6 @@ namespace NOWA
 						break;
 					}
 				}
-				// this->workspaceBackgroundComponent->compileBackgroundMaterial();
 			});
 		}
 	}

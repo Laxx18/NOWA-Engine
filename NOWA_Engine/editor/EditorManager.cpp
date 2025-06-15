@@ -4218,8 +4218,12 @@ namespace NOWA
 		// Physics simulation will be corrupt!
 		if (nullptr != AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt())
 		{
-			// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
-			AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+			{
+				// Internally calls invalidate cache, so that all newton data is set to default for deterministic simulations, when started again
+				AppStateManager::getSingletonPtr()->getOgreNewtModule()->getOgreNewt()->cleanUp();
+			};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 
 		this->oldGameObjectDataList.clear();

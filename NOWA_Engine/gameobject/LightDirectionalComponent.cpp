@@ -32,17 +32,7 @@ namespace NOWA
 
 	LightDirectionalComponent::~LightDirectionalComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
-		if (nullptr != this->light)
-		{
-			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::~LightDirectionalComponent",
-			{
-				this->gameObjectPtr->getSceneNode()->detachObject(this->light);
-				this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
-			});
-			this->light = nullptr;
-			this->dummyEntity = nullptr;
-		}
+		
 	}
 
 	bool LightDirectionalComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -131,6 +121,23 @@ namespace NOWA
 		return true;
 	}
 
+	void LightDirectionalComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LightDirectionalComponent] Destructor light directional component for game object: " + this->gameObjectPtr->getName());
+		if (nullptr != this->light)
+		{
+			ENQUEUE_RENDER_COMMAND_WAIT("LightDirectionalComponent::~LightDirectionalComponent",
+				{
+					this->gameObjectPtr->getSceneNode()->detachObject(this->light);
+					this->gameObjectPtr->getSceneManager()->destroyMovableObject(this->light);
+				});
+			this->light = nullptr;
+			this->dummyEntity = nullptr;
+		}
+	}
+
 	bool LightDirectionalComponent::connect(void)
 	{
 		if (nullptr != this->dummyEntity)
@@ -147,6 +154,9 @@ namespace NOWA
 
 	bool LightDirectionalComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->gameObjectPtr->isVisible();
@@ -171,12 +181,14 @@ namespace NOWA
 				{
 					if (nullptr != this->light)
 					{
-						ENQUEUE_RENDER_COMMAND("LightDirectionalComponent::update",
+						auto closureFunction = [this](Ogre::Real weight)
 						{
 							// Actualize the ambient light, when the direction changed
 							this->gameObjectPtr->getSceneManager()->setAmbientLight(this->gameObjectPtr->getSceneManager()->getAmbientLightUpperHemisphere(),
 								this->gameObjectPtr->getSceneManager()->getAmbientLightLowerHemisphere(), -this->light->getDirection()/* * Ogre::Vector3::UNIT_Y * 0.2f*/);
-						});
+						};
+						Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+						NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 					}
 				}
 

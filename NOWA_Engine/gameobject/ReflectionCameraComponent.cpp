@@ -93,6 +93,23 @@ namespace NOWA
 		return nullptr;
 	}
 
+	bool ReflectionCameraComponent::connect(void)
+	{
+
+		return GameObjectComponent::connect();
+	}
+
+	bool ReflectionCameraComponent::disconnect(void)
+	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		return GameObjectComponent::disconnect();
+	}
+
 	bool ReflectionCameraComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ReflectionCameraComponent] Init reflection camera component for game object: " + this->gameObjectPtr->getName());
@@ -130,20 +147,24 @@ namespace NOWA
 			{
 				if (true == this->dummyEntity->isVisible())
 				{
-					ENQUEUE_RENDER_COMMAND("ReflectionCameraComponent::update",
+					auto closureFunction = [this](Ogre::Real weight)
 					{
 						this->dummyEntity->setVisible(false);
-					});
+					};
+					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 				}
 				else
 				{
 					// If its not the active camera
 					if (false == this->dummyEntity->isVisible())
 					{
-						ENQUEUE_RENDER_COMMAND("ReflectionCameraComponent::update",
+						auto closureFunction = [this](Ogre::Real weight)
 						{
 							this->dummyEntity->setVisible(true);
-						});
+						};
+						Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+						NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 					}
 				}
 			}
@@ -370,6 +391,7 @@ namespace NOWA
 		if (nullptr != this->workspaceBaseComponent)
 		{
 			this->workspaceBaseComponent->createWorkspace();
+			this->workspaceBaseComponent->connect();
 		}
 	}
 

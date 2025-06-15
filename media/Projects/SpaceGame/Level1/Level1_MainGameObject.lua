@@ -178,10 +178,10 @@ end
 Level1_MainGameObject["disconnect"] = function()
     --init()
     
-    originAsteroid:setVisible(true);
-    originEnemy1:setVisible(true);
-    originHealth:setVisible(true);
-    timeLine:setCurrentTimeSec(0);
+    --originAsteroid:setVisible(true);
+    --originEnemy1:setVisible(true);
+    --originHealth:setVisible(true);
+    --timeLine:setCurrentTimeSec(0);
     
     AppStateManager:getGameObjectController():undoAll();
 end

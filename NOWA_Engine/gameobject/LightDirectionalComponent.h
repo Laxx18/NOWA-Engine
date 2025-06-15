@@ -16,9 +16,20 @@ namespace NOWA
 
 		virtual ~LightDirectionalComponent();
 
+		/**
+		* @see		GameObjectComponent::init
+		*/
 		virtual bool init(rapidxml::xml_node<>*& propertyElement) override;
 
+		/**
+		* @see		GameObjectComponent::postInit
+		*/
 		virtual bool postInit(void) override;
+
+		/**
+		* @see		GameObjectComponent::onRemoveComponent
+		*/
+		virtual void onRemoveComponent(void);
 
 		/**
 		 * @see		GameObjectComponent::connect

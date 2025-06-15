@@ -3678,7 +3678,7 @@ namespace NOWA
 		// ATTENTION: Not necessary?
 		// MyGUI::Gui::getInstancePtr()->_injectFrameEntered(dt);
 
-		if (this->optionUseLuaConsole)
+		if (true == this->optionUseLuaConsole)
 		{
 			LuaConsole::getSingletonPtr()->update(dt);
 		}

@@ -75,6 +75,16 @@ namespace NOWA
 		virtual void onRemoveComponent(void);
 
 		/**
+		* @see		GameObjectComponent::connect
+		*/
+		virtual bool connect(void) override;
+
+		/**
+		* @see		GameObjectComponent::disconnect
+		*/
+		virtual bool disconnect(void) override;
+
+		/**
 		* @see		GameObjectComponent::getClassName
 		*/
 		virtual Ogre::String getClassName(void) const override;
@@ -88,6 +98,12 @@ namespace NOWA
 		* @see		GameObjectComponent::clone
 		*/
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
+
+		/**
+		* @see		GameObjectComponent::update
+		*/
+		virtual void update(Ogre::Real dt, bool notSimulating = false) override;
+
 
 		/**
 		 * @see		GameObjectComponent::actualizeValue

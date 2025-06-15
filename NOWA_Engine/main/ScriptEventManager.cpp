@@ -26,21 +26,24 @@ namespace NOWA
 
 		if(this->scriptCallbackFunction.is_valid())
 		{
-			try
-			{
-				// luabind::make_function<void>(LuaScriptApi::getInstance()->getLua(), this->scriptCallbackFunction);
-				luabind::call_function<void>(this->scriptCallbackFunction, scriptEvent->getEventData());
-			}
-			catch (luabind::error& error)
-			{
-				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-				std::stringstream msg;
-				msg << errorMsg;
+			NOWA::AppStateManager::LogicCommand logicCommand = [this, scriptEvent]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->scriptCallbackFunction, scriptEvent->getEventData());
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'call event function' for function type: '"
-					+ Ogre::StringConverter::toString(this->eventType) + "' Error: " + Ogre::String(error.what())
-					+ " details: " + msg.str());
-			}
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[ScriptEventListener] Caught error in 'call event function' for function type: '"
+							+ Ogre::StringConverter::toString(this->eventType) + "' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 

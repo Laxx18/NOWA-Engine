@@ -192,6 +192,26 @@ namespace NOWA
 		return clonedCompPtr;
 	}
 
+	void BillboardComponent::update(Ogre::Real dt, bool notSimulating)
+	{
+		//if (false == notSimulating && nullptr != this->billboardSet)
+		//{
+		//	this->billboardSet->_updateBounds();
+
+		//	//// Compute a valid AABB based on your billboard dimensions and position
+		//	Ogre::Vector3 halfSize(this->dimensions->getVector2().x * 0.5f, this->dimensions->getVector2().y * 0.5f, 0.0f); // Billboards are flat, so Z = 0
+
+		//	Ogre::Vector3 min = this->position->getVector3() - halfSize;
+		//	Ogre::Vector3 max = this->position->getVector3() + halfSize;
+
+		//	Ogre::Aabb aabb = Ogre::Aabb::newFromExtents(min, max);
+		//	this->billboardSet->setLocalAabb(aabb);
+
+		//	this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+		//	this->billboardSet->setDefaultDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+		//}
+	}
+
 	bool BillboardComponent::postInit(void)
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Init billboard component for game object: " + this->gameObjectPtr->getName());
@@ -207,23 +227,51 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[BillboardComponent] Destructor billboard component for game object: " + this->gameObjectPtr->getName());
 		if (nullptr != this->billboardSet)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::onRemoveComponent", 
+			auto billboardSet = this->billboardSet;
+			auto billboard = this->billboard;
+			auto gameObjectPtr = this->gameObjectPtr;
+
+			this->billboardSet = nullptr;
+			this->billboard = nullptr;
+
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("BillboardComponent::onRemoveComponent", _3(billboardSet, billboard, gameObjectPtr),
 			{
-				this->billboardSet->removeBillboard(this->billboard);
-				this->gameObjectPtr->getSceneNode()->detachObject(this->billboardSet);
+				billboardSet->removeBillboard(billboard);
+				gameObjectPtr->getSceneNode()->detachObject(billboardSet);
 				// In debug mode ogre is ill: there is an assert which wants to access a nullptr datablock just to check alpha :( and because of that, the application does crash
-				this->gameObjectPtr->getSceneManager()->destroyBillboardSet(this->billboardSet);
-				this->billboardSet = nullptr;
-				this->billboard = nullptr;
+				gameObjectPtr->getSceneManager()->destroyBillboardSet(billboardSet);
 			});
 		}
+	}
+
+	bool BillboardComponent::connect(void)
+	{
+		GameObjectComponent::connect();
+
+		if (nullptr != this->billboardSet)
+		{
+			this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+			this->billboardSet->setDefaultDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+		}
+
+		return true;
+	}
+
+	bool BillboardComponent::disconnect(void)
+	{
+		GameObjectComponent::disconnect();
+
+		// Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		// NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		return true;
 	}
 
 	void BillboardComponent::createBillboard(void)
 	{
 		if (nullptr == this->billboard)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("BillboardComponent::createBillboard",
+			ENQUEUE_RENDER_COMMAND("BillboardComponent::createBillboard",
 			{
 				// https://forums.ogre3d.org/viewtopic.php?t=83421
 				this->billboardSet = this->gameObjectPtr->getSceneManager()->createBillboardSet();
@@ -242,18 +290,30 @@ namespace NOWA
 				this->billboardSet->setBillboardRotationType(this->mapStringToRotationType(this->rotationType->getListSelectedValue()));
 				this->billboardSet->setBillboardType(this->mapStringToType(this->type->getListSelectedValue()));
 
-
-				// this->billboard->setCastShadows(this->castShadows->getBool());
-				// light->setDirection(this->gameObjectPtr->getSceneNode()->getOrientation() * Ogre::Vector3::NEGATIVE_UNIT_Z);
-				this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
-
-				this->billboard = billboardSet->createBillboard(this->position->getVector3());
-				this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
 				Ogre::Vector3 tempColor = this->color->getVector3();
+	
+				this->billboard = this->billboardSet->createBillboard(this->position->getVector3(), Ogre::ColourValue(tempColor.x, tempColor.y, tempColor.z, 1.0f));
+
 				this->billboard->setColour(Ogre::ColourValue(tempColor.x, tempColor.y, tempColor.z, 1.0f));
 				this->billboardSet->setRenderingDistance(this->renderDistance->getReal());
 
+				// this->billboardSet->_updateBounds();
+
+				//// Compute a valid AABB based on your billboard dimensions and position
+				//Ogre::Vector3 halfSize(this->dimensions->getVector2().x * 0.5f, this->dimensions->getVector2().y * 0.5f, 0.0f); // Billboards are flat, so Z = 0
+
+				//Ogre::Vector3 min = this->position->getVector3() - halfSize;
+				//Ogre::Vector3 max = this->position->getVector3() + halfSize;
+
+				//Ogre::Aabb aabb = Ogre::Aabb::newFromExtents(min, max);
+				//this->billboardSet->setLocalAabb(aabb);
+
+				this->billboard->setDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+				this->billboardSet->setDefaultDimensions(this->dimensions->getVector2().x, this->dimensions->getVector2().y);
+
+				this->gameObjectPtr->getSceneNode()->attachObject(this->billboardSet);
 				this->billboardSet->setVisible(this->activated->getBool());
+
 			});
 		}
 	}
@@ -773,6 +833,7 @@ namespace NOWA
 		{
 			return true;
 		}
+		return false;
 	}
 
 }; // namespace end

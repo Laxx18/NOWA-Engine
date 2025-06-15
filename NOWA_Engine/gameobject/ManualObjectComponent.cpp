@@ -30,10 +30,7 @@ namespace NOWA
 
 	ManualObjectComponent::~ManualObjectComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ManualObjectComponent] Destructor manual object component for game object: " + this->gameObjectPtr->getName());
 		
-		this->destroyLines();
-		this->dummyEntity = nullptr;
 	}
 
 	bool ManualObjectComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -149,6 +146,19 @@ namespace NOWA
 		return true;
 	}
 
+	void ManualObjectComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[ManualObjectComponent] Destructor manual object component for game object: " + this->gameObjectPtr->getName());
+
+		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::~ManualObjectComponent",
+		{
+			this->destroyLines();
+			this->dummyEntity = nullptr;
+		});
+	}
+
 	bool ManualObjectComponent::connect(void)
 	{
 		bool success = GameObjectComponent::connect();
@@ -178,6 +188,9 @@ namespace NOWA
 
 	bool ManualObjectComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		ENQUEUE_RENDER_COMMAND_WAIT("ManualObjectComponent::disconnect",
 		{
 			this->dummyEntity->setVisible(true);
@@ -199,7 +212,7 @@ namespace NOWA
 				return;
 			}
 
-			ENQUEUE_RENDER_COMMAND("ManualObjectComponent::update",
+			auto closureFunction = [this](Ogre::Real weight)
 			{
 				this->indices = 0;
 				if (this->manualObject->getNumSections() > 0)
@@ -218,7 +231,9 @@ namespace NOWA
 				}
 
 				this->manualObject->end();
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

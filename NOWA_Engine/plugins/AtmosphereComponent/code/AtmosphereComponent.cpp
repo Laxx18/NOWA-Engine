@@ -827,6 +827,11 @@ namespace NOWA
 		return true;
 	}
 
+	void AtmosphereComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+	}
+
 	bool AtmosphereComponent::connect(void)
 	{
 		this->setStartTime(this->startTime->getString());
@@ -869,6 +874,12 @@ namespace NOWA
 	{
 		this->setStartTime(this->startTime->getString());
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		// TODO: Reset to start time and convert timeOfDay variable
 		if (nullptr != this->atmosphereNpr)
 		{
@@ -892,12 +903,14 @@ namespace NOWA
 			Ogre::SceneManager* sceneManager = this->gameObjectPtr->getSceneManager();
 			// Reupdate ambient light for better render results and getting rid of strange flimmer. See: https://forums.ogre3d.org/viewtopic.php?t=96576&start=25
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::update1", _1(sceneManager),
+			auto closureFunction = [this, sceneManager](Ogre::Real weight)
 			{
 				sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 					sceneManager->getAmbientLightLowerHemisphere(),
 					sceneManager->getAmbientLightHemisphereDir());
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update1" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 			//sceneManager->setAmbientLight(sceneManager->getAmbientLightUpperHemisphere() /** 1.5f*/,
 			//							  	sceneManager->getAmbientLightLowerHemisphere(),
@@ -950,7 +963,7 @@ namespace NOWA
 			this->azimuth += this->timeMultiplicator->getReal() * dt; // azimuth multiplier?
 			this->azimuth = fmodf(this->azimuth, Ogre::Math::TWO_PI);
 
-			ENQUEUE_RENDER_COMMAND_MULTI("AtmosphereComponent::update2", _1(dt),
+			auto closureFunction2 = [this, dt](Ogre::Real weight)
 			{
 				const Ogre::Vector3 sunDir(Ogre::Quaternion(Ogre::Radian(this->azimuth), Ogre::Vector3::UNIT_Y) * Ogre::Vector3(cosf(fabsf(this->timeOfDay)), -sinf(fabsf(this->timeOfDay)), 0.0).normalisedCopy());
 
@@ -960,7 +973,9 @@ namespace NOWA
 				// Not used, because multpile presets and updatePreset is used
 				// this->atmosphereNpr->setSunDir(this->lightDirectionalComponent->getOgreLight()->getDerivedDirectionUpdated(), this->timeOfDay / Ogre::Math::PI);
 				this->atmosphereNpr->updatePreset(sunDir, this->timeOfDay/* / Ogre::Math::PI*/);
-			});
+			};
+			id = this->gameObjectPtr->getName() + this->getClassName() + "::update2" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction2, false);
 
 			if (true == this->bShowDebugData)
 			{

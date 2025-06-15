@@ -1303,7 +1303,7 @@ void ResourcesPanelTextures::notifyTreeContextMenu(MyGUI::TreeControl* treeContr
 
 	this->selectedText = node->getText();
 
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelTextures::notifyTreeContextMenu", 
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelTextures::notifyTreeContextMenu", 
 	{
 		Ogre::String textureFilePathName = NOWA::Core::getSingletonPtr()->getResourceFilePathName(this->selectedText);
 
@@ -1375,7 +1375,7 @@ void ResourcesPanelProject::shutdown(void)
 
 void ResourcesPanelProject::clear(void)
 {
-	ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::clear",
+	ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::clear",
 	{
 		this->selectedText.clear();
 		MyGUI::TreeControl::Node * root = this->filesTreeControl->getRoot();
@@ -1542,7 +1542,7 @@ void ResourcesPanelProject::handleDoubleClick(MyGUI::TreeControl::Node* node)
 
 				if (true == this->hasSceneChanges)
 				{
-					ENQUEUE_RENDER_COMMAND_WAIT("ResourcesPanelProject::MessageBoxSceneModified",
+					ENQUEUE_RENDER_COMMAND("ResourcesPanelProject::MessageBoxSceneModified",
 					{
 						MyGUI::Message * messageBox = MyGUI::Message::createMessageBox("Project", MyGUI::LanguageManager::getInstancePtr()->replaceTags("#{SceneModified}"),
 							MyGUI::MessageBoxStyle::IconWarning | MyGUI::MessageBoxStyle::Yes | MyGUI::MessageBoxStyle::No, "Popup", true);

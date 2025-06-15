@@ -28,17 +28,17 @@ Level1_MotherShip2_0["connect"] = function(gameObject)
 end
 
 Level1_MotherShip2_0["disconnect"] = function()
-    boss1:setVisible(true);
-    boss1OldPosition = boss1:getPhysicsActiveComponent():getPosition();
-    boss1OldOrientation = boss1:getPhysicsActiveComponent():getOrientation();
-    aiLuaComponent:setActivated(false);
-    moveMathFunctionComponent:setActivated(false);
-    boss1:getValueBarComponent():setCurrentValue(100);
-    energy:setValueNumber(100);
-    boss1:getGameObjectTitleComponent():setCaption("100%");
-    boss1:getSimpleSoundComponent():setActivated(false);
-    boss1:getParticleUniverseComponent():setActivated(false);
-    boss1:getGameObjectTitleComponent():setActivated(false);
+    --boss1:setVisible(true);
+    --boss1OldPosition = boss1:getPhysicsActiveComponent():getPosition();
+    --boss1OldOrientation = boss1:getPhysicsActiveComponent():getOrientation();
+    --aiLuaComponent:setActivated(false);
+    --moveMathFunctionComponent:setActivated(false);
+    --boss1:getValueBarComponent():setCurrentValue(100);
+    --energy:setValueNumber(100);
+    --boss1:getGameObjectTitleComponent():setCaption("100%");
+    --boss1:getSimpleSoundComponent():setActivated(false);
+    --boss1:getParticleUniverseComponent():setActivated(false);
+    --boss1:getGameObjectTitleComponent():setActivated(false);
 end
 
 Level1_MotherShip2_0["update"] = function(dt)

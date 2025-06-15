@@ -26,13 +26,7 @@ namespace NOWA
 
 	LinesComponent::~LinesComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LinesComponent] Destructor lines component for game object: " + this->gameObjectPtr->getName());
 		
-		ENQUEUE_RENDER_COMMAND("LinesComponent::~LinesComponent",
-		{
-			this->destroyLines();
-			this->dummyEntity = nullptr;
-		});
 	}
 
 	bool LinesComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -149,6 +143,19 @@ namespace NOWA
 		return true;
 	}
 
+	void LinesComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LinesComponent] Destructor lines component for game object: " + this->gameObjectPtr->getName());
+
+		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::~LinesComponent",
+			{
+				this->destroyLines();
+				this->dummyEntity = nullptr;
+			});
+	}
+
 	bool LinesComponent::connect(void)
 	{
 		// TODO: Wait?
@@ -166,6 +173,9 @@ namespace NOWA
 
 	bool LinesComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		// TODO: Wait?
 		ENQUEUE_RENDER_COMMAND_WAIT("LinesComponent::connect",
 		{
@@ -181,13 +191,15 @@ namespace NOWA
 	{
 		if (false == notSimulating)
 		{
-			ENQUEUE_RENDER_COMMAND("LinesComponent::update",
+			auto closureFunction = [this](Ogre::Real weight)
 			{
 				for (unsigned int i = 0; i < this->linesCount->getUInt(); i++)
 				{
 					this->drawLine(i);
 				}
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

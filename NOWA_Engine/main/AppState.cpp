@@ -468,10 +468,6 @@ namespace NOWA
 
 			Core::getSingletonPtr()->destroyScene(this->sceneManager);
 
-			this->ogreNewtModule->destroyContent();
-			delete this->ogreNewtModule;
-			this->ogreNewtModule = nullptr;
-
 			delete this->eventManager;
 			this->eventManager = nullptr;
 
@@ -479,8 +475,11 @@ namespace NOWA
 			delete this->scriptEventManager;
 			this->scriptEventManager = nullptr;
 		}
-	}
 
+		this->ogreNewtModule->destroyContent();
+		delete this->ogreNewtModule;
+		this->ogreNewtModule = nullptr;
+	}
 
 	bool AppState::getHasStarted(void) const
 	{

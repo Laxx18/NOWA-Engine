@@ -32,6 +32,7 @@ namespace NOWA
 	{
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[Picker] Destroying picker");
 		this->dragComponent = nullptr;
+
 		if (this->active)
 		{
 			if (this->drawLines)
@@ -138,7 +139,8 @@ namespace NOWA
 		{
 			this->createLine();
 		}
-		ENQUEUE_RENDER_COMMAND_MULTI("Picker::drawLine", _2(startPosition, endPosition),
+
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
 		{
 			// Draw a 3D line between these points for visual effect
 			this->dragLineObject->clear();
@@ -148,7 +150,9 @@ namespace NOWA
 			this->dragLineObject->position(endPosition);
 			this->dragLineObject->index(1);
 			this->dragLineObject->end();
-		});
+		};
+		Ogre::String id = "Picker::drawLine";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void Picker::destroyLine()

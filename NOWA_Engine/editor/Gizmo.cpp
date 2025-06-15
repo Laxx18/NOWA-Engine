@@ -311,30 +311,11 @@ namespace NOWA
 
 		Ogre::Vector3 sphereScale(distance * fovy * 0.5f, distance * fovy * 0.5f, distance * fovy * 0.85f);
 
-		// We must move hasMovableObject inside render command, so just cache arrowScale now:
-		Ogre::Vector3 arrowScale;
-
-		// We'll do the 'useRingMesh' and scaling inside the render thread instead of here.
-
-		// Cache pointers for render thread
-		auto translationLineNode = this->translationLineNode;
-		auto sphereNode = this->sphereNode;
-		auto arrowNodeX = this->arrowNodeX;
-		auto arrowNodeY = this->arrowNodeY;
-		auto arrowNodeZ = this->arrowNodeZ;
-		auto arrowEntityX = this->arrowEntityX;
-		auto sceneManager = this->sceneManager;
-		auto thickness = this->thickness;
-
-		// Cache position for translationLineNode
-		Ogre::Vector3 newTranslationLinePos = this->getPosition();
-
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::update", _12(translationLineNode, newTranslationLinePos, sphereNode, sphereScale,
-			arrowNodeX, arrowNodeY, arrowNodeZ, arrowEntityX, sceneManager, fovy, distance, thickness),
+		auto closureFunction = [this, sphereScale, distance, fovy](Ogre::Real weight)
 		{
-			if (translationLineNode)
+			if (this->translationLineNode)
 			{
-				translationLineNode->setPosition(newTranslationLinePos);
+				this->translationLineNode->setPosition(this->getPosition());
 			}
 
 			if (sphereNode)
@@ -342,7 +323,7 @@ namespace NOWA
 				sphereNode->setScale(sphereScale);
 			}
 
-			if (arrowEntityX && sceneManager && sceneManager->hasMovableObject(arrowEntityX))
+			if (this->arrowEntityX && this->sceneManager && this->sceneManager->hasMovableObject(arrowEntityX))
 			{
 				bool useRingMesh = (arrowEntityX->getMesh()->getName() == "Ring.mesh");
 
@@ -356,11 +337,13 @@ namespace NOWA
 					arrowScaleLocal = Ogre::Vector3(distance * fovy, distance * thickness * fovy, distance * fovy);
 				}
 
-				arrowNodeX->setScale(arrowScaleLocal);
-				arrowNodeY->setScale(arrowScaleLocal);
-				arrowNodeZ->setScale(arrowScaleLocal);
+				this->arrowNodeX->setScale(arrowScaleLocal);
+				this->arrowNodeY->setScale(arrowScaleLocal);
+				this->arrowNodeZ->setScale(arrowScaleLocal);
 			}
-		});
+		};
+		Ogre::String id = "Gizmo::update";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void Gizmo::redefineFirstPlane(const Ogre::Vector3& normal, const Ogre::Vector3& position)
@@ -1069,7 +1052,7 @@ namespace NOWA
 
 	void Gizmo::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition, Ogre::Real thickness, const Ogre::String& materialName)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("Gizmo::drawLine", _4(startPosition, endPosition, thickness, materialName),
+		auto closureFunction = [this, startPosition, endPosition, thickness, materialName](Ogre::Real weight)
 		{
 			Ogre::Real const relativeThickness = this->sphereNode->getScale().x * thickness;
 			this->translationLine->clear();
@@ -1085,7 +1068,9 @@ namespace NOWA
 			{
 				this->translationCaption->update();  // Assuming it's a render-thread safe operation
 			}
-		});
+		};
+		Ogre::String id = "Gizmo::drawLine";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void Gizmo::hideLine(void)
@@ -1183,7 +1168,7 @@ namespace NOWA
 		auto sphereNode = this->sphereNode;
 		auto rotationCaption = this->rotationCaption;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("Gizmo::drawCircle", _10(rotationCircle, rotationCircleNode, selectNode, sphereNode, rotationCaption, fromAngle, toAngle, counterClockWise, thickness, materialName),
+		auto closureFunction = [rotationCircle, rotationCircleNode, selectNode, sphereNode, rotationCaption, fromAngle, toAngle, counterClockWise, thickness, materialName](Ogre::Real weight)
 		{
 			if (!rotationCircle || !rotationCircleNode || !selectNode || !sphereNode)
 				return; // Safety check to avoid null pointers
@@ -1237,7 +1222,9 @@ namespace NOWA
 				}
 			}
 			rotationCircle->end();
-		});
+		};
+		Ogre::String id = "Gizmo::drawCircle";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 
 		// rotationCircleNode->setPosition(selectNode->_getDerivedPositionUpdated());
 		// rotationCircleNode->setOrientation(orientation);

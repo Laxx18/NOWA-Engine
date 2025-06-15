@@ -3,6 +3,7 @@
 
 #include "gameObject/GameObject.h"
 #include "modules/LuaScript.h"
+#include "main/AppStateManager.h"
 
 namespace NOWA
 {
@@ -21,19 +22,23 @@ namespace NOWA
 	{
 		if (this->scriptCallbackFunction.is_valid())
 		{
-			try
-			{
-				luabind::call_function<void>(this->scriptCallbackFunction);
-			}
-			catch (luabind::error& error)
-			{
-				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-				std::stringstream msg;
-				msg << errorMsg;
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->scriptCallbackFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'onPathGoalReached' Error: " + Ogre::String(error.what())
-					+ " details: " + msg.str());
-			}
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PathGoalObserver] Caught error in 'onPathGoalReached' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 
@@ -77,6 +82,24 @@ namespace NOWA
 				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'onAgentStuck' Error: " + Ogre::String(error.what())
 					+ " details: " + msg.str());
 			}
+
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->scriptCallbackFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
+
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PathGoalObserver] Caught error in 'onAgentStuck' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 

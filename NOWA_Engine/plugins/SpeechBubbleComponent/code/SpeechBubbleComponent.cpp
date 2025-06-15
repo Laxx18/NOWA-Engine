@@ -225,6 +225,9 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		this->indices = 0;
 		this->currentCaptionWidth = 0.0f;
 		this->currentCaptionHeight = 0.0f;
@@ -261,7 +264,7 @@ namespace NOWA
 				return;
 			}
 
-			ENQUEUE_RENDER_COMMAND_MULTI("SpeechBubbleComponent::update", _1(dt),
+			auto closureFunction = [this, dt](Ogre::Real weight)
 			{
 				this->indices = 0;
 				if (this->manualObject->getNumSections() > 0)
@@ -291,7 +294,9 @@ namespace NOWA
 				{
 					this->manualObject->clear();
 				}
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 
@@ -597,19 +602,23 @@ namespace NOWA
 
 					if (this->closureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->closureFunction);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->closureFunction);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnSpeechDone' Error: "
-								+ Ogre::String(error.what()) + " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpeechBubbleComponent] Caught error in 'reactOnSpeechDone' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 

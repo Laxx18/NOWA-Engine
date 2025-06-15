@@ -793,6 +793,9 @@ namespace NOWA
 	{
 		GameObjectComponent::disconnect();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		if (nullptr != this->controllerItem)
 		{
 			// If the controller succeeded, it will be deleted internally!
@@ -837,7 +840,7 @@ namespace NOWA
 					this->justAdded = false;
 				}
 
-				ENQUEUE_RENDER_COMMAND("MyGUIScrollingMessageControllerComponent::update",
+				auto closureFunction = [this](Ogre::Real weight)
 				{
 					// Scroll the textbox by this much..
 					Ogre::Real progress = (this->durationSec->getReal() - this->timeToGo) / this->durationSec->getReal();
@@ -856,7 +859,9 @@ namespace NOWA
 							this->editBoxes[i]->getTextColour().blue, 1.0f - progress/* / 4*/));
 						this->editBoxes[i]->setAlpha(1.0f - progress/* / 4*/);
 					}
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 			}
 		}
 		/*

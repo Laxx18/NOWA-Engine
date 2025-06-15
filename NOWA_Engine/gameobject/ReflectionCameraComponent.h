@@ -33,6 +33,16 @@ namespace NOWA
 		virtual GameObjectCompPtr clone(GameObjectPtr clonedGameObjectPtr) override;
 
 		/**
+		* @see		GameObjectComponent::connect
+		*/
+		virtual bool connect(void) override;
+
+		/**
+		* @see		GameObjectComponent::disconnect
+		*/
+		virtual bool disconnect(void) override;
+
+		/**
 		* @see		GameObjectComponent::onRemoveComponent
 		*/
 		virtual void onRemoveComponent(void) override;

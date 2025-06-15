@@ -322,6 +322,8 @@ namespace NOWA
 	{
 		if (nullptr != this->headBone)
 		{
+			NOWA::GraphicsModule::getInstance()->removeTrackedOldBone(this->headBone);
+
 			this->headBone->reset();
 			this->headBone = nullptr;
 		}
@@ -418,13 +420,16 @@ namespace NOWA
 						ratio = maxAngleThisFrame / angleDiff;
 					}
 					Ogre::Quaternion smoothedRotation = Ogre::Quaternion::Slerp(ratio, currentOrientation, finalRotation, true);
-					this->headBone->setOrientation(smoothedRotation);
+					// this->headBone->setOrientation(smoothedRotation);
+
+					NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(this->headBone, smoothedRotation);
 				}
 				else // Target is behind the game object
 				{
 					// Smoothly interpolate back to default orientation
 					Ogre::Quaternion smoothedRotation = Ogre::Quaternion::Slerp(smoothingFactor, currentOrientation, defaultOrientation, true);
-					this->headBone->setOrientation(smoothedRotation);
+					// this->headBone->setOrientation(smoothedRotation);
+					NOWA::GraphicsModule::getInstance()->updateOldBoneOrientation(this->headBone, smoothedRotation);
 				}
 			}
 		}

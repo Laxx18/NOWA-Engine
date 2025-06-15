@@ -161,6 +161,8 @@ namespace NOWA
 		// Deferred callback queue
 		std::vector<std::function<void()>> deferredCallbacks;
 		bool canAnimate;
+
+		unsigned long uniqueId;
 	};
 
 }; // namespace end

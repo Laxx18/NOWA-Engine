@@ -25,10 +25,7 @@ namespace NOWA
 
 	RectangleComponent::~RectangleComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RectangleComponent] Destructor rectangle component for game object: " + this->gameObjectPtr->getName());
 		
-		this->destroyRectangles();
-		this->dummyEntity = nullptr;
 	}
 
 	bool RectangleComponent::init(rapidxml::xml_node<>*& propertyElement)
@@ -186,6 +183,16 @@ namespace NOWA
 		return true;
 	}
 
+	void RectangleComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[RectangleComponent] Destructor rectangle component for game object: " + this->gameObjectPtr->getName());
+
+		this->destroyRectangles();
+		this->dummyEntity = nullptr;
+	}
+
 	bool RectangleComponent::connect(void)
 	{
 		bool success = GameObjectComponent::connect();
@@ -215,6 +222,9 @@ namespace NOWA
 
 	bool RectangleComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		ENQUEUE_RENDER_COMMAND("RectangleComponent::disconnect",
 		{
 			this->destroyRectangles();
@@ -232,33 +242,34 @@ namespace NOWA
 				return;
 			}
 
-			auto manualObject = this->manualObject;
-			ENQUEUE_RENDER_COMMAND_MULTI("RectangleComponent::update", _1(manualObject),
+			auto closureFunction = [this](Ogre::Real weight)
 			{
-				if (manualObject)
+				if (this->manualObject)
 				{
 					this->indices = 0;
-					if (manualObject->getNumSections() > 0)
+					if (this->manualObject->getNumSections() > 0)
 					{
-						manualObject->beginUpdate(0);
+						this->manualObject->beginUpdate(0);
 					}
 					else
 					{
-						manualObject->clear();
-						manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+						this->manualObject->clear();
+						this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
 					}
 
 					for (unsigned int i = 0; i < this->rectanglesCount->getUInt(); i++)
 					{
-						this->drawRectangle(manualObject, i);
+						this->drawRectangle(this->manualObject, i);
 					}
 
 					// Realllllllyyyyy important! Else the rectangle is a whole mess!
-					manualObject->index(0);
+					this->manualObject->index(0);
 
-					manualObject->end();
+					this->manualObject->end();
 				}
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

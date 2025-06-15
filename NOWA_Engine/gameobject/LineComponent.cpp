@@ -24,13 +24,7 @@ namespace NOWA
 
 	LineComponent::~LineComponent()
 	{
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LineComponent] Destructor line component for game object: " + this->gameObjectPtr->getName());
 		
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &LineComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
-		
-		this->destroyLine();
-		// What if the target GO will be deleted?
-		this->targetGameObject = nullptr;
 	}
 	
 	void LineComponent::handleTargetGameObjectDeleted(NOWA::EventDataPtr eventData)
@@ -96,6 +90,19 @@ namespace NOWA
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LineComponent] Init line component for game object: " + this->gameObjectPtr->getName());
 
 		return true;
+	}
+
+	void LineComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+
+		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[LineComponent] Destructor line component for game object: " + this->gameObjectPtr->getName());
+
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->removeListener(fastdelegate::MakeDelegate(this, &LineComponent::handleTargetGameObjectDeleted), EventDataDeleteGameObject::getStaticEventType());
+
+		this->destroyLine();
+		// What if the target GO will be deleted?
+		this->targetGameObject = nullptr;
 	}
 
 	bool LineComponent::connect(void)
@@ -233,7 +240,7 @@ namespace NOWA
 			this->createLine();
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI("LineComponent::createLine", _2(startPosition, endPosition),
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
 		{
 			// Draw a 3D line between these points for visual effect
 			this->lineObject->clear();
@@ -247,13 +254,18 @@ namespace NOWA
 			this->lineObject->colour(Ogre::ColourValue(color.x, color.y, color.z, 1.0f));
 			this->lineObject->index(1);
 			this->lineObject->end();
-		});
+		};
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
 	void LineComponent::destroyLine()
 	{
 		if (this->lineNode != nullptr)
 		{
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 			ENQUEUE_RENDER_COMMAND_WAIT("LineComponent::destroyLine",
 			{
 				this->lineNode->detachAllObjects();

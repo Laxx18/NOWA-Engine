@@ -125,6 +125,9 @@ namespace NOWA
 
 	bool DistortionComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		this->destroyDistoration();
 		return true;
 	}
@@ -138,6 +141,7 @@ namespace NOWA
 	void DistortionComponent::onRemoveComponent(void)
 	{
 		GameObjectComponent::onRemoveComponent();
+
 		this->destroyDistoration();
 	}
 	
@@ -291,12 +295,14 @@ namespace NOWA
 		{
 			auto distortionPass = this->distortionPass;
 			Ogre::Real strength = this->strength->getReal();
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("DistortionComponent::update", _2(distortionPass, strength),
+			auto closureFunction = [this, distortionPass, strength](Ogre::Real weight)
 			{
 				// Update distortion uniform
 				Ogre::GpuProgramParametersSharedPtr psParams = distortionPass->getFragmentProgramParameters();
 				psParams->setNamedConstant("u_DistortionStrenght", strength);
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 			// this->gameObjectPtr->getSceneNode()->yaw(Ogre::Radian(dt * 0.125f));
 		}

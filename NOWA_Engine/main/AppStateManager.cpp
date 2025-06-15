@@ -400,7 +400,7 @@ namespace NOWA
 				// This advances the transform buffer
 				if (false == didUpdate)
 				{
-					NOWA::GraphicsModule::getInstance()->beginLogicFrame();
+					// NOWA::GraphicsModule::getInstance()->beginLogicFrame();
 					didUpdate = true;
 				}
 

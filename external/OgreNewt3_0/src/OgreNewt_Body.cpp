@@ -799,6 +799,8 @@ namespace OgreNewt
 		{
 			m_nodeRotation = Ogre::Quaternion::Slerp(interpolatParam, m_prevRotation, m_curRotation);
 		}
+		// TODO: Is this correct?
+		// m_world->criticalSectionLock();
 
 		// --- Move SceneNode transform to render thread ---
 		Ogre::Vector3 nodePosit = m_nodePosit;
@@ -882,6 +884,9 @@ namespace OgreNewt
 		{
 			this->updateDeformableCollision();
 		}
+
+		// TODO: Is this correct?
+		// m_world->criticalSectionUnlock();
 	}
 
 	Ogre::SceneMemoryMgrTypes Body::getSceneMemoryType(void) const

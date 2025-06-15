@@ -342,6 +342,9 @@ namespace NOWA
 	{
 		bool success = PhysicsActiveComponent::disconnect();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		this->isSimulating = false;
 		// Must be set manually because, only at connect, all data for debug is available (bodies, joints)
 		this->internalShowDebugData(false);
@@ -432,10 +435,12 @@ namespace NOWA
 				// animations working and bones match bodies transforms!!!!
 				if (nullptr != this->skeleton)
 				{
-					ENQUEUE_RENDER_COMMAND("PhysicsRagDollComponent::update setAnimationState",
+					auto closureFunction = [this](Ogre::Real weight)
 					{
 						this->skeleton->setAnimationState(*this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->getAllAnimationStates());
-					});
+					};
+					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 				}
 				// this->gameObjectPtr->getMovableObject<Ogre::v1::Entity>()->_updateAnimation();
 				// Note: Order here is important!

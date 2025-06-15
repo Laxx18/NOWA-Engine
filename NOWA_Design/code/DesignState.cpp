@@ -1721,7 +1721,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 		info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);*/
 		// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
-		ENQUEUE_RENDER_COMMAND_MULTI("DesignState::updateInfo", _1(info),
+		/*auto closureFunction = [this, info](Ogre::Real weight)
 		{
 			this->manipulationWindow->setCaption(info);
 			if (false == this->simulating)
@@ -1733,7 +1733,8 @@ void DesignState::updateInfo(Ogre::Real dt)
 				this->selectUndoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionUndo());
 				this->selectRedoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionRedo());
 			}
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);*/
 		this->nextInfoUpdate = 1.0f;
 	}
 	else

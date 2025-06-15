@@ -4,6 +4,7 @@
 #include "utilities/XMLConverter.h"
 #include "modules/LuaScriptApi.h"
 #include "PlayerControllerComponents.h"
+#include "main/AppStateManager.h"
 
 namespace NOWA
 {
@@ -27,19 +28,23 @@ namespace NOWA
 	{
 		if (this->closureFunction.is_valid())
 		{
-			try
-			{
-				luabind::call_function<void>(this->closureFunction);
-			}
-			catch (luabind::error& error)
-			{
-				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-				std::stringstream msg;
-				msg << errorMsg;
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->closureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what())
-															+ " details: " + msg.str());
-			}
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[AnimationComponent::AnimationBlenderObserver] Caught error in 'reactOnAnimationFinished' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 	}
 

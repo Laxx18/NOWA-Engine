@@ -223,10 +223,12 @@ namespace NOWA
 			{
 				if (true == this->useFogOfWar->getBool())
 				{
-					ENQUEUE_RENDER_COMMAND("MinimapComponent::updateFogOfWarTexture",
+					auto closureFunction = [this](Ogre::Real weight)
 					{
 						this->updateFogOfWarTexture(this->targetGameObject->getPosition(), this->visibilityRadius->getReal());
-					});
+					};
+					Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 				}
 
 				this->timeSinceLastUpdate = 0.0f;
@@ -257,6 +259,9 @@ namespace NOWA
 	bool MinimapComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 		this->targetGameObject = nullptr;
 		this->cameraComponent = nullptr;

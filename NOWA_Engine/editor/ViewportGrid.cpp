@@ -304,14 +304,14 @@ namespace NOWA
 
 	void ViewportGrid::updateOrtho()
 	{
-		ENQUEUE_RENDER_COMMAND("ViewportGrid::updateOrtho",
+		auto closureFunction = [this](Ogre::Real weight)
 		{
 			// Screen dimensions
 			int width = Core::getSingletonPtr()->getOgreRenderWindow()->getWidth();
 			int height = Core::getSingletonPtr()->getOgreRenderWindow()->getHeight();
 
 			// Camera information
-			const Ogre::Vector3 & camPos = this->camera->getPosition();
+			const Ogre::Vector3& camPos = this->camera->getPosition();
 			Ogre::Vector3 camDir = this->camera->getDirection();
 			Ogre::Vector3 camUp = this->camera->getUp();
 			Ogre::Vector3 camRight = this->camera->getRight();
@@ -447,12 +447,14 @@ namespace NOWA
 			this->grid->end();
 
 			this->node->setOrientation(this->camera->getOrientation());
-		});
+		};
+		Ogre::String id = "ViewportGrid::updateOrtho";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void ViewportGrid::updatePersp()
 	{
-		ENQUEUE_RENDER_COMMAND("ViewportGrid::updatePersp",
+		auto closureFunction = [this](Ogre::Real weight)
 		{
 			//! @todo Calculate the spacing multiplier
 			Ogre::Real mult = 1;
@@ -531,7 +533,9 @@ namespace NOWA
 
 			// Normal orientation, grid in the X-Z plane
 			// this->node->resetOrientation();
-		});
+		};
+		Ogre::String id = "ViewportGrid::updatePersp";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	/* Checks if an update is necessary*/

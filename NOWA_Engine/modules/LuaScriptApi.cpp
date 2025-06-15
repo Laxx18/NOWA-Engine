@@ -4359,6 +4359,14 @@ namespace NOWA
 		return Ogre::Vector4(color.red, color.green, color.blue, color.alpha);
 	}
 
+	void showMouse(MyGUI::PointerManager* instance, bool bShow)
+	{
+		ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("PointerManager::showMouse", _2(instance, bShow),
+		{
+			instance->setVisible(bShow);
+		});
+	}
+
 	void bindMyGUI(lua_State* lua)
 	{
 		/*module(lua)
@@ -4426,9 +4434,9 @@ namespace NOWA
 		AddClassToCollection("WidgetStyle", "OVERLAPPED", "Overlapped.");
 
 		module(lua)
-			[
-				class_<MyGUI::IntCoord>("IntCoord")
-				.def(constructor<int, int, int, int>())
+		[
+			class_<MyGUI::IntCoord>("IntCoord")
+			.def(constructor<int, int, int, int>())
 			.def(self == other<MyGUI::IntCoord>())
 			.def(self + other<MyGUI::IntCoord>())
 			.def(self - other<MyGUI::IntCoord>())
@@ -4436,7 +4444,7 @@ namespace NOWA
 			.def("bottom", &MyGUI::IntCoord::bottom)
 			.def("clear", &MyGUI::IntCoord::clear)
 			.def("set", &MyGUI::IntCoord::set)
-			];
+		];
 		AddClassToCollection("IntCoord", "class", "Absolute coordinates class.");
 		AddClassToCollection("IntCoord", "int right()", "The right absolute coordinate.");
 		AddClassToCollection("IntCoord", "int bottom()", "The bottom absolute coordinate.");
@@ -4444,9 +4452,9 @@ namespace NOWA
 		AddClassToCollection("IntCoord", "void set(int x1, int y1, int x2, int y2)", "Sets the absolute coordinate.");
 
 		module(lua)
-			[
-				class_<MyGUI::FloatCoord>("FloatCoord")
-				.def(constructor<float, float, float, float>())
+		[
+			class_<MyGUI::FloatCoord>("FloatCoord")
+			.def(constructor<float, float, float, float>())
 			.def(self == other<MyGUI::FloatCoord>())
 			.def(self + other<MyGUI::FloatCoord>())
 			.def(self - other<MyGUI::FloatCoord>())
@@ -4462,38 +4470,38 @@ namespace NOWA
 		AddClassToCollection("FloatCoord", "void set(float x1, float y1, float x2, float y2)", "Sets the relative coordinate.");
 
 		module(lua)
-			[
-				class_<MyGUI::IntSize>("IntSize")
-				.def(constructor<int, int>())
+		[
+			class_<MyGUI::IntSize>("IntSize")
+			.def(constructor<int, int>())
 			.def(self == other<MyGUI::IntSize>())
 			.def(self + other<MyGUI::IntSize>())
 			.def(self - other<MyGUI::IntSize>())
 			.def("clear", &MyGUI::IntSize::clear)
 			.def("set", &MyGUI::IntSize::set)
-			];
+		];
 		AddClassToCollection("IntSize", "class", "Absolute size class.");
 		AddClassToCollection("IntSize", "void clear()", "Clears the size.");
 		AddClassToCollection("IntSize", "void set(int width, int height)", "Sets the width and height.");
 
 		module(lua)
-			[
-				class_<MyGUI::FloatSize>("FloatSize")
-				.def(constructor<float, float>())
+		[
+			class_<MyGUI::FloatSize>("FloatSize")
+			.def(constructor<float, float>())
 			.def(self == other<MyGUI::FloatSize>())
 			.def(self + other<MyGUI::FloatSize>())
 			.def(self - other<MyGUI::FloatSize>())
 			.def("clear", &MyGUI::FloatSize::clear)
 			.def("set", &MyGUI::FloatSize::set)
-			];
+		];
 
 		AddClassToCollection("FloatSize", "class", "Relative size class.");
 		AddClassToCollection("FloatSize", "void clear()", "Clears the size.");
 		AddClassToCollection("FloatSize", "void set(float width, float height)", "Sets the width and height.");
 
 		module(lua)
-			[
-				class_<MyGUI::Widget>("Widget")
-				.def("setPosition", (void (MyGUI::Widget::*)(int, int)) & MyGUI::Widget::setPosition)
+		[
+			class_<MyGUI::Widget>("Widget")
+			.def("setPosition", (void (MyGUI::Widget::*)(int, int)) & MyGUI::Widget::setPosition)
 			.def("setSize", (void (MyGUI::Widget::*)(int, int)) & MyGUI::Widget::setSize)
 			.def("setCoord", (void (MyGUI::Widget::*)(int, int, int, int)) & MyGUI::Widget::setCoord)
 			.def("setRealPosition", (void (MyGUI::Widget::*)(float, float)) & MyGUI::Widget::setRealPosition)
@@ -4518,7 +4526,7 @@ namespace NOWA
 			.def("getWidgetStyle", &MyGUI::Widget::getWidgetStyle)
 			.def("setProperty", &MyGUI::Widget::setProperty)
 			.def("_getItemIndex", &MyGUI::Widget::_getItemIndex)
-			];
+		];
 
 		AddClassToCollection("Widget", "class", "MyGUI widget class.");
 		AddClassToCollection("Widget", "void setPosition(int x, int y)", "Sets the absolute position of the widget.");
@@ -4548,9 +4556,9 @@ namespace NOWA
 		AddClassToCollection("Widget", "number getItemIndex()", "Gets the index of the item.");
 
 		module(lua)
-			[
-				class_<MyGUI::EditBox, MyGUI::Widget>("EditBox")
-				.def("getTextRegion", &MyGUI::EditBox::getTextRegion)
+		[
+			class_<MyGUI::EditBox, MyGUI::Widget>("EditBox")
+			.def("getTextRegion", &MyGUI::EditBox::getTextRegion)
 			.def("getTextSize", &MyGUI::EditBox::getTextSize)
 			.def("setCaption", &MyGUI::EditBox::setOnlyText)
 			.def("getCaption", &MyGUI::EditBox::getOnlyText)
@@ -4569,7 +4577,7 @@ namespace NOWA
 			.def("getTextShadow", &MyGUI::EditBox::getTextShadow)
 			.def("setEditStatic", &MyGUI::EditBox::setEditStatic)
 			.def("getEditStatic", &MyGUI::EditBox::getEditStatic)
-			];
+		];
 
 		AddClassToCollection("EditBox", "class", "MyGUI edit box class.");
 		AddClassToCollection("EditBox", "IntCoord getTextRegion()", "Gets the text region.");
@@ -4591,38 +4599,38 @@ namespace NOWA
 		AddClassToCollection("EditBox", "bool getEditStatic()", "Gets whether the text can be edited or not.");
 
 		module(lua)
-			[
-				class_<MyGUI::Button, MyGUI::Widget>("Button")
-				.def("setStateCheck", &MyGUI::Button::setStateCheck)
+		[
+			class_<MyGUI::Button, MyGUI::Widget>("Button")
+			.def("setStateCheck", &MyGUI::Button::setStateCheck)
 			.def("getStateCheck", &MyGUI::Button::getStateCheck)
-			];
+		];
 
 		AddClassToCollection("Button", "class", "MyGUI button class.");
 		AddClassToCollection("Button", "void setStateCheck(bool check)", "Sets whether the button is checked (check box functionality)");
 		AddClassToCollection("Button", "bool getStateCheck()", "Gets whether the button is checked (check box functionality)");
 
 		module(lua)
-			[
-				class_<MyGUI::Window, MyGUI::Widget>("Window")
-				.def("setMovable", &MyGUI::Window::setMovable)
+		[
+			class_<MyGUI::Window, MyGUI::Widget>("Window")
+			.def("setMovable", &MyGUI::Window::setMovable)
 			.def("getMovable", &MyGUI::Window::getMovable)
-			];
+		];
 		AddClassToCollection("Window", "class", "MyGUI window class.");
 		AddClassToCollection("Window", "void setMovable(bool movable)", "Sets whether the window can be moved.");
 		AddClassToCollection("Window", "bool getMovable()", "Gets whether the window can be moved");
 
 		module(lua)
-			[
-				class_<MyGUI::ImageBox, MyGUI::Widget>("ImageBox")
-				.def("setImageTexture", &MyGUI::ImageBox::setImageTexture)
-			];
+		[
+			class_<MyGUI::ImageBox, MyGUI::Widget>("ImageBox")
+			.def("setImageTexture", &MyGUI::ImageBox::setImageTexture)
+		];
 		AddClassToCollection("ImageBox", "class", "MyGUI image box class.");
 		AddClassToCollection("ImageBox", "void setImageTexture(string textureName)", "Sets the texture name for the image box. Note: The image texture must be known by the resource management of Ogre.");
 
 		module(lua)
-			[
-				class_<MyGUI::ListBox, MyGUI::Widget>("ListBox")
-				.def("getItemCount", &MyGUI::ListBox::getItemCount)
+		[
+			class_<MyGUI::ListBox, MyGUI::Widget>("ListBox")
+			.def("getItemCount", &MyGUI::ListBox::getItemCount)
 			.def("insertItemAt", &MyGUI::ListBox::insertItemAt)
 			.def("addItem", &MyGUI::ListBox::addItem)
 			.def("removeItemAt", &MyGUI::ListBox::removeItemAt)
@@ -4632,7 +4640,7 @@ namespace NOWA
 			.def("getIndexSelected", &MyGUI::ListBox::getIndexSelected)
 			.def("setItemNameAt", &MyGUI::ListBox::setItemNameAt)
 			.def("getItemNameAt", &MyGUI::ListBox::getItemNameAt)
-			];
+		];
 		AddClassToCollection("ListBox", "class", "MyGUI list box class.");
 		AddClassToCollection("ListBox", "int getItemCount()", "Gets the count of entries of the list box");
 		AddClassToCollection("ListBox", "void insertItemAt(?)", "Inserts an item at the given index.");
@@ -4659,11 +4667,11 @@ namespace NOWA
 		//AddClassToCollection("Gui", "? destroyWidget(Widget widget)", "Destroys a widget.");
 
 		module(lua)
-			[
-				class_<MyGUI::PointerManager>("PointerManager")
-				// .def("getInstancePtr", &MyGUI::PointerManager::getInstancePtr)
-			.def("showMouse", &MyGUI::PointerManager::setVisible)
-			];
+		[
+			class_<MyGUI::PointerManager>("PointerManager")
+			// .def("getInstancePtr", &MyGUI::PointerManager::getInstancePtr)
+			.def("showMouse", &showMouse)
+		];
 
 		AddClassToCollection("PointerManager", "singleton", "MyGUI pointer manager singleton class.");
 		AddClassToCollection("PointerManager", "void showMouse(bool show)", "Show the MyGUI mouse cursor or hides the mouse cursor.");
@@ -7985,6 +7993,25 @@ namespace NOWA
 		/// more to come...
 	}
 
+	
+
+	void setActivated(CameraComponent* instance, bool activated)
+	{
+		NOWA::AppStateManager::getSingletonPtr()->bStall = true;
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
+		auto ptrFunction = [instance, activated]()
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Camera::setActivated from Lua", _2(instance, activated),
+			{
+				instance->setActivated(activated);
+			});
+			NOWA::AppStateManager::getSingletonPtr()->bStall = false;
+		};
+		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+		delayProcess->attachChild(closureProcess);
+		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+	}
+
 	void bindCameraComponent(lua_State* lua)
 	{
 		module(lua)
@@ -7992,7 +8019,7 @@ namespace NOWA
 			class_<CameraComponent, GameObjectComponent>("CameraComponent")
 			// .def("getClassName", &CameraComponent::getClassName)
 			.def("getParentClassName", &CameraComponent::getParentClassName)
-			.def("setActivated", &CameraComponent::setActivated)
+			.def("setActivated", &setActivated)
 			.def("isActivated", &CameraComponent::isActivated)
 			// .def("setActivatedFlag", &CameraComponent::setActivatedFlag)
 			.def("setNearClipDistance", &CameraComponent::setNearClipDistance)

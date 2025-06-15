@@ -22,6 +22,8 @@ namespace NOWA
 		debugLog(false),
 		canAnimate(true)
 	{
+		this->uniqueId = NOWA::makeUniqueID();
+
 		this->getAllAvailableAnimationNames(false);
 
 		Ogre::v1::OldSkeletonInstance* skeleton = entity->getSkeleton();
@@ -429,7 +431,7 @@ namespace NOWA
 
 		if (this->source != nullptr)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::addTime", _1(time),
+			auto closureFunction = [this, time](Ogre::Real weight)
 			{
 				bool weightChange = false;
 				if (this->timeleft > 0.0f)
@@ -514,7 +516,9 @@ namespace NOWA
 					}
 				}
 				this->source->setLoop(this->loop);
-			});
+			};
+			Ogre::String id = "AnimationBlender::addTime" + Ogre::StringConverter::toString(this->uniqueId);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 	}
 

@@ -159,24 +159,23 @@ namespace NOWA
 
 		if (this->camera->getProjectionType() == Ogre::PT_ORTHOGRAPHIC)
 		{
-			Ogre::Real height = this->camera->getOrthoWindowHeight() + moveValue.z;
-			// min window size
-			//h = std::max(h, 0.0001f);
-			if (height > 0.0001f)
+			auto closureFunction = [this, moveValue](Ogre::Real weight)
 			{
-				Ogre::Real width = height * this->camera->getAspectRatio();
-				ENQUEUE_RENDER_COMMAND_MULTI("BaseCamera::moveCamera setOrtho1", _2(width, height),
+				Ogre::Real height = this->camera->getOrthoWindowHeight() + moveValue.z;
+				// min window size
+				//h = std::max(h, 0.0001f);
+				if (height > 0.0001f)
 				{
+					Ogre::Real width = height * this->camera->getAspectRatio();
 					this->camera->setOrthoWindow(width, height);
-				});
-			}
-			if (this->camera->getOrthoWindowHeight() < 1.0f)
-			{
-				ENQUEUE_RENDER_COMMAND("BaseCamera::moveCamera SetOrtho2",
+				}
+				if (this->camera->getOrthoWindowHeight() < 1.0f)
 				{
 					this->camera->setOrthoWindowHeight(1.0f);
-				});
-			}
+				}
+			};
+			Ogre::String id = "BaseCamera::moveCamera";
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 		if (true == this->firstTimeMoveValueSet)
 		{

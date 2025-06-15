@@ -195,6 +195,9 @@ namespace NOWA
 	{
 		bool success = MyGUIComponent::disconnect();
 
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		this->currentRow = 0;
 		this->currentCol = 0;
 		this->currentFrame = static_cast<int>(this->startEndIndex->getVector2().x);
@@ -347,10 +350,15 @@ namespace NOWA
 
 		if (nullptr != this->widget)
 		{
-			MyGUI::IntCoord tileCoord(this->currentCol * static_cast<int>(this->tileSize->getVector2().x), this->currentRow * static_cast<int>(this->tileSize->getVector2().y),
-									  static_cast<int>(this->tileSize->getVector2().x), static_cast<int>(this->tileSize->getVector2().y));
+			auto closureFunction = [this](Ogre::Real weight)
+			{
+				MyGUI::IntCoord tileCoord(this->currentCol * static_cast<int>(this->tileSize->getVector2().x), this->currentRow * static_cast<int>(this->tileSize->getVector2().y),
+					static_cast<int>(this->tileSize->getVector2().x), static_cast<int>(this->tileSize->getVector2().y));
 
-			widget->castType<MyGUI::ImageBox>()->setImageCoord(tileCoord);
+				widget->castType<MyGUI::ImageBox>()->setImageCoord(tileCoord);
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 
@@ -649,19 +657,23 @@ namespace NOWA
 		{
 			if (this->mouseButtonClickClosureFunction.is_valid())
 			{
-				try
-				{
-					luabind::call_function<void>(this->mouseButtonClickClosureFunction);
-				}
-				catch (luabind::error& error)
-				{
-					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-					std::stringstream msg;
-					msg << errorMsg;
+				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+					{
+						try
+						{
+							luabind::call_function<void>(this->mouseButtonClickClosureFunction);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
 
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-																+ " details: " + msg.str());
-				}
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGuiSpriteComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
+					};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 	}

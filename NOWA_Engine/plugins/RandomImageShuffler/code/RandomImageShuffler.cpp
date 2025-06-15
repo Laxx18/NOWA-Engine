@@ -202,21 +202,24 @@ namespace NOWA
 
 		if (true == this->activated->getBool())
 		{
-			this->imageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::HCenter, "Overlapped");
-
-			this->initialGeometry = this->imageWidget->getAbsoluteRect();
-
-			if (false == this->maskImage->getString().empty())
+			ENQUEUE_RENDER_COMMAND("RandomImageShuffler::connect",
 			{
-				this->maskImageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::Stretch, "Overlapped");
-				this->maskImageWidget->setImageTexture(this->maskImage->getString());
-			}
+				this->imageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::HCenter, "Overlapped");
 
-			if (true == this->useSlideImage->getBool() && false == this->images.empty())
-			{
-				// Start off-screen
-				// this->imageWidget->setRealPosition(MyGUI::FloatPoint(this->geometry->getVector4().x - this->geometry->getVector4().z, this->geometry->getVector4().y));
-			}
+				this->initialGeometry = this->imageWidget->getAbsoluteRect();
+
+				if (false == this->maskImage->getString().empty())
+				{
+					this->maskImageWidget = MyGUI::Gui::getInstancePtr()->createWidgetReal<MyGUI::ImageBox>("ImageBox", MyGUI::FloatCoord(this->geometry->getVector4().x, this->geometry->getVector4().y, this->geometry->getVector4().z, this->geometry->getVector4().w), MyGUI::Align::Stretch, "Overlapped");
+					this->maskImageWidget->setImageTexture(this->maskImage->getString());
+				}
+
+				if (true == this->useSlideImage->getBool() && false == this->images.empty())
+				{
+					// Start off-screen
+					// this->imageWidget->setRealPosition(MyGUI::FloatPoint(this->geometry->getVector4().x - this->geometry->getVector4().z, this->geometry->getVector4().y));
+				}
+			});
 		}
 
 		return true;
@@ -227,24 +230,30 @@ namespace NOWA
 		this->stopShuffle = true;
 		this->startShuffle = false;
 
-		if (nullptr != this->maskImageWidget)
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+		ENQUEUE_RENDER_COMMAND("RandomImageShuffler::disconnect",
 		{
-			// Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
-			auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->maskImage->getString());
-			if (nullptr != myGuiTexture)
+			if (nullptr != this->maskImageWidget)
 			{
-				static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
+				// Must be done, because mygui also holds a reference to the Ogre::TextureGpu texture.
+				auto myGuiTexture = MyGUI::RenderManager::getInstancePtr()->getTexture(this->maskImage->getString());
+				if (nullptr != myGuiTexture)
+				{
+					static_cast<MyGUI::Ogre2RenderManager*>(MyGUI::RenderManager::getInstancePtr())->removeTexture(myGuiTexture);
+				}
+				this->maskImageWidget->setImageTexture("");
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->maskImageWidget);
+				this->maskImageWidget = nullptr;
 			}
-			this->maskImageWidget->setImageTexture("");
-			MyGUI::Gui::getInstancePtr()->destroyWidget(this->maskImageWidget);
-			this->maskImageWidget = nullptr;
-		}
-		if (nullptr != this->imageWidget)
-		{
-			this->imageWidget->setImageTexture("");
-			MyGUI::Gui::getInstancePtr()->destroyWidget(this->imageWidget);
-			this->imageWidget = nullptr;
-		}
+			if (nullptr != this->imageWidget)
+			{
+				this->imageWidget->setImageTexture("");
+				MyGUI::Gui::getInstancePtr()->destroyWidget(this->imageWidget);
+				this->imageWidget = nullptr;
+			}
+		});
 		return true;
 	}
 
@@ -273,76 +282,81 @@ namespace NOWA
 	{
 		if (false == notSimulating && true == this->activated->getBool())
 		{
-			// If shuffle has been started
-			if (true == this->startShuffle && false == this->stopShuffle)
+			auto closureFunction = [this, dt](Ogre::Real weight)
 			{
-				// Checks if switch image, or use slide image
 
-				this->timeSinceLastImageShown += dt;
-				if (this->timeSinceLastImageShown >= this->displayTime->getReal() * 0.001f)
+				// If shuffle has been started
+				if (true == this->startShuffle && false == this->stopShuffle)
 				{
-					if (false == this->useSlideImage->getBool())
-					{
-						this->switchImage();
-					}
-					this->timeSinceLastImageShown = 0.0f;
-				}
+					// Checks if switch image, or use slide image
 
-				if (true == this->useSlideImage->getBool())
-				{
-					this->slideImage(dt);
-				}
-			}
-			else if (true == this->stopShuffle && true == this->startShuffle && true == this->useStopDelay->getBool())
-			{
-				this->timeSinceLastImageShown += dt;
-
-				// If stop has been triggered but use stop delay is on, do not stop immediately, but gradually decrease speed, until it comes to an end
-
-				if (true == this->useSlideImage->getBool())
-				{
-					this->slideImage(dt);
-				}
-				else
-				{
-					if (this->timeSinceLastImageShown >= this->gradientDelay * 0.001f)
+					this->timeSinceLastImageShown += dt;
+					if (this->timeSinceLastImageShown >= this->displayTime->getReal() * 0.001f)
 					{
 						if (false == this->useSlideImage->getBool())
 						{
 							this->switchImage();
 						}
 						this->timeSinceLastImageShown = 0.0f;
-						if (this->gradientDelay < 1000.0f)
-						{
-							// Increment delay to slow down gradually
-							this->gradientDelay += 100.0f;
-						}
-						else
-						{
-							this->startShuffle = false;
-							this->stopShuffle = true;
-							if (true == this->useStopEffect->getBool())
-							{
-								this->startAnimation();
-							}
-							if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
-							{
-								NOWA::AppStateManager::LogicCommand logicCommand = [this]()
-								{
-									this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
-								};
-								NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+					}
 
+					if (true == this->useSlideImage->getBool())
+					{
+						this->slideImage(dt);
+					}
+				}
+				else if (true == this->stopShuffle && true == this->startShuffle && true == this->useStopDelay->getBool())
+				{
+					this->timeSinceLastImageShown += dt;
+
+					// If stop has been triggered but use stop delay is on, do not stop immediately, but gradually decrease speed, until it comes to an end
+
+					if (true == this->useSlideImage->getBool())
+					{
+						this->slideImage(dt);
+					}
+					else
+					{
+						if (this->timeSinceLastImageShown >= this->gradientDelay * 0.001f)
+						{
+							if (false == this->useSlideImage->getBool())
+							{
+								this->switchImage();
+							}
+							this->timeSinceLastImageShown = 0.0f;
+							if (this->gradientDelay < 1000.0f)
+							{
+								// Increment delay to slow down gradually
+								this->gradientDelay += 100.0f;
+							}
+							else
+							{
+								this->startShuffle = false;
+								this->stopShuffle = true;
+								if (true == this->useStopEffect->getBool())
+								{
+									this->startAnimation();
+								}
+								if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onImageChosenFunctionName->getString().empty())
+								{
+									NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+									{
+										this->gameObjectPtr->getLuaScript()->callTableFunction(this->onImageChosenFunctionName->getString(), this->imageWidget->_getTextureName(), this->imageWidget->getUserString("ImageIndex"));
+									};
+									NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
+								}
 							}
 						}
 					}
 				}
-			}
 
-			if (true == this->animating)
-			{
-				this->animateImage(dt);
-			}
+				if (true == this->animating)
+				{
+					this->animateImage(dt);
+				}
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 		}
 	}
 

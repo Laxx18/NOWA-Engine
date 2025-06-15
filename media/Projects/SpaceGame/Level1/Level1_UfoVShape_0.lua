@@ -43,7 +43,7 @@ Level1_UfoVShape_0["cloned"] = function(gameObject)
 end
 
 Level1_UfoVShape_0["disconnect"] = function()
-    originLaser:getPhysicsActiveKinematicComponent():translate(Vector3(0, 5, 0));
-    originLaser:setVisible(true);
+    --originLaser:getPhysicsActiveKinematicComponent():translate(Vector3(0, 5, 0));
+    --originLaser:setVisible(true);
     --laserSpawnComponent:setActivated(false);
 end

@@ -321,6 +321,8 @@ namespace NOWA
 	CellView::CellView(MyGUI::Widget* _parent) :
 		wraps::BaseCellView<ItemData*>("CellView.layout", _parent)
 	{
+		this->uniqueId = NOWA::makeUniqueID();
+
 		ENQUEUE_RENDER_COMMAND_WAIT("ItemBox::CellView::CellView",
 		{
 			assignWidget(mImageBack, "image_Back");
@@ -331,11 +333,16 @@ namespace NOWA
 		});
 	}
 
+	CellView::~CellView()
+	{
+
+	}
+
 	void CellView::update(const MyGUI::IBDrawItemInfo& _info, ItemData* _data)
 	{
 		if (_info.update)
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update1", _2(_info, _data),
+			auto closureFunction = [this, _info, _data](Ogre::Real weight)
 			{
 				if (!_data->isEmpty())
 				{
@@ -361,12 +368,14 @@ namespace NOWA
 				mImageBack->setItemGroup("States");
 				mImageBorder->setItemResourcePtr(resourceSelect);
 				mImageBorder->setItemGroup("States");
-			});
+			};
+			Ogre::String id = "CellView::update1" + Ogre::StringConverter::toString(this->uniqueId);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 
 		if (_info.drag && nullptr != _data->getInfo())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update drag", _2(_info, _data),
+			auto closureFunction = [this, _info, _data](Ogre::Real weight)
 			{
 				mImageBack->setItemName("None");
 				mImageBorder->setItemName("None");
@@ -385,11 +394,13 @@ namespace NOWA
 				{
 					mImageItem->setVisible(false);
 				}
-			});
+			};
+			Ogre::String id = "CellView::update2" + Ogre::StringConverter::toString(this->uniqueId);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("CellView::update2", _2(_info, _data),
+			auto closureFunction = [this, _info, _data](Ogre::Real weight)
 			{
 				if (_info.active)
 				{
@@ -428,7 +439,9 @@ namespace NOWA
 				{
 					mImageItem->setVisible(false);
 				}
-			});
+			};
+			Ogre::String id = "CellView::update3" + Ogre::StringConverter::toString(this->uniqueId);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 	}
 
@@ -950,19 +963,23 @@ namespace NOWA
 
 			if (this->closureFunctionRequestDropRequest.is_valid())
 			{
-				try
-				{
-					luabind::call_function<void>(this->closureFunctionRequestDropRequest, this->dragDropData);
-				}
-				catch (luabind::error& error)
-				{
-					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-					std::stringstream msg;
-					msg << errorMsg;
+				NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+					{
+						try
+						{
+							luabind::call_function<void>(this->closureFunctionRequestDropRequest, this->dragDropData);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
 
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
-						+ " details: " + msg.str());
-				}
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
+					};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 		else
@@ -976,19 +993,23 @@ namespace NOWA
 				{
 					if (myGuiItemBoxCompPtr->closureFunctionRequestDropRequest.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropRequest, this->dragDropData);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, myGuiItemBoxCompPtr]()
+							{
+								try
+								{
+									luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropRequest, this->dragDropData);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
-								+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemRequest' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -1017,19 +1038,23 @@ namespace NOWA
 
 				if (this->closureFunctionRequestDropAccepted.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->closureFunctionRequestDropAccepted, this->dragDropData);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->closureFunctionRequestDropRequest, this->dragDropData);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
 			else
@@ -1043,19 +1068,23 @@ namespace NOWA
 					{
 						if (myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted.is_valid())
 						{
-							try
-							{
-								luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted, this->dragDropData);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
+							NOWA::AppStateManager::LogicCommand logicCommand = [this, myGuiItemBoxCompPtr]()
+								{
+									try
+									{
+										luabind::call_function<void>(myGuiItemBoxCompPtr->closureFunctionRequestDropAccepted, this->dragDropData);
+									}
+									catch (luabind::error& error)
+									{
+										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+										std::stringstream msg;
+										msg << errorMsg;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
-																			+ " details: " + msg.str());
-							}
+										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnDropItemAccepted' Error: " + Ogre::String(error.what())
+											+ " details: " + msg.str());
+									}
+								};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 					}
 				}
@@ -1169,19 +1198,23 @@ namespace NOWA
 				{
 					if (this->mouseButtonClickClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, buttonId);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, resourceName, buttonId]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->mouseButtonClickClosureFunction, resourceName, buttonId);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIItemBoxComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}

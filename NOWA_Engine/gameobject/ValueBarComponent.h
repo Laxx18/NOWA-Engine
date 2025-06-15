@@ -258,7 +258,7 @@ namespace NOWA
 		static const Ogre::String AttrMaxValue(void) { return "Max Value"; }
 		static const Ogre::String AttrCurrentValue(void) { return "Current Value"; }
 	protected:
-		virtual void drawValueBar(void);
+		void drawValueBar(void);
 
 		void createValueBar(void);
 
@@ -282,6 +282,7 @@ namespace NOWA
 		Variant* currentValue;
 		unsigned long indices;
 		bool bIsInSimulation;
+		bool couldDraw;
 	};
 
 }; //namespace end

@@ -1850,19 +1850,23 @@ namespace NOWA
 
 				if (this->targetAngleReachedClosureFunction.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this, newAngle]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->targetAngleReachedClosureFunction, newAngle);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointHingeActuatorComponent] Caught error in 'reactOnTargetAngleReached' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 			}
 		}
@@ -4648,6 +4652,9 @@ namespace NOWA
 
 	void JointSpringComponent::releaseSpring(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLine" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		// Send event to physics active component to release the spring force
 		// boost::shared_ptr<NOWA::EventDataSpringRelease> eventDataSpringReleaseEvent(new NOWA::EventDataSpringRelease(this->id->getULong()));
 		// NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSpringReleaseEvent);
@@ -4687,7 +4694,7 @@ namespace NOWA
 
 	void JointSpringComponent::drawLine(const Ogre::Vector3& startPosition, const Ogre::Vector3& endPosition)
 	{
-		ENQUEUE_RENDER_COMMAND_MULTI("JointSpringComponent::drawLine", _2(startPosition, endPosition),
+		auto closureFunction = [this, startPosition, endPosition](Ogre::Real weight)
 		{
 			// Draw a 3D line between these points for visual effect
 			this->dragLineObject->clear();
@@ -4697,7 +4704,9 @@ namespace NOWA
 			this->dragLineObject->position(endPosition);
 			this->dragLineObject->index(1);
 			this->dragLineObject->end();
-		});
+		};
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLine" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
 	/*******************************JointSpringComponent*******************************/
@@ -6033,7 +6042,23 @@ namespace NOWA
 					{
 						try
 						{
-							luabind::call_function<void>(this->targetPositionReachedClosureFunction, newPosition);
+							NOWA::AppStateManager::LogicCommand logicCommand = [this, newPosition]()
+								{
+									try
+									{
+										luabind::call_function<void>(this->targetPositionReachedClosureFunction, newPosition);
+									}
+									catch (luabind::error& error)
+									{
+										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+										std::stringstream msg;
+										msg << errorMsg;
+
+										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointSliderActuatorComponent] Caught error in 'targetPositionReachedClosureFunction' Error: " + Ogre::String(error.what())
+											+ " details: " + msg.str());
+									}
+								};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 						catch (luabind::error& error)
 						{
@@ -8256,19 +8281,23 @@ namespace NOWA
 
 					if (this->targetPositionReachedClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->targetPositionReachedClosureFunction);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->targetPositionReachedClosureFunction);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnTargetPositionReached' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[JointKinematicComponent] Caught error in 'targetPositionReachedClosureFunction' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -9591,9 +9620,9 @@ namespace NOWA
 			return;
 		}
 
-		ENQUEUE_RENDER_COMMAND("JointPathFollowComponent::drawLines",
+		auto closureFunction = [this](Ogre::Real weight)
 		{
-			const auto & spline = this->predecessorJointCompPtr->getBody()->getSpline();
+			const auto& spline = this->predecessorJointCompPtr->getBody()->getSpline();
 
 			this->lineObjects->clear();
 			this->lineObjects->begin("WhiteNoLightingBackground", Ogre::OperationType::OT_LINE_LIST);
@@ -9617,13 +9646,18 @@ namespace NOWA
 			}
 
 			this->lineObjects->end();
-		});
+		};
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLines" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 	}
 
 	void JointPathFollowComponent::destroyLines(void)
 	{
 		if (this->lineNode != nullptr)
 		{
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::drawLines" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 			ENQUEUE_RENDER_COMMAND_WAIT("JointPathFollowComponent::destroyLines",
 			{
 				this->lineNode->detachAllObjects();

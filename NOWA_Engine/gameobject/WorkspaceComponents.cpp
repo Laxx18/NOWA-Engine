@@ -331,6 +331,12 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::connect(void)
 	{
+		// Only create workspace for active camera
+		if (nullptr != this->cameraComponent && false == this->cameraComponent->isActivated() && false == this->involvedInSplitScreen)
+		{
+			return true;
+		}
+
 		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
 		{
 			if (nullptr != this->workspace)
@@ -341,19 +347,15 @@ namespace NOWA
 					workspaceDef->clearAllInterNodeConnections();
 				}
 			}
+			auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
 
-			if (true == this->cameraComponent->isActivated() || true == this->involvedInSplitScreen)
+			for (size_t i = 0; i < compositorEffectComponents.size(); i++)
 			{
-				auto compositorEffectComponents = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectComponents<CompositorEffectBaseComponent>();
-
-				for (size_t i = 0; i < compositorEffectComponents.size(); i++)
-				{
-					compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
-				}
+				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, compositorEffectComponents[i]->isActivated());
 			}
-		});
 
-		this->reconnectAllNodes();
+			this->reconnectAllNodes();
+		});
 
 		return true;
 	}
@@ -378,9 +380,6 @@ namespace NOWA
 				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, false);
 			}
 		});
-
-		// Note: If compositor effect components are involved, they will be disabled, hence connections will be removed
-		// this->reconnectAllNodes();
 
 		return true;
 	}
@@ -419,14 +418,12 @@ namespace NOWA
 			return true;
 		}
 
+		this->internalInitWorkspaceData();
+
+		this->removeWorkspace();
+
 		ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::createWorkspace",
 		{
-			this->internalInitWorkspaceData();
-
-			this->removeWorkspace();
-
-			this->resetReflectionForAllEntities();
-
 			std::vector<bool> reflections(AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size());
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
 
@@ -627,8 +624,6 @@ namespace NOWA
 
 			this->internalCreateCompositorNode();
 
-			this->updateShadowGlobalBias();
-
 			if (true == this->useTerra)
 			{
 				unsigned char channelCount = 1;
@@ -716,6 +711,7 @@ namespace NOWA
 			// delayProcess->attachChild(closureProcess);
 			// NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
 
+			this->updateShadowGlobalBias();
 		});
 
 		return true;
@@ -723,12 +719,12 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::removeWorkspace(void)
 	{
-		this->resetReflectionForAllEntities();
-
 		if (nullptr == this->workspace)
 		{
 			return;
 		}
+
+		this->resetReflectionForAllEntities();
 
 		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::removeWorkspace",
 		{
@@ -844,7 +840,7 @@ namespace NOWA
 	{
 		if (nullptr != this->workspace)
 		{
-			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::nullWorkspace",
+			ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::nullWorkspace",
 			{
 				this->compositorManager->removeWorkspace(this->workspace);
 				this->workspace = nullptr;
@@ -1203,8 +1199,9 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::createFinalRenderNode(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createFinalRenderNode",
-		{
+		// Threadsafe from the outside
+		// ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createFinalRenderNode",
+		// {
 			if (true == this->compositorManager->hasNodeDefinition(this->finalRenderingNodeName))
 			{
 				this->compositorManager->removeNodeDefinition(this->finalRenderingNodeName);
@@ -1389,7 +1386,7 @@ namespace NOWA
 					}
 				}
 			}
-		});
+		// });
 	}
 
 	void WorkspaceBaseComponent::createDistortionNode(void)
@@ -1448,7 +1445,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::addWorkspace(Ogre::CompositorWorkspaceDef* workspaceDef)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::addWorkspace",
+		ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::addWorkspace",
 		{
 			if (true == this->externalChannels.empty())
 			{
@@ -1915,7 +1912,7 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::resetReflectionForAllEntities(void)
 	{
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::resetReflectionForAllEntities",
+		ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::resetReflectionForAllEntities",
 		{
 			Ogre::TextureGpuManager * hlmsTextureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 
@@ -2432,6 +2429,8 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::reconnectAllNodes(void)
 	{
+		// Threadsafe from the outside
+
 		//Now that we're done, tell the instance to update itself.
 		if (nullptr != this->workspace)
 		{
@@ -2440,188 +2439,185 @@ namespace NOWA
 				return;
 			}
 
-			ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::reconnectAllNodes",
+			//Now that we're done, tell the instance to update itself.
+			// this->workspace->reconnectAllNodes();
+			// Get workspace definition, to connect everything
+			Ogre::CompositorWorkspaceDef * workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+
+			//-------------------------------------------------------------------------------------------
+			//
+			//  METHOD 2 (the easy way):
+			//      Reconstruct the whole connection from scratch based on a copy (be it a cloned,
+			//      untouched workspace definition, a custom file, or the very own workspace instance)
+			//      but leaving the node we're disabling unplugged.
+			//      This method is much safer and easier, the **recommended** way for most usage
+			//      scenarios involving toggling compositors on and off frequently. With a few tweaks,
+			//      it can easily be adapted to complex compositors too.
+			//
+			//-------------------------------------------------------------------------------------------
+			workspaceDef->clearAllInterNodeConnections();
+
+			Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
+			Ogre::IdString hdrPostProcessingNodeName;
+			Ogre::IdString distortionNodeName = this->getDistortionNode();
+			if (true == this->useHdr->getBool())
 			{
-				//Now that we're done, tell the instance to update itself.
-				// this->workspace->reconnectAllNodes();
-				// Get workspace definition, to connect everything
-				Ogre::CompositorWorkspaceDef * workspaceDef = this->workspace->getCompositorManager()->getWorkspaceDefinition(this->workspaceName);
+				hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
+			}
 
-				//-------------------------------------------------------------------------------------------
-				//
-				//  METHOD 2 (the easy way):
-				//      Reconstruct the whole connection from scratch based on a copy (be it a cloned,
-				//      untouched workspace definition, a custom file, or the very own workspace instance)
-				//      but leaving the node we're disabling unplugged.
-				//      This method is much safer and easier, the **recommended** way for most usage
-				//      scenarios involving toggling compositors on and off frequently. With a few tweaks,
-				//      it can easily be adapted to complex compositors too.
-				//
-				//-------------------------------------------------------------------------------------------
-				workspaceDef->clearAllInterNodeConnections();
+			Ogre::IdString finalRenderNodeName = this->getFinalRenderingNodeName();
 
-				Ogre::IdString msaaNodeName = "NOWAHdrMsaaResolve";
-				Ogre::IdString hdrPostProcessingNodeName;
-				Ogre::IdString distortionNodeName = this->getDistortionNode();
+			const Ogre::CompositorNodeVec& nodes = this->workspace->getNodeSequence();
+
+			Ogre::IdString lastInNode;
+			Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
+			Ogre::CompositorNodeVec::const_iterator en = nodes.end();
+
+			// Iterate through all effects and add them
+			// Note: combinations are possible, so one prior effect is connected to the next effect
+			while (it != en)
+			{
+				Ogre::CompositorNode* outNode = *it;
+
+				Ogre::IdString outNodeName = outNode->getName();
+
+				if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
+					&& outNode->getName() != hdrPostProcessingNodeName
+					&& outNode->getName() != msaaNodeName
+					&& outNode->getName() != distortionNodeName)
+				{
+					// Look for the next enabled node we can connect to
+					Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
+
+					while (it2 != en && (false == (*it2)->getEnabled()
+							|| (*it2)->getName() == finalRenderNodeName
+							|| (*it2)->getName() == hdrPostProcessingNodeName
+							|| (*it2)->getName() == msaaNodeName)
+							|| (*it2)->getName() == distortionNodeName)
+					{
+						it2++;
+						if (it2 == en)
+						{
+							break;
+						}
+					}
+
+					if (it2 != en)
+					{
+						lastInNode = (*it2)->getName();
+						workspaceDef->connect(outNodeName, 0, lastInNode, 0);
+						workspaceDef->connect(outNodeName, 1, lastInNode, 1);
+						// Example:
+						// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
+						// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
+						// workspaceDef->connect("Old Tv", 0, "Glass", 0);
+						// workspaceDef->connect("Old Tv", 1, "Glass", 1);
+					}
+
+					it = it2 - 1;
+				}
+
+				it++;
+			}
+
+			if (lastInNode == Ogre::IdString())
+			{
+				lastInNode = this->renderingNodeName;
+			}
+			if (lastInNode == Ogre::IdString())
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
+			}
+
+			unsigned int output = 2;
+
+			if (true == this->useDistortion->getBool())
+			{
+				// 0 is out rt0
+				// workspaceDef->connect(this->renderingNodeName, 0, distortionNodeName, 0);
+				workspaceDef->connect(lastInNode, 0, distortionNodeName, 0);
+
 				if (true == this->useHdr->getBool())
 				{
-					hdrPostProcessingNodeName = "NOWAHdrPostprocessingNode";
+					output = 3;
 				}
+				// 3 is out rt_distortion
+				workspaceDef->connect(this->renderingNodeName, output, distortionNodeName, 1);
+			}
 
-				Ogre::IdString finalRenderNodeName = this->getFinalRenderingNodeName();
+			if (true == this->useSSAO->getBool())
+			{
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 2);
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 3);
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 4);
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 5);
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 6);
+				output++;
+				workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 7);
 
-				const Ogre::CompositorNodeVec& nodes = this->workspace->getNodeSequence();
+			}
 
-				Ogre::IdString lastInNode;
-				Ogre::CompositorNodeVec::const_iterator it = nodes.begin();
-				Ogre::CompositorNodeVec::const_iterator en = nodes.end();
-
-				// Iterate through all effects and add them
-				// Note: combinations are possible, so one prior effect is connected to the next effect
-				while (it != en)
-				{
-					Ogre::CompositorNode* outNode = *it;
-
-					Ogre::IdString outNodeName = outNode->getName();
-
-					if (outNode->getEnabled() && outNode->getName() != finalRenderNodeName
-						&& outNode->getName() != hdrPostProcessingNodeName
-						&& outNode->getName() != msaaNodeName
-						&& outNode->getName() != distortionNodeName)
-					{
-						// Look for the next enabled node we can connect to
-						Ogre::CompositorNodeVec::const_iterator it2 = it + 1;
-
-						while (it2 != en && (false == (*it2)->getEnabled()
-							   || (*it2)->getName() == finalRenderNodeName
-							   || (*it2)->getName() == hdrPostProcessingNodeName
-							   || (*it2)->getName() == msaaNodeName)
-							   || (*it2)->getName() == distortionNodeName)
-						{
-							it2++;
-							if (it2 == en)
-							{
-								break;
-							}
-						}
-
-						if (it2 != en)
-						{
-							lastInNode = (*it2)->getName();
-							workspaceDef->connect(outNodeName, 0, lastInNode, 0);
-							workspaceDef->connect(outNodeName, 1, lastInNode, 1);
-							// Example:
-							// workspaceDef->connect("NOWASkyRenderingNode", 0, "Old Tv", 0);
-							// workspaceDef->connect("NOWASkyRenderingNode", 1, "Old Tv", 1);
-							// workspaceDef->connect("Old Tv", 0, "Glass", 0);
-							// workspaceDef->connect("Old Tv", 1, "Glass", 1);
-						}
-
-						it = it2 - 1;
-					}
-
-					it++;
-				}
-
-				if (lastInNode == Ogre::IdString())
-				{
-					lastInNode = this->renderingNodeName;
-				}
-				if (lastInNode == Ogre::IdString())
-				{
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[WorkspaceModule] Error: Workspacenode is null!");
-				}
-
-				unsigned int output = 2;
-
+			if (false == this->useHdr->getBool())
+			{
 				if (true == this->useDistortion->getBool())
 				{
-					// 0 is out rt0
-					// workspaceDef->connect(this->renderingNodeName, 0, distortionNodeName, 0);
-					workspaceDef->connect(lastInNode, 0, distortionNodeName, 0);
-
-					if (true == this->useHdr->getBool())
-					{
-						output = 3;
-					}
-					// 3 is out rt_distortion
-					workspaceDef->connect(this->renderingNodeName, output, distortionNodeName, 1);
-				}
-
-				if (true == this->useSSAO->getBool())
-				{
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 2);
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 3);
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 4);
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 5);
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 6);
-					output++;
-					workspaceDef->connect(this->renderingNodeName, output, finalRenderNodeName, 7);
-
-				}
-
-				if (false == this->useHdr->getBool())
-				{
-					if (true == this->useDistortion->getBool())
-					{
-						workspaceDef->connect(this->distortionNode, 0, finalRenderNodeName, 1);
-					}
-					else
-					{
-						// Connect compositor effect Glass output 0 to final render input 1
-						workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
-					}
+					workspaceDef->connect(this->distortionNode, 0, finalRenderNodeName, 1);
 				}
 				else
 				{
-					// Example without msaa:
-					if (1 == this->msaaLevel)
+					// Connect compositor effect Glass output 0 to final render input 1
+					workspaceDef->connect(lastInNode, 0, finalRenderNodeName, 1);
+				}
+			}
+			else
+			{
+				// Example without msaa:
+				if (1 == this->msaaLevel)
+				{
+					// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
+					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
+
+					if (true == this->useDistortion->getBool())
 					{
-						// Connect NOWASkyRenderingNode output 2 to NOWAHdrPostprocessingNode input 1
-						workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
-
-						if (true == this->useDistortion->getBool())
-						{
-							workspaceDef->connect(this->distortionNode, 0, hdrPostProcessingNodeName, 0);
-						}
-						else
-						{
-							// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
-							workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
-						}
-
-						workspaceDef->connect(lastInNode, 1, hdrPostProcessingNodeName, 2);
-						workspaceDef->connect(hdrPostProcessingNodeName, 0, this->finalRenderingNodeName, 1);
-						// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+						workspaceDef->connect(this->distortionNode, 0, hdrPostProcessingNodeName, 0);
 					}
 					else
 					{
-						if (true == this->useDistortion->getBool())
-						{
-							workspaceDef->connect(this->distortionNode, 0, msaaNodeName, 0);
-						}
-						else
-						{
-							workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
-						}
-
-						workspaceDef->connect(this->renderingNodeName, 2, msaaNodeName, 1);
-						workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
-						workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
-						workspaceDef->connect(this->renderingNodeName, 1, hdrPostProcessingNodeName, 2);
-						workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
-						// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+						// Connect compositor effect Glass output 0 to NOWAHdrPostprocessingNode input 0
+						workspaceDef->connect(lastInNode, 0, hdrPostProcessingNodeName, 0);
 					}
-				}
 
-				//Now that we're done, tell the instance to update itself.
-				this->workspace->reconnectAllNodes();
-			});
+					workspaceDef->connect(lastInNode, 1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, this->finalRenderingNodeName, 1);
+					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+				}
+				else
+				{
+					if (true == this->useDistortion->getBool())
+					{
+						workspaceDef->connect(this->distortionNode, 0, msaaNodeName, 0);
+					}
+					else
+					{
+						workspaceDef->connect(lastInNode, 0, msaaNodeName, 0);
+					}
+
+					workspaceDef->connect(this->renderingNodeName, 2, msaaNodeName, 1);
+					workspaceDef->connect("NOWAHdrMsaaResolve", 0, hdrPostProcessingNodeName, 0);
+					workspaceDef->connect(this->renderingNodeName, 2, hdrPostProcessingNodeName, 1);
+					workspaceDef->connect(this->renderingNodeName, 1, hdrPostProcessingNodeName, 2);
+					workspaceDef->connect(hdrPostProcessingNodeName, 0, finalRenderNodeName, 1);
+					// No connectExternal, because its already done in create workspace function, here reconnectAllNodes is sufficient
+				}
+			}
+
+			//Now that we're done, tell the instance to update itself.
+			this->workspace->reconnectAllNodes();
 		}
 	}
 
@@ -2683,7 +2679,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowGlobalBias(Ogre::Real shadowGlobalBias)
 	{
 		this->shadowGlobalBias->setValue(shadowGlobalBias); 
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowGlobalBias",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowGlobalBias(void) const
@@ -2694,7 +2693,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowGlobalNormalOffset(Ogre::Real shadowGlobalNormalOffset)
 	{
 		this->shadowGlobalNormalOffset->setValue(shadowGlobalNormalOffset);
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowGlobalNormalOffset",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowGlobalNormalOffset(void) const
@@ -2705,7 +2707,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowPSSMLambda(Ogre::Real shadowPssmLambda)
 	{
 		this->shadowPSSMLambda->setValue(shadowPssmLambda);
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowPSSMLambda",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowPSSMLambda(void) const
@@ -2716,7 +2721,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitBlend(Ogre::Real shadowSplitBlend)
 	{
 		this->shadowSplitBlend->setValue(shadowSplitBlend);
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitBlend",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowSplitBlend(void) const
@@ -2727,7 +2735,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitFade(Ogre::Real shadowSplitFade)
 	{
 		this->shadowSplitFade->setValue(shadowSplitFade);
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitFade",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowSplitFade(void) const
@@ -2738,7 +2749,10 @@ namespace NOWA
 	void WorkspaceBaseComponent::setShadowSplitPadding(Ogre::Real shadowSplitPadding)
 	{
 		this->shadowSplitPadding->setValue(shadowSplitPadding);
-		this->updateShadowGlobalBias();
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::setShadowSplitPadding",
+		{
+			this->updateShadowGlobalBias();
+		});
 	}
 
 	Ogre::Real WorkspaceBaseComponent::getShadowSplitPadding(void) const
@@ -2763,35 +2777,32 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::updateShadowGlobalBias(void)
 	{
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::updateShadowGlobalBias",
+		Ogre::CompositorShadowNodeDef * node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
+		size_t numShadowDefinitions = node->getNumShadowTextureDefinitions();
+		for (size_t i = 0; i < numShadowDefinitions; i++)
 		{
-			Ogre::CompositorShadowNodeDef * node = this->compositorManager->getShadowNodeDefinitionNonConst(WorkspaceModule::getInstance()->shadowNodeName);
-			size_t numShadowDefinitions = node->getNumShadowTextureDefinitions();
-			for (size_t i = 0; i < numShadowDefinitions; i++)
-			{
-				Ogre::ShadowTextureDefinition* texture = node->getShadowTextureDefinitionNonConst(i);
-				texture->normalOffsetBias = this->shadowGlobalNormalOffset->getReal();
-				texture->constantBiasScale = this->shadowGlobalBias->getReal();
-				texture->pssmLambda = this->shadowPSSMLambda->getReal();
-				texture->splitBlend = this->shadowSplitBlend->getReal();
-				texture->splitFade = this->shadowSplitFade->getReal();
-				texture->splitPadding = this->shadowSplitPadding->getReal();
-				texture->autoConstantBiasScale = 100.0f;
-				texture->autoNormalOffsetBiasScale = 4.0f;
-				// texture->numStableSplits = 3;
-				/*
-				Edit: Got good results with setting the depth bias on the material between 0.00050 > 0.0010
-				Got a good result with normal offset at value: 0.0000040
-				Doesnt look too disimilar to what i was playing with my version.
-				Shadows also scale well with the object size, my advice check the shadowmap bias on the materials itself.
-				*/
+			Ogre::ShadowTextureDefinition* texture = node->getShadowTextureDefinitionNonConst(i);
+			texture->normalOffsetBias = this->shadowGlobalNormalOffset->getReal();
+			texture->constantBiasScale = this->shadowGlobalBias->getReal();
+			texture->pssmLambda = this->shadowPSSMLambda->getReal();
+			texture->splitBlend = this->shadowSplitBlend->getReal();
+			texture->splitFade = this->shadowSplitFade->getReal();
+			texture->splitPadding = this->shadowSplitPadding->getReal();
+			texture->autoConstantBiasScale = 100.0f;
+			texture->autoNormalOffsetBiasScale = 4.0f;
+			// texture->numStableSplits = 3;
+			/*
+			Edit: Got good results with setting the depth bias on the material between 0.00050 > 0.0010
+			Got a good result with normal offset at value: 0.0000040
+			Doesnt look too disimilar to what i was playing with my version.
+			Shadows also scale well with the object size, my advice check the shadowmap bias on the materials itself.
+			*/
 
-				/*
-				texture->autoConstantBiasScale = 100.0f;
-				texture->autoNormalOffsetBiasScale = 4.0f;
-				*/
-			}
-		});
+			/*
+			texture->autoConstantBiasScale = 100.0f;
+			texture->autoNormalOffsetBiasScale = 4.0f;
+			*/
+		}
 	}
 
 	bool WorkspaceBaseComponent::hasAnyMirrorForPlanarReflections(void)
@@ -4556,9 +4567,10 @@ namespace NOWA
 
 	void WorkspaceBackgroundComponent::compileBackgroundMaterial(void)
 	{
-		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBackgroundComponent::compileBackgroundMaterial",
+		auto materialBackgroundPtr = this->materialBackgroundPtr;
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("BackgroundScrollComponent::compileBackgroundMaterial", _1(materialBackgroundPtr),
 		{
-			this->materialBackgroundPtr->compile();
+			materialBackgroundPtr->compile();
 		});
 	}
 

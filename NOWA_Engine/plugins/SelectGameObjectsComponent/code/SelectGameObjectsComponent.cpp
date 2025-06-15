@@ -438,19 +438,23 @@ namespace NOWA
 					i++;
 				}
 
-				try
-				{
-					luabind::call_function<void>(this->closureFunction, selectedGameObjectList);
-				}
-				catch (luabind::error& error)
-				{
-					luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-					std::stringstream msg;
-					msg << errorMsg;
+				NOWA::AppStateManager::LogicCommand logicCommand = [this, selectedGameObjectList]()
+					{
+						try
+						{
+							luabind::call_function<void>(this->closureFunction, selectedGameObjectList);
+						}
+						catch (luabind::error& error)
+						{
+							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+							std::stringstream msg;
+							msg << errorMsg;
 
-					Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnGameObjectsSelected' Error: " + Ogre::String(error.what())
-						+ " details: " + msg.str());
-				}
+							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SelectGameObjectsComponent] Caught error in 'reactOnGameObjectsSelected' Error: " + Ogre::String(error.what())
+								+ " details: " + msg.str());
+						}
+					};
+				NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 			}
 		}
 		return true;

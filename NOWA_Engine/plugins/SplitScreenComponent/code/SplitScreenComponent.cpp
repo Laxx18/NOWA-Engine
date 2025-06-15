@@ -384,6 +384,7 @@ namespace NOWA
 			this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);
 			this->workspaceBaseComponent->setInvolvedInSplitScreen(true);
 			this->workspaceBaseComponent->createWorkspace();
+			this->workspaceBaseComponent->connect();
 
 			this->externalChannels.clear();
 			this->workspaceBaseComponent->setCustomExternalChannels(this->externalChannels);

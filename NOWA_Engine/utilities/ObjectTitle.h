@@ -49,6 +49,8 @@ namespace NOWA
 		Ogre::v1::OverlayContainer*		pContainer;
 		Ogre::Vector2				textDim;
 		Ogre::Font*					pFont;
+
+		unsigned int uniqueId;
 	};
 
 } // namespace end

@@ -370,17 +370,23 @@ namespace NOWA
 							{
 								if (this->spawnClosureFunction.is_valid())
 								{
-									try
-									{
-										luabind::call_function<void>(this->spawnClosureFunction, clonedGameObjectPtr.get(), this->gameObjectPtr.get());
-									}
-									catch (luabind::error& error)
-									{
-										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-										std::stringstream msg;
-										msg << errorMsg;
-										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Error in 'reactOnSpawn': " + Ogre::String(error.what()) + " details: " + msg.str());
-									}
+									NOWA::AppStateManager::LogicCommand logicCommand = [this, clonedGameObjectPtr]()
+										{
+											try
+											{
+												luabind::call_function<void>(this->spawnClosureFunction, clonedGameObjectPtr.get(), this->gameObjectPtr.get());
+											}
+											catch (luabind::error& error)
+											{
+												luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+												std::stringstream msg;
+												msg << errorMsg;
+
+												Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Caught error in 'reactOnSpawn' Error: " + Ogre::String(error.what())
+													+ " details: " + msg.str());
+											}
+										};
+									NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 								}
 							}
 							else if (this->spawnObserver)
@@ -397,7 +403,7 @@ namespace NOWA
 							{
 								this->clonedGameObjectsInScene.emplace_back(clonedGameObjectPtr.get());
 							}
-						}, this->spawnTargetGameObject->getId(), nullptr, 0, spawnPosition, spawnOrientation, Ogre::Vector3::UNIT_SCALE,this->cloneDatablock->getBool());
+						}, this->spawnTargetGameObject->getId(), nullptr, 0, spawnPosition, spawnOrientation, Ogre::Vector3::UNIT_SCALE, this->cloneDatablock->getBool());
 					}
 				}
 			}
@@ -424,19 +430,23 @@ namespace NOWA
 				{
 					if (this->vanishClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->vanishClosureFunction, clonedGameObjectPair.second, this->gameObjectPtr.get());
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, clonedGameObjectPair]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->vanishClosureFunction, clonedGameObjectPair.second, this->gameObjectPtr.get());
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[SpawnComponent] Caught error in 'reactOnVanish' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 				else if (this->spawnObserver)

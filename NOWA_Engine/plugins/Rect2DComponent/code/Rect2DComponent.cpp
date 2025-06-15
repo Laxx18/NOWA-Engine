@@ -86,77 +86,80 @@ namespace NOWA
 
 	bool Rect2DComponent::connect(void)
 	{
-		if (nullptr != this->rectangle2D)
+		ENQUEUE_RENDER_COMMAND("Rect2DComponent::connect",
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
-			this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
-			this->rectangle2D = nullptr;
-		}
-
-		if (true == this->activated->getBool())
-		{
-			Ogre::HlmsMacroblock macroBlock;
-			macroBlock.mDepthCheck = false;
-			macroBlock.mDepthWrite = false;
-			macroBlock.mCullMode = Ogre::CULL_NONE; // Necessary
-
-			this->rectangle2D = this->gameObjectPtr->getSceneManager()->createRectangle2D(Ogre::SCENE_DYNAMIC);
-			this->rectangle2D->initialize(Ogre::BT_DEFAULT, Ogre::Rectangle2D::GeometryFlagQuad);
-			this->rectangle2D->setGeometry(Ogre::Vector2(this->border->getVector4().x - this->gameObjectPtr->getPosition().x, this->border->getVector4().y - this->gameObjectPtr->getPosition().y), Ogre::Vector2(this->border->getVector4().z, this->border->getVector4().w));
-			// this->rectangle2D->setRenderQueueGroup(10u);  // Render after most stuff
-			this->rectangle2D->update();
-			this->rectangle2D->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
-			this->rectangle2D->setStatic(!this->gameObjectPtr->isDynamic());
-			
-			bool datablockFound = false;
-			auto& datablockUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>());
-			if (nullptr != datablockUnlitComponent)
+			if (nullptr != this->rectangle2D)
 			{
-				Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockUnlitComponent->getDataBlock());
-				if (nullptr != datablock)
-				{
-					datablockFound = true;
-					datablock->setMacroblock(macroBlock);
-					this->rectangle2D->setDatablock(datablock);
-				}
+				this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
+				this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
+				this->rectangle2D = nullptr;
 			}
-			else
+
+			if (true == this->activated->getBool())
 			{
-				// Pbs not visible, not working???
-				auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
-				if (nullptr != datablockPbsComponent)
+				Ogre::HlmsMacroblock macroBlock;
+				macroBlock.mDepthCheck = false;
+				macroBlock.mDepthWrite = false;
+				macroBlock.mCullMode = Ogre::CULL_NONE; // Necessary
+
+				this->rectangle2D = this->gameObjectPtr->getSceneManager()->createRectangle2D(Ogre::SCENE_DYNAMIC);
+				this->rectangle2D->initialize(Ogre::BT_DEFAULT, Ogre::Rectangle2D::GeometryFlagQuad);
+				this->rectangle2D->setGeometry(Ogre::Vector2(this->border->getVector4().x - this->gameObjectPtr->getPosition().x, this->border->getVector4().y - this->gameObjectPtr->getPosition().y), Ogre::Vector2(this->border->getVector4().z, this->border->getVector4().w));
+				// this->rectangle2D->setRenderQueueGroup(10u);  // Render after most stuff
+				this->rectangle2D->update();
+				this->rectangle2D->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_OBJECTS_ALWAYS_IN_FOREGROUND);
+				this->rectangle2D->setStatic(!this->gameObjectPtr->isDynamic());
+
+				bool datablockFound = false;
+				auto& datablockUnlitComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockUnlitComponent>());
+				if (nullptr != datablockUnlitComponent)
 				{
-					Ogre::HlmsPbsDatablock* datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablockPbsComponent->getDataBlock());
+					Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(datablockUnlitComponent->getDataBlock());
 					if (nullptr != datablock)
 					{
 						datablockFound = true;
-						const Ogre::HlmsSamplerblock* tempSamplerBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
-						if (nullptr != tempSamplerBlock)
-						{
-							Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
-							samplerblock.mU = Ogre::TAM_WRAP;
-							samplerblock.mV = Ogre::TAM_WRAP;
-							samplerblock.mW = Ogre::TAM_WRAP;
-							//Set the new samplerblock. The Hlms system will
-							//automatically create the API block if necessary
-							datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
-						}
 						datablock->setMacroblock(macroBlock);
 						this->rectangle2D->setDatablock(datablock);
 					}
 				}
-			}
+				else
+				{
+					// Pbs not visible, not working???
+					auto& datablockPbsComponent = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<DatablockPbsComponent>());
+					if (nullptr != datablockPbsComponent)
+					{
+						Ogre::HlmsPbsDatablock* datablock = dynamic_cast<Ogre::HlmsPbsDatablock*>(datablockPbsComponent->getDataBlock());
+						if (nullptr != datablock)
+						{
+							datablockFound = true;
+							const Ogre::HlmsSamplerblock* tempSamplerBlock = datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS);
+							if (nullptr != tempSamplerBlock)
+							{
+								Ogre::HlmsSamplerblock samplerblock(*datablock->getSamplerblock(Ogre::PBSM_ROUGHNESS));
+								samplerblock.mU = Ogre::TAM_WRAP;
+								samplerblock.mV = Ogre::TAM_WRAP;
+								samplerblock.mW = Ogre::TAM_WRAP;
+								//Set the new samplerblock. The Hlms system will
+								//automatically create the API block if necessary
+								datablock->setSamplerblock(Ogre::PBSM_ROUGHNESS, samplerblock);
+							}
+							datablock->setMacroblock(macroBlock);
+							this->rectangle2D->setDatablock(datablock);
+						}
+					}
+				}
 
-			if (false == datablockFound)
-			{
-				Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
-				Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(hlms->getDefaultDatablock());
-				datablock->setMacroblock(macroBlock);
-				this->rectangle2D->setDatablock(datablock);
-			}
+				if (false == datablockFound)
+				{
+					Ogre::Hlms* hlms = Ogre::Root::getSingleton().getHlmsManager()->getHlms(Ogre::HLMS_UNLIT);
+					Ogre::HlmsUnlitDatablock* datablock = dynamic_cast<Ogre::HlmsUnlitDatablock*>(hlms->getDefaultDatablock());
+					datablock->setMacroblock(macroBlock);
+					this->rectangle2D->setDatablock(datablock);
+				}
 
-			this->gameObjectPtr->getSceneNode()->attachObject(this->rectangle2D);
-		}
+				this->gameObjectPtr->getSceneNode()->attachObject(this->rectangle2D);
+			}
+		});
 		
 		return true;
 	}
@@ -165,9 +168,12 @@ namespace NOWA
 	{
 		if (nullptr != this->rectangle2D)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
-			this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
-			this->rectangle2D = nullptr;
+			ENQUEUE_RENDER_COMMAND("Rect2DComponent::disconnect",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
+				this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
+				this->rectangle2D = nullptr;
+			});
 		}
 
 		return true;
@@ -185,9 +191,12 @@ namespace NOWA
 
 		if (nullptr != this->rectangle2D)
 		{
-			this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
-			this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
-			this->rectangle2D = nullptr;
+			ENQUEUE_RENDER_COMMAND("Rect2DComponent::onRemoveComponent",
+			{
+				this->gameObjectPtr->getSceneNode()->detachObject(this->rectangle2D);
+				this->gameObjectPtr->getSceneManager()->destroyRectangle2D(this->rectangle2D);
+				this->rectangle2D = nullptr;
+			});
 		}
 	}
 	

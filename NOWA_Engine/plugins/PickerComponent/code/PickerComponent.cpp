@@ -525,19 +525,23 @@ namespace NOWA
 
 		if (this->endClosureFunction.is_valid())
 		{
-			try
-			{
-				luabind::call_function<void>(this->endClosureFunction);
-			}
-			catch (luabind::error& error)
-			{
-				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-				std::stringstream msg;
-				msg << errorMsg;
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->endClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
-															+ " details: " + msg.str());
-			}
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 		return true;
 	}
@@ -557,19 +561,23 @@ namespace NOWA
 			{
 				if (this->startClosureFunction.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->startClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->startClosureFunction);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 				this->draggingStartedFirstTime = false;
 			}
@@ -577,19 +585,23 @@ namespace NOWA
 			{
 				if (this->endClosureFunction.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->endClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->endClosureFunction);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd2' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 				this->draggingEndedFirstTime = false;
 			}
@@ -615,19 +627,23 @@ namespace NOWA
 
 		if (this->endClosureFunction.is_valid())
 		{
-			try
-			{
-				luabind::call_function<void>(this->endClosureFunction);
-			}
-			catch (luabind::error& error)
-			{
-				luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-				std::stringstream msg;
-				msg << errorMsg;
+			NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+				{
+					try
+					{
+						luabind::call_function<void>(this->endClosureFunction);
+					}
+					catch (luabind::error& error)
+					{
+						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+						std::stringstream msg;
+						msg << errorMsg;
 
-				Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
-															+ " details: " + msg.str());
-			}
+						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd3' Error: " + Ogre::String(error.what())
+							+ " details: " + msg.str());
+					}
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 		}
 
 		return true;
@@ -649,19 +665,23 @@ namespace NOWA
 			{
 				if (this->startClosureFunction.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->startClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->startClosureFunction);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingStart' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingStart2' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 				this->draggingStartedFirstTime = false;
 			}
@@ -669,19 +689,23 @@ namespace NOWA
 			{
 				if (this->endClosureFunction.is_valid())
 				{
-					try
-					{
-						luabind::call_function<void>(this->endClosureFunction);
-					}
-					catch (luabind::error& error)
-					{
-						luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-						std::stringstream msg;
-						msg << errorMsg;
+					NOWA::AppStateManager::LogicCommand logicCommand = [this]()
+						{
+							try
+							{
+								luabind::call_function<void>(this->endClosureFunction);
+							}
+							catch (luabind::error& error)
+							{
+								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+								std::stringstream msg;
+								msg << errorMsg;
 
-						Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnDraggingEnd' Error: " + Ogre::String(error.what())
-																	+ " details: " + msg.str());
-					}
+								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PickerComponent] Caught error in 'reactOnDraggingEnd4' Error: " + Ogre::String(error.what())
+									+ " details: " + msg.str());
+							}
+						};
+					NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 				}
 				this->draggingEndedFirstTime = false;
 			}

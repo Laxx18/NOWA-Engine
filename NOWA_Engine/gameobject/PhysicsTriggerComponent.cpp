@@ -57,19 +57,23 @@ namespace NOWA
 				{
 					if (this->enterClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->enterClosureFunction, visitorGameObject);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->leaveClosureFunction, visitorGameObject);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnEnter' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 				/*else
@@ -99,21 +103,25 @@ namespace NOWA
 				{
 					if (nullptr != luaScript)
 					{
-						if (this->enterClosureFunction.is_valid())
+						if (this->insideClosureFunction.is_valid())
 						{
-							try
-							{
-								luabind::call_function<void>(this->enterClosureFunction, visitorGameObject);
-							}
-							catch (luabind::error& error)
-							{
-								luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-								std::stringstream msg;
-								msg << errorMsg;
+							NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
+								{
+									try
+									{
+										luabind::call_function<void>(this->insideClosureFunction, visitorGameObject);
+									}
+									catch (luabind::error& error)
+									{
+										luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+										std::stringstream msg;
+										msg << errorMsg;
 
-								Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnInside' Error: " + Ogre::String(error.what())
-																			+ " details: " + msg.str());
-							}
+										Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnInside' Error: " + Ogre::String(error.what())
+											+ " details: " + msg.str());
+									}
+								};
+							NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 						}
 					}
 				}
@@ -139,21 +147,25 @@ namespace NOWA
 			{
 				if (nullptr != luaScript)
 				{
-					if (this->enterClosureFunction.is_valid())
+					if (this->leaveClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->enterClosureFunction, visitorGameObject);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, visitorGameObject]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->leaveClosureFunction, visitorGameObject);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[PhysicsTriggerComponent::PhysicsTriggerCallback] Caught error in 'reactOnLeave' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 				// Trigger also an event, that a trigger has been exitted

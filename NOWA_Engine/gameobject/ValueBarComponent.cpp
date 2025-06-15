@@ -20,6 +20,7 @@ namespace NOWA
 		orientationTargetGameObject(nullptr),
 		gameObjectTitleComponent(nullptr),
 		bIsInSimulation(false),
+		couldDraw(false),
 		activated(new Variant(ValueBarComponent::AttrActivated(), true, this->attributes)),
 		twoSided(new Variant(ValueBarComponent::AttrTwoSided(), true, this->attributes)),
 		innerColor(new Variant(ValueBarComponent::AttrInnerColor(), Ogre::Vector3(1.0f, 0.0f, 0.0f), this->attributes)),
@@ -185,7 +186,7 @@ namespace NOWA
 			this->gameObjectTitleComponent->setOrientationTargetId(0);
 		}
 
-		this->createValueBar();
+		// this->createValueBar();
 		
 		return success;
 	}
@@ -193,6 +194,8 @@ namespace NOWA
 	bool ValueBarComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		this->couldDraw = false;
 
 		this->destroyValueBar();
 
@@ -202,37 +205,93 @@ namespace NOWA
 		return true;
 	}
 
+	void ValueBarComponent::createValueBar(void)
+	{
+		if (nullptr == this->manualObject)
+		{
+			// TODO: Wait?
+			// ENQUEUE_RENDER_COMMAND_WAIT("ValueBarComponent::createValueBar",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
+			{
+				if (nullptr == this->lineNode)
+				{
+					this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
+				}
+				this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
+				this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
+				this->manualObject->setName("ValueBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
+				this->manualObject->setQueryFlags(0 << 0);
+				this->lineNode->attachObject(this->manualObject);
+				this->manualObject->setCastShadows(false);
+				// });
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ValueBarComponent::createValueBar");
+		}
+	}
+
+	void ValueBarComponent::destroyValueBar(void)
+	{
+		if (this->lineNode != nullptr)
+		{
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
+			// TODO: Wait?
+			ENQUEUE_RENDER_COMMAND_WAIT("ValueBarComponent::createValueBar",
+			{
+				this->lineNode->detachAllObjects();
+				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
+				this->manualObject = nullptr;
+				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
+				this->lineNode = nullptr;
+			});
+		}
+	}
+
 	void ValueBarComponent::update(Ogre::Real dt, bool notSimulating)
 	{
 		this->bIsInSimulation = !notSimulating;
 
 		if (false == notSimulating)
 		{
-			if (nullptr == this->manualObject)
-			{
-				return;
-			}
+			//// Capture all the data you need in the lambda
+			//auto closureFunction = [this](Ogre::Real weight)
+			//{
+			//	if (nullptr == this->manualObject)
+			//	{
+			//		return;
+			//	}
 
-			ENQUEUE_RENDER_COMMAND("ValueBarComponent::update",
-			{
-				this->indices = 0;
-				if (this->manualObject->getNumSections() > 0)
-				{
-					this->manualObject->beginUpdate(0);
-				}
-				else
-				{
-					this->manualObject->clear();
-					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-				}
+			//	this->indices = 0;
+			//	if (this->manualObject->getNumSections() > 0)
+			//	{
+			//		// Ogre will crash or throw exceptions if empty manual object is processed
+			//		if (true == this->couldDraw)
+			//		{
+			//			this->manualObject->beginUpdate(0);
+			//		}
+			//	}
+			//	else
+			//	{
+			//		this->manualObject->clear();
+			//		this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+			//	}
 
-				this->drawValueBar();
-
-				// Realllllllyyyyy important! Else the rectangle is a whole mess!
-				this->manualObject->index(0);
-
-				this->manualObject->end();
-			});
+			//	this->drawValueBar();
+			//	// Ogre will crash or throw exceptions if empty manual object is processed
+			//	if (true == this->couldDraw)
+			//	{
+			//		// Realllllllyyyyy important! Else the rectangle is a whole mess!
+			//		this->manualObject->index(0);
+			//		this->manualObject->end();
+			//	}
+			//	else
+			//	{
+			//		this->manualObject->clear();
+			//	}
+			//};
+			//Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			//NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction,  false);
 		}
 	}
 
@@ -528,6 +587,8 @@ namespace NOWA
 
 	void ValueBarComponent::drawValueBar(void)
 	{
+		this->couldDraw = false;
+
 		// Threadsafe from the outside
 		Ogre::Vector3 tempInnerColor = this->innerColor->getVector3();
 		Ogre::Vector3 tempOuterColor = this->outerColor->getVector3();
@@ -828,43 +889,8 @@ namespace NOWA
 				this->indices += 4;
 			}
 		}
-	}
 
-	void ValueBarComponent::createValueBar(void)
-	{
-		if (nullptr == this->manualObject)
-		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND("ValueBarComponent::createValueBar",
-			{
-				if (nullptr == this->lineNode)
-				{
-					this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
-				}
-				this->manualObject = this->gameObjectPtr->getSceneManager()->createManualObject();
-				this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
-				this->manualObject->setName("ValueBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
-				this->manualObject->setQueryFlags(0 << 0);
-				this->lineNode->attachObject(this->manualObject);
-				this->manualObject->setCastShadows(false);
-			});
-		}
-	}
-
-	void ValueBarComponent::destroyValueBar(void)
-	{
-		if (this->lineNode != nullptr)
-		{
-			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND("ValueBarComponent::createValueBar",
-			{
-				this->lineNode->detachAllObjects();
-				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
-				this->manualObject = nullptr;
-				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
-				this->lineNode = nullptr;
-			});
-		}
+		this->couldDraw = true;
 	}
 
 }; // namespace end

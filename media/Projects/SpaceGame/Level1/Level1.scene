@@ -19,7 +19,7 @@
 		</shadows>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="300"/>
+			<renderDistance distance="100"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -840,7 +840,7 @@
 			</entity>
 		</node>
 		<node name="GameCamera" id="3648394280">
-			<position x="2" y="-2.46521e-32" z="-7.20267e-43"/>
+			<position x="0" y="0" z="0"/>
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="GameCamera" meshFile="Camera.mesh" castShadows="false" visible="true">
@@ -852,7 +852,7 @@
 					<property type="7" name="RenderCategory" data="All"/>
 					<property type="7" name="TagName" data=""/>
 					<property type="2" name="ControlledByClient" data="0"/>
-					<property type="12" name="Static" data="true"/>
+					<property type="12" name="Static" data="false"/>
 					<property type="12" name="UseReflection" data="false"/>
 					<property type="12" name="Visible" data="true"/>
 					<property type="9" name="DefaultDirection" data="0 0 1"/>
@@ -870,7 +870,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="false"/>
-					<property type="9" name="CameraPosition" data="1.35632e-19 1.35632e-19 1.744e+28"/>
+					<property type="9" name="CameraPosition" data="-4.31602e+08 -4.31602e+08 -4.31602e+08"/>
 					<property type="9" name="CameraOrientation" data="0 0 0"/>
 					<property type="6" name="NearClipDistance" data="1"/>
 					<property type="6" name="FarClipDistance" data="100"/>

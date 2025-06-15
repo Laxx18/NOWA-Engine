@@ -167,28 +167,27 @@ namespace NOWA
 		}
 
 		xmlNodes = XMLDoc.first_node("nodes");
-		this->dotSceneImportModule->setIsSnapshot(true);
 		NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes]()
 		{
+			this->dotSceneImportModule->setIsSnapshot(true);
 			this->dotSceneImportModule->processNodes(xmlNodes);
+			this->dotSceneImportModule->setIsSnapshot(false);
+			// Post init new game objects when created
+			for (size_t i = 0; i < this->gameObjectIds.size(); i++)
+			{
+				GameObjectPtr gameObjectPtr = nullptr;
+				if (false == this->appStateName.empty())
+					gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->gameObjectIds[i]);
+				else
+					gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectIds[i]);
+
+				if (nullptr != gameObjectPtr)
+				{
+					gameObjectPtr->postInit();
+				}
+			}
 		};
 		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
-		this->dotSceneImportModule->setIsSnapshot(false);
-
-		// Post init new game objects when created
-		for (size_t i = 0; i < this->gameObjectIds.size(); i++)
-		{
-			GameObjectPtr gameObjectPtr = nullptr;
-			if (false == this->appStateName.empty())
-				gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->getGameObjectFromId(this->gameObjectIds[i]);
-			else
-				gameObjectPtr = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjectFromId(this->gameObjectIds[i]);
-
-			if (nullptr != gameObjectPtr)
-			{
-				gameObjectPtr->postInit();
-			}
-		}
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,15 +308,15 @@ namespace NOWA
 		xmlNodes = XMLDoc.first_node("nodes");
 
 		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
-		this->dotSceneImportModule->setIsSnapshot(true);
-		NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes]()
+		NOWA::AppStateManager::LogicCommand logicCommand = [this, xmlNodes, &differenceList]()
 		{
+			this->dotSceneImportModule->setIsSnapshot(true);
 			this->dotSceneImportModule->processNodes(xmlNodes, nullptr, true);
+			this->dotSceneImportModule->setIsSnapshot(false);
+			differenceList.clear();
+			this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
 		};
 		NOWA::AppStateManager::getSingletonPtr()->enqueueAndWait(std::move(logicCommand));
-		this->dotSceneImportModule->setIsSnapshot(false);
-		differenceList.clear();
-		this->dotSceneImportModule->setMissingGameObjectIds(differenceList);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -461,13 +460,14 @@ namespace NOWA
 
 		Ogre::MovableObject* clonedMovableObject = nullptr;
 
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::internalClone", _11(parentNode, &clonedSceneNode, position, orientation, scale, validatedName, sceneManager, 
-			&clonedMovableObject, originalMovableObject, originalSceneNode, originalGameObjectPtr), {
+		/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::internalClone", _11(parentNode, &clonedSceneNode, position, orientation, scale, validatedName, sceneManager, 
+			&clonedMovableObject, originalMovableObject, originalSceneNode, originalGameObjectPtr), {*/
 
 			if (nullptr != parentNode)
 			{
 				clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
 					position, orientation);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos: " + Ogre::StringConverter::toString(position));
 				clonedSceneNode->setName(validatedName);
 				clonedSceneNode->setScale(scale);
 			}
@@ -475,6 +475,7 @@ namespace NOWA
 			{
 				clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
 					position, orientation);
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos : " + Ogre::StringConverter::toString(position));
 				clonedSceneNode->setName(validatedName);
 				clonedSceneNode->setScale(scale);
 			}
@@ -522,7 +523,7 @@ namespace NOWA
 			clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
 			clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
 
-		});
+		// });
 
 		// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
 		GameObjectPtr clonedGameObjectPtr(boost::make_shared<GameObject>(sceneManager, clonedSceneNode, clonedMovableObject,
@@ -564,7 +565,8 @@ namespace NOWA
 
 		if (Ogre::Vector3::ZERO != targetPosition)
 		{
-			clonedGameObjectPtr->setAttributePosition(targetPosition);
+			// clonedGameObjectPtr->setAttributePosition(targetPosition);
+			NOWA::GraphicsModule::getInstance()->updateNodePosition(clonedGameObjectPtr->getSceneNode(), targetPosition);
 		}
 		else
 		{
@@ -572,7 +574,8 @@ namespace NOWA
 		}
 		if (Ogre::Quaternion::IDENTITY != targetOrientation)
 		{
-			clonedGameObjectPtr->setAttributeOrientation(targetOrientation);
+			// clonedGameObjectPtr->setAttributeOrientation(targetOrientation);
+			NOWA::GraphicsModule::getInstance()->updateNodeOrientation(clonedGameObjectPtr->getSceneNode(), targetOrientation);
 		}
 		else
 		{
@@ -580,11 +583,13 @@ namespace NOWA
 		}
 		if (Ogre::Vector3::UNIT_SCALE != targetScale)
 		{
-			clonedGameObjectPtr->setAttributeScale(targetScale);
+			// clonedGameObjectPtr->setAttributeScale(targetScale);
+			NOWA::GraphicsModule::getInstance()->updateNodeScale(clonedGameObjectPtr->getSceneNode(), targetScale);
 		}
 		else
 		{
-			clonedGameObjectPtr->setAttributeScale(originalGameObjectPtr->getScale());
+			// clonedGameObjectPtr->setAttributeScale(originalGameObjectPtr->getScale());
+			NOWA::GraphicsModule::getInstance()->updateNodeScale(clonedGameObjectPtr->getSceneNode(), originalGameObjectPtr->getScale());
 		}
 
 		// Order is important since category id is generated and maybe required in postInit!

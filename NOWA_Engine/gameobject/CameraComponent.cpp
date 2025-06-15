@@ -591,15 +591,14 @@ namespace NOWA
 
 	void CameraComponent::setActivated(bool activated)
 	{
+		Ogre::String name = this->camera->getName();
+
 		if (true == Core::getSingletonPtr()->getIsSceneBeingDestroyed())
 		{
 			return;
 		}
 
 		this->active->setValue(activated);
-		bool success = true;
-
-		Ogre::String name = this->camera->getName();
 
 		if (true == this->active->getBool())
 		{
@@ -609,28 +608,27 @@ namespace NOWA
 				this->gameObjectPtr->setAttributePosition(this->position->getVector3());
 				this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
 
-				// Really necessary, so that camera is always up to date with its parent node!
-				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivated",
-				{
-					Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
-					Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+				Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
+				Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
 
-					this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-					this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
-				});
+				// this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+				// this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+
+				this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
+				this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
 
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
 				{
 					// if ("MainCamera" == this->camera->getName())
 					{
-						this->baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(camera);
+						this->baseCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCameraBehavior(this->camera);
 						// ATTENTION: Since even there is another camera behavior, the base camera behavior would be used sometimes, hence this changes here
 						// So that only a base camera is created, if there no other behavior for this game object
 						if (nullptr == this->baseCamera)
 						{
 							this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId());
-							AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(camera, this->baseCamera);
+							AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
 							AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
 						}
 
@@ -639,16 +637,16 @@ namespace NOWA
 
 					// Create and switch workspace
 					workspaceBaseCompPtr->createWorkspace();
+					workspaceBaseCompPtr->connect();
 				}
 				else
 				{
-					// Illegal case
-					success = false;
 					this->active->setValue(false);
-					Ogre::String message =  "[CameraComponent] Could not switch workspace, because this camera component has no corresponding workspace component! Affected game object: " + this->gameObjectPtr->getName();
+					Ogre::String message = "[CameraComponent] Could not switch workspace, because this camera component has no corresponding workspace component! Affected game object: " + this->gameObjectPtr->getName();
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, message);
 					boost::shared_ptr<EventDataFeedback> eventDataFeedback(new EventDataFeedback(false, message));
-					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataFeedback);
+					NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataFeedback);
+					return;
 				}
 			}
 		}
@@ -656,7 +654,7 @@ namespace NOWA
 		{
 			bool stillActiveOne = false;
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
-			
+
 			for (auto& it = gameObjects->begin(); it != gameObjects->end(); ++it)
 			{
 				GameObject* gameObject = it->second.get();
@@ -684,11 +682,11 @@ namespace NOWA
 			}
 		}
 
-		if (true == success && nullptr != this->gameObjectPtr)
+		if (nullptr != this->gameObjectPtr)
 		{
 			// Send out event, whether is camera has been activated or not, to camera manager and other camera components, to adapt their state
 			boost::shared_ptr<EventDataSwitchCamera> eventDataSwitchCamera(new EventDataSwitchCamera(this->gameObjectPtr->getId(), this->gameObjectPtr->getIndexFromComponent(this), this->active->getBool()));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSwitchCamera);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataSwitchCamera);
 		}
 	}
 
@@ -697,43 +695,38 @@ namespace NOWA
 		this->active->setValue(activated);
 		if (nullptr != this->camera)
 		{
-			if (true == this->bIsInSimulation)
-			{
-				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag1",
+			// NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
+			// {
+				if (true == this->bIsInSimulation)
 				{
 					this->dummyEntity->setVisible(this->showDummyEntity->getBool());
-				});
-			}
-			else
-			{
-				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag2",
+				}
+				else
 				{
 					this->dummyEntity->setVisible(true);
-				});
-			}
+				}
 
-			if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
-			{
-				ENQUEUE_RENDER_COMMAND("CameraComponent::setActivatedFlag3",
+				if (this->camera == AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera())
 				{
 					this->dummyEntity->setVisible(false);
-				});
-			}
-
-			if (false == activated)
-			{
-				// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())
-				{
-					auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
-					if (nullptr != workspaceBaseCompPtr)
-					{
-						// Create and switch workspace
-						workspaceBaseCompPtr->removeWorkspace();
-					}
-					WorkspaceModule::getInstance()->removeCamera(this->camera);
 				}
-				AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
-			}
+
+				if (false == activated)
+				{
+					// if (true == WorkspaceModule::getInstance()->hasMoreThanOneWorkspace())
+					{
+						auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
+						if (nullptr != workspaceBaseCompPtr)
+						{
+							// Create and switch workspace
+							workspaceBaseCompPtr->removeWorkspace();
+						}
+						WorkspaceModule::getInstance()->removeCamera(this->camera);
+					}
+					AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
+				}
+			// };
+			// NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::setActivatedFlag");
 		}
 	}
 

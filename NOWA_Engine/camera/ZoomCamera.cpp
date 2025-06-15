@@ -167,14 +167,16 @@ namespace NOWA
 
 	void ZoomCamera::zoomCamera(void)
 	{
-		ENQUEUE_RENDER_COMMAND("ZoomCamera::zoomCamera",
+		auto closureFunction = [this](Ogre::Real weight)
 		{
 			// Find the required size based on the desired position and smoothly transition to that size.
 			Ogre::Real requiredSize = calcRequiredSize();
 			// TODO: Set from outside?
 			Ogre::Real dampTime = 0.2f;
 			this->camera->setOrthoWindowWidth(MathHelper::getInstance()->smoothDamp(this->camera->getOrthoWindowWidth(), requiredSize, this->zoomSpeed, dampTime));
-		});
+		};
+		Ogre::String id = "ZoomCamera::zoomCamera";
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void ZoomCamera::moveCamera(Ogre::Real dt)

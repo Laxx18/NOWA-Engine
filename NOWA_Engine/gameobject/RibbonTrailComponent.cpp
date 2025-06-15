@@ -284,6 +284,9 @@ namespace NOWA
 	bool RibbonTrailComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
+
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 		
 		return true;
 	}
@@ -315,10 +318,12 @@ namespace NOWA
 		{
 			// Is already called by ogre
 			// this->ribbonTrail->preRender(this->gameObjectPtr->getSceneManager(), Ogre::Root::getSingletonPtr()->getRenderSystem());
-			ENQUEUE_RENDER_COMMAND_MULTI("RibbonTrailComponen::update", _1(dt),
+			auto closureFunction = [this, dt](Ogre::Real weight)
 			{
 				this->ribbonTrail->_timeUpdate(dt);
-			});
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 			
 			/*if (nullptr != this->camera)
 			{

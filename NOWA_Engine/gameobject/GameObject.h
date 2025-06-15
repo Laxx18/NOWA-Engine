@@ -967,7 +967,7 @@ namespace NOWA
 	private:
 		bool internalDeleteComponent(const Ogre::String& componentClassName, unsigned int componentClassId, unsigned int componentOccurrenceIndex = 0);
 
-		void refreshSize(void);
+		void refreshSize(const Ogre::Vector3& scale);
 		void setDatablock(NOWA::Variant* attribute);
 		void setDataBlocks(const std::vector<Ogre::String>& loadedDatablocks);
 		void setConnectedGameObject(boost::weak_ptr<GameObject> weakConnectedGameObjectPtr);

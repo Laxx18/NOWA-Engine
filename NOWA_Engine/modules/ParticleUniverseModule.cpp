@@ -223,10 +223,12 @@ namespace NOWA
 				}
 				else
 				{
-					ENQUEUE_RENDER_COMMAND_MULTI("ParticleUniverseModule::update", _1(particleUniverseData),
+					auto closureFunction = [this, particleUniverseData](Ogre::Real weight)
 					{
 						particleUniverseData.second.particle->stop();
-					});
+					};
+					Ogre::String id = "ParticleUniverseModule::update";
+					NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 					// set activated to false, so that the particle can be activated at a later time
 					particleUniverseData.second.activated = false;
 				}

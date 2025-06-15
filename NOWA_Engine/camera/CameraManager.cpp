@@ -212,7 +212,10 @@ namespace NOWA
 				if (entry.first != camera && false == entry.second.forSplitScreen)
 				{
 					entry.second.isActive = false;
-					entry.first->setVisible(false);
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera1", _1(entry),
+					{
+						entry.first->setVisible(false);
+					});
 
 					for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
 					{
@@ -234,16 +237,22 @@ namespace NOWA
 					break;
 				}
 
-				// Now set this camera as active
-				camera->setVisible(true);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera2", _1(camera),
+				{
+					// Now set this camera as active
+					camera->setVisible(true);
+				});
 				cameraData.behaviorData.begin()->cameraBehavior->postInitialize(camera);
 				cameraData.behaviorData.begin()->cameraBehavior->onSetData();
 			}
 		}
 		else
 		{
-			// If deactivating, just hide the camera and clear its data
-			camera->setVisible(false);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera3", _1(camera),
+			{
+				// If deactivating, just hide the camera and clear its data
+				camera->setVisible(false);
+			});
 			cameraData.behaviorData.begin()->cameraBehavior->onClearData();
 		}
 
@@ -268,7 +277,11 @@ namespace NOWA
 				auto firstCamera = this->cameraDataMap.begin()->first;
 				CameraData& firstCameraData = this->cameraDataMap[firstCamera];
 				firstCameraData.isActive = true;
-				firstCamera->setVisible(true);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera4", _1(firstCamera),
+				{
+					firstCamera->setVisible(true);
+				});
+
 				firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
 				firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
 			}
@@ -338,7 +351,12 @@ namespace NOWA
 				cameraData.behaviorData.clear();
 
 				this->cameraDataMap.erase(it);
-				camera->setVisible(false);
+				
+
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera", _1(camera),
+				{
+					camera->setVisible(false);
+				});
 
 				// Check if there is another active camera in the map
 				for (auto& entry : this->cameraDataMap)
@@ -356,7 +374,11 @@ namespace NOWA
 					auto firstCamera = this->cameraDataMap.begin()->first;
 					CameraData& firstCameraData = this->cameraDataMap[firstCamera];
 					firstCameraData.isActive = true;
-					firstCamera->setVisible(true);
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera2", _1(firstCamera),
+					{
+						firstCamera->setVisible(true);
+					});
+
 					firstCameraData.behaviorData.begin()->cameraBehavior->postInitialize(firstCamera);
 					firstCameraData.behaviorData.begin()->cameraBehavior->onSetData();
 				}
@@ -376,7 +398,10 @@ namespace NOWA
 				cameraData.behaviorData.clear();
 
 				this->cameraDataMap.erase(it);
-				camera->setVisible(false);
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::removeCamera3", _1(camera),
+				{
+					camera->setVisible(false);
+				});
 			}
 		}
 	}
@@ -394,7 +419,10 @@ namespace NOWA
 					// Set all cameras as inactive
 					entry.second.isActive = false;
 					entry.first->setVisible(false);
-
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::activateCamera", _1(camera),
+					{
+						camera->setVisible(false);
+					});
 					entry.second.behaviorData.begin()->cameraBehavior->onClearData();
 				}
 			}
@@ -402,7 +430,11 @@ namespace NOWA
 			// Now activate the specified camera
 			CameraData& cameraData = it->second;
 			cameraData.isActive = true;
-			camera->setVisible(true);
+
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::activateCamera2", _1(camera),
+			{
+				camera->setVisible(true);
+			});
 
 			// Ensure the first behavior is set and initialized
 			if (!cameraData.behaviorData.empty())

@@ -272,6 +272,11 @@ namespace NOWA
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
 	}
 
+	void ParticleUniverseComponent::onRemoveComponent(void)
+	{
+		GameObjectComponent::onRemoveComponent();
+	}
+
 	bool ParticleUniverseComponent::connect(void)
 	{
 		GameObjectComponent::connect();
@@ -472,16 +477,24 @@ namespace NOWA
 		{
 			if (false == activated)
 			{
-				ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::activated false",
+				auto particle = this->particle;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseComponent::activated false", _1(particle),
 				{
-					this->particle->stopFade();
+					if (particle)
+					{
+						particle->stopFade();
+					}
 				});
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND("ParticleUniverseComponent::activated true",
+				auto particle = this->particle;
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseComponent::activated true", _1(particle),
 				{
-					this->particle->start();
+					if (particle)
+					{
+						particle->start();
+					}
 				});
 			}
 		}

@@ -638,19 +638,23 @@ namespace NOWA
 				{
 					if (this->mouseButtonClickClosureFunction.is_valid())
 					{
-						try
-						{
-							luabind::call_function<void>(this->mouseButtonClickClosureFunction, index);
-						}
-						catch (luabind::error& error)
-						{
-							luabind::object errorMsg(luabind::from_stack(error.state(), -1));
-							std::stringstream msg;
-							msg << errorMsg;
+						NOWA::AppStateManager::LogicCommand logicCommand = [this, index]()
+							{
+								try
+								{
+									luabind::call_function<void>(this->mouseButtonClickClosureFunction, index);
+								}
+								catch (luabind::error& error)
+								{
+									luabind::object errorMsg(luabind::from_stack(error.state(), -1));
+									std::stringstream msg;
+									msg << errorMsg;
 
-							Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[LuaScript] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
-																		+ " details: " + msg.str());
-						}
+									Ogre::LogManager::getSingleton().logMessage(Ogre::LML_CRITICAL, "[MyGUIMiniMapComponent] Caught error in 'reactOnMouseButtonClick' Error: " + Ogre::String(error.what())
+										+ " details: " + msg.str());
+								}
+							};
+						NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));
 					}
 				}
 			}
@@ -668,7 +672,7 @@ namespace NOWA
 			}
 			else
 			{
-				ENQUEUE_RENDER_COMMAND("MyGUIMiniMapComponent::update",
+				auto closureFunction = [this](Ogre::Real weight)
 				{
 					for (size_t i = 0; i < this->spriteAnimationIndices.size(); i++)
 					{
@@ -698,7 +702,9 @@ namespace NOWA
 							this->trackableImageBoxes[i]->setImageIndex(this->spriteAnimationIndices[i]);
 						}
 					}
-				});
+				};
+				Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+				NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction, false);
 
 				this->timeSinceLastUpdate = this->trackableImageAnimationSpeed->getReal();
 			}
@@ -731,6 +737,9 @@ namespace NOWA
 
 	bool MyGUIMiniMapComponent::disconnect(void)
 	{
+		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
+
 		return MyGUIWindowComponent::disconnect();
 	}
 

@@ -1,6 +1,7 @@
 ﻿#include "NOWAPrecompiled.h"
 #include "OgreNewtModule.h"
 #include "GraphicsModule.h"
+#include "main/AppStateManager.h"
 
 namespace NOWA
 {
@@ -181,6 +182,7 @@ namespace NOWA
 
 	void OgreNewtModule::destroyContent(void)
 	{
+		// Is on logic main thread
 		if (nullptr != this->ogreNewt)
 		{
 			delete ogreNewt;

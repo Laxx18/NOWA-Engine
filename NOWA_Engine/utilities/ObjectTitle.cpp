@@ -11,6 +11,8 @@ namespace NOWA
 		: pObject(pObject),
 		camera(camera)
 	{
+		this->uniqueId = NOWA::makeUniqueID();
+
 		// Save strName etc. for later use inside lambda
 		auto fontName = strFontName;
 		auto overlayName = strName + "_TitleOverlay";
@@ -57,7 +59,7 @@ namespace NOWA
 		auto container = this->pContainer;
 		auto textarea = this->pTextarea;
 
-		ENQUEUE_DESTROY_COMMAND("Destroy ObjectTitle overlay", _4(pOverlayManager, overlay, container, textarea),
+		ENQUEUE_RENDER_COMMAND_MULTI("Destroy ObjectTitle overlay", _4(pOverlayManager, overlay, container, textarea),
 		{
 			if (textarea)
 			{
@@ -130,7 +132,6 @@ namespace NOWA
 		});
 	}
 
-
 	void ObjectTitle::update()
 	{
 		if (nullptr == this->camera)
@@ -142,13 +143,16 @@ namespace NOWA
 		{
 			// Hide overlay safely on render thread
 			auto overlay = this->pOverlay;
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update hide", _1(overlay),
+			// auto closureFunction = [this, overlay](Ogre::Real weight)
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update", _1(overlay),
 			{
 				if (overlay)
 				{
 					overlay->hide();
 				}
 			});
+			// Ogre::String id = "ObjectTitle::update1" + Ogre::StringConverter::toString(this->uniqueId);
+			// NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 			return;
 		}
 		if (this->pObject)
@@ -190,7 +194,8 @@ namespace NOWA
 			auto overlay = this->pOverlay;
 			auto textWidth = this->textDim.x;
 
-			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update overlay pos", _5(container, overlay, x, y, textWidth),
+			// auto closureFunction = [this, overlay, container, x, y, textWidth](Ogre::Real weight)
+			ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("ObjectTitle::update2", _5(overlay, container, x, y, textWidth),
 			{
 				if (container)
 				{
@@ -201,6 +206,8 @@ namespace NOWA
 					overlay->show();
 				}
 			});
+			// Ogre::String id = "ObjectTitle::update2" + Ogre::StringConverter::toString(this->uniqueId);
+			// NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 	}
 
