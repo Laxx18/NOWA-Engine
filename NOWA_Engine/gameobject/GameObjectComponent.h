@@ -417,6 +417,7 @@ namespace NOWA
 		bool bShowDebugData;
 		Ogre::String customDataString;
 		bool bConnectPriority;
+		bool bConnected;
 	private:
 		bool bConnectedSuccess;
 		bool bIsExpanded;

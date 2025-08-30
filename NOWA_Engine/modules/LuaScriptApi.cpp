@@ -7997,15 +7997,21 @@ namespace NOWA
 
 	void setActivated(CameraComponent* instance, bool activated)
 	{
-		NOWA::AppStateManager::getSingletonPtr()->bStall = true;
-		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.1f));
+		// NOWA::AppStateManager::getSingletonPtr()->bStall = true;
+		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [instance, activated]()
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Camera::setActivated from Lua", _2(instance, activated),
-			{
-				instance->setActivated(activated);
-			});
-			NOWA::AppStateManager::getSingletonPtr()->bStall = false;
+			//auto closureFunction = [instance, activated](Ogre::Real weight)
+			//{
+			//	// ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Camera::setActivated from Lua", _2(instance, activated),
+			//	// {
+			//	instance->setActivated(activated);
+			//	// NOWA::AppStateManager::getSingletonPtr()->bStall = false;
+			//	// });
+			//};
+			//Ogre::String id = instance->getOwner()->getName() + "CameraComponent::setActivated";
+			//NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
+			instance->setActivated(activated);
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);

@@ -56,7 +56,6 @@ namespace NOWA
 		timeSinceLastRun(0.0f),
 		couldDraw(false),
 		speechDone(false),
-		bIsInSimulation(false),
 		activated(new Variant(SpeechBubbleComponent::AttrActivated(), true, this->attributes)),
 		caption(new Variant(SpeechBubbleComponent::AttrCaption(), "MyCaption", this->attributes)),
 		runSpeech(new Variant(SpeechBubbleComponent::AttrRunSpeech(), false, this->attributes)),
@@ -236,7 +235,6 @@ namespace NOWA
 		this->timeSinceLastRun = 0.0f;
 		this->speechDone = false;
 		this->couldDraw = false;
-		this->bIsInSimulation = false;
 
 		if (nullptr != this->simpleSoundComponent)
 		{
@@ -255,8 +253,6 @@ namespace NOWA
 
 	void SpeechBubbleComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		if (false == notSimulating && true == this->activated->getBool())
 		{
 			if (nullptr == this->manualObject)
@@ -408,7 +404,7 @@ namespace NOWA
 		// TODO: Wait?
 		ENQUEUE_RENDER_COMMAND_MULTI("SpeechBubbleComponent::setActivated", _1(activated),
 		{
-			if (true == this->bIsInSimulation)
+			if (true == this->bConnected)
 			{
 				if (false == activated)
 				{

@@ -17,7 +17,6 @@ namespace NOWA
 		particleNode(nullptr),
 		particlePlayTime(10000.0f),
 		oldActivated(true),
-		bIsInSimulation(false),
 		activated(new Variant(ParticleUniverseComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(ParticleUniverseComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(ParticleUniverseComponent::AttrRepeat(), false, this->attributes)),
@@ -295,6 +294,7 @@ namespace NOWA
 				});
 			}
 		}
+
 		return success;
 	}
 
@@ -326,8 +326,6 @@ namespace NOWA
 
 	void ParticleUniverseComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		if (false == notSimulating && nullptr != this->particle)
 		{
 			// Only play activated particle effect
@@ -473,33 +471,33 @@ namespace NOWA
 	void ParticleUniverseComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (nullptr != this->particle && true == this->bIsInSimulation)
+
+		if (nullptr != this->particle && true == this->bConnected)
 		{
-			if (false == activated)
+			if (false == this->activated->getBool())
 			{
 				auto particle = this->particle;
 				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseComponent::activated false", _1(particle),
-				{
-					if (particle)
 					{
-						particle->stopFade();
-					}
-				});
+						if (particle)
+						{
+							particle->stopFade();
+						}
+					});
 			}
 			else
 			{
 				auto particle = this->particle;
 				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("ParticleUniverseComponent::activated true", _1(particle),
-				{
-					if (particle)
 					{
-						particle->start();
-					}
-				});
+						if (particle)
+						{
+							particle->start();
+						}
+					});
 			}
 		}
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
-		// this->createParticleEffect();
 	}
 
 	bool ParticleUniverseComponent::isActivated(void) const

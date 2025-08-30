@@ -51,6 +51,7 @@ namespace NOWA
 		bIsExpanded(true),
 		bTaggedForRemovement(false),
 		bConnectPriority(false),
+		bConnected(false),
 		name(new Variant(GameObjectComponent::AttrName(), "", this->attributes)),
 		// Note: referenceId will not be cloned, because its to special. The designer must adapt each time the ids!
 		referenceId(new Variant(GameObjectComponent::AttrReferenceId(), static_cast<unsigned long>(0), this->attributes, false))
@@ -138,11 +139,14 @@ namespace NOWA
 			}
 		}
 
+		this->bConnected = true;
+
 		return true;
 	}
 
 	bool GameObjectComponent::disconnect(void)
 	{
+		this->bConnected = false;
 		return true;
 	}
 

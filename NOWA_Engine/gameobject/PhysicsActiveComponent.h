@@ -539,8 +539,6 @@ namespace NOWA
 		Command jumpForceCommand;
 		Command omegaForceCommand;
 
-		bool bIsInSimulation;
-
 		Variant* activated;
 		Variant* gravity;
 		Variant* gravitySourceCategory;

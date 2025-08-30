@@ -236,7 +236,6 @@ namespace NOWA
 		MyGUI::Button* abordButton;
 		bool hasParent;
 		InputDeviceModule::JoyStickButton lastButton;
-		bool bIsInSimulation;
 
 		// Action, Keycode
 		std::map<unsigned short, int> keyCodes;

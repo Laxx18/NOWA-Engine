@@ -23,7 +23,6 @@ namespace NOWA
 		okButton(nullptr),
 		abordButton(nullptr),
 		lastButton(InputDeviceModule::BUTTON_NONE),
-		bIsInSimulation(false),
 		activated(new Variant(JoystickConfigurationComponent::AttrActivated(), true, this->attributes)),
 		relativePosition(new Variant(JoystickConfigurationComponent::AttrRelativePosition(), Ogre::Vector2(0.325f, 0.325f), this->attributes)),
 		parentId(new Variant(JoystickConfigurationComponent::AttrParentId(), static_cast<unsigned long>(0), this->attributes, true)),
@@ -220,8 +219,6 @@ namespace NOWA
 
 	void JoystickConfigurationComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		InputDeviceModule::JoyStickButton button = InputDeviceCore::getSingletonPtr()->getJoystickInputDeviceModule(this->gameObjectPtr->getId())->getPressedButton();
 	}
 
@@ -431,7 +428,7 @@ namespace NOWA
 
 	bool JoystickConfigurationComponent::axisMoved(const OIS::JoyStickEvent& evt, int axis)
 	{
-		if (false == this->bIsInSimulation)
+		if (false == this->bConnected)
 		{
 			return false;
 		}
@@ -502,7 +499,7 @@ namespace NOWA
 	{
 		const unsigned short count = 7;
 
-		if (false == this->bIsInSimulation)
+		if (false == this->bConnected)
 		{
 			return false;
 		}

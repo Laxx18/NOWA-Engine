@@ -47,7 +47,6 @@ namespace NOWA
 		planeConstraint(nullptr),
 		hasAttraction(false),
 		hasSpring(false),
-		bIsInSimulation(false),
 		lastTime(0.0),
 		dt(0.0f),
 		usesBounds(false),
@@ -365,9 +364,7 @@ namespace NOWA
 
 	void PhysicsActiveComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			// Get the gravity direction from the physics component
 			if (true == this->gravityDirection.isZeroLength())
@@ -2973,13 +2970,13 @@ namespace NOWA
 
 	void PhysicsActiveComponent::updateCallback(OgreNewt::Body* body)
 	{
-		if (true == this->bIsInSimulation)
+		/*if (true == this->bConnected)
 		{
 			double dt = (static_cast<double>(this->timer.getMilliseconds()) * 0.001) - this->lastTime;
 			this->lastTime += dt;
 
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "Physics dt: " + Ogre::StringConverter::toString(dt));
-		}
+		}*/
 
 
 		// Does not work, because its called to often, do not know, how to solve this, because OgreNewt::update is called from appstate manager in appstate in update function and called to often

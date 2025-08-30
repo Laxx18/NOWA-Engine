@@ -228,7 +228,6 @@ namespace NOWA
 			if (nullptr != workspaceComponent)
 			{
 				workspaceComponent->createWorkspace();
-				workspaceComponent->connect();
 			}
 		}
 	}

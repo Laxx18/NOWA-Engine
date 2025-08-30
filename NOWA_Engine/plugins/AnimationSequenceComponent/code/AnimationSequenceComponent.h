@@ -255,7 +255,6 @@ namespace NOWA
 		Ogre::Real timePosition;
 		bool firstTimeRepeat;
 		size_t currentAnimationIndex;
-		bool bIsInSimulation;
 	};
 
 }; // namespace end

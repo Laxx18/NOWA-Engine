@@ -24,7 +24,6 @@ namespace NOWA
 		timeSinceLastUpdate(0.0f),
 		workspaceBaseComponent(nullptr),
 		eyeId(-1),
-		bIsInSimulation(false),
 		active(new Variant(CameraComponent::AttrActive(), false, this->attributes)),
 		position(new Variant(CameraComponent::AttrPosition(), Ogre::Vector3::ZERO, this->attributes)),
 		orientation(new Variant(CameraComponent::AttrOrientation(), Ogre::Vector3::ZERO, this->attributes)),
@@ -240,6 +239,8 @@ namespace NOWA
 
 	bool CameraComponent::connect(void)
 	{
+		GameObjectComponent::connect();
+
 		if (nullptr != this->dummyEntity)
 		{
 			bool visible = this->showDummyEntity->getBool();
@@ -255,6 +256,8 @@ namespace NOWA
 
 	bool CameraComponent::disconnect(void)
 	{
+		GameObjectComponent::disconnect();
+
 		if (nullptr != this->dummyEntity)
 		{
 			Ogre::String name = this->camera->getName();
@@ -275,7 +278,6 @@ namespace NOWA
 				});
 			}
 		}
-		this->bIsInSimulation = false;
 
 		return true;
 	}
@@ -307,15 +309,10 @@ namespace NOWA
 		this->gameObjectPtr = nullptr;
 
 		// Enqueue destruction command on render thread
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::~CameraComponent", _7(cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active),
+		NOWA::GraphicsModule::RenderCommand renderCommand = [this, cameraCopy, dummyEntityCopy, sceneManagerCopy, cameraManager, gameObjectCopy, workspaceBaseComponentCopy, active]()
 		{
 			if (cameraCopy)
 			{
-				// If dummyEntityCopy needs to be destroyed/deleted, do it here safely
-				// (Add that logic if applicable)
-
-				// Optional: If gameObjectCopy owns other resources that must be cleaned, do so here
-
 				// Show transform values for game object when camera component has been removed
 				gameObjectCopy->getAttribute(GameObject::AttrPosition())->setVisible(true);
 				gameObjectCopy->getAttribute(GameObject::AttrOrientation())->setVisible(true);
@@ -344,13 +341,12 @@ namespace NOWA
 				if (sceneManagerCopy)
 					sceneManagerCopy->destroyMovableObject(cameraCopy);
 			}
-		});
+		};
+		NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraComponent::onRemoveComponent");
 	}
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		// Update camera values
 		if (this->timeSinceLastUpdate >= 0.0f)
 		{
@@ -409,6 +405,8 @@ namespace NOWA
 					// this->gameObjectPtr->getSceneNode()->setOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
 					this->position->setValue(this->gameObjectPtr->getSceneNode()->getPosition());
 					this->orientation->setValue(MathHelper::getInstance()->quatToDegreesRounded(this->gameObjectPtr->getSceneNode()->getOrientation()));
+
+					CameraComponent::justCreated = false;
 				}
 
 				this->gameObjectPtr->getSceneNode()->setPosition(this->position->getVector3());
@@ -445,7 +443,7 @@ namespace NOWA
 
 					if (nullptr == this->baseCamera)
 					{
-						this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 40.0f, 0.01f);
+						this->baseCamera = new NOWA::BaseCamera(NOWA::AppStateManager::getSingletonPtr()->getCameraManager()->getCameraBehaviorId(), 10.0f, 1.0f, 0.01f);
 					}
 					AppStateManager::getSingletonPtr()->getCameraManager()->addCameraBehavior(this->camera, this->baseCamera);
 					AppStateManager::getSingletonPtr()->getCameraManager()->addCamera(this->camera, true);
@@ -527,18 +525,18 @@ namespace NOWA
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraPosition"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->camera->getPositionForViewUpdate())));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, this->camera->getPosition())));
 		propertiesXML->append_node(propertyXML);
 
-		this->setCameraPosition(this->camera->getPositionForViewUpdate());
+		// this->setCameraPosition(this->gameObjectPtr->getSceneNode()->_getDerivedPositionUpdated());
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "9"));
 		propertyXML->append_attribute(doc.allocate_attribute("name", "CameraOrientation"));
-		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, MathHelper::getInstance()->quatToDegrees(this->camera->getOrientationForViewUpdate()))));
+		propertyXML->append_attribute(doc.allocate_attribute("data", XMLConverter::ConvertString(doc, MathHelper::getInstance()->quatToDegrees(this->camera->getOrientation()))));
 		propertiesXML->append_node(propertyXML);
 
-		this->setCameraOrientation(this->camera->getOrientationForViewUpdate());
+		// this->setCameraOrientation(this->gameObjectPtr->getSceneNode()->_getDerivedOrientationUpdated());
 
 		propertyXML = doc.allocate_node(node_element, "property");
 		propertyXML->append_attribute(doc.allocate_attribute("type", "6"));
@@ -598,7 +596,7 @@ namespace NOWA
 			return;
 		}
 
-		this->active->setValue(activated);
+ 		this->active->setValue(activated);
 
 		if (true == this->active->getBool())
 		{
@@ -637,7 +635,6 @@ namespace NOWA
 
 					// Create and switch workspace
 					workspaceBaseCompPtr->createWorkspace();
-					workspaceBaseCompPtr->connect();
 				}
 				else
 				{
@@ -696,8 +693,9 @@ namespace NOWA
 		if (nullptr != this->camera)
 		{
 			// NOWA::GraphicsModule::RenderCommand renderCommand = [this, activated]()
-			// {
-				if (true == this->bIsInSimulation)
+			auto closureFunction = [this, activated](Ogre::Real weight)
+			{
+				if (true == this->bConnected)
 				{
 					this->dummyEntity->setVisible(this->showDummyEntity->getBool());
 				}
@@ -725,8 +723,10 @@ namespace NOWA
 					}
 					AppStateManager::getSingletonPtr()->getCameraManager()->removeCamera(this->camera);
 				}
-			// };
+			};
 			// NOWA::GraphicsModule::getInstance()->enqueue(std::move(renderCommand), "CameraComponent::setActivatedFlag");
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::setActivatedFlag" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 		}
 	}
 
@@ -762,7 +762,7 @@ namespace NOWA
 
 	void CameraComponent::setCameraPosition(const Ogre::Vector3& position)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			return;
 		}
@@ -789,7 +789,7 @@ namespace NOWA
 
 	void CameraComponent::setCameraDegreeOrientation(const Ogre::Vector3& orientation)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			return;
 		}
@@ -810,7 +810,7 @@ namespace NOWA
 
 	void CameraComponent::setCameraOrientation(const Ogre::Quaternion& orientation)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			return;
 		}

@@ -258,7 +258,6 @@ namespace NOWA
 		Ogre::Real timeSinceLastChar;
 		bool couldDraw;
 		bool speechDone;
-		bool bIsInSimulation;
 
 		luabind::object closureFunction;
 		Variant* activated;

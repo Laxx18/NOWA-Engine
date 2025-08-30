@@ -752,7 +752,7 @@ void DesignState::simulate(bool pause, bool withUndo)
 		}
 		this->simulating = true;
 
-		ENQUEUE_RENDER_COMMAND_MULTI("simulate 1", _1(pause),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("simulate 1", _1(pause),
 		{
 			this->mainMenuBar->enableFileMenu(pause);
 			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
@@ -776,12 +776,12 @@ void DesignState::simulate(bool pause, bool withUndo)
 		// Must be called first, so that in case of lua error, no update is called
 		this->simulating = false;
 
-		ENQUEUE_RENDER_COMMAND_MULTI("simulate 2", _2(pause, withUndo),
+		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("simulate 2", _2(pause, withUndo),
 		{
 			this->mainMenuBar->enableFileMenu(pause);
 			MyGUI::LayerManager::getInstance().detachFromLayer(this->manipulationWindow);
 			MyGUI::LayerManager::getInstance().attachToLayerNode("Popup", this->manipulationWindow);
-			// this->ogreNewt->update(this->ogreNewt->getUpdateFPS());
+
 			if (nullptr != editorManager)
 			{
 				// Show panels
@@ -1714,14 +1714,14 @@ void DesignState::updateInfo(Ogre::Real dt)
 		}
 		info += " FPS: " + Ogre::String(m);
 		// Is always 0??
-		/*info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
+		info += " Faces: " + Ogre::StringConverter::toString(metrics.mFaceCount);
 		info += " Batches: " + Ogre::StringConverter::toString(metrics.mBatchCount);
 		info += " Vertices: " + Ogre::StringConverter::toString(metrics.mVertexCount);
 		info += " Drawings: " + Ogre::StringConverter::toString(metrics.mDrawCount);
-		info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);*/
+		info += " Instances: " + Ogre::StringConverter::toString(metrics.mInstanceCount);
 		// info += " Threadcount: " + Ogre::StringConverter::toString(NOWA::Core::getSingletonPtr()->getCurrentThreadCount());
 
-		/*auto closureFunction = [this, info](Ogre::Real weight)
+		auto closureFunction = [this, info](Ogre::Real weight)
 		{
 			this->manipulationWindow->setCaption(info);
 			if (false == this->simulating)
@@ -1734,7 +1734,7 @@ void DesignState::updateInfo(Ogre::Real dt)
 				this->selectRedoButton->setEnabled(this->editorManager->getSelectionManager()->canSelectionRedo());
 			}
 		};
-		NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);*/
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure("DesignState::updateInfo", closureFunction);
 		this->nextInfoUpdate = 1.0f;
 	}
 	else

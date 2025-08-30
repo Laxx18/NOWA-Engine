@@ -19,7 +19,6 @@ namespace NOWA
 		indices(0),
 		orientationTargetGameObject(nullptr),
 		gameObjectTitleComponent(nullptr),
-		bIsInSimulation(false),
 		couldDraw(false),
 		activated(new Variant(ValueBarComponent::AttrActivated(), true, this->attributes)),
 		twoSided(new Variant(ValueBarComponent::AttrTwoSided(), true, this->attributes)),
@@ -164,11 +163,7 @@ namespace NOWA
 
 	bool ValueBarComponent::connect(void)
 	{
-		bool success = GameObjectComponent::connect();
-		if (false == success)
-		{
-			return success;
-		}
+		GameObjectComponent::connect();
 
 		if (0 != this->orientationTargetId->getULong())
 		{
@@ -186,9 +181,16 @@ namespace NOWA
 			this->gameObjectTitleComponent->setOrientationTargetId(0);
 		}
 
-		// this->createValueBar();
+		if (false == this->activated->getBool())
+		{
+			this->destroyValueBar();
+		}
+		else
+		{
+			this->createValueBar();
+		}
 		
-		return success;
+		return true;
 	}
 
 	bool ValueBarComponent::disconnect(void)
@@ -221,6 +223,12 @@ namespace NOWA
 				this->manualObject->setRenderQueueGroup(NOWA::RENDER_QUEUE_V2_MESH);
 				this->manualObject->setName("ValueBar_" + Ogre::StringConverter::toString(this->gameObjectPtr->getId()) + "_" + Ogre::StringConverter::toString(index));
 				this->manualObject->setQueryFlags(0 << 0);
+
+				// Set local AABB
+				/*Ogre::Vector3 min(-this->width->getReal() - this->borderSize->getReal(), -this->height->getReal() - this->borderSize->getReal(), -0.01f);
+				Ogre::Vector3 max(this->width->getReal() + this->borderSize->getReal(), this->height->getReal() + this->borderSize->getReal(), 0.01f);
+				manualObject->setLocalAabb(Ogre::Aabb(min, max));*/
+
 				this->lineNode->attachObject(this->manualObject);
 				this->manualObject->setCastShadows(false);
 				// });
@@ -237,61 +245,81 @@ namespace NOWA
 			NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
 			// TODO: Wait?
-			ENQUEUE_RENDER_COMMAND_WAIT("ValueBarComponent::createValueBar",
+			NOWA::GraphicsModule::RenderCommand renderCommand = [this]()
 			{
 				this->lineNode->detachAllObjects();
 				this->gameObjectPtr->getSceneManager()->destroyManualObject(this->manualObject);
 				this->manualObject = nullptr;
 				this->lineNode->getParentSceneNode()->removeAndDestroyChild(this->lineNode);
 				this->lineNode = nullptr;
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ValueBarComponent::destroyValueBar");
 		}
 	}
 
 	void ValueBarComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		if (false == notSimulating)
 		{
-			//// Capture all the data you need in the lambda
-			//auto closureFunction = [this](Ogre::Real weight)
+			if (nullptr == this->manualObject)
+			{
+				return;
+			}
+
+			//// Do a basic visibility check (e.g., frustum distance, screen proximity, etc.)
+			//Ogre::Camera* mainCamera = AppStateManager::getSingletonPtr()->getCameraManager()->getActiveCamera();
+			//if (nullptr != mainCamera)
 			//{
-			//	if (nullptr == this->manualObject)
+			//	// Get world AABB of the ManualObject
+			//	const Ogre::Aabb& worldAabb = this->manualObject->getWorldAabbUpdated();
+
+			//	// Skip rendering if not visible
+			//	Ogre::AxisAlignedBox legacyBox(worldAabb.getMinimum(), worldAabb.getMaximum());
+			//	if (false == mainCamera->isVisible(legacyBox))
 			//	{
 			//		return;
 			//	}
+			//}
 
-			//	this->indices = 0;
-			//	if (this->manualObject->getNumSections() > 0)
-			//	{
-			//		// Ogre will crash or throw exceptions if empty manual object is processed
-			//		if (true == this->couldDraw)
-			//		{
-			//			this->manualObject->beginUpdate(0);
-			//		}
-			//	}
-			//	else
-			//	{
-			//		this->manualObject->clear();
-			//		this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
-			//	}
+			if (false == this->gameObjectPtr->isVisible())
+			{
+				return;
+			}
 
-			//	this->drawValueBar();
-			//	// Ogre will crash or throw exceptions if empty manual object is processed
-			//	if (true == this->couldDraw)
-			//	{
-			//		// Realllllllyyyyy important! Else the rectangle is a whole mess!
-			//		this->manualObject->index(0);
-			//		this->manualObject->end();
-			//	}
-			//	else
-			//	{
-			//		this->manualObject->clear();
-			//	}
-			//};
-			//Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
-			//NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction,  false);
+			// Capture all the data you need in the lambda
+			auto closureFunction = [this](Ogre::Real weight)
+			// ENQUEUE_RENDER_COMMAND("ValueBarComponent::update",
+			{
+				this->indices = 0;
+				if (this->manualObject->getNumSections() > 0)
+				{
+					// Ogre will crash or throw exceptions if empty manual object is processed
+					if (true == this->couldDraw)
+					{
+						this->manualObject->beginUpdate(0);
+					}
+				}
+				else
+				{
+					this->manualObject->clear();
+					this->manualObject->begin("WhiteNoLightingBackground", Ogre::OT_TRIANGLE_LIST);
+				}
+
+				this->drawValueBar();
+				// Ogre will crash or throw exceptions if empty manual object is processed
+				if (true == this->couldDraw)
+				{
+					// Realllllllyyyyy important! Else the rectangle is a whole mess!
+					this->manualObject->index(0);
+					this->manualObject->end();
+				}
+				else
+				{
+					this->manualObject->clear();
+				}
+			};
+			Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
+			NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction,  false);
 		}
 	}
 
@@ -446,18 +474,6 @@ namespace NOWA
 	void ValueBarComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-
-		if (true == this->bIsInSimulation)
-		{
-			if (false == activated)
-			{
-				this->destroyValueBar();
-			}
-			else
-			{
-				this->createValueBar();
-			}
-		}
 	}
 
 	bool ValueBarComponent::isActivated(void) const

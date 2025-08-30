@@ -965,6 +965,9 @@ namespace NOWA
 		// Custom data strings
 		static const Ogre::String AttrCustomDataSkipCreation(void) { return "SkipCreation"; }
 	private:
+		void destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, 
+			Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager);
+
 		bool internalDeleteComponent(const Ogre::String& componentClassName, unsigned int componentClassId, unsigned int componentOccurrenceIndex = 0);
 
 		void refreshSize(const Ogre::Vector3& scale);

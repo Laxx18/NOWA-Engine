@@ -6,7 +6,8 @@ Level1_MainGameObject = {}
 
 require("init");
 
-thisGameObject = nil
+thisGameObject = nil;
+cameraGameObject = nil;
 originAsteroid = nil;
 originEnemy1 = nil;
 originHealth = nil;
@@ -81,6 +82,15 @@ end
 
 Level1_MainGameObject["connect"] = function(gameObject)
     thisGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
+    
+    PointerManager:showMouse(false);
+    
+    cameraGameObject = AppStateManager:getGameObjectController():getGameObjectFromName("GameCamera");
+    cameraComponent = cameraGameObject:getCameraComponent();
+    cameraComponent:setCameraPosition(Vector3(0, 80, -35));
+    cameraComponent:setCameraDegreeOrientation(Vector3(-90, 180, 180));
+    cameraComponent:setActivated(true);
+    
     asteroidSpawn = thisGameObject:getSpawnComponentFromName("asteroidSpawn");
     asteroidSpawn:setKeepAliveSpawnedGameObjects(true);
 
@@ -176,6 +186,8 @@ Level1_MainGameObject["connect"] = function(gameObject)
 end
 
 Level1_MainGameObject["disconnect"] = function()
+    PointerManager:showMouse(true);
+    
     --init()
     
     --originAsteroid:setVisible(true);

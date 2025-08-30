@@ -218,7 +218,6 @@ namespace NOWA
 		Variant* animationSpeed;
 		Variant* animationRepeat;
 		AnimationBlenderV2* animationBlender;
-		bool bIsInSimulation;
 	};
 
 }; // namespace end

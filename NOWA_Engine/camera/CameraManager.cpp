@@ -212,10 +212,12 @@ namespace NOWA
 				if (entry.first != camera && false == entry.second.forSplitScreen)
 				{
 					entry.second.isActive = false;
-					ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera1", _1(entry),
+					// ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("CameraManager::addCamera1", _1(entry),
+					NOWA::GraphicsModule::RenderCommand renderCommand = [this, entry]()
 					{
 						entry.first->setVisible(false);
-					});
+					};
+					NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "CameraManager::addCamera1");
 
 					for (auto it = entry.second.behaviorData.begin(); it != entry.second.behaviorData.end(); ++it)
 					{

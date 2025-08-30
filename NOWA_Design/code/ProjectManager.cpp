@@ -450,9 +450,6 @@ void ProjectManager::loadProject(const Ogre::String& filePathName, unsigned shor
 
 	RecentFilesManager::getInstance().saveSettings();
 
-	// No workspace creation, because its created in DotSceneImportModule
-	// this->createWorkspace();
-
 	boost::shared_ptr<EventDataProjectManipulation> eventDataProjectManipulation(new EventDataProjectManipulation(eProjectMode::LOAD));
 	NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataProjectManipulation);
 

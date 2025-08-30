@@ -180,7 +180,6 @@ namespace NOWA
 		Variant* showSkeleton;
 		AnimationBlender* animationBlender;
 		SkeletonVisualizer* skeletonVisualizer;
-		bool bIsInSimulation;
 	};
 
 }; //namespace end

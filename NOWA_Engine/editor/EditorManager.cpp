@@ -1476,7 +1476,7 @@ namespace NOWA
 				// Here send event, that select mode is active! Create just one event with the mode! to handle all other checks to
 			}
 			boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 		}
 
 		if (false == this->isInSimulation)
@@ -2800,7 +2800,7 @@ namespace NOWA
 
 		this->currentPlaceType = type;
 		boost::shared_ptr<EventDataEditorMode> eventDataEditorMode(new EventDataEditorMode(this->manipulationMode));
-		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataEditorMode);
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->threadSafeQueueEvent(eventDataEditorMode);
 	}
 
 	void EditorManager::attachGroupToPlaceNode(const std::vector<unsigned long>& gameObjectIds)

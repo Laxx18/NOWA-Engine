@@ -337,7 +337,7 @@ namespace NOWA
 			return true;
 		}
 
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
+		/*ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
 		{
 			if (nullptr != this->workspace)
 			{
@@ -355,7 +355,7 @@ namespace NOWA
 			}
 
 			this->reconnectAllNodes();
-		});
+		});*/
 
 		return true;
 	}
@@ -405,6 +405,8 @@ namespace NOWA
 
 	bool WorkspaceBaseComponent::createWorkspace(void)
 	{
+		Ogre::String name = this->gameObjectPtr->getName();
+
 		// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.5f));
 		// auto ptrFunction = [this]() {
 		if (nullptr == this->compositorManager)
@@ -422,7 +424,7 @@ namespace NOWA
 
 		this->removeWorkspace();
 
-		ENQUEUE_RENDER_COMMAND/*_WAIT*/("WorkspaceBaseComponent::createWorkspace",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::createWorkspace",
 		{
 			std::vector<bool> reflections(AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects()->size());
 			auto gameObjects = AppStateManager::getSingletonPtr()->getGameObjectController()->getGameObjects();
@@ -719,6 +721,8 @@ namespace NOWA
 
 	void WorkspaceBaseComponent::removeWorkspace(void)
 	{
+		Ogre::String name = this->gameObjectPtr->getName();
+
 		if (nullptr == this->workspace)
 		{
 			return;
@@ -726,7 +730,7 @@ namespace NOWA
 
 		this->resetReflectionForAllEntities();
 
-		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::removeWorkspace",
+		ENQUEUE_RENDER_COMMAND_WAIT("WorkspaceBaseComponent::removeWorkspace",
 		{
 			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
 

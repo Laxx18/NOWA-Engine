@@ -5,7 +5,7 @@ require("init");
 attributesComponent = nil;
 physicsActiveComponent = nil;
 cameraComponent = nil;
-cameraGameObject = nil;
+
 flySound = nil;
 timeSinceLastLaserShoot = 0.2;
 canShoot = false;
@@ -18,14 +18,6 @@ FutureFighterJet_0 = {};
 
 FutureFighterJet_0["connect"] = function(gameObject)
     thisGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
-    
-    PointerManager:showMouse(false);
-    
-    cameraGameObject = AppStateManager:getGameObjectController():getGameObjectFromName("GameCamera");
-    cameraComponent = cameraGameObject:getCameraComponent();
-    cameraComponent:setCameraPosition(Vector3(0, 80, -35));
-    cameraComponent:setCameraDegreeOrientation(Vector3(-90, 180, 180));
-    cameraComponent:setActivated(true);
 
     inputDeviceModule = thisGameObject:getInputDeviceComponent():getInputDeviceModule();
     physicsActiveComponent = thisGameObject:getPhysicsActiveComponent();
@@ -59,8 +51,6 @@ FutureFighterJet_0["connect"] = function(gameObject)
 end
 
 FutureFighterJet_0["disconnect"] = function()
-    PointerManager:showMouse(true);
-
     --flySound:setActivated(false);
     --cameraComponent:setCameraPosition(Vector3(0, 160, -35));
     --laserSpawnComponent:setActivated(false);

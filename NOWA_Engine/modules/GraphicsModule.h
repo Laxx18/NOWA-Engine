@@ -13,7 +13,6 @@
 #include <vector>
 #include <array>
 #include <thread>
-#include "Threading/OgreUniformScalableTask.h"
 
 #include "utilities/MathHelper.h"
 #include "utilities/concurrentqueue.h"
@@ -82,7 +81,7 @@ namespace NOWA
     * Only one thread owns and modifies a slot at any time.
     */
 
-	class EXPORTED GraphicsModule : public Ogre::UniformScalableTask
+	class EXPORTED GraphicsModule
 	{
     public:
 
@@ -184,8 +183,6 @@ namespace NOWA
             std::shared_ptr<std::promise<void>> completionPromise; // nullptr for fire-and-forget
             bool promiseAlreadyFulfilled = false;
         };
-	public:
-        void execute(size_t threadId, size_t numThreads) override;
     public:
         void doCleanup(void);
 
@@ -201,7 +198,6 @@ namespace NOWA
 
         bool wasPromiseFulfilled(const std::shared_ptr<std::promise<void>>& promise);
 
-        // TODO: Interface virtual 
         void processAllCommands(void);
 
         void waitForRenderCompletion(void);

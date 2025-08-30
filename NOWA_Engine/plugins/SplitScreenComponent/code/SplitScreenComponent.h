@@ -225,7 +225,6 @@ namespace NOWA
 		bool componentBeingLoaded;
 		Ogre::Camera* tempCamera;
 		Ogre::CompositorWorkspace* finalCombinedWorkspace;
-		bool bIsInSimulation;
 
 		Variant* activated;
 		Variant* textureSize;

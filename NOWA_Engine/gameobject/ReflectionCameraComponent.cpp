@@ -391,7 +391,6 @@ namespace NOWA
 		if (nullptr != this->workspaceBaseComponent)
 		{
 			this->workspaceBaseComponent->createWorkspace();
-			this->workspaceBaseComponent->connect();
 		}
 	}
 

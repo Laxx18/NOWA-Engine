@@ -226,43 +226,58 @@ namespace NOWA
 			auto clampObjectQuery = this->clampObjectQuery;
 			auto sceneManager = this->sceneManager;
 
+			this->sceneNode = nullptr;
+			this->movableObject = nullptr;
+			this->boundingBoxDraw = nullptr;
+			this->clampObjectQuery = nullptr;
+			this->sceneManager = nullptr;
+
 			// Attention: No this may be used here, because its in the destructor!
-			ENQUEUE_DESTROY_COMMAND("GameObject::~GameObject", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObject::~GameObject", _5(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager),
 			{
-				if (boundingBoxDraw)
-				{
-					sceneManager->destroyWireAabb(boundingBoxDraw);
-				}
-
-				if (clampObjectQuery)
-				{
-					sceneManager->destroyQuery(clampObjectQuery);
-				}
-
-				if (sceneNode)
-				{
-					auto nodeIt = sceneNode->getChildIterator();
-					while (nodeIt.hasMoreElements())
-					{
-						Ogre::Node* subNode = nodeIt.getNext();
-						subNode->removeAllChildren();
-					}
-
-					sceneNode->detachAllObjects();
-					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying scene node: " + sceneNode->getName());
-
-					sceneManager->destroySceneNode(sceneNode);
-				}
-
-				if (movableObject)
-				{
-					if (sceneManager->hasMovableObject(movableObject))
-					{
-						Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + movableObject->getName());
-						sceneManager->destroyMovableObject(movableObject);
-					}
-				}
+					this->destroyGameObjectResources(sceneNode, movableObject, boundingBoxDraw, clampObjectQuery, sceneManager);
 			});
+		}
+	}
+
+	void GameObject::destroyGameObjectResources(Ogre::SceneNode* sceneNode, Ogre::MovableObject* movableObject, Ogre::WireAabb* boundingBoxDraw, Ogre::RaySceneQuery* clampObjectQuery, Ogre::SceneManager* sceneManager)
+	{
+		if (nullptr != boundingBoxDraw)
+		{
+			sceneManager->destroyWireAabb(boundingBoxDraw);
+		}
+
+		if (nullptr != clampObjectQuery)
+		{
+			sceneManager->destroyQuery(clampObjectQuery);
+		}
+
+		if (nullptr != sceneNode)
+		{
+			auto nodeIt = sceneNode->getChildIterator();
+			while (nodeIt.hasMoreElements())
+			{
+				Ogre::Node* subNode = nodeIt.getNext();
+				subNode->removeAllChildren();
+			}
+
+			sceneNode->detachAllObjects();
+
+			Ogre::LogManager::getSingletonPtr()->logMessage(
+				Ogre::LML_TRIVIAL,
+				"[GameObject] Destroying scene node: " + sceneNode->getName());
+
+			sceneManager->destroySceneNode(sceneNode);
+		}
+
+		if (nullptr != movableObject)
+		{
+			if (sceneManager->hasMovableObject(movableObject))
+			{
+				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObject] Destroying movable object: " + movableObject->getName());
+
+				sceneManager->destroyMovableObject(movableObject);
+			}
 		}
 	}
 

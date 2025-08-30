@@ -122,14 +122,9 @@ namespace NOWA
                 {
                     NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
                 }
-
-                if (nullptr != gameProgressModule->getCurrentSceneManager())
-                {
-                    gameProgressModule->getCurrentSceneManager()->executeUserScalableTask(this, true);
-                }
             }
 
-            this->beginLogicFrame();
+            // this->beginLogicFrame();
 
             // if (true == appStateManager->bCanProcessRenderQueue)
             {
@@ -148,7 +143,7 @@ namespace NOWA
                 this->calculateInterpolationWeight();
 
                 // Update transforms with interpolation
-                // this->updateAllTransforms();
+                this->updateAllTransforms();
 
                 // Periodically dump buffer state for debugging (every 300 frames = 5 seconds at 60 FPS)
                 if (++frameCount % 300 == 0)
@@ -245,7 +240,8 @@ namespace NOWA
 
         // If we're already on the render thread AND processing a command, 
         // execute this command immediately rather than enqueuing it
-        if (this->isRenderThread() && g_renderCommandDepth > 0)
+        // if (this->isRenderThread() && g_renderCommandDepth > 0)
+        if (true == this->isRenderThread() || true == RenderGlobals::g_inLogicCommand)
         {
             // Log direct execution
             this->logCommandEvent("Executing command directly on render thread", Ogre::LML_TRIVIAL);
@@ -1346,7 +1342,7 @@ namespace NOWA
 
         // Add to tracked closures vector
         size_t newIndex = this->trackedClosures.size();
-        this->trackedClosures.push_back(std::move(newTrackedClosure));
+        this->trackedClosures.push_back(newTrackedClosure);
 
         // Add to hash map for fast lookups
         this->closureToIndexMap[uniqueName] = newIndex;
@@ -1658,7 +1654,7 @@ namespace NOWA
         this->accumTimeSinceLastLogicFrame = 0.0f;
     }
 
-    void GraphicsModule::execute(size_t threadId, size_t numThreads)
+    void GraphicsModule::updateAllTransforms(void)
     {
         // Get the previous buffer index
         size_t prevIdx = this->getPreviousTransformNodeIdx();
@@ -1807,173 +1803,7 @@ namespace NOWA
         // Execute all active closures from PREVIOUS buffer (thread-safe)
         for (size_t i = 0; i < trackedClosures.size(); )
         {
-            auto& closure = trackedClosures[i];
-
-            this->logCommandEvent("Closure: " + closure.uniqueName + " fireAndForget: " + Ogre::StringConverter::toString(closure.fireAndForget), Ogre::LML_TRIVIAL);
-            // closure.closureFuncs[prevClosureIdx](weight);
-            closure.closureFuncs[this->currentTrackedClosureIdx](this->interpolationWeight);
-
-            if (true == closure.fireAndForget)
-            {
-                this->removeTrackedClosure(closure.uniqueName);
-            }
-            else
-            {
-                ++i;
-            }
-        }
-    }
-
-    void GraphicsModule::updateAllTransforms(void)
-    {
-        // Get the previous buffer index
-        size_t prevIdx = this->getPreviousTransformNodeIdx();
-
-        // Update all active nodes
-        for (auto& nodeTransform : this->trackedNodes)
-        {
-            if (true == nodeTransform.active)
-            {
-                // Get previous and current transforms
-                const GraphicsModule::TransformData& prevTransform = nodeTransform.transforms[prevIdx];
-                const GraphicsModule::TransformData& currTransform = nodeTransform.transforms[this->currentTransformNodeIdx];
-
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
-
-                // Interpolate scale
-                Ogre::Vector3 interpScale = Ogre::Math::lerp(prevTransform.scale, currTransform.scale, this->interpolationWeight);
-
-                // Apply to scene node
-                if (false == nodeTransform.useDerived)
-                {
-                    nodeTransform.node->setOrientation(currTransform.orientation);
-                    nodeTransform.node->setPosition(interpPos);
-                }
-                else
-                {
-                    nodeTransform.node->_setDerivedOrientation(interpRot);
-                    nodeTransform.node->_setDerivedPosition(interpPos);
-                }
-
-                nodeTransform.node->setScale(interpScale);
-            }
-        }
-
-        // Update camera transforms
-
-
-        // Get the previous buffer index
-        size_t prevCameraIdx = this->getPreviousTransformCameraIdx();
-
-        // Update all active cameras
-        for (auto& cameraTransform : this->trackedCameras)
-        {
-            if (true == cameraTransform.active)
-            {
-                // Get previous and current transforms
-                const GraphicsModule::CameraTransformData& prevTransform = cameraTransform.transforms[prevCameraIdx];
-                const GraphicsModule::CameraTransformData& currTransform = cameraTransform.transforms[this->currentTransformCameraIdx];
-
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
-
-                // Apply to scene camera
-                cameraTransform.camera->setOrientation(interpRot);
-                cameraTransform.camera->setPosition(interpPos);
-            }
-        }
-
-        // Update oldBone transforms
-
-
-        // Get the previous buffer index
-        size_t prevOldBoneIdx = this->getPreviousTransformOldBoneIdx();
-
-        // Update all active oldBones
-        for (auto& oldBoneTransform : this->trackedOldBones)
-        {
-            if (true == oldBoneTransform.active)
-            {
-                // Get previous and current transforms
-                const GraphicsModule::TransformData& prevTransform = oldBoneTransform.transforms[prevOldBoneIdx];
-                const GraphicsModule::TransformData& currTransform = oldBoneTransform.transforms[this->currentTransformOldBoneIdx];
-
-                // Interpolate position
-                Ogre::Vector3 interpPos = Ogre::Math::lerp(prevTransform.position, currTransform.position, this->interpolationWeight);
-
-                // Interpolate orientation
-                Ogre::Quaternion interpRot = Ogre::Quaternion::nlerp(this->interpolationWeight, prevTransform.orientation, currTransform.orientation, true);
-
-                // Apply to scene oldBone
-                oldBoneTransform.oldBone->setOrientation(interpRot);
-                oldBoneTransform.oldBone->setPosition(interpPos);
-            }
-        }
-
-        size_t prevPassIdx = this->getPreviousTransformPassIdx();
-
-        for (auto& passTransform : this->trackedPasses)
-        {
-            if (passTransform.active)
-            {
-                const GraphicsModule::PassSpeedData& prev = passTransform.transforms[prevPassIdx];
-                const GraphicsModule::PassSpeedData& curr = passTransform.transforms[this->currentTransformPassIdx];
-
-                Ogre::Real interpX[9];
-                Ogre::Real interpY[9];
-
-                for (int i = 0; i < 9; ++i)
-                {
-                    interpX[i] = Ogre::Math::lerp(prev.speedsX[i], curr.speedsX[i], this->interpolationWeight);
-                    interpY[i] = Ogre::Math::lerp(prev.speedsY[i], curr.speedsY[i], this->interpolationWeight);
-
-                        /*Ogre::LogManager::getSingletonPtr()->logMessage(
-                            "[Render] Layer " + std::to_string(i) +
-                            ": X=" + Ogre::StringConverter::toString(interpX[i]) +
-                            " Y=" + Ogre::StringConverter::toString(interpY[i]));*/
-                }
-
-                passTransform.pass->getFragmentProgramParameters()->setNamedConstant("speedsX", interpX, 9, 1);
-                passTransform.pass->getFragmentProgramParameters()->setNamedConstant("speedsY", interpY, 9, 1);
-            }
-        }
-
-        // Update datablock colours
-
-        // Get the previous buffer index
-        size_t prevTrackedDatablockIdx = this->getPreviousTrackedDatablockIdx();
-
-        for (auto& trackedDatablock : this->trackedDatablocks)
-        {
-            if (false == trackedDatablock.active)
-            {
-                continue;
-            }
-
-            const Ogre::ColourValue& prev = trackedDatablock.values[prevTrackedDatablockIdx];
-            const Ogre::ColourValue& curr = trackedDatablock.values[this->currentTrackedDatablockIdx];
-
-            Ogre::ColourValue result = trackedDatablock.interpolateFunc(prev, curr, this->interpolationWeight);
-
-            trackedDatablock.applyFunc(result);
-        }
-
-        // Update closures
-
-        // Get the previous buffer index (KEY CHANGE: read from previous buffer)
-        size_t prevClosureIdx = this->getPreviousTrackedClosureIdx();
-
-        // Execute all active closures from PREVIOUS buffer (thread-safe)
-        for (size_t i = 0; i < trackedClosures.size(); )
-        {
-            auto& closure = trackedClosures[i];
+            auto closure = trackedClosures[i];
 
             this->logCommandEvent("Closure: " + closure.uniqueName + " fireAndForget: " + Ogre::StringConverter::toString(closure.fireAndForget), Ogre::LML_TRIVIAL);
             // closure.closureFuncs[prevClosureIdx](weight);

@@ -29,7 +29,6 @@ namespace NOWA
 		particleInstanceId(0),
 		globalPosition(Ogre::Math::POS_INFINITY),
 		globalOrientation(Ogre::Quaternion(Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY, Ogre::Math::POS_INFINITY)),
-		bIsInSimulation(false),
 		activated(new Variant(GpuParticlesComponent::AttrActivated(), true, this->attributes)),
 		particleTemplateName(new Variant(GpuParticlesComponent::AttrParticleName(), std::vector<Ogre::String>(), this->attributes)),
 		repeat(new Variant(GpuParticlesComponent::AttrRepeat(), false, this->attributes)),
@@ -418,8 +417,6 @@ namespace NOWA
 	
 	void GpuParticlesComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		if (false == notSimulating && 0 != this->particleInstanceId)
 		{
 			// Only play activated particle effect
@@ -571,7 +568,7 @@ namespace NOWA
 	void GpuParticlesComponent::setActivated(bool activated)
 	{
 		this->activated->setValue(activated);
-		if (0 != this->particleInstanceId && true == this->bIsInSimulation)
+		if (0 != this->particleInstanceId && true == this->bConnected)
 		{
 			if (false == activated)
 			{

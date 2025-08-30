@@ -306,7 +306,6 @@ namespace NOWA
 		Ogre::String oldSoundName;
 		Ogre::Vector3 oldPosition;
 		Ogre::Quaternion oldOrientation;
-		bool bIsInSimulation;
 	};
 
 }; //namespace end

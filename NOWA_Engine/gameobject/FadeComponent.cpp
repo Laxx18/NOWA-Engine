@@ -59,7 +59,6 @@ namespace NOWA
 	FadeComponent::FadeComponent()
 		: GameObjectComponent(),
 		selectedEaseFunction(Interpolator::Linear),
-		bIsInSimulation(false),
 		activated(new Variant(FadeComponent::AttrActivated(), true, this->attributes)),
 		fadeMode(new Variant(FadeComponent::AttrFadeMode(), { Ogre::String("FadeIn"), Ogre::String("FadeOut") }, this->attributes)),
 		duration(new Variant(FadeComponent::AttrDuration(), 5.0f, this->attributes)),
@@ -114,7 +113,7 @@ namespace NOWA
 
 	void FadeComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
+
 	}
 
 	bool FadeComponent::connect(void)
@@ -191,7 +190,7 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			if (true == activated)
 			{

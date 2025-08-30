@@ -24,8 +24,7 @@ namespace NOWA
 		skeletonVisualizer(nullptr),
 		timePosition(0.0f),
 		firstTimeRepeat(true),
-		currentAnimationIndex(0),
-		bIsInSimulation(false)
+		currentAnimationIndex(0)
 	{
 		// Since when animation count is changed, the whole properties must be refreshed, so that new field may come for animations
 		this->animationCount->addUserData(GameObject::AttrActionNeedRefresh());
@@ -304,8 +303,6 @@ namespace NOWA
 
 	void AnimationSequenceComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
-
 		if (true == this->activated->getBool() && false == notSimulating)
 		{
 			if (nullptr != this->animationBlender && nullptr != this->animationBlender->getSource())
@@ -555,7 +552,7 @@ namespace NOWA
 			this->resetAnimation();
 		}
 
-		if (true == this->bIsInSimulation && true == activated)
+		if (true == this->bConnected && true == activated)
 		{
 			this->activateAnimation();
 		}

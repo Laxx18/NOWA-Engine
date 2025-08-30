@@ -408,11 +408,16 @@ namespace NOWA
 
 		GameObjectPtr clonedGameObject;
 
-		NOWA::GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		auto closureFunction = [this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
+		{
+		// NOWA::GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
-		}, "GameObjectController::cloneWithCallback1");
+		// }, "GameObjectController::cloneWithCallback1");
+		};
+		Ogre::String id = originalGameObjectName + "_GameObjectController::cloneWithCallback1_" + Ogre::StringConverter::toString(targetId);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, unsigned long originalGameObjectId, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition, const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
@@ -423,11 +428,16 @@ namespace NOWA
 			return;
 		}
 
-		NOWA::GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
+		auto closureFunction = [this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
+		{
+		// NOWA::GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
 			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
 			callback(clonedGameObject);
-		}, "GameObjectController::cloneWithCallback2");
+		// }, "GameObjectController::cloneWithCallback2");
+		};
+		Ogre::String id = originalGameObjectPtr->getName() + "_GameObjectController::cloneWithCallback2_" + Ogre::StringConverter::toString(targetId);
+		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
 
 	GameObjectPtr GameObjectController::internalClone(GameObjectPtr originalGameObjectPtr, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
@@ -877,7 +887,7 @@ namespace NOWA
 				{
 					auto queryToDestroy = this->sphereSceneQuery;
 					auto sceneManager = this->currentSceneManager;
-					ENQUEUE_DESTROY_COMMAND("Destroy sphere query", _2(sceneManager, queryToDestroy),
+					ENQUEUE_RENDER_COMMAND_MULTI_WAIT("Destroy sphere query", _2(sceneManager, queryToDestroy),
 					{
 						sceneManager->destroyQuery(queryToDestroy);
 					});

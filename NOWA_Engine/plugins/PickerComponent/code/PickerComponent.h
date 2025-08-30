@@ -355,7 +355,6 @@ namespace NOWA
 		bool joystickIdPressed;
 		unsigned long jointId;
 		OgreNewt::Body* body;
-		bool bIsInSimulation;
 
 		Variant* activated;
 		Variant* targetId;

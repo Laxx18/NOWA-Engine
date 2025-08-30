@@ -6,6 +6,65 @@
 #include "console/LuaConsole.h"
 #include "MyGUI_InputManager.h"
 
+namespace
+{
+	/*
+	 * Short answer: MyGUI does not derive capital letters from Shift for you
+	 * it inserts whatever you pass as the text argument of injectKeyPress.
+	 * In your path, you forward OIS events across threads and you never adjust text based on modifier state.
+	 * If OIS delivers 'a' (or even 0) for KC_A while Shift is down, MyGUI will still insert lowercase (or nothing).
+	 * Because you enqueue to the render thread, even the order of “Shift down” → “A down” can be one frame apart, so relying on MyGUI’s internal modifier state is fragile.
+	 * So this is the fix:
+	 */
+	MyGUI::Char applyModifiers(MyGUI::Char ch, const OIS::Keyboard* kb)
+	{
+		if (!kb) return ch;
+
+		const bool lshift = kb->isKeyDown(OIS::KC_LSHIFT);
+		const bool rshift = kb->isKeyDown(OIS::KC_RSHIFT);
+		const bool shift = lshift || rshift;
+
+		// OIS doesn’t expose CapsLock state as a toggle easily.
+		// If you maintain it elsewhere, fold it in here:
+		const bool caps = false; // or your own tracked caps toggle
+
+		if (ch >= 'a' && ch <= 'z')
+		{
+			if (shift ^ caps) ch = static_cast<MyGUI::Char>(ch - 'a' + 'A');
+			return ch;
+		}
+
+		// Optional: handle common US-DE layout shifted symbols for number row.
+		if (shift)
+		{
+			switch (ch)
+			{
+			case '1': ch = '!'; break;
+			case '2': ch = '@'; break; // adjust for your layout if not US
+			case '3': ch = '#'; break;
+			case '4': ch = '$'; break;
+			case '5': ch = '%'; break;
+			case '6': ch = '^'; break;
+			case '7': ch = '&'; break;
+			case '8': ch = '*'; break;
+			case '9': ch = '('; break;
+			case '0': ch = ')'; break;
+			case '\'': ch = '"'; break;
+			case ';': ch = ':'; break;
+			case ',': ch = '<'; break;
+			case '.': ch = '>'; break;
+			case '/': ch = '?'; break;
+			case '-': ch = '_'; break;
+			case '=': ch = '+'; break;
+			case '[': ch = '{'; break;
+			case ']': ch = '}'; break;
+			case '\\': ch = '|'; break;
+			}
+		}
+		return ch;
+	}
+}
+
 namespace NOWA
 {
 	InputDeviceCore::InputDeviceCore()
@@ -502,9 +561,11 @@ namespace NOWA
 			this->bSelectDown = true;
 		}
 
-		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::keyPressed", _1(tempKeyEvent),
+		MyGUI::Char finalChar = applyModifiers(static_cast<MyGUI::Char>(tempKeyEvent.text), this->keyboard);
+
+		ENQUEUE_RENDER_COMMAND_MULTI("InputDeviceCore::keyPressed", _2(tempKeyEvent, finalChar),
 		{
-			MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), tempKeyEvent.text);
+			MyGUI::InputManager::getInstancePtr()->injectKeyPress(MyGUI::KeyCode::Enum(tempKeyEvent.key), finalChar);
 		});
 
 		//// Do not react on input if there is any interaction with a mygui widget

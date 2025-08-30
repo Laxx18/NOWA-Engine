@@ -281,7 +281,6 @@ namespace NOWA
 		Variant* maxValue;
 		Variant* currentValue;
 		unsigned long indices;
-		bool bIsInSimulation;
 		bool couldDraw;
 	};
 

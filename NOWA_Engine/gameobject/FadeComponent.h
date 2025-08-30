@@ -131,7 +131,6 @@ namespace NOWA
 
 		Interpolator::EaseFunctions selectedEaseFunction;
 		luabind::object fadeCompletedClosureFunction;
-		bool bIsInSimulation;
 	};
 
 }; //namespace end

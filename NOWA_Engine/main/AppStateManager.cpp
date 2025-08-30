@@ -387,8 +387,6 @@ namespace NOWA
 
 			if (false == this->bStall && false == this->activeStateStack.back()->gameProgressModule->bSceneLoading)
 			{
-				// InputDeviceCore::getSingletonPtr()->capture(static_cast<Ogre::Real>(frameTime));
-
 				this->activeStateStack.back()->renderUpdate(static_cast<Ogre::Real>(frameTime));
 			}
 
@@ -400,7 +398,7 @@ namespace NOWA
 				// This advances the transform buffer
 				if (false == didUpdate)
 				{
-					// NOWA::GraphicsModule::getInstance()->beginLogicFrame();
+					NOWA::GraphicsModule::getInstance()->beginLogicFrame();
 					didUpdate = true;
 				}
 

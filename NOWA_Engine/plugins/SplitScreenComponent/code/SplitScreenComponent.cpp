@@ -32,7 +32,6 @@ namespace NOWA
 		componentBeingLoaded(false),
 		tempCamera(nullptr),
 		finalCombinedWorkspace(nullptr),
-		bIsInSimulation(false),
 		activated(new Variant(SplitScreenComponent::AttrActivated(), true, this->attributes)),
 		textureSize(new Variant(SplitScreenComponent::AttrTextureSize(), Ogre::Vector2(640.0f, 480.0f), this->attributes)),
 		geometry(new Variant(SplitScreenComponent::AttrGeometry(), Ogre::Vector4(0.5f, 0.0f, 0.5f, 1.0f), this->attributes)),
@@ -130,7 +129,6 @@ namespace NOWA
 	bool SplitScreenComponent::connect(void)
 	{
 		GameObjectComponent::connect();
-		this->bIsInSimulation = true;
 		this->setActivated(this->activated->getBool());
 		return true;
 	}
@@ -138,7 +136,6 @@ namespace NOWA
 	bool SplitScreenComponent::disconnect(void)
 	{
 		GameObjectComponent::disconnect();
-		this->bIsInSimulation = false;
 		this->cleanupSplitScreen();
 		return true;
 	}
@@ -246,7 +243,7 @@ namespace NOWA
 	{
 		this->activated->setValue(activated);
 
-		if (false == this->bIsInSimulation)
+		if (false == this->bConnected)
 		{
 			return;
 		}

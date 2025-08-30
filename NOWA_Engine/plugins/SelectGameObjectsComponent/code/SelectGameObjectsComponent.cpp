@@ -89,7 +89,6 @@ namespace NOWA
 	SelectGameObjectsComponent::SelectGameObjectsComponent()
 		: GameObjectComponent(),
 		name("SelectGameObjectsComponent"),
-		bIsInSimulation(false),
 		activated(new Variant(SelectGameObjectsComponent::AttrActivated(), true, this->attributes)),
 		categories(new Variant(SelectGameObjectsComponent::AttrCategories(), Ogre::String("All"), this->attributes)),
 		useMultiSelection(new Variant(SelectGameObjectsComponent::AttrUseMultiSelection(), true, this->attributes)),
@@ -376,12 +375,12 @@ namespace NOWA
 
 	void SelectGameObjectsComponent::update(Ogre::Real dt, bool notSimulating)
 	{
-		this->bIsInSimulation = !notSimulating;
+
 	}
 
 	bool SelectGameObjectsComponent::keyPressed(const OIS::KeyEvent& keyEventRef)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			if (true == this->useMultiSelection->getBool())
 			{
@@ -393,7 +392,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::keyReleased(const OIS::KeyEvent& keyEventRef)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			if (true == this->useMultiSelection->getBool())
 			{
@@ -405,7 +404,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mousePressed(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			if (nullptr == MyGUI::InputManager::getInstance().getMouseFocusWidget())
 			{
@@ -417,7 +416,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mouseReleased(const OIS::MouseEvent& evt, OIS::MouseButtonID id)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			this->selectionManager->handleMouseRelease(evt, id);
 
@@ -480,7 +479,7 @@ namespace NOWA
 
 	bool SelectGameObjectsComponent::mouseMoved(const OIS::MouseEvent& evt)
 	{
-		if (true == this->bIsInSimulation)
+		if (true == this->bConnected)
 		{
 			// this->selectionManager->isSelecting = false;
 
