@@ -682,9 +682,6 @@ namespace NOWA
 
 	bool GameObject::disconnect(void)
 	{
-		NOWA::GraphicsModule::getInstance()->clearAllClosures();
-		NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
-
 		for (const auto& component : this->gameObjectComponents)
 		{
 			if (false == std::get<COMPONENT>(component)->disconnect())

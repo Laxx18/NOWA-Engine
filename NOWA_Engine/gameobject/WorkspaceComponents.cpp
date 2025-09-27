@@ -337,7 +337,7 @@ namespace NOWA
 			return true;
 		}
 
-		/*ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
+		ENQUEUE_RENDER_COMMAND("WorkspaceBaseComponent::connect",
 		{
 			if (nullptr != this->workspace)
 			{
@@ -355,7 +355,7 @@ namespace NOWA
 			}
 
 			this->reconnectAllNodes();
-		});*/
+		});
 
 		return true;
 	}
@@ -379,6 +379,8 @@ namespace NOWA
 			{
 				compositorEffectComponents[i]->enableEffect(compositorEffectComponents[i]->effectName, false);
 			}
+
+			this->reconnectAllNodes();
 		});
 
 		return true;

@@ -121,8 +121,11 @@ namespace NOWA
 		
 		this->lineNode = this->gameObjectPtr->getSceneManager()->getRootSceneNode()->createChildSceneNode();
 
-		this->createSound();
-
+		// ENQUEUE_RENDER_COMMAND_WAIT("",
+		// {
+			this->createSound();
+		// });
+		
 		return true;
 	}
 
@@ -298,7 +301,10 @@ namespace NOWA
 	{
 		GameObjectComponent::connect();
 
-		this->setupSound();
+		// ENQUEUE_RENDER_COMMAND_WAIT("",
+		// {
+			this->setupSound();
+		// });
 		
 		return true;
 	}
@@ -312,7 +318,12 @@ namespace NOWA
 
 		if (nullptr != this->sound)
 		{
-			this->sound->stop();
+			ENQUEUE_RENDER_COMMAND_WAIT("SimpleSoundComponent::enableSpectrumAnalysis",
+			{
+				this->sound->stop();
+				this->sound->enableSpectrumAnalysis(false, 1, 1, OgreAL::MathWindows::BARLETT, OgreAL::AudioProcessor::SpectrumPreparationType::LINEAR, 0.0f);
+			});
+			
 		}
 		return true;
 	}
@@ -483,7 +494,10 @@ namespace NOWA
 		{
 			if (true == this->bConnected)
 			{
-				this->setupSound();
+				// ENQUEUE_RENDER_COMMAND_WAIT("",
+				// {
+					this->setupSound();
+				// });
 			}
 		}
 	}
@@ -496,7 +510,10 @@ namespace NOWA
 	void SimpleSoundComponent::setSoundName(const Ogre::String& soundName)
 	{
 		this->soundName->setValue(soundName);
-		this->createSound();
+		// ENQUEUE_RENDER_COMMAND_WAIT("",
+		// {
+			this->createSound();
+		// });
 		this->oldSoundName = soundName;
 	}
 
@@ -538,7 +555,10 @@ namespace NOWA
 		if (stream != this->stream->getBool())
 		{
 			this->stream->setValue(stream);
-			this->createSound();
+			// ENQUEUE_RENDER_COMMAND_WAIT("",
+			// {
+				this->createSound();
+			// });
 		}
 	}
 
@@ -576,7 +596,16 @@ namespace NOWA
 	{
 		if (nullptr != this->sound)
 		{
-			this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("SimpleSoundComponent::enableSpectrumAnalysis", _6(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor),
+			{
+				this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
+			});
+
+			/*NOWA::AppStateManager::LogicCommand logicCommand = [this, enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor]()
+				{
+					this->sound->enableSpectrumAnalysis(enable, processingSize, numberOfBands, windowType, spectrumPreparationType, smoothFactor);
+				};
+			NOWA::AppStateManager::getSingletonPtr()->enqueue(std::move(logicCommand));*/
 		}
 	}
 

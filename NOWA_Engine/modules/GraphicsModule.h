@@ -213,6 +213,8 @@ namespace NOWA
     public:
         void clearAllClosures(void);
 
+        void clearSceneResources(void);
+
         void doCleanup(void);
 
         bool getIsRunning(void) const;

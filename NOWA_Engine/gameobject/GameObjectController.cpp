@@ -1737,6 +1737,9 @@ namespace NOWA
 		/*auto done = std::make_shared<std::promise<void>>();
 		std::future<void> future = done->get_future();*/
 
+		NOWA::GraphicsModule::getInstance()->clearAllClosures();
+		NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
+
 		NOWA::AppStateManager::LogicCommand logicCommand = [this]()
 		{
 			// Resets the command, so that deletion of game object can be processed again.

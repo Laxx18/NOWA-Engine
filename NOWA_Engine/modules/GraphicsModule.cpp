@@ -311,6 +311,42 @@ namespace NOWA
         }
     }
 
+    void GraphicsModule::clearSceneResources(void)
+    {
+      this->trackedCameras.clear();
+      this->cameraToIndexMap.clear();
+
+      this->trackedNodes.clear();
+      this->nodeToIndexMap.clear();
+
+      this->oldBoneToIndexMap.clear();
+      this->trackedOldBones.clear();
+
+      this->passToIndexMap.clear();
+      this->trackedPasses.clear();
+
+      this->datablockToIndexMap.clear();
+      this->trackedDatablocks.clear();
+
+      this->currentTransformNodeIdx = 0;
+      this->currentTransformCameraIdx = 0;
+      this->currentTransformOldBoneIdx = 0;
+      this->currentTransformPassIdx = 0;
+      this->currentTrackedDatablockIdx = 0;
+      this->interpolationWeight = 0.0f;
+      this->accumTimeSinceLastLogicFrame = 0.0f;
+
+      // 6. Clear Pending Destruction Commands (destroySlots)
+      // The multi-frame delayed destruction queue must be cleared immediately.
+      for (size_t i = 0; i < GraphicsModule::NUM_DESTROY_SLOTS; ++i)
+      {
+          this->destroySlots[i].clear();
+      }
+
+      // 7. Reset the internal destroy slot index 
+      this->currentDestroySlot = 0;
+    }
+
     void GraphicsModule::doCleanup(void)
     {
         // Wait for render thread to finish before cleanup

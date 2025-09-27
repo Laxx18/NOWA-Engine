@@ -44,8 +44,8 @@ function levelCleared()
     thisGameObject:getCompositorKeyholeComponent():setActivated(true);
     local keyholeAttributeEffect = thisGameObject:getAttributeEffectComponent();
     keyholeAttributeEffect:reactOnEndOfEffect(function()
-		AppStateManager:popAppState();
-	end, false);
+        AppStateManager:popAppState();
+    end, false);
     keyholeAttributeEffect:setActivated(true);
 end
 
@@ -53,34 +53,33 @@ level2_MainGameObject["connect"] = function(gameObject)
     thisGameObject = AppStateManager:getGameObjectController():castGameObject(gameObject);
     asteroidSpawn = thisGameObject:getSpawnComponentFromName("asteroidSpawn");
     asteroidSpawn:setKeepAliveSpawnedGameObjects(true);
-	asteroidSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
-		spawnedGameObject:getPhysicsComponent():setCollidable(true);
-		spawnedGameObject:setVisible(true);
-		spawnedGameObject:getPhysicsActiveComponent():setPosition(Vector3(math.random(-100, 100), 0, -150));
-		spawnedGameObject:getPhysicsActiveComponent():setOrientation(Quaternion(Degree(math.random(180)), Vector3.UNIT_Y));
-		local direction = Vector3(math.random(-0.5, 0.5), 0, math.random(1));
-		spawnedGameObject:getPhysicsActiveComponent():applyRequiredForceForVelocity(direction * 100);
-	end);
+    asteroidSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
+        spawnedGameObject:getPhysicsComponent():setCollidable(true);
+        spawnedGameObject:getPhysicsActiveComponent():setPosition(Vector3(math.random(-100, 100), 0, -150));
+        spawnedGameObject:getPhysicsActiveComponent():setOrientation(Quaternion(Degree(math.random(180)), Vector3.UNIT_Y));
+        local direction = Vector3(math.random(-0.5, 0.5), 0, math.random(1));
+        spawnedGameObject:getPhysicsActiveComponent():applyRequiredForceForVelocity(direction * 100);
+    end);
     
     healthSpawn = thisGameObject:getSpawnComponentFromName("healthSpawn");
 
     fighterJet = AppStateManager:getGameObjectController():getGameObjectFromId("2248180869");
-	local laserSpawn = fighterJet:getSpawnComponentFromName("laserSpawn");
-	laserSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
-		spawnedLaserGameObject:getPhysicsComponent():setCollidable(true);
-		local laserBillboard = spawnedLaserGameObject:getBillboardComponent();
-		laserBillboard:setActivated(true);
-		local shootSound = spawnedLaserGameObject:getSimpleSoundComponent();
-		shootSound:setActivated(true);
-		spawnedLaserGameObject:getPhysicsActiveComponent():applyRequiredForceForVelocity(Vector3(0, 0, -100));
-	end);
+    local laserSpawn = fighterJet:getSpawnComponentFromName("laserSpawn");
+    laserSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
+        spawnedLaserGameObject:getPhysicsComponent():setCollidable(true);
+        local laserBillboard = spawnedLaserGameObject:getBillboardComponent();
+        laserBillboard:setActivated(true);
+        local shootSound = spawnedLaserGameObject:getSimpleSoundComponent();
+        shootSound:setActivated(true);
+        spawnedLaserGameObject:getPhysicsActiveComponent():applyRequiredForceForVelocity(Vector3(0, 0, -100));
+    end);
     energy = fighterJet:getAttributesComponent():getAttributeValueByName("Energy");
     score = fighterJet:getAttributesComponent():getAttributeValueByName("Score");
     
     energyProgress = thisGameObject:getMyGUIProgressBarComponent();
     energyProgress:setValue(energy:getValueNumber());
     scoreText = thisGameObject:getMyGUITextComponentFromName("ScoreText");
-	scoreText:setCaption("Score: " .. toString(score:getValueNumber()));
+    scoreText:setCaption("Score: " .. toString(score:getValueNumber()));
 
     gameOverText = AppStateManager:getGameObjectController():getGameObjectFromId(MAIN_GAMEOBJECT_ID):getMyGUITextComponentFromName("GameOverText");
 

@@ -72,6 +72,8 @@ namespace NOWA
 			// Must abort all processes, if state is about to being changed, not that a prior state make e.g. delayed undo for all game objects at the same time
 			ProcessManager::getInstance()->abortAllProcesses(true);
 
+			GraphicsModule::getInstance()->clearSceneResources();
+
 			// NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 			
 			switch(this->stateOperation)

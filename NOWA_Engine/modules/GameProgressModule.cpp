@@ -318,6 +318,7 @@ namespace NOWA
 
 	void GameProgressModule::resetContent(void)
 	{
+		GraphicsModule::getInstance()->clearSceneResources();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
 		AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();

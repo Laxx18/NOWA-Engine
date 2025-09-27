@@ -733,21 +733,34 @@ namespace NOWA
 
 	void AnimationBlender::gameObjectIsInRagDollStateDelegate(EventDataPtr eventData)
 	{
-		boost::shared_ptr<EventDataGameObjectIsInRagDollingState> castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectIsInRagDollingState>(eventData);
+		boost::shared_ptr<EventDataGameObjectIsInRagDollingState> castEventData =
+			boost::static_pointer_cast<NOWA::EventDataGameObjectIsInRagDollingState>(eventData);
 
-		ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::gameObjectIsInRagDollStateDelegate", _1(castEventData),
-		{
-			// if this game object has an physics rag doll component and its in ragdolling state, no animation must be processed, else the skeleton will throw apart!
-			unsigned long id = castEventData->getGameObjectId();
-			NOWA::GameObject * gameObject = Ogre::any_cast<NOWA::GameObject*>(this->entity->getUserObjectBindings().getUserAny());
-			if (nullptr != gameObject)
+		// 2. Capture the raw Entity pointer.
+		// While the shared_ptr to 'self' ensures the component is alive, the Ogre::Entity* // itself may be safer to capture explicitly than rely on 'self->entity'.
+		Ogre::v1::Entity* safeEntity = this->entity;
+
+		ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::gameObjectIsInRagDollStateDelegate", _2(castEventData, safeEntity),
 			{
-				if (gameObject->getId() == id)
+				// Use the captured 'self' and 'safeEntity' pointers instead of 'this' and 'this->entity'.
+				// Check both pointers for validity (although 'self' should be valid due to the shared_ptr).
+				if (safeEntity)
 				{
-					this->canAnimate = !castEventData->getIsInRagDollingState();
+					unsigned long id = castEventData->getGameObjectId();
+
+					// Access the GameObject via the safe, captured Entity pointer
+					NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(safeEntity->getUserObjectBindings().getUserAny());
+
+					if (nullptr != gameObject)
+					{
+						if (gameObject->getId() == id)
+						{
+							// Update the state on the safe 'self' component pointer
+							this->canAnimate = !castEventData->getIsInRagDollingState();
+						}
+					}
 				}
-			}
-		});
+			});
 	}
 	
 	Ogre::v1::AnimationState* AnimationBlender::getAnimationState(AnimID animationId)
