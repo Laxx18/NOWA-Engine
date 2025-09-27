@@ -7997,25 +7997,25 @@ namespace NOWA
 
 	void setActivated(CameraComponent* instance, bool activated)
 	{
-		// NOWA::AppStateManager::getSingletonPtr()->bStall = true;
+#if 0
+		NOWA::AppStateManager::getSingletonPtr()->bStall = true;
 		NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
 		auto ptrFunction = [instance, activated]()
 		{
-			//auto closureFunction = [instance, activated](Ogre::Real weight)
-			//{
-			//	// ENQUEUE_RENDER_COMMAND_MULTI_WAIT_NO_THIS("Camera::setActivated from Lua", _2(instance, activated),
-			//	// {
-			//	instance->setActivated(activated);
-			//	// NOWA::AppStateManager::getSingletonPtr()->bStall = false;
-			//	// });
-			//};
-			//Ogre::String id = instance->getOwner()->getName() + "CameraComponent::setActivated";
-			//NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
-			instance->setActivated(activated);
+			// GraphicsModule::RenderCommand renderCommand = [instance, activated]()
+			// {
+				instance->setActivated(activated);
+				NOWA::AppStateManager::getSingletonPtr()->bStall = false;
+			// };
+
+			// NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "Camera::setActivated from Lua");
 		};
 		NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
 		delayProcess->attachChild(closureProcess);
 		NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+#else
+		instance->setActivated(activated);
+#endif
 	}
 
 	void bindCameraComponent(lua_State* lua)
@@ -8041,6 +8041,7 @@ namespace NOWA
 			.def("getCameraPosition", &CameraComponent::getCameraPosition)
 			.def("setCameraDegreeOrientation", &CameraComponent::setCameraDegreeOrientation)
 			.def("getCameraDegreeOrientation", &CameraComponent::getCameraDegreeOrientation)
+			.def("setAspectRatio", &CameraComponent::setAspectRatio)
 		];
 
 		AddClassToCollection("CameraComponent", "class inherits GameObjectComponent", CameraComponent::getStaticInfoText());
@@ -8056,6 +8057,7 @@ namespace NOWA
 		AddClassToCollection("CameraComponent", "void setFovy(float angle)", "Sets the field of view angle for the camera.");
 		AddClassToCollection("CameraComponent", "float getFovy()", "Gets the field of view angle for the camera.");
 		AddClassToCollection("CameraComponent", "Camera getCamera()", "Gets the used camera pointer for direct manipulation.");
+		AddClassToCollection("CameraComponent", "void setAspectRatio(float aspectRatio)", "Sets the aspect ratio for the camera. Default is 4:3 (1.3333).");
 		// AddClassToCollection("CameraComponent", "void setWorkspaceName(String workspaceName)", "Sets the workspace name to use for rendering. Possible values are e.g. NOWAPbsWorkspace, NOWASkyWorkspace, NOWASkyReflectionWorkspace, NOWASkyPlanarReflectionWorkspace, NOWABackgroundPlanarReflectionWorkspace, NOWATerraWorkspace, NOWABackgroundWorkspace");
 		// AddClassToCollection("CameraComponent", "String getWorkspaceName()", "Gets the currently used workspace name to use for rendering.");
 		// AddClassToCollection("CameraComponent", "void setSkyBoxName(String skyBoxName)", "Sets the sky box name. Note: Only usable when workspace is set to  NOWASkyWorkspace, NOWASkyReflectionWorkspace, NOWASkyPlanarReflectionWorkspace, NOWATerraWorkspace");

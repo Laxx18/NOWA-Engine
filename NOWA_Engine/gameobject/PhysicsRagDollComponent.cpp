@@ -519,7 +519,7 @@ namespace NOWA
 		// On disconnect, the debug data must be hidden in any case, because almost everything will be destroyed
 		if (false == this->ragDataList.empty())
 		{
-			ENQUEUE_RENDER_COMMAND_MULTI("PhysicsRagDollComponent::internalShowDebugData", _1(activate),
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::internalShowDebugData", _1(activate),
 			{
 				for (auto& it = this->ragDataList.begin(); it != this->ragDataList.end(); ++it)
 				{
@@ -550,7 +550,7 @@ namespace NOWA
 		{
 			if (nullptr != this->physicsBody)
 			{
-				ENQUEUE_RENDER_COMMAND_MULTI("PhysicsRagDollComponent::showDebugData", _1(activate),
+				ENQUEUE_RENDER_COMMAND_MULTI_WAIT("PhysicsRagDollComponent::showDebugData", _1(activate),
 				{
 					if (true == activate)
 					{
@@ -1580,7 +1580,10 @@ namespace NOWA
 
 		if (true == this->isSimulating)
 		{
-			this->internalApplyState();
+			ENQUEUE_RENDER_COMMAND_WAIT("PhysicsRagDollComponent::internalApplyState",
+			{
+				this->internalApplyState();
+			});
 		}
 	}
 
@@ -1825,32 +1828,32 @@ namespace NOWA
 		//	//}
 		//}
 
-		while (this->ragDataList.size() > 0)
+		ENQUEUE_RENDER_COMMAND_WAIT("PhysicsRagDollComponent::endRagdolling",
 		{
-			RagBone* ragBone = this->ragDataList.back().ragBone;
-			delete ragBone;
-			this->ragDataList.pop_back();
-		}
-		this->ragDataList.clear();
-
-		if (nullptr != this->rootJointCompPtr)
-		{
-			this->rootJointCompPtr.reset();
-		}
-
-		boost::shared_ptr<TagPointComponent> tagPointCompPtr = nullptr;
-		size_t i = 0;
-		do
-		{
-			tagPointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TagPointComponent>(i++));
-			if (nullptr != tagPointCompPtr)
+			while (this->ragDataList.size() > 0)
 			{
-				tagPointCompPtr->disconnect();
+				RagBone* ragBone = this->ragDataList.back().ragBone;
+				delete ragBone;
+				this->ragDataList.pop_back();
 			}
-		} while (nullptr != tagPointCompPtr);
+			this->ragDataList.clear();
 
-		ENQUEUE_RENDER_COMMAND("PhysicsRagDollComponent::endRagdolling",
-		{
+			if (nullptr != this->rootJointCompPtr)
+			{
+				this->rootJointCompPtr.reset();
+			}
+
+			boost::shared_ptr<TagPointComponent> tagPointCompPtr = nullptr;
+			size_t i = 0;
+			do
+			{
+				tagPointCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<TagPointComponent>(i++));
+				if (nullptr != tagPointCompPtr)
+				{
+					tagPointCompPtr->disconnect();
+				}
+			} while (nullptr != tagPointCompPtr);
+
 			this->skeleton->unload();
 			// this->skeleton->reload();
 			this->skeleton->load();

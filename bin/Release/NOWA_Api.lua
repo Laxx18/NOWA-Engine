@@ -3901,6 +3901,14 @@ return {
 				args = "()",
 				returns = "(Camera)",
 				valuetype = "Camera"
+			},
+			setAspectRatio =
+			{
+				type = "method",
+				description = "Sets the aspect ratio for the camera. Default is 4:3 (1.3333).",
+				args = "(number aspectRatio)",
+				returns = "(nil)",
+				valuetype = "nil"
 			}
 		}
 	},

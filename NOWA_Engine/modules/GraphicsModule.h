@@ -13,6 +13,7 @@
 #include <vector>
 #include <array>
 #include <thread>
+#include <atomic>
 
 #include "utilities/MathHelper.h"
 #include "utilities/concurrentqueue.h"
@@ -158,16 +159,42 @@ namespace NOWA
             bool isNew = false;
         };
 
-        struct TrackedClosure
+        // Closure command structure for the queue
+        struct ClosureCommand
         {
             Ogre::String uniqueName;
-
-            // Generic closure for drawing - called with interpolation weight
-            std::function<void(Ogre::Real)> closureFuncs[NUM_TRANSFORM_BUFFERS];
-
-            bool active = false;
-            bool isNew = false;
+            std::function<void(Ogre::Real)> closureFunc;
             bool fireAndForget = true;
+            bool isUpdate = false;  // true for updates, false for new closures
+            bool isRemoval = false; // true for removal commands
+
+            ClosureCommand() = default;
+
+            ClosureCommand(const Ogre::String& name, std::function<void(Ogre::Real)> func, bool fireForget = true, bool update = false, bool removal = false)
+                : uniqueName(name)
+                , closureFunc(std::move(func))
+                , fireAndForget(fireForget)
+                , isUpdate(update)
+                , isRemoval(removal)
+            {
+
+            }
+        };
+
+        // Persistent closure for non-fire-and-forget closures
+        struct PersistentClosure
+        {
+            Ogre::String uniqueName;
+            std::function<void(Ogre::Real)> closureFunc;
+            bool active = true;
+
+            PersistentClosure() = default;
+
+            PersistentClosure(const Ogre::String& name, std::function<void(Ogre::Real)> func)
+                : uniqueName(name), closureFunc(std::move(func))
+            {
+
+            }
         };
 
         ////////////////////////////////////////////////////////////////
@@ -184,6 +211,8 @@ namespace NOWA
             bool promiseAlreadyFulfilled = false;
         };
     public:
+        void clearAllClosures(void);
+
         void doCleanup(void);
 
         bool getIsRunning(void) const;
@@ -414,12 +443,6 @@ namespace NOWA
         void updateTrackedDatablockValue(Ogre::HlmsDatablock* datablock, const Ogre::ColourValue& initialValue, const Ogre::ColourValue& targetValue, std::function<void(Ogre::ColourValue)> applyFunc,
             std::function<Ogre::ColourValue(const Ogre::ColourValue&, const Ogre::ColourValue&, Ogre::Real)> interpFunc);
 
-        void addTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc);
-
-        void removeTrackedClosure(const Ogre::String& uniqueName);
-
-        void updateTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget = true);
-
         // Advance to the next transform buffer (called by logic system)
         void advanceTransformBuffer(void);
 
@@ -451,8 +474,6 @@ namespace NOWA
 
         size_t getPreviousTrackedDatablockIdx(void) const;
 
-        size_t GraphicsModule::getPreviousTrackedClosureIdx(void) const;
-
         void enableDebugVisualization(bool enable);
 
         void dumpBufferState(void) const;
@@ -462,6 +483,42 @@ namespace NOWA
         void advanceFrameAndDestroyOld(void);
 
         bool hasPendingDestroyCommands(void) const;
+
+        /*
+        * // Example of persistent closure (non-fire-and-forget)
+        *    void SomeClass::setupPersistentEffect()
+        *    {
+        *        auto persistentClosure = [this](Ogre::Real weight)
+        *        {
+        *            // This closure will be executed every frame until removed
+        *            this->updateSomeEffect(weight);
+        *        };
+        *
+        *        Ogre::String id = "SomeClass::persistentEffect";
+        *        // false = not fire-and-forget, will persist until explicitly removed
+        *        NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, persistentClosure, false);
+        *    }
+        *
+        *    // Remove persistent closure when no longer needed
+        *    void SomeClass::cleanup()
+        *    {
+        *        NOWA::GraphicsModule::getInstance()->removeTrackedClosure("SomeClass::persistentEffect");
+        *    }
+        */
+        // Called from logic thread - completely lock-free
+        void updateTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget = true);
+
+        // Called from logic thread - completely lock-free
+        void removeTrackedClosure(const Ogre::String& uniqueName);
+
+        // Called from render thread - processes all queued commands
+        void processClosureCommands(Ogre::Real interpolationWeight);
+
+        // Called from render thread - executes all active closures
+        void executeActiveClosures(Ogre::Real interpolationWeight);
+
+        // Combined method called from render thread
+        void updateAndExecuteClosures(Ogre::Real interpolationWeight);
 	public:
         static constexpr size_t NUM_DESTROY_SLOTS = 4;
 
@@ -488,7 +545,12 @@ namespace NOWA
 
         TrackedDatablock* findTrackedDatablock(Ogre::HlmsDatablock* datablock);
 
-        GraphicsModule::TrackedClosure* findTrackedClosure(const Ogre::String& uniqueName);
+        // Internal helper methods (render thread only)
+        void processSingleCommand(const ClosureCommand& command, Ogre::Real interpolationWeight);
+        void addPersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc);
+        void updatePersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc);
+        void removePersistentClosure(const Ogre::String& uniqueName);
+
 	private:
         std::thread renderThread;
         bool bRunning;
@@ -518,15 +580,26 @@ namespace NOWA
         std::vector<TrackedDatablock> trackedDatablocks;
         std::unordered_map<Ogre::HlmsDatablock*, size_t> datablockToIndexMap;
 
-        std::vector<TrackedClosure> trackedClosures;
-        std::unordered_map<Ogre::String, size_t> closureToIndexMap;
+        // Lock-free concurrent queue for closure commands
+        moodycamel::ConcurrentQueue<ClosureCommand> closureQueue;
+
+        // Storage for persistent closures (only accessed by render thread)
+        std::unordered_map<Ogre::String, PersistentClosure> persistentClosures;
+
+        // Producer token for better performance (used by logic thread)
+        moodycamel::ProducerToken producerToken;
+
+        // Consumer token for better performance (used by render thread)  
+        moodycamel::ConsumerToken consumerToken;
+
+        // Atomic flag to ensure proper initialization
+        std::atomic<bool> queueInitialized{ false };
 
         size_t currentTransformNodeIdx;
         size_t currentTransformCameraIdx;
         size_t currentTransformOldBoneIdx;
         size_t currentTransformPassIdx;
         size_t currentTrackedDatablockIdx;
-        size_t currentTrackedClosureIdx;
         Ogre::Real interpolationWeight;
 
         Ogre::Real accumTimeSinceLastLogicFrame;

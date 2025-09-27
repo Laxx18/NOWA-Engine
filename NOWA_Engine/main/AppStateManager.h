@@ -171,6 +171,8 @@ namespace NOWA
 
 		void enqueueAndWait(LogicCommand&& command);
 
+		void clearLogicQueue(void);
+
 		// Sets the logic thread ID
 		void markCurrentThreadAsLogicThread(void);
 

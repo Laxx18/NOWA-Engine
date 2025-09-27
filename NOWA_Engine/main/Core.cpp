@@ -69,6 +69,27 @@
 #include "OgreProfiler.h"
 #endif
 
+namespace
+{
+	// Call this when you want to resync the OS cursor with MyGUI
+	void syncMyGUIMouse(HWND hwnd)
+	{
+		if (!MyGUI::InputManager::getInstancePtr())
+			return;
+
+		// Get current OS cursor position (in screen coordinates)
+		POINT p;
+		if (!GetCursorPos(&p))
+			return;
+
+		// Convert to client coordinates
+		ScreenToClient(hwnd, &p);
+
+		// Inject directly into MyGUI
+		MyGUI::InputManager::getInstance().injectMouseMove(p.x, p.y, 0);
+	}
+}
+
 namespace NOWA
 {
 	ResourceLoadingListenerImpl::ResourceLoadingListenerImpl()
@@ -1873,6 +1894,8 @@ namespace NOWA
 			const OIS::MouseState& ms = InputDeviceCore::getSingletonPtr()->getMouse()->getMouseState();
 			ms.width = width;
 			ms.height = height;
+
+			syncMyGUIMouse(reinterpret_cast<HWND>(this->getWindowHandle()));
 		}
 	}
 

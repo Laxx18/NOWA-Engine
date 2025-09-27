@@ -957,7 +957,7 @@ namespace OgreAL {
 	void SoundManager::updateSounds()
 	{
 		// Lock Mutex
-		OGREAL_LOCK_AUTO_MUTEX
+		// OGREAL_LOCK_AUTO_MUTEX
 
 		
 		for (auto it = mSoundContainer.cbegin(); it != mSoundContainer.cend(); ++it)

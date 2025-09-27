@@ -357,7 +357,7 @@ namespace NOWA
 								throw Ogre::Exception(Ogre::Exception::ERR_INTERNAL_ERROR, "[SpawnComponent] Clone operation returned null!", "NOWA");
 							}
 
-							clonedGameObjectPtr->setVisible(true);
+							// clonedGameObjectPtr->setVisible(true);
 
 							if (auto physicsCompPtr = makeStrongPtr(clonedGameObjectPtr->getComponent<PhysicsComponent>()))
 							{

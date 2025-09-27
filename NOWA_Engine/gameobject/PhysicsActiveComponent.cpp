@@ -353,6 +353,8 @@ namespace NOWA
 
 	bool PhysicsActiveComponent::disconnect(void)
 	{
+		PhysicsComponent::disconnect();
+
 		this->up = Ogre::Vector3::ZERO;
 		this->forward = Ogre::Vector3::ZERO;
 		this->right = Ogre::Vector3::ZERO;

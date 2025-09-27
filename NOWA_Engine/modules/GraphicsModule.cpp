@@ -11,6 +11,86 @@ namespace
     std::chrono::milliseconds g_defaultTimeout(5000); // 5 seconds
 }
 
+#if 0
+// Additional performance optimizations and usage patterns
+
+namespace NOWA
+{
+
+    // Batch closure updates for better performance
+    class ClosureBatch
+    {
+    private:
+        std::vector<GraphicsModule::ClosureCommand> commands;
+
+    public:
+        void addClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget = true)
+        {
+            commands.emplace_back(uniqueName, std::move(closureFunc), fireAndForget);
+        }
+
+        void submitBatch()
+        {
+            auto* graphicsModule = GraphicsModule::getInstance();
+            for (auto& command : commands)
+            {
+                graphicsModule->updateTrackedClosure(command.uniqueName, std::move(command.closureFunc), command.fireAndForget);
+            }
+            commands.clear();
+        }
+    };
+
+    // Example usage for batch operations
+    void ParticleSystem::updateAllParticles()
+    {
+        ClosureBatch batch;
+
+       for (size_t i = 0; i < particles.size(); ++i) 
+       {
+            auto particleClosure = [this, i](Ogre::Real weight) {
+                this->updateParticle(i, weight);
+            };
+
+            batch.addClosure("Particle_" + std::to_string(i), particleClosure, true);
+        }
+
+        batch.submitBatch();
+    }
+
+    // Memory-efficient closure for frequently updated objects
+    class ClosurePool
+    {
+    private:
+        std::vector<std::function<void(Ogre::Real)>> closurePool;
+        std::atomic<size_t> poolIndex{ 0 };
+
+    public:
+        ClosurePool(size_t poolSize = 1000)
+        {
+            closurePool.reserve(poolSize);
+        }
+
+        template<typename Func>
+        std::function<void(Ogre::Real)> getPooledClosure(Func&& func)
+        {
+            // Reuse closure objects to reduce allocations
+            size_t index = poolIndex.fetch_add(1) % closurePool.size();
+            if (index < closurePool.size())
+            {
+                closurePool[index] = std::forward<Func>(func);
+                return closurePool[index];
+            }
+            else
+            {
+                return std::forward<Func>(func);
+            }
+        }
+    };
+
+} // namespace NOWA
+
+#endif
+
 namespace NOWA
 {
     using namespace RenderGlobals;
@@ -25,16 +105,20 @@ namespace NOWA
         currentTransformOldBoneIdx(0),
         currentTransformPassIdx(0),
         currentTrackedDatablockIdx(0),
-        currentTrackedClosureIdx(0),
         interpolationWeight(0.0f),
         accumTimeSinceLastLogicFrame(0.0f),
         frameTime(1.0f / 60.0f),
         debugVisualization(false),
         currentDestroySlot(0),
-        isRunningWaitClosure(false)
+        isRunningWaitClosure(false),
+        closureQueue(),
+        producerToken(closureQueue),
+        consumerToken(closureQueue)
     {
         // Reserve some space for tracked nodes to avoid frequent reallocations
         this->trackedNodes.reserve(100);
+
+        this->queueInitialized.store(true);
     }
 
     GraphicsModule::~GraphicsModule()
@@ -187,7 +271,6 @@ namespace NOWA
         this->trackedOldBones.clear();
         this->trackedPasses.clear();
         this->trackedDatablocks.clear();
-        this->trackedClosures.clear();
 
 		this->bRunning = false;
 		this->timeoutEnabled = false;
@@ -198,7 +281,6 @@ namespace NOWA
         this->currentTransformOldBoneIdx = 0;
         this->currentTransformPassIdx = 0;
         this->currentTrackedDatablockIdx = 0;
-        this->currentTrackedClosureIdx = 0;
 
 		this->accumTimeSinceLastLogicFrame = 0.0f;
 
@@ -206,6 +288,27 @@ namespace NOWA
 		this->debugVisualization = false;
 		this->currentDestroySlot = 0;
 		this->isRunningWaitClosure = false;
+    }
+
+    void GraphicsModule::clearAllClosures(void)
+    {
+        // Clear the concurrent queue - drain all pending commands
+        ClosureCommand command;
+        size_t clearedCommands = 0;
+        while (closureQueue.try_dequeue(consumerToken, command))
+        {
+            ++clearedCommands;
+        }
+
+        // Clear all persistent closures
+        persistentClosures.clear();
+
+        // Log the cleanup for debugging
+        if (clearedCommands > 0)
+        {
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Cleared " + Ogre::StringConverter::toString(clearedCommands) + " queued closure commands and " + Ogre::StringConverter::toString(persistentClosures.size()) +
+                " persistent closures", Ogre::LML_NORMAL);
+        }
     }
 
     void GraphicsModule::doCleanup(void)
@@ -240,8 +343,7 @@ namespace NOWA
 
         // If we're already on the render thread AND processing a command, 
         // execute this command immediately rather than enqueuing it
-        // if (this->isRenderThread() && g_renderCommandDepth > 0)
-        if (true == this->isRenderThread() || true == RenderGlobals::g_inLogicCommand)
+        if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
         {
             // Log direct execution
             this->logCommandEvent("Executing command directly on render thread", Ogre::LML_TRIVIAL);
@@ -462,7 +564,7 @@ namespace NOWA
 
         // If already on the render thread or in the middle of destroy closure, wait must not be called! Else closure of destroy etc. will be interupted! so execute directly without wait in that case.
         // Or detect if already in a logic->render call chain
-        if (true == this->isRenderThread() || true == RenderGlobals::g_inLogicCommand)
+        if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
         {
             try
             {
@@ -782,17 +884,6 @@ namespace NOWA
         {
             // Return pointer to the tracked datablock in the vector
             return &this->trackedDatablocks[it->second];
-        }
-        return nullptr;
-    }
-
-    GraphicsModule::TrackedClosure* GraphicsModule::findTrackedClosure(const Ogre::String& uniqueName)
-    {
-        // O(1) lookup using the hash map
-        auto it = this->closureToIndexMap.find(uniqueName);
-        if (it != this->closureToIndexMap.end())
-        {
-            return &this->trackedClosures[it->second];
         }
         return nullptr;
     }
@@ -1322,80 +1413,167 @@ namespace NOWA
         trackedDatablock->active = true;
     }
 
-    void GraphicsModule::addTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc)
-    {
-        if (this->findTrackedClosure(uniqueName))
-        {
-            return;
-        }
-
-        TrackedClosure newTrackedClosure;
-        newTrackedClosure.uniqueName = uniqueName;
-        newTrackedClosure.active = true;
-        newTrackedClosure.isNew = true;
-
-        // Initialize all buffers with the same closure function (like node transforms)
-        for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-        {
-            newTrackedClosure.closureFuncs[i] = closureFunc;
-        }
-
-        // Add to tracked closures vector
-        size_t newIndex = this->trackedClosures.size();
-        this->trackedClosures.push_back(newTrackedClosure);
-
-        // Add to hash map for fast lookups
-        this->closureToIndexMap[uniqueName] = newIndex;
-    }
-
     void GraphicsModule::removeTrackedClosure(const Ogre::String& uniqueName)
     {
-        if (this->trackedClosures.empty())
+        // Ensure queue is initialized
+        if (!this->queueInitialized.load())
         {
             return;
         }
 
-        auto it = this->closureToIndexMap.find(uniqueName);
-        if (it != this->closureToIndexMap.end())
+        // Create removal command
+        ClosureCommand command(uniqueName, nullptr, true, false, true);
+
+        // Use producer token for better performance
+        bool success = this->closureQueue.enqueue(producerToken, std::move(command));
+
+        if (false == success)
         {
-            size_t indexToRemove = it->second;
-            size_t lastIndex = this->trackedClosures.size() - 1;
-
-            // If this is not the last element, move the last element to this position
-            if (indexToRemove != lastIndex)
-            {
-                // Move the last element to the position of the removed element
-                this->trackedClosures[indexToRemove] = std::move(this->trackedClosures[lastIndex]);
-
-                // Update the index in the hash map for the moved element
-                this->closureToIndexMap[this->trackedClosures[indexToRemove].uniqueName] = indexToRemove;
-            }
-
-            // Remove the last element (now duplicated or the one we want to remove)
-            this->trackedClosures.pop_back();
-
-            // Remove from the hash map
-            this->closureToIndexMap.erase(it);
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Failed to enqueue removal command for: " + uniqueName, Ogre::LML_CRITICAL);
         }
     }
 
     void GraphicsModule::updateTrackedClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc, bool fireAndForget)
     {
-        // If closure isn't tracked yet, add it
-        GraphicsModule::TrackedClosure* trackedClosure = this->findTrackedClosure(uniqueName);
-
-        // If datablock isn't tracked yet, add it
-        if (nullptr == trackedClosure)
+        // Ensure queue is initialized
+        if (!this->queueInitialized.load())
         {
-            this->addTrackedClosure(uniqueName, closureFunc);
-            trackedClosure = this->findTrackedClosure(uniqueName);
+            return;
         }
 
-        // Update the closure function in current buffer only
-        // This is key to the mutex-free approach - logic thread only writes to current buffer
-        trackedClosure->closureFuncs[this->currentTrackedClosureIdx] = std::move(closureFunc);
-        trackedClosure->active = true;
-        trackedClosure->fireAndForget = fireAndForget;
+        // Create command and enqueue it - completely lock-free
+        ClosureCommand command(uniqueName, std::move(closureFunc), fireAndForget, true, false);
+
+        // Use producer token for better performance
+        bool success = this->closureQueue.enqueue(producerToken, std::move(command));
+
+        if (!success)
+        {
+            // Queue is full or memory allocation failed
+            // In practice, this should rarely happen with moodycamel::ConcurrentQueue
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Failed to enqueue closure command for: " + uniqueName, Ogre::LML_CRITICAL);
+        }
+    }
+
+    void GraphicsModule::processClosureCommands(Ogre::Real interpolationWeight)
+    {
+        // Process all available commands in the queue
+        ClosureCommand command;
+
+        // Use consumer token for better performance
+        // Process up to 1000 commands per frame to prevent blocking
+        size_t processedCount = 0;
+        const size_t maxCommandsPerFrame = 1000;
+
+        while (processedCount < maxCommandsPerFrame && this->closureQueue.try_dequeue(consumerToken, command))
+        {
+            this->processSingleCommand(command, interpolationWeight);
+            ++processedCount;
+        }
+
+        // Log if we hit the limit (might indicate a problem)
+        if (processedCount >= maxCommandsPerFrame)
+        {
+            Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Warning: Processed maximum closure commands per frame (" + Ogre::StringConverter::toString(maxCommandsPerFrame) + ")", Ogre::LML_NORMAL);
+        }
+    }
+
+    void GraphicsModule::executeActiveClosures(Ogre::Real interpolationWeight)
+    {
+        // Execute all persistent closures
+        auto it = this->persistentClosures.begin();
+        while (it != this->persistentClosures.end())
+        {
+            if (it->second.active && it->second.closureFunc)
+            {
+                try
+                {
+                    it->second.closureFunc(interpolationWeight);
+                    ++it;
+                }
+                catch (const std::exception& e)
+                {
+                    // Log error and remove problematic closure
+                    Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Error executing closure '" + it->first + "': " + e.what(), Ogre::LML_CRITICAL);
+                    it = this->persistentClosures.erase(it);
+                }
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
+    void GraphicsModule::updateAndExecuteClosures(Ogre::Real interpolationWeight)
+    {
+        // First process all queued commands
+        this->processClosureCommands(interpolationWeight);
+
+        // Then execute all active closures
+        this->executeActiveClosures(interpolationWeight);
+    }
+
+    void GraphicsModule::processSingleCommand(const ClosureCommand& command, Ogre::Real interpolationWeight)
+    {
+        if (command.isRemoval)
+        {
+            // Handle removal command
+            this->removePersistentClosure(command.uniqueName);
+        }
+        else if (command.fireAndForget)
+        {
+            // Execute fire-and-forget closure immediately
+            if (command.closureFunc)
+            {
+                try
+                {
+                    command.closureFunc(interpolationWeight);
+                }
+                catch (const std::exception& e)
+                {
+                    Ogre::LogManager::getSingleton().logMessage("[GraphicsModule] Error executing fire-and-forget closure '" + command.uniqueName + "': " + e.what(), Ogre::LML_CRITICAL);
+                }
+            }
+        }
+        else
+        {
+            // Handle persistent closure
+            if (command.isUpdate)
+            {
+                this->updatePersistentClosure(command.uniqueName, command.closureFunc);
+            }
+            else
+            {
+                this->addPersistentClosure(command.uniqueName, command.closureFunc);
+            }
+        }
+    }
+
+    void GraphicsModule::addPersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc)
+    {
+        // Add or update persistent closure
+        this->persistentClosures[uniqueName] = PersistentClosure(uniqueName, std::move(closureFunc));
+    }
+
+    void GraphicsModule::updatePersistentClosure(const Ogre::String& uniqueName, std::function<void(Ogre::Real)> closureFunc)
+    {
+        auto it = this->persistentClosures.find(uniqueName);
+        if (it != this->persistentClosures.end())
+        {
+            it->second.closureFunc = std::move(closureFunc);
+            it->second.active = true;
+        }
+        else
+        {
+            // If it doesn't exist, create it
+            this->addPersistentClosure(uniqueName, std::move(closureFunc));
+        }
+    }
+
+    void GraphicsModule::removePersistentClosure(const Ogre::String& uniqueName)
+    {
+        this->persistentClosures.erase(uniqueName);
     }
 
     size_t GraphicsModule::getPreviousTransformNodeIdx(void) const
@@ -1421,11 +1599,6 @@ namespace NOWA
     size_t GraphicsModule::getPreviousTrackedDatablockIdx(void) const
     {
         return (this->currentTrackedDatablockIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
-    }
-
-    size_t GraphicsModule::getPreviousTrackedClosureIdx(void) const
-    {
-        return (this->currentTrackedClosureIdx + NUM_TRANSFORM_BUFFERS - 1) % NUM_TRANSFORM_BUFFERS;
     }
 
     void GraphicsModule::enableDebugVisualization(bool enable)
@@ -1621,35 +1794,6 @@ namespace NOWA
             }
         }
 
-        // Advance closure buffer
-        size_t prevClosureIdx = this->currentTrackedClosureIdx;
-        this->currentTrackedClosureIdx = (this->currentTrackedClosureIdx + 1) % NUM_TRANSFORM_BUFFERS;
-
-        // For newly added closures, we need to copy the current closure to all buffers
-        // For existing closures, we copy the previous buffer to the new current buffer
-        for (auto& trackedClosure : this->trackedClosures)
-        {
-            if (true == trackedClosure.isNew)
-            {
-                // For new closures, initialize all buffers with current closure function
-                std::function<void(Ogre::Real)> currentClosure = trackedClosure.closureFuncs[this->currentTrackedClosureIdx];
-
-                for (size_t i = 0; i < NUM_TRANSFORM_BUFFERS; ++i)
-                {
-                    trackedClosure.closureFuncs[i] = currentClosure;
-                }
-
-                trackedClosure.isNew = false;
-            }
-            else if (true == trackedClosure.active)
-            {
-                // For existing active closures, copy from previous buffer to new current buffer
-                // This preserves the closure history like node transforms
-                trackedClosure.closureFuncs[this->currentTrackedClosureIdx] = trackedClosure.closureFuncs[prevClosureIdx];
-            }
-        }
-
-
         // Reset accumulated time for new frame
         this->accumTimeSinceLastLogicFrame = 0.0f;
     }
@@ -1795,29 +1939,8 @@ namespace NOWA
             trackedDatablock.applyFunc(result);
         }
 
-        // Update closures
-
-        // Get the previous buffer index (KEY CHANGE: read from previous buffer)
-        size_t prevClosureIdx = this->getPreviousTrackedClosureIdx();
-
-        // Execute all active closures from PREVIOUS buffer (thread-safe)
-        for (size_t i = 0; i < trackedClosures.size(); )
-        {
-            auto closure = trackedClosures[i];
-
-            this->logCommandEvent("Closure: " + closure.uniqueName + " fireAndForget: " + Ogre::StringConverter::toString(closure.fireAndForget), Ogre::LML_TRIVIAL);
-            // closure.closureFuncs[prevClosureIdx](weight);
-            closure.closureFuncs[this->currentTrackedClosureIdx](this->interpolationWeight);
-
-            if (true == closure.fireAndForget)
-            {
-                this->removeTrackedClosure(closure.uniqueName);
-            }
-            else
-            {
-                ++i;
-            }
-        }
+        // Update and execute all closures - completely lock-free
+        this->updateAndExecuteClosures(this->interpolationWeight);
     }
 
     void GraphicsModule::calculateInterpolationWeight(void)

@@ -24,7 +24,6 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C3349C81-674F-3303-8289-7EEFAD6963E3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>FParser</ProjectName>
     <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
@@ -58,7 +57,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <_ProjectFileVersion>10.0</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(NOWA)/bin/$(configuration)/libs/</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">obj/$(Configuration)/</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_d</TargetName>
@@ -267,63 +266,6 @@
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <CustomBuild Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeLists.txt">
-      <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-D:\Programme\CMake\bin\cmake.exe -SC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 -BC:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1 --check-stamp-file C:/Users/lukas/Documents/NOWA-Engine/external/fparser4.5.1/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeCXXCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeRCCompiler.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\3.24.2\CMakeSystem.cmake;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\cmake\fparserConfig.cmake.in;C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpconfig.hh.in;D:\Programme\CMake\share\cmake-3.24\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCXXInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeCommonLanguageInclude.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeGenericSystem.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeInitializeConfigs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeLanguageInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakePackageConfigHelpers.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeRCInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInformation.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CMakeSystemSpecificInitialize.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckFunctionExists.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFile.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\CheckIncludeFileCXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\CMakeCommonCompilerMacros.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Compiler\MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\GNUInstallDirs.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-C.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows-MSVC.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\Windows.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\Platform\WindowsPaths.cmake;D:\Programme\CMake\share\cmake-3.24\Modules\WriteBasicConfigVersionFile.cmake;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
-    </CustomBuild>
-  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fparser.cc" />
     <ClCompile Include="C:\Users\lukas\Documents\NOWA-Engine\external\fparser4.5.1\fpoptimizer.cc" />

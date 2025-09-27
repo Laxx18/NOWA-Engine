@@ -628,37 +628,6 @@ namespace NOWA
 
 	bool InputDeviceCore::mouseMoved(const OIS::MouseEvent& e)
 	{
-		// Useless, and working with abs dangerous, as e.g. 0.8 the mouse can never be moved to right corner!
-		//Ogre::Vector3 mouseSpeed;
-		//mouseSpeed.x = evt.state.X.rel * 0.2f;
-		//mouseSpeed.y = evt.state.Y.rel * 0.2f;
-		//mouseSpeed.z = evt.state.Z.rel/* / 100*/;
-
-		//float MOUSE_SPEED = 0.5;
-
-		////this is for mouse speed
-		//mouseSpeed.x = evt.state.X.rel * MOUSE_SPEED;
-		//mouseSpeed.y = evt.state.Y.rel * MOUSE_SPEED;
-		//mouseSpeed.z = evt.state.Z.rel / 100;
-
-		////this is for mouse coordinate in pixels
-		///*key.mPosAbs.x += key.mSpeed.x;
-		//key.mPosAbs.y += key.mSpeed.y;*/
-
-		////limits
-		//if (key.mPosAbs.x > viewport->getActualWidth())
-		//	key.mPosAbs.x = viewport->getActualWidth();
-		//if (key.mPosAbs.y > viewport->getActualHeight())
-		//	key.mPosAbs.y = viewport->getActualHeight();
-		//if (key.mPosAbs.x < 1)
-		//	key.mPosAbs.x = 1;
-		//if (key.mPosAbs.y < 1)
-		//	key.mPosAbs.y = 1;
-
-		////this is mouse coordinate as 0-1 values
-		//key.mPos.x = key.mPosAbs.x / ou.render.getScreenWidth();
-		//key.mPos.y = key.mPosAbs.y / ou.render.getScreenHeight();
-
 		int mX = e.state.X.abs;
 		int mY = e.state.Y.abs;
 		int mZ = e.state.Z.abs;

@@ -200,6 +200,7 @@ namespace NOWA
 			// end all present states
 			while (false == this->activeStateStack.empty())
 			{
+				NOWA::GraphicsModule::getInstance()->clearAllClosures();
 				this->activeStateStack.back()->exit();
 
 				AppState* oldState = this->activeStateStack.back();
@@ -306,6 +307,15 @@ namespace NOWA
 
 		// Now wait for the logic thread to execute the command and set the promise
 		future.get();  // This will re-throw exceptions here
+	}
+
+	void AppStateManager::clearLogicQueue(void)
+	{
+		LogicCommand commandEntry;
+		while (this->queue.try_dequeue(commandEntry))
+		{
+
+		}
 	}
 
 	void AppStateManager::markCurrentThreadAsLogicThread(void)
@@ -441,6 +451,7 @@ namespace NOWA
 		if (false == this->activeStateStack.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
+			NOWA::GraphicsModule::getInstance()->clearAllClosures();
 			this->activeStateStack.back()->exit();
 
 			this->bCanProcessRenderQueue = false;
@@ -526,6 +537,7 @@ namespace NOWA
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
 
 			oldState = this->activeStateStack.back();
+			NOWA::GraphicsModule::getInstance()->clearAllClosures();
 			this->activeStateStack.back()->exit();
 			this->activeStateStack.pop_back();
 		}
@@ -551,6 +563,7 @@ namespace NOWA
 		while (false == this->activeStateStack.empty())
 		{
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Exiting " + this->activeStateStack.back()->getName());
+			NOWA::GraphicsModule::getInstance()->clearAllClosures();
 			this->activeStateStack.back()->exit();
 
 			AppState* oldState = this->activeStateStack.back();

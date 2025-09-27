@@ -151,6 +151,8 @@ namespace NOWA
 
 		void setExcludeRenderCategories(const Ogre::String& excludeRenderCategories);
 
+		void setAspectRatio(Ogre::Real aspectRatio);
+
 		Ogre::String getExcludeRenderCategories(void) const;
 
 		Ogre::Camera* getCamera(void) const;

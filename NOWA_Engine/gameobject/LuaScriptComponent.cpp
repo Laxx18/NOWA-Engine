@@ -549,7 +549,7 @@ namespace NOWA
 				+ tempScriptName + "[""\"disconnect""\"] = function()\n\nend"
 				"\n\n"
 				+ "--" + tempScriptName + "[""\"update""\"] = function(dt)\n"
-				"\t--physicsActiveComponent:applyForce(Vector3(0, 20, 0));\n--end");
+				"\t--physicsActiveComponent:applyOmegaForce(Vector3(0, 10, 0));\n--end");
 
 			// http://blog.nuclex-games.com/tutorials/cxx/luabind-introduction/
 

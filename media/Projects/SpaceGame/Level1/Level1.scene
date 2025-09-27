@@ -870,7 +870,7 @@
 					<property type="2" name="ReferenceId" data="0"/>
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Active" data="false"/>
-					<property type="9" name="CameraPosition" data="-4.31602e+08 -4.31602e+08 -4.31602e+08"/>
+					<property type="9" name="CameraPosition" data="0 0 0"/>
 					<property type="9" name="CameraOrientation" data="0 0 0"/>
 					<property type="6" name="NearClipDistance" data="1"/>
 					<property type="6" name="FarClipDistance" data="100"/>

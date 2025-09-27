@@ -397,7 +397,7 @@ namespace NOWA
 		return this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 	}
 
-	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition, 
+	void GameObjectController::cloneWithCallback(GameObjectCreationCallback callback, const Ogre::String& originalGameObjectName, Ogre::SceneNode* parentNode, unsigned long targetId, const Ogre::Vector3& targetPosition,
 		const Ogre::Quaternion& targetOrientation, const Ogre::Vector3& targetScale, bool cloneDatablock)
 	{
 		GameObjectPtr originalGameObjectPtr = this->getGameObjectFromName(originalGameObjectName);
@@ -409,13 +409,35 @@ namespace NOWA
 		GameObjectPtr clonedGameObject;
 
 		auto closureFunction = [this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
-		{
-		// NOWA::GraphicsModule::getInstance()->enqueue([this, &clonedGameObject, originalGameObjectPtr, originalGameObjectName, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
-			clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
+			{
+				// 1. Perform the synchronous cloning and callback on the Render Thread
+				clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
-			callback(clonedGameObject);
-		// }, "GameObjectController::cloneWithCallback1");
-		};
+				// Run the user's logic (e.g., adding game components)
+				callback(clonedGameObject);
+
+				// Delays the visibility to prevent any transform jumps, if set in lua afterwards
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+				auto ptrFunction = [clonedGameObject, targetId]()
+					{
+						// 2. *** NEW FIX: Defer visibility toggle to the NEXT frame ***
+						if (clonedGameObject)
+						{
+							NOWA::GraphicsModule::RenderCommand showCommand = [clonedGameObject]()
+								{
+									clonedGameObject->setVisible(true);
+								};
+
+							// Use standard enqueue to run this command in the next frame's Render Thread cycle.
+							Ogre::String message = "Deferred_Show_Cloned_Object_" + Ogre::StringConverter::toString(targetId);
+							NOWA::GraphicsModule::getInstance()->enqueue(std::move(showCommand), message.data());
+						}
+					};
+				NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+				delayProcess->attachChild(closureProcess);
+				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			};
+
 		Ogre::String id = originalGameObjectName + "_GameObjectController::cloneWithCallback1_" + Ogre::StringConverter::toString(targetId);
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
@@ -429,13 +451,32 @@ namespace NOWA
 		}
 
 		auto closureFunction = [this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback](Ogre::Real weight)
-		{
-		// NOWA::GraphicsModule::getInstance()->enqueue([this, originalGameObjectPtr, originalGameObjectId, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock, callback]() {
-			GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
+			{
+				GameObjectPtr clonedGameObject = this->internalClone(originalGameObjectPtr, parentNode, targetId, targetPosition, targetOrientation, targetScale, cloneDatablock);
 
-			callback(clonedGameObject);
-		// }, "GameObjectController::cloneWithCallback2");
-		};
+				callback(clonedGameObject);
+
+				// Delays the visibility to prevent any transform jumps, if set in lua afterwards
+				NOWA::ProcessPtr delayProcess(new NOWA::DelayProcess(0.25f));
+				auto ptrFunction = [clonedGameObject, targetId]()
+					{
+						// 2. *** NEW FIX: Defer visibility toggle to the NEXT frame ***
+						if (clonedGameObject)
+						{
+							NOWA::GraphicsModule::RenderCommand showCommand = [clonedGameObject]()
+								{
+									clonedGameObject->setVisible(true);
+								};
+
+							// Use standard enqueue to run this command in the next frame's Render Thread cycle.
+							Ogre::String message = "Deferred_Show_Cloned_Object_" + Ogre::StringConverter::toString(targetId);
+							NOWA::GraphicsModule::getInstance()->enqueue(std::move(showCommand), message.data());
+						}
+					};
+				NOWA::ProcessPtr closureProcess(new NOWA::ClosureProcess(ptrFunction));
+				delayProcess->attachChild(closureProcess);
+				NOWA::ProcessManager::getInstance()->attachProcess(delayProcess);
+			};
 		Ogre::String id = originalGameObjectPtr->getName() + "_GameObjectController::cloneWithCallback2_" + Ogre::StringConverter::toString(targetId);
 		NOWA::GraphicsModule::getInstance()->updateTrackedClosure(id, closureFunction);
 	}
@@ -470,70 +511,63 @@ namespace NOWA
 
 		Ogre::MovableObject* clonedMovableObject = nullptr;
 
-		/*ENQUEUE_RENDER_COMMAND_MULTI_WAIT("GameObjectController::internalClone", _11(parentNode, &clonedSceneNode, position, orientation, scale, validatedName, sceneManager, 
-			&clonedMovableObject, originalMovableObject, originalSceneNode, originalGameObjectPtr), {*/
+		if (nullptr != parentNode)
+		{
+			clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos: " + Ogre::StringConverter::toString(position));
+			clonedSceneNode->setName(validatedName);
+			clonedSceneNode->setScale(Ogre::Vector3::UNIT_SCALE);
+		}
+		else
+		{
+			clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC);
+			// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos : " + Ogre::StringConverter::toString(position));
+			clonedSceneNode->setName(validatedName);
+			clonedSceneNode->setScale(Ogre::Vector3::UNIT_SCALE);
+		}
 
-			if (nullptr != parentNode)
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
+
+		if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
+		{
+			clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
+		}
+		else if (GameObject::ITEM == originalGameObjectPtr->getType())
+		{
+			clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
+		}
+		clonedMovableObject->setName(validatedName);
+		clonedSceneNode->attachObject(clonedMovableObject);
+		if (nullptr != clonedMovableObject)
+		{
+			if (GameObject::ENTITY == originalGameObjectPtr->getType())
 			{
-				clonedSceneNode = parentNode->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
-					position, orientation);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos: " + Ogre::StringConverter::toString(position));
-				clonedSceneNode->setName(validatedName);
-				clonedSceneNode->setScale(scale);
-			}
-			else
-			{
-				clonedSceneNode = sceneManager->getRootSceneNode()->createChildSceneNode(originalGameObjectPtr->isDynamic() ? Ogre::SCENE_DYNAMIC : Ogre::SCENE_STATIC,
-					position, orientation);
-				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] " + validatedName + ": clone Pos : " + Ogre::StringConverter::toString(position));
-				clonedSceneNode->setName(validatedName);
-				clonedSceneNode->setScale(scale);
-			}
-
-			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[GameObjectController]: Cloning game object name " + validatedName + " from the original name : " + originalGameObjectPtr->getName());
-
-
-			if (GameObject::ENTITY == originalGameObjectPtr->getType() || GameObject::SCENE_NODE == originalGameObjectPtr->getType())
-			{
-				clonedMovableObject = sceneManager->createEntity(static_cast<Ogre::v1::Entity*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
+				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
+				for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
+				{
+					const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
+					const Ogre::String* datablockName = datablock->getNameStr();
+					static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
+				}
 			}
 			else if (GameObject::ITEM == originalGameObjectPtr->getType())
 			{
-				clonedMovableObject = sceneManager->createItem(static_cast<Ogre::Item*>(originalMovableObject)->getMesh(), originalSceneNode->isStatic() ? Ogre::SCENE_STATIC : Ogre::SCENE_DYNAMIC);
-			}
-			clonedMovableObject->setName(validatedName);
-			clonedSceneNode->attachObject(clonedMovableObject);
-			if (nullptr != clonedMovableObject)
-			{
-				if (GameObject::ENTITY == originalGameObjectPtr->getType())
+				// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
+				for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
 				{
-					// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
-					for (unsigned int i = 0; i < static_cast<Ogre::v1::Entity*>(originalMovableObject)->getNumSubEntities(); i++)
-					{
-						const auto& datablock = static_cast<Ogre::v1::Entity*>(originalMovableObject)->getSubEntity(i)->getDatablock();
-						const Ogre::String* datablockName = datablock->getNameStr();
-						static_cast<Ogre::v1::Entity*>(clonedMovableObject)->getSubEntity(i)->setDatablock(datablock);
-					}
-				}
-				else if (GameObject::ITEM == originalGameObjectPtr->getType())
-				{
-					// also clone each sub material, so that each cloned entity has its own material which can be manipulated, whithout affecting the other entities
-					for (unsigned int i = 0; i < static_cast<Ogre::Item*>(originalMovableObject)->getNumSubItems(); i++)
-					{
-						const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
-						const Ogre::String* datablockName = datablock->getNameStr();
-						static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
-					}
+					const auto& datablock = static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->getDatablock();
+					const Ogre::String* datablockName = datablock->getNameStr();
+					static_cast<Ogre::Item*>(originalMovableObject)->getSubItem(i)->setDatablock(datablock);
 				}
 			}
+		}
 
-			clonedSceneNode->setVisible(originalMovableObject->getVisible());
-			clonedMovableObject->setVisible(originalMovableObject->getVisible());
-			clonedMovableObject->setCastShadows(originalMovableObject->getCastShadows());
-			clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
-			clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
+		clonedSceneNode->setVisible(false);
+		clonedMovableObject->setVisible(false);
 
-		// });
+		clonedMovableObject->setCastShadows(originalMovableObject->getCastShadows());
+		clonedMovableObject->setQueryFlags(originalMovableObject->getQueryFlags());
+		clonedMovableObject->setVisibilityFlags(originalMovableObject->getVisibilityFlags());
 
 		// attention with: no ref by category, since each attribute, that is no reference must use boost::ref
 		GameObjectPtr clonedGameObjectPtr(boost::make_shared<GameObject>(sceneManager, clonedSceneNode, clonedMovableObject,
@@ -602,6 +636,22 @@ namespace NOWA
 			NOWA::GraphicsModule::getInstance()->updateNodeScale(clonedGameObjectPtr->getSceneNode(), originalGameObjectPtr->getScale());
 		}
 
+		// 1. Get the final transform values
+		Ogre::Vector3 finalPosition = (Ogre::Vector3::ZERO != targetPosition) ? targetPosition : originalGameObjectPtr->getPosition();
+		Ogre::Quaternion finalOrientation = (Ogre::Quaternion::IDENTITY != targetOrientation) ? targetOrientation : originalGameObjectPtr->getOrientation();
+		Ogre::Vector3 finalScale = (Ogre::Vector3::UNIT_SCALE != targetScale) ? targetScale : originalGameObjectPtr->getScale();
+
+		// 2. Set the transform directly on the SceneNode (Local space, or World space if parented to root)
+		clonedSceneNode->setPosition(finalPosition); // Assuming this is world position, or local if parented to root
+		clonedSceneNode->setOrientation(finalOrientation);
+		clonedSceneNode->setScale(finalScale);
+
+		// 3. **FORCE IMMEDIATE DERIVED TRANSFORM UPDATE** (Crucial synchronization step)
+		// By accessing the derived transform, you force Ogre to calculate the world matrix immediately on the render thread.
+		clonedSceneNode->_getDerivedPositionUpdated();
+		clonedSceneNode->_getDerivedOrientationUpdated();
+		clonedSceneNode->_getDerivedScaleUpdated();
+
 		// Order is important since category id is generated and maybe required in postInit!
 		this->registerGameObject(clonedGameObjectPtr);
 
@@ -655,6 +705,8 @@ namespace NOWA
 
 		boost::shared_ptr<EventDataNewGameObject> newGameObjectEvent(boost::make_shared<EventDataNewGameObject>(clonedGameObjectPtr->getId()));
 		AppStateManager::getSingletonPtr()->getEventManager(this->appStateName)->threadSafeQueueEvent(newGameObjectEvent);
+
+		clonedGameObjectPtr->setVisible(false);
 
 		return clonedGameObjectPtr;
 	}

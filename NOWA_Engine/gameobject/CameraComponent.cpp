@@ -347,6 +347,13 @@ namespace NOWA
 
 	void CameraComponent::update(Ogre::Real dt, bool notSimulating)
 	{
+		if (false == notSimulating)
+		{
+			// Do NOT update component attributes during simulation.
+			// During simulation, the camera's movement is driven by game logic (e.g., a process, physics, or another component).
+			return;
+		}
+
 		// Update camera values
 		if (this->timeSinceLastUpdate >= 0.0f)
 		{
@@ -603,17 +610,14 @@ namespace NOWA
 			// Hide entity for active camera
 			if (nullptr != this->camera)
 			{
-				this->gameObjectPtr->setAttributePosition(this->position->getVector3());
-				this->gameObjectPtr->setAttributeOrientation(MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3()));
+				Ogre::Vector3 desiredWorldPosition = this->position->getVector3();
+				Ogre::Quaternion desiredWorldOrientation = MathHelper::getInstance()->degreesToQuat(this->orientation->getVector3());
 
-				Ogre::Vector3 position = this->gameObjectPtr->getSceneNode()->getPosition();
-				Ogre::Quaternion orientation = this->gameObjectPtr->getSceneNode()->getOrientation();
+				this->gameObjectPtr->setAttributePosition(desiredWorldPosition);
+				this->gameObjectPtr->setAttributeOrientation(desiredWorldOrientation);
 
-				// this->camera->setPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-				// this->camera->setOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
-
-				this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-				this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(orientation));
+				this->setCameraPosition(this->camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(desiredWorldPosition));
+				this->setCameraOrientation(this->camera->getParentSceneNode()->convertWorldToLocalOrientationUpdated(desiredWorldOrientation));
 
 				auto& workspaceBaseCompPtr = NOWA::makeStrongPtr(this->gameObjectPtr->getComponent<WorkspaceBaseComponent>());
 				if (nullptr != workspaceBaseCompPtr)
@@ -762,21 +766,15 @@ namespace NOWA
 
 	void CameraComponent::setCameraPosition(const Ogre::Vector3& position)
 	{
-		if (true == this->bConnected)
+		/*if (true == this->bConnected)
 		{
 			return;
-		}
+		}*/
 
 		this->position->setValue(position);
 		if (nullptr != this->gameObjectPtr)
 		{
 			this->gameObjectPtr->setAttributePosition(this->position->getVector3());
-			// auto camera = this->camera;
-			// ENQUEUE_RENDER_COMMAND_MULTI_NO_THIS("CameraComponent::setCameraPosition", _2(camera, position),
-			// {
-			// 	camera->setPosition(camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
-			// });
-
 			NOWA::GraphicsModule::getInstance()->updateCameraPosition(this->camera, camera->getParentSceneNode()->convertWorldToLocalPositionUpdated(position));
 		}
 	}
@@ -789,10 +787,10 @@ namespace NOWA
 
 	void CameraComponent::setCameraDegreeOrientation(const Ogre::Vector3& orientation)
 	{
-		if (true == this->bConnected)
+		/*if (true == this->bConnected)
 		{
 			return;
-		}
+		}*/
 
 		this->orientation->setValue(orientation);
 		if (nullptr != this->gameObjectPtr)
@@ -810,10 +808,10 @@ namespace NOWA
 
 	void CameraComponent::setCameraOrientation(const Ogre::Quaternion& orientation)
 	{
-		if (true == this->bConnected)
+		/*if (true == this->bConnected)
 		{
 			return;
-		}
+		}*/
 
 		this->orientation->setValue(MathHelper::getInstance()->quatToDegrees(orientation));
 		if (nullptr != this->gameObjectPtr)
@@ -939,6 +937,17 @@ namespace NOWA
 	void CameraComponent::setExcludeRenderCategories(const Ogre::String& excludeRenderCategories)
 	{
 		this->excludeRenderCategories->setValue(excludeRenderCategories);
+	}
+
+	void CameraComponent::setAspectRatio(Ogre::Real aspectRatio)
+	{
+		if (nullptr != this->camera)
+		{
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("CameraComponent::setAspectRatio", _1(aspectRatio),
+			{
+				this->camera->setAspectRatio(aspectRatio);
+			});
+		}
 	}
 
 	Ogre::String CameraComponent::getExcludeRenderCategories(void) const

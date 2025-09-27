@@ -58,8 +58,8 @@ namespace NOWA
 			return;
 
 		// Queue initialization if soundManager hasn't been created
-		ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::init", _1(sceneManager),
-		{
+		// ENQUEUE_RENDER_COMMAND_MULTI_WAIT("OgreALModule::init", _1(sceneManager),
+		// {
 			if (this->soundManager == nullptr)
 			{
 				Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_NORMAL, "[OgreALModule] Module created");
@@ -73,7 +73,7 @@ namespace NOWA
 				this->sceneManager = sceneManager;
 				this->soundManager->init(sceneManager);
 			}
-		});
+		// });
 	}
 #endif
 

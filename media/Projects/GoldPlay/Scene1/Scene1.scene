@@ -30,7 +30,7 @@
 		</lightFoward>
 		<mainParameter>
 			<ignoreGlobalScene value="false"/>
-			<renderDistance distance="100"/>
+			<renderDistance distance="300"/>
 			<useV2Item value="false"/>
 		</mainParameter>
 		<fog mode="none" start="0" end="0" density="0"/>
@@ -877,7 +877,7 @@
 		</node>
 		<node name="SunLight" id="1479238507">
 			<position x="0" y="35" z="50"/>
-			<rotation qw="0.88088" qx="-0.362811" qy="0.280632" qz="-0.116896"/>
+			<rotation qw="0.880476" qx="-0.364705" qy="0.279848" qz="-0.115916"/>
 			<scale x="1" y="1" z="1"/>
 			<entity name="SunLight" meshFile="LightDirectional.mesh" castShadows="false" visible="true">
 				<subentity index="0" datablockName="WhiteNoLightingBackground"/>
@@ -999,7 +999,7 @@
 			<rotation qw="1" qx="0" qy="0" qz="0"/>
 			<scale x="1" y="1" z="1"/>
 			<item name="Plane_0" meshFile="Plane_0" castShadows="true" visible="true">
-				<subitem index="0" datablockName="GroundDirtPlane"/>
+				<subitem index="0" datablockName="GroundDirtPlane__612957548"/>
 				<userData>
 					<property type="7" name="Object" data="GameObject"/>
 					<property type="7" name="Id" data="612957548"/>
@@ -1014,12 +1014,12 @@
 					<property type="12" name="Global" data="false"/>
 					<property type="12" name="ClampY" data="false"/>
 					<property type="2" name="ReferenceId" data="0"/>
-					<property type="2" name="RenderQueueIndex" data="10"/>
-					<property type="2" name="RenderDistance" data="100"/>
+					<property type="2" name="RenderQueueIndex" data="9"/>
+					<property type="2" name="RenderDistance" data="300"/>
 					<property type="6" name="LodDistance" data="0"/>
 					<property type="6" name="LodLevels" data="0"/>
 					<property type="2" name="ShadowRenderingDistance" data="100"/>
-					<property type="7" name="DataBlock0" data="GroundDirtPlane"/>
+					<property type="7" name="DataBlock0" data="GroundDirtPlane__612957548"/>
 					<property type="7" name="ComponentDatablockPbsComponent" data="DatablockPbsComponent"/>
 					<property type="7" name="Name" data=""/>
 					<property type="2" name="ReferenceId" data="0"/>
@@ -1272,6 +1272,7 @@
 					<property type="9" name="SpawnOffsetOrientation" data="0 0 0"/>
 					<property type="12" name="SpawnAtOrigin" data="false"/>
 					<property type="2" name="SpawnTarget" data="1528694117"/>
+					<property type="12" name="CloneDatablock" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -1480,6 +1481,7 @@
 					<property type="9" name="SpawnOffsetOrientation" data="0 0 0"/>
 					<property type="12" name="SpawnAtOrigin" data="false"/>
 					<property type="2" name="SpawnTarget" data="2377376211"/>
+					<property type="12" name="CloneDatablock" data="false"/>
 				</userData>
 			</entity>
 		</node>
@@ -1697,7 +1699,7 @@
 					<property type="12" name="IsExpanded" data="true"/>
 					<property type="12" name="Activated" data="true"/>
 					<property type="9" name="CollisionSize" data="0 0 0"/>
-					<property type="9" name="OffsetPosition" data="0 0 0"/>
+					<property type="9" name="OffsetPosition" data="0 -0.5 0"/>
 					<property type="9" name="OffsetDirection" data="0 0 0"/>
 					<property type="6" name="Mass" data="10"/>
 					<property type="9" name="MassOrigin" data="0 0 0"/>

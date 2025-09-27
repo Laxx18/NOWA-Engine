@@ -301,11 +301,13 @@ namespace OgreAL {
 		else
 		{
 			mSumDataRead = 0;
+			mSpectrumProcessingSize = 0;
+			mSpectrumNumberOfBands = 0;
+			mDataRead = 0;
+			mCurrentSpectrumPos = 0.0f;
+
 			if (nullptr != mSpectrumCallback)
 			{
-				mDataRead = 0;
-				mCurrentSpectrumPos = 0.0f;
-
 				if (nullptr != mAudioProcessor)
 				{
 					delete mAudioProcessor;
@@ -593,7 +595,7 @@ namespace OgreAL {
 				}
 			}
 
-			if (mSpectrumCallback)
+			if (mSpectrumCallback && mSpectrumProcessingSize > 0)
 			{
 				const unsigned int arraySize = mSpectrumProcessingSize * 2;
 

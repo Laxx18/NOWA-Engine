@@ -99,14 +99,14 @@ Level1_MainGameObject["connect"] = function(gameObject)
     
     healthSpawn = thisGameObject:getSpawnComponentFromName("healthSpawn");
     healthSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
-        spawnedGameObject:setVisible(true);
+        --spawnedGameObject:setVisible(true);
         spawnedGameObject:getPhysicsActiveKinematicComponent():setPosition(Vector3(math.random(-80, 80), 0, -130));
         spawnedGameObject:getPhysicsActiveKinematicComponent():setVelocity(Vector3(0, 0, 25));
     end);
     
     asteroidSpawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
         spawnedGameObject:getPhysicsComponent():setCollidable(true);
-        spawnedGameObject:setVisible(true);
+       -- spawnedGameObject:setVisible(true);
         spawnedGameObject:getPhysicsActiveComponent():setPosition(Vector3(math.random(-100, 100), 0, -150));
         spawnedGameObject:getPhysicsActiveComponent():setOrientation(Quaternion(Degree(math.random(180)), Vector3.UNIT_Y));
         local direction = Vector3(math.random(-0.5, 0.5), 0, math.random(1));
@@ -114,7 +114,7 @@ Level1_MainGameObject["connect"] = function(gameObject)
     end);
     
     enemy1Spawn:reactOnSpawn(function(spawnedGameObject, originGameObject) 
-        spawnedGameObject:setVisible(true);
+        --spawnedGameObject:setVisible(true);
         spawnedGameObject:getPhysicsActiveComponent():setPosition(Vector3(math.random(-150, 150), 0, -130));
         spawnedGameObject:getMoveMathFunctionComponent():setActivated(true);
     end);

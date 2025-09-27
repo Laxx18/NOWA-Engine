@@ -734,16 +734,20 @@ namespace NOWA
 	void AnimationBlender::gameObjectIsInRagDollStateDelegate(EventDataPtr eventData)
 	{
 		boost::shared_ptr<EventDataGameObjectIsInRagDollingState> castEventData = boost::static_pointer_cast<NOWA::EventDataGameObjectIsInRagDollingState>(eventData);
-		// if this game object has an physics rag doll component and its in ragdolling state, no animation must be processed, else the skeleton will throw apart!
-		unsigned long id = castEventData->getGameObjectId();
-		NOWA::GameObject* gameObject = Ogre::any_cast<NOWA::GameObject*>(this->entity->getUserObjectBindings().getUserAny());
-		if (nullptr != gameObject)
+
+		ENQUEUE_RENDER_COMMAND_MULTI("AnimationBlender::gameObjectIsInRagDollStateDelegate", _1(castEventData),
 		{
-			if (gameObject->getId() == id)
+			// if this game object has an physics rag doll component and its in ragdolling state, no animation must be processed, else the skeleton will throw apart!
+			unsigned long id = castEventData->getGameObjectId();
+			NOWA::GameObject * gameObject = Ogre::any_cast<NOWA::GameObject*>(this->entity->getUserObjectBindings().getUserAny());
+			if (nullptr != gameObject)
 			{
-				this->canAnimate = !castEventData->getIsInRagDollingState();
+				if (gameObject->getId() == id)
+				{
+					this->canAnimate = !castEventData->getIsInRagDollingState();
+				}
 			}
-		}
+		});
 	}
 	
 	Ogre::v1::AnimationState* AnimationBlender::getAnimationState(AnimID animationId)

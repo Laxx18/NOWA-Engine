@@ -682,6 +682,9 @@ namespace NOWA
 
 	bool GameObject::disconnect(void)
 	{
+		NOWA::GraphicsModule::getInstance()->clearAllClosures();
+		NOWA::AppStateManager::getSingletonPtr()->clearLogicQueue();
+
 		for (const auto& component : this->gameObjectComponents)
 		{
 			if (false == std::get<COMPONENT>(component)->disconnect())
@@ -1687,7 +1690,7 @@ namespace NOWA
 			this->sceneNode->_setDerivedPosition(position);
 		});
 
-		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
+		// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObject] setAttributePosition: " + this->getName() + ": " + Ogre::StringConverter::toString(position));
 		// NOWA::GraphicsModule::getInstance()->updateNodePosition(this->sceneNode, position);
 	}
 

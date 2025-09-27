@@ -225,7 +225,7 @@ namespace NOWA
 		Ogre::String id = this->gameObjectPtr->getName() + this->getClassName() + "::update" + Ogre::StringConverter::toString(this->index);
 		NOWA::GraphicsModule::getInstance()->removeTrackedClosure(id);
 
-		ENQUEUE_RENDER_COMMAND("RectangleComponent::disconnect",
+		ENQUEUE_RENDER_COMMAND_WAIT("RectangleComponent::disconnect",
 		{
 			this->destroyRectangles();
 		});
