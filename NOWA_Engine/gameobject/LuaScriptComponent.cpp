@@ -62,6 +62,7 @@ namespace NOWA
 		hasUpdateFunction(false),
 		hasLateUpdateFunction(false),
 		componentCloned(false),
+		alreadyDisconnected(false),
 		activated(new Variant(LuaScriptComponent::AttrActivated(), true, this->attributes)),
 		scriptFile(new Variant(LuaScriptComponent::AttrScriptFile(), Ogre::String(""), this->attributes)),
 		cloneScript(new Variant(LuaScriptComponent::AttrCloneScript(), false, this->attributes)),
@@ -254,6 +255,11 @@ namespace NOWA
 
 	bool LuaScriptComponent::disconnect(void)
 	{
+		if (true == this->alreadyDisconnected)
+		{
+			return true;
+		}
+
 		if (nullptr != this->luaScript)
 		{
 			if (true == this->activated->getBool())
@@ -262,6 +268,7 @@ namespace NOWA
 				// Lots faster
 				this->luaScript->callTableFunction("disconnect");
 				this->luaScript->decompile();
+				this->alreadyDisconnected = true;
 			}
 
 			// Reset for the lua script any runtime error, if connect is called. So that any external editor has the chance to clean up errors
@@ -416,6 +423,8 @@ namespace NOWA
 
 		if (true == activated)
 		{
+			this->alreadyDisconnected = false;
+
 			// For performance reasons only call lua table function permanentely if the function does exist in a lua script
 			this->hasUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "update");
 			this->hasLateUpdateFunction = AppStateManager::getSingletonPtr()->getLuaScriptModule()->checkLuaFunctionAvailable(this->luaScript->getName(), "lateUpdate");

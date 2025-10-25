@@ -62,8 +62,6 @@ namespace NOWA
 		// React when scene has been loaded to get data
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->addListener(fastdelegate::MakeDelegate(this, &AppState::handleSceneLoaded), NOWA::EventDataSceneLoaded::getStaticEventType());
 
-		ProcessManager::getInstance()->attachProcess(ProcessPtr(new NOWA::FaderProcess(NOWA::FaderProcess::FadeOperation::FADE_IN, 0.1f)));
-
 		// Attention: Load scene is loaded at an different frame, so after that camera, etc is not available, use EventDataSceneChanged event to get data
 		if (false == this->currentSceneName.empty())
 		{

@@ -229,6 +229,7 @@ namespace NOWA
 		bool hasLateUpdateFunction;
 		bool componentCloned;
 		Ogre::String differentScriptNameForXML;
+		bool alreadyDisconnected;
 	};
 
 }; //namespace end

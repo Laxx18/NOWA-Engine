@@ -10685,7 +10685,6 @@ namespace NOWA
 			class_<OgreNewt::Contact>("Contact")
 			.def("getNormalSpeed", &OgreNewt::Contact::getNormalSpeed)
 			// .def("getForce", &OgreNewt::Contact::getForce)
-			.def("setContactPosition", &OgreNewt::Contact::setContactPosition)
 			.def("getPositionAndNormal", &getPositionAndNormal)
 			.def("getContactTangentDirections", &getTangentDirections)
 			.def("getTangentSpeed", &OgreNewt::Contact::getTangentSpeed)
@@ -10711,7 +10710,6 @@ namespace NOWA
 
 		AddClassToCollection("Contact", "class", "Contact can be used, to get details information when a collision of two bodies occured and to control, what should happen with them.");
 		AddClassToCollection("Contact", "float getNormalSpeed()", "Gets the speed at the contact normal.");
-		AddClassToCollection("Contact", "void setContactPosition(Vector3 contactPosition)", "Sets the contact position.");
 		AddClassToCollection("Contact", "Table[Vector3][Vector3] getPositionAndNormal()", "Gets the contact position and normal. Usage: local data = contact:getPositionAndNormal(); "
 							 "local position = data[0]; "
 							 "local normal = data[1]");

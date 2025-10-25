@@ -38,7 +38,6 @@
 #include "OgreNewt_ContactCallback.h"
 #include "OgreNewt_ContactJoint.h"
 #include "OgreNewt_Vehicle.h"
-// #include "OgreNewt_RayCastVehicle.h"
 #include "OgreNewt_PlayerController.h"
 #include "OgreNewt_TriggerControllerManager.h"
 #include "OgreNewt_RayCast.h"

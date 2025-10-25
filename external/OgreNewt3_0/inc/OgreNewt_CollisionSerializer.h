@@ -42,8 +42,7 @@ namespace OgreNewt
     Deserialize the Collision from a DataStream.
     this will create a NEW Collision object
     */
-//   OgreNewt::CollisionPtr importCollision(Ogre::DataStreamPtr& stream, OgreNewt::World* world);
-     OgreNewt::CollisionPtr importCollision(Ogre::DataStream& stream, OgreNewt::World* world);
+    OgreNewt::CollisionPtr importCollision(Ogre::DataStream& stream, OgreNewt::World* world);
 
   private:
     /*!

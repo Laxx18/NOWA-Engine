@@ -69,6 +69,10 @@ namespace NOWA
 		virtual void onInit(void) override
 		{
 			this->succeed();
+
+			boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(0L, ""));
+			NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
+
 			// Must abort all processes, if state is about to being changed, not that a prior state make e.g. delayed undo for all game objects at the same time
 			ProcessManager::getInstance()->abortAllProcesses(true);
 
@@ -148,6 +152,11 @@ namespace NOWA
 	AppStateManager* AppStateManager::getSingletonPtr(void)
 	{
 		return msSingleton;
+	}
+
+	GameProgressModule* AppStateManager::getActiveGameProgressModuleSafe(void) const
+	{
+		return this->activeGameProgressModule.load();
 	}
 
 	AppStateManager& AppStateManager::getSingleton(void)
@@ -465,6 +474,9 @@ namespace NOWA
 
 		this->activeStateStack.push_back(state);
 
+		// Set the cached pointer on the Logic Thread
+		this->activeGameProgressModule.store(state->gameProgressModule);
+
 		// link input devices and gui with core
 		this->linkInputWithCore(oldState, state);
 
@@ -518,6 +530,10 @@ namespace NOWA
 			oldState = this->activeStateStack.back();
 		}
 		this->activeStateStack.push_back(state);
+
+		// Set the cached pointer on the Logic Thread
+		this->activeGameProgressModule.store(state->gameProgressModule);
+
 		// Links input devices and gui with core
 		this->linkInputWithCore(oldState, state);
 		Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Entering " + this->activeStateStack.back()->getName());
@@ -550,6 +566,9 @@ namespace NOWA
 			this->linkInputWithCore(oldState, this->activeStateStack.back());
 			// if a state is paused, resume the state, in order to be able to continue
 			Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_TRIVIAL, "[AppStateManager] Resuming " + this->activeStateStack.back()->getName());
+
+			// Set the cached pointer on the Logic Thread
+			this->activeGameProgressModule.store(this->activeStateStack.back()->gameProgressModule);
 			this->activeStateStack.back()->resume();
 		}
 		else

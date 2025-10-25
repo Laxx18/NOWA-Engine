@@ -197,10 +197,14 @@ namespace NOWA
 
 	void SimpleSoundComponent::soundSpectrumFuncPtr(OgreAL::Sound* sound)
 	{
+		if (false == this->bConnected)
+		{
+			return;
+		}
+
 		OgreAL::Sound::SpectrumParameter* spectrumParameter = sound->getSpectrumParameter();
 		if (nullptr != spectrumParameter)
 		{
-
 			// Call also function in lua script, if it does exist in the lua script component
 			if (nullptr != this->gameObjectPtr->getLuaScript() && false == this->onSpectrumAnalysisFunctionName->getString().empty())
 			{

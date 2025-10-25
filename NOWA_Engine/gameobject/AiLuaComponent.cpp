@@ -22,7 +22,8 @@ namespace NOWA
 		pathGoalObserver(nullptr),
 		agentStuckObserver(nullptr),
 		ready(false),
-		componentCloned(false)
+		componentCloned(false),
+		alreadyDisconnected(false)
 	{
 
 	}
@@ -125,6 +126,13 @@ namespace NOWA
 
 	bool AiLuaComponent::disconnect(void)
 	{
+		if (true == this->alreadyDisconnected)
+		{
+			return true;
+		}
+
+		this->alreadyDisconnected = true;
+
 		if (nullptr != this->movingBehaviorPtr)
 		{
 			delete this->pathGoalObserver;
@@ -323,6 +331,8 @@ namespace NOWA
 
 		if (true == activated && nullptr != luaScriptComponent)
 		{
+			this->alreadyDisconnected = false;
+
 			if (false == luaScriptComponent->isActivated())
 			{
 				// If not activated, first activate the lua script component, so that the script will be compiled, because its necessary for this component

@@ -64,7 +64,7 @@ namespace NOWA
 
 		void callTableFunction(const Ogre::String& functionName)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -93,7 +93,7 @@ namespace NOWA
 		template <typename PARAM1>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -122,7 +122,7 @@ namespace NOWA
 		template <typename PARAM1, typename PARAM2>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -151,7 +151,7 @@ namespace NOWA
 		template <typename PARAM1, typename PARAM2, typename PARAM3>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2, PARAM3 param3)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -181,7 +181,7 @@ namespace NOWA
 		template <typename PARAM1, typename PARAM2, typename PARAM3, typename PARAM4>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2, PARAM3 param3, PARAM4 param4)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -210,7 +210,7 @@ namespace NOWA
 		template <typename PARAM1, typename PARAM2, typename PARAM3, typename PARAM4, typename PARAM5>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2, PARAM3 param3, PARAM4 param4, PARAM5 param5)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}
@@ -239,7 +239,7 @@ namespace NOWA
 		template <typename PARAM1, typename PARAM2, typename PARAM3, typename PARAM4, typename PARAM5, typename PARAM6>
 		void callTableFunction(const Ogre::String& functionName, PARAM1 param1, PARAM2 param2, PARAM3 param3, PARAM4 param4, PARAM5 param5, PARAM6 param6)
 		{
-			if (true == functionName.empty())
+			if (true == functionName.empty() || false == this->isCompiled())
 			{
 				return;
 			}

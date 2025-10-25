@@ -251,7 +251,7 @@ namespace NOWA
 	{
 		if (nullptr != this->particle)
 		{
-			ENQUEUE_RENDER_COMMAND_WAIT("ParticleUniverseComponent::destroyParticleEffect",
+			GraphicsModule::RenderCommand renderCommand = [this]()
 			{
 				// Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "-->destroy: " + this->particle->getName());
 				this->particle->stop();
@@ -266,7 +266,8 @@ namespace NOWA
 				// this->gameObjectPtr->getSceneManager()->getRootSceneNode()->removeAndDestroyChild(this->particleNode);
 				this->particle = nullptr;
 				this->particleNode = nullptr;
-			});
+			};
+			NOWA::GraphicsModule::getInstance()->enqueueAndWait(std::move(renderCommand), "ParticleUniverseComponent::destroyParticleEffect");
 		}
 		this->particlePlayTime = this->particleInitialPlayTime->getReal();
 	}

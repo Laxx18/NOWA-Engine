@@ -198,16 +198,16 @@ namespace NOWA
             Ogre::Real deltaTime = (currentTime - lastFrameTime) * 0.000001f; // Convert to seconds
             lastFrameTime = currentTime;
 
-            auto gameProgressModule = appStateManager->getGameProgressModule();
+            GameProgressModule* gameProgressModule = appStateManager->getActiveGameProgressModuleSafe();
 
-            if (nullptr != gameProgressModule)
+            bool isStalled = appStateManager->bStall.load();
+            bool isSceneLoading = nullptr != gameProgressModule ? gameProgressModule->bSceneLoading.load() : false;
+
+            if (false == isStalled && false == isSceneLoading)
             {
-                if (false == appStateManager->bStall && false == gameProgressModule->bSceneLoading)
-                {
-                    NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
-                }
+                NOWA::InputDeviceCore::getSingletonPtr()->capture(deltaTime);
             }
-
+ 
             // this->beginLogicFrame();
 
             // if (true == appStateManager->bCanProcessRenderQueue)
@@ -239,7 +239,7 @@ namespace NOWA
                 }
             }
 
-            if (false == appStateManager->bStall)
+            if (false == isStalled)
             {
                 // Perform the actual rendering
                 Ogre::Root::getSingletonPtr()->renderOneFrame();
@@ -379,6 +379,8 @@ namespace NOWA
 
         // If we're already on the render thread AND processing a command, 
         // execute this command immediately rather than enqueuing it
+
+        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
         if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
         {
             // Log direct execution
@@ -600,6 +602,7 @@ namespace NOWA
 
         // If already on the render thread or in the middle of destroy closure, wait must not be called! Else closure of destroy etc. will be interupted! so execute directly without wait in that case.
         // Or detect if already in a logic->render call chain
+        // Note: RenderGlobals::g_inLogicCommand has been uncommented, because its dangerous, so that a render thread operation would not be executed on render thread, because its part of logic main thread cascade
         if (true == this->isRenderThread()/* || true == RenderGlobals::g_inLogicCommand*/)
         {
             try
@@ -622,8 +625,6 @@ namespace NOWA
                 throw; // Re-throw the exception
             }
         }
-
-       
 
         // Track that we're in a waiting state on this thread
         this->incrementWaitDepth();
@@ -870,7 +871,7 @@ namespace NOWA
     {
         // O(1) lookup using the hash map
         auto it = this->nodeToIndexMap.find(node);
-        if (it != this->nodeToIndexMap.end())
+        if (it != this->nodeToIndexMap.end() && false == this->trackedNodes.empty())
         {
             // Return pointer to the NodeTransforms in the vector
             return &this->trackedNodes[it->second];
@@ -882,7 +883,7 @@ namespace NOWA
     {
         // O(1) lookup using the hash map
         auto it = this->cameraToIndexMap.find(camera);
-        if (it != this->cameraToIndexMap.end())
+        if (it != this->cameraToIndexMap.end() && false == this->trackedCameras.empty())
         {
             // Return pointer to the CameraTransforms in the vector
             return &this->trackedCameras[it->second];
@@ -894,7 +895,7 @@ namespace NOWA
     {
         // O(1) lookup using the hash map
         auto it = this->oldBoneToIndexMap.find(oldBone);
-        if (it != this->oldBoneToIndexMap.end())
+        if (it != this->oldBoneToIndexMap.end() && false == this->trackedOldBones.empty())
         {
             // Return pointer to the OldBoneTransforms in the vector
             return &this->trackedOldBones[it->second];
@@ -905,7 +906,7 @@ namespace NOWA
     GraphicsModule::PassTransforms* GraphicsModule::findPassTransforms(Ogre::Pass* pass)
     {
         auto it = this->passToIndexMap.find(pass);
-        if (it != this->passToIndexMap.end())
+        if (it != this->passToIndexMap.end() && false == this->trackedPasses.empty())
         {
             return &this->trackedPasses[it->second];
         }
@@ -916,7 +917,7 @@ namespace NOWA
     {
         // O(1) lookup using the hash map
         auto it = this->datablockToIndexMap.find(datablock);
-        if (it != this->datablockToIndexMap.end())
+        if (it != this->datablockToIndexMap.end() && false == this->trackedDatablocks.empty())
         {
             // Return pointer to the tracked datablock in the vector
             return &this->trackedDatablocks[it->second];

@@ -1760,6 +1760,27 @@ namespace NOWA
 			for (auto& it = this->gameObjects->cbegin(); it != this->gameObjects->cend(); ++it)
 			{
 				const auto& gameObjectPtr = it->second;
+
+				// Get a possible lua script from corresponding component
+				boost::shared_ptr<LuaScriptComponent> luaScriptCompPtr;
+				bool luaScriptNoCompileErrors = true;
+				// Problem: When lua script is connected first and intialisations done inside, e.g. ragdoll etc. no ragdoll is yet available, so only compile
+
+				// First disconnect all lua scripts, so that no further lua updates are done during the disconnect of the game object
+				luaScriptCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<LuaScriptComponent>());
+				if (nullptr != luaScriptCompPtr)
+				{
+					luaScriptCompPtr->disconnect();
+				}
+				else
+				{
+					boost::shared_ptr<AiLuaComponent> aiLuaCompPtr = NOWA::makeStrongPtr(gameObjectPtr->getComponent<AiLuaComponent>());
+					if (nullptr != aiLuaCompPtr)
+					{
+						aiLuaCompPtr->disconnect();
+					}
+				}
+
 				if (false == gameObjectPtr->disconnect())
 				{
 					Ogre::LogManager::getSingletonPtr()->logMessage(Ogre::LML_CRITICAL, "[GameObjectController] Could not disconnect game object: '" + gameObjectPtr->getName() + "'");

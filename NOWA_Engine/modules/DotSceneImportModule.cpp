@@ -351,8 +351,11 @@ namespace NOWA
 			this->parseGlobalScene(crypted);
 		}
 
-		// This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
-		this->postInitData();
+		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::postInitData",
+		{
+			// This game objects must be initialized before all other game objects are initialized, because they may need data from this game objects, like terra needs a camera
+			this->postInitData();
+		});
 
 		float dt = (static_cast<Ogre::Real>(Core::getSingletonPtr()->getOgreTimer()->getMilliseconds()) * 0.001f) - currentTime;
 		Ogre::LogManager::getSingleton().logMessage(Ogre::LML_TRIVIAL, "[DotSceneImportModule] Parse end scene: " + this->projectParameter.sceneName + " duration: " + Ogre::StringConverter::toString(dt) + " seconds");
@@ -364,9 +367,12 @@ namespace NOWA
 		// Clears the saved game file path name again, so that usual loading is done
 		this->savedGameFilePathName.clear();
 
-		// Important call: If all scene relevant textures have been loaded, call this command, so that Ogre internally creates fully all textures
-		Ogre::TextureGpuManager* textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
-		textureManager->waitForStreamingCompletion();
+		ENQUEUE_RENDER_COMMAND_WAIT("DotSceneImportModule::waitForStreamingCompletion",
+		{
+			// Important call: If all scene relevant textures have been loaded, call this command, so that Ogre internally creates fully all textures
+			Ogre::TextureGpuManager * textureManager = Ogre::Root::getSingletonPtr()->getRenderSystem()->getTextureGpuManager();
+			textureManager->waitForStreamingCompletion();
+		});
 
 		boost::shared_ptr<EventDataSceneParsed> eventDataSceneParsed(new EventDataSceneParsed());
 		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->triggerEvent(eventDataSceneParsed);
@@ -932,7 +938,10 @@ namespace NOWA
 		pElement = xmlRoot->first_node("environment");
 		if (pElement)
 		{
-			this->processEnvironment(pElement);
+			ENQUEUE_RENDER_COMMAND_MULTI_WAIT("DotSceneImportModule::processEnvironment", _1(&pElement),
+			{
+				this->processEnvironment(pElement);
+			});
 		}
 
 		// Process OgreNewt
@@ -1101,16 +1110,13 @@ namespace NOWA
 					this->projectParameter.ambientLightModeIndex = XMLConverter::getAttribUnsignedInt(subElement, "index", 0);
 				}
 
-				ENQUEUE_RENDER_COMMAND("DotSceneImportModule::processEnvironment Shadow",
-				{
-					this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
-					this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
-					this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
-					this->sceneManager->setShadowColour(this->projectParameter.shadowColor);
+				this->sceneManager->setShadowFarDistance(this->projectParameter.shadowFarDistance);
+				this->sceneManager->setShadowDirectionalLightExtrusionDistance(this->projectParameter.shadowDirectionalLightExtrusionDistance);
+				this->sceneManager->setShadowDirLightTextureOffset(this->projectParameter.shadowDirLightTextureOffset);
+				this->sceneManager->setShadowColour(this->projectParameter.shadowColor);
 
-					NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), false);
-					NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
-				});
+				NOWA::WorkspaceModule::getInstance()->setShadowQuality(static_cast<Ogre::HlmsPbs::ShadowFilter>(this->projectParameter.shadowQualityIndex), false);
+				NOWA::WorkspaceModule::getInstance()->setAmbientLightMode(static_cast<Ogre::HlmsPbs::AmbientLightMode>(this->projectParameter.ambientLightModeIndex));
 			}
 		}
 		
@@ -1183,29 +1189,20 @@ namespace NOWA
 					this->sceneManager->setForward3D(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices, 
 						this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 
-					ENQUEUE_RENDER_COMMAND("DotSceneImportModule::processEnvironment setForwardClustered false",
-					{
-						this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-							this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
-							this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-					});
+					this->sceneManager->setForwardClustered(false, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
+						this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
+						this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 				}
 				else if (1 == this->projectParameter.forwardMode)
 				{
-					ENQUEUE_RENDER_COMMAND("DotSceneImportModule::processEnvironment setForward3D",
-					{
-						this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-							this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-					});
+					this->sceneManager->setForward3D(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
+						this->projectParameter.lightsPerCell, this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 				}
 				else if (2 == this->projectParameter.forwardMode)
 				{
-					ENQUEUE_RENDER_COMMAND("DotSceneImportModule::processEnvironment setForwardClustered true",
-					{
-						this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
-							this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
-							this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
-					});
+					this->sceneManager->setForwardClustered(true, this->projectParameter.lightWidth, this->projectParameter.lightHeight, this->projectParameter.numLightSlices,
+						this->projectParameter.lightsPerCell, this->projectParameter.decalsPerCell, this->projectParameter.cubemapProbesPerCell,
+						this->projectParameter.minLightDistance, this->projectParameter.maxLightDistance);
 				}
 			}
 			else

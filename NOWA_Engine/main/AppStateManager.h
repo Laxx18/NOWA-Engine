@@ -192,6 +192,8 @@ namespace NOWA
 		std::atomic<bool> bStall;
 
 		std::atomic<bool> bCanProcessRenderQueue;
+
+		GameProgressModule* getActiveGameProgressModuleSafe(void) const;
 	public:
 		static AppStateManager& getSingleton(void);
 
@@ -208,6 +210,11 @@ namespace NOWA
 
 		// Signals that one logic frame is complete
 		void signalLogicFrameFinished(void);
+
+		// CRITICAL: This must be protected by a mutex if accessed by Logic/Main thread
+		// when setting it, but is only read by the Render Thread.
+		// Making it atomic ensures safe read/write access to the pointer itself.
+		std::atomic<GameProgressModule*> activeGameProgressModule;
 
 		/**
 		* @brief		Gets the Variant global value from attribute name.

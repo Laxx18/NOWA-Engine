@@ -426,7 +426,7 @@ namespace NOWA
 	{
 		if (GameObject::ITEM == this->type || GameObject::PLANE == this->type)
 		{
-			ENQUEUE_RENDER_COMMAND("GameObject::actualizeDatablocks",
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
 			{
 				Ogre::Item * item = this->getMovableObjectUnsafe<Ogre::Item>();
 				if (nullptr != item)
@@ -467,7 +467,7 @@ namespace NOWA
 		}
 		else
 		{
-			ENQUEUE_RENDER_COMMAND("GameObject::actualizeDatablocks",
+			ENQUEUE_RENDER_COMMAND_WAIT("GameObject::actualizeDatablocks",
 			{
 				Ogre::v1::Entity * entity = this->getMovableObjectUnsafe<Ogre::v1::Entity>();
 				if (nullptr != entity)

@@ -111,8 +111,6 @@ namespace OgreNewt
 		*/
 		Ogre::Vector3 getForce() const;
 
-		void setContactPosition(const Ogre::Vector3& position);
-
 		//! get positoin and normal of the collision
 		void getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm, OgreNewt::Body* body) const;
 

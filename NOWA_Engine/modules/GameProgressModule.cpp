@@ -318,7 +318,11 @@ namespace NOWA
 
 	void GameProgressModule::resetContent(void)
 	{
-		GraphicsModule::getInstance()->clearSceneResources();
+		boost::shared_ptr<EventDataLuaScriptModfied> eventDataLuaScriptModified(new EventDataLuaScriptModfied(0L, ""));
+		NOWA::AppStateManager::getSingletonPtr()->getEventManager()->queueEvent(eventDataLuaScriptModified);
+
+		// Dangerous, as on own exec state change will not work amymore!
+		// GraphicsModule::getInstance()->clearSceneResources();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->stop();
 		AppStateManager::getSingletonPtr()->getGameObjectController(this->appStateName)->destroyContent(/*excludeGameObjects*/);
 		AppStateManager::getSingletonPtr()->getOgreNewtModule(this->appStateName)->destroyContent();

@@ -178,6 +178,8 @@ namespace NOWA
 		IAgentStuckObserver* agentStuckObserver;
 		bool ready;
 		bool componentCloned;
+
+		bool alreadyDisconnected;
 	};
 
 }; //namespace end

@@ -117,11 +117,6 @@ namespace OgreNewt
 		return static_cast<Ogre::Real>(NewtonMaterialGetContactNormalSpeed(m_material));
 	}
 
-	void Contact::setContactPosition(const Ogre::Vector3& position)
-	{
-		NewtonMaterialSetContactPosition(m_material, &position.x);
-	}
-
 	void Contact::getPositionAndNormal(Ogre::Vector3& pos, Ogre::Vector3& norm, OgreNewt::Body*body) const
 	{
 		NewtonMaterialGetContactPositionAndNormal(m_material, body->getNewtonBody(), &pos.x, &norm.x);
